@@ -1,22 +1,8 @@
 module Operators
 
-# Spacings
-export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
-export Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶠᶜᶜ, Δyᶜᶠᶠ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶜᶜᶜ
-export Δzᶠᶠᶠ, Δzᶠᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
-export Δrᶠᶠᶠ, Δrᶠᶠᶜ, Δrᶠᶜᶠ, Δrᶠᶜᶜ, Δrᶜᶠᶠ, Δrᶜᶠᶜ, Δrᶜᶜᶠ, Δrᶜᶜᶜ
-
-# Areas
-export Axᶠᶠᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶠᶜᶜ, Axᶜᶠᶠ, Axᶜᶠᶜ, Axᶜᶜᶠ, Axᶜᶜᶜ
-export Ayᶠᶠᶠ, Ayᶠᶠᶜ, Ayᶠᶜᶠ, Ayᶠᶜᶜ, Ayᶜᶠᶠ, Ayᶜᶠᶜ, Ayᶜᶜᶠ, Ayᶜᶜᶜ
-export Azᶠᶠᶠ, Azᶠᶠᶜ, Azᶠᶜᶠ, Azᶠᶜᶜ, Azᶜᶠᶠ, Azᶜᶠᶜ, Azᶜᶜᶠ, Azᶜᶜᶜ
-
-export Axᵃᶜᶜ, Axᵃᶠᶠ, Axᶜᵃᶜ, Axᶠᵃᶠ, Axᶜᶜᵃ, Axᶠᶠᵃ
-export Ayᵃᶜᶜ, Ayᵃᶠᶠ, Ayᶜᵃᶜ, Ayᶠᵃᶠ, Ayᶜᶜᵃ, Ayᶠᶠᵃ
-export Azᵃᶜᶜ, Azᵃᶠᶠ, Azᶜᵃᶜ, Azᶠᵃᶠ, Azᶜᶜᵃ, Azᶠᶠᵃ
-
-# Volumes
-export Vᶠᶠᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶠᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶜᶜᶜ
+# Some operators are exported next to where they are defined
+# Spacings, Areas, and Volumes and their reciprocals: src/Operators/spacings_and_areas_and_volumes.jl
+# Differences and Derivatives: src/Operators/derivative_operators.jl
 
 # General metric operators
 export xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume
@@ -30,19 +16,6 @@ export Δz_qᶠᶠᶠ, Δz_qᶠᶠᶜ, Δz_qᶠᶜᶠ, Δz_qᶠᶜᶜ, Δz_qᶜ�
 export Ax_qᶠᶠᶠ, Ax_qᶠᶠᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶜᶜ, Ax_qᶜᶠᶠ, Ax_qᶜᶠᶜ, Ax_qᶜᶜᶠ, Ax_qᶜᶜᶜ
 export Ay_qᶠᶠᶠ, Ay_qᶠᶠᶜ, Ay_qᶠᶜᶠ, Ay_qᶠᶜᶜ, Ay_qᶜᶠᶠ, Ay_qᶜᶠᶜ, Ay_qᶜᶜᶠ, Ay_qᶜᶜᶜ
 export Az_qᶠᶠᶠ, Az_qᶠᶠᶜ, Az_qᶠᶜᶠ, Az_qᶠᶜᶜ, Az_qᶜᶠᶠ, Az_qᶜᶠᶜ, Az_qᶜᶜᶠ, Az_qᶜᶜᶜ
-
-# Differences
-export δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, δzᵃᵃᶠ
-export δxᶠᶠᶠ, δxᶠᶠᶜ, δxᶠᶜᶠ, δxᶠᶜᶜ, δxᶜᶠᶠ, δxᶜᶠᶜ, δxᶜᶜᶠ, δxᶜᶜᶜ
-export δyᶠᶠᶠ, δyᶠᶠᶜ, δyᶠᶜᶠ, δyᶠᶜᶜ, δyᶜᶠᶠ, δyᶜᶠᶜ, δyᶜᶜᶠ, δyᶜᶜᶜ
-export δzᶠᶠᶠ, δzᶠᶠᶜ, δzᶠᶜᶠ, δzᶠᶜᶜ, δzᶜᶠᶠ, δzᶜᶠᶜ, δzᶜᶜᶠ, δzᶜᶜᶜ
-
-# Derivatives
-export ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, ∂yᵃᶜᵃ, ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
-
-export ∂xᶠᶠᶠ, ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂xᶠᶜᶜ, ∂xᶜᶠᶠ, ∂xᶜᶠᶜ, ∂xᶜᶜᶠ, ∂xᶜᶜᶜ
-export ∂yᶠᶠᶠ, ∂yᶠᶠᶜ, ∂yᶠᶜᶠ, ∂yᶠᶜᶜ, ∂yᶜᶠᶠ, ∂yᶜᶠᶜ, ∂yᶜᶜᶠ, ∂yᶜᶜᶜ
-export ∂zᶠᶠᶠ, ∂zᶠᶠᶜ, ∂zᶠᶜᶠ, ∂zᶠᶜᶜ, ∂zᶜᶠᶠ, ∂zᶜᶠᶜ, ∂zᶜᶜᶠ, ∂zᶜᶜᶜ
 
 export ∂²xᶠᶠᶠ, ∂²xᶠᶠᶜ, ∂²xᶠᶜᶠ, ∂²xᶠᶜᶜ, ∂²xᶜᶠᶠ, ∂²xᶜᶠᶜ, ∂²xᶜᶜᶠ, ∂²xᶜᶜᶜ
 export ∂²yᶠᶠᶠ, ∂²yᶠᶠᶜ, ∂²yᶠᶜᶠ, ∂²yᶠᶜᶜ, ∂²yᶜᶠᶠ, ∂²yᶜᶠᶜ, ∂²yᶜᶜᶠ, ∂²yᶜᶜᶜ
@@ -69,6 +42,7 @@ export ∇²ᶜᶜᶜ, ∇²ᶠᶜᶜ, ∇²ᶜᶠᶜ, ∇²ᶜᶜᶠ, ∇²hᶜ
 export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
+export active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 
 # Topology-aware operators
 export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
@@ -77,7 +51,11 @@ export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
 
+# Variable grid operators
+export σⁿ, σ⁻, ∂t_σ
+
 using Oceananigans.Grids
+using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF
 
 #####
 ##### Convenient aliases
@@ -101,15 +79,20 @@ const LLGZ = ZRegularLLG
 # Vertically regular grids
 const ZRG = Union{RGZ, OSSGZ, LLGZ}
 
-# On the fly calculations of metrics
-const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
-const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
-const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+const LLGF  = LLGOTF
+const LLGFX = XRegLLGOTF
+const LLGFY = YRegLLGOTF
+
+const F = Face
+const f = Face()
+const C = Center
+const c = Center()
 
 include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
 
+include("reciprocal_metric_operators.jl")
 include("spacings_and_areas_and_volumes.jl")
 include("products_between_fields_and_grid_metrics.jl")
 
@@ -119,9 +102,10 @@ include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
+include("time_variable_grid_operators.jl")
 include("vector_rotation_operators.jl")
 
-@inline xspacing(args...) = Δx(args...) 
+@inline xspacing(args...) = Δx(args...)
 @inline yspacing(args...) = Δy(args...)
 @inline zspacing(args...) = Δz(args...)
 @inline λspacing(abs...)  = Δλ(abs...)

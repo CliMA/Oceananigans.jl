@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
-import Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ
+import Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ
 import Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ
 import Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δyᶜᶜᵃ
 import Oceananigans.Operators: Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -12,7 +12,7 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 # The grid metric functions "specialized" for the underlying grids in the
 # Operators module are extended for immersed boundary grids here.
 #
-# The other grid metric functions (for example 3D metrics) are general and do not need 
+# The other grid metric functions (for example 3D metrics) are general and do not need
 # extension for "full-cell" immersed boundaries.
 #
 # However, for non "full-cell" immersed boundaries, grid metric functions
@@ -22,8 +22,8 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 
 @inline Δrᵃᵃᶠ(i, j, k, ibg::IBG) = Δrᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 @inline Δrᵃᵃᶜ(i, j, k, ibg::IBG) = Δrᵃᵃᶜ(i, j, k, ibg.underlying_grid)
-@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 # 1D Horizontal spacings
 

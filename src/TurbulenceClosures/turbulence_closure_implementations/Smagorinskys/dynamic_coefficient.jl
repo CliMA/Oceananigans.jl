@@ -2,15 +2,22 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: interpolate
 using Statistics
 
-struct DynamicCoefficient{A, FT, S}
+mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
     minimum_numerator :: FT
     schedule :: S
 end
 
-const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
+struct DeviceDynamicCoefficient{FT}
+    minimum_numerator :: FT
+end
 
-function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Float64; averaging,
+const DynamicSmagorinsky = Union{
+    Smagorinsky{<:Any, <:DynamicCoefficient},
+    Smagorinsky{<:Any, <:DeviceDynamicCoefficient},
+}
+
+function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; averaging,
                             Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
     coefficient = DynamicCoefficient(FT; averaging, schedule, minimum_numerator)
     TD = typeof(time_discretization)
@@ -19,8 +26,7 @@ function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT
 end
 
 DynamicSmagorinsky(FT::DataType; kwargs...) = DynamicSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
-
-Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averaging, dc.minimum_numerator, nothing)
+Adapt.adapt_structure(to, dc::DynamicCoefficient) = DeviceDynamicCoefficient(dc.minimum_numerator)
 
 const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:Union{NTuple{N, Int}, Int, Colon}} where N
 const DirectionallyAveragedDynamicSmagorinsky{N} = Smagorinsky{<:Any, <:DirectionallyAveragedCoefficient{N}} where N
@@ -42,8 +48,70 @@ in the `x` and `y` directions).
 
 `DynamicCoefficient` is updated according to `schedule`, and `minimum_numerator` defines the minimum
 value that is acceptable in the denominator of the final calculation.
+
+Examples
+========
+
+```jldoctest
+julia> using Oceananigans
+
+julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2))
+DynamicCoefficient with
+├── averaging = (1, 2)
+├── schedule = IterationInterval(1, 0)
+└── minimum_numerator = 1.0e-32
+
+julia> dynamic_smagorinsky = Smagorinsky(coefficient=dynamic_coeff)
+Smagorinsky closure with
+├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(1, 0))
+└── Pr = 1.0
+```
+
+The dynamic Smagorinsky above has its coefficient recalculated at every time step, which will almost
+certainly be very slow. To alleviate the high computational cost of the `DynamicCoefficient`
+calculation, users may introduce an approximation wherein the dynamic coefficient is recomputed only
+every so often. This is standard practice in the literature and, while in principle any frequency
+choice is possible (as long as the coefficient changes relatively slowly compared to a single
+time-step), all published studies seem to recalculate it every 5 steps (e.g., Bou-Zeid et al. 2005;
+Chen et al. 2016; Salesky et al. 2017; Chor et al 2021). This choice seems to stem from the
+results by Bou-Zeid et al. (2005) who found that considerably speed up simulations while still
+producing very similar results to an update frequency of every time step. Users can change the
+update frequency using the `schedule` keyword argument. For example, a `DynamicCoefficient` that
+gets updated every 4 timesteps is obtained via:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2), schedule=IterationInterval(4))
+DynamicCoefficient with
+├── averaging = (1, 2)
+├── schedule = IterationInterval(4, 0)
+└── minimum_numerator = 1.0e-32
+
+julia> dynamic_smagorinsky = Smagorinsky(coefficient=dynamic_coeff)
+Smagorinsky closure with
+├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(4, 0))
+└── Pr = 1.0
+```
+
+References
+==========
+
+Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
+large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
+Salesky, Scott T., Chamecki, Marcelo, and Bou-Zeid Elie. (2017) On the nature of the transition between
+roll and cellular organization in the convective boundary layer, Boundary-layer meteorology 163, 41-68.
+
+Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
+transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
+Research: Oceans, 121(5), pp.3564-3578.
+
+Chor, Tomas, McWilliams, James C., Chamecki, Marcelo. (2021) Modifications to the K-Profile
+Parameterization with nondiffusive fluxes for Langmuir turbulence, Journal of Physical Oceanography,
+51(5), pp.1503-1521.
 """
-function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+function DynamicCoefficient(FT=Oceananigans.defaults.FloatType; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
     return DynamicCoefficient(averaging, minimum_numerator, schedule)
 end
@@ -68,15 +136,24 @@ Base.show(io::IO, dc::DynamicCoefficient) = print(io, "DynamicCoefficient with\n
         𝒥ᴹᴹ_ijk = 𝒥ᴹᴹ[i, j, k]
     end
 
-    return ifelse(𝒥ᴹᴹ_ijk == 0, zero(grid), 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk)
+    return 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk * (𝒥ᴹᴹ_ijk > 0)
 end
 
-@kernel function _compute_Σ_Σ̄!(Σ, Σ̄, grid, u, v, w)
+@kernel function _compute_Σ!(Σ, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        Σ[i, j, k] = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
-        Σ̄[i, j, k] = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+        Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        Σ[i, j, k] = sqrt(Σsq)
+    end
+end
+
+@kernel function _compute_Σ̄!(Σ̄, grid, u, v, w)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        Σ̄[i, j, k] = sqrt(Σ̄sq)
     end
 end
 
@@ -123,7 +200,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::DirectionallyA
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
 
         LM = diffusivity_fields.LM
         MM = diffusivity_fields.MM
@@ -157,6 +235,9 @@ end
 
 const c = Center()
 
+@inline displace_node(node, δ) = node - δ
+@inline displace_node(::Nothing, δ) = zero(δ)
+
 @kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
     i, j, k = @index(Global, NTuple)
     LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
@@ -172,7 +253,7 @@ const c = Center()
         T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / ∜(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
         τ = Δt / T⁻
         ϵ = τ / (1 + τ)
-                        
+
         # Compute interpolation
         x = xnode(i, j, k, grid, c, c, c)
         y = ynode(i, j, k, grid, c, c, c)
@@ -182,7 +263,6 @@ const c = Center()
         δx = u[i, j, k] * Δt
         δy = v[i, j, k] * Δt
         δz = w[i, j, k] * Δt
-
         # Prevent displacements from getting too big?
         Δx = Δxᶜᶜᶜ(i, j, k, grid)
         Δy = Δyᶜᶜᶜ(i, j, k, grid)
@@ -193,9 +273,9 @@ const c = Center()
         δz = clamp(δz, -Δz, Δz)
 
         # Previous locations
-        x⁻ = x - δx
-        y⁻ = y - δy
-        z⁻ = z - δz
+        x⁻ = displace_node(x, δx)
+        y⁻ = displace_node(y, δy)
+        z⁻ = displace_node(z, δz)
         X⁻ = (x⁻, y⁻, z⁻)
 
         itp_𝒥ᴹᴹ⁻ = interpolate(X⁻, 𝒥ᴹᴹ⁻, (c, c, c), grid)
@@ -223,7 +303,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
         parent(diffusivity_fields.𝒥ᴸᴹ⁻) .= parent(diffusivity_fields.𝒥ᴸᴹ)
         parent(diffusivity_fields.𝒥ᴹᴹ⁻) .= parent(diffusivity_fields.𝒥ᴹᴹ)

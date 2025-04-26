@@ -3,7 +3,7 @@ using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
 """
-    _property(ξ, T, ℓ, N, with_halos=false)
+    _property(ξ, T, ℓ, N, with_halos)
 
 Return the grid property `ξ`, either `with_halos` or without,
 for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
@@ -53,7 +53,7 @@ Base.length(::Center,  ::Flat,            N) = N
 
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
-Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
+Base.length(loc, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -73,7 +73,7 @@ total_length(::Center,  ::Flat,            N, H=0) = N
 
 # "Indices-aware" total length
 total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
-total_length(loc, topo, N, H, ind::UnitRange) = min(total_length(loc, topo, N, H), length(ind))
+total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
 
 @inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
     size(loc, topology(grid), size(grid), indices)
@@ -196,34 +196,34 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(view_indices::UnitRange, ::Nothing, ::Flat, halo) = view_indices
-parent_index_range(view_indices::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
-parent_index_range(view_indices::UnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
+parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
 
-parent_index_range(parent_indices::UnitRange, ::Colon, args...) =
+parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
     parent_index_range(parent_indices, parent_indices, args...)
 
-function parent_index_range(parent_indices::UnitRange, view_indices, args...)
+function parent_index_range(parent_indices::AbstractUnitRange, view_indices, args...)
     start = first(view_indices) - first(parent_indices) + 1
     stop = start + length(view_indices) - 1
     return UnitRange(start, stop)
 end
 
 # intersect_index_range(::Colon, ::Colon) = Colon()
-index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
-index_range_contains(::Colon, ::UnitRange)       = true
-index_range_contains(::Colon, ::Colon)           = true
-index_range_contains(::UnitRange, ::Colon)       = true
+index_range_contains(range, subset::AbstractUnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
+index_range_contains(::Colon, ::AbstractUnitRange)     = true
+index_range_contains(::Colon, ::Colon)                 = true
+index_range_contains(::AbstractUnitRange, ::Colon)     = true
 
 # Return the index range of "full" parent arrays that span an entire dimension
-parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
-parent_windowed_indices(indices::UnitRange, loc, topo, halo) = UnitRange(1, length(indices))
+parent_windowed_indices(::Colon, loc, topo, halo)             = Colon()
+parent_windowed_indices(indices::AbstractUnitRange, loc, topo, halo) = UnitRange(1, length(indices))
 
-index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
-index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
+index_range_offset(index::AbstractUnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
+index_range_offset(::Colon, loc, topo, halo)           = - interior_parent_offset(loc, topo, halo)
 
 const c = Center()
 const f = Face()
@@ -298,13 +298,13 @@ end
 
 function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(topo, z.Δᵃᵃᶜ, name))
+    padding = " "^(pad_domain+1)
+    return string(prefix, padding, coordinate_summary(topo, z, name))
 end
 
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1) 
+    padding = " "^(pad_domain+1)
     return string(prefix, padding, coordinate_summary(topo, spacing, name))
 end
 
@@ -317,13 +317,19 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
              name, prettysummary(maximum(parent(Δ))))
 
 #####
-##### Static column depths
+##### Static and Dynamic column depths
 #####
 
 @inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
 @inline static_column_depthᶜᶠᵃ(i, j, grid) = grid.Lz
 @inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
 @inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
+
+# Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid)
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid)
 
 #####
 ##### Spherical geometry
@@ -465,13 +471,9 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
 ```
 """
 function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
-
     Nx, Ny, Nz = size(data)
-
     arch = architecture(data)
-
-    # bring to CPU
-    map(a -> on_architecture(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data) # bring to CPU
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -495,7 +497,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
     offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
 
-    # return to data's original architecture 
+    # return to data's original architecture
     map(a -> on_architecture(arch, a), offset_array)
 
     return offset_array
@@ -505,4 +507,3 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
-

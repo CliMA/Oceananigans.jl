@@ -3,12 +3,12 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_condition!
+using Oceananigans.BoundaryConditions: update_boundary_condition!, replace_horizontal_vector_halos!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
-using Oceananigans.Fields: replace_horizontal_vector_halos!, tupled_fill_halo_regions!
+using Oceananigans.Fields: tupled_fill_halo_regions!
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
@@ -23,7 +23,7 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
-they are called in the end. Finally, the tendencies for the new time-step are computed if 
+they are called in the end. Finally, the tendencies for the new time-step are computed if
 `compute_tendencies = true`.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
@@ -50,7 +50,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies && 
+    compute_tendencies &&
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
@@ -66,23 +66,27 @@ function mask_immersed_model_fields!(model, grid)
             mask_immersed_field!(field)
         end
     end
-    mask_immersed_field_xy!(η, k=size(grid, 3)+1, mask = inactive_node)
+    mask_immersed_field_xy!(η, k=size(grid, 3)+1)
 
     return nothing
 end
 
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
                                                                   p_parameters = p_kernel_parameters(model.grid),
-                                                                  κ_parameters = :xyz) 
-    
+                                                                  κ_parameters = :xyz)
+
     grid        = model.grid
     closure     = model.closure
     tracers     = model.tracers
     diffusivity = model.diffusivity_fields
     buoyancy    = model.buoyancy
-    
+
     P    = model.pressure.pHY′
-    arch = architecture(grid) 
+    arch = architecture(grid)
+
+    # Update the grid and unscale the tracers
+    update_grid!(model, grid, model.vertical_coordinate; parameters = w_parameters)
+    unscale_tracers!(tracers, grid; parameters = w_parameters)
 
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)
@@ -90,6 +94,6 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
 
     # Update closure diffusivities
     compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
-    
+
     return nothing
 end

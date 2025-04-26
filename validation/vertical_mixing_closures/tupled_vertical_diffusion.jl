@@ -4,7 +4,7 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 grid = RectilinearGrid(size=128, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
-closure = (VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1e-4), 
+closure = (VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1e-4),
            CATKEVerticalDiffusivity())
 
 model = HydrostaticFreeSurfaceModel(; grid, closure,

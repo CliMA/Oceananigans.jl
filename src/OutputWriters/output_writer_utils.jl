@@ -15,7 +15,7 @@ using Oceananigans.OutputReaders: auto_extension
 
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
-Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 initialize!(::NoFileSplitting, model) = nothing
 
@@ -48,10 +48,10 @@ Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
 # Update schedule based on user input
 update_file_splitting_schedule!(schedule, filepath) = nothing
 
-function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
+function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     schedule.path = filepath
     return nothing
-end 
+end
 
 """
     ext(ow)
@@ -84,7 +84,7 @@ saveproperty!(file, address, p::Function)             = nothing
 saveproperty!(file, address, p::Tuple)                = [saveproperty!(file, address * "/$i", p[i]) for i in 1:length(p)]
 saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, address, on_architecture(CPU(), grid))
 
-function saveproperty!(file, address, grid::DistributedGrid) 
+function saveproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = Partition(arch.ranks...))
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
@@ -125,7 +125,7 @@ serializeproperty!(file, address, p::CantSerializeThis) = nothing
 # TODO: use on_architecture for more stuff?
 serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_architecture(CPU(), grid)
 
-function serializeproperty!(file, address, grid::DistributedGrid) 
+function serializeproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
@@ -210,4 +210,18 @@ end
 output_averaging_schedule(output) = nothing # fallback
 
 show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
+
+#####
+##### Architecture suffix
+#####
+
+with_architecture_suffix(arch, filename, ext) = filename
+
+function with_architecture_suffix(arch::Distributed, filename, ext)
+    Ne = length(ext)
+    prefix = filename[1:end-Ne]
+    rank = arch.local_rank
+    prefix *= "_rank$rank"
+    return prefix * ext
+end
 

@@ -86,17 +86,17 @@ b = model.tracers.b
 N² = ∂z(b)
 outputs = (; model.velocities..., model.tracers..., κᶜ=κᶜ, N²=N²)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
-                                                      filename,
-                                                      schedule = TimeInterval(1hour),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                filename,
+                                                schedule = TimeInterval(1hour),
+                                                overwrite_existing = true)
 
 function progress(sim)
     u, v, w = sim.model.velocities
     e = sim.model.tracers.e
 
 
-    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹", 
+    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹",
                    iteration(sim), prettytime(sim),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w))
 
@@ -104,7 +104,7 @@ function progress(sim)
     msg *= @sprintf(", max(κᶜ): %6.2e m² s⁻¹", maximum(κᶜ))
 
     @info msg
-    
+
     return nothing
 end
 

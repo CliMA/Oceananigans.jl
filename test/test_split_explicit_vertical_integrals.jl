@@ -17,7 +17,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
         Lx = Ly = Lz = 2π
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
-        
+
         velocities = VelocityFields(grid)
         sefs = SplitExplicitFreeSurface(substeps = 200)
         sefs = materialize_free_surface(sefs, velocities, grid)
@@ -35,7 +35,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
         @testset "Average to zero" begin
             # set equal to something else
-            η̅ .= U̅ .= V̅ .= 1.0
+            η̅ .= 1
+            U̅ .= 1
+            V̅ .= 1
 
             # now set equal to zero
             initialize_free_surface_state!(sefs, sefs.timestepper, sefs.timestepper, Val(1))
@@ -47,8 +49,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
             # check
             @test all(Array(η̅.data.parent) .== 0.0)
-            @test all(Array(U̅.data.parent .== 0.0))
-            @test all(Array(V̅.data.parent .== 0.0))
+            @test all(Array(U̅.data.parent) .== 0.0)
+            @test all(Array(V̅.data.parent) .== 0.0)
         end
 
         @testset "Inexact integration" begin
@@ -61,7 +63,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             tolerance = 1e-3
             @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
@@ -70,7 +72,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all((Array(interior(V) .- interior(exact_V))) .< tolerance)
         end
 
@@ -78,14 +80,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             Δz = zeros(Nz)
             Δz .= grid.z.Δᵃᵃᶜ
 
-            u .= 0.0
-            U .= 1.0
-            compute_barotropic_mode!(U, V, grid, u, v)
-            @test all(Array(U.data.parent) .== 0.0)
+            set!(u, 0)
+            set!(U, 1)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
+            @test all(Array(interior(U)) .== 0.0)
 
-            u .= 1.0
-            U .= 1.0
-            compute_barotropic_mode!(U, V, grid, u, v)
+            set!(u, 1)
+            set!(U, 1)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Lz)
 
             set_u_check(x, y, z) = sin(x)
@@ -93,7 +95,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
             set_v_check(x, y, z) = sin(x) * z * cos(y)
@@ -101,7 +103,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(V)) .≈ Array(interior(exact_V)))
         end
 
@@ -118,7 +120,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            U, V = sefs.barotropic_velocities            
+            U, V = sefs.barotropic_velocities
             u = velocities.u
             v = velocities.v
             u_corrected = similar(u)

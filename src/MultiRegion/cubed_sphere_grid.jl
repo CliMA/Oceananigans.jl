@@ -64,7 +64,7 @@ The connectivity between the `ConformalCubedSphereGrid` panels is depicted below
 The North Pole of the sphere lies in the center of panel 3 (P3) and the South Pole
 in the center of panel 6 (P6).
 
-The `partition` keyword argument prescribes the partitioning in regions within each 
+The `partition` keyword argument prescribes the partitioning in regions within each
 panel; see [`CubedSpherePartition`](@ref). For example, a `CubedSpherePartition(; R=2)`
 implies that each of the panels are partitioned into 2 regions in each dimension;
 this adds up, e.g., to 24 regions for the  whole sphere. In the depiction below,
@@ -179,7 +179,8 @@ CubedSphereRegionalConnectivity
 └── counter-clockwise rotation ↺
 ```
 """
-function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
+function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
+                                  FT=Oceananigans.defaults.FloatType;
                                   panel_size,
                                   z,
                                   horizontal_direction_halo = 3,
@@ -255,7 +256,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     for (field, name) in zip(( λᶜᶜᵃ, φᶜᶜᵃ,   Azᶜᶜᵃ,  λᶠᶠᵃ,  φᶠᶠᵃ,  Azᶠᶠᵃ),
                              (:λᶜᶜᵃ, :φᶜᶜᵃ, :Azᶜᶜᵃ, :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ))
-        
+
         for region in 1:number_of_regions(grid)
             getregion(field, region).data .= getproperty(getregion(grid, region), name)
         end
@@ -276,7 +277,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     φᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
     Azᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
     Δxᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
-    
+
     fields₁ = ( Δxᶜᶜᵃ,   Δxᶠᶜᵃ,   Δyᶠᶜᵃ,   λᶠᶜᵃ,    φᶠᶜᵃ,    Azᶠᶜᵃ ,  Δxᶠᶠᵃ)
     names₁  = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
 
@@ -366,7 +367,9 @@ end
 
 Load a `ConformalCubedSphereGrid` from `filepath`.
 """
-function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
+function ConformalCubedSphereGrid(filepath::AbstractString,
+                                  arch::AbstractArchitecture=CPU(),
+                                  FT=Oceananigans.defaults.FloatType;
                                   Nz,
                                   z,
                                   panel_halo = (4, 4, 4),

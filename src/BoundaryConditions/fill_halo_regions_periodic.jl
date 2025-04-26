@@ -7,7 +7,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline parent_size_and_offset(c, dim1, dim2, size, offset)     = (parent(c), size, fix_halo_offsets.(offset, c.offsets[[dim1, dim2]]))
 @inline parent_size_and_offset(c, dim1, dim2, ::Symbol, offset) = (parent(c), size(parent(c))[[dim1, dim2]], (0, 0))
 
-@inline function parent_size_and_offset(c::NTuple, dim1, dim2, ::Symbol, offset)
+@inline function parent_size_and_offset(c::Tuple, dim1, dim2, ::Symbol, offset)
     p = parent.(c)
     p_size = (minimum([size(t, dim1) for t in p]), minimum([size(t, dim2) for t in p]))
     return p, p_size, (0, 0)
@@ -68,12 +68,13 @@ end
 end
 
 ####
-#### Tupled periodic boundary condition 
+#### Tupled periodic boundary condition
 ####
 
-@kernel function fill_periodic_west_and_east_halo!(c::NTuple{M}, ::Val{H}, N) where {M, H}
+@kernel function fill_periodic_west_and_east_halo!(c::Tuple, ::Val{H}, N) where {H}
     j, k = @index(Global, NTuple)
-    @unroll for n = 1:M
+    ntuple(Val(length(c))) do n
+        Base.@_inline_meta
         @unroll for i = 1:H
             @inbounds begin
                   c[n][i, j, k]     = c[n][N+i, j, k] # west
@@ -83,9 +84,10 @@ end
     end
 end
 
-@kernel function fill_periodic_south_and_north_halo!(c::NTuple{M}, ::Val{H}, N) where {M, H}
+@kernel function fill_periodic_south_and_north_halo!(c::Tuple, ::Val{H}, N) where {H}
     i, k = @index(Global, NTuple)
-    @unroll for n = 1:M
+    ntuple(Val(length(c))) do n
+        Base.@_inline_meta
         @unroll for j = 1:H
             @inbounds begin
                 c[n][i, j, k]     = c[n][i, N+j, k] # south
@@ -95,14 +97,15 @@ end
     end
 end
 
-@kernel function fill_periodic_bottom_and_top_halo!(c::NTuple{M}, ::Val{H}, N) where {M, H}
+@kernel function fill_periodic_bottom_and_top_halo!(c::Tuple, ::Val{H}, N) where {H}
     i, j = @index(Global, NTuple)
-    @unroll for n = 1:M
+    ntuple(Val(length(c))) do n
+        Base.@_inline_meta
         @unroll for k = 1:H
             @inbounds begin
                 c[n][i, j, k]     = c[n][i, j, N+k] # top
                 c[n][i, j, N+H+k] = c[n][i, j, H+k] # bottom
-            end  
+            end
         end
     end
 end

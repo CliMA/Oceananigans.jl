@@ -19,7 +19,7 @@ struct KernelParameters{S, O} end
 Return parameters for kernel launching and execution that define (i) a tuple that
 defines the `size` of the kernel being launched and (ii) a tuple of `offsets` that
 offset loop indices. For example, `offsets = (0, 0, 0)` with `size = (N, N, N)` means
-all indices loop from `1:N`. If `offsets = (1, 1, 1)`, then all indices loop from 
+all indices loop from `1:N`. If `offsets = (1, 1, 1)`, then all indices loop from
 `2:N+1`. And so on.
 
 Example
@@ -59,23 +59,26 @@ launch!(arch, grid, kp, kernel!, kernel_args...)
 
 See the documentation for [`launch!`](@ref).
 """
-function KernelParameters(r::UnitRange)
+function KernelParameters(r::AbstractUnitRange)
     size = length(r)
     offset = first(r) - 1
     return KernelParameters(tuple(size), tuple(offset))
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange)
     size = (length(r1), length(r2))
     offsets = (first(r1) - 1, first(r2) - 1)
     return KernelParameters(size, offsets)
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange, r3::AbstractUnitRange)
     size = (length(r1), length(r2), length(r3))
     offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
 end
+
+# Convenience `Tuple`d constructor
+KernelParameters(args::Tuple) = KernelParameters(args...)
 
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
@@ -115,7 +118,7 @@ drop_omitted_dims(::Val{:xy}, (x, y, z)) = (x, y)
 drop_omitted_dims(::Val{:xz}, (x, y, z)) = (x, z)
 drop_omitted_dims(::Val{:yz}, (x, y, z)) = (y, z)
 drop_omitted_dims(workdims, xyz) = throw(ArgumentError("Unsupported launch configuration: $workdims"))
-    
+
 """
     interior_work_layout(grid, dims, location)
 
@@ -218,7 +221,7 @@ the architecture `arch`.
 - `include_right_boundaries`: A boolean indicating whether to include right boundaries `(N + 1)`. Default is `false`.
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
-- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
+- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
 @inline function configure_kernel(arch, grid, workspec, kernel!;
@@ -241,7 +244,7 @@ the architecture `arch`.
     return loop, worksize
 end
 
-       
+
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
@@ -256,14 +259,14 @@ keyword arguments `kw`.
 
 @inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
     _launch!(arch, grid, workspec, args...; kwargs...)
- 
+
 @inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
     for workspec in workspec_tuple
         _launch!(arch, grid, workspec, args...; kwargs...)
     end
     return nothing
 end
- 
+
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     _launch!(arch, grid, workspec, args...; kw...)
@@ -281,7 +284,7 @@ end
                                        exclude_periphery,
                                        reduced_dimensions,
                                        active_cells_map)
-                                       
+
     # Don't launch kernels with no size
     haswork = if worksize isa OffsetStaticSize
         length(worksize) > 0
@@ -301,7 +304,7 @@ end
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
 ##### Allows to use `launch!` with offsets, e.g.:
-##### `launch!(arch, grid, KernelParameters(size, offsets), kernel!; kernel_args...)` 
+##### `launch!(arch, grid, KernelParameters(size, offsets), kernel!; kernel_args...)`
 ##### where offsets is a tuple containing the offset to pass to @index
 ##### Note that this syntax is only usable in conjunction with the `launch!` function and
 ##### will have no effect if the kernel is launched with `kernel!` directly.
@@ -323,8 +326,8 @@ struct OffsetStaticSize{S} <: _Size
     end
 end
 
-@pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}() 
-@pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}() 
+@pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}()
+@pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}()
 @pure OffsetStaticSize(s::Type{<:Tuple}) = OffsetStaticSize{tuple(s.parameters...)}()
 @pure OffsetStaticSize(s::Tuple{Vararg{UnitRange{Int}}}) = OffsetStaticSize{s}()
 
@@ -338,30 +341,23 @@ end
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
 
-@inline offsets(ranges::Tuple{Vararg{UnitRange}}) = Tuple(r.start - 1 for r in ranges)
+@inline offsets(ranges::NTuple{N, UnitRange}) where N = Tuple(r.start - 1 for r in ranges)::NTuple{N}
 
 @inline worksize(t::Tuple) = map(worksize, t)
 @inline worksize(sz::Int) = sz
-@inline worksize(r::UnitRange) = length(r)
+@inline worksize(r::AbstractUnitRange) = length(r)
 
-"""a type used to store offsets in `NDRange` types"""
-struct KernelOffsets{O}
-    offsets :: O
-end
-
-Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
-
-const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
+const OffsetNDRange{N, S} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:OffsetStaticSize{S}} where {N, S}
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 # TODO: maybe don't do this
-@inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
+@inline function expand(ndrange::OffsetNDRange{N, S}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N, S}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
         offsets = workitems(ndrange)
         stride = size(offsets, I)
         gidx = groupidx.I[I]
-        (gidx - 1) * stride + idx.I[I] + ndrange.workitems[I]
+        (gidx - 1) * stride + idx.I[I] + S[I]
     end
     return CartesianIndex(nI)
 end
@@ -379,7 +375,7 @@ import KernelAbstractions: __ndrange, __groupsize
 # Kernel{<:Any, <:StaticSize, <:StaticSize} and Kernel{<:Any, <:StaticSize, <:OffsetStaticSize} are the only kernels used by Oceananigans
 const OffsetKernel = Kernel{<:Any, <:StaticSize, <:OffsetStaticSize}
 
-# Extending the partition function to include offsets in NDRange: note that in this case the 
+# Extending the partition function to include offsets in NDRange: note that in this case the
 # offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
 function partition(kernel::OffsetKernel, inrange, ingroupsize)
     static_ndrange = ndrange(kernel)
@@ -404,8 +400,8 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
 
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
-    
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, KernelOffsets(offsets))
+
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, OffsetStaticSize(offsets))
 
     return iterspace, dynamic
 end

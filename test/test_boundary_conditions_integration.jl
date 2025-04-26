@@ -1,16 +1,20 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, FlatExtrapolationOpenBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction,
+                                       FlatExtrapolationOpenBoundaryCondition,
+                                       PerturbationAdvectionOpenBoundaryCondition
+                                       fill_halo_regions!
+
 using Oceananigans: prognostic_fields
 
-function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
+function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(; grid, boundary_conditions=bcs,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = Model(; grid, boundary_conditions=bcs,
+                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
         time_step!(model, 1e-16)
@@ -32,7 +36,7 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     boundary_conditions = (; name => field_bcs)
 
     model = NonhydrostaticModel(; grid, boundary_conditions, tracers=:c)
-                                
+
     is_velocity_field = name ∈ (:u, :v, :w)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
     set!(field, 0)
@@ -99,7 +103,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) = -1.57082774272148
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
-    
+
     return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
@@ -147,7 +151,7 @@ function test_flat_extrapolation_open_boundary_conditions(arch, FT)
         fill_halo_regions!(u1, clock, (); fill_boundary_normal_velocities = false)
         fill_halo_regions!(u2, clock, (); fill_boundary_normal_velocities = false)
 
-        # we can stop the wall normal halos being filled after the pressure solve
+        # we can stop the wall normal halos being filled after the pressure solve - this serves more as a test of the general OBC stuff
         @test interior(u1, 1, 1, 1) .== 2
         @test interior(u2, end_position(Val(orientation), grid)...) .== 2
 
@@ -157,6 +161,98 @@ function test_flat_extrapolation_open_boundary_conditions(arch, FT)
         # now they should be filled
         @test interior(u1, 1, 1, 1) .≈ 1.8125
         @test interior(u2, end_position(Val(orientation), grid)...) .≈ 1.8125
+    end
+end
+
+wall_normal_boundary_condition(::Val{1}, obc) = (; u = FieldBoundaryConditions(east = obc, west = obc))
+wall_normal_boundary_condition(::Val{2}, obc) = (; v = FieldBoundaryConditions(south = obc, north = obc))
+wall_normal_boundary_condition(::Val{3}, obc) = (; w = FieldBoundaryConditions(bottom = obc, top = obc))
+
+normal_velocity(::Val{1}, model) = model.velocities.u
+normal_velocity(::Val{2}, model) = model.velocities.v
+normal_velocity(::Val{3}, model) = model.velocities.w
+
+velocity_forcing(::Val{1}, forcing) = (; u = forcing)
+velocity_forcing(::Val{2}, forcing) = (; v = forcing)
+velocity_forcing(::Val{3}, forcing) = (; w = forcing)
+
+function test_pertubation_advection_open_boundary_conditions(arch, FT)
+    for orientation in 1:3
+        topology = tuple(map(n -> ifelse(n == orientation, Bounded, Flat), 1:3)...)
+
+        grid = RectilinearGrid(arch, FT; topology, size = (4, ), x = (0, 4), y = (0, 4), z = (0, 4), halo = (1, ))
+
+        obc = PerturbationAdvectionOpenBoundaryCondition(-1, inflow_timescale = 10.0)
+        boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
+
+        model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
+
+        u = normal_velocity(Val(orientation), model)
+        view(parent(u), :, :, :) .= -1
+
+        time_step!(model, 1)
+
+        # nothing going on
+        @test all(view(parent(u), :, :, :) .== -1)
+
+        # left
+        view(parent(u), :, :, :) .= -1
+        view(parent(u), tuple(map(n -> ifelse(n == orientation, 3, 1), 1:3)...)...) .= -2
+
+        boundary_index = tuple(map(n -> ifelse(n == orientation, 6, 1), 1:3)...)
+        view(parent(u), boundary_index...) .= 0
+
+        time_step!(model, 1)
+
+        # outflow: uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
+        # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = -1.5
+        @test first(interior(u, 1, 1, 1)) == -1.5
+
+        # inflow: uⁿ⁺¹ = (uⁿ + τ̄U) / (1 + τ̄Ū)
+        # Δx = Δt = U = 1, τ̄ = 1/10 -> uⁿ⁺¹) = -1/11
+        @test first(view(parent(u), boundary_index...)) ≈ -1/11
+
+        # right
+        obc = PerturbationAdvectionOpenBoundaryCondition(1, inflow_timescale = 10.0)
+        boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
+
+        model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
+
+        u = normal_velocity(Val(orientation), model)
+        view(parent(u), :, :, :) .= 1
+
+        boundary_adjacent_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
+        view(parent(u), boundary_adjacent_index...) .= 2
+        view(parent(u), tuple(map(n -> ifelse(n == orientation, 1:2, 1), 1:3)...)...) .= 0
+
+        time_step!(model, 1)
+
+        end_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
+
+        # uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
+        # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = 1.5
+        @test all(interior(u, end_index...) .== 1.5)
+
+        # inflow: uⁿ⁺¹ = (uⁿ + τ̄U) / (1 + τ̄Ū)
+        # Δx = Δt = U = 1, τ̄ = 1/10 -> uⁿ⁺¹) = 1/11
+        @test first(view(parent(u), tuple(map(n -> ifelse(n == orientation, 2, 1), 1:3)...)...)) ≈ 1/11
+
+        obc = PerturbationAdvectionOpenBoundaryCondition((t) -> 0.1*t, inflow_timescale = 0.01, outflow_timescale = 0.5)
+        forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
+        boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
+
+        model = NonhydrostaticModel(; grid,
+                              boundary_conditions,
+                              timestepper = :QuasiAdamsBashforth2,
+                              forcing)
+
+        u = normal_velocity(Val(orientation), model)
+
+        for _ in 1:100
+            time_step!(model, 0.1)
+        end
+
+        @test all(map(u->isapprox(u, 1, atol=0.1), interior(u)))
     end
 end
 
@@ -257,15 +353,30 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             topo = (Bounded, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
+
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition)
+                end
             end
 
             for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :u, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :v, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :w, boundary_condition)
+
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :u, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :v, boundary_condition)
+                end
             end
         end
     end
@@ -313,7 +424,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             end
 
             # Omit ImmersedBoundaryGrid from vertically-periodic test
-            grid = rectilinear_grid((Bounded, Bounded, Periodic)) 
+            grid = rectilinear_grid((Bounded, Bounded, Periodic))
             for name in (:w, :c)
                 for (side, L) in zip((:east, :west, :north, :south), (Lx, Lx, Ly, Ly))
                     @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
@@ -336,6 +447,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             A = typeof(arch)
             @info "  Testing open boundary conditions [$A, $FT]..."
             test_flat_extrapolation_open_boundary_conditions(arch, FT)
+            test_pertubation_advection_open_boundary_conditions(arch, FT)
         end
     end
 end

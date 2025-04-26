@@ -27,7 +27,7 @@ bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must in
 bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
 
 # General generate_coordinate
-generate_coordinate(FT, topology, size, halo, nodes, coordinate_name, dim::Int, arch) = 
+generate_coordinate(FT, topology, size, halo, nodes, coordinate_name, dim::Int, arch) =
     generate_coordinate(FT, topology[dim](), size[dim], halo[dim], nodes, coordinate_name, arch)
 
 # generate a variably-spaced coordinate passing the explicit coord faces as vector or function
@@ -78,7 +78,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     end
 
     Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H-1)
+    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
@@ -88,8 +88,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
     if coordinate_name == :z
-        return L, StaticVerticalCoordinate(F, C, Δᶠ, Δᶜ)
-    else    
+        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
+    else
         return L, F, C, Δᶠ, Δᶜ
     end
 end
@@ -121,21 +121,24 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = range(FT(F₋), FT(F₊), length = TF)
     C = range(FT(C₋), FT(C₊), length = TC)
 
+    F = on_architecture(arch, F)
+    C = on_architecture(arch, C)
+
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
     if coordinate_name == :z
-        return FT(L), StaticVerticalCoordinate(F, C, FT(Δᶠ), FT(Δᶜ))
-    else    
+        return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))
+    else
         return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
     end
 end
 
 # Flat domains
-function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) 
+function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch)
     if coordinate_name == :z
-        return FT(1), StaticVerticalCoordinate(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
-    else    
+        return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
+    else
         return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
     end
 end
@@ -143,10 +146,57 @@ end
 # What's the use case for this?
 # generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
 #     FT(1), c, c, FT(1), FT(1)
-function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) 
+function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch)
     if coordinate_name == :z
-        return FT(1), StaticVerticalCoordinate(nothing, nothing, FT(1), FT(1))
-    else    
+        return FT(1), StaticVerticalDiscretization(nothing, nothing, FT(1), FT(1))
+    else
         return FT(1), nothing, nothing, FT(1), FT(1)
     end
-end    
+end
+
+#####
+##### MutableVerticalDiscretization
+#####
+
+generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) =
+    throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
+
+# Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
+# The grid might move with time, so the coordinate includes the time-derivative of the scaling `∂t_σ`.
+# The value of the vertical coordinate at `Nz+1` is saved in `ηⁿ`.
+function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDiscretization, coordinate_name, dim::Int, arch)
+
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz = halo
+
+    if dim != 3
+        msg = "MutableVerticalDiscretization is supported only in the third dimension (z)"
+        throw(ArgumentError(msg))
+    end
+
+    if coordinate_name != :z
+        msg = "MutableVerticalDiscretization is supported only for the z-coordinate"
+        throw(ArgumentError(msg))
+    end
+
+    r_faces = coordinate.cᵃᵃᶠ
+
+    Lr, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
+
+    args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
+
+    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+    ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
+    ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
+
+    # Fill all the scalings with one for now (i.e. z == r)
+    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
+        fill!(σ, 1)
+    end
+
+    return Lr, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+end

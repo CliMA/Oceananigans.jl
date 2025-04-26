@@ -27,8 +27,8 @@ end
 function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names)
     u = XFaceField(grid)
     v = YFaceField(grid)
-    U = deepcopy(free_surface.barotropic_velocities.U)
-    V = deepcopy(free_surface.barotropic_velocities.V)
+    U = similar(free_surface.barotropic_velocities.U)
+    V = similar(free_surface.barotropic_velocities.V)
     tracers = TracerFields(tracer_names, grid)
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
@@ -37,7 +37,8 @@ previous_hydrostatic_tendency_fields(::Val{:QuasiAdamsBashforth2}, args...) = hy
 previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, args...) = nothing
 
 function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, args...)
-    U = deepcopy(free_surface.barotropic_velocities.U)
-    V = deepcopy(free_surface.barotropic_velocities.V)
-    return (; U=U, V=V)
+    U = similar(free_surface.barotropic_velocities.U)
+    V = similar(free_surface.barotropic_velocities.V)
+    η = similar(free_surface.η)
+    return (; U=U, V=V, η=η)
 end

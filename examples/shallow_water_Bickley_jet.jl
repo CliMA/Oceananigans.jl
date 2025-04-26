@@ -1,4 +1,4 @@
-# # An unstable Bickley jet in Shallow Water model 
+# # An unstable Bickley jet in Shallow Water model
 #
 # This example uses Oceananigans.jl's `ShallowWaterModel` to simulate
 # the evolution of an unstable, geostrophically balanced, Bickley jet
@@ -11,7 +11,7 @@
 # The mass transport ``(uh, vh)`` is the prognostic momentum variable
 # in the conservative formulation of the shallow water equations,
 # where ``(u, v)`` are the horizontal velocity components and ``h``
-# is the layer height. 
+# is the layer height.
 #
 # ## Install dependencies
 #
@@ -26,7 +26,7 @@
 using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 
-# ## Two-dimensional domain 
+# ## Two-dimensional domain
 #
 # The shallow water model is two-dimensional and uses grids that are `Flat`
 # in the vertical direction. We use length scales non-dimensionalized by the width
@@ -53,7 +53,7 @@ model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
 # ## Background state and perturbation
 #
 # The background velocity ``ū`` and free-surface ``η̄`` correspond to a
-# geostrophically balanced Bickely jet with maximum speed of ``U`` and maximum 
+# geostrophically balanced Bickely jet with maximum speed of ``U`` and maximum
 # free-surface deformation of ``Δη``,
 
 U = 1  # Maximum jet velocity
@@ -65,19 +65,19 @@ g = gravitational_acceleration
 h̄(x, y) = H - Δη * tanh(y)
 ū(x, y) = U * sech(y)^2
 
-# The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that 
-# for the parameters we consider here, the growth rate for the most unstable mode that fits 
+# The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that
+# for the parameters we consider here, the growth rate for the most unstable mode that fits
 # our domain is approximately ``0.139``.
 
 # The vorticity of the background state is
 
 ω̄(x, y) = 2 * U * sech(y)^2 * tanh(y)
 
-# The initial conditions include a small-amplitude perturbation that decays away from the 
+# The initial conditions include a small-amplitude perturbation that decays away from the
 # center of the jet.
 
 small_amplitude = 1e-4
- 
+
  uⁱ(x, y) = ū(x, y) + small_amplitude * exp(-y^2) * randn()
 uhⁱ(x, y) = uⁱ(x, y) * h̄(x, y)
 
@@ -113,8 +113,8 @@ set!(model, uh = uhⁱ)
 
 # ## Running a `Simulation`
 #
-# We pick the time-step so that we make sure we resolve the surface gravity waves, which 
-# propagate with speed of the order ``\sqrt{g H}``. That is, with `Δt = 1e-2` we ensure 
+# We pick the time-step so that we make sure we resolve the surface gravity waves, which
+# propagate with speed of the order ``\sqrt{g H}``. That is, with `Δt = 1e-2` we ensure
 # that `` \sqrt{g H} Δt / Δx,  \sqrt{g H} Δt / Δy < 0.7``.
 
 simulation = Simulation(model, Δt = 1e-2, stop_time = 100)
@@ -129,23 +129,26 @@ using LinearAlgebra: norm
 perturbation_norm(args...) = norm(v)
 
 # Build the `output_writer` for the two-dimensional fields to be output.
-# Output every `t = 1.0`.
+# Output every `t = 1.0`. Note that we need `NCDatasets` to be able to use
+# the `NetCDFWriter`.
+
+using NCDatasets
 
 fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
-                                                        filename = fields_filename,
-                                                        schedule = TimeInterval(2),
-                                                        overwrite_existing = true)
+simulation.output_writers[:fields] = NetCDFWriter(model, (; ω, ω′),
+                                                  filename = fields_filename,
+                                                  schedule = TimeInterval(2),
+                                                  overwrite_existing = true)
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
 # Output every time step.
 
 growth_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc")
-simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_norm),
-                                                        filename = growth_filename,
-                                                        schedule = IterationInterval(1),
-                                                        dimensions = (; perturbation_norm = ()),
-                                                        overwrite_existing = true)
+simulation.output_writers[:growth] = NetCDFWriter(model, (; perturbation_norm),
+                                                  filename = growth_filename,
+                                                  schedule = IterationInterval(1),
+                                                  dimensions = (; perturbation_norm = ()),
+                                                  overwrite_existing = true)
 
 # And finally run the simulation.
 
@@ -163,7 +166,7 @@ nothing #hide
 x, y = xnodes(ω), ynodes(ω)
 nothing #hide
 
-# Read in the `output_writer` for the two-dimensional fields and then create an animation 
+# Read in the `output_writer` for the two-dimensional fields and then create an animation
 # showing both the total and perturbation vorticities.
 
 fig = Figure(size = (1200, 660))
@@ -178,11 +181,11 @@ ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 times = ds["time"][:]
 
-ω = @lift ds["ω"][:, :, 1, $n]
+ω = @lift ds["ω"][:, :, $n]
 hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-ω′ = @lift ds["ω′"][:, :, 1, $n]
+ω′ = @lift ds["ω′"][:, :, $n]
 hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
@@ -217,7 +220,7 @@ norm_v = ds2["perturbation_norm"][:]
 close(ds2)
 nothing #hide
 
-# We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the 
+# We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the
 # perturbation norm on a logarithmic plot. This slope corresponds to the growth rate.
 
 using Polynomials: fit
@@ -227,19 +230,19 @@ I = 5000:6000
 degree = 1
 linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)
 
-# We can get the coefficient of the ``n``-th power from the fitted polynomial by using `n` 
+# We can get the coefficient of the ``n``-th power from the fitted polynomial by using `n`
 # as an index, e.g.,
 
 constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
 
-# We then use the computed linear fit coefficients to construct the best fit and plot it 
-# together with the time-series for the perturbation norm for comparison. 
+# We then use the computed linear fit coefficients to construct the best fit and plot it
+# together with the time-series for the perturbation norm for comparison.
 
 best_fit = @. exp(constant + slope * t)
 
 lines(t, norm_v;
       linewidth = 4,
-      label = "norm(v)", 
+      label = "norm(v)",
       axis = (yscale = log10,
               limits = (nothing, (1e-3, 30)),
               xlabel = "time",

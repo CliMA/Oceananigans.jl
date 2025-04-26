@@ -23,7 +23,7 @@ stop_time = 30days
 
 grid = LatitudeLongitudeGrid(architecture;
                              topology = (Bounded, Bounded, Bounded),
-                             size = (Ny, Ny, Nz), 
+                             size = (Ny, Ny, Nz),
                              longitude = (-5, 5),
                              latitude = (40, 50),
                              z = (-Lz, 0),
@@ -111,16 +111,16 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      filename = filename * "_fields",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                schedule = TimeInterval(save_fields_interval),
+                                                filename = filename * "_fields",
+                                                overwrite_existing = true)
 
 @info "Running the simulation..."
 

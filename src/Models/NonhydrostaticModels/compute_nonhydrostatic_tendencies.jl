@@ -3,8 +3,8 @@ using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
-                                       active_linear_index_to_tuple
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
+                                       linear_index_to_tuple
 
 import Oceananigans.TimeSteppers: compute_tendencies!
 
@@ -30,8 +30,8 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
-    active_cells_map  = retrieve_interior_active_cells_map(model.grid, Val(:interior))
-    
+    active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
+
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
 
@@ -102,15 +102,15 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                           hydrostatic_pressure, clock, forcings.w)
 
     exclude_periphery = true
-    launch!(arch, grid, kernel_parameters, compute_Gu!, 
+    launch!(arch, grid, kernel_parameters, compute_Gu!,
             tendencies.u, grid, active_cells_map, u_kernel_args;
             active_cells_map, exclude_periphery)
 
-    launch!(arch, grid, kernel_parameters, compute_Gv!, 
+    launch!(arch, grid, kernel_parameters, compute_Gv!,
             tendencies.v, grid, active_cells_map, v_kernel_args;
             active_cells_map, exclude_periphery)
 
-    launch!(arch, grid, kernel_parameters, compute_Gw!, 
+    launch!(arch, grid, kernel_parameters, compute_Gw!,
             tendencies.w, grid, active_cells_map, w_kernel_args;
             active_cells_map, exclude_periphery)
 
@@ -125,12 +125,12 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
         @inbounds tracer_name = keys(tracers)[tracer_index]
 
         args = tuple(Val(tracer_index), Val(tracer_name),
-                     start_tracer_kernel_args..., 
+                     start_tracer_kernel_args...,
                      c_immersed_bc,
                      end_tracer_kernel_args...,
                      clock, forcing)
 
-        launch!(arch, grid, kernel_parameters, compute_Gc!, 
+        launch!(arch, grid, kernel_parameters, compute_Gc!,
                 c_tendency, grid, active_cells_map, args;
                 active_cells_map)
     end
@@ -143,38 +143,38 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_Gu!(Gu, grid, ::Nothing, args) 
+@kernel function compute_Gu!(Gu, grid, ::Nothing, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_Gu!(Gu, grid, interior_map, args) 
+@kernel function compute_Gu!(Gu, grid, interior_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_Gv!(Gv, grid, ::Nothing, args) 
+@kernel function compute_Gv!(Gv, grid, ::Nothing, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_Gv!(Gv, grid, interior_map, args) 
+@kernel function compute_Gv!(Gv, grid, interior_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function compute_Gw!(Gw, grid, ::Nothing, args) 
+@kernel function compute_Gw!(Gw, grid, ::Nothing, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
 @kernel function compute_Gw!(Gw, grid, interior_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -188,9 +188,9 @@ end
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_Gc!(Gc, grid, interior_map, args) 
+@kernel function compute_Gc!(Gc, grid, interior_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 

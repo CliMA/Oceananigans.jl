@@ -56,11 +56,11 @@ function set_to_function!(u, f)
     child_arch = child_architecture(u)
 
     # Determine cpu_grid and cpu_u
-    if child_arch isa GPU
+    if child_arch isa GPU || child_arch isa ReactantState
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
         cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
-    
+
     elseif child_arch isa CPU
         cpu_grid = u.grid
         cpu_u = u
@@ -91,22 +91,23 @@ function set_to_function!(u, f)
     end
 
     # Transfer data to GPU if u is on the GPU
-    child_arch isa GPU && set!(u, cpu_u)
-    
+    if child_arch isa GPU || child_arch isa ReactantState
+    	set!(u, cpu_u)
+    end
     return u
 end
 
-function set_to_array!(u, f)
-    f = on_architecture(architecture(u), f)
+function set_to_array!(u, a)
+    a = on_architecture(architecture(u), a)
 
     try
-        u .= f
+        copyto!(interior(u), a)
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
-            u .= reshape(f, Nx, Ny, Nz)
+            u .= reshape(a, Nx, Ny, Nz)
 
-            msg = string("Reshaped ", summary(f),
+            msg = string("Reshaped ", summary(a),
                          " to set! its data to ", '\n',
                          summary(u))
             @warn msg
@@ -121,12 +122,12 @@ end
 function set_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
-    
+
     if child_architecture(u) === child_architecture(v)
         # Note: we could try to copy first halo point even when halo
         # regions are a different size. That's a bit more complicated than
         # the below so we leave it for the future.
-        
+
         try # to copy halo regions along with interior data
             parent(u) .= parent(v)
         catch # this could fail if the halo regions are different sizes?
@@ -135,7 +136,7 @@ function set_to_field!(u, v)
         end
     else
         v_data = on_architecture(child_architecture(u), v.data)
-        
+
         # As above, we permit ourselves a little ambition and try to copy halo data:
         try
             parent(u) .= parent(v_data)
@@ -146,3 +147,8 @@ function set_to_field!(u, v)
 
     return u
 end
+
+Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
+

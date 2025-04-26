@@ -16,10 +16,10 @@ function compute_eddy_velocities!(diffusivities, closure::SkewAdvectionISSD, mod
     clock    = model.clock
 
     model_fields = fields(model)
-    
-    launch!(architecture(grid), grid, parameters, _compute_eddy_velocities!, 
+
+    launch!(architecture(grid), grid, parameters, _compute_eddy_velocities!,
             uₑ, vₑ, wₑ, grid, clock, closure, buoyancy, model_fields)
-    
+
     return nothing
 end
 
@@ -80,7 +80,7 @@ end
     Sy = Syᶜᶠᶠ(i, j, k, grid, b, C) 
     ϵ  = tapering_factor(zero(grid), Sy, slope_limiter)
     return ϵ * Sy
-end 
+end
 
 @inline κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, sl, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSxᶠᶜᶠ(i, j, k, grid, sl, b, fields)
 @inline κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, sl, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSyᶜᶠᶠ(i, j, k, grid, sl, b, fields)
@@ -99,7 +99,7 @@ end
         wˣ = δxᶜᶜᶠ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields) 
         wʸ = δyᶜᶜᶠ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)  
         
-        wₑ[i, j, k] =  (wˣ + wʸ) / Azᶜᶜᶠ(i, j, k, grid)
+        wₑ[i, j, k] =  (wˣ + wʸ) * Az⁻¹ᶜᶜᶠ(i, j, k, grid)
     end
 end
 
@@ -131,7 +131,7 @@ end
 @inline closure_turbulent_velocity(closures::Tuple{<:Any}, Ks, val_tracer_name) =
             closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name)
 
-@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) = 
+@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) =
     select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
                       closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name))
 

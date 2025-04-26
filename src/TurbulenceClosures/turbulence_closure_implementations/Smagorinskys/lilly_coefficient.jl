@@ -41,7 +41,7 @@ Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments."
     NCAR Manuscript No. 281, 0, (1966)
 """
-LillyCoefficient(FT=Float64; smagorinsky=0.16, reduction_factor=1) =
+LillyCoefficient(FT=Oceananigans.defaults.FloatType; smagorinsky=0.16, reduction_factor=1) =
     LillyCoefficient(convert(FT, smagorinsky), convert(FT, reduction_factor))
 
 const SmagorinskyLilly = Smagorinsky{<:Any, <:LillyCoefficient}
@@ -103,7 +103,7 @@ Smagorinsky, J. "General circulation experiments with the primitive equations: I
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments."
     NCAR Manuscript No. 281, 0, (1966)
 """
-function SmagorinskyLilly(time_discretization=ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1, Pr=1)
+function SmagorinskyLilly(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; C=0.16, Cb=1, Pr=1)
     coefficient = LillyCoefficient(FT, smagorinsky=C, reduction_factor=Cb)
     TD = typeof(time_discretization)
     Pr = convert_diffusivity(FT, Pr; discrete_form=false)

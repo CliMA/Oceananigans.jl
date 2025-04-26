@@ -3,9 +3,9 @@ using Glob
 using Oceananigans
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
-using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.Fields: set! 
+import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     schedule :: T
@@ -71,8 +71,9 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and :clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: default_checkpointed_properties(model)
+                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
+                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
+                `model` to get these properties.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -165,7 +166,7 @@ function latest_checkpoint(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = length(".jld2") # 5
-    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
+    iterations = map(name -> parse(Int, chop(name, head=leading, tail=trailing)), filenames)
     latest_iteration, idx = findmax(iterations)
     return filepaths[idx]
 end
@@ -174,7 +175,7 @@ end
 ##### Writing checkpoints
 #####
 
-function write_output!(c::Checkpointer, model)
+function write_output!(c::Checkpointer, model::AbstractModel)
     filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
     addr = checkpointer_address(model)
@@ -280,7 +281,8 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     return nothing
 end
 
-set_time_stepper!(timestepper::RungeKutta3TimeStepper, args...) = nothing
+# For self-starting timesteppers like RK3 we do nothing
+set_time_stepper!(timestepper, args...) = nothing
+
 set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
     set_time_stepper_tendencies!(timestepper, args...)
-

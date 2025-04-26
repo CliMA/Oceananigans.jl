@@ -2,70 +2,19 @@ using Oceananigans.Grids: ξnodes, ηnodes, rnodes
 
 # Generic reconstruction methods valid for all reconstruction schemes
 # Unroll the functions to pass the coordinates in case of a stretched grid
-"""
-    @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...)
-
-high order centered reconstruction of variable ψ in the x-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
-"""
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
-
-"""
-    @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...)
-
-high order centered reconstruction of variable ψ in the y-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
-"""
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
-
-"""
-    @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...)
-
-high order centered reconstruction of variable ψ in the z-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
-"""
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
-
 """ same as [`symmetric_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_xᶠᵃᵃ(i + 1, j, k, grid, scheme, ψ, args...)
 """ same as [`symmetric_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j + 1, k, grid, scheme, ψ, args...)
 """ same as [`symmetric_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
-
-"""
-    @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)
-
-high order biased reconstruction of variable ψ in the x-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
-either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
-"""
-@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, i, Face, args...)
-
-"""
-    @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...)
-
-high order biased reconstruction of variable ψ in the y-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
-either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
-"""
-@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, j, Face, args...)
-
-"""
-    @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)
-
-high order biased reconstruction of variable ψ in the z-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
-either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
-"""
-@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, k, Face, args...)
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k + 1, grid, scheme, ψ, args...)
 
 """ same as [`biased_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, bias, ψ, i, Center, args...)
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_xᶠᵃᵃ(i + 1, j, k, grid, scheme, bias, ψ, args...)
 """ same as [`biased_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, bias, ψ, j, Center, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_yᵃᶠᵃ(i, j + 1, k, grid, scheme, bias, ψ, args...)
 """ same as [`biased_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, bias, ψ, k, Center, args...)
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_zᵃᵃᶠ(i, j, k + 1, grid, scheme, bias, ψ, args...)
 
 struct FirstDerivative end
 struct SecondDerivative end
@@ -75,7 +24,7 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, args...)            = @inbounds p
 num_prod(i, m, l, r, xr, xi, shift, op, order, ::FirstDerivative)  = @inbounds 2*xr[i+shift] - sum(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 
-@inline function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive) 
+@inline function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive)
     s = sum(xi[op(i, r-q+1)]  for q=0:order if (q != m && q != l))
     p = prod(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 
@@ -97,8 +46,8 @@ Positional Arguments
 
 On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
-@inline function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
-    coeffs = zeros(order)
+@inline function stencil_coefficients(FT, i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
+    coeffs = zeros(BigFloat, order)
     @inbounds begin
         for j in 0:order-1
             for m in j+1:order
@@ -109,81 +58,68 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
         end
     end
 
-    return tuple(coeffs...)
+    coeffs = FT.(coeffs)[1:end-1]
+
+    return tuple(coeffs..., 1-sum(coeffs)) # Coefficients should sum to 1!
 end
 
 """
-    Coefficients for uniform centered and upwind schemes 
+    uniform_reconstruction_coefficients(FT, Val(bias), buffer)
 
-symmetric coefficients are for centered reconstruction (dispersive, even order), 
-left and right are for upwind biased (diffusive, odd order)
+Returns coefficients for finite volume reconstruction used in linear advection schemes (`Centered` and `UpwindBiased`).
+`FT` is the floating type (e.g. `Float32`, `Float64`), `bias` is either `:symmetric`, `:left`, or `:right`,
+and `buffer` is the buffer size which determines the order of the reconstruction.
+
 examples:
-julia> using Oceananigans.Advection: coeff2_symmetric, coeff3_left, coeff3_right, coeff4_symmetric, coeff5_left
+```julia
+julia> using Oceananigans.Advection: uniform_reconstruction_coefficients
 
-julia> coeff2_symmetric
+julia> uniform_reconstruction_coefficients(Float64, Val(:symmetric), 1)
 (0.5, 0.5)
 
-julia> coeff3_left, coeff3_right
-((0.33333333333333337, 0.8333333333333334, -0.16666666666666666), (-0.16666666666666669, 0.8333333333333333, 0.3333333333333333))
+julia> uniform_reconstruction_coefficients(Float32, Val(:left), 3)
+(-0.05f0, 0.45f0, 0.78333336f0, -0.21666667f0, 0.033333335f0)
 
-julia> coeff4_symmetric
-(-0.08333333333333333, 0.5833333333333333, 0.5833333333333333, -0.08333333333333333)
-
-julia> coeff5_left
-(-0.049999999999999926, 0.45000000000000007, 0.7833333333333333, -0.21666666666666667, 0.03333333333333333)
+julia> uniform_reconstruction_coefficients(Float16, Val(:right), 4)
+(Float16(-0.00714), Float16(0.0595), Float16(-0.2405), Float16(0.76), Float16(0.51), Float16(-0.09045), Float16(0.00952))
+```
 """
-const coeff1_left  = 1.0
-const coeff1_right = 1.0
+uniform_reconstruction_coefficients(FT, ::Val{:symmetric}, buffer) = stencil_coefficients(FT, 50, buffer-1, collect(1:100), collect(1:100); order = 2buffer)
+uniform_reconstruction_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-2, collect(1:100), collect(1:100); order = 2buffer-1)
+uniform_reconstruction_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-1, collect(1:100), collect(1:100); order = 2buffer-1)
 
-# buffer in [1:6] allows up to Centered(order = 12) and UpwindBiased(order = 11)
-for buffer in advection_buffers
-    order_bias = 2buffer - 1
-    order_symm = 2buffer
-
-    coeff_symm  = Symbol(:coeff, order_symm, :_symmetric)
-    coeff_left  = Symbol(:coeff, order_bias, :_left)
-    coeff_right = Symbol(:coeff, order_bias, :_right)
-    @eval begin
-        const $coeff_symm  = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_symm)
-        if $order_bias > 1
-            const $coeff_left  = stencil_coefficients(50, $(buffer - 2), collect(1:100), collect(1:100); order = $order_bias)
-            const $coeff_right = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_bias)
-        end
-    end
-end
-
-""" 
-    calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
+"""
+    calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
 
 Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
 
-The first argument is the `buffer`, not the `order`! 
+The first argument is the `buffer`, not the `order`!
 - `order = 2 * buffer` for Centered reconstruction
 - `order = 2 * buffer - 1` for Upwind reconstruction
-   
+
 Examples
 ========
 
 ```jldoctest
 julia> using Oceananigans.Advection: calc_reconstruction_stencil
 
-julia> calc_reconstruction_stencil(1, :right, :x)
-:(+(convert(FT, coeff1_right[1]) * ψ[i + 0, j, k]))
+julia> calc_reconstruction_stencil(Float32, 1, :right, :x)
+:(+(1.0f0 * ψ[i + 0, j, k]))
 
-julia> calc_reconstruction_stencil(1, :left, :x)
-:(+(convert(FT, coeff1_left[1]) * ψ[i + -1, j, k]))
+julia> calc_reconstruction_stencil(Float64, 1, :left, :x)
+:(+(1.0 * ψ[i + -1, j, k]))
 
-julia> calc_reconstruction_stencil(1, :symmetric, :x)
-:(convert(FT, coeff2_symmetric[2]) * ψ[i + -1, j, k] + convert(FT, coeff2_symmetric[1]) * ψ[i + 0, j, k])
+julia> calc_reconstruction_stencil(Float64, 1, :symmetric, :y)
+:(0.5 * ψ[i, j + -1, k] + 0.5 * ψ[i, j + 0, k])
 
-julia> calc_reconstruction_stencil(2, :symmetric, :x)
-:(convert(FT, coeff4_symmetric[4]) * ψ[i + -2, j, k] + convert(FT, coeff4_symmetric[3]) * ψ[i + -1, j, k] + convert(FT, coeff4_symmetric[2]) * ψ[i + 0, j, k] + convert(FT, coeff4_symmetric[1]) * ψ[i + 1, j, k])
+julia> calc_reconstruction_stencil(Float32, 2, :symmetric, :x)
+:(-0.083333254f0 * ψ[i + -2, j, k] + 0.5833333f0 * ψ[i + -1, j, k] + 0.5833333f0 * ψ[i + 0, j, k] + -0.083333336f0 * ψ[i + 1, j, k])
 
-julia> calc_reconstruction_stencil(3, :left, :x)
-:(convert(FT, coeff5_left[5]) * ψ[i + -3, j, k] + convert(FT, coeff5_left[4]) * ψ[i + -2, j, k] + convert(FT, coeff5_left[3]) * ψ[i + -1, j, k] + convert(FT, coeff5_left[2]) * ψ[i + 0, j, k] + convert(FT, coeff5_left[1]) * ψ[i + 1, j, k])
+julia> calc_reconstruction_stencil(Float32, 3, :left, :x)
+:(0.0333333f0 * ψ[i + -3, j, k] + -0.21666667f0 * ψ[i + -2, j, k] + 0.78333336f0 * ψ[i + -1, j, k] + 0.45f0 * ψ[i + 0, j, k] + -0.05f0 * ψ[i + 1, j, k])
 ```
 """
-@inline function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
+@inline function calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
     N = buffer * 2
     order = shift == :symmetric ? N : N - 1
     if shift != :symmetric
@@ -194,21 +130,22 @@ julia> calc_reconstruction_stencil(3, :left, :x)
         rng = rng .+ 1
     end
     stencil_full = Vector(undef, N)
-    coeff = Symbol(:coeff, order, :_, shift)
+    coeff = uniform_reconstruction_coefficients(FT, Val(shift), buffer)
     for (idx, n) in enumerate(rng)
         c = n - buffer - 1
+        C = coeff[order - idx + 1]
         if func
             stencil_full[idx] = dir == :x ?
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ(i + $c, j, k, grid, args...)) :
+                                :($C * ψ(i + $c, j, k, grid, args...)) :
                                 dir == :y ?
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ(i, j + $c, k, grid, args...)) :
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ(i, j, k + $c, grid, args...))
+                                :($C * ψ(i, j + $c, k, grid, args...)) :
+                                :($C * ψ(i, j, k + $c, grid, args...))
         else
-            stencil_full[idx] =  dir == :x ? 
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ[i + $c, j, k]) :
+            stencil_full[idx] =  dir == :x ?
+                                :($C * ψ[i + $c, j, k]) :
                                 dir == :y ?
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ[i, j + $c, k]) :
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ[i, j, k + $c])
+                                :($C * ψ[i, j + $c, k]) :
+                                :($C * ψ[i, j, k + $c])
         end
     end
     return Expr(:call, :+, stencil_full...)
@@ -252,7 +189,7 @@ end
 @inline function compute_reconstruction_coefficients(grid, FT, scheme; order)
 
     method = scheme == :Centered ? 1 : scheme == :Upwind ? 2 : 3
-    
+
     if grid isa Nothing
         coeff_xᶠᵃᵃ = nothing
         coeff_xᶜᵃᵃ = nothing
@@ -264,7 +201,7 @@ end
         arch       = architecture(grid)
         Hx, Hy, Hz = halo_size(grid)
         new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
-        
+
         ξᶠᵃᵃ = ξnodes(new_grid, Face(), with_halos=true)
         ηᵃᶠᵃ = ηnodes(new_grid, Face(), with_halos=true)
         rᵃᵃᶠ = rnodes(new_grid, Face(), with_halos=true)
@@ -295,7 +232,7 @@ for val in [1, 2, 3]
 end
 
 # Stretched reconstruction coefficients for `Centered` schemes
-@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order)
     cpu_coord = on_architecture(CPU(), coord)
     r = ((order + 1) ÷ 2) - 1
     s = create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
@@ -303,7 +240,7 @@ end
 end
 
 # Stretched reconstruction coefficients for `UpwindBiased` schemes
-@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order)
     cpu_coord = on_architecture(CPU(), coord)
     rleft  = ((order + 1) ÷ 2) - 2
     rright = ((order + 1) ÷ 2) - 1
@@ -315,7 +252,7 @@ end
 end
 
 # Stretched reconstruction coefficients for `WENO` schemes
-@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order)
     cpu_coord = on_architecture(CPU(), coord)
     s = []
     for r in -1:order-1
@@ -324,12 +261,12 @@ end
     return tuple(s...)
 end
 
-# general reconstruction coefficients for order `order` and stencil `r` where r 
+# general reconstruction coefficients for order `order` and stencil `r` where r
 @inline function create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
     stencil = NTuple{order, FT}[]
     @inbounds begin
         for i = 0:N+1
-            push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord; order))     
+            push!(stencil, stencil_coefficients(FT, i, r, cpu_coord, cpu_coord; order))
         end
     end
     return OffsetArray(on_architecture(arch, stencil), -1)

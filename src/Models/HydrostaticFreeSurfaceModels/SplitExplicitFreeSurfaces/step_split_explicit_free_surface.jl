@@ -1,3 +1,5 @@
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
@@ -9,35 +11,39 @@
 @kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
-    
-    store_previous_free_surface!(timestepper, i, j, k_top, η)
+
+    cache_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
+                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 end
 
-@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
-                                                      η, U, V, 
-                                                      η̅, U̅, V̅, 
-                                                      Gᵁ, Gⱽ, g, 
+@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ,
+                                                      η, U, V,
+                                                      η̅, U̅, V̅,
+                                                      Gᵁ, Gⱽ, g,
                                                       timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    store_previous_velocities!(timestepper, i, j, 1, U)
-    store_previous_velocities!(timestepper, i, j, 1, V)
+    cache_previous_velocities!(timestepper, i, j, 1, U)
+    cache_previous_velocities!(timestepper, i, j, 1, V)
 
-    Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
-    
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+
     @inbounds begin
         # ∂τ(U) = - ∇η + G
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-                          
+        Uᵐ⁺¹ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        Vᵐ⁺¹ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+        U̅[i, j, 1]     += averaging_weight * Uᵐ⁺¹
+        V̅[i, j, 1]     += averaging_weight * Vᵐ⁺¹
+
+        # Updating the velocities
+        U[i, j, 1] = Uᵐ⁺¹
+        V[i, j, 1] = Vᵐ⁺¹
     end
 end
 
@@ -73,11 +79,11 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
-    η_args = (grid, Δτᴮ, η, U, V, 
+    η_args = (grid, Δτᴮ, η, U, V,
               timestepper)
 
-    U_args = (grid, Δτᴮ, η, U, V, 
-              η̅, U̅, V̅, GUⁿ, GVⁿ, g, 
+    U_args = (grid, Δτᴮ, η, U, V,
+              η̅, U̅, V̅, GUⁿ, GVⁿ, g,
               timestepper)
 
     GC.@preserve η_args U_args begin
@@ -86,8 +92,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         # launching ~100 very small kernels: we are limited by
         # latency of argument conversion to GPU-compatible values.
         # To alleviate this penalty we convert first and then we substep!
-        converted_η_args = convert_args(arch, η_args)
-        converted_U_args = convert_args(arch, U_args)
+        converted_η_args = convert_to_device(arch, η_args)
+        converted_U_args = convert_to_device(arch, U_args)
 
         @unroll for substep in 1:Nsubsteps
             Base.@_inline_meta
@@ -122,7 +128,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     free_surface_grid = free_surface.η.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
-    
+
     barotropic_velocities = free_surface.barotropic_velocities
 
     # Wait for setup step to finish
@@ -153,15 +159,21 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     @apply_regionally begin
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
-        
+
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
-        launch!(architecture(free_surface_grid), free_surface_grid, :xy, 
+        launch!(architecture(free_surface_grid), free_surface_grid, :xy,
                 _update_split_explicit_state!, η, U, V, free_surface_grid, η̅, U̅, V̅)
 
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
+    end
+
+    # Needed for Mutable to compute the barotropic correction.
+    # TODO: Would it be possible to remove it in some way?
+    if model.grid isa MutableGridOfSomeKind
+        fill_halo_regions!(η)
     end
 
     return nothing

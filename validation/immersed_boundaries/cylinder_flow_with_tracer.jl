@@ -1,4 +1,4 @@
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) 
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 
 
 ENV["GKSwstype"] = "nul"
@@ -33,7 +33,7 @@ Run the steady state cylinder validation experiment until `stop_time` using `mom
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, and cylinder radius `R`, on `arch`itecture.
 """
 
-function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, arch = CPU(), Nh = 250, ν = nu, 
+function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, arch = CPU(), Nh = 250, ν = nu,
                                     advection = UpwindBiased(order=5), radius = R)
 
 
@@ -44,7 +44,7 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
                                            topology = (Periodic, Bounded, Bounded))
 
     immersed_grid = ImmersedBoundaryGrid(arch, underlying_grid, GridFittedBoundary(inside_cylinder))
-    
+
     # boundary conditions: inflow and outflow in y
     v_bc = OpenBoundaryCondition(1.0)
     v_bcs = FieldBoundaryConditions(north = v_bc, south = v_bc)
@@ -65,7 +65,7 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
 
     # Parameters
     U∞ = 1.0 # uniform flow
-    
+
     # Total initial conditions
     uᵢ(x, y, z) = 0
     vᵢ(x, y, z) = U∞
@@ -97,22 +97,22 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
     # Output: primitive fields + computations
     u, v, w, pHY′, pNHS, mass  = merge(immersed_model.velocities, immersed_model.pressures, immersed_model.tracers)
     outputs = merge(immersed_model.velocities, immersed_model.pressures, immersed_model.tracers)
-    
+
     data_path = experiment_name
- 
+
     simulation.output_writers[:fields] =
-            JLD2OutputWriter(immersed_model, outputs,
-                             schedule = TimeInterval(output_time_interval),
-                             prefix = data_path,
-                             field_slicer = nothing,
-                             overwrite_existing = true)
+            JLD2Writer(immersed_model, outputs,
+                       schedule = TimeInterval(output_time_interval),
+                       prefix = data_path,
+                       field_slicer = nothing,
+                       overwrite_existing = true)
 
     @info "Running a simulation of an steady state cylinder..."
 
     start_time = time_ns()
 
     run!(simulation)
-    return experiment_name 
+    return experiment_name
 end
 
 """
@@ -130,13 +130,13 @@ end
 function visualize_cylinder_steadystate(experiment_name)
 
     @info "Making a fun movie about steady state cylinder flow..."
-     
+
     filepath = experiment_name * ".jld2"
 
     u_timeseries = FieldTimeSeries(filepath,  "u")
 
     v_timeseries = FieldTimeSeries(filepath,  "v")
-    
+
     p_timeseries = FieldTimeSeries(filepath,  "pNHS")
 
     m_timeseries = FieldTimeSeries(filepath, "mass")
@@ -173,30 +173,30 @@ function visualize_cylinder_steadystate(experiment_name)
                       :xlims => (-regular_grid.Lx/2, regular_grid.Lx/2),
                       :ylims => (-regular_grid.Ly/3, 2*regular_grid.Ly/3))
 
-        u_plot = heatmap(xu, yu, clamp.(ui, -1, 1)'; color = :balance, size = (500,700), 
-                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
-                            legendfont = 10, tickfont = 8, kwargs...)
-        plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
-                            legend=false, fillalpha=0)
-        
-        v_plot = heatmap(xv, yv, clamp.(vi, -1, 1)'; color = :balance, size = (500,700), 
-                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
-                            legendfont = 10, tickfont = 8, kwargs...)
-        plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
-                            legend=false, fillalpha=0)
-        
-        p_plot = heatmap(xp, yp, clamp.(pin, -1, 1)'; color = :balance, size = (500,700), 
+        u_plot = heatmap(xu, yu, clamp.(ui, -1, 1)'; color = :balance, size = (500,700),
                             guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
                             legendfont = 10, tickfont = 8, kwargs...)
         plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
                             legend=false, fillalpha=0)
 
-        m_plot = heatmap(xm, ym, clamp.(mi, -1, 1)'; color = :thermal, size = (500,700), 
+        v_plot = heatmap(xv, yv, clamp.(vi, -1, 1)'; color = :balance, size = (500,700),
                             guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
                             legendfont = 10, tickfont = 8, kwargs...)
         plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
                             legend=false, fillalpha=0)
-  
+
+        p_plot = heatmap(xp, yp, clamp.(pin, -1, 1)'; color = :balance, size = (500,700),
+                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
+                            legendfont = 10, tickfont = 8, kwargs...)
+        plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
+                            legend=false, fillalpha=0)
+
+        m_plot = heatmap(xm, ym, clamp.(mi, -1, 1)'; color = :thermal, size = (500,700),
+                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
+                            legendfont = 10, tickfont = 8, kwargs...)
+        plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
+                            legend=false, fillalpha=0)
+
         δlim = 1.0
         kwargs[:clims] = (-δlim, δlim)
 
@@ -221,7 +221,7 @@ function analyze_cylinder_steadystate(experiment_name)
     @inline dist_cylinder(v) = sqrt((v[1])^2+(v[2])^2)-R
     # finding the sfc normal vector
     normalDist = x-> ForwardDiff.gradient(dist_cylinder,x)
-    
+
     # function creating the projection matrix into surface normal and tangential
     function projection_matrix(N)
         if abs(N[1]) == 1 # if normal vector is entirely in the x direction
@@ -238,67 +238,67 @@ function analyze_cylinder_steadystate(experiment_name)
         end
         transpose(hcat(v1,v2,N)) # creating a matrix of all 3 vectors
     end
-    
-    # function interpolating velocity vector at vector location xvec 
+
+    # function interpolating velocity vector at vector location xvec
     function interp_values(xvec, Us, Vs, Ws)
-        xI = xvec; # forced node is the x argument 
+        xI = xvec; # forced node is the x argument
         uI = interpolate(Us, xI[1], xI[2], xI[3])
         vI = interpolate(Vs, xI[1], xI[2], xI[3])
         wI = interpolate(Ws, xI[1], xI[2], xI[3])
         vels = [uI; vI; wI]
         return vels
     end
-    
-    # function outputs normal and tangential velocity, pressure, and friction coefficient 
+
+    # function outputs normal and tangential velocity, pressure, and friction coefficient
     # around a cylinder at M points with projection and interpolation
     function surface_values(M, U, V, W, Pnon, grid, eps, ν)
-        
-        # angle around circle starting due south 
-        θ = LinRange(-π/2 , 3*π/2-(2*π/M), M) 
+
+        # angle around circle starting due south
+        θ = LinRange(-π/2 , 3*π/2-(2*π/M), M)
         x₀ = hcat(R*cos.(θ), R*sin.(θ), .5*ones(M,1))
         Vⁿ = zeros(M, 1)
         Vᵗ¹ = zeros(M, 1)
         p_sfc = zeros(M, 1)
         dVt = zeros(M, 1)
-        
+
         # at each location around circle
         for m = 1:M
-            
+
             # surface normal vector
             nm = normalDist(x₀[m,:])
             # location eps distance outside cylinder in fluid
             xI = x₀[m,:] + eps*nm
-            
+
             # velocity vector at both points
             Vm = interp_values(x₀[m,:], U, V, W)
             Vm_ext = interp_values(xI, U, V, W)
-            
+
             # new projected velocity vector: V_rot = [Vt1, Vt2, Vn]
             matrix = projection_matrix(nm)
             V_rot = matrix*Vm
             V_rot_ext = matrix*Vm_ext
-            
+
             # normal and tangential velocities
             Vⁿ[m] = V_rot[3]
             Vᵗ¹[m] = V_rot[1]
             Vᵗ¹_ext = V_rot_ext[1]
-            
+
             # surface normal derivative dVt/dn
             dVt[m] = (Vᵗ¹_ext - Vᵗ¹[m])/eps
-            
+
             # pressure interpolated near the surface
-            p_sfc[m] = interpolate(Pnon, xI[1], xI[2], xI[3])    
+            p_sfc[m] = interpolate(Pnon, xI[1], xI[2], xI[3])
         end
-        
+
         # friction coefficient
         Cf = dVt.* (2*ν)
-        
-        return Vⁿ,Vᵗ¹, Cf, p_sfc, θ 
+
+        return Vⁿ,Vᵗ¹, Cf, p_sfc, θ
     end
-    
+
     # get data
     filepath = experiment_name * ".jld2"
-    
+
     u_timeseries = FieldTimeSeries(filepath,  "u")
     v_timeseries = FieldTimeSeries(filepath,  "v")
     w_timeseries = FieldTimeSeries(filepath,  "w")
@@ -311,68 +311,68 @@ function analyze_cylinder_steadystate(experiment_name)
     V = v_timeseries[final_iter]
     W = w_timeseries[final_iter]
     P = p_timeseries[final_iter]
-    
+
     center_grid = p_timeseries.grid
     xm, ym, zm = nodes(m_timeseries)
 
     Vⁿ,Vᵗ, Cf, p_sfc, θ  = surface_values(140, U, V, W, P, center_grid, center_grid.Δxᶜᵃᵃ, nu)
 
-    # function creating mesh of (x,y)     
+    # function creating mesh of (x,y)
     function meshgrid(vx::AbstractVector{T}, vy::AbstractVector{T}) where T
         m, n = length(vy), length(vx)
         vx = reshape(vx, 1, n)
         vy = reshape(vy, m, 1)
         (repeat(vx, m, 1), repeat(vy, 1, n))
-    end  
-    
+    end
+
     @inline inside_cylinder(x, y, z) = (x.^2 .+ y.^2) .<= R # immersed solid
-    
+
     # calculates the volume integrated concentration of tracer
-    function volume_integrated_concentration(x, y, mass_series)       
+    function volume_integrated_concentration(x, y, mass_series)
         X, Y = meshgrid(x, y)
         # only including concentration values outside the cylinder in the fluid
         fluid_concent = mass_series .* (1 .- inside_cylinder(X', Y', 1))
         # summing over the concentration values and multiplying by ΔxΔy at each iteration
         vol_int_concent = (sum(fluid_concent[:,:,1,:], dims = 1:2))[1,1,:] * (y[2]-y[1]) * (x[2]-x[1])
     end
-     
+
     concentration_m = volume_integrated_concentration(xm, ym, m_timeseries)
-    
+
     # taking the percent change in concentration at each time step in ratio to the initial amount
     percent_leakage = ((concentration_m[1] .- concentration_m) ./ concentration_m[1]) .* 100
-    
-    @info "Plotting Normal and Tangential Velocity..."    
+
+    @info "Plotting Normal and Tangential Velocity..."
 
     Vnt = plot(θ*180/π, Vⁿ, xlabel="θ", ylabel="Velocity", seriestype=:scatter,
         guidefontsize = 14, titlefont=14, legendfont = 8, tickfont = 8,
-        xticks = [-90,0,90,180,275], xlims = (-90, 275), markersize = 3, 
+        xticks = [-90,0,90,180,275], xlims = (-90, 275), markersize = 3,
         legend = true, size = (700,500), label = "Vⁿ")
     plot!(θ*180/π, Vᵗ, label= "Vᵗ", seriestype=:scatter, markersize = 3)
 
-    @info "Plotting Pressure Coefficient..." 
+    @info "Plotting Pressure Coefficient..."
 
-    Pcoef = plot(θ*180/π, 2. .* p_sfc, xlabel="θ", ylabel= "Cp", seriestype=:scatter, 
-        guidefontsize = 14, titlefont=14, legendfont = 10, tickfont = 8, 
-        xticks = [-90,0,90,180,275], xlims = (-90, 275), markersize = 3, 
+    Pcoef = plot(θ*180/π, 2. .* p_sfc, xlabel="θ", ylabel= "Cp", seriestype=:scatter,
+        guidefontsize = 14, titlefont=14, legendfont = 10, tickfont = 8,
+        xticks = [-90,0,90,180,275], xlims = (-90, 275), markersize = 3,
         legend = false, size = (700,500))
 
-    @info "Plotting Friction Coefficient..." 
+    @info "Plotting Friction Coefficient..."
 
-    Fcoef = plot(θ*180/π, Cf, xlabel="θ", ylabel= "Cf", seriestype=:scatter, 
-        guidefontsize = 14, titlefont=14,legendfont = 10, tickfont = 8, 
-        xticks = [-90,0,90,180,275], xlims = (-90, 275), markersize = 3, 
+    Fcoef = plot(θ*180/π, Cf, xlabel="θ", ylabel= "Cf", seriestype=:scatter,
+        guidefontsize = 14, titlefont=14,legendfont = 10, tickfont = 8,
+        xticks = [-90,0,90,180,275], xlims = (-90, 275), markersize = 3,
         legend = false, size = (700,500))
-    
+
     @info "Plotting Concentration Leakage"
-    mConcent = plot(m_timeseries.times, percent_leakage, xlabel="t", ylabel= "% Leakage", 
-        seriestype=:scatter, guidefontsize = 14, titlefont=14, legendfont = 10, 
+    mConcent = plot(m_timeseries.times, percent_leakage, xlabel="t", ylabel= "% Leakage",
+        seriestype=:scatter, guidefontsize = 14, titlefont=14, legendfont = 10,
         tickfont = 8, markersize = 3, legend = false, size = (700,500))
-    
+
     Vnt_title = @sprintf("||Vⁿ||₂  = %.3f, ||Vᵗ||₂  = %.3f", norm(Vⁿ,2), norm(Vᵗ,2))
     psfc_title = "Pressure Coefficient"
     cf_title = "Friction Coefficient"
     trac_title = "% Concentration Leakage"
-    
+
     analysisplot = plot(Vnt, Pcoef, Fcoef, mConcent,
              title = [Vnt_title psfc_title cf_title trac_title],
              layout = (2, 2), left_margin=5mm, bottom_margin=10mm)

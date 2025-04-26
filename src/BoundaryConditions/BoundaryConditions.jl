@@ -3,7 +3,7 @@ module BoundaryConditions
 export
     BCType, Flux, Gradient, Value, Open,
     BoundaryCondition, getbc, setbc!,
-    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition, 
+    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
@@ -20,6 +20,9 @@ using Oceananigans.Grids
 
 import Adapt: adapt_structure
 
+# Switch around halos for cubed sphere by exchanging buffer informations
+replace_horizontal_vector_halos!(velocities, grid::AbstractGrid; signed=true) = nothing
+
 include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
 include("discrete_boundary_function.jl")
@@ -33,6 +36,7 @@ include("fill_halo_regions_open.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_nothing.jl")
+include("fill_halo_regions_zipper.jl")
 
 include("apply_flux_bcs.jl")
 
@@ -40,4 +44,5 @@ include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
 
 include("flat_extrapolation_open_boundary_matching_scheme.jl")
+include("perturbation_advection_open_boundary_matching_scheme.jl")
 end # module

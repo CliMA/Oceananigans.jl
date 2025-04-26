@@ -31,15 +31,15 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
                                   C = 1/12, Cν = nothing, Cκ = nothing, Cb = nothing)
-                                  
-                                       
+
+
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Arguments
 =========
 
-* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`,
                          which integrates the terms involving only ``z``-derivatives in the
                          viscous and diffusive fluxes with an implicit time discretization.
                          Default `ExplicitTimeDiscretization()`.
@@ -115,7 +115,7 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Float64;
+function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Oceananigans.defaults.FloatType;
                                        C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
 
     Cν = Cν === nothing ? C : Cν
@@ -145,7 +145,7 @@ end
 
 @kernel function _compute_AMD_viscosity!(νₑ, grid, closure::AMD, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
-    
+
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., velocities.u, velocities.v, velocities.w)
@@ -200,7 +200,7 @@ function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumD
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
-        launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
+        launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
@@ -343,10 +343,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### DiffusivityFields
+##### build_diffusivity_fields
 #####
 
-function DiffusivityFields(grid, tracer_names, user_bcs, ::AMD)
+function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)

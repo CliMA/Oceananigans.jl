@@ -14,7 +14,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_conditions
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
@@ -30,7 +30,7 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -105,14 +105,14 @@ Keyword arguments
                                     in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
                                     vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
                                     only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
-                                    is not computed. 
+                                    is not computed.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 """
 function NonhydrostaticModel(; grid,
-                             clock = Clock{eltype(grid)}(time = 0),
+                             clock = Clock(grid),
                              advection = Centered(),
                              buoyancy = nothing,
                              coriolis = nothing,
@@ -194,14 +194,14 @@ function NonhydrostaticModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions()
-                                                                     for name in prognostic_field_names)
+    field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
+    default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions()
+                                                          for name in field_names)
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
@@ -210,7 +210,7 @@ function NonhydrostaticModel(; grid,
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
     pressures          = (pNHS=nonhydrostatic_pressure, pHY′=hydrostatic_pressure_anomaly)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = nonhydrostatic_pressure_solver(grid)
@@ -234,7 +234,7 @@ function NonhydrostaticModel(; grid,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
 
     update_state!(model; compute_tendencies = false)
-    
+
     return model
 end
 
@@ -258,5 +258,5 @@ end
 
 # return the total advective velocities
 @inline total_velocities(m::NonhydrostaticModel) =
-    sum_of_velocities(m.velocities, m.background_fields.velocities) 
+    sum_of_velocities(m.velocities, m.background_fields.velocities)
 

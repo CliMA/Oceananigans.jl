@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Fields: FunctionField
 
 #####
-##### JLD2OutputWriter tests
+##### JLD2Writer tests
 #####
 
 function jld2_sliced_field_output(model, outputs=model.velocities)
@@ -15,16 +15,15 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
                 v = (x, y, z) -> rand(),
                 w = (x, y, z) -> rand())
 
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    simulation = Simulation(model, Δt=1, stop_iteration=1)
 
-    simulation.output_writers[:velocities] =
-        JLD2OutputWriter(model, outputs,
-                         schedule = TimeInterval(1),
-                         indices = (1:2, 1:4, :),
-                         with_halos = false,
-                         dir = ".",
-                         filename = "test.jld2",
-                         overwrite_existing = true)
+    simulation.output_writers[:velocities] = JLD2Writer(model, outputs,
+                                                        schedule = TimeInterval(1),
+                                                        indices = (1:2, 1:4, :),
+                                                        with_halos = false,
+                                                        dir = ".",
+                                                        filename = "test.jld2",
+                                                        overwrite_existing = true)
 
     run!(simulation)
 
@@ -50,16 +49,16 @@ function test_jld2_size_file_splitting(arch)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2OutputWriter(model, (; u=model.velocities.u);
-                          dir = ".",
-                          filename = "test.jld2",
-                          schedule = IterationInterval(1),
-                          init = fake_bc_init,
-                          including = [:grid],
-                          array_type = Array{Float64},
-                          with_halos = true,
-                          file_splitting = FileSizeLimit(200KiB),
-                          overwrite_existing = true)
+    ow = JLD2Writer(model, (; u=model.velocities.u);
+                    dir = ".",
+                    filename = "test.jld2",
+                    schedule = IterationInterval(1),
+                    init = fake_bc_init,
+                    including = [:grid],
+                    array_type = Array{Float64},
+                    with_halos = true,
+                    file_splitting = FileSizeLimit(200KiB),
+                    overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
 
@@ -98,16 +97,16 @@ function test_jld2_time_file_splitting(arch)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2OutputWriter(model, (; u=model.velocities.u);
-                          dir = ".",
-                          filename = "test",
-                          schedule = IterationInterval(1),
-                          init = fake_bc_init,
-                          including = [:grid],
-                          array_type = Array{Float64},
-                          with_halos = true,
-                          file_splitting = TimeInterval(3seconds),
-                          overwrite_existing = true)
+    ow = JLD2Writer(model, (; u=model.velocities.u);
+                    dir = ".",
+                    filename = "test",
+                    schedule = IterationInterval(1),
+                    init = fake_bc_init,
+                    including = [:grid],
+                    array_type = Array{Float64},
+                    with_halos = true,
+                    file_splitting = TimeInterval(3seconds),
+                    overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
 
@@ -155,12 +154,12 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
                       uv = Field(Average(u * v, dims=(1, 2))),
                       wT = Field(Average(w * T, dims=(1, 2))))
 
-    simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
-                                                          schedule = AveragedTimeInterval(4Δt, window=2Δt),
-                                                          dir = ".",
-                                                          with_halos = false,
-                                                          filename = "jld2_time_averaging_test.jld2",
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fluxes] = JLD2Writer(model, average_fluxes,
+                                                    schedule = AveragedTimeInterval(4Δt, window=2Δt),
+                                                    dir = ".",
+                                                    with_halos = false,
+                                                    filename = "jld2_time_averaging_test.jld2",
+                                                    overwrite_existing = true)
 
     run!(simulation)
 
@@ -193,7 +192,7 @@ function test_jld2_time_averaging(arch)
     for Δt in (1/64, 0.01)
         # Results should be very close (rtol < 1e-5) for stride = 1.
         # stride > 2 is currently not robust and can give inconsistent
-        # results due to floating number errors that can result in vanishingly 
+        # results due to floating number errors that can result in vanishingly
         # small timesteps, which essentially decouples the clock time from
         # the iteration number.
         # Can add stride > 1 cases to the following line to test them.
@@ -227,14 +226,13 @@ function test_jld2_time_averaging(arch)
             jld2_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
             horizontal_average_jld2_filepath = "decay_averaged_field_test.jld2"
 
-            simulation.output_writers[:horizontal_average] = JLD2OutputWriter(
-                                model,
-                                jld2_outputs,
-                                schedule = TimeInterval(10Δt),
-                                dir = ".",
-                                with_halos = false,
-                                filename = horizontal_average_jld2_filepath,
-                                overwrite_existing = true)
+            simulation.output_writers[:horizontal_average] = JLD2Writer(model,
+                                                                        jld2_outputs,
+                                                                        schedule = TimeInterval(10Δt),
+                                                                        dir = ".",
+                                                                        with_halos = false,
+                                                                        filename = horizontal_average_jld2_filepath,
+                                                                        overwrite_existing = true)
 
             multiple_time_average_jld2_filepath = "decay_windowed_time_average_test.jld2"
             single_time_average_jld2_filepath = "single_decay_windowed_time_average_test.jld2"
@@ -242,23 +240,21 @@ function test_jld2_time_averaging(arch)
 
             single_jld2_output = Dict("c1" => ∫c1_dxdy)
 
-            simulation.output_writers[:single_output_time_average] = JLD2OutputWriter(
-                                model,
-                                single_jld2_output,
-                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                                dir = ".",
-                                with_halos = false,
-                                filename = single_time_average_jld2_filepath,
-                                overwrite_existing = true)
+            simulation.output_writers[:single_output_time_average] = JLD2Writer(model,
+                                                                                single_jld2_output,
+                                                                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                dir = ".",
+                                                                                with_halos = false,
+                                                                                filename = single_time_average_jld2_filepath,
+                                                                                overwrite_existing = true)
 
-            simulation.output_writers[:multiple_output_time_average] = JLD2OutputWriter(
-                                model,
-                                jld2_outputs,
-                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                                dir = ".",
-                                with_halos = false,
-                                filename = multiple_time_average_jld2_filepath,
-                                overwrite_existing = true)
+            simulation.output_writers[:multiple_output_time_average] = JLD2Writer(model,
+                                                                                  jld2_outputs,
+                                                                                  schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                  dir = ".",
+                                                                                  with_halos = false,
+                                                                                  filename = multiple_time_average_jld2_filepath,
+                                                                                  overwrite_existing = true)
 
             run!(simulation)
 
@@ -351,40 +347,40 @@ for arch in archs
 
         vanilla_outputs = merge(model.velocities, function_and_background_fields, operation_outputs)
 
-        simulation.output_writers[:velocities] = JLD2OutputWriter(model, vanilla_outputs,
-                                                                  schedule = IterationInterval(1),
-                                                                  dir = ".",
-                                                                  filename = "vanilla_jld2_test",
-                                                                  indices = (:, :, :),
-                                                                  with_halos = false,
-                                                                  overwrite_existing = true)
+        simulation.output_writers[:velocities] = JLD2Writer(model, vanilla_outputs,
+                                                            schedule = IterationInterval(1),
+                                                            dir = ".",
+                                                            filename = "vanilla_jld2_test",
+                                                            indices = (:, :, :),
+                                                            with_halos = false,
+                                                            overwrite_existing = true)
 
-        simulation.output_writers[:sliced] = JLD2OutputWriter(model, model.velocities,
+        simulation.output_writers[:sliced] = JLD2Writer(model, model.velocities,
+                                                        schedule = TimeInterval(1),
+                                                        indices = (1:2, 1:4, :),
+                                                        with_halos = false,
+                                                        dir = ".",
+                                                        filename = "sliced_jld2_test",
+                                                        overwrite_existing = true)
+
+        func_outputs = (u = model -> u, v = model -> v, w = model -> w)
+
+        simulation.output_writers[:sliced_funcs] = JLD2Writer(model, func_outputs,
                                                               schedule = TimeInterval(1),
                                                               indices = (1:2, 1:4, :),
                                                               with_halos = false,
                                                               dir = ".",
-                                                              filename = "sliced_jld2_test",
+                                                              filename = "sliced_funcs_jld2_test",
                                                               overwrite_existing = true)
 
-        func_outputs = (u = model -> u, v = model -> v, w = model -> w)
-        
-        simulation.output_writers[:sliced_funcs] = JLD2OutputWriter(model, func_outputs,
+
+        simulation.output_writers[:sliced_func_fields] = JLD2Writer(model, function_and_background_fields,
                                                                     schedule = TimeInterval(1),
                                                                     indices = (1:2, 1:4, :),
                                                                     with_halos = false,
                                                                     dir = ".",
-                                                                    filename = "sliced_funcs_jld2_test",
+                                                                    filename = "sliced_func_fields_jld2_test",
                                                                     overwrite_existing = true)
-
-
-        simulation.output_writers[:sliced_func_fields] = JLD2OutputWriter(model, function_and_background_fields,
-                                                                          schedule = TimeInterval(1),
-                                                                          indices = (1:2, 1:4, :),
-                                                                          with_halos = false,
-                                                                          dir = ".",
-                                                                          filename = "sliced_func_fields_jld2_test",
-                                                                          overwrite_existing = true)
 
 
 
@@ -430,8 +426,8 @@ for arch in archs
         @test FT(v₀) == v₁_op
         @test FT(w₀) == w₁_op
 
-        @test FT(αt₀) == α * t₀
-        @test FT(αt₁) == α * t₁
+        @test FT(αt₀) == FT(α * t₀)
+        @test FT(αt₁) == FT(α * t₁)
 
         #####
         ##### Field slicing
@@ -452,7 +448,7 @@ for arch in archs
         test_field_slicing("sliced_jld2_test.jld2", ("u", "v", "w"), (2, 4, 4), (2, 4, 4), (2, 4, 5))
         test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
         test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt", "background_u"), (2, 4, 4), (2, 4, 4))
-        
+
         ####
         #### File splitting
         ####
@@ -467,8 +463,23 @@ for arch in archs
         test_jld2_time_averaging_of_horizontal_averages(model)
 
         #####
-        ##### Time-averaging (same test as in NetCDFOutputWriter)
+        ##### Time-averaging (same test as in NetCDFWriter)
         #####
         test_jld2_time_averaging(arch)
+
+        # Test that free surface can be output
+        grid = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1))
+        free_surface = SplitExplicitFreeSurface(substeps=10)
+        model = HydrostaticFreeSurfaceModel(; grid, free_surface)
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        filename = "test_free_surface_output.jld2"
+        ow = JLD2Writer(model, (; η=model.free_surface.η); filename,
+                        schedule = IterationInterval(1),
+                        with_halos = false,
+                        overwrite_existing = true)
+        simulation.output_writers[:free_surface] = ow
+        run!(simulation)
+        ηt = FieldTimeSeries(filename, "η")
+        @test size(parent(ηt[1])) == (4, 4, 1)
     end
 end

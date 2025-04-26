@@ -41,7 +41,7 @@ arch = CUDA.has_cuda() ? GPU() : CPU()
 advection_schemes = (WENO(order=3),) # WENO(order=5), WENO(order=7), WENO(order=9), WENO(order=11))
 
 U = 1
-Nx = [16, 32, 64, 96, 128, 192, 256] 
+Nx = [16, 32, 64, 96, 128, 192, 256]
 
 results = Dict()
 for scheme in advection_schemes
@@ -76,8 +76,8 @@ for scheme in advection_schemes
         atol  = tolerance(scheme)
         Ntest = test_resolution(scheme)
         itest = searchsortedfirst(Nx, Ntest)
-        
-        (uvi_L₁, vvi_L₁, hvi_L₁, uvv_L₁, vvv_L₁, hvv_L₁, ucf_L₁, vcf_L₁, hcf_L₁, 
+
+        (uvi_L₁, vvi_L₁, hvi_L₁, uvv_L₁, vvv_L₁, hvv_L₁, ucf_L₁, vcf_L₁, hcf_L₁,
          uvi_L∞, vvi_L∞, hvi_L∞, uvv_L∞, vvv_L∞, hvv_L∞, ucf_L∞, vcf_L∞, hcf_L∞) = unpack_errors(results[typeof(scheme)])
 
         common_kwargs = (linestyle="None", color=colors[1], mfc="None", alpha=0.8)
@@ -91,7 +91,7 @@ for scheme in advection_schemes
         loglog(Nx, uvv_L₁; marker="1", label="\$L_1\$-norm, \$uvv\$ $name", common_kwargs...)
         loglog(Nx, vvv_L₁; marker="s", label="\$L_1\$-norm, \$vvv\$ $name", common_kwargs...)
         loglog(Nx, hvv_L₁; marker="X", label="\$L_1\$-norm, \$hvv\$ $name", common_kwargs...)
-        
+
         common_kwargs = (linestyle="None", color=colors[3], mfc="None", alpha=0.8)
 
         loglog(Nx, ucf_L₁; marker="1", label="\$L_\\infty\$-norm, \$ucf\$ $name", common_kwargs...)

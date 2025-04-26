@@ -31,7 +31,7 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         minimum_entrainment_buoyancy_gradient::FT,
                                         maximum_diffusivity::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
-                                       
+
 
     return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                      Ri_dependent_tapering,
@@ -46,9 +46,9 @@ struct PiecewiseLinearRiDependentTapering end
 struct ExponentialRiDependentTapering end
 struct HyperbolicTangentRiDependentTapering end
 
-Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDependentTapering" 
-Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering" 
-Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering" 
+Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDependentTapering"
+Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering"
+Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering"
 
 # Horizontal filtering for the Richardson number
 struct FivePointHorizontalFilter end
@@ -74,12 +74,12 @@ struct FivePointHorizontalFilter end
 
 Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
-a decreasing function of the Richardson number, ``Ri``. 
+a decreasing function of the Richardson number, ``Ri``.
 
 Arguments
 =========
 
-* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`,
                          which integrates the terms involving only ``z``-derivatives in the
                          viscous and diffusive fluxes with an implicit time discretization.
                          Default `VerticallyImplicitTimeDiscretization()`.
@@ -111,7 +111,7 @@ Keyword arguments
 
 * `minimum_entrainment_buoyancy_gradient`: Minimum buoyancy gradient for application of the entrainment
                                            diffusvity. If the entrainment buoyancy gradient is less than the
-                                           minimum value, the entrainment diffusivity is 0. Units of 
+                                           minimum value, the entrainment diffusivity is 0. Units of
                                            buoyancy gradient (typically s⁻²).
 
 * `maximum_diffusivity`: A limiting maximum tracer diffusivity (units of diffusivity, typically m² s⁻¹).
@@ -123,7 +123,7 @@ Keyword arguments
                           option is `horizontal_Ri_filter = FivePointHorizontalFilter()`.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
-                                    FT = Float64;
+                                    FT = Oceananigans.defaults.FloatType;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                     horizontal_Ri_filter = nothing,
                                     minimum_entrainment_buoyancy_gradient = 1e-10,
@@ -139,7 +139,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
-              "is unvalidated and whose default parameters are not calibrated for \n" * 
+              "is unvalidated and whose default parameters are not calibrated for \n" *
               "realistic ocean conditions or for use in a three-dimensional \n" *
               "simulation. Use with caution and report bugs and problems with physics \n" *
               "to https://github.com/CliMA/Oceananigans.jl/issues."
@@ -183,7 +183,7 @@ const f = Face()
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfRBVD)
     κc = Field((Center, Center, Face), grid)
     κu = Field((Center, Center, Face), grid)
     Ri = Field((Center, Center, Face), grid)
@@ -324,8 +324,8 @@ end
     κu⁺ = κu★
 
     # Limit by specified maximum
-    κc⁺ = min(κc⁺, closure_ij.maximum_diffusivity) 
-    κu⁺ = min(κu⁺, closure_ij.maximum_viscosity) 
+    κc⁺ = min(κc⁺, closure_ij.maximum_diffusivity)
+    κu⁺ = min(κu⁺, closure_ij.maximum_viscosity)
 
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)

@@ -11,22 +11,68 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT
     immersed_boundary :: I
     interior_active_cells :: M
     active_z_columns :: S
+end
 
-    # Internal interface
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
-        FT = eltype(grid)
-        arch = architecture(grid)
-        Arch = typeof(arch)
-        return new{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
+# Internal interface
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G<:AbstractUnderlyingGrid, I, M, S}
+    FT = eltype(grid)
+    arch = architecture(grid)
+    Arch = typeof(arch)
+    return ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
+end
+
+const CellMaps = Union{AbstractArray, NamedTuple, Tuple}
+const ActiveInteriorIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
+const NoActiveInteriorIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
+const ActiveZColumnsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
+const NoActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
+
+has_active_cells_map(::ActiveInteriorIBG) = true
+has_active_z_columns(::ActiveZColumnsIBG) = true
+has_active_cells_map(::NoActiveInteriorIBG) = false
+has_active_z_columns(::NoActiveZColumnsIBG) = false
+
+"""
+    ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
+                         active_cells_map=false, active_z_columns=active_cells_map)
+
+Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or `active_z_columns` are `true`,
+the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the
+interior and on a reduced x-y plane, respectively.
+"""
+function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
+                              active_cells_map::Bool=false,
+                              active_z_columns::Bool=active_cells_map)
+
+    materialized_ib = materialize_immersed_boundary(grid, ib)
+
+    # Create the cells map on the CPU, then switch it to the GPU
+    interior_active_cells = if active_cells_map
+        build_active_cells_map(grid, materialized_ib)
+    else
+        nothing
     end
 
-    # Constructor with no active map
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
-        FT = eltype(grid)
-        arch = architecture(grid)
-        Arch = typeof(arch)
-        return new{FT, TX, TY, TZ, G, I, Nothing, Nothing, Arch}(arch, grid, ib, nothing, nothing)
+    active_z_columns = if active_z_columns
+        build_active_z_columns(grid, materialized_ib)
+    else
+        nothing
     end
+
+    TX, TY, TZ = topology(grid)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid,
+                                            materialized_ib,
+                                            interior_active_cells,
+                                            active_z_columns)
+end
+
+function with_halo(halo, ibg::ImmersedBoundaryGrid)
+    active_cells_map = has_active_cells_map(ibg)
+    active_z_columns = has_active_z_columns(ibg)
+    underlying_grid = with_halo(halo, ibg.underlying_grid)
+    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
+                                active_cells_map,
+                                active_z_columns)
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -49,9 +95,6 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
                                      adapt(to, ibg.immersed_boundary),
                                      nothing,
                                      nothing)
-
-with_halo(halo, ibg::ImmersedBoundaryGrid) =
-    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H
 # (which requires checking `Center` nodes at N + H and N + H + 1)

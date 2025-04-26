@@ -1,6 +1,6 @@
 module Advection
 
-export 
+export
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
     momentum_flux_uu,
@@ -17,7 +17,7 @@ export
     advective_tracer_flux_z,
 
     AdvectionScheme,
-    Centered, UpwindBiased, WENO, 
+    Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
@@ -26,16 +26,21 @@ export
 using DocStringExtensions
 
 using Base: @propagate_inbounds
-using Adapt 
+using Adapt
 using OffsetArrays
+using MuladdMacro: @muladd
 
+using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Grids: with_halo
-using Oceananigans.Architectures: architecture, CPU
-
 using Oceananigans.Operators
 
-import Base: show, summary
+using Oceananigans: fully_supported_float_types
+using Oceananigans.Architectures: architecture, CPU
+using Oceananigans.Grids: with_halo
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_σ
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
+
+import Base: show, summary, Callable
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
@@ -75,8 +80,8 @@ include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
 
-include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")
+include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")

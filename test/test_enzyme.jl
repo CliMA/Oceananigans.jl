@@ -1,5 +1,8 @@
 include("dependencies_for_runtests.jl")
 
+using Enzyme
+using Oceananigans.TimeSteppers: reset!
+
 # Required presently
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
@@ -34,17 +37,15 @@ function set_initial_condition!(model, amplitude)
 end
 
 function stable_diffusion!(model, amplitude, diffusivity)
+    reset!(model.clock)
     set_diffusivity!(model, diffusivity)
     set_initial_condition!(model, amplitude)
-    
+
     # Do time-stepping
     Nx, Ny, Nz = size(model.grid)
     κ_max = maximum_diffusivity
     Δz = 1 / Nz
     Δt = 1e-1 * Δz^2 / κ_max
-
-    model.clock.time = 0
-    model.clock.iteration = 0
 
     for _ = 1:10
         time_step!(model, Δt; euler=true)
@@ -106,7 +107,7 @@ function set_initial_condition_via_launch!(model_tracer, amplitude)
 end
 
 function momentum_equation!(model)
-        
+
     # Do time-stepping
     Nx, Ny, Nz = size(model.grid)
     Δz = 1 / Nz
@@ -289,9 +290,7 @@ end
 
 function viscous_hydrostatic_turbulence(ν, model, u_init, v_init, Δt, u_truth, v_truth)
     # Initialize the model
-    model.clock.iteration = 0
-    model.clock.time = 0
-    model.clock.last_Δt = Inf
+    reset!(model.clock)
     set_viscosity!(model, ν)
     set!(model, u=u_init, v=v_init)
     fill!(model.free_surface.η, 0)
@@ -345,7 +344,7 @@ end
 
     u_truth = deepcopy(model.velocities.u)
     v_truth = deepcopy(model.velocities.v)
-    
+
     # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
     Δν = 1e-6
     ν0 = ν₀

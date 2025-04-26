@@ -1,4 +1,4 @@
-using Printf
+using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
@@ -9,7 +9,7 @@ default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyanc
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-mutable struct JLD2OutputWriter{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
+mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
@@ -24,23 +24,23 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
 end
 
 noinit(args...) = nothing
-ext(::Type{JLD2OutputWriter}) = ".jld2"
+ext(::Type{JLD2Writer}) = ".jld2"
 
 """
-    JLD2OutputWriter(model, outputs; filename, schedule,
-                     dir = ".",
-                     indices = (:, :, :),
-                     with_halos = true,
-                     array_type = Array{Float64},
-                     file_splitting = NoFileSplitting(),
-                     overwrite_existing = false,
-                     init = noinit,
-                     including = [:grid, :coriolis, :buoyancy, :closure],
-                     verbose = false,
-                     part = 1,
-                     jld2_kw = Dict{Symbol, Any}())
+    JLD2Writer(model, outputs; filename, schedule,
+               dir = ".",
+               indices = (:, :, :),
+               with_halos = true,
+               array_type = Array{Float32},
+               file_splitting = NoFileSplitting(),
+               overwrite_existing = false,
+               init = noinit,
+               including = [:grid, :coriolis, :buoyancy, :closure],
+               verbose = false,
+               part = 1,
+               jld2_kw = Dict{Symbol, Any}())
 
-Construct a `JLD2OutputWriter` for an Oceananigans `model` that writes `label, output` pairs
+Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
 in `outputs` to a JLD2 file.
 
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols or
@@ -74,16 +74,16 @@ Keyword arguments
                        Preserving halo region data can be useful for postprocessing. Default: true.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+                Default: `Array{Float32}`.
 
 ## File management
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
                     `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-                    split the output file when its size exceeds `sz`. Another example is 
+                    split the output file when its size exceeds `sz`. Another example is
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
-                    
+
 - `overwrite_existing`: Remove existing files if their filenames conflict.
                         Default: `false`.
 
@@ -127,36 +127,37 @@ end
 c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename = "some_data.jld2",
-                                                          schedule = TimeInterval(20minute),
-                                                          init = init_save_some_metadata!)
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
+                                                    filename = "some_data.jld2",
+                                                    schedule = TimeInterval(20minute),
+                                                    init = init_save_some_metadata!)
 ```
 
 and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
 ```@example
-simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
-                                                     filename = "some_averaged_data.jld2",
-                                                     schedule = AveragedTimeInterval(20minute, window=5minute))
+simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
+                                               filename = "some_averaged_data.jld2",
+                                               schedule = AveragedTimeInterval(20minute, window=5minute))
 ```
 """
-function JLD2OutputWriter(model, outputs; filename, schedule,
-                          dir = ".",
-                          indices = (:, :, :),
-                          with_halos = true,
-                          array_type = Array{Float64},
-                          file_splitting = NoFileSplitting(),
-                          overwrite_existing = false,
-                          init = noinit,
-                          including = default_included_properties(model),
-                          verbose = false,
-                          part = 1,
-                          jld2_kw = Dict{Symbol, Any}())
+function JLD2Writer(model, outputs; filename, schedule,
+                    dir = ".",
+                    indices = (:, :, :),
+                    with_halos = true,
+                    array_type = Array{Float32},
+                    file_splitting = NoFileSplitting(),
+                    overwrite_existing = false,
+                    init = noinit,
+                    including = default_included_properties(model),
+                    verbose = false,
+                    part = 1,
+                    jld2_kw = Dict{Symbol, Any}())
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
+    filename = with_architecture_suffix(architecture(model), filename, ".jld2")
     filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)
@@ -171,8 +172,8 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
 
-    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
+    return JLD2Writer(filepath, outputs, schedule, array_type, init,
+                      including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -184,7 +185,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    try 
+    try
         jldopen(filepath, "a+"; jld2_kw...) do file
             saveproperties!(file, model, including)
 
@@ -212,7 +213,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
     return nothing
 end
 
-initialize_jld2_file!(writer::JLD2OutputWriter, model) =
+initialize_jld2_file!(writer::JLD2Writer, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
 function iteration_exists(filepath, iter=0)
@@ -231,7 +232,7 @@ function iteration_exists(filepath, iter=0)
     return zero_exists
 end
 
-function write_output!(writer::JLD2OutputWriter, model)
+function write_output!(writer::JLD2Writer, model::AbstractModel)
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
@@ -261,7 +262,7 @@ function write_output!(writer::JLD2OutputWriter, model)
         writer.file_splitting(model) && start_next_file(model, writer)
         update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
         # Write output from `data`
-        verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
+        verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 
         start_time, old_filesize = time_ns(), filesize(writer.filepath)
         jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
@@ -294,7 +295,7 @@ function jld2output!(path, iter, time, data, kwargs)
     return nothing
 end
 
-function start_next_file(model, writer::JLD2OutputWriter)
+function start_next_file(model, writer::JLD2Writer)
     verbose = writer.verbose
 
     verbose && @info begin
@@ -319,15 +320,15 @@ function start_next_file(model, writer::JLD2OutputWriter)
     return nothing
 end
 
-Base.summary(ow::JLD2OutputWriter) =
-    string("JLD2OutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+Base.summary(ow::JLD2Writer) =
+    string("JLD2Writer writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
 
-function Base.show(io::IO, ow::JLD2OutputWriter)
+function Base.show(io::IO, ow::JLD2Writer)
 
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", "\n",
+    print(io, "JLD2Writer scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array type: ", show_array_type(ow.array_type), "\n",
