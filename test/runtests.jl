@@ -2,7 +2,7 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
-group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+group = get(ENV, "TEST_GROUP", "all") |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -29,7 +29,7 @@ CUDA.allowscalar() do
     if group == :init || group == :all
         include("test_init.jl")
     end
-    
+
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -88,6 +88,7 @@ CUDA.allowscalar() do
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_krylov_solver.jl")
         end
     end
 
@@ -97,13 +98,13 @@ CUDA.allowscalar() do
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_output_writer.jl")
+            include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
         end
     end
 
     # Lagrangian particle tracking
-    if group == :lagrangian || group == :all
+    if group == :lagrangian_particles || group == :all
         @testset "Lagrangian particle tracking tests" begin
             include("test_lagrangian_particle_tracking.jl")
         end
@@ -172,7 +173,6 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
@@ -193,6 +193,12 @@ CUDA.allowscalar() do
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
     end
+
+    # if group == :distributed_output || group == :all
+    #     @testset "Distributed output writing and reading tests" begin
+    #         include("test_distributed_output.jl")
+    #     end
+    # end
 
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
@@ -222,13 +228,14 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for Metal extension
-    if group == :distributed_tripolar || group == :all
+    # Tests for MPI extension
+    if group == :mpi_tripolar || group == :all
         @testset "Distributed tripolar tests" begin
-            include("test_distributed_tripolar.jl")
+            include("test_mpi_tripolar.jl")
         end
     end
 
+    
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -237,16 +244,44 @@ CUDA.allowscalar() do
     end
 
     # Tests for Reactant extension
-    if group == :reactant || group == :all
-        @testset "Reactant extension tests" begin
+    if group == :reactant_1 || group == :all
+        @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
         end
     end
 
+    if group == :reactant_2 || group == :all
+        @testset "Reactant extension tests 2" begin
+            include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    if group == :sharding || group == :all
+        @testset "Sharding Reactant extension tests" begin
+            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
+            # include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl")
+        end
+    end
+
     # Tests for Metal extension
-    if group == :metal|| group == :all
+    if group == :metal || group == :all
         @testset "Metal extension tests" begin
             include("test_metal.jl")
+        end
+    end
+
+    # Tests for AMDGPU extension
+    if group == :amdgpu || group == :all
+        @testset "AMDGPU extension tests" begin
+            include("test_amdgpu.jl")
+        end
+    end
+
+    # Tests for oneAPI extension
+    if group == :oneapi || group == :all
+        @testset "oneAPI extension tests" begin
+            include("test_oneapi.jl")
         end
     end
 

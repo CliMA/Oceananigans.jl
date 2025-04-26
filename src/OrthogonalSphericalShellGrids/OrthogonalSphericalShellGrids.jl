@@ -7,21 +7,21 @@ import Oceananigans
 
 using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture
+using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture, CPU, GPU
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Utils
 using Oceananigans.Fields: index_binary_search, convert_to_0_360
 using Oceananigans.Grids: RightConnected
-using Oceananigans.Grids: R_Earth, 
+using Oceananigans.Grids: R_Earth,
                           halo_size, spherical_area_quadrilateral,
                           lat_lon_to_cartesian, generate_coordinate, topology
-                          
+
 using Oceananigans.Operators
 using Oceananigans.Utils: get_cartesian_nodes_and_vertices
 
 using Distances
-using Adapt 
+using Adapt
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using OffsetArrays

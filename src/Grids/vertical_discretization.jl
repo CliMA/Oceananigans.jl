@@ -3,8 +3,8 @@
 ####
 
 # This file implements everything related to vertical coordinates in Oceananigans.
-# Vertical coordinates are independent of the underlying grid type since only grids that are 
-# "unstructured" or "curvilinear" in the horizontal directions are supported in Oceananigans. 
+# Vertical coordinates are independent of the underlying grid type since only grids that are
+# "unstructured" or "curvilinear" in the horizontal directions are supported in Oceananigans.
 # Thus the vertical coordinate is _special_, and it can be implemented once for all grid types.
 
 abstract type AbstractVerticalCoordinate end
@@ -48,7 +48,7 @@ end
 
 Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`, a function of an index `k`,
 or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coordinate that might evolve in time
-following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates, 
+following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates,
 or sigma coordinates.
 """
 MutableVerticalDiscretization(r_faces) = MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
@@ -58,7 +58,7 @@ MutableVerticalDiscretization(r_faces) = MutableVerticalDiscretization(r_faces, 
 ####
 
 const RegularStaticVerticalDiscretization  = StaticVerticalDiscretization{<:Any, <:Any, <:Number}
-const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any,  <:Any, <:Number}
+const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any, <:Any, <:Number}
 
 const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, RegularMutableVerticalDiscretization}
 
@@ -76,13 +76,13 @@ Adapt.adapt_structure(to, coord::StaticVerticalDiscretization) =
                              Adapt.adapt(to, coord.Δᵃᵃᶠ),
                              Adapt.adapt(to, coord.Δᵃᵃᶜ))
 
-on_architecture(arch, coord::StaticVerticalDiscretization) = 
+on_architecture(arch, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                              on_architecture(arch, coord.cᵃᵃᶜ),
                              on_architecture(arch, coord.Δᵃᵃᶠ),
                              on_architecture(arch, coord.Δᵃᵃᶜ))
 
-Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) = 
+Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                               Adapt.adapt(to, coord.cᵃᵃᶜ),
                               Adapt.adapt(to, coord.Δᵃᵃᶠ),
@@ -95,7 +95,7 @@ Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
                               Adapt.adapt(to, coord.σᶜᶜ⁻),
                               Adapt.adapt(to, coord.∂t_σ))
 
-on_architecture(arch, coord::MutableVerticalDiscretization) = 
+on_architecture(arch, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                               on_architecture(arch, coord.cᵃᵃᶜ),
                               on_architecture(arch, coord.Δᵃᵃᶠ),
@@ -115,6 +115,12 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
 AUG = AbstractUnderlyingGrid
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
+
+@inline function rnode(i::AbstractArray, j::AbstractArray, k, grid, ℓx, ℓy, ℓz)
+    res = rnode(k, grid, ℓz)
+    toperm = Base.stack(collect(Base.stack(collect(res for _ in 1:size(j, 2))) for _ in 1:size(i, 1)))
+    permutedims(toperm, (3, 2, 1))
+end
 @inline rnode(k, grid, ::Center) = getnode(grid.z.cᵃᵃᶜ, k)
 @inline rnode(k, grid, ::Face)   = getnode(grid.z.cᵃᵃᶠ, k)
 
@@ -172,10 +178,10 @@ end
 # Summaries
 coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
-coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) = 
+coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with Δr=%s (mutable)", prettysummary(z.Δᵃᵃᶜ))
 
-coordinate_summary(::Bounded, z::MutableVerticalDiscretization, name) = 
-    @sprintf("variably spaced with min(Δr)=%s, max(Δr)=%s (mutable)", 
-             prettysummary(minimum(z.Δᵃᵃᶜ)), 
+coordinate_summary(::Bounded, z::MutableVerticalDiscretization, name) =
+    @sprintf("variably spaced with min(Δr)=%s, max(Δr)=%s (mutable)",
+             prettysummary(minimum(z.Δᵃᵃᶜ)),
              prettysummary(maximum(z.Δᵃᵃᶜ)))

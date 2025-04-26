@@ -1,0 +1,116 @@
+env:
+  JULIA_VERSION: "1.10.9"
+  JULIA_MINOR_VERSION: "1.10"
+  TARTARUS_HOME: "/storage5/buildkite-agent"
+  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
+  JULIA_NUM_PRECOMPILE_TASKS: 24
+  JULIA_NUM_THREADS: 8
+  NSYS: "/storage6/nsight/bin/nsys"
+  CUDA_VISIBLE_DEVICES: "1" # Tartarus device for GPU Benchmarking
+  TMPDIR: "$TARTARUS_HOME/tmp"
+
+steps:
+  - label: "🏕️ initialize tartarus environment"
+    key: "init"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "init"
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+    command: |
+      # Download julia binaries
+      wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
+      tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
+    agents:
+      queue: "Oceananigans-benchmarks"
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - wait
+    
+  - label: "🚀 Oceananigans GPU benchmarks"
+    key: "benchmarks"
+    agents:
+      queue: "Oceananigans-benchmarks"
+
+    command: |
+      # Instantiate
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
+
+      # List of benchmark groups
+      BENCHMARK_GROUPS=(
+        "periodic"
+        "bounded"
+        "periodic_cheap_advection"
+        "bounded_cheap_advection"
+        "immersed"
+      )
+      
+      # Profile each benchmark group, save output in txt and remove profiles
+      for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
+        # Run benchmarks
+        export BENCHMARK_GROUP
+        OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
+
+        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
+
+        # Remove generated output files
+        rm \${OUTPUT_PREFIX}.nsys-rep
+        rm \${OUTPUT_PREFIX}.sqlite
+      done
+
+    artifact_paths:
+      - "periodic_output.txt"
+      - "bounded_output.txt"
+      - "periodic_cheap_advection_output.txt"
+      - "bounded_cheap_advection_output.txt"
+      - "immersed_output.txt"
+    soft_fail:
+      - exit_status: 3
+
+  - label: "⬇ Fetch and compare with main"
+    key: "fetch-compare"
+    agents:
+      queue: "Oceananigans-benchmarks"
+
+    command: |
+      # First we donwload the artifacts from the current PR build
+      buildkite-agent artifact download "*.txt" .
+
+      # Getting the JSON file of the latest passing main build
+      MAIN_BUILD_JSON=\$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?branch=main&state=passed&per_page=1")
+
+      export MAIN_BUILD_NUM=\$(echo "\$MAIN_BUILD_JSON" | jq -r '.[0].number')
+      echo \$MAIN_BUILD_NUM
+
+      # Then we fetch the artifacts from the main branch build
+      curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/\${MAIN_BUILD_NUM}/artifacts" \
+        -o artifacts.json
+
+      echo "🔍 artifacts.json contents:"
+      cat artifacts.json
+
+      # Comparing the artifacts, creating the diff files and uploading them
+      for file in \$(jq -r '.[] | select(.filename | endswith(".txt")) | .filename' artifacts.json); do
+          echo "Downloading \$file from main..."
+          url=$(jq -r --arg filename "\$file" '.[] | select(.filename == \$filename) | .download_url' artifacts.json)
+          curl -s -L -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "\$url" -o "baseline_\$file"
+
+          echo "Comparing \$file with baseline..."
+          if [ -f "\$file" ]; then
+              diff -u "baseline_\$file" "\$file" > "diff_\$file" || true
+          else
+              echo "\$file not found in PR build. Skipping diff." > "diff_\$file"
+          fi
+      done
+
+    artifact_paths:
+      - "diff_periodic_output.txt"
+      - "diff_bounded_output.txt"
+      - "diff_periodic_cheap_advection_output.txt"
+      - "diff_bounded_cheap_advection_output.txt"
+      - "diff_immersed_output.txt"

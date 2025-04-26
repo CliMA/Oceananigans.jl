@@ -6,7 +6,7 @@ import Base: length
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
-##### 
+#####
 ##### Multi Region Object
 #####
 
@@ -37,7 +37,7 @@ MultiRegionObject(regional_objects::Tuple; devices=Tuple(CPU() for _ in regional
 
 
 #####
-##### Convenience structs 
+##### Convenience structs
 #####
 
 struct Reference{R}
@@ -120,7 +120,7 @@ Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
-    if isnothing(multi_region_args) 
+    if isnothing(multi_region_args)
         devs = devices(multi_region_kwargs)
     else
         devs = devices(multi_region_args)
@@ -134,7 +134,7 @@ Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
     sync_all_devices!(devs)
 
     return nothing
-end 
+end
 
 @inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =
     construct_regionally(1, regional_func, args...; kwargs...)
@@ -147,7 +147,7 @@ end
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
-    if isnothing(multi_region_args) 
+    if isnothing(multi_region_args)
         devs = devices(multi_region_kwargs)
     else
         devs = devices(multi_region_args)
@@ -177,7 +177,7 @@ end
     for dev in devices
         switch_device!(dev)
         sync_device!(dev)
-    end 
+    end
 end
 
 @inline sync_device!(::Nothing)  = nothing
@@ -186,12 +186,12 @@ end
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
 
 
-# TODO: The macro errors when there is a return and the function has (args...) in the 
+# TODO: The macro errors when there is a return and the function has (args...) in the
 # signature (example using a macro on `multi_region_boundary_conditions:L74)
 
 """
     @apply_regionally expr
-    
+
 Distributes locally the function calls in `expr`ession
 
 It calls [`apply_regionally!`](@ref) when the functions do not return anything.
@@ -235,7 +235,7 @@ macro apply_regionally(expr)
             elseif arg isa Expr && arg.head == :(=)
                 ret = arg.args[1]
                 Nret = 1
-                if arg.args[1] isa Expr 
+                if arg.args[1] isa Expr
                     Nret = length(arg.args[1].args)
                 end
                 exp = arg.args[2]

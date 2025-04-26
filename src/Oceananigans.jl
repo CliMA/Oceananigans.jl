@@ -18,7 +18,7 @@ export
 
     # Pointwise spacing, area, and volume operators
     xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
-    
+
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
@@ -79,7 +79,7 @@ export
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
-    PressureField, fields, ZStar, ZCoordinate,
+    PressureField, fields,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
@@ -96,7 +96,7 @@ export
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    NetCDFWriter, JLD2Writer, Checkpointer,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
@@ -141,7 +141,7 @@ function __init__()
 end
 
 # List of fully-supported floating point types where applicable.
-# Currently used only in the Advection module to specialize 
+# Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
 const fully_supported_float_types = (Float32, Float64)
 

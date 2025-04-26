@@ -203,9 +203,9 @@ add_callback!(simulation, progress_message, IterationInterval(20))
 
 # ## Output
 #
-# We use the `JLD2OutputWriter` to save ``x, z`` slices of the velocity fields,
+# We use the `JLD2Writer` to save ``x, z`` slices of the velocity fields,
 # tracer fields, and eddy diffusivities. The `prefix` keyword argument
-# to `JLD2OutputWriter` indicates that output will be saved in
+# to `JLD2Writer` indicates that output will be saved in
 # `ocean_wind_mixing_and_convection.jld2`.
 
 ## Create a NamedTuple with eddy viscosity
@@ -214,11 +214,11 @@ eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
 filename = "ocean_wind_mixing_and_convection"
 
 simulation.output_writers[:slices] =
-    JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
-                     filename = filename * ".jld2",
-                     indices = (:, grid.Ny/2, :),
-                     schedule = TimeInterval(1minute),
-                     overwrite_existing = true)
+    JLD2Writer(model, merge(model.velocities, model.tracers, eddy_viscosity),
+               filename = filename * ".jld2",
+               indices = (:, grid.Ny/2, :),
+               schedule = TimeInterval(1minute),
+               overwrite_existing = true)
 
 # We're ready:
 
