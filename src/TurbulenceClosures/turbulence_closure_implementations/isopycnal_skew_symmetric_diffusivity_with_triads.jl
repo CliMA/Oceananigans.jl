@@ -346,22 +346,10 @@ Base.show(io::IO, closure::TISSD) =
 
 @inline not_peripheral_node(args...) = !peripheral_node(args...)
 
-@inline function mask_inactive_points_ℑxzᶜᵃᶜ(i, j, k, grid, f::Function, args...) 
-    neighboring_active_nodes = ℑxzᶜᵃᶜ(i, j, k, grid, not_peripheral_node, Face(), Center(), Face())
-    return ifelse(neighboring_active_nodes == 0, zero(grid),
-                  ℑxzᶜᵃᶜ(i, j, k, grid, f, args...) / neighboring_active_nodes)
-end
-
-@inline function mask_inactive_points_ℑyzᵃᶜᶜ(i, j, k, grid, f::Function, args...) 
-    neighboring_active_nodes = @inbounds ℑyzᵃᶜᶜ(i, j, k, grid, not_peripheral_node, Center(), Face(), Face())
-    return ifelse(neighboring_active_nodes == 0, zero(grid),
-                  ℑyzᵃᶜᶜ(i, j, k, grid, f, args...) / neighboring_active_nodes)
-end
-
 # the `tapering_factor` function as well as the slope function `Sxᶠᶜᶠ` and `Syᶜᶠᶠ`
 # are defined in the `advective_skew_diffusion.jl` file
 @inline function tapering_factorᶜᶜᶜ(i, j, k, grid, slope_limiter, buoyancy, tracers)
-    Sx = mask_inactive_points_ℑxzᶜᵃᶜ(i, j, k, grid, Sxᶠᶜᶠ, buoyancy, tracers)
-    Sy = mask_inactive_points_ℑyzᵃᶜᶜ(i, j, k, grid, Syᶜᶠᶠ, buoyancy, tracers)
+    Sx = active_weighted_ℑxzᶜᶜᶜ(i, j, k, grid, Sxᶠᶜᶠ, buoyancy, tracers)
+    Sy = active_weighted_ℑyzᶜᶜᶜ(i, j, k, grid, Syᶜᶠᶠ, buoyancy, tracers)
     return tapering_factor(Sx, Sy, slope_limiter)
 end
