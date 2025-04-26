@@ -27,7 +27,7 @@ function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = 
     η     = model.free_surface.η
 
     launch!(architecture(grid), grid, parameters, _update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
+            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
@@ -41,7 +41,7 @@ function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = 
     return nothing
 end
 
-@kernel function _update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
+@kernel function _update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
     i, j = @index(Global, NTuple)
     k_top = size(grid, 3) + 1
 
@@ -69,6 +69,12 @@ end
         σᶠᶜⁿ[i, j, 1] = σᶠᶜ
         σᶜᶠⁿ[i, j, 1] = σᶜᶠ
         σᶠᶠⁿ[i, j, 1] = σᶠᶠ
+
+        # update current scaling reciprocal 
+        σ⁻¹ᶜᶜⁿ[i, j, 1] = 1 / σᶜᶜ
+        σ⁻¹ᶠᶜⁿ[i, j, 1] = 1 / σᶠᶜ
+        σ⁻¹ᶜᶠⁿ[i, j, 1] = 1 / σᶜᶠ
+        σ⁻¹ᶠᶠⁿ[i, j, 1] = 1 / σᶠᶠ
 
         # Update η in the grid
         ηⁿ[i, j, 1] = η[i, j, k_top]
@@ -153,6 +159,6 @@ end
     i, j = @index(Global, NTuple)
 
     @unroll for k in -Hz+1:Nz+Hz
-        tracer[i, j, k] /= σⁿ(i, j, k, grid, Center(), Center(), Center())
+        tracer[i, j, k] *= σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
     end
 end

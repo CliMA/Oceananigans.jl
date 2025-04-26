@@ -23,24 +23,32 @@ Fields
 - `Δᶠ::F`: Face-centered grid spacing.
 """
 struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
-    cᵃᵃᶠ :: C
-    cᵃᵃᶜ :: D
-    Δᵃᵃᶠ :: E
-    Δᵃᵃᶜ :: F
+      cᵃᵃᶠ :: C
+      cᵃᵃᶜ :: D
+      Δᵃᵃᶠ :: E
+      Δᵃᵃᶜ :: F
+    Δ⁻¹ᵃᵃᶠ :: E
+    Δ⁻¹ᵃᵃᶜ :: F
 end
 
 struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
-    cᵃᵃᶠ :: C
-    cᵃᵃᶜ :: D
-    Δᵃᵃᶠ :: E
-    Δᵃᵃᶜ :: F
-      ηⁿ :: H
-    σᶜᶜⁿ :: CC
-    σᶠᶜⁿ :: FC
-    σᶜᶠⁿ :: CF
-    σᶠᶠⁿ :: FF
-    σᶜᶜ⁻ :: CC
-    ∂t_σ :: CC
+      cᵃᵃᶠ :: C
+      cᵃᵃᶜ :: D
+      Δᵃᵃᶠ :: E
+      Δᵃᵃᶜ :: F
+    Δ⁻¹ᵃᵃᶠ :: E
+    Δ⁻¹ᵃᵃᶜ :: F
+        ηⁿ :: H
+      σᶜᶜⁿ :: CC
+      σᶠᶜⁿ :: FC
+      σᶜᶠⁿ :: CF
+      σᶠᶠⁿ :: FF
+    σ⁻¹ᶜᶜⁿ :: CC
+    σ⁻¹ᶠᶜⁿ :: FC
+    σ⁻¹ᶜᶠⁿ :: CF
+    σ⁻¹ᶠᶠⁿ :: FF
+      σᶜᶜ⁻ :: CC
+      ∂t_σ :: CC
 end
 
 """
@@ -74,24 +82,34 @@ Adapt.adapt_structure(to, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                              Adapt.adapt(to, coord.cᵃᵃᶜ),
                              Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                             Adapt.adapt(to, coord.Δᵃᵃᶜ))
+                             Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                             Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                             Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ))
 
 on_architecture(arch, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                              on_architecture(arch, coord.cᵃᵃᶜ),
                              on_architecture(arch, coord.Δᵃᵃᶠ),
-                             on_architecture(arch, coord.Δᵃᵃᶜ))
+                             on_architecture(arch, coord.Δᵃᵃᶜ),
+                             on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                             on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ))
 
 Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                               Adapt.adapt(to, coord.cᵃᵃᶜ),
                               Adapt.adapt(to, coord.Δᵃᵃᶠ),
                               Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                              Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                              Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ),
                               Adapt.adapt(to, coord.ηⁿ),
                               Adapt.adapt(to, coord.σᶜᶜⁿ),
                               Adapt.adapt(to, coord.σᶠᶜⁿ),
                               Adapt.adapt(to, coord.σᶜᶠⁿ),
                               Adapt.adapt(to, coord.σᶠᶠⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶜᶜⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶠᶜⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶜᶠⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶠᶠⁿ),
                               Adapt.adapt(to, coord.σᶜᶜ⁻),
                               Adapt.adapt(to, coord.∂t_σ))
 
@@ -100,11 +118,17 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
                               on_architecture(arch, coord.cᵃᵃᶜ),
                               on_architecture(arch, coord.Δᵃᵃᶠ),
                               on_architecture(arch, coord.Δᵃᵃᶜ),
+                              on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                              on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ),
                               on_architecture(arch, coord.ηⁿ),
                               on_architecture(arch, coord.σᶜᶜⁿ),
                               on_architecture(arch, coord.σᶠᶜⁿ),
                               on_architecture(arch, coord.σᶜᶠⁿ),
                               on_architecture(arch, coord.σᶠᶠⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶜᶜⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶠᶜⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶜᶠⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶠᶠⁿ),
                               on_architecture(arch, coord.σᶜᶜ⁻),
                               on_architecture(arch, coord.∂t_σ))
 

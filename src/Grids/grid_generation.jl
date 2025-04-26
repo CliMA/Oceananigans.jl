@@ -88,7 +88,9 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
     if coordinate_name == :z
-        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
+        Δ⁻¹ᶜ = OffsetArray(1 ./ parent(Δᶜ), -H)
+        Δ⁻¹ᶠ = OffsetArray(1 ./ parent(Δᶠ), -H - 1)
+        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ, Δ⁻¹ᶠ, Δ⁻¹ᶜ)
     else
         return L, F, C, Δᶠ, Δᶜ
     end
@@ -107,7 +109,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     L = c₂ - c₁
 
     # Convert to get the correct type also when using single precision
-    Δᶠ = Δᶜ = Δ = L / N
+    Δᶠ = Δᶜ = Δ = FT(L / N)
 
     F₋ = c₁ - H * Δ
     F₊ = F₋ + total_extent(topo, H, Δ, L)
@@ -128,16 +130,18 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     C = OffsetArray(C, -H)
 
     if coordinate_name == :z
-        return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))
+        Δ⁻¹ᶜ = 1 / Δᶜ
+        Δ⁻¹ᶠ = 1 / Δᶠ
+        return FT(L), StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ, Δ⁻¹ᶠ, Δ⁻¹ᶜ)
     else
-        return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+        return FT(L), F, C, Δᶠ, Δᶜ
     end
 end
 
 # Flat domains
 function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch)
     if coordinate_name == :z
-        return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
+        return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1), FT(1), FT(1))
     else
         return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
     end
@@ -148,7 +152,7 @@ end
 #     FT(1), c, c, FT(1), FT(1)
 function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch)
     if coordinate_name == :z
-        return FT(1), StaticVerticalDiscretization(nothing, nothing, FT(1), FT(1))
+        return FT(1), StaticVerticalDiscretization(nothing, nothing, FT(1), FT(1), FT(1), FT(1))
     else
         return FT(1), nothing, nothing, FT(1), FT(1)
     end
@@ -181,7 +185,14 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
 
     r_faces = coordinate.cᵃᵃᶠ
 
-    Lr, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
+    Lr, r = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :z, arch)
+
+    rᵃᵃᶠ  = r.cᵃᵃᶠ 
+    rᵃᵃᶜ  = r.cᵃᵃᶜ 
+    Δrᵃᵃᶠ = r.Δᵃᵃᶠ
+    Δrᵃᵃᶜ = r.Δᵃᵃᶜ
+    Δr⁻¹ᵃᵃᶠ = r.Δ⁻¹ᵃᵃᶠ
+    Δr⁻¹ᵃᵃᶜ = r.Δ⁻¹ᵃᵃᶜ
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
@@ -198,5 +209,11 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
         fill!(σ, 1)
     end
 
-    return Lr, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return Lr, MutableVerticalDiscretization(rᵃᵃᶠ,    rᵃᵃᶜ, 
+                                             Δrᵃᵃᶠ,   Δrᵃᵃᶜ, 
+                                             Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ, 
+                                             ηⁿ, 
+                                             σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, 
+                                             similar.((σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ))..., 
+                                             σᶜᶜ⁻, ∂t_σ)
 end
