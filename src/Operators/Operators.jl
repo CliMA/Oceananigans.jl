@@ -55,7 +55,7 @@ export intrinsic_vector, extrinsic_vector
 export σⁿ, σ⁻, ∂t_σ
 
 using Oceananigans.Grids
-using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF
+using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF, RightFolded
 
 #####
 ##### Convenient aliases

@@ -226,7 +226,7 @@ function TripolarGrid(arch::ShardedDistributed,
     # ``1'' here is the maximum number of dimensions of the fields of ``z''
     replicate = Sharding.Replicated(arch.connectivity)
 
-    grid = OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
+    grid = OrthogonalSphericalShellGrid{Periodic, RightFolded, Bounded}(arch,
         global_size...,
         halo...,
         convert(FT, global_grid.Lz),

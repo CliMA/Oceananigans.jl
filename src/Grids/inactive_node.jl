@@ -17,7 +17,7 @@ function build_condition(Topo, side, dim, array::Bool)
         else
             return :(($side > grid.$dim))
         end
-    else # RightConnected
+    else # RightConnected and RightFolded
         if array
             return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
@@ -36,7 +36,7 @@ end
 Return `true` when the tracer cell at `i, j, k` is "external" to the domain boundary.
 
 `inactive_cell`s include halo cells in `Bounded` directions, right halo cells in
-`LeftConnected` directions, left halo cells in `RightConnected` directions, and cells
+`LeftConnected` directions, left halo cells in `RightFolded` and `RightConnected` directions, and cells
 within an immersed boundary. Cells that are staggered with respect to tracer cells and
 which lie _on_ the boundary are considered active.
 """
@@ -45,11 +45,11 @@ which lie _on_ the boundary are considered active.
 
 # We use metaprogramming to handle all the permutations between
 # Bounded, LeftConnected, and RightConnected topologies.
-# Note that LeftConnected is equivalent to "RightBounded" and
-# RightConnected is equivalent to "LeftBounded".
-# So LeftConnected and RightConnected are "half Bounded" topologies.
+# Note that LeftConnected is equivalent to "RightBounded" while
+# RightFolded and RightConnected are equivalent to "LeftBounded".
+# So RightFolded, LeftConnected and RightConnected are "half Bounded" topologies.
 
-Topos = (:Bounded, :LeftConnected, :RightConnected)
+Topos = (:Bounded, :RightFolded, :LeftConnected, :RightConnected)
 
 for PrimaryTopo in Topos
 

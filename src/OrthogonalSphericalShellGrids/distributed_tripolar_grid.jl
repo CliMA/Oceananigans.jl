@@ -95,7 +95,16 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
-    LY = yrank == 0 ? RightConnected : FullyConnected
+    LY = if workers[2] == 1 
+        RightFolded
+    else
+        if yrank == 0 
+            RightConnected 
+        else
+            FullyConnected
+        end
+    end
+
     LX = workers[1] == 1 ? Periodic : FullyConnected
     ny = nylocal[yrank+1]
     nx = nxlocal[xrank+1]
