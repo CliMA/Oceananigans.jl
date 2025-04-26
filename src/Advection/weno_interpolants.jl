@@ -200,9 +200,9 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer)) + ϵ 
 end
 
-@inline function smoothness_indicator(ψ, scheme, red_order, val_stencil)
+@inline function smoothness_indicator(ψ, scheme::WENO{N, FT, FT2}, red_order, val_stencil) where {N, FT, FT2}
     coefficients = smoothness_coefficients(scheme, red_order, val_stencil)
-    return smoothness_operation(scheme, ψ, coefficients)
+    return smoothness_operation(scheme, FT2.(ψ), coefficients)
 end
 
 # Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5 * (βᵤ[i] + βᵥ[i]) for i in 1:buffer]
