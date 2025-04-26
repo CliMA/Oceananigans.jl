@@ -88,8 +88,8 @@ flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] 
 
 # Internal utility to launch a function mapped on an index_map
 struct MappedFunction{F, M} <: Function
-    func::F
-    index_map::M
+    func :: F
+    index_map :: M
 end
 
 # Support for 1D
