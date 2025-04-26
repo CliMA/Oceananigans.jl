@@ -93,9 +93,9 @@ A `MappedFunction` is a wrapper around a function `func` of a kernel that is map
 The `index_map` is a one-dimensional `AbstractArray` where the elements are tuple of indices `(i, j, k, ....)`.
 
 A kernel launched over a `MappedFunction` **needs** to be launched with a one-dimensional **static** workgroup and worksize.
-If using `launch!` with a non-nothing `active_cells_map`, the kernel function will be automatically wrapped in a `MappedFunction` with 
-`index_map = active_cells_map` and the resulting kernel will be launched with a one-dimensional workgroup and worksize equal 
-to the length of the `active_cells_map`.
+If using `launch!` with a non-nothing `active_cells_map` keyword argument, the kernel function will be automatically wrapped 
+in a `MappedFunction` with `index_map = active_cells_map` and the resulting kernel will be launched with a 
+one-dimensional workgroup and worksize equal  to the length of the `active_cells_map`.
 """
 struct MappedFunction{F, M} <: Function
     func :: F
