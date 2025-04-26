@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δz, Δr, Δz⁻¹, Δr⁻¹
+using Oceananigans.Operators: Δz⁻¹, Δr⁻¹
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
@@ -105,7 +105,7 @@ end
     νᵏ⁻¹     = ivd_diffusivity(i, j, k′-1, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
     Δz⁻¹ᶜₖ   = rcp_vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
     Δz⁻¹ᶠₖ₋₁ = rcp_vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
-    dl       = - Δt * νᵏ⁻¹ / (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ₋₁)
+    dl       = - Δt * νᵏ⁻¹ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ₋₁)
     return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
