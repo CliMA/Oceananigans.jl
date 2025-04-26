@@ -31,8 +31,8 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δz⁻¹ᵃˡˡ = Symbol(:Δz⁻¹, :ᵃ, L2, L1)
     Δr⁻¹ᵃˡˡ = Symbol(:Δr⁻¹, :ᵃ, L2, L1)
 
-    @eval @inline $Δr⁻¹ᵃᵃˡ(i, j, k, grid) = $Δz⁻¹ᵃᵃˡ(i, j, k, grid)
     @eval @inline $Δz⁻¹ˡᵃˡ(i, j, k, grid) = $Δz⁻¹ᵃᵃˡ(i, j, k, grid)
+    @eval @inline $Δz⁻¹ᵃˡˡ(i, j, k, grid) = $Δz⁻¹ᵃᵃˡ(i, j, k, grid)
     @eval @inline $Δr⁻¹ˡᵃˡ(i, j, k, grid) = $Δr⁻¹ᵃᵃˡ(i, j, k, grid)
     @eval @inline $Δr⁻¹ᵃˡˡ(i, j, k, grid) = $Δr⁻¹ᵃᵃˡ(i, j, k, grid)
 
