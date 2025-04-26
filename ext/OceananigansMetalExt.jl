@@ -3,7 +3,7 @@ module OceananigansMetalExt
 using Metal
 using Oceananigans
 
-using Metal: thread_position_in_threadgroup_1d
+using Metal: thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 import KernelAbstractions: __validindex

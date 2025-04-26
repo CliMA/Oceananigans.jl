@@ -2,14 +2,14 @@ module OceananigansAMDGPUExt
 
 using AMDGPU
 using Oceananigans
+using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
+import KernelAbstractions: __validindex
 
 import Oceananigans.Architectures:
     architecture,
     convert_to_device,
     on_architecture
-
-using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 const ROCGPU = GPU{<:AMDGPU.ROCBackend}
 ROCGPU() = GPU(AMDGPU.ROCBackend())
