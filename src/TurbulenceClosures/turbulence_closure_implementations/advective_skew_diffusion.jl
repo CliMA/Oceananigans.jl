@@ -93,11 +93,11 @@ end
     slope_limiter = closure.slope_limiter
 
     @inbounds begin
-        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields)
-        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)
+        uₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields) * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
+        vₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields) * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 
-        wˣ = δxᶜᶜᶠ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields) 
-        wʸ = δyᶜᶜᶠ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)  
+        wˣ = δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields) 
+        wʸ = δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)  
         
         wₑ[i, j, k] =  (wˣ + wʸ) * Az⁻¹ᶜᶜᶠ(i, j, k, grid)
     end
