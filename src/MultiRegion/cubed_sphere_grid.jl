@@ -239,8 +239,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                         radius,
                                         halo = region_halo,
                                         rotation = region_rotation,
-                                        non_uniform_conformal_mapping = non_uniform_conformal_mapping,
-                                        spacing_type = spacing_type)
+                                        non_uniform_conformal_mapping,
+                                        spacing_type)
 
     # Propagate the vertical coordinate type in the `MultiRegionGrid`.
     CZ = typeof(getregion(region_grids, 1).z)
