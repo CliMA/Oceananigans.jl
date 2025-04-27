@@ -174,7 +174,6 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=archit
                                             radius = old_grid.radius,
                                             halo = new_halo,
                                             rotation,
-                                            use_provided_conformal_mapping = true,
                                             provided_conformal_mapping)
 
     return new_grid
@@ -193,7 +192,6 @@ end
                                  rotation = nothing,
                                  non_uniform_conformal_mapping = false,
                                  spacing_type = "geometric",
-                                 use_provided_conformal_mapping = false,
                                  provided_conformal_mapping = nothing)
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been conformally mapped from
@@ -244,11 +242,7 @@ Keyword arguments
 - `spacing_type`: Specifies the spacing scheme for the non-uniform conformal mapping. Options are `"geometric"`
                   (default) or `"exponential"`.
 
-- `use_provided_conformal_mapping`: If `true`, the cubed sphere panel grid will use the conformal mapping supplied by 
-                                    the user. Defaults to `false`.
-
-- `provided_conformal_mapping`: The conformal mapping supplied by the user. Used only if use_provided_conformal_mapping 
-                                is true.
+- `provided_conformal_mapping`: The conformal mapping supplied by the user.
 
 Examples
 ========
@@ -291,7 +285,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                                       rotation = nothing,
                                       non_uniform_conformal_mapping = false,
                                       spacing_type = "geometric",
-                                      use_provided_conformal_mapping = false,
                                       provided_conformal_mapping = nothing)
 
     radius = FT(radius)
@@ -308,7 +301,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-    if use_provided_conformal_mapping
+    if !isnothing(provided_conformal_mapping)
         ξᶠᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ)
         ηᵃᶠᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ)
         ξᶜᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ)
