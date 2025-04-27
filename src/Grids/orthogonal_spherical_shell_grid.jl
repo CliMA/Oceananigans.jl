@@ -97,7 +97,7 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
 end
 
 const OSSG = OrthogonalSphericalShellGrid
-const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
+const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
 # convenience constructor for OSSG without any conformal_mapping properties
