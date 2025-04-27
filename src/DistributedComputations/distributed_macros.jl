@@ -9,7 +9,7 @@ using MPI
 mpi_initialized()     = MPI.Initialized()
 mpi_rank(comm)        = MPI.Comm_rank(comm)
 mpi_size(comm)        = MPI.Comm_size(comm)
-global_barrier(comm)  = MPI.Barrier(comm) 
+global_barrier(comm)  = MPI.Barrier(comm)
 global_communicator() = MPI.COMM_WORLD
 
 """
@@ -73,7 +73,7 @@ macro onrank(rank, exp)
     return esc(command)
 end
 
-""" 
+"""
     @distribute communicator for i in iterable
         ...
     end
@@ -90,7 +90,7 @@ macro distribute(communicator, exp)
     variable = exp.args[1].args[1]
     forbody  = exp.args[2]
 
-    # Safety net if the iterable variable has the same name as the 
+    # Safety net if the iterable variable has the same name as the
     # reserved variable names (nprocs, counter, rank)
     nprocs  = ifelse(variable == :nprocs,  :othernprocs,  :nprocs)
     counter = ifelse(variable == :counter, :othercounter, :counter)

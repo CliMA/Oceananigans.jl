@@ -47,6 +47,7 @@ end
 
 axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
 axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
+axis_str(::OrthogonalSphericalShellGrid, dim) = ""
 axis_str(grid::ImmersedBoundaryGrid, dim) = axis_str(grid.underlying_grid, dim)
 
 const LLGOrIBLLG = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
@@ -55,7 +56,7 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
     converted_args = convert_field_argument(f)
 
     if !(:axis ∈ keys(attributes)) # Let's try to automatically add labels and ticks
-        d1, d2, D = deduce_dimensionality(f) 
+        d1, d2, D = deduce_dimensionality(f)
         grid = f.grid
 
         if D === 1 # 1D plot

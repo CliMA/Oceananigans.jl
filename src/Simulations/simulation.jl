@@ -5,24 +5,25 @@ using Oceananigans.DistributedComputations: Distributed, all_reduce
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
+import Oceananigans.OutputWriters: write_output!
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB}
+mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
     model :: ML
     Δt :: DT
-    stop_iteration :: Float64
+    stop_iteration :: FT
     stop_time :: ST
-    wall_time_limit :: Float64
+    wall_time_limit :: FT
     diagnostics :: DI
     output_writers :: OW
     callbacks :: CB
-    run_wall_time :: Float64
-    align_time_step :: Bool
-    running :: Bool
-    initialized :: Bool
-    verbose :: Bool
-    minimum_relative_step :: Float64
+    run_wall_time :: FT
+    align_time_step :: BL
+    running :: BL
+    initialized :: BL
+    verbose :: BL
+    minimum_relative_step :: FT
 end
 
 """
@@ -194,11 +195,11 @@ function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
         if sim.verbose
             msg = string("Model iteration ", iteration(sim), " equals or exceeds stop iteration ", Int(sim.stop_iteration), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -208,11 +209,11 @@ function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
         if sim.verbose
             msg = string("Simulation time ", prettytime(sim), " equals or exceeds stop time ", prettytime(sim.stop_time), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -226,9 +227,16 @@ function wall_time_limit_exceeded(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
 end
+
+#####
+##### Writing output and checkpointing
+#####
+
+# Fallback, to be elaborated on
+write_output!(writer, sim::Simulation) = write_output!(writer, sim.model)
 

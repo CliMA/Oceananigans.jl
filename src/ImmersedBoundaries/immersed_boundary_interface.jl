@@ -47,10 +47,17 @@ As well as
 * `inactive_node(i-1, 1, 1, grid, f, c, c) = true`
 """
 @inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
+@inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = immersed_cell(i, j, k, ibg) .| inactive_cell(i, j, k, ibg.underlying_grid)
 
 # Isolate periphery of the immersed boundary
 @inline immersed_peripheral_node(i, j, k, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) &
                                                                   !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
-@inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
+@inline immersed_peripheral_node(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) .&
+                                                                  Base.broadcast(!, peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ))
+
+@inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) = inactive_node(i, j, k, ibg, LX, LY, LZ) &
                                                                 !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+
+@inline immersed_inactive_node(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) .&
+                                                                Base.broadcast(!, inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ))
