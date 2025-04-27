@@ -118,14 +118,14 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     current_particle_indices = (i, j, k)
 
-    up = interpolate(X, velocities.u, (f, c, c), grid)
-    vp = interpolate(X, velocities.v, (c, f, c), grid)
-    wp = interpolate(X, velocities.w, (c, c, f), grid)
+    uf = interpolate(X, velocities.u, (f, c, c), grid)
+    vf = interpolate(X, velocities.v, (c, f, c), grid)
+    wf = interpolate(X, velocities.w, (c, c, f), grid)
 
     # Interpolate velocity to particle position
-    u = particle_u_velocity(particles, p, up)
-    v = particle_v_velocity(particles, p, vp)
-    w = particle_w_velocity(particles, p, wp)
+    up = particle_u_velocity(particles, p, uf)
+    vp = particle_v_velocity(particles, p, vf)
+    wp = particle_w_velocity(particles, p, wf)
 
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
@@ -133,9 +133,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     ξ = x_metric(i, j, grid)
     η = y_metric(i, j, grid)
 
-    x⁺ = x + ξ * u * Δt
-    y⁺ = y + η * v * Δt
-    z⁺ = z +     w * Δt
+    x⁺ = x + ξ * up * Δt
+    y⁺ = y + η * vp * Δt
+    z⁺ = z +     wp * Δt
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))
@@ -168,9 +168,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     return (x⁺, y⁺, z⁺)
 end
 
-@inline particle_u_velocity(particles, p, up) = up
-@inline particle_v_velocity(particles, p, vp) = vp
-@inline particle_w_velocity(particles, p, wp) = wp
+@inline particle_u_velocity(particles, p, uf) = uf
+@inline particle_v_velocity(particles, p, vf) = vf
+@inline particle_w_velocity(particles, p, wf) = wf
 
 # Calculate the metric for particle advection according to the coordinate system of the `grid`:
 #     * Unity metric for `RectilinearGrid` / Cartesian coordinates
