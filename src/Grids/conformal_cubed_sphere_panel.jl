@@ -242,7 +242,7 @@ Keyword arguments
 - `spacing_type`: Specifies the spacing scheme for the non-uniform conformal mapping. Options are `"geometric"`
                   (default) or `"exponential"`.
 
-- `provided_conformal_mapping`: The conformal mapping supplied by the user.
+- `provided_conformal_mapping`: The conformal mapping supplied by the user. Defaults to nothing.
 
 Examples
 ========

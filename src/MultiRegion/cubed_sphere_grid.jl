@@ -25,6 +25,7 @@ const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY,
                              radius = R_Earth,
                              non_uniform_conformal_mapping = false,
                              spacing_type = "geometric",
+                             provided_conformal_mapping = nothing,
                              partition = CubedSpherePartition(; R = 1),
                              devices = nothing)
 
@@ -32,7 +33,7 @@ Return a `ConformalCubedSphereGrid` that comprises of six [`conformal_cubed_sphe
 of these grids as a "panel". Each panel corresponds to a face of the cube.
 
 The keyword arguments prescribe the properties of each of the panels. Only the topology in the vertical direction can be
-prescribed and that's done via the `z_topology` keyword argumet (default: `Bounded`). Topologies in both horizontal
+prescribed and that's done via the `z_topology` keyword argument (default: `Bounded`). Topologies in both horizontal
 directions for a `ConformalCubedSphereGrid` are _always_ [`FullyConnected`](@ref).
 
 Halo size in both horizontal dimensions _must_ be equal; this is prescribed via the `horizontal_halo :: Integer` keyword
@@ -64,12 +65,11 @@ The connectivity between the `ConformalCubedSphereGrid` panels is depicted below
 
 The North Pole of the sphere lies in the center of panel 3 (P3) and the South Pole in the center of panel 6 (P6).
 
-The `partition` keyword argument prescribes the partitioning in regions within each
-panel; see [`CubedSpherePartition`](@ref). For example, a `CubedSpherePartition(; R=2)`
-implies that each of the panels are partitioned into 2 regions in each dimension;
-this adds up, e.g., to 24 regions for the  whole sphere. In the depiction below,
-the intra-panel `x, y` indices are depicted in the center of each region and the overall
-region index is shown at the bottom right of each region.
+The `partition` keyword argument prescribes the partitioning in regions within each panel; see
+[`CubedSpherePartition`](@ref). For example, a `CubedSpherePartition(; R=2)` implies that each of the panels are
+partitioned into 2 regions in each dimension; this adds up, e.g., to 24 regions for the  whole sphere. In the depiction
+below, the intra-panel `x, y` indices are depicted in the center of each region and the overall region index is shown at
+the bottom right of each region.
 
 ```
                                                 +==========+==========+==========+==========+
@@ -190,6 +190,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                   radius = R_Earth,
                                   non_uniform_conformal_mapping = false,
                                   spacing_type = "geometric",
+                                  provided_conformal_mapping = nothing,
                                   partition = CubedSpherePartition(; R = 1),
                                   devices = nothing)
 
@@ -240,7 +241,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                         halo = region_halo,
                                         rotation = region_rotation,
                                         non_uniform_conformal_mapping,
-                                        spacing_type)
+                                        spacing_type,
+                                        provided_conformal_mapping)
 
     # Propagate the vertical coordinate type in the `MultiRegionGrid`.
     CZ = typeof(getregion(region_grids, 1).z)
