@@ -443,7 +443,7 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
     region_grids = grid.region_grids
     @apply_regionally new_region_grids = on_architecture(arch, region_grids)
 
-    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
+    new_devices = csg.region_grids.devices
 
     new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
 
