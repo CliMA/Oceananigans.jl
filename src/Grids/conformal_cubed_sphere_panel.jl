@@ -375,7 +375,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         Δxᶠᶜᵃ[1, j] = 2 * haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]), radius)
     =#
 
-
     Δxᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
     Δxᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
     Δxᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
@@ -387,7 +386,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         for i in 1:Nξ, j in 1:Nη
             Δxᶜᶜᵃ[i, j] = haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
         end
-
 
         # Δxᶠᶜᵃ
 
@@ -405,13 +403,11 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             Δxᶠᶜᵃ[i, j] = 2haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
         end
 
-
         # Δxᶜᶠᵃ
 
         for j in 1:Nη+1, i in 1:Nξ
             Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
         end
-
 
         # Δxᶠᶠᵃ
 
@@ -442,7 +438,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             Δyᶜᶜᵃ[i, j] = haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
         end
 
-
         # Δyᶜᶠᵃ
 
         for j in 2:Nη, i in 1:Nξ
@@ -459,13 +454,11 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             Δyᶜᶠᵃ[i, j] = 2haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
         end
 
-
         # Δyᶠᶜᵃ
 
         for j in 1:Nη, i in 1:Nξ+1
             Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
         end
-
 
         # Δyᶠᶠᵃ
 
@@ -525,7 +518,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             Azᶜᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
-
         # Azᶠᶜᵃ
 
         for j in 1:Nη, i in 2:Nξ
@@ -557,7 +549,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
-
         # Azᶜᶠᵃ
 
         for j in 2:Nη, i in 1:Nξ
@@ -588,7 +579,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
             Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
-
 
         # Azᶠᶠᵃ
 
