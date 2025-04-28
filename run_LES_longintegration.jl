@@ -154,4 +154,6 @@ simulation.output_writers[:jld2] = JLD2OutputWriter(model, averaged_outputs,
                                                     schedule = TimeInterval(120minutes),
                                                     overwrite_existing = true)
 
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(10days), prefix="$(OUTPUT_PATH)/model_checkpoint")
+
 run!(simulation)
