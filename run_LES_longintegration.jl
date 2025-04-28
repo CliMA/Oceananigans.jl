@@ -66,6 +66,9 @@ model = NonhydrostaticModel(grid = grid,
                             tracers = (:T, :S),
                             boundary_conditions = (; T = T_bcs, S = S_bcs, u = u_bcs))
 
+const ρ₀ = eos.reference_density
+const g = model.buoyancy.model.gravitational_acceleration
+
 noise(z) = rand() * exp(z / 8)
 
 T_initial_noisy(x, y, z) = T_initial(z) + 1e-6 * noise(z)
