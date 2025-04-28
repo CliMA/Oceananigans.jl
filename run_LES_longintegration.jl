@@ -48,8 +48,8 @@ grid = RectilinearGrid(GPU(),
                         y = (0, Ly),
                         z = (-Lz, 0))
 
-@inline T_flux(t) = Qᵀ * cos(2π / T_period * t) + Qᵀ / 2
-@inline S_flux(t) = Qˢ * cos(2π / S_period * t)
+@inline T_flux(x, y, t) = Qᵀ * cos(2π / T_period * t) + Qᵀ / 2
+@inline S_flux(x, y, t) = Qˢ * cos(2π / S_period * t)
 
 u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵁ))
 
@@ -68,8 +68,8 @@ model = NonhydrostaticModel(grid = grid,
 
 noise(z) = rand() * exp(z / 8)
 
-T_initial_noisy(z) = T_initial(z) + 1e-6 * noise(z)
-S_initial_noisy(z) = S_initial(z) + 1e-6 * noise(z)
+T_initial_noisy(x, y, z) = T_initial(z) + 1e-6 * noise(z)
+S_initial_noisy(x, y, z) = S_initial(z) + 1e-6 * noise(z)
 
 set!(model, T=T_initial_noisy, S=S_initial_noisy)
 
