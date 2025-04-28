@@ -16,7 +16,7 @@ import Oceananigans.TurbulenceClosures:
         viscous_flux_wy,
         viscous_flux_wz
 
-using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b 
+using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b, g_Earth
 using Oceananigans.Coriolis
 using Oceananigans.Grids: φnode
 using Oceananigans.Grids: total_size
@@ -167,8 +167,11 @@ end
 
     scaling = closure.scaling
 
-    ρ₀ = buoyancy.model.equation_of_state.reference_density
-    g  = buoyancy.model.gravitational_acceleration
+    # ρ₀ = buoyancy.model.equation_of_state.reference_density
+    # g  = buoyancy.model.gravitational_acceleration
+
+    ρ₀ = TEOS10EquationOfState().reference_density
+    g = g_Earth
 
     @inbounds k_first = first_index[i, j, 1]
     @inbounds k_last = last_index[i, j, 1]
@@ -225,7 +228,10 @@ end
     # Find the first index of the background κᶜ
     kloc = grid.Nz+1
 
-    stability_threshold_cutoff = grid.Nz - 49
+    # stability_threshold_cutoff = grid.Nz - 49
+
+    # stability threshold cut off is reduced to avoid misdiagnosing the base of ML when mixed layer is not completely homogenous due to local entrainment-driven mixing
+    stability_threshold_cutoff = grid.Nz - 24
     stability_threshold = 8/2
     @inbounds for k in grid.Nz:-1:2
         unstable = Ri[i, j, k] < Riᶜ
