@@ -21,7 +21,7 @@ using SeawaterPolynomials:TEOS10
 using ColorSchemes
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_zWENO5_NN_closure_NDE5_Ri_BBLRifirztzone510train62newstrongSO_20seed_round3_Ri8020_100years"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_zWENO5_NN_closure_NDE5_Ri_BBLRifirztzone510train62newstrongSO_20seed_round3_Ri8020_100years_threshold24"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 @info "$(FILE_DIR)"
@@ -151,11 +151,6 @@ model = HydrostaticFreeSurfaceModel(
 
 @info "Built $model."
 
-#####
-##### Initial conditions
-#####
-
-# resting initial condition
 noise(z) = rand() * exp(z / 8)
 
 T_initial_noisy(x, y, z) = T_initial(x, y, z) + 1e-6 * noise(z)
