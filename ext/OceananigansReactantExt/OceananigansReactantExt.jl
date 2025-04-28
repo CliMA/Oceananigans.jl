@@ -18,7 +18,7 @@ using .Utils
 include("Architectures.jl")
 using .Architectures
 
-include("Grids.jl")
+include("Grids/Grids.jl")
 using .Grids
 
 include("Fields.jl")
@@ -36,8 +36,6 @@ using .Models
 include("Simulations/Simulations.jl")
 using .Simulations
 
-include("ShardedGrids.jl")
-
 include("OutputReaders.jl")
 using .OutputReaders
 
@@ -45,7 +43,7 @@ using .OutputReaders
 ##### Telling Reactant how to construct types
 #####
 
-import ConstructionBase: constructorof 
+import ConstructionBase: constructorof
 
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
 constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInvariant{N, FT, M}
@@ -183,7 +181,7 @@ end
     @assert size(tvals) == size(c)
     gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func, gf))
-    
+
     return Reactant.Ops.select(
                 conds,
                 tvals,
@@ -206,10 +204,29 @@ end
             end
         end)...)
     end
-    
+
     tvals = Reactant.Ops.fill(Reactant.unwrapped_eltype(Base.eltype(c)), size(c))
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(Fix1v2(evalkern, c), axes2...))
     return tvals
+end
+
+function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}, Δt)
+    nt = Oceananigans.TimeSteppers.next_time(clock, Δt)
+    clock.time.mlir_data = nt.mlir_data
+    nt
+end
+
+function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}, Δt; stage=false)
+    Oceananigans.TimeSteppers.tick_time!(clock, Δt)
+
+    if stage # tick a stage update
+        clock.stage += 1
+    else # tick an iteration and reset stage
+        clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+        clock.stage = 1
+    end
+
+    return nothing
 end
 
 @inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)

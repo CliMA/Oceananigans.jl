@@ -104,7 +104,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
                            topology = (Periodic, Bounded, Bounded),
                            size = (Nx, Ny, Nz),
                            halo = (Hx, Hy, Hz),
-                           extent = (1, 2, 3))
+                           x = (0, 1), y = (0, 2), z = LinRange(0, 3, Nz + 1))
 
     model = NonhydrostaticModel(; grid,
                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
@@ -333,7 +333,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
                                  halo = (Hλ, Hφ, Hz),
                                  longitude = (-15, 15),
                                  latitude = (-10, 10),
-                                 z = (-1000, 0))
+                                 z = LinRange(-1000, 0, Nz + 1))
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                           momentum_advection = VectorInvariant(),
@@ -2551,7 +2551,7 @@ function test_netcdf_free_surface_only_output(arch)
 
     # Kind of a hack because we want η to be a ReducedField.
     outputs = (;
-        η = Average(model.free_surface.η, dims=3)
+        η = Average(model.free_surface.η, dims=3),
     )
 
     Arch = typeof(arch)
@@ -2618,7 +2618,7 @@ function test_netcdf_free_surface_mixed_output(arch)
 
     # Kind of a hack because we want η to be a ReducedField.
     free_surface_outputs = (;
-        η = Average(model.free_surface.η, dims=3)
+        η = Average(model.free_surface.η, dims=3),
     )
 
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)

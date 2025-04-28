@@ -60,11 +60,11 @@ DataDeps.register(dd)
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
-    #:PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = nothing), 
-    :MatrixImplicitFreeSurfaceOrd2 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver), 
-    #:MatrixImplicitFreeSurfaceOrd1 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 1,) ), 
-    #:MatrixImplicitFreeSurfaceOrd0 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 0,) ), 
+    :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient),
+    #:PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = nothing),
+    :MatrixImplicitFreeSurfaceOrd2 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver),
+    #:MatrixImplicitFreeSurfaceOrd1 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 1,) ),
+    #:MatrixImplicitFreeSurfaceOrd0 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 0,) ),
     #:MatrixImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = nothing),
     :MatrixImplicitFreeSurfaceSparsePreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = :SparseInverse)
 )
@@ -80,7 +80,7 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
     set_divergent_velocity!(model)
     Δt = accurate_cell_advection_timescale(grid, model.velocities) / 2
     time_step!(model, Δt) # warmup
-    
+
     trial = @benchmark begin
         CUDA.@sync blocking = true time_step!($model, $Δt)
     end samples = 10
@@ -102,7 +102,7 @@ grid_types = [
 ]
 
 free_surface_types = collect(keys(free_surfaces))
-    
+
 # Run and summarize benchmarks
 print_system_info()
 suite = run_benchmarks(benchmark_hydrostatic_model; architectures, grid_types, free_surface_types)

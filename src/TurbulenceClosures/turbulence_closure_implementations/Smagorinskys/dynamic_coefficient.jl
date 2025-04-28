@@ -2,13 +2,20 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: interpolate
 using Statistics
 
-struct DynamicCoefficient{A, FT, S}
+mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
     minimum_numerator :: FT
     schedule :: S
 end
 
-const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
+struct DeviceDynamicCoefficient{FT}
+    minimum_numerator :: FT
+end
+
+const DynamicSmagorinsky = Union{
+    Smagorinsky{<:Any, <:DynamicCoefficient},
+    Smagorinsky{<:Any, <:DeviceDynamicCoefficient},
+}
 
 function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; averaging,
                             Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
@@ -19,8 +26,7 @@ function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT
 end
 
 DynamicSmagorinsky(FT::DataType; kwargs...) = DynamicSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
-
-Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averaging, dc.minimum_numerator, nothing)
+Adapt.adapt_structure(to, dc::DynamicCoefficient) = DeviceDynamicCoefficient(dc.minimum_numerator)
 
 const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:Union{NTuple{N, Int}, Int, Colon}} where N
 const DirectionallyAveragedDynamicSmagorinsky{N} = Smagorinsky{<:Any, <:DirectionallyAveragedCoefficient{N}} where N
@@ -130,15 +136,24 @@ Base.show(io::IO, dc::DynamicCoefficient) = print(io, "DynamicCoefficient with\n
         𝒥ᴹᴹ_ijk = 𝒥ᴹᴹ[i, j, k]
     end
 
-    return ifelse(𝒥ᴹᴹ_ijk == 0, zero(grid), 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk)
+    return 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk * (𝒥ᴹᴹ_ijk > 0)
 end
 
-@kernel function _compute_Σ_Σ̄!(Σ, Σ̄, grid, u, v, w)
+@kernel function _compute_Σ!(Σ, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        Σ[i, j, k] = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
-        Σ̄[i, j, k] = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+        Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        Σ[i, j, k] = sqrt(Σsq)
+    end
+end
+
+@kernel function _compute_Σ̄!(Σ̄, grid, u, v, w)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        Σ̄[i, j, k] = sqrt(Σ̄sq)
     end
 end
 
@@ -185,7 +200,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::DirectionallyA
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
 
         LM = diffusivity_fields.LM
         MM = diffusivity_fields.MM
@@ -237,7 +253,7 @@ const c = Center()
         T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / ∜(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
         τ = Δt / T⁻
         ϵ = τ / (1 + τ)
-                        
+
         # Compute interpolation
         x = xnode(i, j, k, grid, c, c, c)
         y = ynode(i, j, k, grid, c, c, c)
@@ -287,7 +303,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
         parent(diffusivity_fields.𝒥ᴸᴹ⁻) .= parent(diffusivity_fields.𝒥ᴸᴹ)
         parent(diffusivity_fields.𝒥ᴹᴹ⁻) .= parent(diffusivity_fields.𝒥ᴹᴹ)

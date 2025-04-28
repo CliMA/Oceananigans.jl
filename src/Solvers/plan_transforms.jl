@@ -55,7 +55,7 @@ batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
 # the GPU we take the real part after a forward transform, so if the `Periodic`
 # transform is performed first we lose the information in the imaginary components after a
 # `Bounded` forward transform.
-# 
+#
 # For the same reason, `Bounded` backward transforms are applied after `Periodic`
 # backward transforms.
 #

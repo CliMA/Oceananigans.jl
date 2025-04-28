@@ -65,9 +65,8 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
-!!! note "GPU architecture requires a CUDA- or Metal-enabled device"
-    To run the above example and create a grid on the GPU, either an Nvidia or Metal GPU has to be available.
-    For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
+!!! note "GPU architecture requires a CUDA-, ROC- or Metal-enabled device"
+    Running this example and creating a grid on the GPU requires a device that supports CUDA, ROC, or Metal. In other words, you must have an Nvidia, AMD, or Apple-compatible GPU available. For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
