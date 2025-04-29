@@ -3,7 +3,7 @@ using Oceananigans: fields
 function update_fluxes!(model, dissipation)
     grid   = model.grid
     arch   = architecture(grid)
-    params = KernelParameters(model.tracers[1])
+    params = KernelParameters(model.tracers[1].data, model.tracers[1].data.offsets)
     
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹ 
@@ -28,7 +28,7 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     arch = architecture(grid)
 
     U = model.velocities
-    params = KernelParameters(model.tracers[1])
+    params = KernelParameters(model.tracers[1].data, model.tracers[1].data.offsets)
 
     ####
     #### Update the advective fluxes and compute gradient squared

@@ -69,7 +69,8 @@ function VarianceDissipation(model; tracers=propertynames(model.tracers))
 
     gradients = deepcopy(P)
 
-    # Hardcode to 1 for the moment
+    # Hardcode to 1 for the moment because it works only 
+    # if called every time step
     schedule = IterationInterval(1)
 
     return VarianceDissipation(scheduke, P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
@@ -77,7 +78,7 @@ end
 
 run_diagnostic!(ϵ::VarianceDissipation, model) = ϵ(model)
 
-function (ϵ::VarianceDissipation)(simulation)
+function (ϵ::VarianceDissipation)(model)
 
     # We first assemble values for Pⁿ⁻¹
     assemble_dissipation!(model, ϵ)
@@ -88,10 +89,14 @@ function (ϵ::VarianceDissipation)(simulation)
     return nothing
 end
 
+const f = Face()
+const c = Center()
+
+include("dissipation_utils.jl")
 include("get_dissipation_fields.jl")
 include("update_fluxes.jl")
-include("advective_fluxes.jl")
-include("diffusive_fluxes.jl")
+include("advective_dissipation.jl")
 include("assemble_dissipation.jl")
+include("flatten_dissipation_fields.jl")
 
 end

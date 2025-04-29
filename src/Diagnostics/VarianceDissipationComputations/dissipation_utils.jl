@@ -10,9 +10,6 @@ function tracer_closure_dissipation(K, c, tracer_id)
     return ifelse(include_dissipation, tracer_fluxes(grid), nothing)
 end
 
-enstrophy_closure_dissipation(grid, K, c::Tuple) = 
-    Tuple(enstrophy_closure_dissipation(grid, K[i], c[i]) for i in eachindex(c))
-
 @inline getadvection(advection, tracer_name) = advection
 @inline getadvection(advection::NamedTuple, tracer_name) = @inbounds advection[tracer_name]
 

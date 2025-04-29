@@ -1,4 +1,4 @@
-function get_dissipation_fields(t::VarianceDissipation)
+function flatten_dissipation_fields(t::VarianceDissipation)
     f = NamedTuple()
     
     for name in keys(t.advective_production)
@@ -8,7 +8,7 @@ function get_dissipation_fields(t::VarianceDissipation)
     return f
 end
 
-function get_dissipation_fields(t::VarianceDissipation, tracer_name) 
+function flatten_dissipation_fields(t::VarianceDissipation, tracer_name) 
     A = t.advective_production[tracer_name]
     D = t.diffusive_production[tracer_name]
     G = t.gradient_squared[tracer_name]
