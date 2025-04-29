@@ -1,6 +1,5 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
-using Oceananigans: BeforeTimeStepCallsite
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -76,8 +75,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
                     callbacks=[], euler=false)
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
-
-    [callback(model) for callback in callbacks if isa(callback.callsite, BeforeTimeStepCallsite)]
 
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies=true)
