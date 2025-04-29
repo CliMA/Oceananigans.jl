@@ -445,7 +445,7 @@ end
 
 struct IndexMap end
 
-const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:IndexMap, <:AbstractArray} where N
+const MappedNDRange{N, B, W} = NDRange{N, B<:StaticSize, W<:StaticSize, <:IndexMap, <:AbstractArray} where {N, B, W}
 
 # TODO: maybe don't do this
 # NDRange has been modified to include an index_map in place of workitems.
@@ -471,12 +471,7 @@ const MappedKernel{D} = Kernel{D, <:Any, <:Any, <:MappedFunction} where D
 @inline get_mapped_kernel_property(k, ::Val{:index_map}) = getfield(getfield(k, :f), :index_map)
 @inline get_mapped_kernel_property(k, ::Val{:f})         = getfield(getfield(k, :f), :func)
 
-Adapt.adapt_structure(to, cm::CompilerMetadata{N, C}) where {N, C} = 
-    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex), 
-                           Adapt.adapt(to, cm.ndrange),
-                           Adapt.adapt(to, cm.iterspace))
-
-Adapt.adapt_structure(to, ndrange::NDRange{N, B, W}) where {N, B, W} = 
+Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} = 
     NDRange{N, B, W}(Adapt.adapt(to, ndrange.blocks), Adapt.adapt(to, ndrange.workitems))
 
 # Extending the partition function to include the index_map in NDRange: note that in this case the 
@@ -503,7 +498,12 @@ end
 ##### Extend the valid index function to check whether the index is valid in the index map
 #####
 
-const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:Any, <:MappedNDRange}
+const MappedCompilerMetadata{N, C} = CompilerMetadata{N<:StaticSize, C, <:Any, <:Any, <:MappedNDRange} where {N, C}
+
+Adapt.adapt_structure(to, cm::MappedCompilerMetadata{N, C}) where {N, C} = 
+    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex), 
+                           Adapt.adapt(to, cm.ndrange),
+                           Adapt.adapt(to, cm.iterspace))
 
 @inline __linear_ndrange(ctx::MappedCompilerMetadata) = length(__iterspace(ctx).workitems)
 
