@@ -445,7 +445,7 @@ end
 
 struct IndexMap end
 
-const MappedNDRange{N, B, W} = NDRange{N, B<:StaticSize, W<:StaticSize, <:IndexMap, <:AbstractArray} where {N, B, W}
+const MappedNDRange{N, B, W} = NDRange{N, B, W, <:IndexMap, <:AbstractArray} where {N, B<:StaticSize, W<:StaticSize}
 
 # TODO: maybe don't do this
 # NDRange has been modified to include an index_map in place of workitems.
@@ -498,7 +498,7 @@ end
 ##### Extend the valid index function to check whether the index is valid in the index map
 #####
 
-const MappedCompilerMetadata{N, C} = CompilerMetadata{N<:StaticSize, C, <:Any, <:Any, <:MappedNDRange} where {N, C}
+const MappedCompilerMetadata{N, C} = CompilerMetadata{N, C, <:Any, <:Any, <:MappedNDRange} where {N<:StaticSize, C}
 
 Adapt.adapt_structure(to, cm::MappedCompilerMetadata{N, C}) where {N, C} = 
     CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex), 
