@@ -8,6 +8,15 @@ function flatten_dissipation_fields(t::VarianceDissipation)
     return f
 end
 
+"""
+    flatten_dissipation_fields(t::VarianceDissipation, tracer_name)
+
+Flattens the dissipation fields of a `VarianceDissipation` object into a named tuple containing:
+
+- The dissipation associated with the advection scheme in fields named `A$(tracer)$(dir)`
+- The dissipation associated with the closures in fields names `D$(tracer)$(dir)`
+- The squared gradients (necessary for computing an ``effective diffusivity'') in fields named `G$(tracer)$(dir)`
+"""
 function flatten_dissipation_fields(t::VarianceDissipation, tracer_name) 
     A = t.advective_production[tracer_name]
     D = t.diffusive_production[tracer_name]

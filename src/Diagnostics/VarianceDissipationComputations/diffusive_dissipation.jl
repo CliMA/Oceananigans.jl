@@ -38,7 +38,7 @@ end
     return nothing
 end
 
-@kernel function _update_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields) 
+@kernel function _cache_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields) 
     i, j, k = @index(Global, NTuple)
     compute_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields)
 end

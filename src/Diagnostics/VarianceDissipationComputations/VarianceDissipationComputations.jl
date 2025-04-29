@@ -41,6 +41,28 @@ end
 
 include("dissipation_utils.jl")
 
+"""
+    VarianceDissipation(model; tracers=propertynames(model.tracers))
+
+Constructs a `VarianceDissipation` object for a given `model`. This function computes 
+the variance dissipation diagnostics for the specified tracers in the model.
+
+Argument
+=========
+
+- `model`: The model for which variance dissipation is to be computed. 
+  The model must use a `QuasiAdamsBashforth2TimeStepper` for its time-stepping scheme.
+
+Keyword Argument
+================
+
+- `tracers`: An optional argument specifying the tracers for which variance dissipation 
+  is computed (can be a `Symbol` or a `Tuple` of `Symbols`). All symbols must be tracers evolved
+  by the `model`. Default: `propertynames(model.tracers)`.
+
+!!! Note
+    At the moment, the variance dissipation diagnostic is supported only for `QuasiAdamsBashforth2` timesteppers.
+"""
 function VarianceDissipation(model; tracers=propertynames(model.tracers))
         
     if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)

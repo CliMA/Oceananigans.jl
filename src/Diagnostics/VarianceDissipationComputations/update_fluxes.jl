@@ -1,6 +1,7 @@
 using Oceananigans: fields
 
-function update_fluxes!(model, dissipation)
+# Store advective and diffusive fluxes for dissipation computation
+function cache_fluxes!(model, dissipation)
     grid   = model.grid
     arch   = architecture(grid)
     sz     = size(model.tracers[1].data)
@@ -21,7 +22,7 @@ function update_fluxes!(model, dissipation)
     return nothing
 end
 
-function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
+function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     
     # Grab tracer properties
     c    = model.tracers[tracer_name]
@@ -46,7 +47,7 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     Gⁿ   = dissipation.gradient_squared[tracer_name]
     advection = getadvection(model.advection, tracer_name)
 
-    launch!(arch, grid, params, _update_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
+    launch!(arch, grid, params, _cache_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
 
     ####
     #### Update the diffusive fluxes
@@ -61,7 +62,7 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     clo  = model.closure
     model_fields = fields(model)
 
-    launch!(arch, grid, params, _update_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+    launch!(arch, grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
     return nothing
 end

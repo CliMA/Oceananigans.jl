@@ -37,7 +37,7 @@
     end
 end
 
-@kernel function _update_advective_fluxes!(Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
+@kernel function _cache_advective_fluxes!(Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
