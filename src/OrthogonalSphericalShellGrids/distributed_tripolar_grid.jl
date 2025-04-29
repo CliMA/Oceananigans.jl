@@ -8,7 +8,8 @@ using Oceananigans.DistributedComputations:
     all_reduce,
     ranks,
     inject_halo_communication_boundary_conditions,
-    concatenate_local_sizes
+    concatenate_local_sizes,
+    communication_buffers
 
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
@@ -310,7 +311,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, dat
                                             bottom=new_bcs.bottom)
     end
 
-    buffers = CommunicationBuffers(grid, data, new_bcs)
+    buffers = communication_buffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
