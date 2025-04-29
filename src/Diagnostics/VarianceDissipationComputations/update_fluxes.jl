@@ -3,7 +3,10 @@ using Oceananigans: fields
 function update_fluxes!(model, dissipation)
     grid   = model.grid
     arch   = architecture(grid)
-    params = KernelParameters(model.tracers[1].data, model.tracers[1].data.offsets)
+    sz     = size(model.tracers[1].data)
+    of     = model.tracers[1].data.offsets
+
+    params = KernelParameters(sz, of)
     
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹ 
@@ -28,7 +31,11 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     arch = architecture(grid)
 
     U = model.velocities
-    params = KernelParameters(model.tracers[1].data, model.tracers[1].data.offsets)
+
+    sz  = size(model.tracers[1].data)
+    of  = model.tracers[1].data.offsets
+
+    params = KernelParameters(sz, of)
 
     ####
     #### Update the advective fluxes and compute gradient squared
@@ -39,7 +46,7 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     Gⁿ   = dissipation.gradient_squared[tracer_name]
     advection = getadvection(model.advection, tracer_name)
 
-    launch!(arch, grid, params, _update_advective_tracer_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
+    launch!(arch, grid, params, _update_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
 
     ####
     #### Update the diffusive fluxes
@@ -54,7 +61,7 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     clo  = model.closure
     model_fields = fields(model)
 
-    launch!(arch, grid, params, _update_diffusive_tracer_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+    launch!(arch, grid, params, _update_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
     return nothing
 end

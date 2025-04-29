@@ -1,17 +1,19 @@
-@kernel function _assemble_diffusive_tracer_dissipation!(K, grid, χ, Vⁿ, Vⁿ⁻¹, Uⁿ⁺¹, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_diffusive_dissipation!(K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
     compute_diffusive_dissipation!(K, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ)
 end
 
-@inline function compute_diffusive_tracer_dissipation!(K::Tuple, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ)
+@inline compute_diffusive_dissipation!(K, i, j, k, grid, Vⁿ::Nothing, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ) = nothing
+@inline compute_diffusive_dissipation!(::Tuple, i, j, k, grid, Vⁿ::Nothing, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ) = nothing
+
+@inline function compute_diffusive_dissipation!(K::Tuple, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ)
     for n in eachindex(K)
         compute_diffusive_dissipation!(K[n], i, j, k, grid, Vⁿ[n], Vⁿ⁻¹[n], χ, cⁿ⁺¹, cⁿ)
     end
-
     return nothing
 end
 
-@inline function compute_diffusive_tracer_dissipation!(K, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ)
+@inline function compute_diffusive_dissipation!(K, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ)
     C₁  = convert(eltype(grid), 1.5 + χ)
     C₂  = convert(eltype(grid), 0.5 + χ)
 
@@ -36,27 +38,30 @@ end
     return nothing
 end
 
-@kernel function _update_diffusive_tracer_fluxes!(Vⁿ, Vⁿ⁻¹, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields) 
+@kernel function _update_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields) 
     i, j, k = @index(Global, NTuple)
-    compute_diffusive_tracer_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields)
+    compute_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields)
 end
 
-@inline function compute_diffusive_tracer_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, closure::Tuple, K, args...) 
+@inline compute_diffusive_fluxes!(::Nothing, Vⁿ⁻¹, i, j, k, grid, clo, K, args...) = nothing
+@inline compute_diffusive_fluxes!(::Nothing, Vⁿ⁻¹, i, j, k, grid, ::Tuple, K, args...) = nothing
+
+@inline function compute_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, closure::Tuple, K, args...) 
     for n in eachindex(closure)
-        compute_diffusive_tracer_fluxes!(Vⁿ[n], Vⁿ⁻¹[n], i, j, k, grid, closure[n], K[n], args...)
+        compute_diffusive_fluxes!(Vⁿ[n], Vⁿ⁻¹[n], i, j, k, grid, closure[n], K[n], args...)
     end
 
     return nothing
 end
 
-@inline function compute_diffusive_tracer_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
+@inline function compute_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
     Vⁿ⁻¹.x[i, j, k] = Vⁿ.x[i, j, k] 
     Vⁿ⁻¹.y[i, j, k] = Vⁿ.y[i, j, k] 
     Vⁿ⁻¹.z[i, j, k] = Vⁿ.z[i, j, k] 
 
-    Vⁿ.x[i, j, k] = _diffusive_tracer_flux_x(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c)
-    Vⁿ.y[i, j, k] = _diffusive_tracer_flux_y(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c)
-    Vⁿ.z[i, j, k] = _diffusive_tracer_flux_z(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f)
+    Vⁿ.x[i, j, k] = _diffusive_flux_x(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c)
+    Vⁿ.y[i, j, k] = _diffusive_flux_y(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c)
+    Vⁿ.z[i, j, k] = _diffusive_flux_z(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f)
 
     return nothing
 end

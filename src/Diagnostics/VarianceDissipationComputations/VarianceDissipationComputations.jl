@@ -14,7 +14,10 @@ using Oceananigans.TurbulenceClosures: viscosity,
                                        ScalarDiffusivity, 
                                        ScalarBiharmonicDiffusivity,
                                        AbstractTurbulenceClosure,
-                                       HorizontalFormulation
+                                       HorizontalFormulation,
+                                       _diffusive_flux_x,
+                                       _diffusive_flux_y,
+                                       _diffusive_flux_z
 
 using Oceananigans.Advection: _advective_tracer_flux_x, 
                               _advective_tracer_flux_y, 
@@ -94,6 +97,7 @@ const c = Center()
 
 include("update_fluxes.jl")
 include("advective_dissipation.jl")
+include("diffusive_dissipation.jl")
 include("assemble_dissipation.jl")
 include("flatten_dissipation_fields.jl")
 

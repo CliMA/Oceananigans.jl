@@ -2,7 +2,7 @@ function flatten_dissipation_fields(t::VarianceDissipation)
     f = NamedTuple()
     
     for name in keys(t.advective_production)
-        f = merge(f, get_dissipation_fields(t, name))
+        f = merge(f, flatten_dissipation_fields(t, name))
     end
 
     return f

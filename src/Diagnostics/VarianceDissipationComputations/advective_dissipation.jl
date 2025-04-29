@@ -1,5 +1,5 @@
 # TODO: This is only for AB2, figure out how to generalize this for other timesteppers for example RK3
-@kernel function _assemble_advective_tracer_dissipation!(P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ⁺¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_advective_dissipation!(P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ⁺¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
@@ -37,9 +37,8 @@
     end
 end
 
-@kernel function _update_advective_tracer_fluxes!(Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
+@kernel function _update_advective_fluxes!(Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
     i, j, k = @index(Global, NTuple)
-    u, v, w = U
 
     @inbounds begin
         # Save previous advective fluxes
@@ -50,9 +49,9 @@ end
         cⁿ⁻¹[i, j, k] = c[i, j, k]
 
         # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, u, c) * σⁿ(i, j, k, grid, f, c, c)
-        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, v, c) * σⁿ(i, j, k, grid, c, f, c)
-        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, w, c) * σⁿ(i, j, k, grid, c, c, f)
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c)
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c)
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f)
         
         Gⁿ.x[i, j, k] = Axᶠᶜᶜ(i, j, k, grid) * δxᶠᶜᶜ(i, j, k, grid, c)^2 / Δxᶠᶜᶜ(i, j, k, grid)
         Gⁿ.y[i, j, k] = Ayᶜᶠᶜ(i, j, k, grid) * δyᶜᶠᶜ(i, j, k, grid, c)^2 / Δyᶜᶠᶜ(i, j, k, grid)
