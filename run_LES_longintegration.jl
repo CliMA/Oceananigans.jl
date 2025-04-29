@@ -13,7 +13,7 @@ model_architecture = GPU()
 
 const Nx = 256
 const Ny = 256
-const Nz = 512
+const Nz = 384
 
 const Δx = 2
 const Δy = 2
@@ -52,9 +52,19 @@ grid = RectilinearGrid(GPU(),
 @inline S_flux(x, y, t) = Qˢ * cos(2π / S_period * t)
 
 u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵁ))
+T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(T_flux), bottom=GradientBoundaryCondition(dTdz))
+S_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(S_flux), bottom=GradientBoundaryCondition(dSdz))
 
-T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(T_flux))
-S_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(S_flux))
+damping_rate = 1/15minute
+
+T_target(x, y, z, t) = T_initial(z)
+S_target(x, y, z, t) = S_initial(z)
+
+bottom_mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10)
+
+uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
+T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=T_target)
+S_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=S_target)
 
 coriolis = FPlane(f=f₀)
 
@@ -64,7 +74,8 @@ model = NonhydrostaticModel(grid = grid,
                             coriolis = coriolis,
                             closure = nothing,
                             tracers = (:T, :S),
-                            boundary_conditions = (; T = T_bcs, S = S_bcs, u = u_bcs))
+                            boundary_conditions = (; T = T_bcs, S = S_bcs, u = u_bcs),
+                            forcing = (u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge, S=S_sponge))
 
 const ρ₀ = eos.reference_density
 const g = model.buoyancy.model.gravitational_acceleration
