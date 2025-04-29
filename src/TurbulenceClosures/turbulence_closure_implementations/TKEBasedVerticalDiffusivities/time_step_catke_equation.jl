@@ -31,7 +31,7 @@ function time_step_catke_equation!(model)
     previous_velocities = diffusivity_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(immersed_active_grid, Val(:interior))
+    active_cells_map = get_active_cells_map(grid, Val(:interior))
 
     Δt = model.clock.last_Δt
     Δτ = get_time_step(closure)
