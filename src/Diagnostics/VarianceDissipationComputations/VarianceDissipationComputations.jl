@@ -22,6 +22,7 @@ using Oceananigans.Advection: _advective_tracer_flux_x,
 
 using Oceananigans.Operators: volume
 using KernelAbstractions: @kernel, @index
+using Oceananigans: AbstractDiagnostic
 
 import Oceananigans: run_diagnostic!
 
@@ -72,7 +73,7 @@ function VarianceDissipation(model; tracers=propertynames(model.tracers))
     # if called every time step
     schedule = IterationInterval(1)
 
-    return VarianceDissipation(scheduke, P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
+    return VarianceDissipation(schedule, P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
 end
 
 run_diagnostic!(ϵ::VarianceDissipation, model) = ϵ(model)
@@ -91,8 +92,6 @@ end
 const f = Face()
 const c = Center()
 
-include("dissipation_utils.jl")
-include("get_dissipation_fields.jl")
 include("update_fluxes.jl")
 include("advective_dissipation.jl")
 include("assemble_dissipation.jl")

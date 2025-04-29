@@ -37,20 +37,31 @@ set!(c_real, c₀)
 # Change to test pure advection schemes
 advection = WENO(order=5)
 
-model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection, tracers=:c)
+model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2, advection, tracers=:c)
 
+c⁻    = CenterField(grid)
+Δtc²  = CenterField(grid)
 
 set!(model, c=c₀, u=1)
+set!(c⁻, c₀)
+
 sim = Simulation(model, Δt=Δt_max, stop_time=10)
 
 ϵ = VarianceDissipation(model)
 f = Oceananigans.Diagnostics.flatten_dissipation_fields(ϵ)
 
 sim.diagnostics[:variance_dissipation] = ϵ
-sim.output_writers[:solution] = JLD2Writer(model, merge((; c = model.tracers.c), f);
+sim.output_writers[:solution] = JLD2Writer(model, merge((; c = model.tracers.c, Δtc²), f);
                                            filename="one_d_simulation.jld2",
                                            schedule=TimeInterval(0.1),
                                            overwrite_existing=true)
+
+function compute_tracer_dissipation(sim)
+    Δtc² = (sim.model.tracers.c .^ 2 .- c⁻ .^ 2) ./ sim.Δt
+    c⁻ .= sim.model.tracers.c
+end
+
+sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation, IterationInterval(1))
 
 run!(sim)
 
