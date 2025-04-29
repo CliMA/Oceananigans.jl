@@ -49,7 +49,6 @@ function VarianceDissipation(model; tracers=propertynames(model.tracers))
     grid          = model.grid
 
     P    = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
-
     K    = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))
     Vⁿ   = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))
     Vⁿ⁻¹ = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))    

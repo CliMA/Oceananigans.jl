@@ -1,4 +1,5 @@
 using Oceananigans
+using Oceananigans.Diagnostics: VarianceDissipation
 
 N = 200
 
@@ -38,10 +39,15 @@ advection = WENO(order=5)
 
 model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection, tracers=:c)
 
+
 set!(model, c=c₀, u=1)
 sim = Simulation(model, Δt=Δt_max, stop_time=10)
 
-sim.output_writers[:solution] = JLD2Writer(model, (; c = model.tracers.c);
+ϵ = VarianceDissipation(model)
+f = Oceananigans.Diagnostics.flatten_dissipation_fields(ϵ)
+
+sim.diagnostics[:variance_dissipation] = ϵ
+sim.output_writers[:solution] = JLD2Writer(model, merge((; c = model.tracers.c), f);
                                            filename="one_d_simulation.jld2",
                                            schedule=TimeInterval(0.1),
                                            overwrite_existing=true)

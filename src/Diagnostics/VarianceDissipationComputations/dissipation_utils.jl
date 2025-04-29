@@ -13,16 +13,9 @@ end
 @inline getadvection(advection, tracer_name) = advection
 @inline getadvection(advection::NamedTuple, tracer_name) = @inbounds advection[tracer_name]
 
-@inline function KernelParameters(f::Field)
-    sz = size(f.data)
-    of = f.data.offsets
-    return KernelParameters(sz, of)
-end
-
 function tracer_fluxes(grid)
     x = XFaceField(grid)
     y = YFaceField(grid)
     z = ZFaceField(grid)
-
     return (; x, y, z)
 end
