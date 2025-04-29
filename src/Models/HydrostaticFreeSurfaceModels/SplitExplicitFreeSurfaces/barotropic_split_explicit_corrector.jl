@@ -1,16 +1,6 @@
 # Kernels to compute the vertical integral of the velocities
-@kernel function _compute_barotropic_mode!(U̅, V̅, grid, ::Nothing, u, v, η)
+@kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
     i, j  = @index(Global, NTuple)
-    integrate_barotropic_mode!(U̅, V̅, i, j, grid, u, v, η)
-end
-
-@kernel function _compute_barotropic_mode!(U̅, V̅, grid, active_cells_map, u, v, η)
-    idx = @index(Global, Linear)
-    i, j = linear_index_to_tuple(idx, active_cells_map)
-    integrate_barotropic_mode!(U̅, V̅, i, j, grid, u, v, η)
-end
-
-@inline function integrate_barotropic_mode!(U̅, V̅, i, j, grid, u, v, η)
     k_top  = size(grid, 3) + 1
 
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
@@ -32,17 +22,15 @@ end
         @inbounds U̅[i, j, 1] += Δrᶠᶜᶜ(i, j, k, grid) * u[i, j, k] * σᶠᶜ
         @inbounds V̅[i, j, 1] += Δrᶜᶠᶜ(i, j, k, grid) * v[i, j, k] * σᶜᶠ
     end
-
-    return nothing
 end
 
 # Note: this function is also used during initialization
 function compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
-    active_columns = get_active_column_map(grid) # may be nothing
+    active_cells_map = get_active_column_map(grid) # may be nothing
 
     launch!(architecture(grid), grid, :xy,
             _compute_barotropic_mode!,
-            U̅, V̅, grid, active_columns, u, v, η; active_cells_map=active_columns)
+            U̅, V̅, grid, u, v, η; active_cells_map)
 
     return nothing
 end
