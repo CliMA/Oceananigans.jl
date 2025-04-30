@@ -276,14 +276,6 @@ regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
 regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-
-# Fallback for `Nothing` locations
-default_prognostic_bc(::LatitudeLongitudeGrid, ::Val{:north}, ::Nothing, default) = nothing
-default_prognostic_bc(::LatitudeLongitudeGrid, ::Val{:south}, ::Nothing, default) = nothing
-
-default_auxiliary_bc(::LatitudeLongitudeGrid, ::Val{:north}, ::Nothing) = nothing
-default_auxiliary_bc(::LatitudeLongitudeGrid, ::Val{:south}, ::Nothing) = nothing
-
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, loc, default)
     if loc[2] == Nothing
         return nothing
