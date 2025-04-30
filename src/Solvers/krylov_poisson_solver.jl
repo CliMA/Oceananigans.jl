@@ -51,9 +51,9 @@ function KrylovPoissonSolver(grid;
                              abstol = sqrt(eps(grid)),
                              kw...)
 
-    if method ∉ [:cg, :bicgstab]
-        @warn "Currently, KrylovPoissonSolver only supports :cg and :bicgstab methods. Support for other methods will be added soon!"
-    end    
+    # if method ∉ [:cg, :bicgstab]
+    #     @warn "Currently, KrylovPoissonSolver only supports :cg and :bicgstab methods. Support for other methods will be added soon!"
+    # end    
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
         if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
