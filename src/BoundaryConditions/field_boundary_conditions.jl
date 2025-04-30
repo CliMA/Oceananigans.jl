@@ -304,7 +304,7 @@ function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, L
     end
 
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY[2]())
+    default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY())
     return φnorth ≈ 90 ? PolarBoundaryCondition(grid, :north, LZ) : default_bc
 end
 
