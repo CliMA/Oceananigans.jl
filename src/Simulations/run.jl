@@ -132,7 +132,7 @@ function time_step!(sim::Simulation)
         sim.Δt
     end
 
-    initial_time_step = !(sim.initialized)
+    @show initial_time_step = !(sim.initialized)
     initial_time_step && initialize!(sim)
 
     if initial_time_step && sim.verbose
@@ -192,13 +192,13 @@ we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """
-    initialize!(sim::Simulation, pickup=false)
+    initialize!(sim::Simulation)
 
 Initialize a simulation:
 
-- Update the auxiliary state of the simulation (filling halo regions, computing auxiliary fields)
-- Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
-- Add diagnostics that "depend" on output writers
+- Update the auxiliary state of the simulation (filling halo regions, computing auxiliary fields).
+- Evaluate all diagnostics, callbacks, and output writers if `sim.model.clock.iteration == 0`.
+- Add diagnostics that "depend" on output writers.
 """
 function initialize!(sim::Simulation)
     if sim.verbose
@@ -208,7 +208,7 @@ function initialize!(sim::Simulation)
 
     model = sim.model
     initialize!(model)
-    update_state!(model)
+    update_state!(model, compute_tendencies=true)
 
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
@@ -250,4 +250,3 @@ function initialize!(sim::Simulation)
 
     return nothing
 end
-
