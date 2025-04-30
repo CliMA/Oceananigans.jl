@@ -108,34 +108,49 @@ end
 compute_numerical_bottom_height!(bottom_field, grid, ib) =
     launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
-@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
+@inline function numerical_bottom_height(i, j, k, grid, ::CenterImmersedCondition, zb)
+    zᶜ  = rnode(i, j, k,   grid, c, c, c) 
+    zᶠ⁻ = rnode(i, j, k,   grid, c, c, f) 
+    zᶠ⁺ = rnode(i, j, k+1, grid, c, c, f) 
+    
+    # The condition for whether a cell is immersed or not is zᶜ ≤ zb.
+    # So if zb ≥ zᶜ (bottom height at or above cell center), we snap up to zᶠ⁺.
+    zb★ = ifelse(zb ≥ zᶜ, zᶠ⁺, zb)
+
+    # So if zb < zᶜ (bottom height below cell center), we snap down to zᶠ⁻.
+    zb★ = ifelse(zb < zᶜ, zᶠ⁻, zb)
+
+    # Only adjust bottom_heights that lie within this cell.
+    # Note, don't include interfaces, so the heights are adjusted only once.
+    adjust_zb = zᶠ⁻ < zb < zᶠ⁺
+
+    return ifelse(adjust_zb, zb★, zb)
+end
+
+@kernel function _compute_numerical_bottom_height!(bottom_height, grid, ib::GridFittedBottom)
     i, j = @index(Global, NTuple)
-    zb = @inbounds bottom_field[i, j, 1]
-    @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
+    zb = @inbounds bottom_height[i, j, 1]
     condition = ib.immersed_condition
     for k in 1:grid.Nz
-        z⁺ = rnode(i, j, k+1, grid, c, c, f)
-        z  = rnode(i, j, k,   grid, c, c, c)
-        bottom_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, bottom_field[i, j, 1])
+        @inbounds bottom_height[i, j, 1] = numerical_bottom_height(i, j, k, grid, condition, zb)
     end
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
     # We use `rnode` for the `immersed_cell` because we do not want to have
     # wetting or drying that could happen for a moving grid if we use znode
-    z  = rnode(i, j, k, underlying_grid, c, c, c)
+    zᶜ  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
-    return z ≤ zb
+    return zᶜ ≤ zb
 end
 
 @inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
     # We use `rnode` for the `immersed_cell` because we do not want to have
     # wetting or drying that could happen for a moving grid if we use znode
-    z  = rnode(i, j, k, underlying_grid, c, c, c)
+    zᶜ  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
     zb = Base.stack(collect(zb for _ in k))
-    return z .≤ zb
+    return zᶜ .≤ zb
 end
 
 #####
