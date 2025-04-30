@@ -283,7 +283,7 @@ function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, loc, 
 
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
     cca_loc = loc[1] == Center && loc[2] == Center # scalar
-    default_bc = _default_prognostic_bc(topology(grid, 2)(), loc[2](), default)
+    default_bc = default_prognostic_bc(topology(grid, 2)(), loc[2](), default)
     return φnorth ≈ 90 && cca_loa ? PolarBoundaryCondition(grid, :north, loc[3]) : default_bc
 end
 
@@ -294,7 +294,7 @@ function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, loc, 
     
     φsouth = @allowscalar φnode(1, grid, Face()) 
     cca_loc = loc[1] == Center && loc[2] == Center # scalar
-    default_bc = _default_prognostic_bc(topology(grid, 2)(), loc[2](), default)
+    default_bc = default_prognostic_bc(topology(grid, 2)(), loc[2](), default)
     return φsouth ≈ -90 && cca_loa ? PolarBoundaryCondition(grid, :south, loc[3]) : default_bc
 end
 
