@@ -76,28 +76,28 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 # Uniform upwind biased reconstruction
 for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) =
-            @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :x, false)),
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :x, false)))
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = 
+            @inbounds @muladd ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :x, false)), 
+                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :x, false)))
 
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =
-            @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :x, true)),
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :x, true)))
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) = 
+            @inbounds @muladd ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :x, true)), 
+                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :x, true)))
+    
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = 
+            @inbounds @muladd ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :y, false)), 
+                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :y, false)))
+                                                 
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) = 
+            @inbounds @muladd ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :y, true)), 
+                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :y, true)))
+    
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = 
+            @inbounds @muladd ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, false)), 
+                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :z, false)))
 
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) =
-            @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :y, false)),
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :y, false)))
-
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =
-            @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :y, true)),
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :y, true)))
-
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) =
-            @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, false)),
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :z, false)))
-
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =
-            @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, true)),
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :z, true)))
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) = 
+            @inbounds @muladd ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, true)), 
+                                                        $(calc_reconstruction_stencil(FT, buffer, :right, :z, true)))         
     end
 end

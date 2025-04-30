@@ -162,10 +162,18 @@ end
         Hx, Hy, _ = halo_size(grid)
 
         c = CenterField(grid)
-        u = XFaceField(grid)
-        v = YFaceField(grid)
+        cx = XFaceField(grid)
+        cy = YFaceField(grid)
+        
+        bcs = FieldBoundaryConditions()
+        u_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :u)
+        v_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :v)
+        u = XFaceField(grid, boundary_conditions=u_bcs)
+        v = YFaceField(grid, boundary_conditions=v_bcs)
 
         @test c.boundary_conditions.north.classification isa Zipper
+        @test cx.boundary_conditions.north.classification isa Zipper
+        @test cy.boundary_conditions.north.classification isa Zipper
         @test u.boundary_conditions.north.classification isa Zipper
         @test v.boundary_conditions.north.classification isa Zipper
 
@@ -173,24 +181,33 @@ end
         # boundary_conditions.north.condition == -1, while the tracer
         # is not: boundary_conditions.north.condition == 1
         @test c.boundary_conditions.north.condition == 1
+        @test cx.boundary_conditions.north.condition == 1
+        @test cy.boundary_conditions.north.condition == 1
         @test u.boundary_conditions.north.condition == -1
         @test v.boundary_conditions.north.condition == -1
 
         set!(c, 1)
+        set!(cx, 1)
+        set!(cy, 1)
         set!(u, 1)
         set!(v, 1)
 
         fill_halo_regions!(c)
-        fill_halo_regions!(u)
+        fill_halo_regions!(cx)
+        fill_halo_regions!(cy)
+        fill_halo_regions!(u)   
         fill_halo_regions!(v)
 
         north_boundary_c = on_architecture(CPU(), view(c.data, :, Ny+1:Ny+Hy, 1))
+        north_boundary_cy = on_architecture(CPU(), view(cy.data, :, Ny+1:Ny+Hy, 1))
         north_boundary_v = on_architecture(CPU(), view(v.data, :, Ny+1:Ny+Hy, 1))
         @test all(north_boundary_c .== 1)
+        @test all(north_boundary_cy .== 1)
         @test all(north_boundary_v .== -1)
 
-        # U is special, because periodicity is hardcoded in the x-direction
+        north_interior_boundary_cx = on_architecture(CPU(), view(cx.data, 2:Nx-1, Ny+1:Ny+Hy, 1))
         north_interior_boundary_u = on_architecture(CPU(), view(u.data, 2:Nx-1, Ny+1:Ny+Hy, 1))
+        @test all(north_interior_boundary_cx .== 1)
         @test all(north_interior_boundary_u .== -1)
 
         north_boundary_u_left  = on_architecture(CPU(), view(u.data, 1, Ny+1:Ny+Hy, 1))
@@ -198,36 +215,39 @@ end
         @test all(north_boundary_u_left  .== 1)
         @test all(north_boundary_u_right .== 1)
 
-        bottom(x, y) = rand()
-
         grid = TripolarGrid(arch; size = (10, 10, 1))
+        bottom(x, y) = rand()
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-
         bottom_height = grid.immersed_boundary.bottom_height
 
         @test on_architecture(CPU(), interior(bottom_height, :, 10, 1)) == on_architecture(CPU(), interior(bottom_height, 10:-1:1, 10, 1))
 
         c = CenterField(grid)
-        u = XFaceField(grid)
+        cx = XFaceField(grid)
+        u = XFaceField(grid, boundary_conditions=u_bcs)
 
         set!(c, (x, y, z) -> x)
+        set!(cx, (x, y, z) -> x)
         set!(u, (x, y, z) -> x)
 
         fill_halo_regions!(c)
+        fill_halo_regions!(cx)
         fill_halo_regions!(u)
 
         @test on_architecture(CPU(), interior(c, :, 10, 1)) == on_architecture(CPU(), interior(c, 10:-1:1, 10, 1))
         # For x face fields the first element is unique and we remove the
         # north pole that is exactly at Nx+1
+        left_side  = on_architecture(CPU(), interior(cx, 2:5, 10, 1))
+        right_side = on_architecture(CPU(), interior(cx, 7:10, 10, 1))
+
+        # The sign of auxiliary XFaceField are _not_ reversed at the north boundary
+        @test left_side == reverse(right_side)
+
         left_side  = on_architecture(CPU(), interior(u, 2:5, 10, 1))
         right_side = on_architecture(CPU(), interior(u, 7:10, 10, 1))
 
-        # The sign of velocities is opposite between different sides at the north boundary
+        # The sign of `u` is reversed at the north boundary
         @test left_side == - reverse(right_side)
+
     end
-end
-
-using Oceananigans.BoundaryConditions: Zipper
-
-@testset "Zipper boundary conditions..." begin
 end

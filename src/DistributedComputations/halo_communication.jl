@@ -1,10 +1,8 @@
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Fields: fill_send_buffers!,
-                           recv_from_buffers!,
-                           reduced_dimensions,
+using Oceananigans.Fields: reduced_dimensions, 
                            instantiated_location,
-                           produce_ordinary_fields
+                           fill_reduced_field_halos!
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
@@ -13,7 +11,7 @@ using Oceananigans.BoundaryConditions:
     fill_halo_offset,
     permute_boundary_conditions,
     fill_open_boundary_regions!,
-    PBCT, DCBCT, DCBC
+    PBCT, DCBCT # tuples
 
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_first, fill_halo_event!,
@@ -89,9 +87,9 @@ end
 #####
 
 function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+    not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
 
-    for field in ordinary_fields
+    for field in not_reduced_fields
         # Make sure we are filling a `Field` type.
         field isa Field && fill_halo_regions!(field, args...; kwargs...)
     end
@@ -105,7 +103,7 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               field.indices,
                               instantiated_location(field),
                               field.grid,
-                              field.boundary_buffers,
+                              field.communication_buffers,
                               args...;
                               reduced_dimensions = reduced_dims,
                               kwargs...)

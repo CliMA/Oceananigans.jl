@@ -213,6 +213,13 @@ Modules = [Oceananigans.TurbulenceClosures]
 Private = false
 ```
 
+### TKEBasedVerticalDiffusivities
+
+```@autodocs
+Modules = [Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities]
+Private = false
+```
+
 ## Utilities
 
 ```@autodocs

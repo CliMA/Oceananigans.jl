@@ -46,44 +46,41 @@ This is not the case for the v-velocity (or any field on the j-faces) where the 
 ##### Outer functions for filling halo regions for Zipper boundary conditions.
 #####
 
-@inline function fold_north_face_face!(i, k, grid, sign, c)
+@inline function fold_north_face_face!(i, k, grid, sign, ζ)
     Nx, Ny, _ = size(grid)
-
-    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    i′ = Nx - i + 2 # Element Nx + 1 does not exist?
     sign = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k]
+            ζ[i, Ny + j, k] = sign * ζ[i′, Ny - j + 1, k] 
         end
     end
 
     return nothing
 end
 
-@inline function fold_north_face_center!(i, k, grid, sign, c)
+@inline function fold_north_face_center!(i, k, grid, sign, u)
     Nx, Ny, _ = size(grid)
-
-    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    i′ = Nx - i + 2 # Element Nx + 1 does not exist?
     sign  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+            u[i, Ny + j, k] = sign * u[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
         end
     end
 
     # We substitute the redundant part of the last row to ensure consistency
-    @inbounds c[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * c[i′, Ny, k], c[i, Ny, k])
-
+    @inbounds u[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * u[i′, Ny, k], u[i, Ny, k])
     return nothing
 end
 
-@inline function fold_north_center_face!(i, k, grid, sign, c)
+@inline function fold_north_center_face!(i, k, grid, sign, v)
     Nx, Ny, _ = size(grid)
 
     i′ = Nx - i + 1
@@ -91,7 +88,7 @@ end
 
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k]
+            v[i, Ny + j, k] = sign * v[i′, Ny - j + 1, k]
         end
     end
 
