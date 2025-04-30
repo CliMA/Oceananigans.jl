@@ -2,34 +2,33 @@ using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
-using Oceananigans.DistributedComputations: communication_side
+using Oceananigans.DistributedComputations: communication_side, fill_send_buffers!
 
 using Oceananigans.BoundaryConditions:
-            ContinuousBoundaryFunction,
-            DiscreteBoundaryFunction,
-            permute_boundary_conditions,
-            extract_west_bc, extract_east_bc, extract_south_bc,
-            extract_north_bc, extract_top_bc, extract_bottom_bc,
-            fill_halo_event!,
-            MCBCT,
-            MCBC,
-            fill_open_boundary_regions!
+    ContinuousBoundaryFunction,
+    DiscreteBoundaryFunction,
+    permute_boundary_conditions,
+    extract_west_bc, extract_east_bc, extract_south_bc, 
+    extract_north_bc, extract_top_bc, extract_bottom_bc,
+    fill_halo_event!,
+    MCBCT,
+    MCBC,
+    fill_open_boundary_regions!
 
-import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data, fill_send_buffers!
+import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data
 
 import Oceananigans.BoundaryConditions:
-            fill_halo_regions!,
-            fill_west_and_east_halo!,
-            fill_south_and_north_halo!,
-            fill_bottom_and_top_halo!,
-            fill_west_halo!,
-            fill_east_halo!,
-            fill_south_halo!,
-            fill_north_halo!
+    fill_halo_regions!,
+    fill_west_and_east_halo!,
+    fill_south_and_north_halo!,
+    fill_bottom_and_top_halo!,
+    fill_west_halo!,
+    fill_east_halo!,
+    fill_south_halo!,
+    fill_north_halo!
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
-
-@inline extract_field_buffers(field::Field)          = field.boundary_buffers
+@inline extract_field_buffers(field::Field)          = field.communication_buffers
 @inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
 # This can be implemented once we have a buffer for field_tuples
@@ -47,7 +46,7 @@ function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
                               field.indices,
                               instantiated_location(field),
                               field.grid,
-                              field.boundary_buffers,
+                              field.communication_buffers,
                               args...;
                               reduced_dimensions = reduced_dims,
                               kwargs...)
@@ -167,6 +166,14 @@ getside(x, ::North) = x.north
 getside(x, ::South) = x.south
 getside(x, ::West)  = x.west
 getside(x, ::East)  = x.east
+
+fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+
+fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
 
 function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[1]

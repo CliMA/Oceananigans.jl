@@ -60,7 +60,7 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
     else
         inds = validate_index(inds, ℓ, T, N, H)
         inds = restrict_to_interior(inds, ℓ, T, N)
-        return collect(view(ξ, inds))
+        return collect(ξ[inds])
     end
 end
 
