@@ -915,6 +915,13 @@ end
     end
 
     @testset "Latitude-longitude grid" begin
+        @info "  Testing latitude-longitude grid construction errors..."
+
+	for FT in float_types
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+	end
+
         @info "  Testing general latitude-longitude grid..."
 
         for FT in float_types
