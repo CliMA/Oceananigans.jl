@@ -176,7 +176,7 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, tracername, bcs)
+function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, grid, tracername, bcs)
     U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
     V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
