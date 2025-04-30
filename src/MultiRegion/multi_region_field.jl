@@ -169,12 +169,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 function inject_regional_bcs(grid, connectivity, loc, indices;   
-                             west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
-                             east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
-                             south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
-                             north = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
-                             bottom = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
-                             top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
+                             west = default_auxiliary_bc(grid, Val(:west),   loc),
+                             east = default_auxiliary_bc(grid, Val(:east),   loc),
+                             south = default_auxiliary_bc(grid, Val(:south),  loc),
+                             north = default_auxiliary_bc(grid, Val(:north),  loc),
+                             bottom = default_auxiliary_bc(grid, Val(:bottom), loc),
+                             top = default_auxiliary_bc(grid, Val(:top),    loc),
                              immersed = NoFluxBoundaryCondition())
 
     west  = inject_west_boundary(connectivity, west)
