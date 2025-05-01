@@ -86,7 +86,7 @@ function ConjugateGradientSolver(linear_operation;
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
-            residual = similar(template_field) # rᵢ
+    residual = similar(template_field) # rᵢ
 
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)
@@ -179,6 +179,23 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     return x
 end
 
+# Possibly distributed global operations
+@inline _norm(x) = norm(x)
+@inline _dot(x, y) = dot(x, y)
+
+# Distributed norm
+@inline function _norm(u::DistributedField)
+    n² = _dot(u, u)
+    return sqrt(n²)
+end
+
+# Distributed dot product
+@inline function _dot(u::DistributedField, v::DistributedField)
+    dot_local = dot(u, v)
+    arch = architecture(u)
+    return all_reduce(+, dot_local, arch)
+end
+
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
@@ -190,14 +207,14 @@ function iterate!(x, solver, b, args...)
     # Unpreconditioned: z = r
     @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
-    ρ = dot(z, r)
+    ρ = _dot(z, r)
 
     @debug "ConjugateGradientSolver $(solver.iteration), ρ: $ρ"
     @debug "ConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
     @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
 
-    α = ρ / dot(p, q)
+    α = ρ / _dot(p, q)
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
@@ -254,7 +271,7 @@ end
 function iterating(solver, tolerance)
     # End conditions
     solver.iteration >= solver.maxiter && return false
-    norm(solver.residual) <= tolerance && return false
+    _norm(solver.residual) <= tolerance && return false
     return true
 end
 
