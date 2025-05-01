@@ -106,6 +106,13 @@ end
     end
 end
 
+@testset "Grid construction error tests..." begin
+    for FT in float_types
+        @test_throws ArgumentError TripolarGrid(CPU(), FT, size=(10, 10, 4), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+        @test_throws ArgumentError TripolarGrid(CPU(), FT, size=(10, 10, 4), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+    end
+end
+
 @testset "Orthogonality of family of ellipses and hyperbolae..." begin
     for arch in archs
         # Test the orthogonality of a tripolar grid based on the orthogonality of a
