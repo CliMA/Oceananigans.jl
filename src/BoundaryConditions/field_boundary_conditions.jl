@@ -279,7 +279,7 @@ regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, LY, LZ), default)
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
     default_bc = default_prognostic_bc(topology(grid, 2)(), LY(), default)
-    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY(), LZ) : default_bc
+    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY, LZ) : default_bc
 end
 
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ), default)    
