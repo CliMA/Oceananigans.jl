@@ -236,7 +236,6 @@ end
                                      velocities, tracers, buoyancy, tracer_bcs, clock)
 end
 
-
 @inline function _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
                                                   velocities, tracers, buoyancy, tracer_bcs, clock)
 
@@ -263,7 +262,7 @@ end
     νconv  = (νs - νc) * tanh(Ri / ΔRi) + νs
     νshear = (ν₀ - νs) * Ri / Ric + νs
 
-    κconv  = (κs - κc) * tanh(Ri / ∆Ri) + κs
+    κconv  = (κs - κc) * tanh(Ri / ΔRi) + κs
     κshear = (κ₀ - κs) * Ri / Ric + κs
 
     # Previous diffusivities
