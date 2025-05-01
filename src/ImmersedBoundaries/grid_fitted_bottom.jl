@@ -118,7 +118,7 @@ compute_numerical_bottom_height!(bottom_field, grid, ib) =
     zb★ = ifelse(zb ≥ zᶜ, zᶠ⁺, zb)
 
     # So if zb < zᶜ (bottom height below cell center), we snap down to zᶠ⁻.
-    zb★ = ifelse(zb < zᶜ, zᶠ⁻, zb)
+    zb★ = ifelse(zb < zᶜ, zᶠ⁻, zb★)
 
     # Only adjust bottom_heights that lie within this cell.
     # Note, don't include interfaces, so the heights are adjusted only once.
