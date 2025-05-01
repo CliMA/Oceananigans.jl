@@ -4,6 +4,7 @@ using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Solvers: _norm, _dot
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
     indices = validate_indices(indices, (LX, LY, LZ), grid)
@@ -93,4 +94,17 @@ function reconstruct_global_field(field::DistributedField)
     set!(global_field, global_data)
 
     return global_field
+end
+
+# Distributed norm
+@inline function _norm(u::DistributedField)
+    n² = _dot(u, u)
+    return sqrt(n²)
+end
+
+# Distributed dot product
+@inline function _dot(u::DistributedField, v::DistributedField)
+    dot_local = dot(u, v)
+    arch = architecture(u)
+    return all_reduce(+, dot_local, arch)
 end

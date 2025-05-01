@@ -183,19 +183,6 @@ end
 @inline _norm(x) = norm(x)
 @inline _dot(x, y) = dot(x, y)
 
-# Distributed norm
-@inline function _norm(u::DistributedField)
-    n² = _dot(u, u)
-    return sqrt(n²)
-end
-
-# Distributed dot product
-@inline function _dot(u::DistributedField, v::DistributedField)
-    dot_local = dot(u, v)
-    arch = architecture(u)
-    return all_reduce(+, dot_local, arch)
-end
-
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
