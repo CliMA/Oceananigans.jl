@@ -1,6 +1,7 @@
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
+using LinearAlgebra: dot, norm
 
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
