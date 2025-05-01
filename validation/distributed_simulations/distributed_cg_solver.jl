@@ -54,8 +54,8 @@ norm_serial   = Oceananigans.Solvers._norm(b_global)
 @handshake @info arch.local_rank, norm_parallel, norm_serial, norm_parallel ≈ norm_serial
 
 reltol = abstol = 1e-7
-pcg_local = ConjugateGradientPoissonSolver(local_grid, maxiter=20; reltol, abstol, preconditioner=nothing)
-pcg_global = ConjugateGradientPoissonSolver(global_grid, maxiter=20; reltol, abstol, preconditioner=nothing)
+pcg_local = ConjugateGradientPoissonSolver(local_grid, maxiter=100; reltol, abstol, preconditioner=nothing)
+pcg_global = ConjugateGradientPoissonSolver(global_grid, maxiter=100; reltol, abstol, preconditioner=nothing)
 
 # Serial solution
 solve!(xpcg_global, pcg_global.conjugate_gradient_solver, b_global)
