@@ -26,9 +26,9 @@ end
 
 const PolarBoundaryCondition = Union{PolarValueBoundaryCondition, PolarOpenBoundaryCondition}
 
-maybe_polar_boundary_condition(grid, size, ::Tyep{Nothing}, LZ) = nothing
-maybe_polar_boundary_condition(grid, size, ::Tyep{Center},  LZ) = PolarValueBoundaryCondition(grid, size, LZ)
-maybe_polar_boundary_condition(grid, size, ::Tyep{Face},    LZ) = PolarOpenBoundaryCondition(grid, size, LZ)
+maybe_polar_boundary_condition(grid, size, ::Type{Nothing}, LZ) = nothing
+maybe_polar_boundary_condition(grid, size, ::Type{Center},  LZ) = PolarValueBoundaryCondition(grid, size, LZ)
+maybe_polar_boundary_condition(grid, size, ::Type{Face},    LZ) = PolarOpenBoundaryCondition(grid, size, LZ)
 
 # Just a column
 @inline getbc(pv::BC{<:Any, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[1, 1, k]
