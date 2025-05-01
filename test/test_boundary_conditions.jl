@@ -43,14 +43,14 @@ end
         @test default_bcs_C.north isa VBC
         @test default_bcs_C.south isa VBC
 
-        @test default_bcs_C.north.condition isa Oceananigans.BoundaryCondition.PolarValue
-        @test default_bcs_C.south.condition isa Oceananigans.BoundaryCondition.PolarValue
+        @test default_bcs_C.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_C.south.condition isa Oceananigans.BoundaryConditions.PolarValue
 
         @test default_bcs_F.north isa OBC
         @test default_bcs_F.south isa OBC
 
-        @test default_bcs_F.north.condition isa Oceananigans.BoundaryCondition.PolarValue
-        @test default_bcs_F.south.condition isa Oceananigans.BoundaryCondition.PolarValue
+        @test default_bcs_F.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_F.south.condition isa Oceananigans.BoundaryConditions.PolarValue
 
         @test default_bcs_N.north isa Nothing
         @test default_bcs_N.south isa Nothing
