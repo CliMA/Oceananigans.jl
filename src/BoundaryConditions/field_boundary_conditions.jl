@@ -277,43 +277,25 @@ regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, LY, LZ), default)
-    if LY == Nothing
-        return nothing
-    end
-
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
-    cca_loc = LX == Center && LY == Center # scalar
     default_bc = default_prognostic_bc(topology(grid, 2)(), LY(), default)
-    return φnorth ≈ 90 && cca_loc ? PolarBoundaryCondition(grid, :north, LZ) : default_bc
+    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY, LZ) : default_bc
 end
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ), default)
-    if LY == Nothing
-        return nothing
-    end
-    
+function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ), default)    
     φsouth = @allowscalar φnode(1, grid, Face()) 
-    cca_loc = LZ == Center && LY == Center # scalar
     default_bc = default_prognostic_bc(topology(grid, 2)(), LY(), default)
-    return φsouth ≈ -90 && cca_loc ? PolarBoundaryCondition(grid, :south, LZ) : default_bc
+    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, LY, LZ) : default_bc
 end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, LY, LZ))
-    if LY == Nothing
-        return nothing
-    end
-
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
     default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY())
-    return φnorth ≈ 90 ? PolarBoundaryCondition(grid, :north, LZ) : default_bc
+    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY, LZ) : default_bc
 end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ))
-    if LY == Nothing
-        return nothing
-    end
-
     φsouth = @allowscalar φnode(1, grid, Face()) 
     default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY())
-    return φsouth ≈ -90 ? PolarBoundaryCondition(grid, :south, LZ) : default_bc
+    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, LY, LZ) : default_bc
 end

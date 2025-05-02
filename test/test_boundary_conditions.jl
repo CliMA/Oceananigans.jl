@@ -32,12 +32,28 @@ end
         @test default_bcs.bottom isa Nothing
 
         grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(-10, 10), z = (0, 1))
-        default_bcs = FieldBoundaryConditions(grid, loc)
-        
-        @test default_bcs.east  isa ZFBC
-        @test default_bcs.west  isa ZFBC
-        @test default_bcs.north isa VBC
-        @test default_bcs.south isa VBC
+        locC  = (Center, Center,  Center)
+        locF  = (Center, Face,    Center)
+        locN  = (Center, Nothing, Center)
+
+        default_bcs_C = FieldBoundaryConditions(grid, locC)
+        default_bcs_F = FieldBoundaryConditions(grid, locF)
+        default_bcs_N = FieldBoundaryConditions(grid, locN)
+
+        @test default_bcs_C.north isa VBC
+        @test default_bcs_C.south isa VBC
+
+        @test default_bcs_C.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_C.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+
+        @test default_bcs_F.north isa OBC
+        @test default_bcs_F.south isa OBC
+
+        @test default_bcs_F.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_F.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+
+        @test default_bcs_N.north isa Nothing
+        @test default_bcs_N.south isa Nothing
 
         grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
         default_bcs = FieldBoundaryConditions(grid, loc)
@@ -292,11 +308,11 @@ end
         @test all(f.data[1:10, 0,  1:10] .== f.data[1:10, 1, 1:10])
         @test all(f.data[1:10, 11, 1:10] .== f.data[1:10, 10, 1:10])
 
-        # Minimal test for PolarBoundaryCondition
+        # Minimal test for PolarValueBoundaryCondition
         polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
         c = CenterField(polar_grid)
-        @test c.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarBoundaryCondition
-        @test c.boundary_conditions.south isa Oceananigans.BoundaryConditions.PolarBoundaryCondition
+        @test c.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarValueBoundaryCondition
+        @test c.boundary_conditions.south isa Oceananigans.BoundaryConditions.PolarValueBoundaryCondition
 
         set!(c, (x, y, z) -> x)
         fill_halo_regions!(c)
