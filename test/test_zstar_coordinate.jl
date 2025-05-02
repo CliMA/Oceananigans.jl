@@ -278,9 +278,7 @@ function make_tripolar_test_model(arch; with_wind = false)
     )
 
     if with_wind
-        u₁₀, cᴰ, ρₒ, ρₐ = 10.0, 2.5e-3, 1026.0, 1.225
-        τx = -ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀)
-        u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+        u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
         model = HydrostaticFreeSurfaceModel(; kwargs..., boundary_conditions = (u = u_bcs,))
     else
         model = HydrostaticFreeSurfaceModel(; kwargs...)
