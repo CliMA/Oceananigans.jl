@@ -584,7 +584,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     return nothing
 end
 
-function test_netcdf_rectilinear_grid_fitted_bottom(arch)
+function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     Nx, Ny, Nz = 16, 16, 16
     Hx, Hy, Hz = 2, 3, 4
 
@@ -603,7 +603,7 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     mount(x, y) = height * exp(-x^2 / 2width^2) * exp(-y^2 / 2width^2)
     bottom(x, y) = -H + mount(x, y)
 
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+    grid = ImmersedBoundaryGrid(underlying_grid, bottom_boundary_type(bottom))
 
     model = NonhydrostaticModel(; grid,
                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
@@ -666,14 +666,14 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     @test dimsize(ds_h[:bottom_height]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
-        @test haskey(ds_h, "immersed_boundary_mask_$loc")
-        @test eltype(ds_h["immersed_boundary_mask_$loc"]) == Float64
+        @test haskey(ds_h, "peripheral_nodes_$loc")
+        @test eltype(ds_h["peripheral_nodes_$loc"]) == Float64
     end
 
-    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1)
+    @test dimsize(ds_h[:peripheral_nodes_ccc]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:peripheral_nodes_fcc]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:peripheral_nodes_cfc]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:peripheral_nodes_ccf]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -688,14 +688,14 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     @test dimsize(ds_n[:bottom_height]) == (x_caa=Nx, y_aca=Ny)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
-        @test haskey(ds_n, "immersed_boundary_mask_$loc")
-        @test eltype(ds_n["immersed_boundary_mask_$loc"]) == Float32
+        @test haskey(ds_n, "peripheral_nodes_$loc")
+        @test eltype(ds_n["peripheral_nodes_$loc"]) == Float32
     end
 
-    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
+    @test dimsize(ds_n[:peripheral_nodes_ccc]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:peripheral_nodes_fcc]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:peripheral_nodes_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
+    @test dimsize(ds_n[:peripheral_nodes_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
 
     @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
 
@@ -710,14 +710,14 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     @test dimsize(ds_s[:bottom_height]) == (x_caa=nx, y_aca=ny)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
-        @test haskey(ds_s, "immersed_boundary_mask_$loc")
-        @test eltype(ds_s["immersed_boundary_mask_$loc"]) == Float32
+        @test haskey(ds_s, "peripheral_nodes_$loc")
+        @test eltype(ds_s["peripheral_nodes_$loc"]) == Float32
     end
 
-    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (x_caa=nx, y_aca=ny, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (x_faa=nx, y_aca=ny, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
+    @test dimsize(ds_s[:peripheral_nodes_ccc]) == (x_caa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:peripheral_nodes_fcc]) == (x_faa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:peripheral_nodes_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
+    @test dimsize(ds_s[:peripheral_nodes_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
@@ -727,7 +727,7 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     return nothing
 end
 
-function test_netcdf_latlon_grid_fitted_bottom(arch)
+function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     Nλ, Nφ, Nz = 16, 16, 16
     Hλ, Hφ, Hz = 2, 3, 4
     Lλ, Lφ, H = 20, 10, 1000
@@ -747,7 +747,7 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
     seamount(λ, φ) = height * exp(-λ^2 / 2λ_width^2) * exp(-φ^2 / 2φ_width^2)
     bottom(λ, φ) = -H + seamount(λ, φ)
 
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+    grid = ImmersedBoundaryGrid(underlying_grid, bottom_boundary_type(bottom))
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                           momentum_advection = VectorInvariant(),
@@ -815,14 +815,14 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
     @test dimsize(ds_h[:bottom_height]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
-        @test haskey(ds_h, "immersed_boundary_mask_$loc")
-        @test eltype(ds_h["immersed_boundary_mask_$loc"]) == Float64
+        @test haskey(ds_h, "peripheral_nodes_$loc")
+        @test eltype(ds_h["peripheral_nodes_$loc"]) == Float64
     end
 
-    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
+    @test dimsize(ds_h[:peripheral_nodes_ccc]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:peripheral_nodes_fcc]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:peripheral_nodes_cfc]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:peripheral_nodes_ccf]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -837,14 +837,14 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
     @test dimsize(ds_n[:bottom_height]) == (λ_caa=Nλ, φ_aca=Nφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
-        @test haskey(ds_n, "immersed_boundary_mask_$loc")
-        @test eltype(ds_n["immersed_boundary_mask_$loc"]) == Float32
+        @test haskey(ds_n, "peripheral_nodes_$loc")
+        @test eltype(ds_n["peripheral_nodes_$loc"]) == Float32
     end
 
-    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
+    @test dimsize(ds_n[:peripheral_nodes_ccc]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:peripheral_nodes_fcc]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:peripheral_nodes_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
+    @test dimsize(ds_n[:peripheral_nodes_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
 
     @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
 
@@ -859,14 +859,14 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
     @test dimsize(ds_s[:bottom_height]) == (λ_caa=nλ, φ_aca=nφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
-        @test haskey(ds_s, "immersed_boundary_mask_$loc")
-        @test eltype(ds_s["immersed_boundary_mask_$loc"]) == Float32
+        @test haskey(ds_s, "peripheral_nodes_$loc")
+        @test eltype(ds_s["peripheral_nodes_$loc"]) == Float32
     end
 
-    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (λ_caa=nλ, φ_aca=nφ, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (λ_faa=nλ, φ_aca=nφ, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
+    @test dimsize(ds_s[:peripheral_nodes_ccc]) == (λ_caa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:peripheral_nodes_fcc]) == (λ_faa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:peripheral_nodes_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
+    @test dimsize(ds_s[:peripheral_nodes_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
@@ -2738,8 +2738,10 @@ for arch in archs
         test_netcdf_grid_metrics_latlon(arch, Float64)
         test_netcdf_grid_metrics_latlon(arch, Float32)
 
-        test_netcdf_rectilinear_grid_fitted_bottom(arch)
-        test_netcdf_latlon_grid_fitted_bottom(arch)
+        test_netcdf_rectilinear_grid_fitted_bottom(arch, GridFittedBottom)
+        test_netcdf_rectilinear_grid_fitted_bottom(arch, PartialCellBottom)
+        test_netcdf_latlon_grid_fitted_bottom(arch, GridFittedBottom)
+        test_netcdf_latlon_grid_fitted_bottom(arch, PartialCellBottom)
 
         test_netcdf_rectilinear_flat_xy(arch)
         test_netcdf_rectilinear_flat_xz(arch, immersed=false)
