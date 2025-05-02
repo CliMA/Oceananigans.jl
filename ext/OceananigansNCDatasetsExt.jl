@@ -14,7 +14,7 @@ using Oceananigans.Grids: topology, halo_size, xspacings, yspacings, zspacings, 
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
@@ -360,34 +360,36 @@ gather_grid_metrics(grid::ImmersedBoundaryGrid, args...) =
 # TODO: Proper masks for 2D models?
 flat_loc(T, L) = T == Flat ? nothing : L
 
-# For Immersed Boundary Grids (IBG) with a Grid Fitted Bottom (GFB)
-function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
-    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
+
+# For Immersed Boundary Grids (IBG) with either a Grid Fitted Bottom (GFB) or a Partial Cell Bottom (PCB)
+function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator)
+    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
     return Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
+                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
 end
 
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
 # For Immersed Boundary Grids (IBG) with a Grid Fitted Boundary (also GFB!)
 function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator)
-    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("immersed_boundary_mask" => Field(grid.immersed_boundary.mask; indices),
-                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
+    return Dict("peripheral_nodes" => Field(grid.immersed_boundary.mask; indices),
+                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
 end
 
 #####
