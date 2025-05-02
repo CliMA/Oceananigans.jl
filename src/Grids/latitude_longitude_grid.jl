@@ -672,11 +672,11 @@ end
 @inline φspacings(grid::LLG, ℓy) = φspacings(grid, nothing, ℓy, nothing)
 
 """
-    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0,0))
+    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
 
 Construct a `LatitudeLongitudeGrid` from a `RectilinearGrid`. The horizontal coordinates of the
 rectilinear grid are transformed to longitude-latitude coordinates in degrees, accounting for
-spherical Earth geometry.
+spherical Earth geometry. The longitudes are computed approximately using the latitudinal origin.
 
 The vertical coordinate and architecture are inherited from the input grid.
 
