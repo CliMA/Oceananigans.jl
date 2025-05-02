@@ -18,7 +18,7 @@ export
 
     # Pointwise spacing, area, and volume operators
     xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
-    
+
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
@@ -69,6 +69,7 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
@@ -141,7 +142,7 @@ function __init__()
 end
 
 # List of fully-supported floating point types where applicable.
-# Currently used only in the Advection module to specialize 
+# Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
 const fully_supported_float_types = (Float32, Float64)
 

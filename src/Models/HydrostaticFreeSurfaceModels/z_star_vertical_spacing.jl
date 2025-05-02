@@ -11,7 +11,7 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.bar
 # The "harder" case, barotropic velocities are computed on the fly
 barotropic_velocities(free_surface) = nothing, nothing
 
-# Fallback 
+# Fallback
 update_grid!(model, grid, ztype; parameters) = nothing
 
 function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = :xy)
@@ -26,7 +26,7 @@ function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = 
     ηⁿ    = grid.z.ηⁿ
     η     = model.free_surface.η
 
-    launch!(architecture(grid), grid, parameters, _update_grid_scaling!, 
+    launch!(architecture(grid), grid, parameters, _update_grid_scaling!,
             σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
 
     # the barotropic velocities are retrieved from the free surface model for a
@@ -63,7 +63,7 @@ end
 
         # Update previous scaling
         σᶜᶜ⁻[i, j, 1] = σᶜᶜⁿ[i, j, 1]
-        
+
         # update current scaling
         σᶜᶜⁿ[i, j, 1] = σᶜᶜ
         σᶠᶜⁿ[i, j, 1] = σᶠᶜ
@@ -85,8 +85,8 @@ end
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
-    δh_U = (δx_U + δy_V) / Azᶜᶜᶜ(i, j, kᴺ, grid)
-    
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+
     @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
 end
 
@@ -125,10 +125,10 @@ end
 @inline ∂x_z(i, j, k, grid) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 @inline ∂y_z(i, j, k, grid) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 
-@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) = 
+@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) =
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂x_z(i, j, k, grid)
 
-@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) = 
+@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) =
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
 
 ####
@@ -139,16 +139,16 @@ const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
 
 unscale_tracers!(::EmptyTuples, ::MutableGridOfSomeKind; kwargs...) = nothing
 
-function unscale_tracers!(tracers, grid::MutableGridOfSomeKind; parameters = :xy) 
+function unscale_tracers!(tracers, grid::MutableGridOfSomeKind; parameters = :xy)
 
     for tracer in tracers
-        launch!(architecture(grid), grid, parameters, _unscale_tracer!, 
+        launch!(architecture(grid), grid, parameters, _unscale_tracer!,
                 tracer, grid, Val(grid.Hz), Val(grid.Nz))
     end
-    
+
     return nothing
 end
-    
+
 @kernel function _unscale_tracer!(tracer, grid, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
     i, j = @index(Global, NTuple)
 

@@ -194,7 +194,7 @@ function compute!(comp::CubedSphereComputedField, time=nothing)
         parameters = KernelParameters(size(c), map(offset_index, c.indices))
         launch!(arch, c.grid, parameters, _compute!, c.data, c.operand)
     end
-    
+
     fill_halo_regions!(comp)
 
     return comp

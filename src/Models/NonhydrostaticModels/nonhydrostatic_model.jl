@@ -105,11 +105,11 @@ Keyword arguments
                                     in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
                                     vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
                                     only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
-                                    is not computed. 
+                                    is not computed.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 """
 function NonhydrostaticModel(; grid,
                              clock = Clock(grid),
@@ -234,7 +234,7 @@ function NonhydrostaticModel(; grid,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
 
     update_state!(model; compute_tendencies = false)
-    
+
     return model
 end
 
@@ -258,5 +258,5 @@ end
 
 # return the total advective velocities
 @inline total_velocities(m::NonhydrostaticModel) =
-    sum_of_velocities(m.velocities, m.background_fields.velocities) 
+    sum_of_velocities(m.velocities, m.background_fields.velocities)
 

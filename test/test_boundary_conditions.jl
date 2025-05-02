@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -14,9 +14,36 @@ function can_instantiate_boundary_condition(bc, C, FT=Float64, ArrayType=Array)
     end
     return success
 end
-        
+
 @testset "Boundary conditions" begin
     @info "Testing boundary conditions..."
+
+    @testset "Default serial boundary conditions" begin
+        @info "  Testing default boundary conditions..."
+        loc  = (Center, Center, Center)
+        grid = RectilinearGrid(size=(10, 10), x=(0, 1), y=(0, 1), topology=(Periodic, Bounded, Flat))
+        default_bcs = FieldBoundaryConditions(grid, loc)
+
+        @test default_bcs.east  isa PBC
+        @test default_bcs.west  isa PBC
+        @test default_bcs.north isa ZFBC
+        @test default_bcs.south isa ZFBC
+        @test default_bcs.top    isa Nothing
+        @test default_bcs.bottom isa Nothing
+
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(-10, 10), z = (0, 1))
+        default_bcs = FieldBoundaryConditions(grid, loc)
+        
+        @test default_bcs.east  isa ZFBC
+        @test default_bcs.west  isa ZFBC
+        @test default_bcs.north isa VBC
+        @test default_bcs.south isa VBC
+
+        grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
+        default_bcs = FieldBoundaryConditions(grid, loc)
+        @test default_bcs.north.classification isa Zipper
+        @test default_bcs.south isa ZFBC        
+    end
 
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
@@ -212,7 +239,7 @@ end
         @test T_bcs.top isa ZFBC
 
         grid = bbb_grid
-        
+
         T_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                         east = ValueBoundaryCondition(simple_bc),
                                         west = ValueBoundaryCondition(simple_bc),
@@ -222,7 +249,7 @@ end
                                         south = ValueBoundaryCondition(simple_bc))
 
         @test T_bcs.east.condition isa ContinuousBoundaryFunction
-        @test T_bcs.west.condition isa ContinuousBoundaryFunction 
+        @test T_bcs.west.condition isa ContinuousBoundaryFunction
         @test T_bcs.north.condition isa ContinuousBoundaryFunction
         @test T_bcs.south.condition isa ContinuousBoundaryFunction
         @test T_bcs.top.condition isa ContinuousBoundaryFunction

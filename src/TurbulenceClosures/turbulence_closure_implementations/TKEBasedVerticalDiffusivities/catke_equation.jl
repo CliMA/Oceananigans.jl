@@ -69,7 +69,7 @@ end
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
-    
+
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
     #
@@ -137,7 +137,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
 
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
-        
+
         tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,
