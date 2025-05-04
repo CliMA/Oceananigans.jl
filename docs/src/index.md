@@ -115,6 +115,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.1029/2024MS004522), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2024MS004522. DOI: [10.1029/2024MS004522](https://doi.org/10.1029/2024MS004522)
 
+1. Atkinson, E., McWilliams, J., and Grisouard, N. (2024) [Near-inertial echoes of ageostrophic instability in submesoscale filaments](https://doi.org/10.48550/arXiv.2407.16059), _arXiv preprint_, arXiv:2407.16059. DOI: [10.48550/arXiv.2407.16059](https://doi.org/10.48550/arXiv.2407.16059)
+
 1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
 
 1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
