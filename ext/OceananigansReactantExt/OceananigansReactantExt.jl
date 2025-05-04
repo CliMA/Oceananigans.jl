@@ -140,6 +140,45 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+    @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, 
+                                                 DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I}}),
+    seen,
+    mode::Reactant.TraceMode,
+    @nospecialize(track_numbers::Type),
+    @nospecialize(sharding),
+    @nospecialize(runtime)
+) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} 
+    TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
+    TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
+    TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
+    Z2 = Reactant.traced_type_inner(Z, seen, mode, track_numbers, sharding, runtime)
+    DXF2 = Reactant.traced_type_inner(DXF, seen, mode, track_numbers, sharding, runtime)
+    DXC2 = Reactant.traced_type_inner(DXC, seen, mode, track_numbers, sharding, runtime)
+    XF2 = Reactant.traced_type_inner(XF, seen, mode, track_numbers, sharding, runtime)
+    XC2 = Reactant.traced_type_inner(XC, seen, mode, track_numbers, sharding, runtime)
+    DYF2 = Reactant.traced_type_inner(DYF, seen, mode, track_numbers, sharding, runtime)
+    DYC2 = Reactant.traced_type_inner(DYC, seen, mode, track_numbers, sharding, runtime)
+    YF2 = Reactant.traced_type_inner(YF, seen, mode, track_numbers, sharding, runtime)
+    YC2 = Reactant.traced_type_inner(YC, seen, mode, track_numbers, sharding, runtime)
+    DXCC2 = Reactant.traced_type_inner(DXCC, seen, mode, track_numbers, sharding, runtime)
+    DXFC2 = Reactant.traced_type_inner(DXFC, seen, mode, track_numbers, sharding, runtime)
+    DXCF2 = Reactant.traced_type_inner(DXCF, seen, mode, track_numbers, sharding, runtime)
+    DXFF2 = Reactant.traced_type_inner(DXFF, seen, mode, track_numbers, sharding, runtime)
+    DYFC2 = Reactant.traced_type_inner(DYFC, seen, mode, track_numbers, sharding, runtime)
+    DYCF2 = Reactant.traced_type_inner(DYCF, seen, mode, track_numbers, sharding, runtime)
+    I2 = Reactant.traced_type_inner(I, seen, mode, track_numbers, sharding, runtime)
+
+    FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
+
+    for NF in (eltype(XF2), eltype(XC2), eltype(YF2), eltype(YC2), eltype(DXCC2), eltype(DXFC2),eltype(DYCF2), eltype(DYCF2), eltype(DXFF2))
+        FT2 = Base.promote_type(FT2, NF)
+    end
+
+    return Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, 
+                                                 DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
+end
+
 struct Fix1v2{F,T}
     f::F
     t::T
