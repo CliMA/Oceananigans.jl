@@ -50,23 +50,23 @@ constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInva
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.AbstractOperations.ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T}}),
+    @nospecialize(OA::Type{Oceananigans.AbstractOperations.ConditionalOperation{LX, LY, LZ, F, C, O, F, G, M, T}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {LX, LY, LZ, O, F, G, C, M, T}
+) where {LX, LY, LZ, F, C, O, G, M, T}
     LX2 = Reactant.traced_type_inner(LX, seen, mode, track_numbers, sharding, runtime)
     LY2 = Reactant.traced_type_inner(LY, seen, mode, track_numbers, sharding, runtime)
     LZ2 = Reactant.traced_type_inner(LZ, seen, mode, track_numbers, sharding, runtime)
-    O2 = Reactant.traced_type_inner(O, seen, mode, track_numbers, sharding, runtime)
     F2 = Reactant.traced_type_inner(F, seen, mode, track_numbers, sharding, runtime)
-    G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, sharding, runtime)
     C2 = Reactant.traced_type_inner(C, seen, mode, track_numbers, sharding, runtime)
+    O2 = Reactant.traced_type_inner(O, seen, mode, track_numbers, sharding, runtime)
+    G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, sharding, runtime)
     M2 = Reactant.traced_type_inner(M, seen, mode, track_numbers, sharding, runtime)
     T2 = eltype(O2)
-    return Oceananigans.AbstractOperations.ConditionalOperation{LX2, LY2, LZ2, O2, F2, G2, C2, M2, T2}
+    return Oceananigans.AbstractOperations.ConditionalOperation{LX2, LY2, LZ2, F2, C2, O2, G2, M2, T2}
 end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/kernel_function_operation.jl#L3
