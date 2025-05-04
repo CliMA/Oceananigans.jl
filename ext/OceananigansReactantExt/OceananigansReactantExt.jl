@@ -50,7 +50,7 @@ constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInva
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.AbstractOperations.ConditionalOperation{LX, LY, LZ, F, C, O, F, G, M, T}}),
+    @nospecialize(OA::Type{Oceananigans.AbstractOperations.ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
