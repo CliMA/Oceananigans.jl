@@ -171,8 +171,11 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
 
-    for NF in (eltype(XF2), eltype(XC2), eltype(YF2), eltype(YC2), eltype(DXCC2), eltype(DXFC2),eltype(DYCF2), eltype(DYCF2), eltype(DXFF2))
-        FT2 = Base.promote_type(FT2, NF)
+    for NF in (XF2, XC2, YF2, YC2, DXCC2, DXFC2, DYCF2, DYCF2, DXFF2)
+	if NF === Nothing
+	   continue
+	end
+	FT2 = Base.promote_type(FT2, eltype(NF))
     end
 
     return Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, 
