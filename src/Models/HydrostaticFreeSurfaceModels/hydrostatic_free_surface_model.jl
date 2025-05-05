@@ -25,6 +25,14 @@ PressureField(grid) = (; pHY′ = CenterField(grid))
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
+function default_vertical_coordinate(grid))
+    if grid.z isa Oceananigans.Grids.MutableVerticalDiscretization
+        return ZStar()
+    else
+        return ZCoordinate()
+    end
+end
+
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
@@ -125,7 +133,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      pressure = nothing,
                                      diffusivity_fields = nothing,
                                      auxiliary_fields = NamedTuple(),
-                                     vertical_coordinate = ZCoordinate())
+                                     vertical_coordinate = default_vertical_coordinate(grid))
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)

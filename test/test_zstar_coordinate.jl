@@ -4,7 +4,7 @@ using Random
 using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
-using Oceananigans.Models: ZStar
+using Oceananigans.Models: ZStar, ZCoordinate
 
 function test_zstar_coordinate(model, Ni, Δt)
 
@@ -79,9 +79,8 @@ const F = Face
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
 
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                          free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
-                                          vertical_coordinate = ZStar())
+    model = HydrostaticFreeSurfaceModel(; grid, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
+    @test model.vertical_coordinate isa ZStar
 
     @test znode(1, 1, 21, grid, C(), C(), F()) == 0
     @test column_depthᶜᶜᵃ(1, 1, grid) == 10
@@ -118,8 +117,12 @@ end
 
     # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and
     # the results are the same as a model with a static vertical discretization.
-    mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, free_surface=ImplicitFreeSurface())
-    static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid,  free_surface=ImplicitFreeSurface())
+    kw = (; free_surface=ImplicitFreeSurface(), vertical_coordinate=ZCoordinate())
+    mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, kw...)
+    static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid, kw...)
+
+    @test mutable_model.vertical_coordinate isa ZCoordinate
+    @test static_model.vertical_coordinate isa ZCoordinate
 
     uᵢ = rand(size(mutable_model.velocities.u)...)
     vᵢ = rand(size(mutable_model.velocities.v)...)
