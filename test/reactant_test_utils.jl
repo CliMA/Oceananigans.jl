@@ -86,7 +86,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
 
     # Deduce a stable time-step
     Δx = minimum_xspacing(grid)
-    Δt = 0.01 * Δx
+    Δt = 1e-6 * Δx
 
     # Stop iteration for both simulations
     stop_iteration = 3
@@ -103,13 +103,13 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
     Nsteps = ConcreteRNumber(3)
-    @time "  Compiling r_run!:" begin
+    @time "  Compiling r_run!" begin
         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
         r_time_step_sim! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_simulation)
     end
 
-    @time "  Executing r_run!:" begin
+    @time "  Executing r_run!" begin
         r_run!(r_simulation, r_time_step!, r_first_time_step!)
     end
 
