@@ -179,6 +179,13 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
                                                  DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
 end
 
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.Grids.LatitudeLongitudeGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
 struct Fix1v2{F,T}
     f::F
     t::T
