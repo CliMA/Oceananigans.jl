@@ -224,12 +224,20 @@ end
 
     @assert size(tvals) == size(c)
     gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
+    if gf isa AbstractFloat
+	 gf = Reactant.Ops.fill(gf, size(c))
+    end
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func isa Nothing ? Base.identity : c.func, gf))
+
+    mask = c.mask
+    if mask isa AbstractFloat && typeof(mask) != Reactant.unwrapped_eltype(Base.eltype(c))
+	mask = Base.eltype(c)(mask)
+    end
 
     return Reactant.Ops.select(
                 conds,
                 tvals,
-                Reactant.TracedUtils.broadcast_to_size(c.mask, size(c))
+                Reactant.TracedUtils.broadcast_to_size(mask, size(c))
     )
 end
 
