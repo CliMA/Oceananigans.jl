@@ -64,7 +64,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     # It's complicated to test this currently because the halo
     # regions have different paddings, so we don't do it.
 
-    Oceananigans.TimeSteppers.update_state!(r_model)
+    @jit Oceananigans.TimeSteppers.update_state!(r_model)
 
     # Test that fields were set correctly
     @info "  After setting an initial condition:"
@@ -83,6 +83,30 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @test ui ≈ rui
     @test vi ≈ rvi
     @test wi ≈ rwi
+
+    Oceananigans.TimeSteppers.update_state!(model)
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(model, model.velocities, :xyz)
+    @jit Oceananigans.TimeSteppers.update_state!(r_model)
+    @jit Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(r_model, r_model.velocities, :xyz)
+
+    Gu = model.timestepper.Gⁿ.u
+    Gv = model.timestepper.Gⁿ.v
+    rGu = r_model.timestepper.Gⁿ.u
+    rGv = r_model.timestepper.Gⁿ.v
+
+    # Test whether there are NaN in the tendencies
+    @info "  Momentum tendencies after calling compute_hydrostatic_momentum_tendencies:"
+    rGui = Array(interior(rGu))
+    rGvi = Array(interior(rGv))
+
+    Gui = Array(interior(Gu))
+    Gvi = Array(interior(Gv))
+
+    @show maximum(abs.(Gui .- rGui))
+    @show maximum(abs.(Gvi .- rGvi))
+
+    @test Gui ≈ rGui
+    @test Gvi ≈ rGvi
 
     # Deduce a stable time-step
     Δx = minimum_xspacing(grid)
