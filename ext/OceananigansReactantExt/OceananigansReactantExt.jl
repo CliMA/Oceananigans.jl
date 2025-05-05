@@ -108,7 +108,12 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     FC2 = Reactant.traced_type_inner(FC, seen, mode, track_numbers, sharding, runtime)
     CF2 = Reactant.traced_type_inner(CF, seen, mode, track_numbers, sharding, runtime)
     FF2 = Reactant.traced_type_inner(FF, seen, mode, track_numbers, sharding, runtime)
-    FT2 = Base.promote_type(Base.promote_type(Base.promote_type(Base.promote_type(FT2, eltype(CC2)), eltype(FC2)), eltype(CF2)), eltype(FF2))
+    for NF in (CC2, FC2, CF2, FF2)
+	if NF === Nothing
+	   continue
+	end
+	FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
+    end
     rFT2 = Reactant.traced_type_inner(rFT, seen, mode, track_numbers, sharding, runtime)
     return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch, rFT2}
 end
@@ -175,11 +180,12 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 	if NF === Nothing
 	   continue
 	end
-	FT2 = Base.promote_type(FT2, eltype(NF))
+	FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
 
-    return Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, 
+    res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, 
                                                  DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
+    return res
 end
 
 @inline Reactant.make_tracer(
