@@ -301,6 +301,6 @@ function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, L
 end
 
 default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:north}, loc, default) = default
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:east}, loc, default) = default
+default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:south}, loc, default) = default
  default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:north}, loc) = nothing
  default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:south}, loc) = nothing
