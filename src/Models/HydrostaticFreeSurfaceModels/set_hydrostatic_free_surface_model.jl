@@ -101,7 +101,7 @@ function set_velocities!(model, u, v; intrinsic_velocities=false)
 end
 
 function set_from_extrinsic_velocties!(velocities, grid, u, v)
-    grid = model.grid
+    grid = grid
     arch = grid.architecture
     uᶜᶜᶜ = CenterField(grid) 
     vᶜᶜᶜ = CenterField(grid) 
