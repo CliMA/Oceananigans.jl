@@ -365,10 +365,12 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :λ, :φ, :z, :r)
                 func   = Symbol(:Δ, dir)
                 metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe))
+                rcp_func   = Symbol(:Δ, dir, :⁻¹)
                 rcp_metric = Symbol(:Δ, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
                     export $metric, $rcp_metric
                 end
             end
@@ -377,10 +379,12 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :z)
                 func   = Symbol(:A, dir)
                 metric = Symbol(:A, dir, location_code(LXe, LYe, LZe))
+                rcp_func   = Symbol(:A, dir, :⁻¹)
                 rcp_metric = Symbol(:A, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
                     export $metric, $rcp_metric
                 end
             end
@@ -391,6 +395,7 @@ for LX in (:Center, :Face, :Nothing)
 
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                @inline rcp_volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
                 export $volume_function, $rcp_volume_function
             end
         end

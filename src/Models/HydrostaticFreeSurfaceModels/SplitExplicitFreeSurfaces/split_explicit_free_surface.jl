@@ -2,6 +2,8 @@ using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Grids: with_halo
 import Oceananigans.Grids: on_architecture
 
+import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields, previous_hydrostatic_tendency_fields
+
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
     barotropic_velocities :: U # A namedtuple with U, V
@@ -144,19 +146,47 @@ split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kern
 # TODO: When open boundary conditions are online
 # We need to calculate the barotropic boundary conditions
 # from the baroclinic boundary conditions by integrating the BC upwards
-@inline  west_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
-@inline  east_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
-@inline south_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
-@inline north_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
+@inline  west_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
+@inline  east_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
+@inline south_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
+@inline north_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
 
-@inline barotropic_bc(baroclinic_velocity) = FieldBoundaryConditions(
-    west   = west_barotropic_bc(baroclinic_velocity),
-    east   = east_barotropic_bc(baroclinic_velocity),
-    south  = south_barotropic_bc(baroclinic_velocity),
-    north  = north_barotropic_bc(baroclinic_velocity),
+@inline barotropic_velocity_boundary_conditions(baroclinic_velocity) = FieldBoundaryConditions(
+    west   = west_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    east   = east_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    south  = south_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    north  = north_barotropic_velocity_boundary_condition(baroclinic_velocity),
     top    = nothing,
     bottom = nothing
 )
+
+function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names, bcs)
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+
+    @apply_regionally U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
+    @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
+
+    free_surface_grid = free_surface.η.grid
+    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
+
+    tracers = TracerFields(tracer_names, grid, bcs)
+
+    return merge((u=u, v=v, U=U, V=V), tracers)
+end
+
+function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, grid, tracername, bcs)
+    U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
+    V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
+
+    free_surface_grid = free_surface.η.grid
+    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
+
+    return (; U=U, V=V, η=η)
+end
 
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}
 
@@ -177,17 +207,17 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
 
-    u_baroclinic = velocities.u
-    v_baroclinic = velocities.v
+    baroclinic_u_bcs = velocities.u
+    baroclinic_v_bcs = velocities.v
 
-    u_bc = barotropic_bc(u_baroclinic)
-    v_bc = barotropic_bc(v_baroclinic)
+    u_bcs = barotropic_velocity_boundary_conditions(baroclinic_u_bcs)
+    v_bcs = barotropic_velocity_boundary_conditions(baroclinic_v_bcs)
 
-    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
+    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
 
-    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
+    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
 
     filtered_state = (η = η̅, U = U̅, V = V̅)
     barotropic_velocities = (U = U, V = V)
@@ -195,7 +225,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bc, v_bc)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bcs, v_bcs)
 
     return SplitExplicitFreeSurface(η,
                                     barotropic_velocities,
