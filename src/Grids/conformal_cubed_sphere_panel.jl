@@ -1,6 +1,4 @@
-struct CubedSphereConformalMapping{FT, Rotation, F, C}
-    ξ :: Tuple{FT, FT}
-    η :: Tuple{FT, FT}
+struct CubedSphereConformalMapping{Rotation, F, C}
     rotation :: Rotation
     ξᶠᵃᵃ :: F
     ηᵃᶠᵃ :: F
@@ -8,20 +6,16 @@ struct CubedSphereConformalMapping{FT, Rotation, F, C}
     ηᵃᶜᵃ :: C
 
     CubedSphereConformalMapping(
-        ξ::Tuple{FT, FT},
-        η::Tuple{FT, FT},
         rotation::Rotation,
         ξᶠᵃᵃ::F,
         ηᵃᶠᵃ::F,
         ξᶜᵃᵃ::C,
         ηᵃᶜᵃ::C
-    ) where {FT, Rotation, F, C} = new{FT, Rotation, F, C}(ξ, η, rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+    ) where {Rotation, F, C} = new{Rotation, F, C}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
 end
 
 function on_architecture(architecture, conformal_mapping::CubedSphereConformalMapping)
     return CubedSphereConformalMapping(
-        conformal_mapping.ξ,
-        conformal_mapping.η,
         conformal_mapping.rotation,
         on_architecture(architecture, conformal_mapping.ξᶠᵃᵃ),
         on_architecture(architecture, conformal_mapping.ηᵃᶠᵃ),
@@ -32,8 +26,6 @@ end
 
 function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMapping)
     return CubedSphereConformalMapping(
-        adapt(to, conformal_mapping.ξ),
-        adapt(to, conformal_mapping.η),
         adapt(to, conformal_mapping.rotation),
         adapt(to, conformal_mapping.ξᶠᵃᵃ),
         adapt(to, conformal_mapping.ηᵃᶠᵃ),
@@ -142,8 +134,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     ## The vertical coordinates can come out of the regular rectilinear grid!
     Lz, z  = generate_coordinate(FT, topology, (Nξ, Nη, Nz), halo, z,  :z, 3, architecture)
 
-    ξ, η = (-1, 1), (-1, 1)
-    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+    conformal_mapping = CubedSphereConformalMapping(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
     conformal_mapping = on_architecture(architecture, conformal_mapping)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
@@ -157,13 +148,14 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
                                                     conformal_mapping)
 end
 
+using Oceananigans.Grids: cpu_face_constructor_ξ, cpu_face_constructor_η
+
 function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-    ξ = old_grid.conformal_mapping.ξ
-    η = old_grid.conformal_mapping.η
-
+    ξ = cpu_face_constructor_ξ(old_grid)
+    η = cpu_face_constructor_η(old_grid)
     z = cpu_face_constructor_z(old_grid)
 
     provided_conformal_mapping = old_grid.conformal_mapping
@@ -710,7 +702,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                      Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+    conformal_mapping = CubedSphereConformalMapping(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
 
     # Now we can create the grid.
 

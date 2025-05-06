@@ -100,6 +100,9 @@ const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
+@inline cpu_face_constructor_ξ(grid::OrthogonalSphericalShellGrid) = Array(grid.conformal_mapping.ξᶠᵃᵃ[1:size(grid, 1)+1])
+@inline cpu_face_constructor_η(grid::OrthogonalSphericalShellGrid) = Array(grid.conformal_mapping.ηᵃᶠᵃ[1:size(grid, 2)+1])
+
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                               λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
