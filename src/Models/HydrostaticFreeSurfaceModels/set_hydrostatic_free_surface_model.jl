@@ -105,8 +105,8 @@ function set_from_extrinsic_velocties!(velocities, grid, u, v)
     arch = grid.architecture
     uᶜᶜᶜ = CenterField(grid) 
     vᶜᶜᶜ = CenterField(grid) 
-    set!(uᶜᶜᶜ, u)
-    set!(vᶜᶜᶜ, v)
+    u isa ZeroField || set!(uᶜᶜᶜ, u)
+    v isa ZeroField || set!(vᶜᶜᶜ, v)
     launch!(arch, grid, :xyz, _rotate_velocities!, uᶜᶜᶜ, vᶜᶜᶜ, grid)
     launch!(arch, grid, :xyz, _interpolate_velocities!,
             velocities.u, velocities.v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
