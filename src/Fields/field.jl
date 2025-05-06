@@ -190,6 +190,7 @@ function Field(loc::Tuple,
                boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
                operand = nothing,
                status = nothing)
+
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
 
