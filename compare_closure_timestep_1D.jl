@@ -33,7 +33,7 @@ const S_surface = 37
 const Qᵀ = 0.0002
 const Qˢ = -2.0e-5
 const Qᵁ = -0.0001
-const f₀ = 1e-4
+const f₀ = 0
 
 T_initial(z) = dTdz * z + T_surface
 S_initial(z) = dSdz * z + S_surface
@@ -134,7 +134,7 @@ function run_simulation(model, Δt)
     mkpath(OUTPUT_PATH)
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, averaged_outputs,
                                                         filename = "$(OUTPUT_PATH)/dt_$(Δt)_dTdz_$(dTdz)_dSdz_$(dSdz)_QT_$(Qᵀ)_QS_$(Qˢ)_QU_$(Qᵁ)_f_$(f₀).jld2",
-                                                        schedule = TimeInterval(120minutes),
+                                                        schedule = TimeInterval(240minutes),
                                                         overwrite_existing = true)
 
     run!(simulation)
@@ -143,7 +143,7 @@ end
 setup_and_run_simulation(closure, Δt) = run_simulation(setup_model(closure), Δt)
 
 closures = [nn_closure, CATKE_closure, kϵ_closure]
-Δts = [1minute, 5minutes, 15minutes, 30minutes, 60minutes, 120minutes]
+Δts = [1minute, 5minutes, 15minutes, 30minutes, 60minutes, 120minutes, 240minutes]
 for (i, closure) in enumerate(closures), Δt in Δts
     @info "Running simulation with closure $i and Δt: $Δt"
     setup_and_run_simulation(closure, Δt)
@@ -158,12 +158,12 @@ function find_max(a...)
 end
 
 #%%
-dir_type = "kepsilon"
+dir_type = "CATKE"
 FILE_DIR = "./benchmark/$(dir_type)_timestep"
-ubar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.0001.jld2", "ubar") for Δt in Δts]
-vbar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.0001.jld2", "vbar") for Δt in Δts]
-Tbar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.0001.jld2", "Tbar") for Δt in Δts]
-Sbar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.0001.jld2", "Sbar") for Δt in Δts]
+ubar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.jld2", "ubar") for Δt in Δts]
+vbar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.jld2", "vbar") for Δt in Δts]
+Tbar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.jld2", "Tbar") for Δt in Δts]
+Sbar_datas = [FieldTimeSeries("$(FILE_DIR)/dt_$(Δt)_dTdz_0.015_dSdz_0.002_QT_0.0002_QS_-2.0e-5_QU_-0.0001_f_0.jld2", "Sbar") for Δt in Δts]
 
 #%%
 zC = znodes(Tbar_datas[1].grid, Center())
@@ -187,7 +187,7 @@ Sbarₙs = [@lift interior(Sbar_data[$n], 1, 1, :) for Sbar_data in Sbar_datas]
 title_str = @lift "Time: $(round(Tbar_datas[1].times[$n] / 86400, digits=3)) days"
 
 ulim = (find_min([interior(ubar_data) for ubar_data in ubar_datas[1:end-1]]...), find_max([interior(ubar_data) for ubar_data in ubar_datas[1:end-1]]...))
-vlim = (find_min([interior(vbar_data) for vbar_data in vbar_datas[1:end-1]]...), find_max([interior(vbar_data) for vbar_data in vbar_datas[1:end-1]]...))
+vlim = (find_min([interior(vbar_data) for vbar_data in vbar_datas[1:end-1]]...) - 1e-4, find_max([interior(vbar_data) for vbar_data in vbar_datas[1:end-1]]...) + 1e-4)
 Tlim = (find_min([interior(Tbar_data) for Tbar_data in Tbar_datas]...), find_max([interior(Tbar_data) for Tbar_data in Tbar_datas]...))
 Slim = (find_min([interior(Sbar_data) for Sbar_data in Sbar_datas]...), find_max([interior(Sbar_data) for Sbar_data in Sbar_datas]...))
 
@@ -213,7 +213,7 @@ hideydecorations!(axT, ticks=false, grid=false)
 hideydecorations!(axS, ticks=false, grid=false)
 display(fig)
 
-CairoMakie.record(fig, "./Output/$(dir_type)_timesteps.mp4", 1:Nt, framerate=3, px_per_unit=2) do nn
+CairoMakie.record(fig, "./Output/$(dir_type)_timesteps_test.mp4", 1:Nt, framerate=3, px_per_unit=2) do nn
     n[] = nn
 end
 #%%
