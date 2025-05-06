@@ -11,20 +11,21 @@ using SeawaterPolynomials.TEOS10
 
 model_architecture = GPU()
 
-const Nx = 256
-const Ny = 256
+const Nx = 192
+const Ny = 192
 const Nz = 384
 
-const Δx = 2
-const Δy = 2
+const Lx = 512
+const Ly = 512
+
+const Δx = Lx / Nx
+const Δy = Ly / Ny
 const Δz = 2
 
-const Lx = Nx * Δx
-const Ly = Ny * Δy
 const Lz = Nz * Δz
 
-const dTdz = (30 - 10) / Lz / 2
-const dSdz = (37 - 34) / Lz / 2
+const dTdz = (30 - 10) / 1024 / 2
+const dSdz = (37 - 34) / 1024 / 2
 
 const T_surface = 30
 const S_surface = 37
@@ -160,7 +161,7 @@ mkpath(OUTPUT_PATH)
 
 simulation.output_writers[:timeseries] = JLD2OutputWriter(model, outputs,
                                                     filename = "$(OUTPUT_PATH)/aperiodic_T_$(T_period)_S_$(S_period)_dt_$(Δt)_dTdz_$(dTdz)_dSdz_$(dSdz)_QT_$(Qᵀ)_QS_$(Qˢ)_QU_$(Qᵁ)_f_$(f₀)_fields.jld2",
-                                                    schedule = TimeInterval(120minutes))
+                                                    schedule = TimeInterval(2days))
                                                     # overwrite_existing = true)
 
 simulation.output_writers[:jld2] = JLD2OutputWriter(model, averaged_outputs,
@@ -177,6 +178,6 @@ if !isempty(checkpoint_files)
     pickup_iter = maximum(checkpoint_iters)
     run!(simulation, pickup="$(OUTPUT_PATH)/model_checkpoint_iteration$(pickup_iter).jld2")
 else
-    # run!(simulation)
-    @info "no checkpointer files found"
+    run!(simulation)
+    # @info "no checkpointer files found"
 end
