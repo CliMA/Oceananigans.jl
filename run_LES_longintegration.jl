@@ -156,16 +156,16 @@ wρ = Field(Average(w * ρ, dims = (1,2)))
 outputs = (; u, v, w, T, S)
 averaged_outputs = (; ubar, vbar, Tbar, Sbar, bbar, ρbar, uw, vw, wb, wT, wS, wρ)
 
-OUTPUT_PATH = "./Output/LES_60days/"
+OUTPUT_PATH = "./Output/LES_60days/aperiodic_T_$(T_period)_S_$(S_period)_dt_$(Δt)_dTdz_$(dTdz)_dSdz_$(dSdz)_QT_$(Qᵀ)_QS_$(Qˢ)_QU_$(Qᵁ)_f_$(f₀)/"
 mkpath(OUTPUT_PATH)
 
 simulation.output_writers[:timeseries] = JLD2OutputWriter(model, outputs,
-                                                    filename = "$(OUTPUT_PATH)/aperiodic_T_$(T_period)_S_$(S_period)_dt_$(Δt)_dTdz_$(dTdz)_dSdz_$(dSdz)_QT_$(Qᵀ)_QS_$(Qˢ)_QU_$(Qᵁ)_f_$(f₀)_fields.jld2",
+                                                    filename = "$(OUTPUT_PATH)/instantaneous_fields.jld2",
                                                     schedule = TimeInterval(2days))
                                                     # overwrite_existing = true)
 
 simulation.output_writers[:jld2] = JLD2OutputWriter(model, averaged_outputs,
-                                                    filename = "$(OUTPUT_PATH)/aperiodic_T_$(T_period)_S_$(S_period)_dt_$(Δt)_dTdz_$(dTdz)_dSdz_$(dSdz)_QT_$(Qᵀ)_QS_$(Qˢ)_QU_$(Qᵁ)_f_$(f₀)_averaged_fields.jld2",
+                                                    filename = "$(OUTPUT_PATH)/averaged_fields.jld2",
                                                     schedule = TimeInterval(120minutes))
                                                     # overwrite_existing = true)
 
