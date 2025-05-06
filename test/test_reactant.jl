@@ -4,27 +4,27 @@ using Oceananigans
 using Reactant
 using KernelAbstractions: @kernel, @index
 
+@kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gu[i, j, k] = - Oceananigans.Advection.U_dot_∇u(i, j, k, grid, advection, velocities)
+end
+
+function simple_tendency!(model)
+    grid = model.grid
+    arch = grid.architecture
+    Oceananigans.Utils.launch!(
+	arch,
+	grid,
+	:xyz,
+	_simple_tendency_kernel!,
+	model.timestepper.Gⁿ.u,
+	grid,
+	model.advection.momentum,
+	model.velocities)
+    return nothing
+end
+
 @testset "Gu kernel" begin
-	function simple_tendency!(model)
-	    grid = model.grid
-	    arch = grid.architecture
-	    Oceananigans.Utils.launch!(
-		arch,
-		grid,
-		:xyz,
-		_simple_tendency_kernel!,
-		model.timestepper.Gⁿ.u,
-		grid,
-		model.advection.momentum,
-		model.velocities)
-	    return nothing
-	end
-
-	@kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
-	    i, j, k = @index(Global, NTuple)
-	    @inbounds Gu[i, j, k] = - Oceananigans.Advection.U_dot_∇u(i, j, k, grid, advection, velocities)
-	end
-
 	Nx, Ny, Nz = (10, 10, 10) # number of cells
 	halo = (7, 7, 7)
 	longitude = (0, 4)
