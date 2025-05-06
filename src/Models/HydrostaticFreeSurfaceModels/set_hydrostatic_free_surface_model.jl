@@ -113,7 +113,7 @@ function set_from_extrinsic_velocties!(velocities, grid, u, v)
     return nothing
 end
 
-function _rotate_velocities!(u, v, grid)
+@kernel function _rotate_velocities!(u, v, grid)
     i, j, k = @index(Global, NTuple)
     # Rotate u, v from extrinsic to intrinsic coordinate system
     ur, vr = intrinsic_vector(i, j, k, grid, u, v)
@@ -123,7 +123,7 @@ function _rotate_velocities!(u, v, grid)
     end
 end
 
-function _interpolate_velocities(u, v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
+@kernel function _interpolate_velocities(u, v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
         u[i, j, k] = ℑxyᶠᶜᵃ(i, j, k, grid, uᶜᶜᶜ)
