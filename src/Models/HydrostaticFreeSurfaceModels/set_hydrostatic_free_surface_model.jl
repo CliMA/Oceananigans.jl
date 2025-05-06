@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 
 import Oceananigans.Fields: set!
 
@@ -45,7 +46,12 @@ model.velocities.u
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
-@inline function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+@inline function set!(model::HydrostaticFreeSurfaceModel;
+                      u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+                      kwargs...)
+
+    set_velocities!(model, u, v; intrinsic_velocities)
+
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.velocities)
             ϕ = getproperty(model.velocities, fldname)
@@ -66,3 +72,61 @@ model.velocities.u
     return nothing
 end
 
+
+const IntrinsicCoordinateGrid = Union{
+    OrthogonalSphericalShellGrid,
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, OrthogonalSphericalShellGrid},
+}
+
+"""
+    set_velocities!(model, u, v; intrinsic_velocities=false)
+
+Set the velocities of `model` from `u` and `v`.
+
+If `intrinsic_velocities` is true, then `(u, v)` is assumed to be a horizontal vector
+in the intrinsic coordinate system of the grid. Otherwise, `(u, v)` is assumed to represent
+an extrinsic vector, and is rotated into the intrinsic coordinate system.
+
+This abstraction is necessary for `OrthogonalSphericalShellGrid` and derivatives thereof,
+where the extrinsic and intrinsic coordinate systems differ.
+"""
+function set_velocities!(model, u, v; intrinsic_velocities=false)
+    if intrinsic_velocities || !(model.grid isa IntrinsicCoordinateGrid)
+        u isa ZeroField || set!(model.velocities.u, u)
+        v isa ZeroField || set!(model.velocities.v, v)
+    else
+        set_from_extrinsic_velocties!(model.velocities, model.grid, u, v)
+    end
+    return nothing
+end
+
+function set_from_extrinsic_velocties!(velocities, grid, u, v)
+    grid = model.grid
+    arch = grid.architecture
+    uᶜᶜᶜ = CenterField(grid) 
+    vᶜᶜᶜ = CenterField(grid) 
+    set!(uᶜᶜᶜ, u)
+    set!(vᶜᶜᶜ, v)
+    launch!(arch, grid, :xyz, _rotate_velocities!, uᶜᶜᶜ, vᶜᶜᶜ, grid)
+    launch!(arch, grid, :xyz, _interpolate_velocities!,
+            velocities.u, velocities.v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
+    return nothing
+end
+
+function _rotate_velocities!(u, v, grid)
+    i, j, k = @index(Global, NTuple)
+    # Rotate u, v from extrinsic to intrinsic coordinate system
+    ur, vr = intrinsic_vector(i, j, k, grid, u, v)
+    @inbounds begin
+        u[i, j, k] = ur[i, j, k]
+        v[i, j, k] = vr[i, j, k]
+    end
+end
+
+function _interpolate_velocities(u, v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        u[i, j, k] = ℑxyᶠᶜᵃ(i, j, k, grid, uᶜᶜᶜ)
+        v[i, j, k] = ℑxyᶜᶠᵃ(i, j, k, grid, vᶜᶜᶜ)
+    end
+end
