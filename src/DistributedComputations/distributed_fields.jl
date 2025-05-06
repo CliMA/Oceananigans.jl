@@ -2,10 +2,13 @@ using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 using LinearAlgebra: dot, norm
+using Statistics: mean
+using KahanSummation: sum_kbn
 
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Solvers: _norm, _dot
+import Oceananigans.Solvers: _norm, _dot, _mean, _convergence
+import Statistics: mean
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
     indices = validate_indices(indices, (LX, LY, LZ), grid)
@@ -105,7 +108,24 @@ end
 
 # Distributed dot product
 @inline function _dot(u::DistributedField, v::DistributedField)
-    dot_local = dot(u, v)
+    # dot_local = dot(u, v)
+    dot_local = sum_kbn(u .* v)
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
+end
+
+# Note: this mean doesn't work (problem with Kahan summation)
+@inline function _mean(u::DistributedField)
+    # sum_local = sum(u)
+    sum_local = sum_kbn(interior(u))
+    n_local = length(u)
+    arch = architecture(u)
+    sum_global = all_reduce(+, sum_local, arch)
+    n_global = all_reduce(+, n_local, arch)
+    return sum_global / n_global
+end
+
+@inline function _convergence(solver, tolerance, arch::A) where {A <: Distributed}
+    criteria = norm(solver.residual) <= tolerance
+    return all_reduce(&, criteria, arch) 
 end

@@ -182,6 +182,8 @@ end
 # Possibly distributed global operations
 @inline _norm(x) = norm(x)
 @inline _dot(x, y) = dot(x, y)
+@inline _mean(x) = mean(x)
+@inline _convergence(solver, tolerance, arch) = _norm(solver.residual) <= tolerance
 
 function iterate!(x, solver, b, args...)
     r = solver.residual
@@ -258,7 +260,8 @@ end
 function iterating(solver, tolerance)
     # End conditions
     solver.iteration >= solver.maxiter && return false
-    _norm(solver.residual) <= tolerance && return false
+    # _norm(solver.residual) <= tolerance && return false
+    _convergence(solver, tolerance, solver.architecture) && return false
     return true
 end
 
