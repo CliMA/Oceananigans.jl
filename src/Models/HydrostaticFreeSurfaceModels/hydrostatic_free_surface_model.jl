@@ -25,7 +25,7 @@ PressureField(grid) = (; pHY′ = CenterField(grid))
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
-function default_vertical_coordinate(grid))
+function default_vertical_coordinate(grid)
     if grid.z isa Oceananigans.Grids.MutableVerticalDiscretization
         return ZStar()
     else
