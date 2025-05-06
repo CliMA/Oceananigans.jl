@@ -687,7 +687,6 @@ Keyword Arguments
 """
 function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
     arch = architecture(rectilinear_grid)
-    @show Nx, Ny, Nz = size(rectilinear_grid)
     Hx, Hy, Hz = halo_size(rectilinear_grid)
     
     λ₀, φ₀ = origin
@@ -707,9 +706,6 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth
 
     xᶠ = on_architecture(CPU(), xᶠ)
     yᶠ = on_architecture(CPU(), yᶠ)
-
-    @show xᶠ
-    @show yᶠ
     
     # Convert y coordinates to latitudes
     R = radius
