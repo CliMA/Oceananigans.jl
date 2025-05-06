@@ -1,5 +1,64 @@
 include("reactant_test_utils.jl")
 
+using Oceananigans
+using Reactant
+using KernelAbstractions: @kernel, @index
+
+@testset "Gu kernel" begin
+	function simple_tendency!(model)
+	    grid = model.grid
+	    arch = grid.architecture
+	    Oceananigans.Utils.launch!(
+		arch,
+		grid,
+		:xyz,
+		_simple_tendency_kernel!,
+		model.timestepper.Gⁿ.u,
+		grid,
+		model.advection.momentum,
+		model.velocities)
+	    return nothing
+	end
+
+	@kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
+	    i, j, k = @index(Global, NTuple)
+	    @inbounds Gu[i, j, k] = - Oceananigans.Advection.U_dot_∇u(i, j, k, grid, advection, velocities)
+	end
+
+	Nx, Ny, Nz = (10, 10, 10) # number of cells
+	halo = (7, 7, 7)
+	longitude = (0, 4)
+	stretched_longitude = [0, 0.1, 0.2, 0.3, 0.4, 0.6, 1.3, 2.5, 2.6, 3.5, 4.0]
+	latitude = (0, 4)
+	z = (-1, 0)
+	lat_lon_kw = (; size=(Nx, Ny, Nz), halo, longitude, latitude, z)
+	hydrostatic_model_kw = (; momentum_advection=VectorInvariant(), free_surface=ExplicitFreeSurface())
+
+	arch = Oceananigans.Architectures.ReactantState()
+	grid = LatitudeLongitudeGrid(arch; lat_lon_kw...)
+	model = HydrostaticFreeSurfaceModel(; grid, hydrostatic_model_kw...)
+
+	ui = randn(size(model.velocities.u)...)
+	vi = randn(size(model.velocities.v)...)
+	set!(model, u=ui, v=vi)
+
+	@jit simple_tendency!(model)
+
+	Gu = model.timestepper.Gⁿ.u
+	Gv = model.timestepper.Gⁿ.v
+	Gui = Array(interior(Gu))
+	Gvi = Array(interior(Gv))
+	
+	carch = Oceananigans.Architectures.ReactantState()
+	cgrid = LatitudeLongitudeGrid(carch; lat_lon_kw...)
+	cmodel = HydrostaticFreeSurfaceModel(; cgrid, hydrostatic_model_kw...)
+
+	set!(cmodel, u=ui, v=vi)
+	
+	simple_tendency!(cmodel)
+	@test all(Array(interior(model.timestepper.Gⁿ.u)) .≈ Array(interior(cmodel.timestepper.Gⁿ.u)))
+end
+
 ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
 @testset "Reactanigans unit tests" begin

@@ -89,7 +89,6 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @jit Oceananigans.TimeSteppers.update_state!(r_model)
     
     mod = @code_hlo optimize=:before_jit Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(r_model, r_model.velocities, :xyz)
-    println(string(mod))
     @jit Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(r_model, r_model.velocities, :xyz)
 
     Gu = model.timestepper.Gⁿ.u
