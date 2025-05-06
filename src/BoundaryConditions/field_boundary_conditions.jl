@@ -300,7 +300,7 @@ function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, L
     return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, LY, LZ) : default_bc
 end
 
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:north}, loc, default) = default
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:south}, loc, default) = default
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:north}, loc) = nothing
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, Flat}, ::Val{:south}, loc) = nothing
+default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc, default) = default
+default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc, default) = default
+ default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc) = nothing
+ default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc) = nothing
