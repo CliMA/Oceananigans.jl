@@ -170,4 +170,13 @@ simulation.output_writers[:jld2] = JLD2OutputWriter(model, averaged_outputs,
 
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(1days), prefix="$(OUTPUT_PATH)/model_checkpoint")
 
-run!(simulation)
+files = readdir(OUTPUT_PATH)
+checkpoint_files = files[occursin.("model_checkpoint_iteration", files)]
+if !isempty(checkpoint_files)
+    checkpoint_iters = parse.(Int, [filename[findfirst("iteration", filename)[end]+1:findfirst(".jld2", filename)[1]-1] for filename in checkpoint_files])
+    pickup_iter = maximum(checkpoint_iters)
+    run!(simulation, pickup="$(OUTPUT_PATH)/model_checkpoint_iteration$(pickup_iter).jld2")
+else
+    # run!(simulation)
+    @info "no checkpointer files found"
+end
