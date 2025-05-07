@@ -690,7 +690,8 @@ Keyword Arguments
 function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
     arch = architecture(rectilinear_grid)
     Hx, Hy, Hz = halo_size(rectilinear_grid)
-    
+    Nx, Ny, Nz = size(rectilinear_grid)
+	
     λ₀, φ₀ = origin
 
     TX, TY, TZ = topology(rectilinear_grid)
