@@ -51,7 +51,7 @@ end
 	
 	carch = Oceananigans.Architectures.ReactantState()
 	cgrid = LatitudeLongitudeGrid(carch; lat_lon_kw...)
-	cmodel = HydrostaticFreeSurfaceModel(; cgrid, hydrostatic_model_kw...)
+	cmodel = HydrostaticFreeSurfaceModel(; grid=cgrid, hydrostatic_model_kw...)
 
 	set!(cmodel, u=ui, v=vi)
 	
