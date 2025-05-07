@@ -118,8 +118,8 @@ end
     # Rotate u, v from extrinsic to intrinsic coordinate system
     ur, vr = intrinsic_vector(i, j, k, grid, u, v)
     @inbounds begin
-        u[i, j, k] = ur[i, j, k]
-        v[i, j, k] = vr[i, j, k]
+        u[i, j, k] = ur
+        v[i, j, k] = vr
     end
 end
 
