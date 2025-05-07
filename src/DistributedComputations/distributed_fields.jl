@@ -1,13 +1,14 @@
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
+using Oceananigans.Fields: condition_operand, conditional_length
 using LinearAlgebra: dot, norm
 using Statistics: mean
 using KahanSummation: sum_kbn
 
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Solvers: _norm, _dot, _mean, _convergence
+import LinearAlgebra: norm, dot
 import Statistics: mean
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
@@ -101,31 +102,49 @@ function reconstruct_global_field(field::DistributedField)
 end
 
 # Distributed norm
-@inline function _norm(u::DistributedField)
-    n² = _dot(u, u)
+@inline function norm(u::DistributedField)
+    n² = dot(u, u)
     return sqrt(n²)
 end
 
 # Distributed dot product
-@inline function _dot(u::DistributedField, v::DistributedField)
-    # dot_local = dot(u, v)
-    dot_local = sum_kbn(u .* v)
+@inline function dot(u::DistributedField, v::DistributedField)
+    dot_local = sum(interior(u) .* interior(v))
+    # dot_local = sum_kbn(interior(u) .* interior(v))
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end
 
-# Note: this mean doesn't work (problem with Kahan summation)
-@inline function _mean(u::DistributedField)
-    # sum_local = sum(u)
-    sum_local = sum_kbn(interior(u))
-    n_local = length(u)
-    arch = architecture(u)
-    sum_global = all_reduce(+, sum_local, arch)
-    n_global = all_reduce(+, n_local, arch)
-    return sum_global / n_global
+@inline function _mean(f, c::DistributedField, ::Colon; condition=nothing, mask=0)
+    arch = architecture(c)
+    operand = condition_operand(f, c, condition, mask)
+    
+    local_sum = sum(operand)
+    local_length = conditional_length(operand)
+    
+    global_sum = all_reduce(+, local_sum, arch)
+    global_length = all_reduce(+, local_length, arch)
+    
+    return global_sum / global_length
 end
 
-@inline function _convergence(solver, tolerance, arch::A) where {A <: Distributed}
-    criteria = norm(solver.residual) <= tolerance
-    return all_reduce(&, criteria, arch) 
+@inline function _mean(f, c::DistributedField, dims; condition=nothing, mask=0)
+    arch = architecture(c)
+    operand = condition_operand(f, c, condition, mask)
+
+    local_sum = sum(operand; dims)
+    local_length = conditional_length(operand, dims)
+
+    global_sum = all_reduce(+, local_sum, arch)
+    global_length = all_reduce(+, local_length, arch)
+
+    return global_sum ./ global_length
 end
+
+@inline mean(f::Function, c::DistributedField; condition=nothing, dims=:) = 
+    _mean(f, c, dims; condition)
+
+@inline mean(f::Function, c::DistributedField, dims; condition=nothing, mask=0) =
+    _mean(f, c, dims; condition, mask)
+
+@inline mean(c::DistributedField; condition=nothing, dims=:) = _mean(identity, c, dims; condition)

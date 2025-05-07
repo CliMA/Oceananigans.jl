@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Utils: prettysummary
-using Statistics: norm, dot
+using Statistics: norm, dot, mean
 using LinearAlgebra
 
 import Oceananigans.Architectures: architecture
@@ -160,6 +160,7 @@ Loop:
 function solve!(x, solver::ConjugateGradientSolver, b, args...)
     # Initialize
     solver.iteration = 0
+    b .-= mean(b)
 
     # q = A * x
     q = solver.linear_operator_product
@@ -179,12 +180,6 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     return x
 end
 
-# Possibly distributed global operations
-@inline _norm(x) = norm(x)
-@inline _dot(x, y) = dot(x, y)
-@inline _mean(x) = mean(x)
-@inline _convergence(solver, tolerance, arch) = _norm(solver.residual) <= tolerance
-
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
@@ -196,14 +191,14 @@ function iterate!(x, solver, b, args...)
     # Unpreconditioned: z = r
     @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
-    ρ = _dot(z, r)
+    ρ = dot(z, r)
 
     @debug "ConjugateGradientSolver $(solver.iteration), ρ: $ρ"
     @debug "ConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
     @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
 
-    α = ρ / _dot(p, q)
+    α = ρ / dot(p, q)
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
@@ -254,14 +249,16 @@ function update_solution_and_residuals!(x, r, q, p, α)
     xp .+= α .* pp
     rp .-= α .* qp
 
+    xp .-= mean(x)
+    rp .-= mean(r)
+
     return nothing
 end
 
 function iterating(solver, tolerance)
     # End conditions
     solver.iteration >= solver.maxiter && return false
-    # _norm(solver.residual) <= tolerance && return false
-    _convergence(solver, tolerance, solver.architecture) && return false
+    norm(solver.residual) <= tolerance && return false
     return true
 end
 
