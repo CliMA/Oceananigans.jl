@@ -722,6 +722,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     end
 end
 
+# Improve me! We can should both the extrama in one single reduction instead of two
+Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
+Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
+
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     operator = condition_operand(f, c, condition, mask)
     return sum(operator) / conditional_length(operator)
