@@ -123,7 +123,7 @@ end
     end
 end
 
-@kernel function _interpolate_velocities(u, v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
+@kernel function _interpolate_velocities!(u, v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
         u[i, j, k] = ℑxyᶠᶜᵃ(i, j, k, grid, uᶜᶜᶜ)
