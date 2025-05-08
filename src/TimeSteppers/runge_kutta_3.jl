@@ -169,7 +169,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     for (i, field) in enumerate(model_fields)
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
+        launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=false)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption

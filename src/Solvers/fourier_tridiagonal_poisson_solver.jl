@@ -39,15 +39,18 @@ end
 end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
+    g = 10
+    Δt = 0.01
+
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
 
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j]) + (1 / (g * Δt^2))
+    # Using a Robin boundary condition:
+    @inbounds D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j]) 
     for k in 2:Nz-1
         @inbounds D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
     end
-    @inbounds D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+    @inbounds D[i, j, Nz] = -(-1 / Δzᵃᵃᶠ(i, j, Nz, grid) *((-3 / (2*g*Δt^2) - 1 / Δzᵃᵃᶠ(i, j, Nz, grid))/(1 / Δzᵃᵃᶠ(i, j, Nz, grid) + 1 / (2*g*Δt^2)))) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j]) 
 end
 
 stretched_direction(::YZRegularRG) = XDirection()
