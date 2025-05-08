@@ -197,7 +197,15 @@ cumsum_c²[1:Nx, 1:Ny, 1:Nz]
 ```
 """
 Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, operand, dims)
-location(a::Accumulation) = location(a.operand)
+
+flip(::Type{Face}) = Center
+flip(::Type{Center}) = Face
+            
+function location(a::Accumulation)
+    op_loc = location(a.operand)
+    loc = Tuple(d ∈ a.dims ? flip(op_loc[d]) : op_loc[d] for d=1:3)
+    return loc
+end
 
 #####
 ##### Some custom scans
@@ -269,11 +277,17 @@ end
     return StepRange(from, by, finish)
 end
 
+# TODO: extend to more operators
+neutral_element(::typeof(Base.min), T) = convert(T, +Inf)
+neutral_element(::typeof(Base.max), T) = convert(T, -Inf)
+neutral_element(::typeof(Base.add_sum), T) = convert(T, 0)
+
 @kernel function accumulate_x(op, B, A, start, finish, dir)
     j, k = @index(Global, NTuple)
 
     # Initialize
-    @inbounds B[start, j, k] = Base.reduce_first(op, A[start, j, k])
+    FT = eltype(B)
+    @inbounds B[start, j, k] = neutral_element(op, FT)
 
     for i in accumulation_range(dir, start, finish)
         pr = decrement(dir, i)
@@ -285,7 +299,8 @@ end
     i, k = @index(Global, NTuple)
 
     # Initialize
-    @inbounds B[i, start, k] = Base.reduce_first(op, A[i, start, k])
+    FT = eltype(B)
+    @inbounds B[i, start, k] = neutral_element(op, FT)
 
     for j in accumulation_range(dir, start, finish)
         pr = decrement(dir, j)
@@ -297,8 +312,9 @@ end
     i, j = @index(Global, NTuple)
 
     # Initialize
-    @inbounds B[i, j, start] = Base.reduce_first(op, A[i, j, start])
-
+    FT = eltype(B)
+    @inbounds B[i, j, start] = neutral_element(op, FT)
+                
     for k in accumulation_range(dir, start, finish)
         pr = decrement(dir, k)
         @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, k])
