@@ -109,7 +109,7 @@ function (ϵ::VarianceDissipation)(model)
     assemble_dissipation!(model, ϵ)
 
     # Then we update the fluxes to be used in the next time step
-    update_fluxes!(model, ϵ)
+    cache_fluxes!(model, ϵ)
 
     return nothing
 end
