@@ -34,7 +34,8 @@ using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 
     set!(m2, η = interior(m1.free_surface.η),
              u = interior(m1.velocities.u),
-             v = interior(m1.velocities.v))
+             v = interior(m1.velocities.v),
+             intrinsic_velocities = true)
 
     @test interior(m1.free_surface.η) == interior(m2.free_surface.η)
     @test interior(m1.velocities.u)   == interior(m2.velocities.u)

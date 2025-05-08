@@ -42,7 +42,7 @@ function compute_source_term!(pressure, solver::DistributedFFTBasedPoissonSolver
     arch = architecture(solver)
     grid = solver.local_grid
     launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, Ũ)
-    return nothing        
+    return nothing
 end
 
 function compute_source_term!(pressure, solver::DistributedFourierTridiagonalPoissonSolver, Δt, Ũ)
