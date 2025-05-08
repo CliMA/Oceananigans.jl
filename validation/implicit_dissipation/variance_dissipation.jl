@@ -89,12 +89,12 @@ sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation
 
 run!(sim)
 
-Nt = length(c.times)
-
 c    = FieldTimeSeries("one_d_simulation.jld2", "c")
 Δtc² = FieldTimeSeries("one_d_simulation.jld2", "Δtc²")
 Acx  = FieldTimeSeries("one_d_simulation.jld2", "Acx")
 Dcx  = FieldTimeSeries("one_d_simulation.jld2", "Dcx")
+
+Nt = length(c.times)
 
 ∫closs = [sum(interior(Δtc²[i], :, 1, 1))  for i in 1:Nt]
 ∫A     = [sum(interior(Acx[i] , :, 1, 1))  for i in 1:Nt]
@@ -102,7 +102,7 @@ Dcx  = FieldTimeSeries("one_d_simulation.jld2", "Dcx")
 
 fig = Figure()
 ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation")
-lines!(ax, c.times, ∫closs ./ 100, label="total variance loss", color=:blue)
+scatter!(ax, c.times, ∫closs .* grid.Δxᶜᵃᵃ, label="total variance loss", color=:blue)
 lines!(ax, c.times, ∫A, label="advection dissipation", color=:red)
 lines!(ax, c.times, ∫D, label="diffusive dissipation", color=:green)
 lines!(ax, c.times, ∫D .+ ∫A, label="total dissipation", color=:purple)
