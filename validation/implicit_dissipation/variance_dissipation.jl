@@ -33,7 +33,7 @@ end
 
 @inline c₀(x) = sin(x * 2π)
 
-Δt_max = 0.1 * minimum_xspacing(grid)
+Δt_max = 0.2 * minimum_xspacing(grid)
 
 # Change to test pure advection schemes
 tracer_advection = WENO(order = 9)
