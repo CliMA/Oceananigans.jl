@@ -82,6 +82,34 @@ GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(met
 #####
 
 """
+    gridmetrics(metric, grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid metrics for `grid` at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> gridmetric(Ax, grid, Center(), Center(), Center())
+KernelFunctionOperation at (Center, Center, Center)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Ax (generic function with 29 methods)
+└── arguments: ("Center", "Center", "Center")
+```
+"""
+function gridmetrics(metric, grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    metric_op = KernelFunctionOperation{LX, LY, LZ}(metric, grid, ℓx, ℓy, ℓz)
+    return metric_op
+end
+
+# Fallback for center location
+gridmetrics(metric, grid) = gridmetrics(metric, grid, Center(), Center(), Center())
+
+"""
     xspacings(grid, ℓx, ℓy, ℓz)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
@@ -101,11 +129,7 @@ KernelFunctionOperation at (Center, Center, Center)
 └── arguments: ("Center", "Center", "Center")
 ```
 """
-function xspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δx_op = KernelFunctionOperation{LX, LY, LZ}(Δx, grid, ℓx, ℓy, ℓz)
-    return Δx_op
-end
+xspacings(grid, ℓx, ℓy, ℓz) = gridmetrics(Δx, grid, ℓx, ℓy, ℓz)
 
 """
     yspacings(grid, ℓx, ℓy, ℓz)
@@ -127,11 +151,7 @@ KernelFunctionOperation at (Center, Face, Center)
 └── arguments: ("Center", "Face", "Center")
 ```
 """
-function yspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δy_op = KernelFunctionOperation{LX, LY, LZ}(Δy, grid, ℓx, ℓy, ℓz)
-    return Δy_op
-end
+yspacings(grid, ℓx, ℓy, ℓz) = gridmetrics(Δy, grid, ℓx, ℓy, ℓz)
 
 """
     zspacings(grid, ℓx, ℓy, ℓz)
@@ -153,11 +173,7 @@ KernelFunctionOperation at (Center, Center, Face)
 └── arguments: ("Center", "Center", "Face")
 ```
 """
-function zspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δz, grid, ℓx, ℓy, ℓz)
-    return Δz_op
-end
+zspacings(grid, ℓx, ℓy, ℓz) = gridmetrics(Δz, grid, ℓx, ℓy, ℓz)
 
 """
     λspacings(grid, ℓx, ℓy, ℓz)
@@ -182,11 +198,7 @@ KernelFunctionOperation at (Center, Face, Center)
 └── arguments: ("Center", "Face", "Center")
 ```
 """
-function λspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δλ_op = KernelFunctionOperation{LX, LY, LZ}(Δλ, grid, ℓx, ℓy, ℓz)
-    return Δλ_op
-end
+λspacings(grid, ℓx, ℓy, ℓz) = gridmetrics(Δλ, grid, ℓx, ℓy, ℓz)
 
 """
     φspacings(grid, ℓx, ℓy, ℓz)
@@ -211,11 +223,29 @@ KernelFunctionOperation at (Center, Face, Center)
 └── arguments: ("Center", "Face", "Center")
 ```
 """
-function φspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δφ_op = KernelFunctionOperation{LX, LY, LZ}(Δφ, grid, ℓx, ℓy, ℓz)
-    return Δφ_op
-end
+φspacings(grid, ℓx, ℓy, ℓz) = gridmetrics(Δφ, grid, ℓx, ℓy, ℓz)
+
+"""
+    zspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> zspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δz (generic function with 28 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+zspacings(grid, ℓx, ℓy, ℓz) = gridmetrics(Δz, grid, ℓx, ℓy, ℓz)
 
 @inline xspacings(field::AbstractField) = xspacings(field.grid, location(field)...)
 @inline yspacings(field::AbstractField) = yspacings(field.grid, location(field)...)
