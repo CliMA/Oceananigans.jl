@@ -53,10 +53,6 @@ function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid,
     launch!(arch, grid, :xy, _rk3_average_free_surface!, Uⁿ, grid, Uⁿ⁻¹, γⁿ, ζⁿ)
     launch!(arch, grid, :xy, _rk3_average_free_surface!, Vⁿ, grid, Vⁿ⁻¹, γⁿ, ζⁿ)
 
-    # Averaging the free surface is only required for a grid with Mutable vertical coordinates,
-    # which needs to update the grid based on the value of the free surface
-    launch!(arch, grid, :xy, _rk3_average_free_surface!, ηⁿ, grid, ηⁿ⁻¹, γⁿ, ζⁿ)
-
     return nothing
 end
 

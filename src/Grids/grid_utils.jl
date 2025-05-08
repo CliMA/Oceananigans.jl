@@ -296,12 +296,6 @@ function domain_summary(topo, name, (left, right))
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
-    prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1)
-    return string(prefix, padding, coordinate_summary(topo, z, name))
-end
-
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1)
