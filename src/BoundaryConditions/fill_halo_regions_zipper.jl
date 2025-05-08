@@ -77,6 +77,7 @@ end
 
     # We substitute the redundant part of the last row to ensure consistency
     @inbounds u[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * u[i′, Ny, k], u[i, Ny, k])
+
     return nothing
 end
 
@@ -91,6 +92,8 @@ end
             v[i, Ny + j, k] = sign * v[i′, Ny - j + 1, k]
         end
     end
+
+    @inbounds v[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny + 1, k], v[i, Ny, k])
 
     return nothing
 end
