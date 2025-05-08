@@ -137,11 +137,6 @@ end
 ##### Kernel functions
 #####
 
-# Dispatch on the type of the user-provided AMD model constant.
-# Only numbers, arrays, and functions supported now.
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(i, grid, Center()), ynode(j, grid, Center()), znode(k, grid, Center()))
 
 @kernel function _compute_AMD_viscosity!(νₑ, grid, closure::AMD, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
@@ -161,7 +156,7 @@ end
 
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
 
-        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
+        νˢᵍˢ = - closure_constant(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
 
     @inbounds νₑ[i, j, k] = max(zero(FT), νˢᵍˢ)
@@ -182,7 +177,7 @@ end
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, tracer)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
+        κˢᵍˢ = - closure_constant(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
