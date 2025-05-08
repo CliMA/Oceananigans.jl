@@ -67,7 +67,7 @@ const C = Center
 const F = Face
 
 @testset "ZStar coordinate scaling tests" begin
-    @info "testing the ZStar coordinate scalings"
+    @info "Testing ZStar coordinate scalings..."
 
     z = MutableVerticalDiscretization((-20, 0))
 
@@ -103,7 +103,7 @@ const F = Face
 end
 
 @testset "MutableVerticalDiscretization tests" begin
-    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
+    @info "Testing the MutableVerticalDiscretization in ZCoordinate mode..."
 
     z = MutableVerticalDiscretization((-20, 0))
 
@@ -195,7 +195,7 @@ end
 
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
-                        @info "  Testing a $info_msg"
+                        @info "  Testing a $info_msg..."
                         model = HydrostaticFreeSurfaceModel(; grid,
                                                             free_surface,
                                                             tracers = (:b, :c),
@@ -213,7 +213,7 @@ end
             end
         end
     
-        @info "  Testing a ZStar and Runge Kutta 3rd order time stepping"
+        @info "  Testing a ZStar and Runge Kutta 3rd order time stepping..."
 
         topology = topologies[2]
         rtg  = RectilinearGrid(arch; size=(10, 10, 20), x=(0, 100kilometers), y=(-10kilometers, 10kilometers), topology, z=z_stretched)
