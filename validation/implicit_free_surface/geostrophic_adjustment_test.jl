@@ -39,14 +39,14 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
     simulation = Simulation(model; Δt = 20wave_propagation_time_scale, stop_iteration)
-    
+
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
     uarr = Vector{Field}(undef, stop_iteration+1)
 
-    save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.η) 
-    save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)   
-    save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)   
+    save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.η)
+    save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
+    save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
 
     progress_message(sim) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,

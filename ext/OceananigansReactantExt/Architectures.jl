@@ -65,7 +65,7 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
 
     ranks = Rx, Ry, Rz = size(partition)
     total_ranks = Rx * Ry * Rz
-    
+
     if total_ranks != length(devices)
         throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks ranks] \
                              inconsistent with $(length(devices)) devices"))
@@ -74,21 +74,26 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
     local_rank = Reactant.Distributed.local_rank()
     local_index = Oceananigans.DistributedComputations.rank2index(local_rank, Rx, Ry, Rz)
 
-    mesh = Sharding.Mesh(
-        reshape(devices, size(partition)...),
-        (:x, :y, :z),
-    )
+    partition_size = size(partition)
+    @assert length(partition_size) == 3
+    if partition_size[3] == 1
+        mesh = Sharding.Mesh(
+            reshape(devices, partition_size[1], partition_size[2]), (:x, :y),
+        )
+    else
+        mesh = Sharding.Mesh(reshape(devices, partition_size...), (:x, :y, :z))
+    end
 
     # Syncronized communication does not mean anything in this case so we set it to nothing
     return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,
                                              mesh, nothing, nothing, Ref(0), devices)
-end 
+end
 
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
 
 
-function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid) 
+function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
     child_arch = child_architecture(new_arch)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,

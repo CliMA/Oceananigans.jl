@@ -71,7 +71,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
 
         @info "  Testing adjustment of advection schemes in NonhydrostaticModel constructor..."
         small_grid = RectilinearGrid(size=(4, 2, 4), extent=(1, 2, 3), halo=(1, 1, 1))
-        
+
         # Model ensures that halos are at least of size 1
         model = NonhydrostaticModel(grid=small_grid, advection=WENO())
         @test model.advection isa FluxFormAdvection
@@ -138,7 +138,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
             xF, yF, zF = nodes(model.grid, (Face(),   Face(),   Face()), reshape=true)
 
             # Form solution arrays
-            u_answer = u₀.(xF, yC, zC) |> Array 
+            u_answer = u₀.(xF, yC, zC) |> Array
             v_answer = v₀.(xC, yF, zC) |> Array
             w_answer = w₀.(xC, yC, zF) |> Array
             T_answer = T₀.(xC, yC, zC) |> Array
@@ -190,7 +190,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
             @test model.background_fields.velocities.u isa Field
 
             U_field = CenterField(grid)
-            @test_throws ArgumentError NonhydrostaticModel(; grid, background_fields = (u=U_field,))            
+            @test_throws ArgumentError NonhydrostaticModel(; grid, background_fields = (u=U_field,))
         end
     end
 end

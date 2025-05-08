@@ -8,7 +8,7 @@ using Oceananigans.Grids: ConformalCubedSpherePanel
 
 The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 """
-@inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
+@inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) * Az⁻¹ᶠᶠᶜ(i, j, k, grid)
 
 # South-west, south-east, north-west, north-east corners
 @inline on_south_west_corner(i, j, grid) = (i == 1) & (j == 1)
