@@ -25,6 +25,11 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
+@inline Δr⁻¹ᵃᵃᶠ(i, j, k, ibg::IBG) = Δr⁻¹ᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+@inline Δr⁻¹ᵃᵃᶜ(i, j, k, ibg::IBG) = Δr⁻¹ᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Δz⁻¹ᵃᵃᶜ(i, j, k, ibg::IBG) = Δz⁻¹ᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Δz⁻¹ᵃᵃᶠ(i, j, k, ibg::IBG) = Δz⁻¹ᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+
 # 1D Horizontal spacings
 
 @inline Δxᶠᵃᵃ(i, j, k, ibg::RGIBG) = Δxᶠᵃᵃ(i, j, k, ibg.underlying_grid)
