@@ -44,10 +44,8 @@ Keyword Arguments
 
 - `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
 
-- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
-              timestep. Note that some averaging functions do not require substepping until `2Δt`.
-              The number of substeps is reduced automatically to the last index of `averaging_kernel`
-              for which `averaging_kernel > 0`.
+- `substeps`: The number of substeps that divide the range `(t, t + Δt)`, where `Δt` is the baroclinic
+              timestep.
 
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from
          the barotropic gravity-wave speed that corresponds to depth `grid.Lz`. If `fixed_Δt` is provided,
@@ -280,12 +278,13 @@ end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
 
-    τᶠ = range(FT(0), FT(2), length = substeps+1)
+    # To divide the range (t, t + 2dt):
+    Nτ = 2substeps + 1
+    τᶠ = range(FT(0), FT(2), length=Nτ)
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
     idx = searchsortedlast(averaging_weights, 0, rev=true)
-    substeps = idx
 
     averaging_weights = averaging_weights[1:idx]
     averaging_weights ./= sum(averaging_weights)
