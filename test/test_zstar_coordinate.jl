@@ -278,6 +278,10 @@ end
             # Instead of initializing with random velocities, infer them from a random initial streamfunction
             # to ensure the velocity field is divergence-free at initialization.
             ψ = Field{Center, Center, Center}(grid)
+	    # Set streamfunction amplitude ~10⁶ to yield non-negligible initial velocities.
+	    # Grid spacing in the test grid ranges from 10⁵ to 10⁶ meters,
+            # so taking spatial derivatives (∂ψ/∂x or ∂ψ/∂y) divides by grid spacing,
+            # resulting in velocity magnitudes on the order of O(1) m/s.
             set!(ψ, 10^6 * rand(size(ψ)...))
             uᵢ = ∂y(ψ)
             vᵢ = -∂x(ψ)
