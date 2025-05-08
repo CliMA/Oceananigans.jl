@@ -46,7 +46,7 @@ hasnan(model::AbstractModel, checker) = hasnan(first(fields(model)), checker)
 function (nc::NaNChecker)(simulation)
     found_nan = false
     for (name, field) in pairs(nc.fields)
-        found_nan *= hasnan(field, nc)
+        found_nan = hasnan(field, nc)
         if found_nan
             simulation.running = false
             clock = simulation.model.clock
