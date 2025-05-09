@@ -110,7 +110,7 @@ my_parameters = (Lz          = Lz,
                  Δ           = 0.06,
                  φ_max_b_lin = 90,
                  φ_max_b_par = 90,
-                 φ_max_b_cos = 75,
+                 φ_max_b_cos = 90,
                  λ_rts       = 10days,    # Restoring time scale
                  Cᴰ          = 1e-3       # Drag coefficient
 )
