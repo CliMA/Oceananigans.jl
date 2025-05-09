@@ -30,7 +30,7 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
 
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
-                                  C = 1/12, Cν = nothing, Cκ = nothing, Cb = nothing)
+                                  C = 1/3, Cν = nothing, Cκ = nothing, Cb = nothing)
 
 
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
@@ -63,7 +63,7 @@ Keyword arguments
         buoyancy modification term. This implementation differs from [Abkar16](@citet)'s proposal
         and the impact of this approximation has not been tested or validated.
 
-By default: `C = Cν = Cκ = 1/12`, which is appropriate for a finite-volume method employing a
+By default: `C = Cν = Cκ = 1/3`, which is appropriate for a finite-volume method employing a
 second-order advection scheme, and `Cb = nothing`, which turns off the buoyancy modification term.
 
 `Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
@@ -116,7 +116,7 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     Computers & Fluids 176, pp. 276-284.
 """
 function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Oceananigans.defaults.FloatType;
-                                       C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
+                                       C = FT(1/3), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
 
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
