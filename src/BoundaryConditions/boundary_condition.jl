@@ -109,18 +109,15 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 #     * additional arguments to `fill_halo_regions` enter `getbc` after the `grid` argument:
 #           so `fill_halo_regions!(c, clock, fields)` translates to `getbc(bc, i, j, grid, clock, fields)`, etc.
 
-@inline getbc(bc, args...) = bc.condition(args...) # fallback!
+@inline getbc(bc::BoundaryCondition, args...) = getbc(bc.condition, args...) # unwrap
+@inline getbc(condition, args...) = condition(args...) # fallback!
 
-@inline getbc(::BC{<:Open, Nothing}, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(::BC{<:Flux, Nothing}, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(::Nothing,             ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(::Nothing, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
 
-@inline getbc(bc::BC{<:Any, <:Number}, args...) = bc.condition
-@inline getbc(bc::BC{<:Any, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j]
-
-# Support for Ref boundary conditions
 const NumberRef = Base.RefValue{<:Number}
-@inline getbc(bc::BC{<:Any, <:NumberRef}, args...) = bc.condition[]
+@inline getbc(condition::NumberRef, args...) = condition[]
+@inline getbc(condition::Number, args...) = condition
+@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j]
 
 #####
 ##### Validation with topology
