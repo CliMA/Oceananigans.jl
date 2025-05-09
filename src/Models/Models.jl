@@ -176,7 +176,7 @@ function default_nan_checker(model::OceananigansModels)
 
     first_name = first(keys(model_fields))
     field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
-    nan_checker = NaNChecker(field_to_check_nans)
+    nan_checker = NaNChecker(; fields=field_to_check_nans)
     return nan_checker
 end
 
