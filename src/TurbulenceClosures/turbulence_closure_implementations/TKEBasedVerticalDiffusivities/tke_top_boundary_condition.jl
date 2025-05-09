@@ -16,10 +16,10 @@ const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionPa
                                       on_architecture(to, p.top_velocity_boundary_conditions))
 
 @inline getbc(condition::TKEBoundaryFunction, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
-    condition.func(i, j, grid, clock, fields, bc.condition.parameters, clo, buoyancy)
+    condition.func(i, j, grid, clock, fields, condition.parameters, clo, buoyancy)
 
 @inline getbc(condition::TKEBoundaryFunction, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
-    condition.func(i, j, k, grid, clock, fields, bc.condition.parameters, clo, buoyancy)
+    condition.func(i, j, k, grid, clock, fields, condition.parameters, clo, buoyancy)
 
 """
     top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
