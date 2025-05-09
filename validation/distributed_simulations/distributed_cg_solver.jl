@@ -6,10 +6,11 @@ using Oceananigans.DistributedComputations: reconstruct_global_field, @handshake
 # using Oceananigans.Solvers: KrylovSolver
 using Statistics
 using Random
+using LinearAlgebra: norm
 Random.seed!(123)
 
 arch = Distributed(CPU())
-Nx = Ny = Nz = 32
+Nx = Ny = Nz = 64
 topology = (Periodic, Periodic, Periodic)
 
 x = y = z = (0, 2π)
@@ -41,33 +42,50 @@ b_global = CenterField(global_grid)
 set!(b_local,  many_gaussians)
 set!(b_global, many_gaussians)
 
+@info "local mean $(mean(b_local))"
+@info "global mean $(mean(b_global))"
+
+b_global .-= mean(b_global)
+b_local .-= mean(b_local)
+
+@info "b_global mean after cleanup $(mean(b_global))"
+@info "b_local mean after cleanup $(_mean(b_local))"
+
 xpcg_local  = CenterField(local_grid)
 xpcg_global = CenterField(global_grid)
 
-dot_parallel = Oceananigans.Solvers._dot(b_local, b_local)
-dot_serial   = Oceananigans.Solvers._dot(b_global, b_global)
+dot_parallel = Oceananigans.Solvers.dot(b_local, b_local)
+dot_serial   = Oceananigans.Solvers.dot(b_global, b_global)
 
-norm_parallel = Oceananigans.Solvers._norm(b_local)
-norm_serial   = Oceananigans.Solvers._norm(b_global)
+norm_parallel = Oceananigans.Solvers.norm(b_local)
+norm_serial   = Oceananigans.Solvers.norm(b_global)
+
+@info "length local", length(b_local)
+@info "length global", length(b_global)
 
 @handshake @info arch.local_rank, dot_parallel, dot_serial, dot_parallel ≈ dot_serial
 @handshake @info arch.local_rank, norm_parallel, norm_serial, norm_parallel ≈ norm_serial
 
 reltol = abstol = 1e-7
-pcg_local = ConjugateGradientPoissonSolver(local_grid, maxiter=100; reltol, abstol, preconditioner=nothing)
-pcg_global = ConjugateGradientPoissonSolver(global_grid, maxiter=100; reltol, abstol, preconditioner=nothing)
+# preconditioner_local = FFTBasedPoissonSolver(local_grid)
+# preconditioner_global = FFTBasedPoissonSolver(global_grid)
+preconditioner_local = nothing
+preconditioner_global = nothing
+
+pcg_local = ConjugateGradientPoissonSolver(local_grid, maxiter=200; reltol, abstol, preconditioner=preconditioner_local)
+pcg_global = ConjugateGradientPoissonSolver(global_grid, maxiter=200; reltol, abstol, preconditioner=preconditioner_global)
 
 # Serial solution
 solve!(xpcg_global, pcg_global.conjugate_gradient_solver, b_global)
 fill!(xpcg_global, 0)
 t_pcg = @timed solve!(xpcg_global, pcg_global.conjugate_gradient_solver, b_global)
-@handshake @info "PCG iteration $(pcg_global.conjugate_gradient_solver.iteration), time $(t_pcg.time)"
+@info "PCG iteration $(pcg_global.conjugate_gradient_solver.iteration), time $(t_pcg.time), residual $(norm(pcg_global.conjugate_gradient_solver.residual))"
 
 # Distributed solution
 solve!(xpcg_local, pcg_local.conjugate_gradient_solver, b_local)
 fill!(xpcg_local, 0)
 t_pcg = @timed solve!(xpcg_local, pcg_local.conjugate_gradient_solver, b_local)
-@handshake @info "PCG iteration $(pcg_local.conjugate_gradient_solver.iteration), time $(t_pcg.time)"
+@info "PCG iteration $(pcg_local.conjugate_gradient_solver.iteration), time $(t_pcg.time), residual $(norm(pcg_local.conjugate_gradient_solver.residual))"
 
 xpcg_reconstruct = reconstruct_global_field(xpcg_local)
 
