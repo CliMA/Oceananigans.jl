@@ -23,4 +23,12 @@ bottom_boundaries = (GridFittedBottom, PartialCellBottom)
     for i in 1:size(ibg, 1), j in 1:size(ibg, 2)
         @test bottom_height[i, j, 1] ∈ zfaces
     end
+
+    # Test immersed dot product
+    grid = RectilinearGrid(size = (10, 10, 10), extent = (1, 1, 1))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-0.5)) # 1000 points of which 500 active
+    c = CenterField(grid)
+    fill!(c, 1)
+
+    @test dot(c, c) == 500
 end
