@@ -73,6 +73,8 @@ end
 
     @inbounds GU⁻[i, j, 1] = GUⁿ[i, j, 1]
     @inbounds GV⁻[i, j, 1] = GVⁿ[i, j, 1]
+
+    return nothing
 end
 
 @inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{2})
@@ -81,16 +83,18 @@ end
 
     @inbounds GU⁻[i, j, 1] = (GUⁿ[i, j, 1] + GU⁻[i, j, 1]) / 6
     @inbounds GV⁻[i, j, 1] = (GVⁿ[i, j, 1] + GV⁻[i, j, 1]) / 6
+
+    return nothing
 end
 
 @inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{3})
-    FT = eltype(GUⁿ)
-
     GUi = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
     GVi = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
     @inbounds GUⁿ[i, j, 1] = 2 * GUi / 3 + GU⁻[i, j, 1]
     @inbounds GVⁿ[i, j, 1] = 2 * GVi / 3 + GV⁻[i, j, 1]
+
+    return nothing
 end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ,

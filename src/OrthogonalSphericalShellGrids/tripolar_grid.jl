@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
 using Oceananigans.Grids: architecture, cpu_face_constructor_z
 
-import Oceananigans.Grids: with_halo
+import Oceananigans.Grids: with_halo, validate_dimension_specification
 
 """
     struct Tripolar{N, F, S}
@@ -92,6 +92,8 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # but for the φ coordinate we need to remove one point at the north
     # because the the north pole is a `Center`point, not on `Face` point...
     topology  = (Periodic, RightConnected, Bounded)
+    TZ = topology[3]
+    z = validate_dimension_specification(TZ, z, :z, Nz, FT)
 
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())

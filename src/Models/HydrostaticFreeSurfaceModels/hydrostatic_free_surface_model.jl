@@ -9,7 +9,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
@@ -24,6 +24,14 @@ PressureField(grid) = (; pHY′ = CenterField(grid))
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+
+function default_vertical_coordinate(grid)
+    if grid.z isa MutableVerticalDiscretization
+        return ZStar()
+    else
+        return ZCoordinate()
+    end
+end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
@@ -73,7 +81,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                 pressure = nothing,
                                 diffusivity_fields = nothing,
                                 auxiliary_fields = NamedTuple(),
-                                vertical_coordinate = ZCoordinate())
+                                vertical_coordinate = default_vertical_coordinate(grid))
 
 Construct a hydrostatic model with a free surface on `grid`.
 
@@ -105,7 +113,9 @@ Keyword arguments
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
-  - `vertical_coordinate`: Rulesets that define the time-evolution of the grid (ZStar/ZCoordinate). Default: `ZCoordinate()`.
+  - `vertical_coordinate`: Algorithm for grid evolution: ZStar() or ZCoordinate().
+                           Default: ZStar() for grids with MutableVerticalDiscretization;
+                           ZCoordinate() otherwise.
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock(grid),
@@ -125,7 +135,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      pressure = nothing,
                                      diffusivity_fields = nothing,
                                      auxiliary_fields = NamedTuple(),
-                                     vertical_coordinate = ZCoordinate())
+                                     vertical_coordinate = default_vertical_coordinate(grid))
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
@@ -205,10 +215,9 @@ function HydrostaticFreeSurfaceModel(; grid,
     implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    timestepper = TimeStepper(timestepper, grid, prognostic_fields;
-                              implicit_solver = implicit_solver,
-                              Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers)),
-                              G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)))
+    Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
+    G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
+    timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)
