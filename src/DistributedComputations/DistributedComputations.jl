@@ -45,4 +45,21 @@ fft_poisson_solver(local_grid::DistributedGrid, global_grid::XYZRegularRG) =
 fft_poisson_solver(local_grid::DistributedGrid, global_grid::GridWithFourierTridiagonalSolver) =
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
+import Oceananigans.Solvers: compute_preconditioner_rhs!, precondition!
+using Oceananigans.Solvers: fft_preconditioner_rhs!
+
+function compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
+    grid = solver.local_grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage.zfield, rhs)
+    return nothing
+end
+
+function precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
+    compute_preconditioner_rhs!(preconditioner, r)
+    solve!(p, preconditioner)
+    p .*= -1
+    return p
+end
+
 end # module

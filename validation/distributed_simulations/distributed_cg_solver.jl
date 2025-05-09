@@ -49,7 +49,7 @@ b_global .-= mean(b_global)
 b_local .-= mean(b_local)
 
 @info "b_global mean after cleanup $(mean(b_global))"
-@info "b_local mean after cleanup $(_mean(b_local))"
+@info "b_local mean after cleanup $(mean(b_local))"
 
 xpcg_local  = CenterField(local_grid)
 xpcg_global = CenterField(global_grid)
@@ -63,16 +63,16 @@ norm_serial   = Oceananigans.Solvers.norm(b_global)
 @info "length local", length(b_local)
 @info "length global", length(b_global)
 
-@handshake @info arch.local_rank, dot_parallel, dot_serial, dot_parallel ≈ dot_serial
-@handshake @info arch.local_rank, norm_parallel, norm_serial, norm_parallel ≈ norm_serial
+@info arch.local_rank, dot_parallel, dot_serial, dot_parallel ≈ dot_serial
+@info arch.local_rank, norm_parallel, norm_serial, norm_parallel ≈ norm_serial
 
 reltol = abstol = 1e-7
-# preconditioner_local = FFTBasedPoissonSolver(local_grid)
-# preconditioner_global = FFTBasedPoissonSolver(global_grid)
-preconditioner_local = nothing
-preconditioner_global = nothing
+preconditioner_global = FFTBasedPoissonSolver(global_grid)
+preconditioner_local  = Oceananigans.DistributedComputations.DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+# preconditioner_local  = nothing
+# preconditioner_global = nothing
 
-pcg_local = ConjugateGradientPoissonSolver(local_grid, maxiter=200; reltol, abstol, preconditioner=preconditioner_local)
+pcg_local  = ConjugateGradientPoissonSolver(local_grid,  maxiter=200; reltol, abstol, preconditioner=preconditioner_local)
 pcg_global = ConjugateGradientPoissonSolver(global_grid, maxiter=200; reltol, abstol, preconditioner=preconditioner_global)
 
 # Serial solution
