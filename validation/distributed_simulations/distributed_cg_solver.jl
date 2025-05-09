@@ -2,14 +2,15 @@ using Oceananigans
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, compute_laplacian!
-using Oceananigans.DistributedComputations: reconstruct_global_field, @handshake
+using Oceananigans.DistributedComputations: reconstruct_global_field, @handshake, Equal
 # using Oceananigans.Solvers: KrylovSolver
 using Statistics
 using Random
 using LinearAlgebra: norm
 Random.seed!(123)
 
-arch = Distributed(CPU())
+arch = Distributed(CPU(), partition = Partition(x=2, y=Equal()))
+@show arch
 Nx = Ny = Nz = 64
 topology = (Periodic, Periodic, Periodic)
 

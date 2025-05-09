@@ -57,7 +57,8 @@ end
 
 function precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
-    solve!(p, preconditioner)
+    shift = - sqrt(eps(eltype(r))) # to make the operator strictly negative definite
+    solve!(p, preconditioner, shift)
     p .*= -1
     return p
 end
