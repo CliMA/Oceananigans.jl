@@ -354,7 +354,7 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 #### Model setup
 ####
 
-momentum_advection = VectorInvariant()
+momentum_advection = WENOVectorInvariant(vorticity_order=9)
 tracer_advection   = WENO(order=9)
 substeps           = 50
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = true)
@@ -406,7 +406,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
-                                      closure = (horizontal_viscosity, vertical_diffusivity, convective_adjustment),
+                                      closure = (vertical_diffusivity, convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
                                       boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
