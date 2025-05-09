@@ -15,6 +15,9 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
 using CUDA: CuArray
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver
+
+import Oceananigans.Solvers: fft_poisson_solver
 
 include("distributed_macros.jl")
 include("distributed_architectures.jl")
@@ -32,5 +35,13 @@ include("distributed_transpose.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
+
+fft_poisson_solver(grid::DistributedGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
+
+fft_poisson_solver(local_grid::DistributedGrid, global_grid::GridWithFFTSolver) =
+    DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+
+fft_poisson_solver(local_grid::DistributedGrid, global_grid::GridWithFourierTridiagonalSolver) =
+    DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
 end # module
