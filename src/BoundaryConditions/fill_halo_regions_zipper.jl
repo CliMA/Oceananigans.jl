@@ -93,7 +93,6 @@ end
         end
     end
 
-    @inbounds v[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny + 1, k], v[i, Ny, k])
 
     return nothing
 end
