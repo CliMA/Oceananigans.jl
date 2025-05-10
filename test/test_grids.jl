@@ -5,7 +5,7 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
-                          
+
 using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
@@ -51,7 +51,7 @@ function test_regular_rectilinear_correct_coordinate_lengths(FT)
     @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
     @test length(grid.xᶠᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶠᵃ) == Ny + 2Hy + 1
-    
+
     @test length(grid.z.cᵃᵃᶜ) == Nz + 2Hz
     @test length(grid.z.cᵃᵃᶠ) == Nz + 2Hz + 1
 
@@ -129,7 +129,7 @@ function test_regular_rectilinear_ranges_have_correct_length(FT)
     @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
     @test length(grid.xᶠᵃᵃ) == Nx + 1 + 2Hx
     @test length(grid.yᵃᶠᵃ) == Ny + 1 + 2Hy
-    
+
     @test length(grid.z.cᵃᵃᶜ) == Nz + 2Hz
     @test length(grid.z.cᵃᵃᶠ) == Nz + 1 + 2Hz
 
@@ -154,7 +154,7 @@ function test_regular_rectilinear_grid_properties_are_same_type(FT)
     # Do this test two ways, one with defaults and one with explicit FT
     for method in (:explicit, :with_default)
 
-        if method === :explicit    
+        if method === :explicit
             grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
         elseif method === :with_default
             FT₀ = Oceananigans.defaults.FloatType
@@ -281,6 +281,9 @@ function test_regular_rectilinear_constructor_errors(FT)
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
 
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+    
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
 
     return nothing
 end
@@ -912,6 +915,13 @@ end
     end
 
     @testset "Latitude-longitude grid" begin
+        @info "  Testing latitude-longitude grid construction errors..."
+
+	for FT in float_types
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+	end
+
         @info "  Testing general latitude-longitude grid..."
 
         for FT in float_types
@@ -974,6 +984,51 @@ end
 
             cpu_grid_again = on_architecture(CPU(), grid)
             @test cpu_grid_again == cpu_grid
+        end
+
+        for arch in archs
+            for FT in float_types
+                @info " Testing construction of LatitudeLongitudeGrid from RectilinearGrid..."
+                Nx = 4
+                Ny = 5
+                Nz = 6
+                Lx = Ly = 2π / 180
+                rectilinear_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-Ly/2, Ly/2), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(0, 0))
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == -1
+                @test λ[Nx+1] == +1
+                @test φ[1]  == -1
+                @test φ[Ny+1] == +1
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(273, 0))
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == 272
+                @test λ[Nx+1] == 274
+                @test φ[1]  == -1
+                @test φ[Ny+1] == +1
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+
+
+                Lx = 2π / 180 * cosd(45)
+                Ly = 2π / 180
+                rectilinear_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-Ly/2, Ly/2), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(0, 45))
+
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == -1
+                @test λ[Nx+1] == +1
+                @test φ[1]  == 44
+                @test φ[Ny+1] == 46
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+            end
         end
     end
 

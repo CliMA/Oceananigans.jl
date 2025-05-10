@@ -12,7 +12,7 @@ using SeawaterPolynomials: TEOS10EquationOfState
 using KernelAbstractions: @kernel, @index
 using Random
 
-if haskey(ENV, "GPU_TEST")
+if get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU"
     Reactant.set_default_backend("gpu")
 else
     Reactant.set_default_backend("cpu")
@@ -63,18 +63,18 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     # Note that r_model halos are not filled during set!
     # It's complicated to test this currently because the halo
     # regions have different paddings, so we don't do it.
-    
-    Oceananigans.TimeSteppers.update_state!(r_model)
+
+    @jit Oceananigans.TimeSteppers.update_state!(r_model)
 
     # Test that fields were set correctly
     @info "  After setting an initial condition:"
-    rui = Array(interior(ru)) 
-    rvi = Array(interior(rv)) 
-    rwi = Array(interior(rw)) 
+    rui = Array(interior(ru))
+    rvi = Array(interior(rv))
+    rwi = Array(interior(rw))
 
-    ui = Array(interior(u)) 
-    vi = Array(interior(v)) 
-    wi = Array(interior(w)) 
+    ui = Array(interior(u))
+    vi = Array(interior(v))
+    wi = Array(interior(w))
 
     @show maximum(abs.(ui .- rui))
     @show maximum(abs.(vi .- rvi))
@@ -84,9 +84,35 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @test vi ≈ rvi
     @test wi ≈ rwi
 
+    Oceananigans.TimeSteppers.update_state!(model)
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(model, model.velocities, :xyz)
+    @jit Oceananigans.TimeSteppers.update_state!(r_model)
+    
+    mod = @code_hlo optimize=:before_jit Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(r_model, r_model.velocities, :xyz)
+    @jit Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(r_model, r_model.velocities, :xyz)
+
+    Gu = model.timestepper.Gⁿ.u
+    Gv = model.timestepper.Gⁿ.v
+    rGu = r_model.timestepper.Gⁿ.u
+    rGv = r_model.timestepper.Gⁿ.v
+
+    # Test whether there are NaN in the tendencies
+    @info "  Momentum tendencies after calling compute_hydrostatic_momentum_tendencies:"
+    rGui = Array(interior(rGu))
+    rGvi = Array(interior(rGv))
+
+    Gui = Array(interior(Gu))
+    Gvi = Array(interior(Gv))
+
+    @show maximum(abs.(Gui .- rGui))
+    @show maximum(abs.(Gvi .- rGvi))
+
+    @test Gui ≈ rGui
+    @test Gvi ≈ rGvi
+
     # Deduce a stable time-step
     Δx = minimum_xspacing(grid)
-    Δt = 0.01 * Δx
+    Δt = 1e-6 * Δx
 
     # Stop iteration for both simulations
     stop_iteration = 3
@@ -103,13 +129,13 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
     Nsteps = ConcreteRNumber(3)
-    @time "  Compiling r_run!:" begin
+    @time "  Compiling r_run!" begin
         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
         r_time_step_sim! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_simulation)
     end
 
-    @time "  Executing r_run!:" begin
+    @time "  Executing r_run!" begin
         r_run!(r_simulation, r_time_step!, r_first_time_step!)
     end
 
@@ -122,13 +148,13 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @test iteration(r_simulation) == iteration(simulation)
     @test time(r_simulation) == time(simulation)
 
-    rui = Array(interior(ru)) 
-    rvi = Array(interior(rv)) 
-    rwi = Array(interior(rw)) 
+    rui = Array(interior(ru))
+    rvi = Array(interior(rv))
+    rwi = Array(interior(rw))
 
-    ui = Array(interior(u)) 
-    vi = Array(interior(v)) 
-    wi = Array(interior(w)) 
+    ui = Array(interior(u))
+    vi = Array(interior(v))
+    wi = Array(interior(w))
 
     @show maximum(abs, ui)
     @show maximum(abs, vi)

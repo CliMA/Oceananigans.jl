@@ -15,7 +15,7 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver
 using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields

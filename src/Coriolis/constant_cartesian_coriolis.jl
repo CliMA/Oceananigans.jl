@@ -15,7 +15,7 @@ end
 
 """
     ConstantCartesianCoriolis([FT=Float64;] fx=nothing, fy=nothing, fz=nothing,
-                                            f=nothing, rotation_axis=ZDirection(), 
+                                            f=nothing, rotation_axis=ZDirection(),
                                             rotation_rate=Ω_Earth, latitude=nothing)
 
 Return a parameter object for a constant rotation decomposed into the `x`, `y`, and `z` directions.
@@ -30,7 +30,7 @@ constant rotation can be specified in three different ways:
 """
 function ConstantCartesianCoriolis(FT=Oceananigans.defaults.FloatType;
                                    fx=nothing, fy=nothing, fz=nothing,
-                                   f=nothing, rotation_axis=ZDirection(), 
+                                   f=nothing, rotation_axis=ZDirection(),
                                    rotation_rate=Ω_Earth, latitude=nothing)
     if !isnothing(latitude)
         all(isnothing.((fx, fy, fz, f))) || throw(ArgumentError("Only `rotation_rate` can be specified when using `latitude`."))

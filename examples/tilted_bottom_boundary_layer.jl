@@ -71,20 +71,20 @@ current_figure() #hide
 # so that ``x`` is the along-slope direction, ``z`` is the across-slope direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
-ĝ = [sind(θ), 0, cosd(θ)]
+ẑ = (sind(θ), 0, cosd(θ))
 
 # Changing the vertical direction impacts both the `gravity_unit_vector`
 # for `BuoyancyForce` as well as the `rotation_axis` for Coriolis forces,
 
-buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector = -ĝ)
-coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
+buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector = .-ẑ)
+coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ẑ)
 
 # where above we used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
 
-@inline constant_stratification(x, z, t, p) = p.N² * (x * p.ĝ[1] + z * p.ĝ[3])
+@inline constant_stratification(x, z, t, p) = p.N² * (x * p.ẑ[1] + z * p.ẑ[3])
 
 # is _not_ periodic in ``x``. Thus we cannot explicitly model a constant stratification
 # on an ``x``-periodic grid such as the one used here. Instead, we simulate periodic
@@ -92,7 +92,7 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 # a constant stratification as a `BackgroundField`,
 
 N² = 1e-5 # s⁻² # background vertical buoyancy gradient
-B∞_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²))
+B∞_field = BackgroundField(constant_stratification, parameters=(; ẑ, N² = N²))
 
 # We choose to impose a bottom boundary condition of zero *total* diffusive buoyancy
 # flux across the seafloor,
@@ -143,7 +143,7 @@ V∞_field = BackgroundField(V∞)
 
 ν = 1e-4
 κ = 1e-4
-closure = ScalarDiffusivity(ν=ν, κ=κ)
+closure = ScalarDiffusivity(; ν, κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             advection = UpwindBiased(order=5),
