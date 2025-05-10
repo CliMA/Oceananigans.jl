@@ -1,10 +1,8 @@
 include("dependencies_for_runtests.jl")
 
-grid = RectilinearGrid(; size=(100, 100, 100), extent = (1, 1, 1))
-
-bottom_boundaries = (GridFittedBottom, PartialCellBottom)
-
 @testset "Testing Immersed Boundaries" begin
+    grid = RectilinearGrid(; size=(100, 100, 100), extent = (1, 1, 1))
+    bottom_boundaries = (GridFittedBottom, PartialCellBottom)
 
     @info "Testing the immersed boundary construction..."
     bottom(x, y) = rand()
@@ -25,8 +23,8 @@ bottom_boundaries = (GridFittedBottom, PartialCellBottom)
     end
 
     # Test immersed dot product
-    grid = RectilinearGrid(size = (10, 10, 10), extent = (1, 1, 1))
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-0.5)) # 1000 points of which 500 active
+    underlying_grid = RectilinearGrid(size = (10, 10, 10), extent = (1, 1, 1))  # grid with 1000 points
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-0.5))        # of which only 500 are active
     c = CenterField(grid)
     fill!(c, 1)
 
