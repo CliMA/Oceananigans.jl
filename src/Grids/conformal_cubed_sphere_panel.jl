@@ -35,11 +35,9 @@ end
 
 # TODO: this belongs elsewhere.
 const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected,
-                                                               <:Any, <:Any, <:Any,
-                                                               <:CubedSphereConformalMapping}
+                                                               <:Any, <:Any, <:CubedSphereConformalMapping}
 
 const ConformalCubedSpherePanelGrid = OrthogonalSphericalShellGrid{<:Any,
-                                                                   <:Any,
                                                                    <:Any,
                                                                    <:Any,
                                                                    <:Any,
