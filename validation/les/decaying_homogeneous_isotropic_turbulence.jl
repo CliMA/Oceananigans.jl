@@ -4,7 +4,7 @@ using  Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continui
 
 arch = CPU()
 
-grid = RectilinearGrid(arch, size = (32, 32, 32), extent = (1, 1, 1))
+grid = RectilinearGrid(arch, size = (64, 64, 64), extent = (1, 1, 1))
 
 closure = AnisotropicMinimumDissipation(VerticallyImplicitTimeDiscretization(), C=1/3)
 
@@ -45,7 +45,7 @@ fig = Figure()
 
 ax = Axis(fig[1, 1], xscale=log, yscale=log, xlabel = "Wavenumber (1/m)", ylabel = "Energy density (m³/s²)")
 
-k_bins = exp.(0:0.25:4)
+k_bins = exp.(0:0.25:5)
 
 xlims!(ax, minimum(k_bins), maximum(k_bins))
 ylims!(ax, exp(-1), exp(25))
