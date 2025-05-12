@@ -6,6 +6,7 @@ using Adapt
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
+using GPUArraysCore: @allowscalar
 
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
@@ -603,7 +604,7 @@ end
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
-    return CUDA.@allowscalar sqrt(r[1])
+    return @allowscalar sqrt(r[1])
 end
 
 # TODO: in-place allocations with function mappings need to be fixed in Julia Base...
@@ -717,7 +718,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
-                return CUDA.@allowscalar first(r)
+                return @allowscalar first(r)
             else
                 return r
             end

@@ -1,4 +1,3 @@
-using CUDA
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
@@ -33,7 +32,7 @@ end
 
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, CuArray, OffsetArray}) = set_to_array!(u, a)
+set!(u::Field, a::AbstractArray) = set_to_array!(u, a)
 set!(u::Field, v::Field) = set_to_field!(u, v)
 
 function set!(u::Field, a::Number)
