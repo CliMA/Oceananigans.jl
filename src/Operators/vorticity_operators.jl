@@ -28,11 +28,13 @@ The vertical circulation associated with horizontal velocities ``u`` and ``v``.
 """
 @inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanel, u, v)
     Hx, Hy = grid.Hx, grid.Hy
+    ip = ifelse(i == 1 - Hx, 1, i)
+    jp = ifelse(j == 1 - Hy, 1, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
-               Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u),
+               Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
-                      - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u) - Δx_qᶠᶜᶜ(i, j, k, grid, u),
-                      δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
+                      - Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u),
+                      δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
                      )
               )
     return Γ
