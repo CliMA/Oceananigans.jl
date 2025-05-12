@@ -94,3 +94,87 @@ function reconstruct_global_field(field::DistributedField)
 
     return global_field
 end
+
+function maybe_all_reduce!(op, f::ReducedDistributedField, dims)
+    reduced_dims = reduced_dimensions(f)
+
+    if any(reduced_dims .∈ tuple(dims...))
+        all_reduce!(op, interior(f), architecture(f))
+    end
+
+    return f
+end
+
+function maybe_all_reduce!(op, f::ReducedDistributedField, ::Colon)
+    all_reduce!(op, interior(f), architecture(f))
+    return f
+end
+
+# Allocating and in-place reductions
+for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :prod),
+                                      ( +,    max,      min,      &,    |,    *))
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+
+        # In-place
+        function Base.$(reduction!)(f::Function,
+                                    r::ReducedAbstractField,
+                                    a::DistributedField;
+                                    condition = nothing,
+                                    mask = get_neutral_mask(Base.$(reduction!)),
+                                    dims = :,
+                                    kwargs...)
+
+            operand = condition_operand(f, a, condition, mask)
+
+            Base.$(reduction!)(identity,
+                               interior(r),
+                               operand;
+                               dims,
+                               kwargs...)
+
+            return maybe_all_reduce!(all_reduce_op, r, dims)
+        end
+
+        function Base.$(reduction!)(r::ReducedAbstractField,
+                                    a::DistributedField;
+                                    condition = nothing,
+                                    mask = get_neutral_mask(Base.$(reduction!)),
+                                    dims = :,
+                                    kwargs...)
+
+            Base.$(reduction!)(identity,
+                               interior(r),
+                               condition_operand(a, condition, mask);
+                               dims,
+                               kwargs...)
+
+            return maybe_all_reduce!(all_reduce_op, r, dims)
+        end
+
+        # Allocating
+        function Base.$(reduction)(f::Function,
+                                   c::DistributedField;
+                                   condition = nothing,
+                                   mask = get_neutral_mask(Base.$(reduction!)),
+                                   dims = :)
+
+            conditioned_c = condition_operand(f, c, condition, mask)
+            T = filltype(Base.$(reduction!), c)
+            loc = reduced_location(location(c); dims)
+            r = Field(loc, c.grid, T; indices=indices(c))
+            initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
+            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+
+            maybe_all_reduce!(all_reduce_op, r, dims)
+
+            if dims isa Colon
+                return CUDA.@allowscalar first(r)
+            else
+                return r
+            end
+        end
+    end
+end
