@@ -260,6 +260,9 @@ include("Models/Models.jl")
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
 
+# CUDA is supported in the base package
+include("arch_cuda.jl")
+
 #####
 ##### Needed so we can export names from sub-modules at the top-level
 #####
