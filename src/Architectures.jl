@@ -4,8 +4,10 @@ export AbstractArchitecture, AbstractSerialArchitecture
 export CPU, GPU, ReactantState
 export device, architecture, unified_array, device_copy_to!
 export array_type, on_architecture, arch_array
+export constructors, unpack_constructors, copy_unpack_constructors
+export arch_sparse_matrix, child_architecture
+using SparseArrays
 
-using CUDA
 using KernelAbstractions
 using Adapt
 using OffsetArrays
@@ -37,23 +39,10 @@ struct CPU <: AbstractSerialArchitecture end
 
 Return a GPU architecture using `device`.
 `device` defauls to CUDA.CUDABackend(always_inline=true)
+if CUDA is loaded.
 """
 struct GPU{D} <: AbstractSerialArchitecture
     device :: D
-end
-
-const CUDAGPU = GPU{<:CUDA.CUDABackend}
-CUDAGPU() = GPU(CUDA.CUDABackend(always_inline=true))
-Base.summary(::CUDAGPU) = "CUDAGPU"
-
-function GPU()
-    if CUDA.has_cuda_gpu()
-        return CUDAGPU()
-    else
-        msg = """We cannot make a GPU with the CUDA backend:
-                 a CUDA GPU was not found!"""
-        throw(ArgumentError(msg))
-    end
 end
 
 """
@@ -73,7 +62,6 @@ device(a::GPU) = a.device
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
-architecture(::CuArray) = CUDAGPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
@@ -86,7 +74,6 @@ On single-process, non-distributed systems, return `arch`.
 child_architecture(arch::AbstractSerialArchitecture) = arch
 
 array_type(::CPU) = Array
-array_type(::GPU) = CuArray
 
 # Fallback
 on_architecture(arch, a) = a
@@ -98,17 +85,8 @@ on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{k
 # On architecture for array types
 on_architecture(::CPU, a::Array) = a
 on_architecture(::CPU, a::BitArray) = a
-on_architecture(::CPU, a::CuArray) = Array(a)
-on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 on_architecture(::CPU, a::StepRangeLen) = a
-
-on_architecture(::CUDAGPU, a::Array) = CuArray(a)
-on_architecture(::CUDAGPU, a::CuArray) = a
-on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
-on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-on_architecture(::CUDAGPU, a::StepRangeLen) = a
 
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
     OffsetArray(on_architecture(arch, a.parent), a.offsets...)
@@ -123,27 +101,25 @@ unified_array(::GPU, a) = a
 # cu alters the type of `a`, so we convert it back to the correct type
 unified_array(::GPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))
 
-## GPU to GPU copy of contiguous data
-@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false)
-    n = length(src)
-    context!(context(src)) do
-        GC.@preserve src dst begin
-            unsafe_copyto!(pointer(dst, 1), pointer(src, 1), n; async)
-        end
-    end
-    return dst
-end
-
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
-@inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a)          = nothing
 
 # Convert arguments to GPU-compatible types
 @inline convert_to_device(arch, args)  = args
 @inline convert_to_device(::CPU, args) = args
-@inline convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
-@inline convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
+
+# Utils for sparse matrix manipulation
+@inline constructors(::CPU, A::SparseMatrixCSC) = (A.m, A.n, A.colptr, A.rowval, A.nzval)
+@inline constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
+@inline constructors(::GPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
+
+@inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
+
+@inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
+
+@inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
+@inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
 
 # Deprecated functions
 function arch_array(arch, arr)

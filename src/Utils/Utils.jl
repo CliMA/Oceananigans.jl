@@ -13,8 +13,6 @@ export apply_regionally!, construct_regionally, @apply_regionally, @regional, Mu
 export isregional, getregion, _getregion, getdevice, switch_device!, sync_device!, sync_all_devices!
 export newton_div
 
-import CUDA  # To avoid name conflicts
-
 #####
 ##### Misc. small utils
 #####
