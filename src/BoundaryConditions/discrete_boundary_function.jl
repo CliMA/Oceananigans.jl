@@ -37,14 +37,14 @@ const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
     condition.func(i, j, grid, clock, model_fields)
 
 @inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, grid, clock, model_fields, bc.condition.parameters)
+    condition.func(i, j, grid, clock, model_fields, condition.parameters)
 
 # 3D function for immersed boundary conditions
 @inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
     condition.func(i, j, k, grid, clock, model_fields)
 
 @inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, k, grid, clock, model_fields, bc.condition.parameters)
+    condition.func(i, j, k, grid, clock, model_fields, condition.parameters)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)
