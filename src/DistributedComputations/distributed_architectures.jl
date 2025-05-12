@@ -1,6 +1,5 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
-using CUDA: ndevices, device!
 
 import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
 import Oceananigans.Grids: zeros
