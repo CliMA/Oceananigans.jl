@@ -50,7 +50,7 @@ function set_to_function!(u::ReactantField, f)
     cpu_u = Field(Oceananigans.Fields.location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
     f_field = Oceananigans.Fields.field(Oceananigans.Fields.location(u), f, cpu_grid)
     set!(cpu_u, f_field)
-    copyto!(parent(u), parent(cpu_u))
+    copyto!(interior(u), interior(cpu_u))
     return nothing
 end
 

@@ -34,7 +34,6 @@ The operators in this file fall into three categories:
 ##### Spacings!!
 #####
 #####
-
 # This metaprogramming loop defines all possible combinations of locations for spacings.
 # The general 2D and 3D spacings are reconducted to their one - dimensional counterparts.
 # Grids that do not have a specific one - dimensional spacing for a given location need to
@@ -123,10 +122,14 @@ end
 #####
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶠᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(Base.stack(collect(Δxᶠᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 @inline Δxᶜᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(Base.stack(collect(Δxᶜᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 
 @inline Δyᵃᶠᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶠᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δyᵃᶜᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 
 ### XRegularRG
 
@@ -146,7 +149,9 @@ end
 ### Curvilinear spacings
 
 @inline Δλᶜᵃᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δλᶜᵃᵃ[i]
+@inline Δλᶜᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Base.stack(collect(Δλᶜᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 @inline Δλᶠᵃᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δλᶠᵃᵃ[i]
+@inline Δλᶠᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Base.stack(collect(Δλᶠᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 @inline Δλᶜᵃᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δλᶜᵃᵃ
 @inline Δλᶠᵃᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δλᶠᵃᵃ
 
@@ -194,6 +199,14 @@ end
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶜᶠᵃ[j]
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶠᵃ[j]
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶜᶜᵃ[j]
+
+for sym in (:Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δxᶜᶜᵃ)
+    @eval @inline function $sym(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGX)
+	  x = $sym(1, j, 1, grid)
+	  Base.Broadcast.materialize(Base.Broadcast.Broadcasted(Base.Broadcast.BroadcastStyle(typeof(x)), Base.identity, (Base.Broadcast.Extruded(x, (false, true,false), (1,1,1)),), (Base.axes(i, 1), Base.axes(j, 2), Base.axes(k, 3))))
+    end
+end
+
 
 ### On-the-fly metrics
 
@@ -365,10 +378,12 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :λ, :φ, :z, :r)
                 func   = Symbol(:Δ, dir)
                 metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe))
+                rcp_func   = Symbol(:Δ, dir, :⁻¹)
                 rcp_metric = Symbol(:Δ, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
                     export $metric, $rcp_metric
                 end
             end
@@ -377,10 +392,12 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :z)
                 func   = Symbol(:A, dir)
                 metric = Symbol(:A, dir, location_code(LXe, LYe, LZe))
+                rcp_func   = Symbol(:A, dir, :⁻¹)
                 rcp_metric = Symbol(:A, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
                     export $metric, $rcp_metric
                 end
             end
@@ -391,6 +408,7 @@ for LX in (:Center, :Face, :Nothing)
 
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                @inline rcp_volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
                 export $volume_function, $rcp_volume_function
             end
         end
