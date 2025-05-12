@@ -1,33 +1,12 @@
 using Oceananigans.Architectures
 using Oceananigans.Architectures: device
-import Oceananigans.Architectures: architecture, unified_array
-using CUDA, CUDA.CUSPARSE
+import Oceananigans.Architectures: architecture, unified_array,
+                    constructors, unpack_constructors,
+                    copy_unpack_constructors, arch_sparse_matrix
 using KernelAbstractions: @kernel, @index
 
 using LinearAlgebra, SparseArrays
 using SparseArrays: fkeep!
-
-# Utils for sparse matrix manipulation
-
-@inline constructors(::CPU, A::SparseMatrixCSC) = (A.m, A.n, A.colptr, A.rowval, A.nzval)
-@inline constructors(::GPU, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
-@inline constructors(::CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
-@inline constructors(::GPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
-@inline constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
-@inline constructors(::GPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
-
-@inline unpack_constructors(::CPU, constr::Tuple) = (constr[3], constr[4], constr[5])
-@inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
-@inline copy_unpack_constructors(::CPU, constr::Tuple) = deepcopy((constr[3], constr[4], constr[5]))
-@inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
-
-@inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::GPU, constr::Tuple) = CuSparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::CPU, A::CuSparseMatrixCSC)   = SparseMatrixCSC(constructors(CPU(), A)...)
-@inline arch_sparse_matrix(::GPU, A::SparseMatrixCSC)     = CuSparseMatrixCSC(constructors(GPU(), A)...)
-
-@inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
-@inline arch_sparse_matrix(::GPU, A::CuSparseMatrixCSC) = A
 
 # We need to update the diagonal element each time the time step changes!!
 function update_diag!(constr, arch, M, N, diag, Δt, disp)
@@ -154,7 +133,7 @@ function compute_matrix_for_linear_operation(::CPU, template_field, linear_opera
     return A
 end
 
-function compute_matrix_for_linear_operation(::GPU, template_field, linear_operation!, args...;
+function compute_matrix_for_linear_operation(backend::GPU, template_field, linear_operation!, args...;
                                              boundary_conditions_input=nothing,
                                              boundary_conditions_output=nothing)
 
@@ -174,17 +153,17 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
      eᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_input)
     Aeᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_output)
 
-    colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
-    rowval = CuArray{Int}(undef, 0)
-    nzval  = CuArray{eltype(grid)}(undef, 0)
+    colptr = on_architecture(backend, Array{Int}(undef, Nx*Ny*Nz + 1))
+    rowval = on_architecture(backend, Array{Int}(undef, 0))
+    nzval  = on_architecture(backend, Array{eltype(grid)}(undef, 0))
 
-    CUDA.@allowscalar colptr[1] = 1
+    @allowscalar colptr[1] = 1
 
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
         parent(eᵢⱼₖ)  .= 0
         parent(Aeᵢⱼₖ) .= 0
 
-        CUDA.@allowscalar eᵢⱼₖ[i, j, k] = 1
+        @allowscalar eᵢⱼₖ[i, j, k] = 1
 
         fill_halo_regions!(eᵢⱼₖ)
 
@@ -192,7 +171,7 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
 
         count = 0
         for n in 1:Nz, m in 1:Ny, l in 1:Nx
-            Aeᵢⱼₖₗₘₙ = CUDA.@allowscalar Aeᵢⱼₖ[l, m, n]
+            Aeᵢⱼₖₗₘₙ = @allowscalar Aeᵢⱼₖ[l, m, n]
             if Aeᵢⱼₖₗₘₙ != 0
                 append!(rowval, Ny*Nx*(n-1) + Nx*(m-1) + l)
                 append!(nzval, Aeᵢⱼₖₗₘₙ)
@@ -200,8 +179,8 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
             end
         end
 
-        CUDA.@allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
+        @allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
     end
 
-    return CuSparseMatrixCSC(colptr, rowval, nzval, (Nx*Ny*Nz, Nx*Ny*Nz))
+    return sparse(colptr, rowval, nzval, Nx*Ny*Nz, Nx*Ny*Nz; fmt=:csc)
 end

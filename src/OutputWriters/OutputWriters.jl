@@ -5,8 +5,6 @@ export
     Checkpointer, WindowedTimeAverage, FileSizeLimit,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
-using CUDA
-
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields

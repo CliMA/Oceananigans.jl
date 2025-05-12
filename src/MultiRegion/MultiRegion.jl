@@ -14,7 +14,6 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 
 using Adapt
-using CUDA
 using DocStringExtensions
 using OffsetArrays
 
@@ -22,6 +21,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: Reference, Iterate, getnamewrapper
 using Oceananigans.Grids: AbstractUnderlyingGrid
 
+import KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 
 import Base: show, length, size
