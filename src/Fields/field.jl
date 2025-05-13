@@ -544,20 +544,15 @@ const ReducedField = Union{XReducedField,
 @propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
 
-const XFieldBC = BoundaryCondition{<:Any, XReducedField}
-const YFieldBC = BoundaryCondition{<:Any, YReducedField}
-const ZFieldBC = BoundaryCondition{<:Any, ZReducedField}
-
 # Boundary conditions reduced in one direction --- drop boundary-normal index
-@inline getbc(bc::XFieldBC, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[1, j, k]
-@inline getbc(bc::YFieldBC, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, 1, k]
-@inline getbc(bc::ZFieldBC, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j, 1]
+@inline getbc(condition::XReducedField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, j, k]
+@inline getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
+@inline getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
 # Boundary conditions reduced in two directions are ambiguous, so that's hard...
 
 # 0D boundary conditions --- easy case
-const XYZFieldBC = BoundaryCondition{<:Any, XYZReducedField}
-@inline getbc(bc::XYZFieldBC, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds bc.condition[1, 1, 1]
+@inline getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
