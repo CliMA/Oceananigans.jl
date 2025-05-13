@@ -33,6 +33,16 @@ function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMappin
         adapt(to, conformal_mapping.ηᵃᶜᵃ))
 end
 
+const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected,
+                                                               <:Any, <:Any, <:CubedSphereConformalMapping}
+
+const ConformalCubedSpherePanelGrid = OrthogonalSphericalShellGrid{<:Any,
+                                                                   <:Any,
+                                                                   <:Any,
+                                                                   <:Any,
+                                                                   <:Any,
+                                                                   <:CubedSphereConformalMapping}
+
 # architecture = CPU() by default, assuming that a DataType positional arg is specifying the floating point type.
 conformal_cubed_sphere_panel(FT::DataType; kwargs...) = conformal_cubed_sphere_panel(CPU(), FT; kwargs...)
 

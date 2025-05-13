@@ -1,7 +1,7 @@
 module OrthogonalSphericalShellGrids
 
 # The only thing we need!
-export TripolarGrid, RotatedLatitudeLongitudeGrid
+export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanel, ConformalCubedSpherePanelGrid
 
 import Oceananigans
 
@@ -33,6 +33,7 @@ include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
 include("rotated_latitude_longitude_grid.jl")
+include("conformal_cubed_sphere_panel.jl")
 
 # Distributed computations on a tripolar grid
 include("distributed_tripolar_grid.jl")
