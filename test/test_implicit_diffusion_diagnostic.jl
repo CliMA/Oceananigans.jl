@@ -35,6 +35,10 @@ get_diffusion_dissipation(::Val{:x}) = FieldTimeSeries("one_d_simulation_x.jld2"
 get_diffusion_dissipation(::Val{:y}) = FieldTimeSeries("one_d_simulation_y.jld2", "Dcy")
 get_diffusion_dissipation(::Val{:z}) = FieldTimeSeries("one_d_simulation_z.jld2", "Dcz")
 
+advecting_velocity(::Val{:x}) = PrescribedVelocityFields(u = 1)
+advecting_velocity(::Val{:y}) = PrescribedVelocityFields(v = 1)
+advecting_velocity(::Val{:z}) = PrescribedVelocityFields(w = 1)
+
 function test_implicit_diffusion_diagnostic(arch, dim)
 
     # 1D grid constructions
@@ -43,7 +47,7 @@ function test_implicit_diffusion_diagnostic(arch, dim)
     # Change to test pure advection schemes
     tracer_advection = WENO(order=5)
     closure = ScalarDiffusivity(κ=1e-3)
-    velocities = PrescribedVelocityFields(u=1)
+    velocities = advecting_velocity(Val(dim))
 
     c⁻    = CenterField(grid)
     Δtc²  = CenterField(grid)
