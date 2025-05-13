@@ -598,11 +598,12 @@ const ReducedAbstractField = Union{XReducedAbstractField,
 function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing) 
     ca = condition_operand(a, condition, 0)
     cb = condition_operand(b, condition, 0)
-    # We use the GPUArrays implementation of _mapreduce here to
-    # avoid scalar indexing problems that would occur with the `Base` implementation
-    # see the implementation for `AnyGPUArray` (which fields are not but behave like)
-    # in https://github.com/JuliaGPU/GPUArrays.jl/blob/55a943ea5c876f6c34cb355eea17fb8290f81497/src/host/mapreduce.jl#L28
-    return GPUArrays._mapreduce((x, y) -> x * y, +, ca, cb; dims=:, init=nothing) 
+    
+    B = Broadcast.instantiate(Broadcast.broadcasted((x, y) -> x * y, ca, cb))
+    r = zeros(a.grid, 1)
+    
+    Base.mapreducedim!(identity, +, r, B)
+    return @allowscalar r[1]
 end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
