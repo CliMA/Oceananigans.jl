@@ -1,15 +1,29 @@
+module OceananigansCUDAExt
+
+using Oceananigans
 using CUDA, CUDA.CUSPARSE, CUDA.CUFFT
-import ..Architectures as AC
-import ..BoundaryConditions as BC
-import ..Solvers as SO
-import ..Utils as UT
+using KernelAbstractions
+import Oceananigans.Architectures as AC
+import Oceananigans.BoundaryConditions as BC
+import Oceananigans.Solvers as SO
+import Oceananigans.Utils as UT
 import SparseArrays: SparseMatrixCSC
 import KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds,
                            __validindex, CompilerMetadata
-import ..DistributedComputations: Distributed
+import Oceananigans.DistributedComputations: Distributed
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
+function __init__()
+    if CUDA.has_cuda()
+        @debug "CUDA-enabled GPU(s) detected:"
+        for (gpu, dev) in enumerate(CUDA.devices())
+            @debug "$dev: $(CUDA.name(dev))"
+        end
+
+        CUDA.allowscalar(false)
+    end
+end
 
 const CUDAGPU = AC.GPU{<:CUDABackend}
 
@@ -55,7 +69,7 @@ AC.on_architecture(::CUDAGPU, a::StepRangeLen) = a
     return dst
 end
 
-@inline Architectures.unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
+@inline AC.unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 
 @inline AC.constructors(::AC.GPU{CUDABackend}, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
 @inline AC.constructors(::AC.CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
@@ -106,3 +120,5 @@ end
 
 AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:CuArray}) = AC.on_architecture(child_architecture(arch), a)
+
+end # module OceananigansCUDAExt
