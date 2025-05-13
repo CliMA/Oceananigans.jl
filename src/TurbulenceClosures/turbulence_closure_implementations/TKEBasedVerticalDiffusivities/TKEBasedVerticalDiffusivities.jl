@@ -1,5 +1,8 @@
 module TKEBasedVerticalDiffusivities
 
+export CATKEVerticalDiffusivity,
+       TKEDissipationVerticalDiffusivity
+
 using Adapt
 using CUDA
 using KernelAbstractions: @kernel, @index
