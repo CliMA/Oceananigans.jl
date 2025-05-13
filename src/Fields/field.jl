@@ -602,7 +602,7 @@ function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing
     r = zeros(a.grid, 1)
     
     Base.mapreducedim!(identity, +, r, B)
-    return @allowscalar r[1]
+    return CUDA.@allowscalar r[1]
 end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
