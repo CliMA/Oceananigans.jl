@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans: fields
+
 function compute_derivative(model, ∂)
     T, S = model.tracers
     parent(S) .= π
@@ -314,12 +316,23 @@ function compute_tuples_and_namedtuples(model)
     compute!(two_c)
     compute!(six_c)
 
-    at_ijk(i, j, k, grid, nt::NamedTuple) = nt.field[i,j,k]
+    at_ijk(i, j, k, grid, nt::NamedTuple) = nt.field[i, j, k]
     ten_c_op = KernelFunctionOperation{Center, Center, Center}(at_ijk, model.grid, ten_c)
     ten_c_field = Field(ten_c_op)
     compute!(ten_c_field)
 
-    return all(interior(one_c) .== 1) & all(interior(two_c[1]) .== 2) & all(interior(six_c.field) .== 6) & all(interior(ten_c.field) .== 10)
+    at_ijk(i, j, grid, nt::NamedTuple) = nt.field[i, j, 1]
+    reduced_ten_c_op = KernelFunctionOperation{Center, Center, Nothing}(at_ij, model.grid, ten_c)
+    reduced_ten_c_field = Field(reduced_ten_c_op)
+    compute!(reduced_ten_c_field)
+
+    @test all(interior(one_c) .== 1)
+    @test all(interior(two_c[1]) .== 2)
+    @test all(interior(six_c.field) .== 6)
+    @test all(interior(ten_c.field) .== 10)
+    @test all(interior(reduced_ten_c.field) .== 10)
+
+    return nothing
 end
 
 for arch in archs
@@ -415,6 +428,14 @@ for arch in archs
                     f = Field(op)
                     compute!(f)
                     f isa Field && f.operand === op
+                end
+
+                @test begin
+                    @inline reduced_kernel_function(i, j, grid, clock, fields) = - @inbounds 1e-3 * fields.u[i, j, 1]
+                    op = KernelFunctionOperation{Center, Center, Nothing}(reduced_kernel_function, grid, model.clock, fields(model))
+                    f = Field(op)
+                    compute!(f)
+                    f isa Field && f.operand === op && location(field) == (Center, Center, Nothing)
                 end
 
                 ϵ(x, y, z) = 2rand() - 1
@@ -589,7 +610,7 @@ for arch in archs
                 @test computations_with_computed_fields(model)
 
                 @info "      Testing computations of Tuples and NamedTuples"
-                @test compute_tuples_and_namedtuples(model)
+                compute_tuples_and_namedtuples(model)
             end
 
             @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin

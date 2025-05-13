@@ -72,13 +72,15 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
     ```jldoctest kfo
     using Oceananigans: fields
-    using Oceananigans.Operators: ℑxyᶠᶜᶜ
+    using Oceananigans.Operators: ℑxyᶠᶜᵃ
     using Random
 
     ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
-    bottom_speed(i, j, grid, fields) = @inbounds sqrt(fields.u[i, j, 1]^2 + ℑxyᶠᶜᶜ(i, j, 1, grid, ϕ², fields.v))
-    u_bottom_drag(i, j, grid, clock, fields, Cᴰ) = - Cᴰ * fields.u[i, j, 1] * bottom_speed(i, j, grid, fields)
-    u_drag_op = KernelFunctionOperation{Center, Center, Nothing}(u_bottom_drag, grid, model.clock, fields(model), Cᴰ)
+    bottom_speed(i, j, grid, fields) = @inbounds sqrt(fields.u[i, j, 1]^2 + ℑxyᶠᶜᵃ(i, j, 1, grid, ϕ², fields.v))
+    u_bottom_drag(i, j, grid, fields) = @inbounds - Cᴰ * fields.u[i, j, 1] * bottom_speed(i, j, grid, fields)
+
+    Cᴰ = 1e-3
+    u_drag_op = KernelFunctionOperation{Face, Center, Nothing}(u_bottom_drag, grid, model.clock, fields(model), Cᴰ)
 
     Random.seed!(42)
     ϵ(x, y, z) = randn()
@@ -87,7 +89,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
     # output
 
-    0.001952194635328879
+    0.003992911332530622
     ```
 
     The resulting operation can be wrapped within a `Field` and computed:
@@ -98,14 +100,14 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
     # output
 
-    1×8×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU
+    1×8×1 Field{Face, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU
     ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
     ├── boundary conditions: FieldBoundaryConditions
     │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
-    ├── operand: KernelFunctionOperation at (Center, Center, ⋅)
+    ├── operand: KernelFunctionOperation at (Face, Center, ⋅)
     ├── status: time=0.0
     └── data: 3×14×1 OffsetArray(::Array{Float64, 3}, 0:2, -2:11, 1:1) with eltype Float64 with indices 0:2×-2:11×1:1
-        └── max=0.00195219, min=-0.0022534, mean=-0.000115706
+        └── max=0.00399291, min=-0.00571155, mean=-0.000240318
     ```
     """
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,

@@ -162,6 +162,10 @@ for arch in archs
             less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
             op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, u, v)
             @test op isa KernelFunctionOperation
+
+            reduced_kernel_function(i, j, grid, u, v) = @inbounds u[i, j, 1] * ℑxyᶠᶜᵃ(i, j, 1, grid, v)
+            op = KernelFunctionOperation{Face, Center, Nothing}(less_trivial_kernel_function, grid, u, v)
+            @test op isa KernelFunctionOperation
         end
 
         @testset "Fidelity of simple binary operations" begin
