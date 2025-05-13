@@ -37,7 +37,7 @@
     end
 end
 
-@kernel function _cache_advective_fluxes!(Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
+@kernel function _cache_advective_fluxes!(Gⁿ, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
@@ -46,8 +46,6 @@ end
         Fⁿ⁻¹.y[i, j, k] = Fⁿ.y[i, j, k]
         Fⁿ⁻¹.z[i, j, k] = Fⁿ.z[i, j, k]
         
-        cⁿ⁻¹[i, j, k] = c[i, j, k]
-
         # Calculate new advective fluxes
         Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c)
         Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c)

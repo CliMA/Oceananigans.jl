@@ -1,4 +1,5 @@
 using Oceananigans: fields
+using Oceananigans.Grids: topology, Flat
 
 # Store advective and diffusive fluxes for dissipation computation
 function cache_fluxes!(model, dissipation)
@@ -22,6 +23,15 @@ function cache_fluxes!(model, dissipation)
     return nothing
 end
 
+function flux_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    TX, TY, TZ = topology(grid)
+    Fx = ifelse(TX == Flat, 1:1, 1:Nx+1)
+    Fy = ifelse(TY == Flat, 1:1, 1:Ny+1)
+    Fz = ifelse(TZ == Flat, 1:1, 1:Nz+1)
+    return KernelParameters(Fx, Fy, Fz)
+end
+
 function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     
     # Grab tracer properties
@@ -30,13 +40,8 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     grid = model.grid
     arch = architecture(grid)
-
     U = model.velocities
-
-    sz  = size(model.tracers[1].data)
-    of  = model.tracers[1].data.offsets
-
-    params = KernelParameters(sz, of)
+    params = flux_parameters(grid)
 
     ####
     #### Update the advective fluxes and compute gradient squared
@@ -47,7 +52,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     Gⁿ   = dissipation.gradient_squared[tracer_name]
     advection = getadvection(model.advection, tracer_name)
 
-    launch!(arch, grid, params, _cache_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
+    launch!(arch, grid, params, _cache_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
 
     ####
     #### Update the diffusive fluxes
@@ -63,6 +68,8 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     model_fields = fields(model)
 
     launch!(arch, grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+
+    parent(cⁿ⁻¹) .= parent(c)
 
     return nothing
 end
