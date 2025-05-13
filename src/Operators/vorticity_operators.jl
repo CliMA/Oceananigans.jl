@@ -1,4 +1,4 @@
-using Oceananigans.Grids: ConformalCubedSpherePanel
+using Oceananigans.MultiRegion: ConformalCubedSpherePanel
 
 """ Vertical circulation associated with horizontal velocities u, v. """
 @inline Γᶠᶠᶜ(i, j, k, grid, u, v) = δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
