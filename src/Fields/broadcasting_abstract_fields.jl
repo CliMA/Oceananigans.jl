@@ -6,16 +6,17 @@ using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
 using CUDA
 
-struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
+struct FieldBroadcastStyle{AT} <: Broadcast.AbstractArrayStyle{3} end
 
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 
 # Precedence rule
-Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()
-Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle{Array}()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle{CuArray}()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
-Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
+Base.similar(bc::Broadcasted{FieldBroadcastStyle{AT}}, ::Type{ElType})       where {AT, ElType} = similar(AT{ElType}, axes(bc))
+Base.similar(bc::Broadcasted{FieldBroadcastStyle{AT}}, ::Type{ElType}, dims) where {AT, ElType} = similar(AT{ElType,length(dims)}, dims)
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
 const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
