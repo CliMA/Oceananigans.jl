@@ -21,8 +21,12 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
     # TODO: a potential optimization here might be to load
     # all of the data into a single array, and then transfer that
     # to parent(fts).
+
+    # Index times on the CPU
+    cpu_times = on_architecture(CPU(), fts.times)
+    
     for n in time_indices(fts)
-        t = fts.times[n]
+        t = cpu_times[n]
         file_index = find_time_index(t, file_times)
 
         if isnothing(file_index) # the time does not exist in the file
