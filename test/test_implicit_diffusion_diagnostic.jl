@@ -73,7 +73,8 @@ function test_implicit_diffusion_diagnostic(arch, dim)
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
                                             filename="one_d_simulation_$(dim).jld2",
                                             schedule=IterationInterval(10),
-                                            overwrite_existing=true)
+                                            overwrite_existing=true,
+                                            array_type = Array{Float64})
 
     sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
 
@@ -92,7 +93,7 @@ function test_implicit_diffusion_diagnostic(arch, dim)
     Δ = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ, grid.z.Δᵃᵃᶜ)
 
     for i in 1:Nt-1
-        @test abs(∫closs[i] * Δ - ∫A[i] - ∫D[i]) < 1e-6
+        @test abs(∫closs[i] * Δ - ∫A[i] - ∫D[i]) < 1e-14 # Arbitrary tolerance, not exactly machine precision
     end
 end
 @testset "Implicit Diffusion Diagnostic" begin
