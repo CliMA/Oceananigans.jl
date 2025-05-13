@@ -1,5 +1,6 @@
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
+using Oceananigans.Grids: bottommost_active_node
 using Printf
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ
@@ -144,13 +145,6 @@ Criterion is zb ≥ z - ϵ Δz
     return z★ < zb
 end
 
-@inline function bottom_cell(i, j, k, ibg::PCBIBG)
-    grid = ibg.underlying_grid
-    ib = ibg.immersed_boundary
-    # This one's not immersed, but the next one down is
-    return !immersed_cell(i, j, k, grid, ib) & immersed_cell(i, j, k-1, grid, ib)
-end
-
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::PCBIBG)
     underlying_grid = ibg.underlying_grid
     ib = ibg.immersed_boundary
@@ -162,7 +156,7 @@ end
     zb = @inbounds ib.bottom_height[i, j, 1]
 
     # Are we in a bottom cell?
-    at_the_bottom = bottom_cell(i, j, k, ibg)
+    at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
 
     full_Δz    = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
     partial_Δz = z - zb

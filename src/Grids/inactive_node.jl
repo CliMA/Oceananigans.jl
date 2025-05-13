@@ -161,3 +161,9 @@ Return `true` when the location `(LX, LY, LZ)` lies on a boundary.
 """
 @inline boundary_node(i, j, k, grid, LX, LY, LZ) = peripheral_node(i, j, k, grid, LX, LY, LZ) & !inactive_node(i, j, k, grid, LX, LY, LZ)
 
+"""
+    bottommost_active_node(i, j, k, grid, LX, LY, LZ)
+
+Return `true` when the location `(LX, LY, LZ)` is the active cell closest to the bottom.
+"""
+@inline bottommost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) && inactive_node(i, j, k - 1, grid, LX, LY, LZ)
