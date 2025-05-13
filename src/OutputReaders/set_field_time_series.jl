@@ -7,15 +7,22 @@ using Oceananigans.Architectures: cpu_architecture
 
 iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 
-find_time_index(time::Number, file_times)       = findfirst(t -> t ≈ time, file_times)
-find_time_index(time::AbstractTime, file_times) = findfirst(t -> t == time, file_times)
+function find_time_index(time::Number, file_times, dt)
+    ϵ = 100 * eps(eltype(file_times))
+    return findfirst(t -> isapprox(t, time, atol=ϵ*dt), file_times)
+end
+
+find_time_index(time::AbstractTime, file_times, dt) = findfirst(t -> t == time, file_times)
 
 function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; warn_missing_data=true)
     file = jldopen(path; fts.reader_kw...)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
-
+    
+    # Compute a timescale for comparisons
+    dt = mean(file_times[2:end] - file_times[1:end-1])
+    
     arch = architecture(fts)
 
     # TODO: a potential optimization here might be to load
@@ -27,7 +34,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
     
     for n in time_indices(fts)
         t = cpu_times[n]
-        file_index = find_time_index(t, file_times)
+        file_index = find_time_index(t, file_times, dt)
 
         if isnothing(file_index) # the time does not exist in the file
             if warn_missing_data
