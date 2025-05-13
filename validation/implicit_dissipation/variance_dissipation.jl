@@ -31,8 +31,6 @@ a = 0.5
     end
 end
 
-@inline c₀(x) = sin(x * 2π)
-
 Δt_max = 0.2 * minimum_xspacing(grid)
 
 # Change to test pure advection schemes
