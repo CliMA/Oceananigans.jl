@@ -106,7 +106,7 @@ run_diagnostic!(ϵ::VarianceDissipation, model) = ϵ(model)
 function (ϵ::VarianceDissipation)(model)
 
     # We first assemble values for Pⁿ⁻¹
-    assemble_dissipation!(model, ϵ)
+    compute_dissipation!(model, ϵ)
 
     # Then we update the fluxes to be used in the next time step
     cache_fluxes!(model, ϵ)
@@ -120,7 +120,7 @@ const c = Center()
 include("update_fluxes.jl")
 include("advective_dissipation.jl")
 include("diffusive_dissipation.jl")
-include("assemble_dissipation.jl")
+include("compute_dissipation.jl")
 include("flatten_dissipation_fields.jl")
 
 end

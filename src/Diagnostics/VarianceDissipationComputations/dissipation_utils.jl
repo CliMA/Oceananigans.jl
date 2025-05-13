@@ -1,5 +1,3 @@
-import Oceananigans.Utils: KernelParameters
-
 tracer_closure_dissipation(grid, K, ::Nothing, tracer_id) = nothing
 tracer_closure_dissipation(grid, K, c::Tuple,  tracer_id) = 
     Tuple(tracer_closure_dissipation(grid, K[i], c[i], tracer_id) for i in eachindex(c))
