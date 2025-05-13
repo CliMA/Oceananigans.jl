@@ -49,8 +49,8 @@ function test_implicit_diffusion_diagnostic(arch, dim)
     closure = ScalarDiffusivity(κ=1e-3)
     velocities = advecting_velocity(Val(dim))
 
-    c⁻    = CenterField(grid)
-    Δtc²  = CenterField(grid)
+    c⁻   = CenterField(grid)
+    Δtc² = CenterField(grid)
 
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         timestepper=:QuasiAdamsBashforth2, 
@@ -85,9 +85,9 @@ function test_implicit_diffusion_diagnostic(arch, dim)
 
     Nt = length(Ac.times)
 
-    ∫closs = [sum(interior(Δtc²[i], :, 1, 1))  for i in 1:Nt]
-    ∫A     = [sum(interior(Ac[i],   :, 1, 1))  for i in 1:Nt]
-    ∫D     = [sum(interior(Dc[i],   :, 1, 1))  for i in 1:Nt] 
+    ∫closs = [sum(interior(Δtc²[i]))  for i in 1:Nt]
+    ∫A     = [sum(interior(Ac[i]))    for i in 1:Nt]
+    ∫D     = [sum(interior(Dc[i]))    for i in 1:Nt] 
 
     Δ = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ, grid.z.Δᵃᵃᶜ)
 
@@ -95,14 +95,15 @@ function test_implicit_diffusion_diagnostic(arch, dim)
         @test abs(∫closs[i] * Δ - ∫A[i] - ∫D[i]) < 1e-6
     end
 end
-
 @testset "Implicit Diffusion Diagnostic" begin
     @info "Testing implicit diffusion diagnostic..."
     for arch in archs
         @testset "Implicit Diffusion [$(typeof(arch))]" begin
-            @info "  Testing implicit diffusion diagnostic [$(typeof(arch))]..."
+            @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] in x-direction..."
             test_implicit_diffusion_diagnostic(arch, :x)
+            @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] in y-direction..."
             test_implicit_diffusion_diagnostic(arch, :y)
+            @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] in z-direction..."
             test_implicit_diffusion_diagnostic(arch, :z)
         end
     end
