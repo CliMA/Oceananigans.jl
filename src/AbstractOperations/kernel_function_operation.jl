@@ -10,13 +10,25 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
     Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` with `arguments`.
 
-    `kernel_function` is called with
+    `kernel_function`s with three non-`Nothing` locations are called with
 
     ```julia
     kernel_function(i, j, k, grid, arguments...)
     ```
 
     Note that `compute!(kfo::KernelFunctionOperation)` calls `compute!` on all `kfo.arguments`.
+
+    Indices for `Nothing` locations are omitted in the calling function. So for example `reduced_kernel_func` in
+
+    ```julia
+    kfo = KernelFunctionOperation{Center, Center, Nothing}(reduced_kernel_func, grid, clock, u, v)
+    ```
+
+    is called with
+
+    ```julia
+    reduced_kernel_func(i, j, grid, clock, u, v)
+    ```
 
     Examples
     ========
@@ -27,9 +39,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     using Oceananigans
 
     grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1));
-
     random_kernel_function(i, j, k, grid) = rand(); # use CUDA.rand on the GPU
-
     kernel_op = KernelFunctionOperation{Center, Center, Center}(random_kernel_function, grid)
 
     # output
@@ -47,9 +57,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     using Oceananigans.Operators: ζ₃ᶠᶠᶜ # called with signature ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
     model = HydrostaticFreeSurfaceModel(; grid);
-
     u, v, w = model.velocities;
-
     ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
     # output
@@ -58,6 +66,46 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
     ├── kernel_function: ζ₃ᶠᶠᶜ (generic function with 1 method)
     └── arguments: ("1×8×8 Field{Face, Center, Center} on RectilinearGrid on CPU", "1×8×8 Field{Center, Face, Center} on RectilinearGrid on CPU")
+    ```
+
+    Construct a reduced `KernelFunctionOperation` (for example, encapsulating a function that can represent a discrete-form boundary condition):
+
+    ```jldoctest kfo
+    using Oceananigans: fields
+    using Oceananigans.Operators: ℑxyᶠᶜᶜ
+    using Random
+
+    ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
+    bottom_speed(i, j, grid, fields) = @inbounds sqrt(fields.u[i, j, 1]^2 + ℑxyᶠᶜᶜ(i, j, 1, grid, ϕ², fields.v))
+    u_bottom_drag(i, j, grid, clock, fields, Cᴰ) = - Cᴰ * fields.u[i, j, 1] * bottom_speed(i, j, grid, fields)
+    u_drag_op = KernelFunctionOperation{Center, Center, Nothing}(u_bottom_drag, grid, model.clock, fields(model), Cᴰ)
+
+    Random.seed!(42)
+    ϵ(x, y, z) = randn()
+    set!(model, u=ϵ, v=ϵ)
+    u_drag_op[1, 1, 1]
+
+    # output
+
+    0.001952194635328879
+    ```
+
+    The resulting operation can be wrapped within a `Field` and computed:
+
+    ```jldoctest kfo
+    u_drag_field = Field(u_drag_op)
+    compute!(u_drag_field)
+
+    # output
+
+    1×8×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU
+    ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
+    ├── boundary conditions: FieldBoundaryConditions
+    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+    ├── operand: KernelFunctionOperation at (Center, Center, ⋅)
+    ├── status: time=0.0
+    └── data: 3×14×1 OffsetArray(::Array{Float64, 3}, 0:2, -2:11, 1:1) with eltype Float64 with indices 0:2×-2:11×1:1
+        └── max=0.00195219, min=-0.0022534, mean=-0.000115706
     ```
     """
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
@@ -71,6 +119,15 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 end
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
+
+@inline Base.getindex(κ::KernelFunctionOperation{Nothing},               i, j, k) = κ.kernel_function(j, k, κ.grid, κ.arguments...)
+@inline Base.getindex(κ::KernelFunctionOperation{<:Any, Nothing},        i, j, k) = κ.kernel_function(i, k, κ.grid, κ.arguments...)
+@inline Base.getindex(κ::KernelFunctionOperation{<:Any, <:Any, Nothing}, i, j, k) = κ.kernel_function(i, j, κ.grid, κ.arguments...)
+
+@inline Base.getindex(κ::KernelFunctionOperation{<:Any, Nothing, Nothing}, i, j, k) = κ.kernel_function(i, κ.grid, κ.arguments...)
+@inline Base.getindex(κ::KernelFunctionOperation{Nothing, <:Any, Nothing}, i, j, k) = κ.kernel_function(j, κ.grid, κ.arguments...)
+@inline Base.getindex(κ::KernelFunctionOperation{Nothing, Nothing, <:Any}, i, j, k) = κ.kernel_function(k, κ.grid, κ.arguments...)
+
 indices(κ::KernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.arguments...)
 compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
 
