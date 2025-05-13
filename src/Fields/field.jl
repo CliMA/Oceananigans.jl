@@ -593,7 +593,7 @@ function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing
     ca = condition_operand(a, condition, 0)
     cb = condition_operand(b, condition, 0)
     
-    B = Broadcast.instantiate(Broadcast.broadcasted((x, y) -> x * y, ca, cb))
+    B = ca * cb # Binary operation
     r = zeros(a.grid, 1)
     
     Base.mapreducedim!(identity, +, r, B)
