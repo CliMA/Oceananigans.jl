@@ -6,6 +6,7 @@ using Adapt
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
+using GPUArrays
 
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
