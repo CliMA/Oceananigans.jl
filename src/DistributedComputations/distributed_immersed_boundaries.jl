@@ -159,10 +159,13 @@ function build_active_cells_map(grid::DistributedGrid, ib)
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
 
     halo_independent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    halo_dependent_cells = vcat(west_halo_dependent_cells,
+                                south_halo_dependent_cells,
+                                east_halo_dependent_cells,
+                                north_halo_dependent_cells)
+
+
 
     return (; halo_independent_cells,
-              west_halo_dependent_cells,
-              east_halo_dependent_cells,
-              south_halo_dependent_cells,
-              north_halo_dependent_cells)
+              halo_dependent_cells)
 end
