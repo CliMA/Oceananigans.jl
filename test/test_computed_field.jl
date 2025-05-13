@@ -321,7 +321,7 @@ function compute_tuples_and_namedtuples(model)
     ten_c_field = Field(ten_c_op)
     compute!(ten_c_field)
 
-    at_ijk(i, j, grid, nt::NamedTuple) = nt.field[i, j, 1]
+    at_ij(i, j, grid, nt::NamedTuple) = nt.field[i, j, 1]
     reduced_ten_c_op = KernelFunctionOperation{Center, Center, Nothing}(at_ij, model.grid, ten_c)
     reduced_ten_c_field = Field(reduced_ten_c_op)
     compute!(reduced_ten_c_field)
