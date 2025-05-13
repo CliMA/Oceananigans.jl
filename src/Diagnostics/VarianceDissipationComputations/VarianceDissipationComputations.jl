@@ -45,7 +45,12 @@ include("dissipation_utils.jl")
     VarianceDissipation(model; tracers=propertynames(model.tracers))
 
 Constructs a `VarianceDissipation` object for a given `model`. This function computes 
-the variance dissipation diagnostics for the specified tracers in the model.
+the variance dissipation diagnostics for the specified tracers in the model. 
+These include the numerical dissipation implicit to the advection scheme and the explicit 
+dissipation associated to closures. 
+
+This diagnostic is especially useful for models that use a dissipative advection scheme
+like [`WENO`](@ref) or [`UpwindBiased`](@ref)
 
 Argument
 =========
@@ -76,10 +81,10 @@ function VarianceDissipation(model; tracers=propertynames(model.tracers))
 
     P    = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
     K    = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))
+
     Vⁿ   = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))
     Vⁿ⁻¹ = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))    
 
-    K    = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
     Fⁿ   = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
     Fⁿ⁻¹ = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
     

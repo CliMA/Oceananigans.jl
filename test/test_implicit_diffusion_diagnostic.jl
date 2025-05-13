@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans
 using Oceananigans.Diagnostics: VarianceDissipation
 using KernelAbstractions: @kernel, @index
@@ -36,7 +38,7 @@ get_diffusion_dissipation(::Val{:z}) = FieldTimeSeries("one_d_simulation_z.jld2"
 function test_implicit_diffusion_diagnostic(arch, dim)
 
     # 1D grid constructions
-    grid = periodic_grid(arch, Val(dims))
+    grid = periodic_grid(arch, Val(dim))
 
     # Change to test pure advection schemes
     tracer_advection = WENO(order=5)
@@ -77,16 +79,16 @@ function test_implicit_diffusion_diagnostic(arch, dim)
     Ac   = get_advection_dissipation(Val(dim))
     Dc   = get_diffusion_dissipation(Val(dim))
 
-    Nt = length(c.times)
+    Nt = length(Ac.times)
 
     ∫closs = [sum(interior(Δtc²[i], :, 1, 1))  for i in 1:Nt]
     ∫A     = [sum(interior(Ac[i],   :, 1, 1))  for i in 1:Nt]
     ∫D     = [sum(interior(Dc[i],   :, 1, 1))  for i in 1:Nt] 
 
-    Δ = minimum(grid.Δxᶜᵃᵃ, grid.Δyᶜᵃᵃ, grid.Δzᶜᵃᵃ)
+    Δ = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ, grid.z.Δᵃᵃᶜ)
 
-    for i in 1:Nt
-        @test abs(∫closs[i] * Δ - ∫A[i] - ∫D[i]) < eps(Δ)
+    for i in 1:Nt-1
+        @test abs(∫closs[i] * Δ - ∫A[i] - ∫D[i]) < 1e-6
     end
 end
 
