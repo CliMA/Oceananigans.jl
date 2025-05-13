@@ -42,11 +42,7 @@ function compute_dissipation!(dissipation, model, tracer_name::Symbol)
 
     cⁿ⁺¹ = model.tracers[tracer_name]
     cⁿ   = dissipation.previous_state[tracer_name]
-    sz   = size(cⁿ⁺¹.data)
-    of   = cⁿ⁺¹.data.offsets
-
-    params = KernelParameters(sz, of)
-
+    
     ####
     #### Assemble the advective dissipation
     ####
@@ -65,7 +61,7 @@ function compute_dissipation!(dissipation, model, tracer_name::Symbol)
     Vⁿ   = dissipation.diffusive_fluxes.Vⁿ[tracer_name]
     Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹[tracer_name]
 
-    launch!(arch, grid, params, _assemble_diffusive_dissipation!, K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
+    launch!(arch, grid, :xyz, _assemble_diffusive_dissipation!, K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
     return nothing
 end
