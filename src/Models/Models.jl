@@ -189,7 +189,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
-
 include("boundary_mean.jl")
+include("boundary_condition_operation.jl")
 
 end # module
