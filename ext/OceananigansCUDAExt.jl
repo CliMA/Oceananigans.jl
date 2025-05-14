@@ -45,7 +45,6 @@ Base.summary(::CUDAGPU) = "CUDAGPU"
 
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::CuSparseMatrixCSC) = AC.GPU()
-AC.architecture(::SparseMatrixCSC)   = AC.CPU()
 AC.array_type(::AC.GPU{CUDABackend}) = CuArray
 
 AC.on_architecture(::AC.CPU, a::CuArray) = Array(a)

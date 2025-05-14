@@ -64,6 +64,7 @@ architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
+architecture(::SparseMatrixCSC)   = CPU()
 
 """
     child_architecture(arch)
