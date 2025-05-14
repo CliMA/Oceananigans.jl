@@ -18,7 +18,6 @@ const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:Distributed{<:ReactantState}},
 }
 
-# initialization_update_state!(model::ReactantModel; kw...) = @jit update_state(model; kw...)
 initialize_immersed_boundary_grid!(grid) = nothing
 
 using Oceananigans.ImmersedBoundaries:
