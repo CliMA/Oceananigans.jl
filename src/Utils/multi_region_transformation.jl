@@ -187,7 +187,6 @@ end
 
 @inline sync_device!(::Nothing)  = nothing
 @inline sync_device!(::CPU)      = nothing
-@inline sync_device!(arch::GPU)      = synchronize(arch)
 
 
 # TODO: The macro errors when there is a return and the function has (args...) in the

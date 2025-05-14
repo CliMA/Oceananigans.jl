@@ -208,7 +208,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
 
     # First we construct the grid on CPU, and then convert to user-prescribed architecture later...
     devices = validate_devices(partition, CPU(), devices)
-    devices = assign_devices(partition, devices)
+    devices = assign_devices(arch, partition, devices)
 
     connectivity = CubedSphereConnectivity(devices, partition)
 
@@ -265,7 +265,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
     region_grids = grid.region_grids
     @apply_regionally new_region_grids = on_architecture(arch, region_grids)
 
-    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
+    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(device(arch) for _ in 1:length(partition))
 
     new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
 
@@ -399,7 +399,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
     partition = CubedSpherePartition(R = 1)
 
     devices = validate_devices(partition, arch, devices)
-    devices = assign_devices(partition, devices)
+    devices = assign_devices(arch, partition, devices)
 
     region_Nz = MultiRegionObject(Tuple(repeat([Nz], length(partition))), devices)
     region_panels = Iterate(Array(1:length(partition)))

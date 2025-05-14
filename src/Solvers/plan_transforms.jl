@@ -34,6 +34,7 @@ function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PA
 end
 
 plan_forward_transform(A::AbstractArray, ::Flat, args...) = nothing
+plan_backward_transform(A::AbstractArray, ::Flat, args...) = nothing
 
 batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
                             (Periodic, Periodic, Bounded),
