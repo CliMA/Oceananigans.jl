@@ -2,7 +2,7 @@ module Architectures
 
 export AbstractArchitecture, AbstractSerialArchitecture
 export CPU, GPU, ReactantState
-export device, architecture, unified_array, device_copy_to!
+export device, devices, architecture, unified_array, device_copy_to!
 export array_type, on_architecture, arch_array
 export constructors, unpack_constructors, copy_unpack_constructors
 export arch_sparse_matrix, child_architecture
@@ -58,6 +58,8 @@ struct ReactantState <: AbstractSerialArchitecture end
 
 device(a::CPU) = KernelAbstractions.CPU()
 device(a::GPU) = a.device
+devices(a::AbstractArchitecture) = KA.devices(device(a))
+device!(a::AbstractArchitecture) = KA.device!(device(a))
 
 architecture() = nothing
 architecture(::Number) = nothing
