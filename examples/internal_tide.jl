@@ -1,4 +1,4 @@
-# # Internal tide by a seamount
+# # Internal tide over a seamount
 #
 # In this example, we show how internal tide is generated from a barotropic tidal flow
 # sloshing back and forth over a sea mount.
@@ -14,21 +14,17 @@
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.ImmersedBoundaries: PartialCellBottom
 
 # ## Grid
 
 # We create an `ImmersedBoundaryGrid` wrapped around an underlying two-dimensional `RectilinearGrid`
 # that is periodic in ``x`` and bounded in ``z``.
 
-Nx, Nz = 250, 125
+Nx, Nz = 256, 128
+H, L = 2kilometers, 1000kilometers
 
-H = 2kilometers
-
-underlying_grid = RectilinearGrid(size = (Nx, Nz),
-                                  x = (-1000kilometers, 1000kilometers),
-                                  z = (-H, 0),
-                                  halo = (4, 4),
+underlying_grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4),
+                                  x = (-L, L), z = (-H, 0),
                                   topology = (Periodic, Flat, Bounded))
 
 # Now we can create the non-trivial bathymetry. We use `GridFittedBottom` that gets as input either
@@ -67,7 +63,7 @@ band!(ax, x/1e3, bottom_boundary, top_boundary, color = :mediumblue)
 
 fig
 
-# Now we want to add a barotropic tide forcing. For example, to add the lunar semi-diurnal ``M_2`` tide 
+# Now we want to add a barotropic tide forcing. For example, to add the lunar semi-diurnal ``M_2`` tide
 # we need to add forcing in the ``u``-momentum equation of the form:
 # ```math
 # F_0 \sin(\omega_2 t)
@@ -80,7 +76,7 @@ fig
 # ```math
 # \epsilon = \frac{U_{\mathrm{tidal}} / \omega_2}{\sigma}
 # ```
-# 
+#
 # We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_{\mathrm{tidal}}``
 # which then allows us to determing the tidal forcing amplitude ``F_0``. For the last step, we
 # use Fourier decomposition on the inviscid, linearized momentum equations to determine the
@@ -102,16 +98,12 @@ coriolis = FPlane(latitude = -45)
 
 T₂ = 12.421hours
 ω₂ = 2π / T₂ # radians/sec
-
 ϵ = 0.1 # excursion parameter
+U₂ = ϵ * ω₂ * width
+A₂ = U₂ * (ω₂^2 - coriolis.f^2) / ω₂
 
-U_tidal = ϵ * ω₂ * width
-
-tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
-
-@inline tidal_forcing(x, z, t, p) = p.tidal_forcing_amplitude * sin(p.ω₂ * t)
-
-u_forcing = Forcing(tidal_forcing, parameters=(; tidal_forcing_amplitude, ω₂))
+@inline tidal_forcing(x, z, t, p) = p.A₂ * sin(p.ω₂ * t)
+u_forcing = Forcing(tidal_forcing, parameters=(; A₂, ω₂))
 
 # ## Model
 
@@ -126,18 +118,14 @@ model = HydrostaticFreeSurfaceModel(; grid, coriolis,
 
 # We initialize the model with the tidal flow and a linear stratification.
 
-uᵢ(x, z) = U_tidal
-
 Nᵢ² = 1e-4  # [s⁻²] initial buoyancy frequency / stratification
 bᵢ(x, z) = Nᵢ² * z
-
-set!(model, u=uᵢ, b=bᵢ)
+set!(model, u=U₂, b=bᵢ)
 
 # Now let's build a `Simulation`.
 
 Δt = 5minutes
 stop_time = 4days
-
 simulation = Simulation(model; Δt, stop_time)
 
 # We add a callback to print a message about how the simulation is going,
@@ -149,7 +137,7 @@ wall_clock = Ref(time_ns())
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
 
-    msg = @sprintf("iteration: %d, time: %s, wall time: %s, max|w|: %6.3e, m s⁻¹\n",
+    msg = @sprintf("Iter: %d, time: %s, wall time: %s, max|w|: %6.3e, m s⁻¹\n",
                    iteration(sim), prettytime(sim), prettytime(elapsed),
                    maximum(abs, sim.model.velocities.w))
 
@@ -171,20 +159,16 @@ nothing #hide
 
 b = model.tracers.b
 u, v, w = model.velocities
-
 U = Field(Average(u))
-
 u′ = u - U
-
 N² = ∂z(b)
 
 filename = "internal_tide"
 save_fields_interval = 30minutes
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, u′, w, b, N²);
-                                                      filename,
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, u′, w, b, N²); filename,
+                                                schedule = TimeInterval(save_fields_interval),
+                                                overwrite_existing = true)
 
 # We are ready -- let's run!
 
@@ -206,20 +190,6 @@ wmax = maximum(abs, w_t[end])
 times = u′_t.times
 nothing #hide
 
-# We retrieve each field's coordinates and convert from meters to kilometers.
-
-xu,  _, zu  = nodes(u′_t[1])
-xw,  _, zw  = nodes(w_t[1])
-xN², _, zN² = nodes(N²_t[1])
-
-xu  = xu  ./ 1e3
-xw  = xw  ./ 1e3
-xN² = xN² ./ 1e3
-zu  = zu  ./ 1e3
-zw  = zw  ./ 1e3
-zN² = zN² ./ 1e3
-nothing #hide
-
 # ## Visualize
 
 # Now we can visualize our resutls! We use `CairoMakie` here. On a system with OpenGL
@@ -235,13 +205,13 @@ n = Observable(1)
 title = @lift @sprintf("t = %1.2f days = %1.2f T₂",
                        round(times[$n] / day, digits=2) , round(times[$n] / T₂, digits=2))
 
-u′n = @lift u′_t[$n]
- wn = @lift  w_t[$n]
-N²n = @lift N²_t[$n]
+u′ₙ = @lift u′_t[$n]
+ wₙ = @lift  w_t[$n]
+N²ₙ = @lift N²_t[$n]
 
-axis_kwargs = (xlabel = "x [km]",
-               ylabel = "z [km]",
-               limits = ((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz/1e3, 0)), # note conversion to kilometers
+axis_kwargs = (xlabel = "x [m]",
+               ylabel = "z [m]",
+               limits = ((-grid.Lx/2, grid.Lx/2), (-grid.Lz, 0)),
                titlesize = 20)
 
 fig = Figure(size = (700, 900))
@@ -249,15 +219,15 @@ fig = Figure(size = (700, 900))
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 ax_u = Axis(fig[2, 1]; title = "u'-velocity", axis_kwargs...)
-hm_u = heatmap!(ax_u, xu, zu, u′n; nan_color=:gray, colorrange=(-umax, umax), colormap=:balance)
+hm_u = heatmap!(ax_u, u′ₙ; nan_color=:gray, colorrange=(-umax, umax), colormap=:balance)
 Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
 
 ax_w = Axis(fig[3, 1]; title = "w-velocity", axis_kwargs...)
-hm_w = heatmap!(ax_w, xw, zw, wn; nan_color=:gray, colorrange=(-wmax, wmax), colormap=:balance)
+hm_w = heatmap!(ax_w, wₙ; nan_color=:gray, colorrange=(-wmax, wmax), colormap=:balance)
 Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
 ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
-hm_N² = heatmap!(ax_N², xN², zN², N²n; nan_color=:gray, colorrange=(0.9Nᵢ², 1.1Nᵢ²), colormap=:magma)
+hm_N² = heatmap!(ax_N², N²ₙ; nan_color=:gray, colorrange=(0.9Nᵢ², 1.1Nᵢ²), colormap=:magma)
 Colorbar(fig[4, 2], hm_N², label = "s⁻²")
 
 fig

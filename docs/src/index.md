@@ -24,8 +24,11 @@ julia> using Pkg
 julia> Pkg.add("Oceananigans")
 ```
 
-!!! compat "Julia 1.9 is required"
+!!! compat "Julia 1.9 or later is required"
     Oceananigans requires Julia 1.9 or later.
+
+!!! info "Tested Julia versions"
+    Oceananigans is currently tested on Julia 1.10.
 
 If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and its [wonderful `Pkg` manager](https://docs.julialang.org/en/v1/stdlib/Pkg/), the [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
 
@@ -42,7 +45,7 @@ It's _deep_ and includes:
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
-  
+
     If you've got a question or something to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
@@ -55,45 +58,80 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 * [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
 * Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel because we love to chat.
 
-## Citing
+## Citing and otherwise spreading the word
 
-If you use Oceananigans as part of your research, teaching, or other activities, we would be grateful if you could
-cite our work and mention Oceananigans by name.
+If you use Oceananigans for your research, teaching, or fun 🤩, everyone in our community will be grateful
+if you credit Oceananigans by name.
 
-```bibtex
-@article{OceananigansJOSS,
-  doi = {10.21105/joss.02018},
-  url = {https://doi.org/10.21105/joss.02018},
-  year = {2020},
-  publisher = {The Open Journal},
-  volume = {5},
-  number = {53},
-  pages = {2018},
-  author = {Ali Ramadhan and Gregory LeClaire Wagner and Chris Hill and Jean-Michel Campin and Valentin Churavy and Tim Besard and Andre Souza and Alan Edelman and Raffaele Ferrari and John Marshall},
-  title = {Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs},
-  journal = {Journal of Open Source Software}
-}
-```
+The community has published a number of articles describing the development of Oceananigans,
+including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://arxiv.org/abs/2502.14148) that presents an overview of all the things that make Oceananigans unique:
+
+> "High-level, high-resolution ocean modeling at all scales with Oceananigans"
+>
+> by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
+> Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
+> John Marshall, Raffaele Ferrari
+>
+> submitted to the Journal of Advances in Modeling Earth Systems, arXiv:2502.14148
+
+Please cite this overview paper if you use Oceananigans in published work.
+
+We've also submitted a number of model development papers. Please cite these if you use
+the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
+
+* **Silvestri et al., ["A new WENO-Based momentum advection scheme for simulations of ocean mesoscale turbulence"](https://doi.org/10.1029/2023MS004130).**
+
+  *This paper describes the development of `WENOVectorInvariant()` advection scheme, which can be used as the
+  `momentum_advection` scheme for `HydrostaticFreeSurfaceModel`.*
+
+* **Silvestri et al., ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://doi.org/10.1029/2024MS004465).**
+
+  *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm, including the implementation
+  of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
+  global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
+
+* **Wagner et al., ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://doi.org/10.1029/2024MS004522).**
+
+  *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was automatically calibrated to
+  a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
+
+* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
+
+  *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1) _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
+1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R. and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2504.15308)
 
-1. Strong-Wright J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
+1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2025) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.48550/arXiv.2503.12845), _arXiv preprint_, arXiv:2503.12845 (submitted to the Journal of Physical Oceanography). DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2503.12845)
 
-1. Chor, T. and Wenegrat, J. (2024). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.31223/X5570C), _Earth arXiv_, DOI: [10.31223/X5570C](https://doi.org/10.31223/X5570C)
+1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
 
-1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2024). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.48550/arXiv.2306.13204), _arXiv_, arXiv:2306.13204. DOI: [10.48550/arXiv.2306.13204](https://doi.org/10.48550/arXiv.2306.13204)
+1. Bisits, J. I., Zika, J. D. and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)
+
+1. Whitley V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_. In press. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
+
+1. Chor, T. and Wenegrat, J. (2025). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.1175/JPO-D-24-0139.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0139.1](https://doi.org/10.1175/JPO-D-24-0139.1)
+
+1. Silvestri, S., Wagner, G. L., Constantinou, N. C., Hill, C., Campin, J.-M., Souza, A., Bishnu, S., Churavy, V., Marshall, J., and Ferrari, R. (2025) [A GPU-based ocean dynamical core for routine mesoscale-resolving climate simulations](https://doi.org/10.1029/2024MS004465), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2024MS004465. DOI: [10.1029/2024MS004465](https://doi.org/10.1029/2024MS004465)
+
+1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.1029/2024MS004522), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2024MS004522. DOI: [10.1029/2024MS004522](https://doi.org/10.1029/2024MS004522)
+
+1. Atkinson, E., McWilliams, J., and Grisouard, N. (2024) [Near-inertial echoes of ageostrophic instability in submesoscale filaments](https://doi.org/10.48550/arXiv.2407.16059), _arXiv preprint_, arXiv:2407.16059. DOI: [10.48550/arXiv.2407.16059](https://doi.org/10.48550/arXiv.2407.16059)
+
+1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
+
+1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
+
+1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
 
 1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2024). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.48550/arXiv.2403.15632), _arXiv_, arXiv:2403.15632. DOI: [10.48550/arXiv.2403.15632](https://doi.org/10.48550/arXiv.2403.15632)
 
-1. Silvestri, S., Wagner, G. L., Constantinou, N. C., Hill, C., Campin, J.-M., Souza, A., Bishnu, S., Churavy, V., Marshall, J., and Ferrari, R. (2024) [A GPU-based ocean dynamical core for routine mesoscale-resolving climate simulations](https://doi.org/10.22541/essoar.171708158.82342448/v1), _ESS Open Archive_. DOI: [10.22541/essoar.171708158.82342448/v1](https://doi.org/10.22541/essoar.171708158.82342448/v1)
+1. Strong-Wright J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
 
-1. Silvestri, S., Wagner, G. L., Campin, J.-M., Constantinou, N. C., Hill, C., Souza, A., and Ferrari, R. (2024). [A new WENO-based momentum advection scheme for simulations of ocean mesoscale turbulence](https://doi.org/10.22541/essoar.170110657.76489860/v2), _ESS Open Archive_. DOI: [10.22541/essoar.170110657.76489860/v2](https://doi.org/10.22541/essoar.170110657.76489860/v2)
-
-1. Whitley V. and Wenegrat, J. O. (2024) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.31223/X5PM5Q), _Earth Arxiv_. DOI: [10.31223/X5PM5Q](https://doi.org/10.31223/X5PM5Q)
+1. Silvestri, S., Wagner, G. L., Campin, J.-M., Constantinou, N. C., Hill, C., Souza, A., and Ferrari, R. (2024). [A new WENO-based momentum advection scheme for simulations of ocean mesoscale turbulence](https://doi.org/10.1029/2023MS004130), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2023MS004130. DOI: [10.1029/2023MS004130](https://doi.org/10.1029/2023MS004130)
 
 1. Chen S., Strong-Wright J., and Taylor, J. R. (2024) [Modeling carbon dioxide removal via sinking of particulate organic carbon from macroalgae cultivation](https://doi.org/10.3389/fmars.2024.1359614), _Frontiers in Marine Science_, **11**, 1359614. DOI: [10.3389/fmars.2024.1359614](https://doi.org/10.3389/fmars.2024.1359614)
 

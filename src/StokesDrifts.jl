@@ -125,28 +125,57 @@ UniformStokesDrift with parameters (uˢ=0.005, h=20):
 UniformStokesDrift(; ∂z_uˢ=zerofunction, ∂z_vˢ=zerofunction, ∂t_uˢ=zerofunction, ∂t_vˢ=zerofunction, parameters=nothing) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
 
+function UniformStokesDrift(grid::AbstractGrid;
+                            ∂z_uˢ = Field{Nothing, Nothing, Face}(grid),
+                            ∂z_vˢ = Field{Nothing, Nothing, Face}(grid),
+                            ∂t_uˢ = Field{Nothing, Nothing, Center}(grid),
+                            ∂t_vˢ = Field{Nothing, Nothing, Center}(grid),
+                            parameters = nothing)
+
+    return UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
+end
+
 const USD = UniformStokesDrift
 const USDnoP = UniformStokesDrift{<:Nothing}
-const f = Face()
 const c = Center()
+const f = Face()
 
-@inline ∂t_uˢ(i, j, k, grid, sw::USD, time) = sw.∂t_uˢ(znode(k, grid, c), time, sw.parameters)
-@inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = sw.∂t_vˢ(znode(k, grid, c), time, sw.parameters)
-@inline ∂t_wˢ(i, j, k, grid, sw::USD, time) = zero(grid)
+# Some helpers for three cases: Nothing, AbstractArray, or fallback (function)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ, time)                = ∂z_Uˢ(znode(k, grid, c), time)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ, time)                   = ∂z_Uˢ(znode(k, grid, c), time, sd.parameters)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time)    = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ::AbstractArray, time) = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ::Nothing, time)               = zero(grid)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USDnoP, ::Nothing, time)            = zero(grid)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, c), time, sw.parameters)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, c), time, sw.parameters)
-@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time, sw.parameters)
-                                                              - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time, sw.parameters))
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ, time)                = ∂z_Uˢ(znode(k, grid, f), time)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ, time)                   = ∂z_Uˢ(znode(k, grid, f), time, sd.parameters)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time)    = @inbounds ∂z_Uˢ[i, j, k]
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ::AbstractArray, time) = @inbounds ∂z_Uˢ[i, j, k]
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ::Nothing, time)               = zero(grid)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USDnoP, ::Nothing, time)            = zero(grid)
 
-# Methods for when `parameters == nothing`
-@inline ∂t_uˢ(i, j, k, grid, sw::USDnoP, time) = sw.∂t_uˢ(znode(k, grid, c), time)
-@inline ∂t_vˢ(i, j, k, grid, sw::USDnoP, time) = sw.∂t_vˢ(znode(k, grid, c), time)
+@inline ∂t_U(i, j, k, grid, sd::USDnoP, ∂t_Uˢ, time)                = ∂t_Uˢ(znode(k, grid, c), time)
+@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ, time)                   = ∂t_Uˢ(znode(k, grid, c), time, sd.parameters)
+@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ::AbstractArray, time)    = @inbounds ∂t_Uˢ[i, j, k]
+@inline ∂t_U(i, j, k, grid, sd::USDnoP, ∂t_Uˢ::AbstractArray, time) = @inbounds ∂t_Uˢ[i, j, k]
+@inline ∂t_U(i, j, k, grid, sd::USD, ::Nothing, time)               = zero(grid)
+@inline ∂t_U(i, j, k, grid, sd::USDnoP, ::Nothing, time)            = zero(grid)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) =    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, c), time)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) =    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, c), time)
-@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time)
-                                                                 - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time))
+# Kernel functions
+@inline ∂t_uˢ(i, j, k, grid, sd::USD, time) = ∂t_U(i, j, k, grid, sd, sd.∂t_uˢ, time)
+@inline ∂t_vˢ(i, j, k, grid, sd::USD, time) = ∂t_U(i, j, k, grid, sd, sd.∂t_vˢ, time)
+@inline ∂t_wˢ(i, j, k, grid, sd::USD, time) = zero(grid)
+
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) =
+    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_uˢ, time)
+
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) =
+    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_vˢ, time)
+
+@inline z_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) = (
+    - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_uˢ, time)
+    - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_vˢ, time))
 
 struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     ∂x_vˢ :: VX
@@ -193,8 +222,8 @@ function Base.show(io::IO, sd::StokesDrift)
 end
 
 """
-    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction, 
-                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction, 
+    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction,
+                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction,
                   ∂x_wˢ=zerofunction, ∂y_wˢ=zerofunction, ∂t_wˢ=zerofunction, parameters=nothing)
 
 Construct a set of functions of space and time for a Stokes drift velocity field
@@ -312,8 +341,8 @@ const SDnoP = StokesDrift{<:Nothing}
 @inline parameters_tuple(sw::SD) = tuple(sw.parameters)
 
 @inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
-    wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w) 
-    vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v) 
+    wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
+    vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 
     pt = parameters_tuple(sw)
     X = node(i, j, k, grid, f, c, c)

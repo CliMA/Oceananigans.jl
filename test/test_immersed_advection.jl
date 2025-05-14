@@ -1,18 +1,19 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
-using Oceananigans.Advection: 
+using Oceananigans.Advection:
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
         _symmetric_interpolate_yᵃᶜᵃ,
-        _biased_interpolate_xᶜᵃᵃ, 
-        _biased_interpolate_xᶠᵃᵃ, 
-        _biased_interpolate_yᵃᶜᵃ, 
+        _biased_interpolate_xᶜᵃᵃ,
+        _biased_interpolate_xᶠᵃᵃ,
+        _biased_interpolate_yᵃᶜᵃ,
         _biased_interpolate_yᵃᶠᵃ,
         FluxFormAdvection
 
-advection_schemes = [Centered, UpwindBiased, WENO]
+linear_advection_schemes = [Centered, UpwindBiased]
+advection_schemes = [linear_advection_schemes... WENO]
 
 @inline advective_order(buffer, ::Type{Centered}) = buffer * 2
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
@@ -56,8 +57,8 @@ function run_tracer_conservation_test(grid, scheme)
         time_step!(model, dt)
     end
 
-    @test maximum(c) ≈ 1.0 
-    @test minimum(c) ≈ 1.0 
+    @test maximum(c) ≈ 1.0
+    @test minimum(c) ≈ 1.0
     @test mean(c)    ≈ 1.0
 
     return nothing
@@ -103,8 +104,15 @@ for arch in archs
         mask_immersed_field!(c)
         fill_halo_regions!(c)
 
-        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
+        for adv in linear_advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
+
+            @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
+            run_tracer_interpolation_test(c, ibg, scheme)
+        end
+
+        for buffer in [2, 3, 4, 5], bounds in (nothing, (0, 1))
+            scheme = WENO(; order = advective_order(buffer, WENO), bounds)
 
             @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_tracer_interpolation_test(c, ibg, scheme)
@@ -116,10 +124,10 @@ for arch in archs
 
         grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
-    
+
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
-        
+
             for g in [grid, ibg]
                 @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                 run_tracer_conservation_test(g, scheme)

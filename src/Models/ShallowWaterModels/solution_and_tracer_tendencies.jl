@@ -16,8 +16,8 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ�
 @inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, hB)
 @inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, hB)
 
-@inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid) 
-@inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid) 
+@inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid)
+@inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid)
 
 """
 Compute the tendency for the x-directional transport, uh
@@ -32,9 +32,9 @@ Compute the tendency for the x-directional transport, uh
                                       solution,
                                       tracers,
                                       diffusivities,
-                                      forcings,
                                       clock,
-                                      formulation)
+                                      formulation,
+                                      forcing)
 
     g = gravitational_acceleration
 
@@ -45,7 +45,7 @@ Compute the tendency for the x-directional transport, uh
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
-             + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
+             + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 """
@@ -61,9 +61,9 @@ Compute the tendency for the y-directional transport, vh.
                                       solution,
                                       tracers,
                                       diffusivities,
-                                      forcings,
                                       clock,
-                                      formulation)
+                                      formulation,
+                                      forcing)
 
      g = gravitational_acceleration
 
@@ -74,7 +74,7 @@ Compute the tendency for the y-directional transport, vh.
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_y(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
-             + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
+             + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 """
@@ -88,12 +88,12 @@ Compute the tendency for the height, h.
                                      solution,
                                      tracers,
                                      diffusivities,
-                                     forcings,
                                      clock,
-                                     formulation)
+                                     formulation,
+                                     forcing)
 
     return ( - div_Uh(i, j, k, grid, advection, solution, formulation)
-             + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
+             + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 @inline function tracer_tendency(i, j, k, grid,
@@ -103,14 +103,14 @@ end
                                  solution,
                                  tracers,
                                  diffusivities,
-                                 forcing,
                                  clock,
-                                 formulation) where tracer_index
+                                 formulation,
+                                 forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
 
-    return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
-             + c_div_U(i, j, k, grid, solution, c, formulation)         
-             + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
+    return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation)
+             + c_div_U(i, j, k, grid, solution, c, formulation)
+             + forcing(i, j, k, grid, clock, merge(solution, tracers))
             )
 end

@@ -34,7 +34,7 @@ scan_indices(::AbstractReducing, indices; dims) = Tuple(i ∈ dims ? Colon() : i
 scan_indices(::AbstractAccumulating, indices; dims) = indices
 
 Base.summary(s::Scan) = string(summary(s.type), " ",
-                               s.scan!, 
+                               s.scan!,
                                " over dims ", s.dims,
                                " of ", summary(s.operand))
 
@@ -236,7 +236,7 @@ function directional_accumulate!(op, B, A, dim, direction)
 
     grid = B.grid
     arch = architecture(B)
-    
+
     # TODO: this won't work on windowed fields
     # To fix this we can change config, start, and finish.
     if dim == 1

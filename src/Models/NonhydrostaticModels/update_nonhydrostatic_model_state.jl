@@ -18,7 +18,7 @@ pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
 function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
-    
+
     # Mask immersed tracers
     foreach(model.tracers) do tracer
         @apply_regionally mask_immersed_field!(tracer)
@@ -31,7 +31,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     update_boundary_condition!(fields(model), model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); 
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model);
                        fill_boundary_normal_velocities = false, async = true)
 
     # Compute auxiliary fields
@@ -41,22 +41,23 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
 
     # Calculate diffusivities and hydrostatic pressure
     @apply_regionally compute_auxiliaries!(model)
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
-    
+
+    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies && 
+    compute_tendencies &&
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end
 
 function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                          κ_parameters = tuple(:xyz)) 
+                                                          κ_parameters = tuple(:xyz))
 
     closure = model.closure
     diffusivity = model.diffusivity_fields

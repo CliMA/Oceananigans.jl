@@ -34,15 +34,15 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        z = z,
                        topology=(Periodic, Bounded, Bounded))
 
-z_bottom(x, y) = - Lz * (1 - (2y / Ly)^2)
-grid = ImmersedBoundaryGrid(grid, PartialCellBottom(z_bottom, minimum_fractional_cell_height=0.1))
+bottom_height(x, y) = - Lz * (1 - (2y / Ly)^2)
+grid = ImmersedBoundaryGrid(grid, PartialCellBottom(bottom_height, minimum_fractional_cell_height=0.1))
 
 @show grid
-@inline Qᵇ(x, y, t) = 1e-7
-@inline Qᵘ(x, y, t) = -1e-3 * cos(π * y / Ly)
+@inline Jᵇ(x, y, t) = 1e-7
+@inline τx(x, y, t) = -1e-3 * cos(π * y / Ly)
 
-b_top_bc = FluxBoundaryCondition(Qᵇ)
-u_top_bc = FluxBoundaryCondition(Qᵘ)
+b_top_bc = FluxBoundaryCondition(Jᵇ)
+u_top_bc = FluxBoundaryCondition(τx)
 
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
@@ -86,17 +86,17 @@ b = model.tracers.b
 N² = ∂z(b)
 outputs = (; model.velocities..., model.tracers..., κᶜ=κᶜ, N²=N²)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
-                                                      filename,
-                                                      schedule = TimeInterval(1hour),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                filename,
+                                                schedule = TimeInterval(1hour),
+                                                overwrite_existing = true)
 
 function progress(sim)
     u, v, w = sim.model.velocities
     e = sim.model.tracers.e
 
 
-    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹", 
+    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹",
                    iteration(sim), prettytime(sim),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w))
 
@@ -104,7 +104,7 @@ function progress(sim)
     msg *= @sprintf(", max(κᶜ): %6.2e m² s⁻¹", maximum(κᶜ))
 
     @info msg
-    
+
     return nothing
 end
 

@@ -91,28 +91,34 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 @inline Δx_∇²v(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²v_vector_invariantᶜᶠᶜ, u, v)
 
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
-@inline function δ★ᶜᶜᶜ(i, j, k, grid, closure, u, v)
-    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, closure, u, v) +
-                                       δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, closure, u, v))
+@inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
+
+    # These closures seem to be needed to help the compiler infer types
+    # (either of u and v or of the function arguments)
+    @inline Δy_∇²u(i, j, k, grid, u) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
+    @inline Δx_∇²v(i, j, k, grid, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
+
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u) +
+                                     δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, v))
 end
 
-@inline function ζ★ᶠᶠᶜ(i, j, k, grid, closure, u, v)
-    return 1 / Azᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, closure, u, v) -
-                                       δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, closure, u, v))
-end
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
 
-@inline function ζ★ᶠᶠᶜ(i, j, k, grid, ::VectorInvariantASBD, u, v)
-    ∇²u = ∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v)
-    ∇²v = ∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v)
-    return ζ₃ᶠᶠᶜ(i, j, k, grid, ∇²u, ∇²v)
+    # These closures seem to be needed to help the compiler infer types
+    # (either of u and v or of the function arguments)
+    @inline Δy_∇²v(i, j, k, grid, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
+    @inline Δx_∇²u(i, j, k, grid, u) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
+
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, v) -
+                                     δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u))
 end
 
 #####
 ##### Biharmonic-specific diffusion operators
 #####
 
-@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᶜ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
-@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = Az⁻¹ᶠᶜᶜ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = Az⁻¹ᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
 
 #####
 ##### Biharmonic-specific operators that enforce "no-flux" boundary conditions and "0-value" boundary conditions for the Laplacian operator

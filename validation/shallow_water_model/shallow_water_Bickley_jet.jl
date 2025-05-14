@@ -1,4 +1,3 @@
-
 using Oceananigans
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.Models: ShallowWaterModel
@@ -63,7 +62,7 @@ for form in [:conservative, :vorticitystencil, :velocitystencil]
         end
 
         h    = model.solution.h
-        u, v = shallow_water_velocities(model) 
+        u, v = shallow_water_velocities(model)
 
         ## Build and compute mean vorticity discretely
         ω = Field(∂x(v) - ∂y(u))
@@ -89,24 +88,24 @@ for form in [:conservative, :vorticitystencil, :velocitystencil]
         perturbation_norm(args...) = norm(v)
 
         fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
-        simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
-                                                                filename = fields_filename,
-                                                                schedule = TimeInterval(1),
-                                                                overwrite_existing = true)
+        simulation.output_writers[:fields] = NetCDFWriter(model, (; ω, ω′),
+                                                          filename = fields_filename,
+                                                          schedule = TimeInterval(1),
+                                                          overwrite_existing = true)
 
         # Build the `output_writer` for the growth rate, which is a scalar field.
         # Output every time step.
 
         growth_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc")
-        simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_norm),
-                                                                filename = growth_filename,
-                                                                schedule = IterationInterval(1),
-                                                                dimensions = (; perturbation_norm = ()),
-                                                                overwrite_existing = true)
+        simulation.output_writers[:growth] = NetCDFWriter(model, (; perturbation_norm),
+                                                          filename = growth_filename,
+                                                          schedule = IterationInterval(1),
+                                                          dimensions = (; perturbation_norm = ()),
+                                                          overwrite_existing = true)
 
         # And finally run the simulation.
         run!(simulation)
-        
+
         # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
         ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
@@ -121,13 +120,13 @@ for form in [:conservative, :vorticitystencil, :velocitystencil]
         degree = 1
         linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)
 
-        # We can get the coefficient of the ``n``-th power from the fitted polynomial by using `n` 
+        # We can get the coefficient of the ``n``-th power from the fitted polynomial by using `n`
         # as an index, e.g.,
 
         constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
 
-        # We then use the computed linear fit coefficients to construct the best fit and plot it 
-        # together with the time-series for the perturbation norm for comparison. 
+        # We then use the computed linear fit coefficients to construct the best fit and plot it
+        # together with the time-series for the perturbation norm for comparison.
 
         best_fit = @. exp(constant + slope * t)
 
@@ -155,7 +154,7 @@ for form in [:conservative, :vorticitystencil, :velocitystencil]
 
         println("Numerical growth rate is approximated to be ", slope, ",\n",
                 "which is very close to the theoretical value of 0.139.")
-                
+
         solution[(form, order)] = slope
     end
 end

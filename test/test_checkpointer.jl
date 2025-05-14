@@ -14,8 +14,13 @@ function test_model_equality(test_model, true_model)
 
         for name in field_names
             @test all(test_model_fields[name].data .≈ true_model_fields[name].data)
-            @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
-            @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
+
+            if test_model.timestepper isa QuasiAdamsBashforth2TimeStepper
+                if name ∈ keys(test_model.timestepper.Gⁿ)
+                    @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
+                    @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
+                end
+            end
         end
     end
 
@@ -192,7 +197,7 @@ for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
         test_thermal_bubble_checkpointer_output(arch)
-    
+
         for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
                              ImplicitFreeSurface(gravitational_acceleration=1)]
 

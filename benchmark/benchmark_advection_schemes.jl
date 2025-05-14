@@ -44,7 +44,7 @@ if GPU in Architectures
 end
 
 for Arch in Architectures
-    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, CenteredSecondOrder))
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Centered))
     df_arch = speedups_dataframe(suite_arch, slowdown=true)
     sort!(df_arch, :Schemes, by=string)
     benchmarks_pretty_table(df_arch, title="Advection schemes relative performance ($Arch)")

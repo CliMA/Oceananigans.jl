@@ -53,7 +53,7 @@ or in matrix form
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
 
-Note the convention used here for indexing the upper and lower diagonals; this can be different from 
+Note the convention used here for indexing the upper and lower diagonals; this can be different from
 other implementations where, e.g., `aⁱʲ²` may appear at the second row, instead of `aⁱʲ¹` as above.
 
 `ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`.
@@ -70,7 +70,7 @@ function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = on_architecture(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
+                                  scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection())
 
@@ -155,8 +155,8 @@ end
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
+            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
         for i = Nx-1:-1:1
@@ -190,8 +190,8 @@ end
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
+            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
         for j = Ny-1:-1:1
@@ -224,8 +224,8 @@ end
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
         for k = Nz-1:-1:1

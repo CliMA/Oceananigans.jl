@@ -6,11 +6,11 @@ using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
-import Oceananigans.DistributedComputations: reconstruct_global_field
+import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
+import Oceananigans.Fields: validate_indices, communication_buffers
 import Oceananigans.Models: hasnan
 
 import Base: fill!, axes
@@ -47,7 +47,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       _getregion(f.indices, r),
                       _getregion(f.operand, r),
                       _getregion(f.status, r),
-                      _getregion(f.boundary_buffers, r))
+                      _getregion(f.communication_buffers, r))
 
 @inline _getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(getregion(f.func, r),
@@ -62,7 +62,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       getregion(f.indices, r),
                       getregion(f.operand, r),
                       getregion(f.status, r),
-                      getregion(f.boundary_buffers, r))
+                      getregion(f.communication_buffers, r))
 
 """
     reconstruct_global_field(mrf)
@@ -70,6 +70,8 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """
 function reconstruct_global_field(mrf::MultiRegionField)
+
+    # TODO: Is this correct? Shall we reconstruct a global field on the architecture of the grid?
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
     global_field = Field(location(mrf), global_grid; indices)
@@ -77,7 +79,7 @@ function reconstruct_global_field(mrf::MultiRegionField)
     data = construct_regionally(interior, mrf)
     data = construct_regionally(Array, data)
     compact_data!(global_field, global_grid, data, mrf.grid.partition)
-    
+
     fill_halo_regions!(global_field)
     return global_field
 end
@@ -118,10 +120,13 @@ end
 set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
+set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
+fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
+
 set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
 set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
 compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
- 
+
 # Disambiguation (same as computed_field.jl:64)
 function compute!(comp::MultiRegionComputedField, time=nothing)
     # First compute `dependencies`:
@@ -140,8 +145,11 @@ end
 validate_indices(indices, loc, mrg::MultiRegionGrid) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) =
-    construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
+communication_buffers(grid::MultiRegionGrid, data, bcs) =
+    construct_regionally(CommunicationBuffers, grid, data, bcs)
+
+communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
+communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
@@ -164,13 +172,13 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 function inject_regional_bcs(grid, connectivity, loc, indices;   
-                              west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
-                              east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
-                             south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
-                             north = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
-                            bottom = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
-                               top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
-                          immersed = NoFluxBoundaryCondition())
+                             west = default_auxiliary_bc(grid, Val(:west),   loc),
+                             east = default_auxiliary_bc(grid, Val(:east),   loc),
+                             south = default_auxiliary_bc(grid, Val(:south),  loc),
+                             north = default_auxiliary_bc(grid, Val(:north),  loc),
+                             bottom = default_auxiliary_bc(grid, Val(:bottom), loc),
+                             top = default_auxiliary_bc(grid, Val(:top),    loc),
+                             immersed = NoFluxBoundaryCondition())
 
     west  = inject_west_boundary(connectivity, west)
     east  = inject_east_boundary(connectivity, east)

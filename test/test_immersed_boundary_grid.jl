@@ -1,16 +1,32 @@
 include("dependencies_for_runtests.jl")
 
-grid = RectilinearGrid(; size=(2, 2, 2), extent = (1, 1, 1))
-
 @testset "Testing Immersed Boundaries" begin
+    grid = RectilinearGrid(; size=(100, 100, 100), extent = (1, 1, 1))
+    bottom_boundaries = (GridFittedBottom, PartialCellBottom)
 
     @info "Testing the immersed boundary construction..."
+    bottom(x, y) = rand()
 
-    bottom(x, y) = -1 + 0.5 * exp(-x^2 - y^2)
+    for bottom_boundary in bottom_boundaries
+        ibg = ImmersedBoundaryGrid(grid, bottom_boundary(bottom))
+        @test summary(ibg) isa String
+    end
+
     ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
-    # Unit test (bottom is at the right position)
+    # Test that the bottom is at the same position
+    bottom_height = interior(ibg.immersed_boundary.bottom_height)
+    zfaces = znodes(ibg, Face())
 
-    @info "Testing stably stratified initial conditions..."
+    for i in 1:size(ibg, 1), j in 1:size(ibg, 2)
+        @test bottom_height[i, j, 1] ∈ zfaces
+    end
 
+    # Test immersed dot product
+    underlying_grid = RectilinearGrid(size = (10, 10, 10), extent = (1, 1, 1))  # grid with 1000 points
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-0.5))        # of which only 500 are active
+    c = CenterField(grid)
+    fill!(c, 1)
+
+    @test dot(c, c) == 500
 end
