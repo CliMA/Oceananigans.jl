@@ -35,6 +35,10 @@ end
 extract_field_time_series(t::AbstractOperation) = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
 extract_field_time_series(t::Union{Tuple, NamedTuple}) = map(extract_field_time_series, t)
 
+const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
+const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
+const FTSBC = Union{CPUFTSBC, GPUFTSBC}
+
 # Special extract for Fields with FTSBC
 const WFTSBCS = FieldBoundaryConditions{<:FTSBC}
 const EFTSBCS = FieldBoundaryConditions{<:Any, <:FTSBC}
