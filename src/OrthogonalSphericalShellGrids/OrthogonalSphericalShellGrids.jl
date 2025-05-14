@@ -18,7 +18,7 @@ using Oceananigans.Grids: RightConnected
 using Oceananigans.Grids: R_Earth,
                           halo_size, spherical_area_quadrilateral,
                           lat_lon_to_cartesian, generate_coordinate, topology
-using Oceananigans.Grids: add_halos, fill_metric_halo_regions!
+using Oceananigans.Grids: add_halos
 
 using Oceananigans.Operators
 using Oceananigans.Utils: get_cartesian_nodes_and_vertices
