@@ -6,7 +6,7 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
 
-using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ

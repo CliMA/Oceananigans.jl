@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
 using Oceananigans.BoundaryConditions: replace_horizontal_vector_halos!
 using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!

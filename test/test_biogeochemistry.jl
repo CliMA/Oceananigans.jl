@@ -5,6 +5,7 @@ using CUDA
 
 using Oceananigans.Fields: ConstantField, ZeroField
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, AbstractContinuousFormBiogeochemistry
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 
 import Oceananigans.Biogeochemistry:
        required_biogeochemical_tracers,
