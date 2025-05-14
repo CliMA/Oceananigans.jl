@@ -24,7 +24,7 @@ abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractUnder
 """
     AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
 
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT`, 
+Abstract supertype for horizontally-curvilinear grids with elements of type `FT`,
 topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} end

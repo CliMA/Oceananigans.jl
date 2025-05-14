@@ -3,7 +3,7 @@ using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠ�
 """
     PerturbationAdvection
 
-For cases where we assume that the internal flow is a small perturbation from 
+For cases where we assume that the internal flow is a small perturbation from
 an external prescribed or coarser flow, we can split the velocity into background
 and perturbation components.
 
@@ -26,7 +26,7 @@ relaxation to the mean velocity (i.e. u′→0) then Fᵤ = -u′ / τ then we c
 
 where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
     uⁿ⁺¹ = (uᵢⁿ + Ũuᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + U)
-    
+
 where τ̃ = Δt/τ.
 
 The same operation can be repeated for left boundaries.
@@ -60,7 +60,7 @@ function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64;
     classification = Open(PerturbationAdvection(Val(backward_step), inflow_timescale, outflow_timescale))
 
     @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
-    
+
     return BoundaryCondition(classification, val; kwargs...)
 end
 
@@ -69,7 +69,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 const BPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{true}}}}
 const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
 
-@inline function step_right_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, 
+@inline function step_right_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
@@ -92,7 +92,7 @@ const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
     return nothing
 end
 
-@inline function step_left_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
+@inline function step_left_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
@@ -117,7 +117,7 @@ end
 end
 
 
-@inline function step_right_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, 
+@inline function step_right_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
@@ -126,19 +126,17 @@ end
     uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
-
     pa = bc.classification.matching_scheme
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
     uᵢⁿ⁺¹ = uᵢⁿ + U * (uᵢ₋₁ⁿ⁺¹ - ūⁿ⁺¹) + (ūⁿ⁺¹ - uᵢⁿ) * τ̃
-
     @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
 
     return nothing
 end
 
-@inline function step_left_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
+@inline function step_left_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
@@ -147,13 +145,11 @@ end
     uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
-
     pa = bc.classification.matching_scheme
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
     u₁ⁿ⁺¹ = uᵢⁿ - U * (uᵢ₋₁ⁿ⁺¹ - ūⁿ⁺¹) + (ūⁿ⁺¹ - uᵢⁿ) * τ̃
-
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
 
@@ -162,7 +158,6 @@ end
 
 @inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
-
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
 
@@ -187,7 +182,6 @@ end
 
 @inline function _fill_north_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
     j = grid.Ny + 1
-
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
 
@@ -204,7 +198,7 @@ end
     boundary_secret_storage_indices = (i, 0, k)
 
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
-    
+
     step_left_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δy)
 
     return nothing
@@ -212,7 +206,6 @@ end
 
 @inline function _fill_top_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
     k = grid.Nz + 1
-
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j, k-1)
 

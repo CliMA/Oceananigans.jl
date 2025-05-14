@@ -254,7 +254,7 @@ function compute_closure_specific_diffusive_cfl(arch, closure)
     CUDA.@allowscalar begin
         @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
         @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
-        @test viscous_flux_uz(1, 1, 1, grid, args...) == 0 
+        @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
     end
 
     return nothing
@@ -310,24 +310,20 @@ end
 
             for arch in archs
                 @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
-                if arch isa GPU && closurename == :LagrangianAveragedDynamicSmagorinsky
-                    @info "Skipping GPU test of $closurename."
-                else
-                    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
-                    model = NonhydrostaticModel(; grid, closure, tracers=:c)
-                    c = model.tracers.c
-                    u = model.velocities.u
+                grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
+                model = NonhydrostaticModel(; grid, closure, tracers=:c)
+                c = model.tracers.c
+                u = model.velocities.u
 
-                    κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c))
-                    @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.diffusivity_fields, Val(:c))
-                    κ_dx_c = κ * ∂x(c)
+                κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c))
+                @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.diffusivity_fields, Val(:c))
+                κ_dx_c = κ * ∂x(c)
 
-                    ν = viscosity(model.closure, model.diffusivity_fields)
-                    @test viscosity(model) == viscosity(model.closure, model.diffusivity_fields)
-                    ν_dx_u = ν * ∂x(u)
-                    @test ν_dx_u[1, 1, 1] == 0
-                    @test κ_dx_c[1, 1, 1] == 0
-                end
+                ν = viscosity(model.closure, model.diffusivity_fields)
+                @test viscosity(model) == viscosity(model.closure, model.diffusivity_fields)
+                ν_dx_u = ν * ∂x(u)
+                @test ν_dx_u[1, 1, 1] == 0
+                @test κ_dx_c[1, 1, 1] == 0
             end
         end
 
@@ -481,25 +477,16 @@ end
     end
 
     @testset "Diagnostics" begin
-        test_closures = (
-            ScalarDiffusivity(),
-            ScalarBiharmonicDiffusivity(),
-            TwoDimensionalLeith(),
-            ConstantSmagorinsky(),
-            SmagorinskyLilly(),
-            LagrangianAveragedDynamicSmagorinsky(),
-            DirectionallyAveragedDynamicSmagorinsky(),
-            AnisotropicMinimumDissipation(),
-            ConvectiveAdjustmentVerticalDiffusivity(),
-        )
-
         for arch in archs
             @info "  Testing turbulence closure diagnostics..."
-            for closure in test_closures
+            for closurename in closures
+                @info "    Testing turbulence closure diagnostics for $closurename on $arch"
+                closure = @eval $closurename()
                 compute_closure_specific_diffusive_cfl(arch, closure)
             end
 
             # now test also a case for a tuple of closures
+            @info "    Testing turbulence closure diagnostics for a Tuple closure on $arch"
             compute_closure_specific_diffusive_cfl(arch, (ScalarDiffusivity(),
                                                           ScalarBiharmonicDiffusivity(),
                                                           SmagorinskyLilly(),
