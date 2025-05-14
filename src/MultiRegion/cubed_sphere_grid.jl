@@ -1,26 +1,17 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: conformal_cubed_sphere_panel,
-                          R_Earth,
+using Oceananigans.Grids: R_Earth,
                           halo_size,
                           size_summary,
                           total_length,
                           topology
 
 using CubedSphere
+using Oceananigans.OrthogonalSphericalShellGrids: conformal_cubed_sphere_panel
+
 using Distances
 
 import Oceananigans.Grids: grid_name
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-
-const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected,
-                                                               <:Any, <:Any, <:CubedSphereConformalMapping}
-
-const ConformalCubedSpherePanelGrid = OrthogonalSphericalShellGrid{<:Any,
-                                                                   <:Any,
-                                                                   <:Any,
-                                                                   <:Any,
-                                                                   <:Any,
-                                                                   <:CubedSphereConformalMapping}
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 

@@ -10,7 +10,6 @@ export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
-export conformal_cubed_sphere_panel
 export MutableVerticalDiscretization
 export node, nodes
 export ξnode, ηnode, rnode
@@ -131,7 +130,6 @@ include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
-include("conformal_cubed_sphere_panel.jl")
 include("latitude_longitude_grid.jl")
 
 end # module
