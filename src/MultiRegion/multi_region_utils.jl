@@ -8,67 +8,66 @@ validate_devices(p, ::CPU, ::Nothing) = nothing
 # If no device is specified on the GPU, use only the default device
 validate_devices(p, ::GPU, ::Nothing) = 1
 
-function validate_devices(partition, ::GPU, devices)
-    @assert length(unique(devices)) ≤ length(KA.devices())
-    @assert maximum(devices) ≤ length(KA.devices())
+function validate_devices(partition, arch::GPU, devices)
+    @assert length(unique(devices)) ≤ length(devices)
+    @assert maximum(devices) ≤ length(devices)
     @assert length(devices) ≤ length(partition)
     return devices
 end
 
-function validate_devices(partition, ::GPU, devices::Number)
-    @assert devices ≤ length(KA.devices())
+function validate_devices(partition, arch::GPU, devices::Number)
+    @assert devices ≤ length(devices)
     @assert devices ≤ length(partition)
     return devices
 end
 
-assign_devices(p, ::Nothing) = Tuple(CPU() for i in 1:length(p))
+assign_devices(arch::AbstractArchitecture, p::AbstractPartition, ::Nothing) = Tuple(arch for i in 1:length(p))
 
-function assign_devices(p::AbstractPartition, dev::Number)
+function assign_devices(arch::AbstractArchitecture, p::AbstractPartition, dev::Number)
     part     = length(p)
     repeat   = part ÷ dev
     leftover = mod(part, dev)
     devices  = []
 
     for i in 1:dev
-        KA.device!(i-1)
+        device!(arch, i-1)
         for _ in 1:repeat
-            push!(devices, KA.device())
+            push!(devices, device(arch))
         end
         if i ≤ leftover
-            push!(devices, KA.device())
+            push!(devices, device(arch))
         end
     end
     return Tuple(devices)
 end
 
-function assign_devices(p::AbstractPartition, dev::Tuple)
+function assign_devices(arch::AbstractArchitecture, p::AbstractPartition, dev::Tuple)
     part     = length(p)
     repeat   = part ÷ length(dev)
     leftover = mod(part, length(dev))
     devices  = []
 
     for i in 1:length(dev)
-        KA.device!(dev[i])
+        device!(arch, dev[i])
         for _ in 1:repeat
-            push!(devices, KA.device())
+            push!(devices, device(arch))
         end
         if i ≤ leftover
-            push!(devices, KA.device())
+            push!(devices, device(arch))
         end
     end
     return Tuple(devices)
 end
 
-maybe_enable_peer_access!(devices) = nothing
+maybe_enable_peer_access!(arch, devices) = nothing
 
 # # Enable peer access by copying fake CuArrays between all devices
-function maybe_enable_peer_access!(devices::NTuple{N, D}) where {N, D}
+function maybe_enable_peer_access!(arch::AbstractArchitecture, devices::NTuple{N, D}) where {N, D}
 
     fake_arrays = []
     for dev in devices
         switch_device!(dev)
-        backend = KA.get_backend(dev)
-        push!(fake_arrays, adapt(backend, zeros(2, 2, 2)))
+        push!(fake_arrays, on_architecture(arch, zeros(2, 2, 2)))
     end
 
     sync_all_devices!(devices)

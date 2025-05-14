@@ -33,7 +33,9 @@ const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
 # Automatically partition under the hood if sizes are compatible
-function set!(u::DistributedField, V::AbstractArray)
+set!(u::DistributedField, V::Union{Array, OffsetArray}) = _set!(u, V)
+
+function _set!(u::DistributedField, V::VT) where {VT}
     NV = size(V)
     Nu = global_size(u)
 

@@ -2,7 +2,7 @@ module Architectures
 
 export AbstractArchitecture, AbstractSerialArchitecture
 export CPU, GPU, ReactantState
-export device, architecture, unified_array, device_copy_to!
+export device, device!, devices, ndevices, synchronize, architecture, unified_array, device_copy_to!
 export array_type, on_architecture, arch_array
 export constructors, unpack_constructors, copy_unpack_constructors
 export arch_sparse_matrix, child_architecture
@@ -11,6 +11,7 @@ using SparseArrays
 using KernelAbstractions
 using Adapt
 using OffsetArrays
+const KA = KernelAbstractions
 
 """
     AbstractArchitecture
@@ -58,12 +59,17 @@ struct ReactantState <: AbstractSerialArchitecture end
 
 device(a::CPU) = KernelAbstractions.CPU()
 device(a::GPU) = a.device
+devices(a::AbstractArchitecture) = KA.devices(device(a))
+device!(a::AbstractArchitecture, i) = KA.device!(device(a), i+1)
+ndevices(a::AbstractArchitecture) = KA.ndevices(device(a))
+synchronize(a::AbstractArchitecture) = KA.synchronize(device(a))
 
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
+architecture(::SparseMatrixCSC) = CPU()
 
 """
     child_architecture(arch)

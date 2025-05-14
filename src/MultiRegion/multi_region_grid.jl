@@ -113,7 +113,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
 
     if validate
         devices = validate_devices(partition, arch, devices)
-        devices = assign_devices(partition, devices)
+        devices = assign_devices(arch, partition, devices)
     end
 
     connectivity = Connectivity(devices, partition, global_grid)
@@ -141,7 +141,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     CZ = typeof(global_grid.z)
 
     ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
-    maybe_enable_peer_access!(devices)
+    maybe_enable_peer_access!(arch, devices)
 
     return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3], CZ}(arch, partition, connectivity, region_grids, devices)
 end
