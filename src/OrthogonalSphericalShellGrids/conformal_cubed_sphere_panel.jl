@@ -757,8 +757,8 @@ end
 The vertical circulation associated with horizontal velocities ``u`` and ``v``.
 """
 @inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanel, u, v)
-    ip = ifelse(i == 1 - Hx, 1, i)
-    jp = ifelse(j == 1 - Hy, 1, j)
+    ip = max(2 - Hx, i)
+    jp = max(2 - Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
                Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
