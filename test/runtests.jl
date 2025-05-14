@@ -132,7 +132,7 @@ CUDA.allowscalar() do
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
-            include("test_model_operations.jl")
+            include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
         end
     end
