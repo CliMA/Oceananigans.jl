@@ -1,7 +1,7 @@
 # # Langmuir turbulence example
 #
-# This example implements a Langmuir turbulence simulation reported in section
-# 4 of
+# This example implements a Langmuir turbulence simulation similar to the one
+# reported in section 4 of
 #
 # > [Wagner et al., "Near-inertial waves and turbulence driven by the growth of swell", Journal of Physical Oceanography (2021)](https://journals.ametsoc.org/view/journals/phoc/51/5/JPO-D-20-0178.1.xml)
 #
