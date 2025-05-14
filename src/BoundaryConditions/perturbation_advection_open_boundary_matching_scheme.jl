@@ -88,7 +88,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
-    uᵢⁿ⁺¹ = ifelse(isinf(τ̃),
+    uᵢⁿ⁺¹ = ifelse(τ == 0,
                    ūⁿ⁺¹,
                    (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U))
 
@@ -111,7 +111,7 @@ end
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
-    u₁ⁿ⁺¹ = ifelse(isinf(τ̃),
+    u₁ⁿ⁺¹ = ifelse(τ == 0,
                    ūⁿ⁺¹,
                    (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U))
 
