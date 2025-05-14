@@ -46,7 +46,7 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64;
                                                backward_step = true,
                                                outflow_timescale = Inf,
-                                               inflow_timescale = 0.0, kwargs...)
+                                               inflow_timescale = 0, kwargs...)
 
 Creates a `PerturbationAdvectionOpenBoundaryCondition` with a given `outflow_timescale` and
 `inflow_timescale`. `backward_step` determines whether we assume a backward and forward time
