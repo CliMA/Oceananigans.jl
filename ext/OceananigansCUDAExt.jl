@@ -5,6 +5,8 @@ using CUDA, CUDA.CUSPARSE, CUDA.CUFFT
 using KernelAbstractions
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
+import Oceananigans.DistributedComputations as DC
+import Oceananigans.Fields as FD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
 import SparseArrays: SparseMatrixCSC
@@ -96,6 +98,9 @@ function SO.plan_forward_transform(A::CuArray, ::Union{BC.Bounded, BC.Periodic},
     length(dims) == 0 && return nothing
     return CUDA.CUFFT.plan_fft!(A, dims)
 end
+
+FD.set!(v::Field, a::CuArray) = FD._set!(v, a)
+DC.set!(v::DC.DistributedField, a::CuArray) = DC._set!(v, a)
 
 function SO.plan_backward_transform(A::CuArray, ::Union{BC.Bounded, BC.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
