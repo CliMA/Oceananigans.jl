@@ -7,9 +7,9 @@ struct BoundaryConditionKernelFunction{Side, BC}
     bc :: BC
 end
 
-const BottomTopFunc  = Union{BoundaryConditionKernelFunction{:bottom},   BoundaryConditionKernelFunction{:top}}
-const WestEastFunc   = Union{BoundaryConditionKernelFunction{:west},  BoundaryConditionKernelFunction{:east}}
-const SouthNorthFunc = Union{BoundaryConditionKernelFunction{:south}, BoundaryConditionKernelFunction{:north}}
+const BottomTopFunc  = Union{BoundaryConditionKernelFunction{:bottom}, BoundaryConditionKernelFunction{:top}}
+const WestEastFunc   = Union{BoundaryConditionKernelFunction{:west},   BoundaryConditionKernelFunction{:east}}
+const SouthNorthFunc = Union{BoundaryConditionKernelFunction{:south},  BoundaryConditionKernelFunction{:north}}
 const ImmersedFunc   = BoundaryConditionKernelFunction{:immersed}
 
 @inline  (kf::BottomTopFunc)(i, j, k, grid, args...) = getbc(kf.bc, i, j, grid, args...)
@@ -17,7 +17,7 @@ const ImmersedFunc   = BoundaryConditionKernelFunction{:immersed}
 @inline (kf::SouthNorthFunc)(i, j, k, grid, args...) = getbc(kf.bc, i, k, grid, args...)
 @inline   (kf::ImmersedFunc)(i, j, k, grid, args...) = getbc(kf.bc, i, j, k, grid, args...)
 
-boundary_condition_args(model::Union{NonHydrostaticModel, HydrostaticFreeSurfaceModel}) = (model.clock, fields(model))
+boundary_condition_args(model::Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel}) = (model.clock, fields(model))
 
 function boundary_condition_location(side, LX, LY, LZ)
     if side == :top || side == :bottom
