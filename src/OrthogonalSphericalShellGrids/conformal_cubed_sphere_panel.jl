@@ -235,7 +235,7 @@ Examples
 * The default conformal cubed sphere panel grid with `Float64` type:
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Grids
+julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids
 
 julia> grid = ConformalCubedSpherePanelGrid(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
@@ -248,7 +248,7 @@ julia> grid = ConformalCubedSpherePanelGrid(size=(36, 34, 25), z=(-1000, 0))
 * The conformal cubed sphere panel that includes the South Pole with `Float32` type:
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Grids, Rotations
+julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids, Rotations
 
 julia> grid = ConformalCubedSpherePanelGrid(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
 36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
