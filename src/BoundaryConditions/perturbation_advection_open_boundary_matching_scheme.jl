@@ -30,6 +30,18 @@ where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
 where τ̃ = Δt/τ.
 
 The same operation can be repeated for left boundaries.
+
+The relaxation timescale ``τ`` can be set to different values depending on whether the 
+``U`` points in or out of the domain (`inflow_timescale`/`outflow_timescale`). Since the
+scheme is only valid when the flow is directed out of the domain the boundary condition
+falls back to relaxation to the prescribed value. By default this happens instantly but
+if the direction varies this may not be preferable. It is benefitial to relax the outflow 
+(i.e. non-zero `outflow_timescale`) to reduce the shock when the flow changes direction
+to point into the domain.
+
+The ideal value of the timescales probably depend on the grid spacing and details of the 
+boundary flow.
+
 """
 struct PerturbationAdvection{VT, FT}
        backward_step :: VT
