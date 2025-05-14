@@ -1,10 +1,14 @@
 module OceananigansCUDAExt
 
 using Oceananigans
+using InteractiveUtils
 using CUDA, CUDA.CUSPARSE, CUDA.CUFFT
 using KernelAbstractions
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
+import Oceananigans.DistributedComputations as DC
+import Oceananigans.Fields as FD
+import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
 import SparseArrays: SparseMatrixCSC
@@ -26,8 +30,7 @@ function __init__()
 end
 
 const CUDAGPU = AC.GPU{<:CUDABackend}
-
-CUDAGPU() = GPU(CUDABackend(always_inline=true))
+CUDAGPU() = AC.GPU(CUDABackend(always_inline=true))
 
 # Keep default CUDA backend
 function AC.GPU()
@@ -40,12 +43,17 @@ function AC.GPU()
     end
 end
 
+function UT.versioninfo_with_gpu(::CUDAGPU)
+    s = sprint(versioninfo)
+    gpu_name = CUDA.CuDevice(0) |> CUDA.name
+    return "CUDA GPU: $gpu_name"
+end
+
 
 Base.summary(::CUDAGPU) = "CUDAGPU"
 
 AC.architecture(::CuArray) = CUDAGPU()
-AC.architecture(::CuSparseMatrixCSC) = AC.GPU()
-AC.architecture(::SparseMatrixCSC)   = AC.CPU()
+AC.architecture(::CuSparseMatrixCSC) = CUDAGPU()
 AC.array_type(::AC.GPU{CUDABackend}) = CuArray
 
 AC.on_architecture(::AC.CPU, a::CuArray) = Array(a)
@@ -93,18 +101,22 @@ BC.validate_boundary_condition_architecture(::CuArray, ::AC.GPU, bc, side) = not
 BC.validate_boundary_condition_architecture(::CuArray, ::AC.CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
-function SO.plan_forward_transform(A::CuArray, ::Union{BC.Bounded, BC.Periodic}, dims, planner_flag)
+function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return CUDA.CUFFT.plan_fft!(A, dims)
 end
 
-function SO.plan_backward_transform(A::CuArray, ::Union{BC.Bounded, BC.Periodic}, dims, planner_flag)
+FD.set!(v::Field, a::CuArray) = FD._set!(v, a)
+DC.set!(v::DC.DistributedField, a::CuArray) = DC._set!(v, a)
+
+function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return CUDA.CUFFT.plan_ifft!(A, dims)
 end
 
 # CUDA version, the indices are passed implicitly
-CUDA.@device_override @inline function __validindex(ctx::UT.MappedCompilerMetadata)
+# You must not use KA here as this code is executed in another scope
+CUDA.@device_override @inline function KernelAbstractions.__validindex(ctx::UT.MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds UT.linear_expand(__iterspace(ctx), blockIdx().x, threadIdx().x)
         return index ≤ UT.__linear_ndrange(ctx)
@@ -118,7 +130,7 @@ end
 @inline UT.getdevice(cu::GPUVar)        = device(cu)
 @inline UT.switch_device!(dev::CuDevice)            = device!(dev)
 
-AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(child_architecture(arch), a)
+AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(AC.child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:CuArray}) = AC.on_architecture(child_architecture(arch), a)
 
 end # module OceananigansCUDAExt

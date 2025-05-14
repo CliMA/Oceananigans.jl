@@ -2,13 +2,14 @@ using Pkg
 using InteractiveUtils
 using Oceananigans.Architectures
 
+# This should be deprectated. Calls GPU() which is only
+# defined when CUDA is loaded and maps to CUDAGPU()
 function versioninfo_with_gpu()
-    s = sprint(versioninfo)
-    if CUDA.has_cuda()
-        gpu_name = CUDA.CuDevice(0) |> CUDA.name
-        s = s * "  GPU: $gpu_name\n"
-    end
-    return s
+    return versioninfo_with_gpu(GPU())
+end
+
+function versioninfo_with_gpu(::CPU)
+    return print("No GPU device")
 end
 
 function oceananigans_versioninfo()
