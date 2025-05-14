@@ -613,7 +613,7 @@ write("distributed_arch_example.jl", make_distributed_arch)
 #
 # from the terminal.
 using MPI
-mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_arch_example.jl`))
+run(`$(mpiexec()) -n 2 julia --project distributed_arch_example.jl`)
 rm("distributed_architecture_example.jl")
 ```
 
@@ -660,7 +660,7 @@ end
 
 write("distributed_grid_example.jl", make_distributed_grid)
 
-mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_grid_example.jl`))
+run(`$(mpiexec()) -n 2 julia --project distributed_grid_example.jl`)
 ```
 
 gives
@@ -691,7 +691,7 @@ Now we're getting somewhere. Let's note a few things:
 To drive these points home, let's run the same script, but using 3 processors instead of 2:
 
 ```julia
-mpiexec(cmd -> run(`$cmd -n 3 julia --project distributed_grid_example.jl`))
+run(`$(mpiexec()) -n 3 julia --project distributed_grid_example.jl`)
 ```
 gives
 
@@ -732,7 +732,7 @@ end
 
 write("partition_example.jl", make_y_partition)
 
-mpiexec(cmd -> run(`$cmd -n 2 julia --project partition_example.jl`))
+run(`$(mpiexec()) -n 2 julia --project partition_example.jl`)
 ```
 
 gives
@@ -780,7 +780,7 @@ end
 
 write("programmatic_partition_example.jl", make_xy_partition)
 
-mpiexec(cmd -> run(`$cmd -n 6 julia --project programmatic_partition_example.jl`))
+run(`$(mpiexec()) -n 6 julia --project programmatic_partition_example.jl`)
 ```
 
 gives
@@ -835,7 +835,7 @@ end
 
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
-mpiexec(cmd -> run(`$cmd -n 4 julia --project equally_partitioned_grids.jl`))
+run(`$(mpiexec()) -n 4 julia --project equally_partitioned_grids.jl`)
 ```
 
 gives

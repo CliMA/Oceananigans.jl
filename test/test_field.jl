@@ -92,6 +92,9 @@ function run_field_reduction_tests(FT, arch)
         @test maximum(abs, ϕ) ≈ maximum(abs, ϕ_vals) atol=ε
         @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
 
+        @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
+        @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
+
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
