@@ -4,7 +4,7 @@ using Oceananigans.Architectures
 
 function versioninfo_with_gpu()
     s = sprint(versioninfo)
-    if CUDA.has_cuda()
+    if isdefined(Main, :CUDABackend)
         gpu_name = CUDA.CuDevice(0) |> CUDA.name
         s = s * "  GPU: $gpu_name\n"
     end
