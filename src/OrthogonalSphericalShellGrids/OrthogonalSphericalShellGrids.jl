@@ -1,8 +1,7 @@
 module OrthogonalSphericalShellGrids
 
 # The only thing we need!
-export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanel, ConformalCubedSpherePanelGrid
-export conformal_cubed_sphere_panel
+export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 
 import Oceananigans
 import Oceananigans.Architectures: on_architecture

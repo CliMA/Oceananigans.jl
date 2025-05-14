@@ -6,7 +6,7 @@ using Oceananigans.Grids: R_Earth,
                           topology
 
 using CubedSphere
-using Oceananigans.OrthogonalSphericalShellGrids: conformal_cubed_sphere_panel
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 
 using Distances
 
@@ -30,7 +30,7 @@ const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY,
                              partition = CubedSpherePartition(; R = 1),
                              devices = nothing)
 
-Return a `ConformalCubedSphereGrid` that comprises of six [`conformal_cubed_sphere_panel`](@ref) grids; we refer to each
+Return a `ConformalCubedSphereGrid` that comprises of six [`ConformalCubedSpherePanelGrid`](@ref)s; we refer to each
 of these grids as a "panel". Each panel corresponds to a face of the cube.
 
 The keyword arguments prescribe the properties of each of the panels. Only the topology in the vertical direction can be
@@ -232,7 +232,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
     region_rotation = Iterate(region_rotation)
 
     # As mentioned above, construct the grid on CPU and convert to user-prescribed architecture later...
-    region_grids = construct_regionally(conformal_cubed_sphere_panel, CPU(), FT;
+    region_grids = construct_regionally(ConformalCubedSpherePanelGrid, CPU(), FT;
                                         size = region_size,
                                         z,
                                         topology = region_topology,
@@ -399,7 +399,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
     region_Nz = MultiRegionObject(Tuple(repeat([Nz], length(partition))), devices)
     region_panels = Iterate(Array(1:length(partition)))
 
-    region_grids = construct_regionally(conformal_cubed_sphere_panel, filepath, arch, FT;
+    region_grids = construct_regionally(ConformalCubedSpherePanelGrid, filepath, arch, FT;
                                         panel = region_panels,
                                         Nz = region_Nz,
                                         z,
