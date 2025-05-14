@@ -53,7 +53,7 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.outflow_timescale))
 
 """
-    PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64;
+    PerturbationAdvectionOpenBoundaryCondition(val, FT = Oceananigans.defaults.FloatType;
                                                outflow_timescale = Inf,
                                                inflow_timescale = 0, kwargs...)
 
@@ -61,7 +61,7 @@ Creates a `PerturbationAdvectionOpenBoundaryCondition` with a given `outflow_tim
 `inflow_timescale`. For details about this method, refer to the docstring for
 `PerturbationAdvection`.
 """
-function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64;
+function PerturbationAdvectionOpenBoundaryCondition(val, FT = Oceananigans.defaults.FloatType;
                                                     outflow_timescale = Inf,
                                                     inflow_timescale = 0, kwargs...)
 
