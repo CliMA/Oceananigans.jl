@@ -43,7 +43,7 @@ to point into the domain.
 The ideal value of the timescales probably depend on the grid spacing and details of the
 boundary flow.
 """
-struct PerturbationAdvection{VT, FT}
+struct PerturbationAdvection{FT}
     inflow_timescale :: FT
    outflow_timescale :: FT
 end
