@@ -589,7 +589,17 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYZReducedAbstractField}
 
 # TODO: needs test
-LinearAlgebra.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing) 
+    ca = condition_operand(a, condition, 0)
+    cb = condition_operand(b, condition, 0)
+    
+    B = ca * cb # Binary operation
+    r = zeros(a.grid, 1)
+    
+    Base.mapreducedim!(identity, +, r, B)
+    return CUDA.@allowscalar r[1]
+end
+
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
