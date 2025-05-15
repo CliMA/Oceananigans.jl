@@ -39,10 +39,10 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update the boundary conditions
     @apply_regionally update_boundary_condition!(fields(model), model)
 
-    tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
+    # tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
 
-    @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
-    @apply_regionally compute_auxiliaries!(model)
+    # @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
+    # @apply_regionally compute_auxiliaries!(model)
 
     # fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
 
