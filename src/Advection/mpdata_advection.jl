@@ -45,13 +45,13 @@ const PartialMPData = MPData{<:Any, <:Any, <:AbstractAdvectionScheme}
 @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, ::MPData, v, args...) = ℑyᵃᶜᵃ(i, j, k, grid, v, args...)
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, ::MPData, w, args...) = ℑzᵃᵃᶜ(i, j, k, grid, w, args...)
 
-@inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::MPData, bias, ψ, idx, loc, args...) = @inbounds ifelse(bias isa LeftBias, ψ[i-1, j, k], ψ[i, j, k])
-@inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::MPData, bias, ψ, idx, loc, args...) = @inbounds ifelse(bias isa LeftBias, ψ[i, j-1, k], ψ[i, j, k])
-@inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, bias, ψ, idx, loc, args...) = @inbounds ifelse(bias isa LeftBias, ψ[i, j, k-1], ψ[i, j, k])
+@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::MPData, bias, ψ, args...) = @inbounds ifelse(bias isa LeftBias, ψ[i-1, j, k], ψ[i, j, k])
+@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::MPData, bias, ψ, args...) = @inbounds ifelse(bias isa LeftBias, ψ[i, j-1, k], ψ[i, j, k])
+@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, bias, ψ, args...) = @inbounds ifelse(bias isa LeftBias, ψ[i, j, k-1], ψ[i, j, k])
 
-@inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::MPData, bias, ψ::Function, idx, loc, args...) = ifelse(bias isa LeftBias, ψ(i-1, j, k, grid, args...), ψ(i, j, k, grid, args...))
-@inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::MPData, bias, ψ::Function, idx, loc, args...) = ifelse(bias isa LeftBias, ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...))
-@inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, bias, ψ::Function, idx, loc, args...) = ifelse(bias isa LeftBias, ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...))
+@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::MPData, bias, ψ::Function, args...) = ifelse(bias isa LeftBias, ψ(i-1, j, k, grid, args...), ψ(i, j, k, grid, args...))
+@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::MPData, bias, ψ::Function, args...) = ifelse(bias isa LeftBias, ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...))
+@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, bias, ψ::Function, args...) = ifelse(bias isa LeftBias, ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...))
 
 # we need to save the previous velocities to ensure a correct mpdata pass
 function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData, dims)
