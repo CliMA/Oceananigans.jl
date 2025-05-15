@@ -13,7 +13,7 @@ function find_time_index(time::Number, file_times, Δt)
     return findfirst(t -> isapprox(t, time, atol=ϵ*Δt), file_times)
 end
 
-find_time_index(time::AbstractTime, file_times, dt) = findfirst(t -> t == time, file_times)
+find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)
 
 function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; warn_missing_data=true)
     file = jldopen(path; fts.reader_kw...)
@@ -22,7 +22,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
     close(file)
     
     # Compute a timescale for comparisons
-    dt = mean(file_times[2:end] - file_times[1:end-1])
+    Δt = mean(diff(file_times))
     
     arch = architecture(fts)
 
@@ -35,7 +35,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
     
     for n in time_indices(fts)
         t = cpu_times[n]
-        file_index = find_time_index(t, file_times, dt)
+        file_index = find_time_index(t, file_times, Δt)
 
         if isnothing(file_index) # the time does not exist in the file
             if warn_missing_data
