@@ -1,4 +1,5 @@
 using CubedSphere
+using JLD2
 
 struct CubedSphereConformalMapping{Rotation, F, C}
     rotation :: Rotation
@@ -35,18 +36,11 @@ function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMappin
         adapt(to, conformal_mapping.ηᵃᶜᵃ))
 end
 
-const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected,
-                                                               <:Any, <:Any, <:CubedSphereConformalMapping}
-
-const ConformalCubedSpherePanelGrid = OrthogonalSphericalShellGrid{<:Any,
-                                                                   <:Any,
-                                                                   <:Any,
-                                                                   <:Any,
-                                                                   <:Any,
-                                                                   <:CubedSphereConformalMapping}
+const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = 
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:CubedSphereConformalMapping, CC, FC, CF, FF, Arch}
 
 # architecture = CPU() by default, assuming that a DataType positional arg is specifying the floating point type.
-conformal_cubed_sphere_panel(FT::DataType; kwargs...) = conformal_cubed_sphere_panel(CPU(), FT; kwargs...)
+ConformalCubedSpherePanelGrid(FT::DataType; kwargs...) = ConformalCubedSpherePanelGrid(CPU(), FT; kwargs...)
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
     data = on_architecture(arch, file[field_name])
@@ -55,12 +49,12 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
     return offset_data(data, loc[1:2], topo[1:2], N[1:2], H[1:2])
 end
 
-function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = CPU(), FT = Float64;
-                                      panel, Nz, z,
-                                      topology = (FullyConnected, FullyConnected, Bounded),
-                                        radius = R_Earth,
-                                          halo = (4, 4, 4),
-                                      rotation = nothing)
+function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
+                                       panel, Nz, z,
+                                       topology = (FullyConnected, FullyConnected, Bounded),
+                                         radius = R_Earth,
+                                           halo = (4, 4, 4),
+                                       rotation = nothing)
 
     TX, TY, TZ = topology
     Hx, Hy, Hz = halo
@@ -159,31 +153,31 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=archit
 
     provided_conformal_mapping = old_grid.conformal_mapping
 
-    new_grid = conformal_cubed_sphere_panel(arch, eltype(old_grid);
-                                            size, z, ξ, η,
-                                            topology = topo,
-                                            radius = old_grid.radius,
-                                            halo = new_halo,
-                                            rotation,
-                                            provided_conformal_mapping)
+    new_grid = ConformalCubedSpherePanelGrid(arch, eltype(old_grid);
+                                             size, z, ξ, η,
+                                             topology = topo,
+                                             radius = old_grid.radius,
+                                             halo = new_halo,
+                                             rotation,
+                                             provided_conformal_mapping)
 
     return new_grid
 end
 
 """
-    conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU(),
-                                 FT::DataType = Float64;
-                                 size,
-                                 z,
-                                 topology = (Bounded, Bounded, Bounded),
-                                 ξ = (-1, 1),
-                                 η = (-1, 1),
-                                 radius = R_Earth,
-                                 halo = (1, 1, 1),
-                                 rotation = nothing,
-                                 non_uniform_conformal_mapping = false,
-                                 spacing_type = "geometric",
-                                 provided_conformal_mapping = nothing)
+    ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(),
+                                  FT::DataType = Float64;
+                                  size,
+                                  z,
+                                  topology = (Bounded, Bounded, Bounded),
+                                  ξ = (-1, 1),
+                                  η = (-1, 1),
+                                  radius = R_Earth,
+                                  halo = (1, 1, 1),
+                                  rotation = nothing,
+                                  non_uniform_conformal_mapping = false,
+                                  spacing_type = "geometric",
+                                  provided_conformal_mapping = nothing)
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been conformally mapped from
 the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, both take values in the range
@@ -241,9 +235,9 @@ Examples
 * The default conformal cubed sphere panel grid with `Float64` type:
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Grids
+julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids
 
-julia> grid = conformal_cubed_sphere_panel(size=(36, 34, 25), z=(-1000, 0))
+julia> grid = ConformalCubedSpherePanelGrid(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
 ├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
@@ -254,9 +248,9 @@ julia> grid = conformal_cubed_sphere_panel(size=(36, 34, 25), z=(-1000, 0))
 * The conformal cubed sphere panel that includes the South Pole with `Float32` type:
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Grids, Rotations
+julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids, Rotations
 
-julia> grid = conformal_cubed_sphere_panel(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
+julia> grid = ConformalCubedSpherePanelGrid(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
 36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
 ├── centered at: South Pole, (λ, φ) = (0.0, -90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616167, max(Δλ)=2.58891
@@ -264,19 +258,19 @@ julia> grid = conformal_cubed_sphere_panel(Float32, size=(36, 34, 25), z=(-1000,
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
 ```
 """
-function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU(),
-                                      FT::DataType = Oceananigans.defaults.FloatType;
-                                      size,
-                                      z,
-                                      topology = (Bounded, Bounded, Bounded),
-                                      ξ = (-1, 1),
-                                      η = (-1, 1),
-                                      radius = R_Earth,
-                                      halo = (1, 1, 1),
-                                      rotation = nothing,
-                                      non_uniform_conformal_mapping = false,
-                                      spacing_type = "geometric",
-                                      provided_conformal_mapping = nothing)
+function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(),
+                                       FT::DataType = Oceananigans.defaults.FloatType;
+                                       size,
+                                       z,
+                                       topology = (Bounded, Bounded, Bounded),
+                                       ξ = (-1, 1),
+                                       η = (-1, 1),
+                                       radius = R_Earth,
+                                       halo = (1, 1, 1),
+                                       rotation = nothing,
+                                       non_uniform_conformal_mapping = false,
+                                       spacing_type = "geometric",
+                                       provided_conformal_mapping = nothing)
 
     radius = FT(radius)
     TX, TY, TZ = topology
@@ -756,7 +750,7 @@ end
 
 The vertical circulation associated with horizontal velocities ``u`` and ``v``.
 """
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanel, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, u, v)
     ip = max(2 - Hx, i)
     jp = max(2 - Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),

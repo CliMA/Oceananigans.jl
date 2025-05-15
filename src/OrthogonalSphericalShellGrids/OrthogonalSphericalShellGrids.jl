@@ -1,8 +1,7 @@
 module OrthogonalSphericalShellGrids
 
 # The only thing we need!
-export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanel, ConformalCubedSpherePanelGrid
-export conformal_cubed_sphere_panel
+export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 
 import Oceananigans
 import Oceananigans.Architectures: on_architecture
@@ -19,7 +18,7 @@ using Oceananigans.Grids: RightConnected
 using Oceananigans.Grids: R_Earth,
                           halo_size, spherical_area_quadrilateral,
                           lat_lon_to_cartesian, generate_coordinate, topology
-using Oceananigans.Grids: add_halos, fill_metric_halo_regions!
+using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
 
 using Oceananigans.Operators
 using Oceananigans.Utils: get_cartesian_nodes_and_vertices
