@@ -1,4 +1,5 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
+using Oceananigans: defaults
 
 """
     PerturbationAdvection
@@ -52,7 +53,7 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.outflow_timescale))
 
 """
-    PerturbationAdvectionOpenBoundaryCondition(val, FT = Oceananigans.defaults.FloatType;
+    PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
                                                outflow_timescale = Inf,
                                                inflow_timescale = 0, kwargs...)
 
@@ -60,7 +61,7 @@ Creates a `PerturbationAdvectionOpenBoundaryCondition` with a given exterior val
 the flow is forced with an `outflow_timescale` for outflow and `inflow_timescale` for inflow. For
 details about this method, refer to the docstring for `PerturbationAdvection`.
 """
-function PerturbationAdvectionOpenBoundaryCondition(val, FT = Oceananigans.defaults.FloatType;
+function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
                                                     outflow_timescale = Inf,
                                                     inflow_timescale = 0, kwargs...)
 
