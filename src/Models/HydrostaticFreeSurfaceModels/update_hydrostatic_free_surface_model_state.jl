@@ -31,7 +31,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
-    @apply_regionally mask_immersed_model_fields!(model, grid)
+    # @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
     # @apply_regionally update_model_field_time_series!(model, model.clock)
