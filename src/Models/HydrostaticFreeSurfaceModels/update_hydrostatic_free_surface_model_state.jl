@@ -34,10 +34,10 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
-    @apply_regionally update_model_field_time_series!(model, model.clock)
+    # @apply_regionally update_model_field_time_series!(model, model.clock)
 
     # Update the boundary conditions
-    @apply_regionally update_boundary_condition!(fields(model), model)
+    # @apply_regionally update_boundary_condition!(fields(model), model)
 
     # tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
 
