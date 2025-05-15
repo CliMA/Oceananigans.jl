@@ -1,8 +1,8 @@
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
-using Oceananigans.Fields: validate_indices, recv_from_buffers!, set_to_array!, set_to_field!
+using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 
-import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
+import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
@@ -13,7 +13,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indice
     arch = architecture(grid)
     rank = arch.local_rank
     new_bcs = inject_halo_communication_boundary_conditions(old_bcs, rank, arch.connectivity, topology(grid))
-    buffers = FieldBoundaryBuffers(grid, data, new_bcs)
+    buffers = communication_buffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
@@ -60,17 +60,17 @@ function synchronize_communication!(field)
     arch = architecture(field.grid)
 
     # Wait for outstanding requests
-    if !isempty(arch.mpi_requests) 
+    if !isempty(arch.mpi_requests)
         cooperative_waitall!(arch.mpi_requests)
 
         # Reset MPI tag
-        arch.mpi_tag[] -= arch.mpi_tag[]
+        arch.mpi_tag[] = 0
 
         # Reset MPI requests
         empty!(arch.mpi_requests)
     end
 
-    recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
+    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
     return nothing
 end
@@ -88,7 +88,7 @@ function reconstruct_global_field(field::DistributedField)
     global_field = Field(location(field), global_grid)
     arch = architecture(field)
 
-    global_data = construct_global_array(arch, interior(field), size(field))
+    global_data = construct_global_array(interior(field), arch, size(field))
 
     set!(global_field, global_data)
 

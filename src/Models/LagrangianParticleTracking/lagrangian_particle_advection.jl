@@ -1,6 +1,6 @@
 using Oceananigans.Utils: instantiate, KernelParameters
 using Oceananigans.Models: total_velocities
-using Oceananigans.Fields: interpolator
+using Oceananigans.Fields: interpolator, FractionalIndices
 
 #####
 ##### Boundary conditions for Lagrangian particles
@@ -56,11 +56,11 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     X = flattened_node((x, y, z), ibg)
 
     # Determine current particle cell from the interfaces
-    fi, fj, fk = fractional_indices(X, ibg.underlying_grid, f, f, f)
-    
-    i, i⁺, _ = interpolator(fi)
-    j, j⁺, _ = interpolator(fj)
-    k, k⁺, _ = interpolator(fk)
+    fi = FractionalIndices(X, ibg.underlying_grid, f, f, f)
+
+    i, i⁺, _ = interpolator(fi.i)
+    j, j⁺, _ = interpolator(fi.j)
+    k, k⁺, _ = interpolator(fi.k)
 
     # Determine whether particle was _previously_ in a non-immersed cell
     i⁻, j⁻, k⁻ = previous_particle_indices
@@ -78,7 +78,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     zᴸ = rnode(i⁻, j⁻, k⁻, ibg, f, f, f)
 
     Cʳ = restitution
-    
+
     xb⁺ = enforce_boundary_conditions(tx, x, xᴸ, xᴿ, Cʳ)
     yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
     zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
@@ -106,22 +106,26 @@ rightmost_interface_index(::Flat, N) = N
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
-@inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+@inline function advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices, looking at the interfaces
-    fi, fj, fk = fractional_indices(X, grid, f, f, f)
-    
-    i, i⁺, _ = interpolator(fi)
-    j, j⁺, _ = interpolator(fj)
-    k, k⁺, _ = interpolator(fk)
+    fi = FractionalIndices(X, grid, f, f, f)
+
+    i, i⁺, _ = interpolator(fi.i)
+    j, j⁺, _ = interpolator(fi.j)
+    k, k⁺, _ = interpolator(fi.k)
 
     current_particle_indices = (i, j, k)
 
+    uf = interpolate(X, velocities.u, (f, c, c), grid)
+    vf = interpolate(X, velocities.v, (c, f, c), grid)
+    wf = interpolate(X, velocities.w, (c, c, f), grid)
+
     # Interpolate velocity to particle position
-    u = interpolate(X, velocities.u, (f, c, c), grid)
-    v = interpolate(X, velocities.v, (c, f, c), grid)
-    w = interpolate(X, velocities.w, (c, c, f), grid)
+    up = particle_u_velocity(particles, p, uf)
+    vp = particle_v_velocity(particles, p, vf)
+    wp = particle_w_velocity(particles, p, wf)
 
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
@@ -129,9 +133,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     ξ = x_metric(i, j, grid)
     η = y_metric(i, j, grid)
 
-    x⁺ = x + ξ * u * Δt
-    y⁺ = y + η * v * Δt
-    z⁺ = z + w * Δt
+    x⁺ = x + ξ * up * Δt
+    y⁺ = y + η * vp * Δt
+    z⁺ = z +     wp * Δt
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))
@@ -164,6 +168,10 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     return (x⁺, y⁺, z⁺)
 end
 
+@inline particle_u_velocity(particles, p, uf) = uf
+@inline particle_v_velocity(particles, p, vf) = vf
+@inline particle_w_velocity(particles, p, wf) = wf
+
 # Calculate the metric for particle advection according to the coordinate system of the `grid`:
 #     * Unity metric for `RectilinearGrid` / Cartesian coordinates
 #     * Sphere metric for `LatitudeLongitudeGrid` and geographic coordinates
@@ -184,7 +192,7 @@ end
         z = particles.z[p]
     end
 
-    x⁺, y⁺, z⁺ = advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+    x⁺, y⁺, z⁺ = advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
 
     @inbounds begin
         particles.x[p] = x⁺

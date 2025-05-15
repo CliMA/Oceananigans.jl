@@ -5,17 +5,20 @@ import Oceananigans.Architectures: on_architecture
 all_reduce(op, val, arch::Distributed) = MPI.Allreduce(val, op, arch.communicator)
 all_reduce(op, val, arch) = val
 
+all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communicator)
+all_reduce!(op, val, arch) = val
+
 # MPI Barrier
 barrier!(arch) = nothing
 barrier!(arch::Distributed) = MPI.Barrier(arch.communicator)
 
 """
-    concatenate_local_sizes(local_size, arch::Distributed) 
+    concatenate_local_sizes(local_size, arch::Distributed)
 
-Return a 3-Tuple containing a vector of `size(grid, dim)` for each rank in 
+Return a 3-Tuple containing a vector of `size(grid, dim)` for each rank in
 all 3 directions.
 """
-concatenate_local_sizes(local_size, arch::Distributed) = 
+concatenate_local_sizes(local_size, arch::Distributed) =
     Tuple(concatenate_local_sizes(local_size, arch, d) for d in 1:length(local_size))
 
 concatenate_local_sizes(sz, arch, dim) = concatenate_local_sizes(sz[dim], arch, dim)
@@ -26,13 +29,13 @@ function concatenate_local_sizes(n::Number, arch::Distributed, dim)
     N = zeros(Int, R)
 
     r1, r2 = arch.local_index[[1, 2, 3] .!= dim]
-    
+
     if r1 == 1 && r2 == 1
         N[r] = n
     end
 
     MPI.Allreduce!(N, +, arch.communicator)
-    
+
     return N
 end
 
@@ -51,7 +54,7 @@ function partition_coordinate(c::AbstractVector, n, arch, dim)
     end_idx   = if r == ranks(arch)[dim]
         length(c)
     else
-        sum(nl[1:r]) + 1 
+        sum(nl[1:r]) + 1
     end
 
     return c[start_idx:end_idx]
@@ -61,7 +64,7 @@ function partition_coordinate(c::Tuple, n, arch, dim)
     nl = concatenate_local_sizes(n, arch, dim)
     N  = sum(nl)
     R  = arch.ranks[dim]
-    Δl = (c[2] - c[1]) / N  
+    Δl = (c[2] - c[1]) / N
 
     l = Tuple{Float64, Float64}[(c[1], c[1] + Δl * nl[1])]
     for i in 2:R
@@ -73,14 +76,14 @@ function partition_coordinate(c::Tuple, n, arch, dim)
 end
 
 """
-    assemble_coordinate(c::AbstractVector, n, R, r, r1, r2, comm) 
+    assemble_coordinate(c::AbstractVector, n, R, r, r1, r2, comm)
 
 Builds a linear global coordinate vector given a local coordinate vector `c_local`
 a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
 and `arch`itecture. Since we use a global reduction, only ranks at positions
 1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
 """
-function assemble_coordinate(c_local::AbstractVector, n, arch, dim) 
+function assemble_coordinate(c_local::AbstractVector, n, arch, dim)
     nl = concatenate_local_sizes(n, arch, dim)
     R  = arch.ranks[dim]
     r  = arch.local_index[dim]
@@ -99,9 +102,9 @@ function assemble_coordinate(c_local::AbstractVector, n, arch, dim)
 end
 
 # Simple case, just take the first and the last core
-function assemble_coordinate(c_local::Tuple, n, arch, dim) 
+function assemble_coordinate(c_local::Tuple, n, arch, dim)
     c_global = zeros(Float64, 2)
-    
+
     rank = arch.local_index
     R    = arch.ranks[dim]
     r    = rank[dim]
@@ -116,7 +119,7 @@ function assemble_coordinate(c_local::Tuple, n, arch, dim)
     MPI.Allreduce!(c_global, +, arch.communicator)
 
     return tuple(c_global...)
-end 
+end
 
 # TODO: make partition and construct_global_array work for 3D distribution.
 
@@ -135,7 +138,7 @@ partition(A::AbstractArray, arch::AbstractSerialArchitecture, local_size) = A
 
 Partition the globally-sized `A` into local arrays with `local_size` on `arch`itecture.
 """
-function partition(A::AbstractArray, arch::Distributed, local_size) 
+function partition(A::AbstractArray, arch::Distributed, local_size)
     A = on_architecture(CPU(), A)
 
     ri, rj, rk = arch.local_index
@@ -165,7 +168,7 @@ function partition(A::AbstractArray, arch::Distributed, local_size)
     kk = 1:nz # no partitioning in z
 
     # TODO: undo this toxic assumption that all 2D arrays span x, y.
-    if dims == 2 
+    if dims == 2
         a = zeros(eltype(A), nx, ny)
         a .= A[ii, jj]
     else
@@ -177,16 +180,16 @@ function partition(A::AbstractArray, arch::Distributed, local_size)
 end
 
 """
-    construct_global_array(arch, c_local, (nx, ny, nz))
+    construct_global_array(c_local, arch, (nx, ny, nz))
 
 Construct global array from local arrays (2D of size `(nx, ny)` or 3D of size (`nx, ny, nz`)).
 Usefull for boundary arrays, forcings and initial conditions.
 """
-construct_global_array(arch, c_local::AbstractArray, n) = c_local
-construct_global_array(arch, c_local::Function, N)      = c_local
+construct_global_array(c_local::AbstractArray, arch, n) = c_local
+construct_global_array(c_local::Function, arch,  N)     = c_local
 
 # TODO: This does not work for 3D parallelizations
-function construct_global_array(arch::Distributed, c_local::AbstractArray, n) 
+function construct_global_array(c_local::AbstractArray, arch::Distributed, n)
     c_local = on_architecture(CPU(), c_local)
 
     ri, rj, rk = arch.local_index
@@ -199,20 +202,20 @@ function construct_global_array(arch::Distributed, c_local::AbstractArray, n)
     Ny = sum(ny)
     Nz = nz[1]
 
-    if dims == 2 
+    if dims == 2
         c_global = zeros(eltype(c_local), Nx, Ny)
-    
-        c_global[1 + sum(nx[1:ri-1]) : sum(nx[1:ri]), 
+
+        c_global[1 + sum(nx[1:ri-1]) : sum(nx[1:ri]),
                  1 + sum(ny[1:rj-1]) : sum(ny[1:rj])] .= c_local[1:nx[ri], 1:ny[rj]]
-        
+
         MPI.Allreduce!(c_global, +, arch.communicator)
     else
         c_global = zeros(eltype(c_local), Nx, Ny, Nz)
 
-        c_global[1 + sum(nx[1:ri-1]) : sum(nx[1:ri]), 
+        c_global[1 + sum(nx[1:ri-1]) : sum(nx[1:ri]),
                  1 + sum(ny[1:rj-1]) : sum(ny[1:rj]),
                  1:Nz] .= c_local[1:nx[ri], 1:ny[rj], 1:Nz]
-        
+
         MPI.Allreduce!(c_global, +, arch.communicator)
     end
 

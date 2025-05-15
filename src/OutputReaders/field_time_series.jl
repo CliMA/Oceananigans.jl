@@ -24,7 +24,7 @@ using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
+import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc, FieldBoundaryConditions
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 #####
@@ -373,7 +373,7 @@ function FieldTimeSeries(loc, grid, times=();
                          path = nothing,
                          name = nothing,
                          time_indexing = Clamp(),
-                         boundary_conditions = nothing,
+                         boundary_conditions = FieldBoundaryConditions(grid, loc),
                          reader_kw = NamedTuple())
 
     LX, LY, LZ = loc
@@ -616,7 +616,7 @@ function FieldTimeSeries(path::String, name::String;
             throw(err)
         end
     end
-        
+
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)
@@ -742,11 +742,7 @@ function interior(fts::FieldTimeSeries)
 end
 
 # FieldTimeSeries boundary conditions
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC}
-
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
+@inline getbc(condition::Union{FTS, GPUFTS}, i::Int, j::Int, grid::AbstractGrid, clock, args...) = condition[i, j, Time(clock.time)]
 
 #####
 ##### Fill halo regions

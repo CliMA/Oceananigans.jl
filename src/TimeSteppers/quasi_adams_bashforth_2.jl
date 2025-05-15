@@ -15,7 +15,7 @@ end
                                     G⁻ = map(similar, prognostic_fields))
 
 Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
-on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to 
+on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to
 the prognostic_fields passed as positional argument, can be specified via  optional `kwargs`.
 
 The 2nd-order quasi Adams-Bashforth timestepper steps forward the state `Uⁿ` by `Δt` via
@@ -101,7 +101,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     tick!(model.clock, Δt)
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
-    
+
     calculate_pressure_correction!(model, Δt)
     @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
     correct_advection!(model, Δt)
@@ -115,9 +115,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     return nothing
 end
 
-function correct_velocities_and_store_tendencies!(model, Δt)
+function correct_velocities_and_cache_previous_tendencies!(model, Δt)
     pressure_correct_velocities!(model, Δt)
-    store_tendencies!(model)
+    cache_previous_tendencies!(model)
     return nothing
 end
 
@@ -163,7 +163,7 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 @kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻, grid)
     i, j, k = @index(Global, NTuple)
 
-    FT = typeof(χ)
+    FT = eltype(u)
     Δt = convert(FT, Δt)
     one_point_five = convert(FT, 1.5)
     oh_point_five  = convert(FT, 0.5)

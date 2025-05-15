@@ -117,7 +117,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
     ##### Non-dimensional model setup
     #####
-    
+
     equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     model = NonhydrostaticModel(; grid, buoyancy,
@@ -189,10 +189,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
    :kappaT => model -> Array(model.diffusivity_fields[n_amd].κₑ.T.data.parent),
        :nu => model -> Array(model.diffusivity_fields[n_amd].νₑ.data.parent))
 
-    field_writer =
-        JLD2OutputWriter(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
-                         init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
-                         overwrite_existing=true, verbose=true)
+    field_writer = JLD2Writer(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
+                              init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
+                              overwrite_existing=true, verbose=true)
 
     #####
     ##### Set up profile output writer
@@ -213,10 +212,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :nu => νavg,
     :kappaT => κavg)
 
-    profile_writer =
-        JLD2OutputWriter(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
-                         init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
-                         overwrite_existing=true, verbose=true)
+    profile_writer = JLD2Writer(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
+                                init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
+                                overwrite_existing=true, verbose=true)
 
     #####
     ##### Set up statistic output writer
@@ -231,10 +229,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :Re_tau => model -> Reτ(model),
         :Nu     => model -> Nu(model))
 
-    statistics_writer =
-        JLD2OutputWriter(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
-                         init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
-                         overwrite_existing=true, verbose=true)
+    statistics_writer = JLD2Writer(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
+                                   init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
+                                   overwrite_existing=true, verbose=true)
 
     #####
     ##### Time stepping

@@ -364,7 +364,10 @@ for arch in archs
 
             @testset "Unary computations [$A, $G]" begin
                 @info "      Testing correctness of compute! unary operations..."
-                for unary in (sqrt, sin, cos, exp, tanh)
+                dont_test = tuple(:interpolate_identity)
+                operators_to_test = filter(op -> !(op ∈ dont_test), Oceananigans.AbstractOperations.unary_operators)
+                for unary_symbol in operators_to_test
+                    unary = eval(unary_symbol)
                     @test compute_unary(unary, model)
                 end
             end
@@ -478,7 +481,7 @@ for arch in archs
                 kk = 1+Hz:Nz+Hz
                 @test all(view(parent(ST), Hx, jj, kk) .== view(parent(ST), Nx+1+Hx, jj, kk))
                 @test all(view(parent(ST), ii, Hy, kk) .== view(parent(ST), ii, Ny+1+Hy, kk))
-                
+
                 # Bounded z
                 @test all(view(parent(ST), ii, jj, Hz)    .== view(parent(ST), ii, jj, 1+Hz))
                 @test all(view(parent(ST), ii, jj, Nz+Hz) .== view(parent(ST), ii, jj, Nz+1+Hz))
@@ -555,19 +558,12 @@ for arch in archs
                 computed_tke = Field(tke_ccc)
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
-                if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test_broken try compute!(computed_tke); true; catch; false end
-                    @test_broken try compute!(Field(tke)); true; catch; false; end
-                    @test_broken try compute!(tke_window); true; catch; false; end
-                    @test_broken all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
-                    @test_broken all(interior(tke_window) .== 9/2)
-                else                    
-                    @test try compute!(computed_tke); true; catch; false end
-                    @test try compute!(Field(tke)); true; catch; false; end
-                    @test try compute!(tke_window); true; catch; false; end
-                    @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
-                    @test all(interior(tke_window) .== 9/2)
-                end
+
+                @test try compute!(computed_tke); true; catch; false end
+                @test try compute!(Field(tke)); true; catch; false; end
+                @test try compute!(tke_window); true; catch; false; end
+                @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
+                @test all(interior(tke_window) .== 9/2)
 
                 # Computations along slices
                 tke_xy = Field(tke_ccc, indices=(:, :, 2))
@@ -575,31 +571,17 @@ for arch in archs
                 tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3))
                 tke_x = Field(tke_ccc, indices=(2:3, 2, 2))
 
-                if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test_broken try compute!(tke_xy); true; catch; false; end
-                    @test_broken all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
-                    @test_broken try compute!(tke_xz); true; catch; false; end
-                    @test_broken all(interior(tke_xz) .== 9/2)
+                @test try compute!(tke_xy); true; catch; false; end
+                @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
 
-                    @test_broken try compute!(tke_yz); true; catch; false; end
-                    @test_broken all(interior(tke_yz) .== 9/2)
+                @test try compute!(tke_xz); true; catch; false; end
+                @test all(interior(tke_xz) .== 9/2)
 
-                    @test_broken try compute!(tke_x); true; catch; false; end
-                    @test_broken all(interior(tke_x) .== 9/2)
-                else
-                    @test try compute!(tke_xy); true; catch; false; end
-                    @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
-                    @test try compute!(tke_xz); true; catch; false; end
-                    @test all(interior(tke_xz) .== 9/2)
+                @test try compute!(tke_yz); true; catch; false; end
+                @test all(interior(tke_yz) .== 9/2)
 
-                    @test try compute!(tke_yz); true; catch; false; end
-                    @test all(interior(tke_yz) .== 9/2)
-
-                    @test try compute!(tke_x); true; catch; false; end
-                    @test all(interior(tke_x) .== 9/2)
-                end
+                @test try compute!(tke_x); true; catch; false; end
+                @test all(interior(tke_x) .== 9/2)
             end
 
             @testset "Computations with Fields [$A, $G]" begin

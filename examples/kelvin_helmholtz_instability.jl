@@ -49,7 +49,7 @@ zC = znodes(grid, Center())
 Ri, h = B.parameters
 
 fig = Figure(size = (850, 450))
- 
+
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
 lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
 
@@ -379,10 +379,10 @@ total_vorticity = Field(∂z(u) + ∂z(model.background_fields.velocities.u) - �
 total_b = Field(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
-    JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
-                     schedule = TimeInterval(0.10 / estimated_growth_rate),
-                     filename = "kelvin_helmholtz_instability.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
+               schedule = TimeInterval(0.10 / estimated_growth_rate),
+               filename = "kelvin_helmholtz_instability.jld2",
+               overwrite_existing = true)
 
 # And now we...
 

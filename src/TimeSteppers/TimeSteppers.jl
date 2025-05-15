@@ -9,7 +9,7 @@ export
 
 using CUDA
 using KernelAbstractions
-using Oceananigans: AbstractModel, prognostic_fields
+using Oceananigans: AbstractModel, initialize!, prognostic_fields
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
 
@@ -19,27 +19,6 @@ using Oceananigans.Utils: work_layout
 Abstract supertype for time steppers.
 """
 abstract type AbstractTimeStepper end
-
-"""
-    TimeStepper(name::Symbol, args...; kwargs...)
-
-Returns a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
-
-Example
-=======
-
-```julia
-julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
-```
-"""
-function TimeStepper(name::Symbol, args...; kwargs...)
-    fullname = Symbol(name, :TimeStepper)
-    TS = getglobal(@__MODULE__, fullname)
-    return TS(args...; kwargs...)
-end
-
-# Fallback
-TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
 function update_state! end
 function compute_tendencies! end
@@ -59,5 +38,46 @@ include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_hydrostatic_runge_kutta_3.jl")
+
+"""
+    TimeStepper(name::Symbol, args...; kwargs...)
+
+Returns a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
+
+Example
+=======
+
+```julia
+julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
+```
+"""
+TimeStepper(name::Symbol, args...; kwargs...) = TimeStepper(Val(name), args...; kwargs...)
+
+# Fallback
+TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
+
+#individual contructors
+TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
+    QuasiAdamsBashforth2TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
+    RungeKutta3TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
+    SplitRungeKutta3TimeStepper(args...; kwargs...)
+
+function first_time_step!(model::AbstractModel, Δt)
+    initialize!(model)
+    update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
+
+function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    initialize!(model)
+    update_state!(model)
+    time_step!(model, Δt, euler=true)
+    return nothing
+end
 
 end # module

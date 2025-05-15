@@ -13,7 +13,7 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVertic
 using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
-function double_drake_bathymetry(λ, φ) 
+function double_drake_bathymetry(λ, φ)
     if φ > -35
         (λ >  0 && λ < 1)  && return 0.0
         (λ > 90 && λ < 91) && return 0.0
@@ -22,7 +22,7 @@ function double_drake_bathymetry(λ, φ)
     return -10000.0
 end
 
-function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64; 
+function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
                                      output_name = nothing,
                                      timestepper = :QuasiAdamsBashforth2,
                                      CFL = 0.35,
@@ -34,7 +34,7 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
                                   z = (-5500, 0),
                                   halo = (7, 7, 7))
 
-    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(double_drake_bathymetry)) 
+    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(double_drake_bathymetry))
 
     momentum_advection = WENOVectorInvariant(FT)
     tracer_advection   = WENO(grid, order = 7)
@@ -47,7 +47,7 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
 
     free_surface = SplitExplicitFreeSurface(FT; grid, cfl = barotropic_CFL, fixed_Δt = max_Δt)
 
-    model = HydrostaticFreeSurfaceModel(; grid, 
+    model = HydrostaticFreeSurfaceModel(; grid,
                                           momentum_advection,
                                           tracer_advection,
                                           coriolis,
@@ -77,10 +77,10 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
     if !isnothing(output_name)
-        simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                            filename = output_name * "_$(rank)",
-                                                            schedule = TimeInterval(1day),
-                                                            overwrite_existing = true)
+        simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                        filename = output_name * "_$(rank)",
+                                                        schedule = TimeInterval(1day),
+                                                        overwrite_existing = true)
     end
 
     run!(simulation)

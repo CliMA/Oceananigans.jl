@@ -8,7 +8,7 @@
 """
     intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)
 
-Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_ 
+Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_
 coordinate system associated with the domain, to the coordinate system _intrinsic_ to the grid.
 
 _extrinsic_ coordinate systems are:
@@ -16,11 +16,11 @@ _extrinsic_ coordinate systems are:
 - Cartesian for any grid that discretizes a Cartesian domain (e.g. a `RectilinearGrid`)
 - Geographic coordinates for any grid that discretizes a Spherical domain (e.g. an `AbstractCurvilinearGrid`)
 
-Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
+Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the
 _intrinsic_ coordinate system are equivalent. However, for other grids (e.g., for the
  [`ConformalCubedSphereGrid`](@ref)) that might not be the case.
 """
-@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) = 
+@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid), getvalue(wₑ, i, j, k, grid)
 
 """
@@ -34,7 +34,7 @@ _extrinsic_ coordinate systems are:
 - Cartesian for any grid that discretizes a Cartesian domain (e.g. a `RectilinearGrid`)
 - Geographic coordinates for any grid that discretizes a Spherical domain (e.g. an `AbstractCurvilinearGrid`)
 
-Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
+Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the
 _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., for the
  [`ConformalCubedSphereGrid`](@ref)) that might not be the case.
 """
@@ -42,16 +42,16 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid), getvalue(wᵢ, i, j, k, grid)
 
 # 2D vectors
-@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ) = 
+@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ) =
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid)
 
-@inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) = 
+@inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) =
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid)
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
 # i.e. curvilinear grids defined on a sphere which are locally orthogonal.
 # If the coordinates match with the coordinates of a latitude-longitude grid
-# (i.e. globally orthogonal), these functions collapse to 
+# (i.e. globally orthogonal), these functions collapse to
 # uₑ, vₑ, wₑ = uᵢ, vᵢ, wᵢ
 
 # 2D vectors

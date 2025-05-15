@@ -1,7 +1,7 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
 
-using Oceananigans: AbstractModel, run_diagnostic!, write_output!
+using Oceananigans: AbstractModel, run_diagnostic!
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!
@@ -35,7 +35,7 @@ end
 """
     aligned_time_step(sim, Δt)
 
-Return a time step 'aligned' with `sim.stop_time`, output writer schedules, 
+Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
 function aligned_time_step(sim::Simulation, Δt)
@@ -45,9 +45,10 @@ function aligned_time_step(sim::Simulation, Δt)
 
     # Align time step with output writing and callback execution
     aligned_Δt = schedule_aligned_time_step(sim, aligned_Δt)
-    
+
     # Align time step with simulation stop time
-    aligned_Δt = min(aligned_Δt, unit_time(sim.stop_time - clock.time))
+    time_left = unit_time(sim.stop_time - clock.time)
+    aligned_Δt = min(aligned_Δt, time_left)
 
     # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
     aligned_Δt = aligned_Δt <= 0 ? Δt : aligned_Δt
@@ -104,13 +105,9 @@ function run!(sim; pickup=false)
         time_step!(sim)
     end
 
-    for callback in values(sim.callbacks) 
+    for callback in values(sim.callbacks)
         finalize!(callback, sim)
     end
-
-    # Increment the wall clock
-    end_run = time_ns()
-    sim.run_wall_time += 1e-9 * (end_run - start_run)
 
     return nothing
 end
@@ -127,6 +124,8 @@ end
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
+    start_time_step = time_ns()
+
     Δt = if sim.align_time_step
         aligned_time_step(sim, sim.Δt)
     else
@@ -134,12 +133,9 @@ function time_step!(sim::Simulation)
     end
 
     initial_time_step = !(sim.initialized)
-    if initial_time_step # execute initialization step
-        initialize!(sim)
-        initialize!(sim.model)
-    end
+    initial_time_step && initialize!(sim)
 
-    if initial_time_step && sim.verbose 
+    if initial_time_step && sim.verbose
         @info "Executing initial time step..."
         start_time = time_ns()
     end
@@ -155,7 +151,7 @@ function time_step!(sim::Simulation)
 
     # Callbacks and callback-like things
     for diag in values(sim.diagnostics)
-        diag.schedule(sim.model) && run_diagnostic!(diag, sim.model) 
+        diag.schedule(sim.model) && run_diagnostic!(diag, sim.model)
     end
 
     for callback in values(sim.callbacks)
@@ -164,13 +160,18 @@ function time_step!(sim::Simulation)
     end
 
     for writer in values(sim.output_writers)
-        writer.schedule(sim.model) && write_output!(writer, sim.model) 
+        writer.schedule(sim.model) && write_output!(writer, sim)
     end
 
     if initial_time_step && sim.verbose
         elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
         @info "    ... initial time step complete ($elapsed_initial_step_time)."
     end
+
+    end_time_step = time_ns()
+
+    # Increment the wall clock
+    sim.run_wall_time += 1e-9 * (end_time_step - start_time_step)
 
     return nothing
 end
@@ -190,7 +191,7 @@ we_want_to_pickup(pickup::Integer) = true
 we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
-""" 
+"""
     initialize!(sim::Simulation, pickup=false)
 
 Initialize a simulation:
@@ -206,8 +207,7 @@ function initialize!(sim::Simulation)
     end
 
     model = sim.model
-    clock = model.clock
-
+    initialize!(model)
     update_state!(model)
 
     # Output and diagnostics initialization
@@ -223,21 +223,21 @@ function initialize!(sim::Simulation)
     end
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
-    if clock.iteration == 0
-        reset!(timestepper(sim.model))
+    if model.clock.iteration == 0
+        reset!(timestepper(model))
 
         # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
             run_diagnostic!(diag, model)
         end
 
-        for callback in values(sim.callbacks) 
+        for callback in values(sim.callbacks)
             callback.callsite isa TimeStepCallsite && callback(sim)
         end
 
         for writer in values(sim.output_writers)
-            writer.schedule(sim.model)
-            write_output!(writer, model)
+            writer.schedule(model)
+            write_output!(writer, sim)
         end
     end
 
@@ -250,3 +250,4 @@ function initialize!(sim::Simulation)
 
     return nothing
 end
+

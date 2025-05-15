@@ -20,12 +20,12 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                                            x = (0, 1),
                                            y = collect(range(0, 1, length=21)),
                                            z = (0, 1))
-                 
+
         grids = [lat_lon_grid, rectilinear_grid]
 
         immersed_boundaries = [GridFittedBottom((x, y) -> 0.5),
                                GridFittedBoundary((x, y, z) -> z>0.5)]
-        
+
         for grid in grids, Partition in partition_types, region in regions
             @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
             mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))

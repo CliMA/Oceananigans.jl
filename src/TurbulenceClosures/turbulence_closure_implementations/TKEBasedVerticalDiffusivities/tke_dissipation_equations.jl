@@ -1,9 +1,9 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: retrieve_interior_active_cells_map
+using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
-using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
 
@@ -138,7 +138,7 @@ end
     Cᵇϵ⁻ = closure_ij.tke_dissipation_equations.Cᵇϵ⁻
 
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    Cᵇϵ = ifelse(N² ≥ 0, Cᵇϵ⁺, Cᵇϵ⁻) 
+    Cᵇϵ = ifelse(N² ≥ 0, Cᵇϵ⁺, Cᵇϵ⁻)
 
     Cᵇϵ_wb⁻ = min(Cᵇϵ * wb, zero(grid))
     Cᵇϵ_wb⁺ = max(Cᵇϵ * wb, zero(grid))
@@ -161,7 +161,7 @@ end
 
     @inbounds begin
         fast_Gⁿe = P + wb⁺                  # - ϵ (no implicit time stepping for now)
-        fast_Gⁿϵ = ωϵ * (Cᴾϵ * P + Cᵇϵ_wb⁺) 
+        fast_Gⁿϵ = ωϵ * (Cᴾϵ * P + Cᵇϵ_wb⁺)
     end
 
     # Advance TKE and store tendency
@@ -268,10 +268,10 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     top_dissipation_bc = FluxBoundaryCondition(top_dissipation_flux, discrete_form=true, parameters=parameters)
 
-    
+
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
-        
+
         tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,
@@ -285,7 +285,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     if :ϵ ∈ keys(user_bcs)
         ϵ_bcs = user_bcs[:ϵ]
-        
+
         dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                                   top = top_dissipation_bc,
                                                   bottom = e_bcs.bottom,

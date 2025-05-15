@@ -40,7 +40,7 @@ Keyword Arguments
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
 
-* `immersed_condition`: Determine whether the part of the domain that is 
+* `immersed_condition`: Determine whether the part of the domain that is
                         immersed are all the cell centers that lie below
                         `bottom_height` (`CenterImmersedCondition()`; default)
                         or all the cell faces that lie below `bottom_height`
@@ -89,24 +89,23 @@ end
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
 
 """
-    ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
+    materialize_immersed_boundary(grid, ib)
 
-Return a grid with `GridFittedBottom` immersed boundary (`ib`).
-
-Computes `ib.bottom_height` and wraps it in a Field. `ib.bottom_height` is the z-coordinate of top-most interface
-of the last ``immersed`` cell in the column.
+Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`.
+If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of
+top-most interface of the last ``immersed`` cell in the column. If `ib` is a `GridFittedBoundary`,
+`ib.mask` is a field of booleans that indicates whether a cell is immersed or not.
 """
-function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
+function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field)
-    TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+    return new_ib
 end
 
-compute_numerical_bottom_height!(bottom_field, grid, ib) = 
+compute_numerical_bottom_height!(bottom_field, grid, ib) =
     launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
@@ -130,13 +129,22 @@ end
     return z ≤ zb
 end
 
+@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
+    # We use `rnode` for the `immersed_cell` because we do not want to have
+    # wetting or drying that could happen for a moving grid if we use znode
+    z  = rnode(i, j, k, underlying_grid, c, c, c)
+    zb = @inbounds ib.bottom_height[i, j, 1]
+    zb = Base.stack(collect(zb for _ in k))
+    return z .≤ zb
+end
+
 #####
 ##### Static column depth
 #####
 
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
+@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))

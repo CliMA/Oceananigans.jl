@@ -11,7 +11,7 @@ using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, le
 
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, A, C, Arch} <: AHCG{FT, TX, TY, TZ, Z, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2} <: AHCG{FT, TX, TY, TZ, Z, Arch}
     architecture :: Arch
        Nx :: Int
        Ny :: Int
@@ -19,75 +19,109 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, A, C, Arch} <: AHCG{FT, T
        Hx :: Int
        Hy :: Int
        Hz :: Int
-       Lz :: FT
-     λᶜᶜᵃ :: A
-     λᶠᶜᵃ :: A
-     λᶜᶠᵃ :: A
-     λᶠᶠᵃ :: A
-     φᶜᶜᵃ :: A
-     φᶠᶜᵃ :: A
-     φᶜᶠᵃ :: A
-     φᶠᶠᵃ :: A
+       Lz :: FT2
+     λᶜᶜᵃ :: CC
+     λᶠᶜᵃ :: FC
+     λᶜᶠᵃ :: CF
+     λᶠᶠᵃ :: FF
+     φᶜᶜᵃ :: CC
+     φᶠᶜᵃ :: FC
+     φᶜᶠᵃ :: CF
+     φᶠᶠᵃ :: FF
         z :: Z
-    Δxᶜᶜᵃ :: A
-    Δxᶠᶜᵃ :: A
-    Δxᶜᶠᵃ :: A
-    Δxᶠᶠᵃ :: A
-    Δyᶜᶜᵃ :: A
-    Δyᶜᶠᵃ :: A
-    Δyᶠᶜᵃ :: A
-    Δyᶠᶠᵃ :: A
-    Azᶜᶜᵃ :: A
-    Azᶠᶜᵃ :: A
-    Azᶜᶠᵃ :: A
-    Azᶠᶠᵃ :: A
-    radius :: FT
-    conformal_mapping :: C
+    Δxᶜᶜᵃ :: CC
+    Δxᶠᶜᵃ :: FC
+    Δxᶜᶠᵃ :: CF
+    Δxᶠᶠᵃ :: FF
+    Δyᶜᶜᵃ :: CC
+    Δyᶠᶜᵃ :: FC
+    Δyᶜᶠᵃ :: CF
+    Δyᶠᶠᵃ :: FF
+    Azᶜᶜᵃ :: CC
+    Azᶠᶜᵃ :: FC
+    Azᶜᶠᵃ :: CF
+    Azᶠᶠᵃ :: FF
+    radius :: FT2
+    conformal_mapping :: Map
+end
+
+
+function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
+                                                  Nx, Ny, Nz,
+                                                  Hx, Hy, Hz,
+                                                  Lz :: FT2,
+                                                   λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
+                                                   φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
+                                                  Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
+                                                  Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF,
+                                                  Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
+                                                  radius :: FT2,
+                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+                                                                                   CC, FC, CF, FF, Arch, FT2}
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2}(architecture,
+                                                  Nx, Ny, Nz,
+                                                  Hx, Hy, Hz,
+                                                  Lz,
+                                                   λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                   φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                                  Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                  Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+                                                  Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                  radius,
+                                                  conformal_mapping)
 end
 
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                                   Nx, Ny, Nz,
                                                   Hx, Hy, Hz,
                                                   Lz :: FT,
-                                                   λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
-                                                   φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, z :: Z,
-                                                  Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
-                                                  Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, 
-                                                  Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
+                                                   λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
+                                                   φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
+                                                  Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
+                                                  Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF,
+                                                  Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
                                                   radius :: FT,
-                                                  conformal_mapping :: C) where {TX, TY, TZ, FT, Z, A, C, Arch}
+                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+                                                                                   CC, FC, CF, FF, Arch}
 
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, A, C, Arch}(architecture,
-                                                                       Nx, Ny, Nz,
-                                                                       Hx, Hy, Hz,
-                                                                       Lz,
-                                                                       λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-                                                                       φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, z,
-                                                                       Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                                       Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
-                                                                       Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
-                                                                       radius, conformal_mapping)
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture,
+                                                        Nx, Ny, Nz,
+                                                        Hx, Hy, Hz,
+                                                        Lz,
+                                                         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                         φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                                        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, 
+                                                        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                        radius, conformal_mapping)
 end
 
 const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
+@inline cpu_face_constructor_ξ(grid::OrthogonalSphericalShellGrid) = Array(grid.conformal_mapping.ξᶠᵃᵃ[1:size(grid, 1)+1])
+@inline cpu_face_constructor_η(grid::OrthogonalSphericalShellGrid) = Array(grid.conformal_mapping.ηᵃᶠᵃ[1:size(grid, 2)+1])
+
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                             λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
-                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                              λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                              φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                             Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius) =
     OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                                 λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
-                                 Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                                  λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                 Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                 Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                                  Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, nothing)
 
 """
     fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
 
-Fill the `x`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`,
-and topology `tx`, `ty`.
+Fill the `x`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`, and topology
+`tx`, `ty`.
 """
 function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::BoundedTopology, ty, Nx, Ny, Hx, Hy)
     # = N+1 for ::BoundedTopology or N otherwise
@@ -100,7 +134,6 @@ function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::BoundedTopology, ty
             for i in 0:-1:-Hx+1
                 metric[i, j] = metric[i+1, j]
             end
-
             # fill east halos
             for i in Nx⁺+1:Nx⁺+Hx
                 metric[i, j] = metric[i-1, j]
@@ -135,8 +168,8 @@ end
 """
     fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
 
-Fill the `y`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`,
-and topology `tx`, `ty`.
+Fill the `y`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`, and topology
+`tx`, `ty`.
 """
 function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::BoundedTopology, Nx, Ny, Hx, Hy)
     # = N+1 for ::BoundedTopology or N otherwise
@@ -183,10 +216,9 @@ end
 """
     fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
 
-Fill the corner halo regions of the `metric`  that lives on locations `ℓx`, `ℓy`,
-and with halo size `Hx`, `Hy`. We choose to fill with the average of the neighboring
-metric in the halo regions. Thus this requires that the metric in the `x`- and `y`-halo
-regions have already been filled.
+Fill the corner halo regions of the `metric`  that lives on locations `ℓx`, `ℓy`, and with halo size `Hx`, `Hy`. We
+choose to fill with the average of the neighboring metric in the halo regions. Thus this requires that the metric in the
+`x`- and `y`-halo regions have already been filled.
 """
 function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
     # = N+1 for ::BoundedTopology or N otherwise
@@ -243,7 +275,6 @@ lat_lon_to_y(lat, lon, radius) = radius * sind(lon) * cosd(lat)
 lat_lon_to_z(lat, lon, radius) = radius * sind(lat)
 
 function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
-
     coordinates = (:λᶜᶜᵃ,
                    :λᶠᶜᵃ,
                    :λᶜᶠᵃ,
@@ -259,8 +290,8 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                      :Δxᶜᶠᵃ,
                      :Δxᶠᶠᵃ,
                      :Δyᶜᶜᵃ,
-                     :Δyᶜᶠᵃ,
                      :Δyᶠᶜᵃ,
+                     :Δyᶜᶠᵃ,
                      :Δyᶠᶠᵃ)
 
     horizontal_areas = (:Azᶜᶜᵃ,
@@ -290,33 +321,17 @@ end
 function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     TX, TY, TZ = topology(grid)
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
-                                                    grid.Nx, grid.Ny, grid.Nz,
-                                                    grid.Hx, grid.Hy, grid.Hz,
-                                                    grid.Lz,
-                                                    adapt(to, grid.λᶜᶜᵃ),
-                                                    adapt(to, grid.λᶠᶜᵃ),
-                                                    adapt(to, grid.λᶜᶠᵃ),
-                                                    adapt(to, grid.λᶠᶠᵃ),
-                                                    adapt(to, grid.φᶜᶜᵃ),
-                                                    adapt(to, grid.φᶠᶜᵃ),
-                                                    adapt(to, grid.φᶜᶠᵃ),
-                                                    adapt(to, grid.φᶠᶠᵃ),
-                                                    adapt(to, grid.z),
-                                                    adapt(to, grid.Δxᶜᶜᵃ),
-                                                    adapt(to, grid.Δxᶠᶜᵃ),
-                                                    adapt(to, grid.Δxᶜᶠᵃ),
-                                                    adapt(to, grid.Δxᶠᶠᵃ),
-                                                    adapt(to, grid.Δyᶜᶜᵃ),
-                                                    adapt(to, grid.Δyᶜᶠᵃ),
-                                                    adapt(to, grid.Δyᶠᶜᵃ),
-                                                    adapt(to, grid.Δyᶠᶠᵃ),
-                                                    adapt(to, grid.Azᶜᶜᵃ),
-                                                    adapt(to, grid.Azᶠᶜᵃ),
-                                                    adapt(to, grid.Azᶜᶠᵃ),
-                                                    adapt(to, grid.Azᶠᶠᵃ),
-                                                    grid.radius,
-                                                    adapt(to, grid.conformal_mapping))
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(
+        nothing,
+        grid.Nx, grid.Ny, grid.Nz,
+        grid.Hx, grid.Hy, grid.Hz,
+        adapt(to, grid.Lz),
+        adapt(to,  grid.λᶜᶜᵃ), adapt(to,  grid.λᶠᶜᵃ), adapt(to,  grid.λᶜᶠᵃ), adapt(to,  grid.λᶠᶠᵃ),
+        adapt(to,  grid.φᶜᶜᵃ), adapt(to,  grid.φᶠᶜᵃ), adapt(to,  grid.φᶜᶠᵃ), adapt(to,  grid.φᶠᶠᵃ), adapt(to, grid.z),
+        adapt(to, grid.Δxᶜᶜᵃ), adapt(to, grid.Δxᶠᶜᵃ), adapt(to, grid.Δxᶜᶠᵃ), adapt(to, grid.Δxᶠᶠᵃ),
+        adapt(to, grid.Δyᶜᶜᵃ), adapt(to, grid.Δyᶠᶜᵃ), adapt(to, grid.Δyᶜᶠᵃ), adapt(to, grid.Δyᶠᶠᵃ),
+        adapt(to, grid.Azᶜᶜᵃ), adapt(to, grid.Azᶠᶜᵃ), adapt(to, grid.Azᶜᶠᵃ), adapt(to, grid.Azᶠᶠᵃ),
+        adapt(to, grid.radius), adapt(to, grid.conformal_mapping))
 end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)
@@ -394,17 +409,18 @@ function OrthogonalSphericalShellGrid(arch::AbstractArchitecture = CPU(),
                          z)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                     Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
     TX, TY, TZ = topology
 
-    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz,
+                                                    convert(FT, Lz),
                                                     coordinate_arrays...,
                                                     metric_arrays...,
-                                                    radius,
+                                                    convert(FT, radius),
                                                     conformal_mapping)
 
     return grid
@@ -413,8 +429,8 @@ end
 """
     get_center_and_extents_of_shell(grid::OSSG)
 
-Return the latitude-longitude coordinates of the center of the shell `(λ_center, φ_center)`
-and also the longitudinal and latitudinal extend of the shell `(extent_λ, extent_φ)`.
+Return the latitude-longitude coordinates of the center of the shell `(λ_center, φ_center)` and also the longitudinal
+and latitudinal extend of the shell `(extent_λ, extent_φ)`.
 """
 function get_center_and_extents_of_shell(grid::OSSG)
     Nx, Ny, _ = size(grid)
@@ -519,7 +535,7 @@ function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     if reshape
         # λ and φ are 2D arrays
         N = (size(λ)..., size(z)...)
-        λ = Base.reshape(λ, N[1], Ν[2], 1)
+        λ = Base.reshape(λ, N[1], N[2], 1)
         φ = Base.reshape(φ, N[1], N[2], 1)
         z = Base.reshape(z, 1, 1, N[3])
     end

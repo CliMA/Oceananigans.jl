@@ -30,8 +30,8 @@ for distributed transpositions. This includes:
 - `counts`: The size of the chunks in the buffers to be sent and received
 - `comms`: The MPI communicators for the yz and xy directions (different from MPI.COMM_WORLD!!!)
 
-A `TransposableField` object is used to perform distributed transpositions between different configurations with the 
-`transpose_z_to_y!`, `transpose_y_to_x!`, `transpose_x_to_y!`, and `transpose_y_to_z!` functions. 
+A `TransposableField` object is used to perform distributed transpositions between different configurations with the
+`transpose_z_to_y!`, `transpose_y_to_x!`, `transpose_x_to_y!`, and `transpose_y_to_z!` functions.
 In particular:
 - `transpose_z_to_y!` copies data from the z-configuration (`zfield`) to the y-configuration (`yfield`)
 - `transpose_y_to_x!` copies data from the y-configuration (`yfield`) to the x-configuration (`xfield`)
@@ -61,7 +61,7 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     loc = location(field_in)
 
     Rx, Ry, _ = zarch.ranks
-    if with_halos 
+    if with_halos
         zfield = Field(loc, zgrid, FT)
         yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT)
         xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT)
@@ -71,20 +71,20 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
         xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:xN[1], 1:xN[2], 1:xN[3]))
     end
 
-    # One dimensional buffers to "pack" three-dimensional data in for communication 
-    yzbuffer = Ry == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(yN))), 
+    # One dimensional buffers to "pack" three-dimensional data in for communication
+    yzbuffer = Ry == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(yN))),
                                     recv = on_architecture(zarch, zeros(FT, prod(zN))))
-    xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(xN))), 
+    xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(xN))),
                                     recv = on_architecture(zarch, zeros(FT, prod(yN))))
 
     yzcomm = MPI.Comm_split(MPI.COMM_WORLD, zarch.local_index[1], zarch.local_index[1])
     xycomm = MPI.Comm_split(MPI.COMM_WORLD, yarch.local_index[3], yarch.local_index[3])
 
-    zRx, zRy, zRz = ranks(zarch) 
-    yRx, yRy, yRz = ranks(yarch) 
+    zRx, zRy, zRz = ranks(zarch)
+    yRx, yRy, yRz = ranks(yarch)
 
     # size of the chunks in the buffers to be sent and received
-    # (see the docstring for the `transpose` algorithms)    
+    # (see the docstring for the `transpose` algorithms)
     yzcounts = zeros(Int, zRy * zRz)
     xycounts = zeros(Int, yRx * yRy)
 
@@ -97,7 +97,7 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     MPI.Allreduce!(yzcounts, +, yzcomm)
     MPI.Allreduce!(xycounts, +, xycomm)
 
-    return TransposableField(xfield, yfield, zfield, 
+    return TransposableField(xfield, yfield, zfield,
                              yzbuffer, xybuffer,
                              (; yz = yzcounts, xy = xycounts),
                              (; yz = yzcomm,   xy = xycomm))
@@ -130,9 +130,9 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, R[1], ri, rj, rk, arch.communicator)
-    TY = reconstruct_global_topology(TY, R[2], rj, ri, rk, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, R[3], rk, ri, rj, arch.communicator)
+    TX = reconstruct_global_topology(TX, R[1], ri, rj, rk, arch)
+    TY = reconstruct_global_topology(TY, R[2], rj, ri, rk, arch)
+    TZ = reconstruct_global_topology(TZ, R[3], rk, ri, rj, arch)
 
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
@@ -173,32 +173,32 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
     global_hl = halo_size(grid)
     global_hl = deflate_tuple(TX, TY, TZ, global_hl)
 
-    return construct_grid(grid, new_arch, FT; 
-                          size = global_sz, 
+    return construct_grid(grid, new_arch, FT;
+                          size = global_sz,
                           halo = global_hl,
                           x = xG, y = yG, z = zG,
                           topology = (TX, TY, TZ))
 end
 
-function construct_grid(::RectilinearGrid, arch, FT; size, halo, x, y, z, topology) 
+function construct_grid(::RectilinearGrid, arch, FT; size, halo, x, y, z, topology)
     TX, TY, TZ = topology
     x = TX == Flat ? nothing : x
     y = TY == Flat ? nothing : y
     z = TZ == Flat ? nothing : z
 
-    return RectilinearGrid(arch, FT; size, 
+    return RectilinearGrid(arch, FT; size,
                            halo,
                            x, y, z,
                            topology)
 end
 
-function construct_grid(::LatitudeLongitudeGrid, arch, FT; size, halo, x, y, z, topology) 
+function construct_grid(::LatitudeLongitudeGrid, arch, FT; size, halo, x, y, z, topology)
     TX, TY, TZ = topology
     longitude = TX == Flat ? nothing : x
     latitude  = TY == Flat ? nothing : y
     z         = TZ == Flat ? nothing : z
 
-    return LatitudeLongitudeGrid(arch, FT; size, 
+    return LatitudeLongitudeGrid(arch, FT; size,
                                  halo,
                                  longitude, latitude, z,
                                  topology)

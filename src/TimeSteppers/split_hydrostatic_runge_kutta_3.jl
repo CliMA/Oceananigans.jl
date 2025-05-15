@@ -28,8 +28,8 @@ end
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified via optional `kwargs`.
 
-The scheme described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge Kutta timestepper 
-steps forward the state `Uⁿ` by `Δt` via 3 substeps. A barotropic velocity correction step is applied 
+The scheme described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge Kutta timestepper
+steps forward the state `Uⁿ` by `Δt` via 3 substeps. A barotropic velocity correction step is applied
 after at each substep.
 
 The state `U` after each substep `m` is
@@ -56,7 +56,7 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
           "Use at own risk, and report any issues encountered.")
 
     !isnothing(implicit_solver) &&
-        @warn("Implicit-explicit time-stepping with SplitRungeKutta3TimeStepper is not tested. " * 
+        @warn("Implicit-explicit time-stepping with SplitRungeKutta3TimeStepper is not tested. " *
                 "\n implicit_solver: $(typeof(implicit_solver))")
 
     γ² = 1 // 4
@@ -83,7 +83,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     ζ² = model.timestepper.ζ²
     ζ³ = model.timestepper.ζ³
 
-    store_fields!(model)
+    cache_previous_fields!(model)
 
     ####
     #### First stage
@@ -112,7 +112,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     ####
 
     model.clock.stage = 3
-    
+
     split_rk3_substep!(model, Δt, γ³, ζ³)
     calculate_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
@@ -159,11 +159,11 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     end
 end
 
-function store_fields!(model)
-    
+function cache_previous_fields!(model)
+
     previous_fields = model.timestepper.Ψ⁻
     model_fields = prognostic_fields(model)
-    
+
     for name in keys(previous_fields)
         if !isnothing(previous_fields[name])
             parent(previous_fields[name]) .= parent(model_fields[name]) # Storing also the halos

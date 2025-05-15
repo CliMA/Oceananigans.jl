@@ -7,7 +7,7 @@ using MPI
 # These tests are meant to be run on 4 ranks. This script may be run
 # stand-alone (outside the test environment) via
 #
-# mpiexec -n 4 julia --project test_distributed_models.jl
+# $ MPI_TEST=true mpiexec -n 4 julia --project test_distributed_hydrostatic_model.jl
 #
 # provided that a few packages (like TimesDates.jl) are in your global environment.
 #
@@ -16,20 +16,16 @@ using MPI
 # tmpi 4 julia --project
 #
 # then later:
-# 
-# julia> include("test_distributed_models.jl")
 #
-# When running the tests this way, uncomment the following line
+# julia> include("test_distributed_hydrostatic_model.jl")
 
 MPI.Initialized() || MPI.Init()
-
-# to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
-function Δ_min(grid) 
+function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
     Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx_min, Δy_min)
@@ -72,7 +68,7 @@ function rotation_with_shear_test(grid, closure=nothing)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
-    Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
+    Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz)
     Δt = all_reduce(min, Δt_local, architecture(grid))
 
     for _ in 1:10
@@ -83,36 +79,38 @@ function rotation_with_shear_test(grid, closure=nothing)
 end
 
 Nx = 32
-Ny = 32 
+Ny = 32
 
 for arch in archs
-    
-    # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N 
+
+    # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N
     # which would lead to different advection schemes for partitioned and non-partitioned grids.
     # `Fractional` is, however, tested in regression tests where the horizontal dimensions are larger.
     valid_x_partition = !(arch.partition.x isa Fractional)
     valid_y_partition = !(arch.partition.y isa Fractional)
     valid_z_partition = !(arch.partition.z isa Fractional)
-    
+
     if valid_x_partition & valid_y_partition & valid_z_partition
         @testset "Testing distributed solid body rotation" begin
-            underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
+            underlying_grid = LatitudeLongitudeGrid(arch,
+                                                    size = (Nx, Ny, 3),
                                                     halo = (4, 4, 3),
                                                     latitude = (-80, 80),
                                                     longitude = (-160, 160),
                                                     z = (-1, 0),
                                                     radius = 1,
-                                                    topology=(Bounded, Bounded, Bounded))
+                                                    topology = (Bounded, Bounded, Bounded))
 
             bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = false)
             immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             global_underlying_grid = reconstruct_global_grid(underlying_grid)
             global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
+                                           (global_underlying_grid, global_immersed_grid, global_immersed_grid))
                 if arch.local_rank == 0
                     @info "  Testing distributed solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper)"
                 end
@@ -190,3 +188,4 @@ for arch in archs
         end
     end
 end
+

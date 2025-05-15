@@ -1,20 +1,20 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, 
-                                       FlatExtrapolationOpenBoundaryCondition, 
+using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction,
+                                       FlatExtrapolationOpenBoundaryCondition,
                                        PerturbationAdvectionOpenBoundaryCondition
                                        fill_halo_regions!
 
 using Oceananigans: prognostic_fields
 
-function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
+function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(; grid, boundary_conditions=bcs,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = Model(; grid, boundary_conditions=bcs,
+                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
         time_step!(model, 1e-16)
@@ -36,7 +36,7 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     boundary_conditions = (; name => field_bcs)
 
     model = NonhydrostaticModel(; grid, boundary_conditions, tracers=:c)
-                                
+
     is_velocity_field = name ∈ (:u, :v, :w)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
     set!(field, 0)
@@ -103,7 +103,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) = -1.57082774272148
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
-    
+
     return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
@@ -224,11 +224,11 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
         boundary_adjacent_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
         view(parent(u), boundary_adjacent_index...) .= 2
         view(parent(u), tuple(map(n -> ifelse(n == orientation, 1:2, 1), 1:3)...)...) .= 0
-        
+
         time_step!(model, 1)
 
         end_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
-        
+
         # uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
         # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = 1.5
         @test all(interior(u, end_index...) .== 1.5)
@@ -241,13 +241,13 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
-        model = NonhydrostaticModel(; grid, 
-                              boundary_conditions, 
+        model = NonhydrostaticModel(; grid,
+                              boundary_conditions,
                               timestepper = :QuasiAdamsBashforth2,
                               forcing)
-        
+
         u = normal_velocity(Val(orientation), model)
-        
+
         for _ in 1:100
             time_step!(model, 0.1)
         end
@@ -353,15 +353,30 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             topo = (Bounded, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
+
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition)
+                end
             end
 
             for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :u, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :v, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :w, boundary_condition)
+
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :u, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :v, boundary_condition)
+                end
             end
         end
     end
@@ -409,7 +424,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             end
 
             # Omit ImmersedBoundaryGrid from vertically-periodic test
-            grid = rectilinear_grid((Bounded, Bounded, Periodic)) 
+            grid = rectilinear_grid((Bounded, Bounded, Periodic))
             for name in (:w, :c)
                 for (side, L) in zip((:east, :west, :north, :south), (Lx, Lx, Ly, Ly))
                     @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."

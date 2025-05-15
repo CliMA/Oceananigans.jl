@@ -1,7 +1,7 @@
 module Models
 
 export
-    NonhydrostaticModel,
+    NonhydrostaticModel, BackgroundField, BackgroundFields,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
@@ -15,7 +15,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
 using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
+using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
 using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
@@ -39,6 +39,7 @@ architecture(model::AbstractModel) = model.grid.architecture
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 timestepper(model::AbstractModel) = model.timestepper
+initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
@@ -100,7 +101,7 @@ include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 
-using .NonhydrostaticModels: NonhydrostaticModel, PressureField
+using .NonhydrostaticModels: NonhydrostaticModel, PressureField, BackgroundField, BackgroundFields
 
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -127,10 +128,10 @@ function possible_field_time_series(model::OceananigansModels)
     # such as model.diffusivity_fields
     return tuple(model_fields, forcing)
 end
- 
-# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`. 
+
+# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`.
 # Extract `FieldTimeSeries` from all property names that might contain a `FieldTimeSeries`
-# Flatten the resulting tuple by extracting unique values and set! them to the 
+# Flatten the resulting tuple by extracting unique values and set! them to the
 # correct time range by looping over them
 function update_model_field_time_series!(model::OceananigansModels, clock::Clock)
     time = Time(clock.time)
@@ -145,7 +146,7 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     return nothing
 end
-               
+
 import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)
@@ -161,7 +162,7 @@ function reset!(model::OceananigansModels)
     for field in model.timestepper.Gⁿ
         fill!(field, 0)
     end
-    
+
     return nothing
 end
 
@@ -169,7 +170,7 @@ end
 function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
-    if isempty(model_fields) 
+    if isempty(model_fields)
         return nothing
     end
 
@@ -181,14 +182,14 @@ end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingModel
 
-# Particle tracking models with prescribed velocities (and no tracers) 
+# Particle tracking models with prescribed velocities (and no tracers)
 # have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
-
 include("boundary_mean.jl")
+include("boundary_condition_operation.jl")
 
 end # module

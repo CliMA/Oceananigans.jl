@@ -3,14 +3,14 @@ using Oceananigans.Operators
 using Oceananigans.OutputReaders
 using Oceananigans.OutputReaders: OnDisk
 using Oceananigans.Units
-using Oceananigans.Utils: Time 
+using Oceananigans.Utils: Time
 using Printf
 using CairoMakie
 
 include("generate_input_data.jl")
 
 #####
-##### Periodic channel with time-dependent surface boundary fluxes 
+##### Periodic channel with time-dependent surface boundary fluxes
 #####
 
 # Simulation parameters
@@ -20,11 +20,11 @@ forcing_frequency = 1day
 
 arch = CPU()
 
-# Defining the grid 
+# Defining the grid
 grid = LatitudeLongitudeGrid(arch;
-                             size = (60, 60, 10), 
-                         latitude = (15, 75), 
-                        longitude = (0, 60), 
+                             size = (60, 60, 10),
+                         latitude = (15, 75),
+                        longitude = (0, 60),
                          topology = (Periodic, Bounded, Bounded),
                              halo = (4, 4, 4),
                                 z = (-1000, 0))
@@ -65,7 +65,7 @@ CairoMakie.record(fig, "boundary_conditions.mp4", 1:length(Qˢ), framerate = 10)
     iter[] = i
 end
 
-T_top_bc = FluxBoundaryCondition(Qˢ) 
+T_top_bc = FluxBoundaryCondition(Qˢ)
 u_top_bc = FluxBoundaryCondition(τₓ)
 
 T_bcs = FieldBoundaryConditions(top = T_top_bc)
@@ -75,7 +75,7 @@ u_bcs = FieldBoundaryConditions(top = u_top_bc)
 ##### Physical and Numerical Setup
 #####
 
-momentum_advection = VectorInvariant(vorticity_scheme = WENO(), 
+momentum_advection = VectorInvariant(vorticity_scheme = WENO(),
                                       vertical_scheme = WENO())
 
 tracer_advection = WENO()
@@ -96,8 +96,8 @@ closure = (convective_adjustment, vertical_diffusivity, horizontal_diffusivity)
 ##### Create the model and initial conditions
 #####
 
-model = HydrostaticFreeSurfaceModel(; 
-                                     grid, 
+model = HydrostaticFreeSurfaceModel(;
+                                     grid,
                                      momentum_advection,
                                      tracer_advection,
                                      tracers = :T,
@@ -105,7 +105,7 @@ model = HydrostaticFreeSurfaceModel(;
                                      boundary_conditions = (T = T_bcs, u = u_bcs))
 
 Tᵢ(x, y, z) = 2 * (1 + z / 1000)
-                                    
+
 set!(model, T = Tᵢ)
 
 #####
@@ -117,10 +117,10 @@ simulation = Simulation(model; Δt = 15minutes, stop_time)
 function progress(sim)
     model = sim.model
     u, v, w = model.velocities
-    T = model.tracers.T 
-    @info @sprintf("Simulation time: %s, max(|u|, |v|, |w|, |T|): %.2e, %.2e, %.2e, %.2e \n", 
-                   prettytime(sim.model.clock.time), 
-                   maximum(abs, u), maximum(abs, v), 
+    T = model.tracers.T
+    @info @sprintf("Simulation time: %s, max(|u|, |v|, |w|, |T|): %.2e, %.2e, %.2e, %.2e \n",
+                   prettytime(sim.model.clock.time),
+                   maximum(abs, u), maximum(abs, v),
                    maximum(abs, w), maximum(abs, T))
 
     return nothing
@@ -130,10 +130,10 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 output_file = "seasonal_baroclinic_channel.jld2"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
-                                                      schedule = TimeInterval(1day), 
-                                                      filename = output_file,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers);
+                                                schedule = TimeInterval(1day),
+                                                filename = output_file,
+                                                overwrite_existing = true)
 
 run!(simulation)
 
