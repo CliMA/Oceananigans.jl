@@ -7,9 +7,10 @@ using Oceananigans.Architectures: cpu_architecture
 
 iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 
-function find_time_index(time::Number, file_times, dt)
+function find_time_index(time::Number, file_times, Δt)
+    # Accommodate round-off discrepancies between the FTS times and file times
     ϵ = 100 * eps(eltype(file_times))
-    return findfirst(t -> isapprox(t, time, atol=ϵ*dt), file_times)
+    return findfirst(t -> isapprox(t, time, atol=ϵ*Δt), file_times)
 end
 
 find_time_index(time::AbstractTime, file_times, dt) = findfirst(t -> t == time, file_times)
