@@ -745,14 +745,16 @@ end
 @inline on_north_east_corner(i, j, grid) = (i == grid.Nx+1) & (j == grid.Ny+1)
 @inline on_north_west_corner(i, j, grid) = (i == 1) & (j == grid.Ny+1)
 
+import Oceananigans.Operators: Γᶠᶠᶜ
+
 """
     Γᶠᶠᶜ(i, j, k, grid, u, v)
 
 The vertical circulation associated with horizontal velocities ``u`` and ``v``.
 """
 @inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, u, v)
-    ip = max(2 - Hx, i)
-    jp = max(2 - Hy, j)
+    ip = max(2 - grid.Hx, i)
+    jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
                Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
