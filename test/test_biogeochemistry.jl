@@ -5,6 +5,7 @@ using CUDA
 
 using Oceananigans.Fields: ConstantField, ZeroField
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, AbstractContinuousFormBiogeochemistry
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 
 import Oceananigans.Biogeochemistry:
        required_biogeochemical_tracers,
@@ -134,7 +135,7 @@ end
         arch in archs,
         grid in (RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2)),
                  LatitudeLongitudeGrid(arch; size = (5, 5, 5), longitude = (-180, 180), latitude = (-85, 85), z = (-2, 0)),
-                 conformal_cubed_sphere_panel(arch; size = (3, 3, 3), z = (-2, 0)))
+                 ConformalCubedSpherePanelGrid(arch; size = (3, 3, 3), z = (-2, 0)))
 
         if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
             @info "Testing $bgc in $model on $grid..."
