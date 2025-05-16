@@ -264,6 +264,11 @@ function Distributed(child_architecture = CPU();
     ranks = Rx, Ry, Rz = size(partition)
     partition_ranks = Rx * Ry * Rz
 
+    if partition_ranks == 1
+        @warn "The script has been launched using a single MPI rank. \n
+               This might not be intended but a result of an incorrect MPI configuration."
+    end
+
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
     if partition_ranks != mpi_ranks
         throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
