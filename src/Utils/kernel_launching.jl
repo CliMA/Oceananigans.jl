@@ -93,8 +93,8 @@ A `MappedFunction` is a wrapper around a function `func` of a kernel that is map
 The `index_map` is a one-dimensional `AbstractArray` where the elements are tuple of indices `(i, j, k, ....)`.
 
 A kernel launched over a `MappedFunction` **needs** to be launched with a one-dimensional **static** workgroup and worksize.
-If using `launch!` with a non-nothing `active_cells_map` keyword argument, the kernel function will be automatically wrapped 
-in a `MappedFunction` with `index_map = active_cells_map` and the resulting kernel will be launched with a 
+If using `launch!` with a non-nothing `active_cells_map` keyword argument, the kernel function will be automatically wrapped
+in a `MappedFunction` with `index_map = active_cells_map` and the resulting kernel will be launched with a
 one-dimensional workgroup and worksize equal  to the length of the `active_cells_map`.
 """
 struct MappedFunction{F, M} <: Function
@@ -275,7 +275,7 @@ end
     mf = MappedFunction(f, map)
     return Kernel{Dev, B, W, typeof(mf)}(dev, mf)
 end
-       
+
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
@@ -346,7 +346,6 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-using CUDA: @device_override, blockIdx, threadIdx
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
 
@@ -471,14 +470,14 @@ const MappedKernel{D} = Kernel{D, <:Any, <:Any, <:MappedFunction} where D
 @inline get_mapped_kernel_property(k, ::Val{:index_map}) = getfield(getfield(k, :f), :index_map)
 @inline get_mapped_kernel_property(k, ::Val{:f})         = getfield(getfield(k, :f), :func)
 
-Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} = 
+Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} =
     NDRange{N, B, W}(Adapt.adapt(to, ndrange.blocks), Adapt.adapt(to, ndrange.workitems))
 
-# Extending the partition function to include the index_map in NDRange: note that in this case the 
+# Extending the partition function to include the index_map in NDRange: note that in this case the
 # index_map takes the place of the DynamicWorkitems which we assume is not needed in static kernels
 function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
-    
+
     # Calculate the static NDRange and WorkgroupSize
     index_map = kernel.index_map
     range = length(index_map)
@@ -488,7 +487,7 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
 
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
-    
+
     iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(IndexMap(), index_map)
 
     return iterspace, dynamic
@@ -500,8 +499,8 @@ end
 
 const MappedCompilerMetadata{N, C} = CompilerMetadata{N, C, <:Any, <:Any, <:MappedNDRange} where {N<:StaticSize, C}
 
-Adapt.adapt_structure(to, cm::MappedCompilerMetadata{N, C}) where {N, C} = 
-    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex), 
+Adapt.adapt_structure(to, cm::MappedCompilerMetadata{N, C}) where {N, C} =
+    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex),
                            Adapt.adapt(to, cm.ndrange),
                            Adapt.adapt(to, cm.iterspace))
 
@@ -522,7 +521,7 @@ Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, groupidx
     return (gidx - 1) * stride + idx.I[1]
 end
 
-# To check whether the index is valid in the index map, we need to 
+# To check whether the index is valid in the index map, we need to
 # check whether the linear index is smaller than the size of the index map
 
 # CPU version, the index is passed explicitly
@@ -530,16 +529,6 @@ end
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), __groupindex(ctx), idx)
-        return index ≤ __linear_ndrange(ctx)
-    else
-        return true
-    end
-end
-
-# GPU version, the indices are passed implicitly
-CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
-    if __dynamic_checkbounds(ctx)
-        index = @inbounds linear_expand(__iterspace(ctx), blockIdx().x, threadIdx().x)
         return index ≤ __linear_ndrange(ctx)
     else
         return true

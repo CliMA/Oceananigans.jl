@@ -14,7 +14,6 @@ using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
-using CUDA: CuArray
 
 include("distributed_macros.jl")
 include("distributed_architectures.jl")

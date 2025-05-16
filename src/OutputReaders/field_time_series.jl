@@ -5,7 +5,7 @@ using Statistics
 using JLD2
 using Adapt
 using Glob
-using CUDA: @allowscalar
+using GPUArraysCore
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
