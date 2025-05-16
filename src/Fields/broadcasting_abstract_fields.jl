@@ -17,7 +17,11 @@ Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::AbstractGPUArrayStyle{N})
 Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType})       where {ElType} = similar(Array{ElType}, axes(bc))
 Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}, dims) where {ElType} = similar(Array{ElType,length(dims)}, dims)
 
-@inline function Base.Broadcast.materialize!(dest::Field, bc::AbstractGPUArrayStyle)
+# Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
+const BroadcastedArrayOrGPUArray = Union{Broadcasted{<:DefaultArrayStyle},
+                                        Broadcasted{<:AbstractGPUArrayStyle}}
+
+@inline function Base.Broadcast.materialize!(dest::Field, bc::BroadcastedArrayOrGPUArray)
     if any(a isa OffsetArray for a in bc.args)
         return Base.Broadcast.materialize!(dest.data, bc)
     else
@@ -29,7 +33,7 @@ end
 # Right now, this may only produce expected behavior (re: dimensionality) for
 # WindowedField that are windowed in three-dimensions. Of course, broadcasting with
 # scalar `bc` is no issue.
-@inline Base.Broadcast.materialize!(dest::WindowedField, bc::Broadcasted{<:AbstractGPUArrayStyle}) =
+@inline Base.Broadcast.materialize!(dest::WindowedField, bc::BroadcastedArrayOrGPUArray) =
     Base.Broadcast.materialize!(parent(dest), bc)
 
 #####
