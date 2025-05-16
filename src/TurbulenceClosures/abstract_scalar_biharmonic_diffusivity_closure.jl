@@ -35,10 +35,10 @@ const AHBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalFormulation}
 const ADBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalDivergenceFormulation}
 const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 
-@inline ν_σᶜᶜᶜ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, closure, args...)
-@inline ν_σᶠᶠᶜ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶠᶠᶜ, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * σᶠᶠᶜ(i, j, k, grid, closure, args...)
-@inline ν_σᶠᶜᶠ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, closure, args...)
-@inline ν_σᶜᶠᶠ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, closure, args...)
+@inline ν_σᶜᶜᶜ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, args...)
+@inline ν_σᶠᶠᶜ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶠᶠᶜ, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * σᶠᶠᶜ(i, j, k, grid, args...)
+@inline ν_σᶠᶜᶠ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
+@inline ν_σᶜᶠᶠ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
 
 @inline viscous_flux_ux(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, ∂xᶜᶜᶜ, biharmonic_mask_x, ∇²ᶠᶜᶜ, fields.u)
 @inline viscous_flux_vx(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_x, ∂xᶠᶠᶜ, ∇²ᶜᶠᶜ, fields.v)
@@ -49,17 +49,17 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 @inline viscous_flux_uz(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_z, ∂zᶠᶜᶠ, ∇²ᶠᶜᶜ, fields.u)
 @inline viscous_flux_vz(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_z, ∂zᶜᶠᶠ, ∇²ᶜᶠᶜ, fields.v)
 @inline viscous_flux_wz(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, ∂zᶜᶜᶜ, biharmonic_mask_z, ∇²ᶜᶜᶠ, fields.w)
-@inline viscous_flux_ux(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, fields.u, fields.v)
-@inline viscous_flux_vx(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields, ζ★ᶠᶠᶜ, fields.u, fields.v)
+@inline viscous_flux_ux(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, closure, fields.u, fields.v)
+@inline viscous_flux_vx(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields, ζ★ᶠᶠᶜ, closure, fields.u, fields.v)
 @inline viscous_flux_wx(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_x, ∂xᶠᶜᶠ, ∇²ᶜᶜᶠ, fields.w)
-@inline viscous_flux_uy(i, j, k, grid, closure::AHBD, K, clk, fields, b) = - ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields, ζ★ᶠᶠᶜ, fields.u, fields.v)
-@inline viscous_flux_vy(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, fields.u, fields.v)
+@inline viscous_flux_uy(i, j, k, grid, closure::AHBD, K, clk, fields, b) = - ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields, ζ★ᶠᶠᶜ, closure, fields.u, fields.v)
+@inline viscous_flux_vy(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, closure, fields.u, fields.v)
 @inline viscous_flux_wy(i, j, k, grid, closure::AHBD, K, clk, fields, b) = + ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_y, ∂yᶜᶠᶠ, ∇²ᶜᶜᶠ,  fields.w)
 @inline viscous_flux_uz(i, j, k, grid, closure::AVBD, K, clk, fields, b) = + ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_z, ∂zᶠᶜᶠ, ∂²zᶠᶜᶜ, fields.u)
 @inline viscous_flux_vz(i, j, k, grid, closure::AVBD, K, clk, fields, b) = + ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_z, ∂zᶜᶠᶠ, ∂²zᶜᶠᶜ, fields.v)
 @inline viscous_flux_wz(i, j, k, grid, closure::AVBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, ∂zᶜᶜᶜ, biharmonic_mask_z, ∂²zᶜᶜᶠ, fields.w)
-@inline viscous_flux_ux(i, j, k, grid, closure::ADBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, fields.u, fields.v)
-@inline viscous_flux_vy(i, j, k, grid, closure::ADBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, fields.u, fields.v)
+@inline viscous_flux_ux(i, j, k, grid, closure::ADBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, closure, fields.u, fields.v)
+@inline viscous_flux_vy(i, j, k, grid, closure::ADBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, δ★ᶜᶜᶜ, closure, fields.u, fields.v)
 
 #####
 ##### Diffusive fluxes
@@ -95,15 +95,41 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
                                      δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, closure, u, v))
 end
 
+@inline function δ★ᶜᶜᶜ(i, j, k, grid, ::VectorInvariantASBD, u, v)
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, ∇²u_vector_invariantᶠᶜᶜ, u, v) +
+                                     δyᶜᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, ∇²v_vector_invariantᶜᶠᶜ, u, v))
+end
+
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid, closure, u, v)
     return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, closure, u, v) -
                                      δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, closure, u, v))
 end
 
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid, ::VectorInvariantASBD, u, v)
-    ∇²u = ∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v)
-    ∇²v = ∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v)
-    return ζ₃ᶠᶠᶜ(i, j, k, grid, ∇²u, ∇²v)
+    Γ = (+ δxᶠᶜᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, ∇²v_vector_invariantᶜᶠᶜ, u, v)
+         - δyᶜᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, ∇²u_vector_invariantᶠᶜᶜ, u, v))
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * Γ
+end
+
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanel
+using Oceananigans.Operators: on_south_west_corner, on_north_west_corner, on_south_east_corner, on_north_east_corner
+
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanel, ::VectorInvariantASBD, u, v)
+    ip = max(2 - grid.Hx, i)
+    jp = max(2 - grid.Hy, j)
+    Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
+               (+ Δy_qᶜᶠᶜ(ip, jp,   k, grid, ∇²v_vector_invariantᶜᶠᶜ, u, v)
+                - Δx_qᶠᶜᶜ(ip, jp,   k, grid, ∇²u_vector_invariantᶠᶜᶜ, u, v)
+                + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, ∇²u_vector_invariantᶠᶜᶜ, u, v)),
+               ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
+                      (- Δy_qᶜᶠᶜ(ip-1, jp,   k, grid, ∇²v_vector_invariantᶜᶠᶜ, u, v)
+                       + Δx_qᶠᶜᶜ(ip,   jp-1, k, grid, ∇²u_vector_invariantᶠᶜᶜ, u, v)
+                       - Δx_qᶠᶜᶜ(ip,   jp,   k, grid, ∇²u_vector_invariantᶠᶜᶜ, u, v)),
+                      (+ δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, ∇²v_vector_invariantᶜᶠᶜ, u, v)
+                       - δyᶜᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, ∇²u_vector_invariantᶠᶜᶜ, u, v))
+                     )
+              )
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * Γ
 end
 
 #####
