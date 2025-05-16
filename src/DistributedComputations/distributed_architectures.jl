@@ -266,7 +266,8 @@ function Distributed(child_architecture = CPU();
 
     if partition_ranks == 1
         @warn "We are building a Distributed architecture on a single MPI rank. \n" *
-              "This can occur when MPI is incorrectly configured."
+              "This can occur when MPI is incorrectly configured. \n" *
+              "See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details."
     end
 
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
