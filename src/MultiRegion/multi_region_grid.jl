@@ -113,7 +113,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
 
     if validate
         devices = validate_devices(partition, arch, devices)
-        devices = assign_devices(partition, devices)
+        devices = assign_devices(arch, partition, devices)
     end
 
     connectivity = Connectivity(devices, partition, global_grid)

@@ -28,8 +28,7 @@ function __init__()
 end
 
 const CUDAGPU = AC.GPU{<:CUDABackend}
-
-CUDAGPU() = GPU(CUDABackend(always_inline=true))
+CUDAGPU() = AC.GPU(CUDABackend(always_inline=true))
 
 # Keep default CUDA backend
 function AC.GPU()
@@ -108,7 +107,8 @@ function SO.plan_backward_transform(A::CuArray, ::Union{BC.Bounded, BC.Periodic}
 end
 
 # CUDA version, the indices are passed implicitly
-CUDA.@device_override @inline function __validindex(ctx::UT.MappedCompilerMetadata)
+# You must not use KA here as this code is executed in another scope
+CUDA.@device_override @inline function KernelAbstractions.__validindex(ctx::UT.MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds UT.linear_expand(__iterspace(ctx), blockIdx().x, threadIdx().x)
         return index ≤ UT.__linear_ndrange(ctx)
