@@ -17,7 +17,7 @@ function cache_fluxes!(model, dissipation)
     launch!(arch, grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
     for (tracer_id, tracer_name) in enumerate(keys(dissipation.advective_production))
-        cache_fluxes!(dissipation, model, tracer_name, tracer_id)
+        cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
     end
 
     return nothing
