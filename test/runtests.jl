@@ -133,6 +133,7 @@ CUDA.allowscalar() do
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
+            include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
         end
     end
@@ -156,7 +157,7 @@ CUDA.allowscalar() do
             include("test_implicit_free_surface_solver.jl")
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
+            include("test_immersed_implicit_free_surface.jl")
         end
     end
 
