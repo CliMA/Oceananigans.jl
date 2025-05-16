@@ -60,6 +60,7 @@ device(a::CPU) = KernelAbstractions.CPU()
 device(a::GPU) = a.device
 devices(a::AbstractArchitecture) = KA.devices(device(a))
 device!(a::AbstractArchitecture) = KA.device!(device(a))
+ndevices(a::AbstractArchitecture) = KA.ndevices(device(a))
 
 architecture() = nothing
 architecture(::Number) = nothing
