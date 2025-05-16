@@ -93,7 +93,7 @@ Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[])
 
 (bam::BoundaryAdjacentMean)(side, u) = bam(Val(side), u)
 
-# computes the boundary mean and stores/returns it
+# Computes the boundary mean and stores it.
 function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     grid = u.grid
 
@@ -111,15 +111,8 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
 
     bam.value[] /= CUDA.@allowscalar bam.flux_field[iB, jB, kB]
 
-    return bam.value[]
-end
-
-# let this get updated in boundary conditions
-
-const MOOBC = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
-
-@inline function update_boundary_condition!(bc::MOOBC, val_side, u, model)
-    bc.condition(val_side, u)
-
     return nothing
 end
+
+const MOOBC = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
+@inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
