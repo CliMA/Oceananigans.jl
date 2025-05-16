@@ -265,8 +265,8 @@ function Distributed(child_architecture = CPU();
     partition_ranks = Rx * Ry * Rz
 
     if partition_ranks == 1
-        @warn "The script has been launched using a single MPI rank. \n" *
-              "This might not be intended but a result of an incorrect MPI configuration."
+        @warn "We are building a Distributed architecture on a single MPI rank. \n" *
+              "This can occur when MPI is incorrectly configured."
     end
 
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
