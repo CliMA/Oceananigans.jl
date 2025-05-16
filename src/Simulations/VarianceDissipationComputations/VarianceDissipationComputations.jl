@@ -25,18 +25,15 @@ using Oceananigans.Advection: _advective_tracer_flux_x,
 
 using Oceananigans.Operators: volume
 using KernelAbstractions: @kernel, @index
-using Oceananigans: AbstractDiagnostic
 
-import Oceananigans: run_diagnostic!
-
-struct VarianceDissipation{P, K, A, D, S, G, T} <: AbstractDiagnostic
-    schedule :: T
+struct VarianceDissipation{P, K, A, D, S, G} 
     advective_production :: P
     diffusive_production :: K
     advective_fluxes :: A
     diffusive_fluxes :: D
     previous_state :: S
     gradient_squared :: G
+    tracer_name :: Symbol
 end
 
 include("dissipation_utils.jl")
@@ -68,30 +65,17 @@ Keyword Argument
 !!! Note
     At the moment, the variance dissipation diagnostic is supported only for `QuasiAdamsBashforth2` timesteppers.
 """
-function VarianceDissipation(model; tracers=propertynames(model.tracers))
+function VarianceDissipation(tracer_name, grid; 
+                             Uⁿ⁻¹ = VelocityFields(tracer.grid), 
+                             Uⁿ   = VelocityFields(tracer.grid))
         
-    if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
-        throw(ArgumentError("DissipationComputation requires a QuasiAdamsBashforth2TimeStepper"))
-    end
-
-    tracers = tupleit(tracers)
-    diffusivities = model.diffusivity_fields
-    closure       = model.closure
-    grid          = model.grid
-
-    P    = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
-    K    = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))
-
-    Vⁿ   = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))
-    Vⁿ⁻¹ = NamedTuple{tracers}(tracer_closure_dissipation(grid, diffusivities, closure, id) for id in eachindex(tracers))    
-
-    Fⁿ   = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
-    Fⁿ⁻¹ = NamedTuple{tracers}(tracer_fluxes(grid) for tracer in tracers)
-    
-    Uⁿ⁻¹ = VelocityFields(grid)
-    Uⁿ   = VelocityFields(grid)
-    
-    cⁿ⁻¹ = NamedTuple{tracers}(CenterField(grid) for tracer in tracers)
+    P    = tracer_fluxes(grid) 
+    K    = tracer_fluxes(grid)
+    Vⁿ   = tracer_fluxes(grid) 
+    Vⁿ⁻¹ = tracer_fluxes(grid) 
+    Fⁿ   = tracer_fluxes(grid) 
+    Fⁿ⁻¹ = tracer_fluxes(grid) 
+    cⁿ⁻¹ = CenterField(grid)
 
     previous_state   = merge(cⁿ⁻¹, (; Uⁿ⁻¹, Uⁿ))
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
@@ -99,24 +83,42 @@ function VarianceDissipation(model; tracers=propertynames(model.tracers))
 
     gradients = deepcopy(P)
 
-    # Hardcode to 1 for the moment because it works only 
-    # if called every time step
-    schedule = IterationInterval(1)
-
-    return VarianceDissipation(schedule, P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
+    return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients, tracer_name)
 end
 
-run_diagnostic!(ϵ::VarianceDissipation, model) = ϵ(model)
+function (ϵ::VarianceDissipation)(sim::Simulation)
+    model = sim.model
+    # Check if the model is using a QuasiAdamsBashforth2 time stepper
+    if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
+        throw(ArgumentError("VarianceDissipation is only supported for QuasiAdamsBashforth2 time-stepping."))
+    end
 
-function (ϵ::VarianceDissipation)(model)
+    # Check if the model has a velocity field
+    if !hasproperty(model, :velocities)
+        throw(ArgumentError("Model must have a velocity field."))
+    end
 
-    # We first assemble values for Pⁿ⁻¹
-    compute_dissipation!(model, ϵ)
+    # Check if the model has tracers
+    if !hasproperty(model.tracers, ϵ.tracer_name)
+        throw(ArgumentError("Model must have a tracer called $tracer_name."))
+    end
+
+    compute_dissipation!(model, ϵ, ϵ.tracer_name)
 
     # Then we update the fluxes to be used in the next time step
-    cache_fluxes!(model, ϵ)
-
+    cache_fluxes!(model, ϵ, ϵ.tracer_name)
+    
     return nothing
+end
+
+@inline getadvection(advection, tracer_name) = advection
+@inline getadvection(advection::NamedTuple, tracer_name) = @inbounds advection[tracer_name]
+
+function tracer_fluxes(grid)
+    x = XFaceField(grid)
+    y = YFaceField(grid)
+    z = ZFaceField(grid)
+    return (; x, y, z)
 end
 
 const f = Face()

@@ -1,11 +1,3 @@
-function compute_dissipation!(model, dissipation)
-
-    for tracer_name in keys(dissipation.advective_production)
-        compute_dissipation!(dissipation, model, tracer_name)
-    end
-
-    return nothing
-end
 
 @inline c★(i, j, k, grid, cⁿ⁺¹, cⁿ) = @inbounds (cⁿ⁺¹[i, j, k] + cⁿ[i, j, k]) / 2
 @inline c²(i, j, k, grid, cⁿ⁺¹, cⁿ) = @inbounds (cⁿ⁺¹[i, j, k] * cⁿ[i, j, k])
@@ -41,15 +33,15 @@ function compute_dissipation!(dissipation, model, tracer_name::Symbol)
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
 
     cⁿ⁺¹ = model.tracers[tracer_name]
-    cⁿ   = dissipation.previous_state[tracer_name]
+    cⁿ   = dissipation.previous_state
     
     ####
     #### Assemble the advective dissipation
     ####
 
-    P    = dissipation.advective_production[tracer_name]
-    Fⁿ   = dissipation.advective_fluxes.Fⁿ[tracer_name]
-    Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹[tracer_name]
+    P    = dissipation.advective_production
+    Fⁿ   = dissipation.advective_fluxes.Fⁿ
+    Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
 
     launch!(arch, grid, :xyz, _assemble_advective_dissipation!, P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ⁺¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
@@ -57,9 +49,9 @@ function compute_dissipation!(dissipation, model, tracer_name::Symbol)
     #### Assemble the diffusive dissipation
     #### 
 
-    K    = dissipation.diffusive_production[tracer_name]
-    Vⁿ   = dissipation.diffusive_fluxes.Vⁿ[tracer_name]
-    Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹[tracer_name]
+    K    = dissipation.diffusive_production
+    Vⁿ   = dissipation.diffusive_fluxes.Vⁿ
+    Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹
 
     launch!(arch, grid, :xyz, _assemble_diffusive_dissipation!, K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
 

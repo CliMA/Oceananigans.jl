@@ -2,11 +2,11 @@ using Oceananigans: fields
 using Oceananigans.Grids: topology, Flat
 
 # Store advective and diffusive fluxes for dissipation computation
-function cache_fluxes!(model, dissipation)
-    grid   = model.grid
-    arch   = architecture(grid)
-    sz     = size(model.tracers[1].data)
-    of     = model.tracers[1].data.offsets
+function cache_fluxes!(model, dissipation, tracer_name::Symbol)
+    grid = model.grid
+    arch = architecture(grid)
+    sz   = size(model.tracers[1].data)
+    of   = model.tracers[1].data.offsets
 
     params = KernelParameters(sz, of)
     
@@ -16,9 +16,8 @@ function cache_fluxes!(model, dissipation)
 
     launch!(arch, grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
-    for (tracer_id, tracer_name) in enumerate(keys(dissipation.advective_production))
-        cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
-    end
+    tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
+    cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
 
     return nothing
 end
@@ -36,7 +35,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     
     # Grab tracer properties
     c    = model.tracers[tracer_name]
-    cⁿ⁻¹ = dissipation.previous_state[tracer_name]
+    cⁿ⁻¹ = dissipation.previous_state
 
     grid = model.grid
     arch = architecture(grid)
@@ -47,9 +46,9 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     #### Update the advective fluxes and compute gradient squared
     ####
 
-    Fⁿ   = dissipation.advective_fluxes.Fⁿ[tracer_name]
-    Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹[tracer_name]
-    Gⁿ   = dissipation.gradient_squared[tracer_name]
+    Fⁿ   = dissipation.advective_fluxes.Fⁿ
+    Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
+    Gⁿ   = dissipation.gradient_squared
     advection = getadvection(model.advection, tracer_name)
 
     launch!(arch, grid, params, _cache_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
@@ -58,8 +57,8 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     #### Update the diffusive fluxes
     ####
 
-    Vⁿ   = dissipation.diffusive_fluxes.Vⁿ[tracer_name]
-    Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹[tracer_name]
+    Vⁿ   = dissipation.diffusive_fluxes.Vⁿ
+    Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹
 
     D = model.diffusivity_fields
     B = model.buoyancy
