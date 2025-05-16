@@ -11,6 +11,7 @@ struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 
 # Precedence rule
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::AbstractGPUArrayStyle{N}) where N = FieldBroadcastStyle()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
