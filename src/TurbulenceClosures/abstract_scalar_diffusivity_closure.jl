@@ -28,6 +28,13 @@ Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
 struct HorizontalFormulation <: AbstractDiffusivityFormulation end
 
 """
+    struct VectorInvariantForm end
+
+Specifies a `VectorInvariant` `ScalarDiffusivity`.
+"""
+struct VectorInvariantForm <: AbstractDiffusivityFormulation end
+
+"""
     struct HorizontalDivergenceFormulation end
 
 Specifies viscosity for "divergence damping". Has no effect on tracers.
@@ -288,7 +295,6 @@ end
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
-
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
