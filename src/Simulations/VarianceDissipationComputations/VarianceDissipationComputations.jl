@@ -36,7 +36,12 @@ struct VarianceDissipation{P, K, A, D, S, G}
     tracer_name :: Symbol
 end
 
-include("dissipation_utils.jl")
+function vector_field(grid)
+    x = XFaceField(grid)
+    y = YFaceField(grid)
+    z = ZFaceField(grid)
+    return (; x, y, z)
+end
 
 """
     VarianceDissipation(model; tracers=propertynames(model.tracers))
@@ -69,12 +74,12 @@ function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(tracer.grid), 
                              Uⁿ   = VelocityFields(tracer.grid))
         
-    P    = tracer_fluxes(grid) 
-    K    = tracer_fluxes(grid)
-    Vⁿ   = tracer_fluxes(grid) 
-    Vⁿ⁻¹ = tracer_fluxes(grid) 
-    Fⁿ   = tracer_fluxes(grid) 
-    Fⁿ⁻¹ = tracer_fluxes(grid) 
+    P    = vector_field(grid) 
+    K    = vector_field(grid)
+    Vⁿ   = vector_field(grid) 
+    Vⁿ⁻¹ = vector_field(grid) 
+    Fⁿ   = vector_field(grid) 
+    Fⁿ⁻¹ = vector_field(grid) 
     cⁿ⁻¹ = CenterField(grid)
 
     previous_state   = merge(cⁿ⁻¹, (; Uⁿ⁻¹, Uⁿ))
@@ -113,13 +118,6 @@ end
 
 @inline getadvection(advection, tracer_name) = advection
 @inline getadvection(advection::NamedTuple, tracer_name) = @inbounds advection[tracer_name]
-
-function tracer_fluxes(grid)
-    x = XFaceField(grid)
-    y = YFaceField(grid)
-    z = ZFaceField(grid)
-    return (; x, y, z)
-end
 
 const f = Face()
 const c = Center()
