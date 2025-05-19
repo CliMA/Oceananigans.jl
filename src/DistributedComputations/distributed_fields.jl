@@ -123,7 +123,6 @@ end
 
 partition_dimensions(f::DistributedField) = partition_dimensions(architecture(f))
 
-
 function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
