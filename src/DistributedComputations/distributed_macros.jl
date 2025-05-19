@@ -131,10 +131,7 @@ If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
 macro handshake(communicator, exp)
     command = quote
-        mpi_initialized = Oceananigans.DistributedComputations.mpi_initialized()
-        if !mpi_initialized
-            $exp
-        else
+        if Oceananigans.DistributedComputations.mpi_initialized()
             rank   = Oceananigans.DistributedComputations.mpi_rank($communicator)
             nprocs = Oceananigans.DistributedComputations.mpi_size($communicator)
             for r in 0 : nprocs -1
@@ -143,6 +140,8 @@ macro handshake(communicator, exp)
                 end
                 Oceananigans.DistributedComputations.global_barrier($communicator)
             end
+        else
+            $exp
         end
     end
     return esc(command)
