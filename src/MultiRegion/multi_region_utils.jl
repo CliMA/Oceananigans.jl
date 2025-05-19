@@ -21,7 +21,7 @@ function validate_devices(partition, arch::GPU, devices::Number)
     return devices
 end
 
-assign_devices(arch::AbstractArchitecture, ::Nothing) = Tuple(arch for i in 1:length(p))
+assign_devices(arch::AbstractArchitecture, p::AbstractPartition, ::Nothing) = Tuple(arch for i in 1:length(p))
 
 function assign_devices(arch::AbstractArchitecture, p::AbstractPartition, dev::Number)
     part     = length(p)
