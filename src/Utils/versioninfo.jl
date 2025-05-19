@@ -8,9 +8,11 @@ function versioninfo_with_gpu()
     if isdefined(Main, :CUDA)
         try
             return versioninfo_with_gpu(GPU())
-        catch e
-            println("No GPU device found.")
+        catch
+            return "No GPU device found."
         end
+    else
+        return string()
     end
 end
 
