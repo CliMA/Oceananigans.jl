@@ -125,7 +125,7 @@ end
 """
     @handshake communicator exp...
 
-perform `exp` on all ranks in `communicator`, but only one rank at a time, where
+Perform `exp` on all ranks in `communicator`, but only one rank at a time, that is
 ranks `r2 > r1` wait for rank `r1` to finish before executing `exp`.
 If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
@@ -134,7 +134,7 @@ macro handshake(communicator, exp)
         if Oceananigans.DistributedComputations.mpi_initialized()
             rank   = Oceananigans.DistributedComputations.mpi_rank($communicator)
             nprocs = Oceananigans.DistributedComputations.mpi_size($communicator)
-            for r in 0 : nprocs -1
+            for r in 0 : nprocs-1
                 if rank == r
                     $exp
                 end
