@@ -228,7 +228,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     tracers = model.tracers
     buoyancy = model.buoyancy
     top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
-    Δt = model.clock.time - diffusivities.clock.time
+    Δt = model.clock.last_Δt
 
     @trace if model.clock.iteration != diffusivities.clock.iteration # time-step TKE forward
         # Compute e if the model has been stepped forward:
