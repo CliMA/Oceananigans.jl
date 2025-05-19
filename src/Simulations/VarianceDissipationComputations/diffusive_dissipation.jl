@@ -1,9 +1,6 @@
-@kernel function _assemble_diffusive_dissipation!(K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_ab2_diffusive_dissipation!(K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
-    compute_diffusive_dissipation!(K, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ)
-end
 
-@inline function compute_diffusive_dissipation!(K, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, cⁿ⁺¹, cⁿ)
     C₁  = convert(eltype(grid), 1.5 + χ)
     C₂  = convert(eltype(grid), 0.5 + χ)
 
@@ -24,8 +21,45 @@ end
         K.y[i, j, k] = 2 * δʸc★ * (vy₁ - vy₂)
         K.z[i, j, k] = 2 * δᶻc★ * (vz₁ - vz₂)
     end
+end
 
-    return nothing
+@kernel function _assemble_srk3_diffusive_dissipation!(K, grid, ::Nothing, Vⁿ, cⁿ⁺¹, cⁿ)
+    i, j, k = @index(Global, NTuple)
+
+    δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)    
+    δʸc★ = δyᶜᶠᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    
+    @inbounds begin
+        vx₁ = C₁ * Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        vy₁ = C₁ * Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        vz₁ = C₁ * Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+
+        K.x[i, j, k] = 2 * δˣc★ * vx₁ / 6
+        K.y[i, j, k] = 2 * δʸc★ * vy₁ / 6
+        K.z[i, j, k] = 2 * δᶻc★ * vz₁ / 6
+    end
+end
+
+@kernel function _assemble_srk3_diffusive_dissipation!(K, grid, substep, Vⁿ, cⁿ⁺¹, cⁿ)
+    i, j, k = @index(Global, NTuple)
+    FT   = eltype(grid)
+
+    δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)    
+    δʸc★ = δyᶜᶠᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    
+    C = ifelse(substep == 2, 1 / FT(6), 2 / FT(3))
+
+    @inbounds begin
+        vx₁ = C₁ * Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        vy₁ = C₁ * Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        vz₁ = C₁ * Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+
+        K.x[i, j, k] += 2 * δˣc★ * vx₁ * C
+        K.y[i, j, k] += 2 * δʸc★ * vy₁ * C
+        K.z[i, j, k] += 2 * δᶻc★ * vz₁ * C
+    end
 end
 
 @kernel function _cache_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields) 

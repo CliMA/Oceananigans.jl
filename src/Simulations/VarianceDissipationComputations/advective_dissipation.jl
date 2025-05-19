@@ -1,5 +1,5 @@
 # TODO: This is only for AB2, figure out how to generalize this for other timesteppers for example RK3
-@kernel function _assemble_advective_dissipation!(P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ⁺¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_ab2_advective_dissipation!(P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
@@ -34,6 +34,65 @@
         P.x[i, j, k] = 2 * δˣc★ * (fx₁ - fx₂) - δˣc² * (u₁ - u₂)
         P.y[i, j, k] = 2 * δʸc★ * (fy₁ - fy₂) - δʸc² * (v₁ - v₂)
         P.z[i, j, k] = 2 * δᶻc★ * (fz₁ - fz₂) - δᶻc² * (w₁ - w₂)
+    end
+end
+
+# TODO: This is only for AB2, figure out how to generalize this for other timesteppers for example RK3
+@kernel function _assemble_rk3_advective_dissipation!(P, grid, ::Nothing, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+    i, j, k = @index(Global, NTuple)
+
+    δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δˣc² = δxᶠᶜᶜ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
+    
+    δʸc★ = δyᶜᶠᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δʸc² = δyᶜᶠᶜ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
+    
+    δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δᶻc² = δzᶜᶜᶠ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
+
+    @inbounds begin
+        u₁ = C₁ * Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        v₁ = C₁ * Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        w₁ = C₁ * Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+
+        fx₁ = C₁ * Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        fy₁ = C₁ * Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        fz₁ = C₁ * Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+
+        P.x[i, j, k] = (2 * δˣc★ * fx₁ - δˣc² * u₁) / 6
+        P.y[i, j, k] = (2 * δʸc★ * fy₁ - δʸc² * v₁) / 6
+        P.z[i, j, k] = (2 * δᶻc★ * fz₁ - δᶻc² * w₁) / 6
+    end
+end
+
+# TODO: This is only for AB2, figure out how to generalize this for other timesteppers for example RK3
+@kernel function _assemble_srk3_advective_dissipation!(P, grid, substep, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+    i, j, k = @index(Global, NTuple)
+    FT = eltype(grid)
+
+    δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δˣc² = δxᶠᶜᶜ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
+    
+    δʸc★ = δyᶜᶠᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δʸc² = δyᶜᶠᶜ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
+    
+    δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
+    δᶻc² = δzᶜᶜᶠ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
+
+    C = ifelse(substep == 2, 1 / FT(6), 2 / FT(3))
+
+    @inbounds begin
+        u₁ = C₁ * Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        v₁ = C₁ * Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        w₁ = C₁ * Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+
+        fx₁ = C₁ * Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        fy₁ = C₁ * Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        fz₁ = C₁ * Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+
+        P.x[i, j, k] += (2 * δˣc★ * fx₁ - δˣc² * u₁) * C
+        P.y[i, j, k] += (2 * δʸc★ * fy₁ - δʸc² * v₁) * C
+        P.z[i, j, k] += (2 * δᶻc★ * fz₁ - δᶻc² * w₁) * C
     end
 end
 

@@ -40,7 +40,7 @@ advecting_velocity(::Val{:x}) = PrescribedVelocityFields(u = 1)
 advecting_velocity(::Val{:y}) = PrescribedVelocityFields(v = 1)
 advecting_velocity(::Val{:z}) = PrescribedVelocityFields(w = 1)
 
-function test_implicit_diffusion_diagnostic(arch, dim, schedule)
+function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
 
     # 1D grid constructions
     grid = periodic_grid(arch, Val(dim))
@@ -105,13 +105,15 @@ end
     for arch in archs
         schedules = [IterationInterval(1), IterationInterval(10), IterationInterval(100)]
         for schedule in schedules
-            @testset "Implicit Diffusion on $schedule schedule [$(typeof(arch))]" begin
-                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in x-direction..."
-                test_implicit_diffusion_diagnostic(arch, :x, schedule)
-                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in y-direction..."
-                test_implicit_diffusion_diagnostic(arch, :y, schedule)
-                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in z-direction..."
-                test_implicit_diffusion_diagnostic(arch, :z, schedule)
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                @testset "Implicit Diffusion on $schedule schedule and $timestepper, [$(typeof(arch))]" begin
+                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in x-direction..."
+                    test_implicit_diffusion_diagnostic(arch, :x, timestepper, schedule)
+                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in y-direction..."
+                    test_implicit_diffusion_diagnostic(arch, :y, timestepper, schedule)
+                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in z-direction..."
+                    test_implicit_diffusion_diagnostic(arch, :z, timestepper, schedule)
+                end
             end
         end
     end

@@ -1,3 +1,4 @@
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper
 
 @inline c★(i, j, k, grid, cⁿ⁺¹, cⁿ) = @inbounds (cⁿ⁺¹[i, j, k] + cⁿ[i, j, k]) / 2
 @inline c²(i, j, k, grid, cⁿ⁺¹, cⁿ) = @inbounds (cⁿ⁺¹[i, j, k] * cⁿ[i, j, k])
@@ -24,17 +25,16 @@ For an RK3 method (not implemented at the moment), the whole substepping procedu
 function compute_dissipation!(model, dissipation, tracer_name::Symbol)
     
     grid = model.grid
-    arch = architecture(grid)
-    χ = model.timestepper.χ
 
     # General velocities
-    Uⁿ⁺¹ = model.velocities
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
 
     cⁿ⁺¹ = model.tracers[tracer_name]
     cⁿ   = dissipation.previous_state.cⁿ⁻¹
     
+    substep = model.clock.stage
+
     ####
     #### Assemble the advective dissipation
     ####
@@ -43,7 +43,7 @@ function compute_dissipation!(model, dissipation, tracer_name::Symbol)
     Fⁿ   = dissipation.advective_fluxes.Fⁿ
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
 
-    launch!(arch, grid, :xyz, _assemble_advective_dissipation!, P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ⁺¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+    assemble_advective_dissipation!(P, grid, model.timestepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
     ####
     #### Assemble the diffusive dissipation
@@ -53,7 +53,23 @@ function compute_dissipation!(model, dissipation, tracer_name::Symbol)
     Vⁿ   = dissipation.diffusive_fluxes.Vⁿ
     Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹
 
-    launch!(arch, grid, :xyz, _assemble_diffusive_dissipation!, K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
+    assemble_diffusive_dissipation!(K, grid, model.timestepper, substep, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
     return nothing
+end
+
+assemble_advective_dissipation!(P, grid, ts::QuasiAdamsBashforth2TimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ) = 
+    launch!(architecture(grid), grid, :xyz, _assemble_ab2_advective_dissipation!, P, grid, ts.χ, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+
+function assemble_advective_dissipation!(P, grid, ::SplitRungeKutta3TimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ) 
+    stage = ifelse(substep == 1, nothing, substep)
+    return launch!(architecture(grid), grid, :xyz, _assemble_srk3_advective_dissipation!, P, grid, stage, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+end
+
+assemble_diffusive_dissipation!(K, grid, ts::QuasiAdamsBashforth2TimeStepper, substep, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ) = 
+    launch!(architecture(grid), grid, :xyz, _assemble_ab2_diffusive_dissipation!, K, grid, ts.χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
+
+function assemble_diffusive_dissipation!(K, grid, ::SplitRungeKutta3TimeStepper, substep, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ) 
+    stage = ifelse(substep == 1, nothing, substep)
+    return launch!(architecture(grid), grid, :xyz, _assemble_srk3_diffusive_dissipation!, K, grid, stage, Vⁿ, cⁿ⁺¹, cⁿ)
 end
