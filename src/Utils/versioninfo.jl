@@ -12,12 +12,12 @@ function versioninfo_with_gpu()
             return "No GPU device found."
         end
     else
-        return string()
+        return ""
     end
 end
 
 function versioninfo_with_gpu(::CPU)
-    return print("No GPU device")
+    return "No GPU device"
 end
 
 function oceananigans_versioninfo()
