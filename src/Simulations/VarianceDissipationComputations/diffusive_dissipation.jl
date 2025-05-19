@@ -78,6 +78,8 @@ end
     end
 end
 
+compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, ::Nothing, K, b, c, c_id, clk, fields) = nothing
+
 const etd = ExplicitTimeDiscretization()
 
 @inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
