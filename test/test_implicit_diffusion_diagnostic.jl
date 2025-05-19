@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans
-using Oceananigans.Diagnostics: VarianceDissipation
+using Oceananigans.Simulations: VarianceDissipation
 using KernelAbstractions: @kernel, @index
 
 @kernel function _compute_dissipation!(Δtc², c⁻, c, Δt)
@@ -40,7 +40,7 @@ advecting_velocity(::Val{:x}) = PrescribedVelocityFields(u = 1)
 advecting_velocity(::Val{:y}) = PrescribedVelocityFields(v = 1)
 advecting_velocity(::Val{:z}) = PrescribedVelocityFields(w = 1)
 
-function test_implicit_diffusion_diagnostic(arch, dim)
+function test_implicit_diffusion_diagnostic(arch, dim, schedule)
 
     # 1D grid constructions
     grid = periodic_grid(arch, Val(dim))
@@ -67,15 +67,18 @@ function test_implicit_diffusion_diagnostic(arch, dim)
 
     sim = Simulation(model; Δt=0.01, stop_time=1)
 
-    ϵ = VarianceDissipation(model)
-    f = Oceananigans.Diagnostics.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
+    ϵ = VarianceDissipation(:c, grid)
+    f = Oceananigans.Simulations.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
+
     outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
-    sim.diagnostics[:variance_dissipation] = ϵ
+    
+    add_callback!(sim, ϵ, schedule)
+
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
-                                            filename="one_d_simulation_$(dim).jld2",
-                                            schedule=IterationInterval(10),
-                                            overwrite_existing=true,
-                                            array_type = Array{Float64})
+                                               filename="one_d_simulation_$(dim).jld2",
+                                               schedule, # Make sure it is the same schedule as the one where we compute the dissipation
+                                               overwrite_existing=true,
+                                               array_type = Array{Float64})
 
     sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
 
@@ -100,13 +103,16 @@ end
 @testset "Implicit Diffusion Diagnostic" begin
     @info "Testing implicit diffusion diagnostic..."
     for arch in archs
-        @testset "Implicit Diffusion [$(typeof(arch))]" begin
-            @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] in x-direction..."
-            test_implicit_diffusion_diagnostic(arch, :x)
-            @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] in y-direction..."
-            test_implicit_diffusion_diagnostic(arch, :y)
-            @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] in z-direction..."
-            test_implicit_diffusion_diagnostic(arch, :z)
+        schedules = [IterationInterval(1), IterationInterval(10)]
+        for schedule in schedules
+            @testset "Implicit Diffusion on $schedule schedule [$(typeof(arch))]" begin
+                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in x-direction..."
+                test_implicit_diffusion_diagnostic(arch, :x, schedule)
+                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in y-direction..."
+                test_implicit_diffusion_diagnostic(arch, :y, schedule)
+                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in z-direction..."
+                test_implicit_diffusion_diagnostic(arch, :z, schedule)
+            end
         end
     end
 end

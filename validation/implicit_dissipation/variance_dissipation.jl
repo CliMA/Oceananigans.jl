@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.Diagnostics: VarianceDissipation
+using Oceananigans.Simulations: VarianceDissipation
 using KernelAbstractions: @kernel, @index
 
 N = 200
@@ -54,10 +54,11 @@ set!(model.auxiliary_fields.c⁻, c₀)
 
 sim = Simulation(model, Δt=Δt_max, stop_time=10)
 
-ϵ = VarianceDissipation(model)
-f = Oceananigans.Diagnostics.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
+ϵ = VarianceDissipation(:c, grid)
+f = Oceananigans.Simulations.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
+
 outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
-sim.diagnostics[:variance_dissipation] = ϵ
+add_callback!(sim, ϵ, IterationInterval(1))
 
 sim.output_writers[:solution] = JLD2Writer(model, outputs;
                                            filename="one_d_simulation.jld2",

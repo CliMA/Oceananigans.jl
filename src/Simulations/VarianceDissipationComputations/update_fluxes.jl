@@ -35,7 +35,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     
     # Grab tracer properties
     c    = model.tracers[tracer_name]
-    cⁿ⁻¹ = dissipation.previous_state
+    cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
 
     grid = model.grid
     arch = architecture(grid)

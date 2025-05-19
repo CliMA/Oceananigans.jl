@@ -21,7 +21,7 @@ U = 1.5 Uⁿ - 0.5 Uⁿ⁻¹
 
 For an RK3 method (not implemented at the moment), the whole substepping procedure needs to be accounted for.
 """
-function compute_dissipation!(dissipation, model, tracer_name::Symbol)
+function compute_dissipation!(model, dissipation, tracer_name::Symbol)
     
     grid = model.grid
     arch = architecture(grid)
@@ -33,7 +33,7 @@ function compute_dissipation!(dissipation, model, tracer_name::Symbol)
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
 
     cⁿ⁺¹ = model.tracers[tracer_name]
-    cⁿ   = dissipation.previous_state
+    cⁿ   = dissipation.previous_state.cⁿ⁻¹
     
     ####
     #### Assemble the advective dissipation

@@ -23,8 +23,13 @@ using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y, 
                               _advective_tracer_flux_z
 
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Operators: volume
+using Oceananigans.Simulations: Simulation
+using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
+
+import Oceananigans.Simulations: Callback
 
 struct VarianceDissipation{P, K, A, D, S, G} 
     advective_production :: P
@@ -71,8 +76,8 @@ Keyword Argument
     At the moment, the variance dissipation diagnostic is supported only for `QuasiAdamsBashforth2` timesteppers.
 """
 function VarianceDissipation(tracer_name, grid; 
-                             Uⁿ⁻¹ = VelocityFields(tracer.grid), 
-                             Uⁿ   = VelocityFields(tracer.grid))
+                             Uⁿ⁻¹ = VelocityFields(grid), 
+                             Uⁿ   = VelocityFields(grid))
         
     P    = vector_field(grid) 
     K    = vector_field(grid)
@@ -82,7 +87,7 @@ function VarianceDissipation(tracer_name, grid;
     Fⁿ⁻¹ = vector_field(grid) 
     cⁿ⁻¹ = CenterField(grid)
 
-    previous_state   = merge(cⁿ⁻¹, (; Uⁿ⁻¹, Uⁿ))
+    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ)
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
     diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
 
@@ -91,8 +96,8 @@ function VarianceDissipation(tracer_name, grid;
     return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients, tracer_name)
 end
 
-function (ϵ::VarianceDissipation)(sim::Simulation)
-    model = sim.model
+function (ϵ::VarianceDissipation)(model)
+
     # Check if the model is using a QuasiAdamsBashforth2 time stepper
     if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
         throw(ArgumentError("VarianceDissipation is only supported for QuasiAdamsBashforth2 time-stepping."))
@@ -108,6 +113,7 @@ function (ϵ::VarianceDissipation)(sim::Simulation)
         throw(ArgumentError("Model must have a tracer called $tracer_name."))
     end
 
+    # First we compute the dissipation from previously computed fluxes
     compute_dissipation!(model, ϵ, ϵ.tracer_name)
 
     # Then we update the fluxes to be used in the next time step
@@ -127,5 +133,26 @@ include("advective_dissipation.jl")
 include("diffusive_dissipation.jl")
 include("compute_dissipation.jl")
 include("flatten_dissipation_fields.jl")
+
+# A VarianceDissipation object requires a `ConsecutiveIteration` schedule to make sure
+# that the computed fluxes are correctly used in the next time step.
+# Also, the `VarianceDissipation` object needs to be called on `UpdateStateStepCallsite` to be correct.
+function Callback(func::VarianceDissipation, schedule;
+                  parameters = nothing,
+                  callsite = UpdateStateCallsite())
+
+    if !(callsite isa UpdateStateCallsite)
+        @warn "VarianceDissipation callback must be called on UpdateStateCallsite. Changing `callsite` to `UpdateStateCallsite()`."
+        callsite = UpdateStateCallsite()
+    end
+
+    if !(schedule isa ConsecutiveIterations || schedule == IterationInterval(1))
+        @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" * 
+              "Changing `schedule` to `ConsecutiveIterations(schedule)`."
+        schedule = ConsecutiveIterations(schedule)
+    end
+
+    return Callback(func, schedule, callsite, parameters)
+end
 
 end
