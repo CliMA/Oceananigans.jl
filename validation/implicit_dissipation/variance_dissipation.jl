@@ -69,7 +69,8 @@ for tracer_advection in (UpwindBiased(order=1),
                          Centered(order=6),
                          Centered(order=8))
 
-    closure = nothing # ScalarDiffusivity(κ=5e-5)
+    closure = (ScalarDiffusivity(κ=1e-5),  HorizontalScalarBiharmonicDiffusivity(; κ = 1e-10))
+
     velocities = PrescribedVelocityFields(u=1)
 
     c⁻    = CenterField(grid)
