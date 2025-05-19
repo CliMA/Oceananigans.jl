@@ -1,3 +1,5 @@
+using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
+
 @kernel function _assemble_ab2_diffusive_dissipation!(K, grid, χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
@@ -76,13 +78,13 @@ end
     end
 end
 
-const ETD = Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization
+const etd = ExplicitTimeDiscretization()
 
 @inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
     @inbounds begin
-        Vⁿ.x[i, j, k] += _diffusive_flux_x(i, j, k, grid, ETD(), clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c) * ℂ
-        Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, ETD(), clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c) * ℂ
-        Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, ETD(), clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f) * ℂ
+        Vⁿ.x[i, j, k] += _diffusive_flux_x(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c) * ℂ
+        Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c) * ℂ
+        Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f) * ℂ
     end
     return nothing
 end
