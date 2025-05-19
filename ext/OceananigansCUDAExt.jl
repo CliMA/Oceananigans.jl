@@ -87,8 +87,8 @@ end
 @inline AC.copy_unpack_constructors(::AC.CPU, constr::Tuple) = deepcopy((constr[3], constr[4], constr[5]))
 
 @inline AC.arch_sparse_matrix(::AC.GPU{CUDABackend}, constr::Tuple) = CuSparseMatrixCSC(constr...)
-@inline AC.arch_sparse_matrix(::AC.CPU, A::CuSparseMatrixCSC)   = SparseMatrixCSC(constructors(AC.CPU(), A)...)
-@inline AC.arch_sparse_matrix(::AC.GPU{CUDABackend}, A::SparseMatrixCSC)     = CuSparseMatrixCSC(constructors(AC.GPU(), A)...)
+@inline AC.arch_sparse_matrix(::AC.CPU, A::CuSparseMatrixCSC)   = SparseMatrixCSC(AC.constructors(AC.CPU(), A)...)
+@inline AC.arch_sparse_matrix(::AC.GPU{CUDABackend}, A::SparseMatrixCSC)     = CuSparseMatrixCSC(AC.constructors(AC.GPU(), A)...)
 
 @inline AC.arch_sparse_matrix(::AC.GPU{CUDABackend}, A::CuSparseMatrixCSC) = A
 
