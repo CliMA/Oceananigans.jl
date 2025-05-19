@@ -62,6 +62,7 @@ function compute_tracer_dissipation!(sim)
 end
 
 for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3))
+    
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         timestepper, 
                                         velocities, 
@@ -69,7 +70,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
                                         closure, 
                                         tracers=:c,
                                         auxiliary_fields=(; Δtc², c⁻))
-
+    
     set!(model, c=c₀)
     set!(model.auxiliary_fields.c⁻, c₀)
 
@@ -111,6 +112,10 @@ r_∫closs = [sum(interior(r_Δtc²[i], :, 1, 1))  for i in 1:Nt-1]
 r_∫A     = [sum(interior(r_Acx[i] , :, 1, 1))  for i in 1:Nt-1]
 r_∫D     = [sum(interior(r_Dcx[i] , :, 1, 1))  for i in 1:Nt-1] 
 
+n_∫closs = [sum(interior(n_Δtc²[i], :, 1, 1))  for i in 1:Nt-1]
+n_∫A     = [sum(interior(n_Acx[i] , :, 1, 1))  for i in 1:Nt-1]
+n_∫D     = [sum(interior(n_Dcx[i] , :, 1, 1))  for i in 1:Nt-1] 
+
 times = a_c.times[1:end-1]
 
 fig = Figure()
@@ -125,5 +130,3 @@ scatter!(ax, times, r_∫closs .* grid.Δxᶜᵃᵃ, label="total variance loss"
 lines!(ax, times, r_∫A, label="advection dissipation", color=:red, linestyle=:dash)
 lines!(ax, times, r_∫D, label="diffusive dissipation", color=:green, linestyle=:dash)
 lines!(ax, times, r_∫D .+ r_∫A, label="total dissipation", color=:purple, linestyle=:dash)
-
-lines((r_∫closs .* grid.Δxᶜᵃᵃ .- r_∫D) ./ r_∫A)

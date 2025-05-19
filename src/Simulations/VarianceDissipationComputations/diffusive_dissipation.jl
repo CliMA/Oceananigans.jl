@@ -23,9 +23,8 @@
     end
 end
 
-@kernel function _assemble_srk3_diffusive_dissipation!(K, grid, Vⁿ, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_rk3_diffusive_dissipation!(K, grid, Vⁿ, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
-    FT   = eltype(grid)
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)    
     δʸc★ = δyᶜᶠᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
@@ -42,7 +41,7 @@ end
     end
 end
 
-@kernel function _cache_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields) 
+@kernel function _cache_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, clo, K, b, c, c_id, clk, fields) 
     i, j, k = @index(Global, NTuple)
 
     Vⁿ⁻¹.x[i, j, k] = Vⁿ.x[i, j, k] 
@@ -53,36 +52,35 @@ end
     Vⁿ.y[i, j, k] = zero(grid)
     Vⁿ.z[i, j, k] = zero(grid)
 
-    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields)
-end
-
-@inline function compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, closure::Tuple, K::Tuple, args...)
-    for n in eachindex(closure)
-        compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, closure[n], K[n], args...)
-    end
-end
-
-@inline function compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
-    @inbounds begin
-        Vⁿ.x[i, j, k] += _diffusive_flux_x(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c)
-        Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c)
-        Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f)
-    end
-    return nothing
+    compute_diffusive_fluxes!(Vⁿ, 1, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
 end
 
 @kernel function _cache_diffusive_fluxes!(Vⁿ, grid, ::Val{3}, ℂ, clo, K, b, c, c_id, clk, fields) 
-    i, j, k = @index(Global, NTuple)
-    
-    Vⁿ.x[i, j, k] = _diffusive_flux_x(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c) * ℂ
-    Vⁿ.y[i, j, k] = _diffusive_flux_y(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c) * ℂ
-    Vⁿ.z[i, j, k] = _diffusive_flux_z(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f) * ℂ
+    i, j, k = @index(Global, NTuple)    
+
+    Vⁿ.x[i, j, k] = zero(grid)
+    Vⁿ.y[i, j, k] = zero(grid)
+    Vⁿ.z[i, j, k] = zero(grid)
+
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
 end
 
-@kernel function _cache_diffusive_fluxes!(Vⁿ, grid, ::Val{1}, ℂ, clo, K, b, c, c_id, clk, fields) 
-    i, j, k = @index(Global, NTuple)
-    
-    Vⁿ.x[i, j, k] += _diffusive_flux_x(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c) * ℂ
-    Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c) * ℂ
-    Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f) * ℂ
+@kernel function _cache_diffusive_fluxes!(Vⁿ, grid, substep, ℂ, clo, K, b, c, c_id, clk, fields) 
+    i, j, k = @index(Global, NTuple)    
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
+end
+
+@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple, K::Tuple, args...)
+    for n in eachindex(clo)
+        compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[n], K[n], args...)
+    end
+end
+
+@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
+    @inbounds begin
+        Vⁿ.x[i, j, k] += _diffusive_flux_x(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c) * ℂ
+        Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c) * ℂ
+        Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f) * ℂ
+    end
+    return nothing
 end

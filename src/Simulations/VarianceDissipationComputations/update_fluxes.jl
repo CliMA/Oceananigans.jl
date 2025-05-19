@@ -69,7 +69,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     clo  = model.closure
     model_fields = fields(model)
 
-    launch!(arch, grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+    cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, timestepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
 
     if timestepper isa QuasiAdamsBashforth2TimeStepper
         parent(cⁿ⁻¹) .= parent(c)

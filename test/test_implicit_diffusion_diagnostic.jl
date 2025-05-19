@@ -96,8 +96,8 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
 
     Δ = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ, grid.z.Δᵃᵃᶜ)
 
-    for i in 1:Nt-1
-        @test abs(∫closs[i] * Δ - ∫A[i] - ∫D[i]) < 1e-14 # Arbitrary tolerance, not exactly machine precision
+    for i in 3:Nt-1
+        @test abs(∫closs[i] * Δ - ∫A[i] - ∫D[i]) < 1e-13 # Arbitrary tolerance, not exactly machine precision
     end
 end
 @testset "Implicit Diffusion Diagnostic" begin

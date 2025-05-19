@@ -1,4 +1,3 @@
-# TODO: This is only for AB2, figure out how to generalize this for other timesteppers for example RK3
 @kernel function _assemble_ab2_advective_dissipation!(P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
@@ -37,8 +36,7 @@
     end
 end
 
-# TODO: This is only for AB2, figure out how to generalize this for other timesteppers for example RK3
-@kernel function _assemble_srk3_advective_dissipation!(P, grid, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_rk3_advective_dissipation!(P, grid, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
