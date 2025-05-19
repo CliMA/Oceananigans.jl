@@ -45,7 +45,7 @@ function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
             model.grid,
             model.pressures.pNHS)
     
-    ϵ = eps(typeof(Δt))
+    ϵ = eps(eltype(model.pressures.pNHS))
     Δt⁺ = max(ϵ, Δt)
     model.pressures.pNHS ./= Δt⁺
 
