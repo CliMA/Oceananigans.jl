@@ -6,7 +6,11 @@ using Oceananigans.Architectures
 # defined when CUDA is loaded and maps to CUDAGPU()
 function versioninfo_with_gpu()
     if isdefined(Main, :CUDA)
-        return versioninfo_with_gpu(GPU())
+        try
+            return versioninfo_with_gpu(GPU())
+        catch e
+            println("No GPU device found.")
+        end
     end
 end
 
