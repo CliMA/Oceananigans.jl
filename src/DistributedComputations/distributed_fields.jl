@@ -129,7 +129,7 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     partition_dims = partition_dimensions(f)
 
     if any([dim ∈ partition_dims for dim in reduced_dims])
-        all_reduce!(op, interior(f), architecture(f))
+        all_reduce!(op, parent(f), architecture(f))
     end
 
     return f
