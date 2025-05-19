@@ -64,16 +64,9 @@ Keyword arguments
         and the impact of this approximation has not been tested or validated.
 
 By default: `C = Cν = Cκ = 1/3`, and `Cb = nothing`, which turns off the buoyancy modification term.
+The default Poincaré constant `C = 1/3` is derived by discretizing subgrid scale energy production [Verstappen14](@citet) assuming a second-order advection scheme. `Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
 
-`Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
-
-The default Poincaré constant is appropriate for second order centered advection and is derived by
-descritising the sub grid scale energy production [Verstappen14](@citet). It is 4 times smaller than the 
-staight forward descritisation (which is appropriate for spectral methods) due to the "effective resolution" 
-of second order centered advection schemes.
-
-Discussion demonstraiting the correct energy dissipation behaviour with this Poincaré constant value
-can be found seen in https://github.com/CliMA/Oceananigans.jl/issues/4367.
+For more information about the default see the discussion at https://github.com/CliMA/Oceananigans.jl/issues/4367.
 
 Examples
 ========
