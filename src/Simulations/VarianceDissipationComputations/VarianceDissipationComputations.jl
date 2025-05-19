@@ -98,11 +98,6 @@ end
 
 function (ϵ::VarianceDissipation)(model)
 
-    # Check if the model is using a QuasiAdamsBashforth2 time stepper
-    if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
-        throw(ArgumentError("VarianceDissipation is only supported for QuasiAdamsBashforth2 time-stepping."))
-    end
-
     # Check if the model has a velocity field
     if !hasproperty(model, :velocities)
         throw(ArgumentError("Model must have a velocity field."))

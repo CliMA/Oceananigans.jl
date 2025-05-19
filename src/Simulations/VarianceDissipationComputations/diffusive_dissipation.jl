@@ -31,9 +31,9 @@ end
     δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
     
     @inbounds begin
-        vx₁ = C₁ * Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        vy₁ = C₁ * Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        vz₁ = C₁ * Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        vx₁ = Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        vy₁ = Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        vz₁ = Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
 
         K.x[i, j, k] = 2 * δˣc★ * vx₁ / 6
         K.y[i, j, k] = 2 * δʸc★ * vy₁ / 6
@@ -52,9 +52,9 @@ end
     C = ifelse(substep == 2, 1 / FT(6), 2 / FT(3))
 
     @inbounds begin
-        vx₁ = C₁ * Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        vy₁ = C₁ * Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        vz₁ = C₁ * Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        vx₁ = Vⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        vy₁ = Vⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        vz₁ = Vⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
 
         K.x[i, j, k] += 2 * δˣc★ * vx₁ * C
         K.y[i, j, k] += 2 * δʸc★ * vy₁ * C

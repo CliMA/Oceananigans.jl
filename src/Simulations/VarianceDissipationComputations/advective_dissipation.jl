@@ -38,7 +38,7 @@
 end
 
 # TODO: This is only for AB2, figure out how to generalize this for other timesteppers for example RK3
-@kernel function _assemble_rk3_advective_dissipation!(P, grid, ::Nothing, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_srk3_advective_dissipation!(P, grid, ::Nothing, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
@@ -51,13 +51,13 @@ end
     δᶻc² = δzᶜᶜᶠ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
 
     @inbounds begin
-        u₁ = C₁ * Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        v₁ = C₁ * Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        w₁ = C₁ * Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        u₁ = Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        v₁ = Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        w₁ = Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
 
-        fx₁ = C₁ * Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        fy₁ = C₁ * Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        fz₁ = C₁ * Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        fx₁ = Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        fy₁ = Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        fz₁ = Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
 
         P.x[i, j, k] = (2 * δˣc★ * fx₁ - δˣc² * u₁) / 6
         P.y[i, j, k] = (2 * δʸc★ * fy₁ - δʸc² * v₁) / 6
@@ -82,13 +82,13 @@ end
     C = ifelse(substep == 2, 1 / FT(6), 2 / FT(3))
 
     @inbounds begin
-        u₁ = C₁ * Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        v₁ = C₁ * Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        w₁ = C₁ * Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        u₁ = Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        v₁ = Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        w₁ = Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
 
-        fx₁ = C₁ * Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        fy₁ = C₁ * Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        fz₁ = C₁ * Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        fx₁ = Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
+        fy₁ = Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
+        fz₁ = Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
 
         P.x[i, j, k] += (2 * δˣc★ * fx₁ - δˣc² * u₁) * C
         P.y[i, j, k] += (2 * δʸc★ * fy₁ - δʸc² * v₁) * C

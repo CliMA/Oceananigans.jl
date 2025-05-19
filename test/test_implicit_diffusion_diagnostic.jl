@@ -54,7 +54,7 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     Δtc² = CenterField(grid)
 
     model = HydrostaticFreeSurfaceModel(; grid, 
-                                        timestepper=:QuasiAdamsBashforth2, 
+                                        timestepper, 
                                         velocities, 
                                         tracer_advection, 
                                         closure, 
