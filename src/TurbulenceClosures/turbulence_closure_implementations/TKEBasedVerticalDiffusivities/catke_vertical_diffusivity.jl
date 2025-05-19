@@ -215,7 +215,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
 
     return CATKEDiffusivityFields(κu, κc, κe, Le, Jᵇ,
-                                  clock, previous_velocities,
+                                  deepcopy(clock), previous_velocities,
                                   _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end
 
