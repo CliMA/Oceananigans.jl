@@ -80,7 +80,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
     f = Oceananigans.Simulations.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
 
     outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
-    add_callback!(sim, ϵ, IterationInterval(1))
+    add_callback!(sim, ϵ, IterationInterval(100))
 
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
                                             filename="one_d_simulation_$(ts).jld2",
