@@ -41,6 +41,8 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     arch = architecture(grid)
     U = model.velocities
     params = flux_parameters(grid)
+    stage  = model.clock.stage
+    timestepper = model.timestepper
 
     ####
     #### Update the advective fluxes and compute gradient squared
@@ -48,10 +50,9 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     Fⁿ   = dissipation.advective_fluxes.Fⁿ
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
-    Gⁿ   = dissipation.gradient_squared
     advection = getadvection(model.advection, tracer_name)
-
-    launch!(arch, grid, params, _cache_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
+    
+    cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, timestepper, stage, advection, U, c) 
 
     ####
     #### Update the diffusive fluxes
@@ -68,7 +69,11 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     launch!(arch, grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
-    parent(cⁿ⁻¹) .= parent(c)
+    if timestepper isa QuasiAdamsBashforth2TimeStepper
+        parent(cⁿ⁻¹) .= parent(c)
+    elseif stage == 3
+        parent(cⁿ⁻¹) .= parent(c)
+    end
 
     return nothing
 end
@@ -85,3 +90,15 @@ end
           Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) 
     end
 end
+
+cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, advection, U, c) = 
+    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
+
+cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, advection, U, c) = 
+    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Val(stage), grid, advection, U, c)
+
+cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+
+cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, stage, clo, D, B, c, tracer_id, clk, model_fields)
