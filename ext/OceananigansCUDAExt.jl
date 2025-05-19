@@ -125,11 +125,11 @@ CUDA.@device_override @inline function KernelAbstractions.__validindex(ctx::UT.M
     end
 end
 
-@inline UT.sync_device!(::CuDevice)  = UT.sync_device!(CUDABackend())
+@inline UT.sync_device!(::CuDevice)  = CUDA.synchronize()
 @inline UT.getdevice(cu::GPUVar, i)     = device(cu)
 @inline UT.getdevice(cu::GPUVar)        = device(cu)
 @inline UT.switch_device!(dev::CuDevice)            = device!(dev)
-
+@inline UT.sync_device!(::CUDAGPU)      = CUDA.synchronize()
 AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(AC.child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:CuArray}) = AC.on_architecture(child_architecture(arch), a)
 
