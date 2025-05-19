@@ -237,6 +237,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
         time_step_catke_equation!(model)
         diffusivities.clock.time = model.clock.time
         diffusivities.clock.iteration = model.clock.iteration
+    else
+        Δt = zero(model.clock.last_Δt)
     end
 
     # Update "previous velocities"
