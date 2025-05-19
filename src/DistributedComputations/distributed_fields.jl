@@ -104,8 +104,13 @@ function reconstruct_global_field(field::DistributedField)
     return global_field
 end
 
-partition_dimensions(f::DistributedField) = partition_dimensions(architecture(f))
-function partition_dimensions(arch::Distributed) 
+"""
+    partition_dimensions(arch::Distributed)
+    partition_dimensions(f::DistributedField)
+
+Return the partitioned dimensions of a distributed field or architecture.
+"""
+function partition_dimensions(arch::Distributed)
     R = ranks(arch) 
     dims = []
     for r in eachindex(R)
@@ -115,6 +120,9 @@ function partition_dimensions(arch::Distributed)
     end
     return tuple(dims...)
 end
+
+partition_dimensions(f::DistributedField) = partition_dimensions(architecture(f))
+
 
 function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
