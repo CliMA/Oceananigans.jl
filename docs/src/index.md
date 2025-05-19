@@ -109,6 +109,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
 
+1. Bisits, J. I., Zika, J. D. and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)
+
 1. Whitley V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_. In press. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
 
 1. Chor, T. and Wenegrat, J. (2025). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.1175/JPO-D-24-0139.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0139.1](https://doi.org/10.1175/JPO-D-24-0139.1)
