@@ -116,5 +116,21 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     return nothing
 end
 
+function first_time_step!(model::AbstractModel, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
+
+function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt, euler=true)
+    return nothing
+end
+
 end # module
 
