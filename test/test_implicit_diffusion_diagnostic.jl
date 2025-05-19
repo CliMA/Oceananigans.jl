@@ -51,8 +51,8 @@ function test_implicit_diffusion_diagnostic(arch, dim, schedule)
     grid = periodic_grid(arch, Val(dim))
 
     # Change to test pure advection schemes
-    tracer_advection = (c = WENO(order=7), d = Centered(order=4))
-    closure = ScalarDiffusivity(κ=(c = 1e-3, d=1e-5))
+    tracer_advection = (c=WENO(order=7), d = Centered(order=4))
+    closure = ScalarDiffusivity(κ=(c=1e-3, d=1e-5))
     velocities = advecting_velocity(Val(dim))
 
     c⁻   = CenterField(grid)
