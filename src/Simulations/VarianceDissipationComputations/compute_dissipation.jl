@@ -34,6 +34,7 @@ function compute_dissipation!(model, dissipation, tracer_name::Symbol)
     cⁿ   = dissipation.previous_state.cⁿ⁻¹
     
     substep = model.clock.stage
+    scheme  = getadvection(model.advection, tracer_name)
 
     ####
     #### Assemble the advective dissipation
@@ -43,7 +44,8 @@ function compute_dissipation!(model, dissipation, tracer_name::Symbol)
     Fⁿ   = dissipation.advective_fluxes.Fⁿ
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
 
-    assemble_advective_dissipation!(P, grid, model.timestepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+    !(scheme isa Nothing) && 
+        assemble_advective_dissipation!(P, grid, model.timestepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
     ####
     #### Assemble the diffusive dissipation
