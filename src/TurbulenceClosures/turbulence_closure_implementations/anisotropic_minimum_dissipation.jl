@@ -50,7 +50,7 @@ Arguments
 Keyword arguments
 =================
 * `C`: Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
-       for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+       for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respectively.
 
 * `Cν`: Poincaré constant for momentum eddy viscosity.
 
@@ -64,9 +64,14 @@ Keyword arguments
         and the impact of this approximation has not been tested or validated.
 
 By default: `C = Cν = Cκ = 1/3`, and `Cb = nothing`, which turns off the buoyancy modification term.
-The default Poincaré constant `C = 1/3` is derived by discretizing subgrid scale energy production [Verstappen14](@citet) assuming a second-order advection scheme. `Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
+The default Poincaré constant is found by discretizing subgrid scale energy production, assuming a 
+second-order advection scheme. [Verstappen14](@citeo) shows that the Poincaré constant 
+should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3` 
+in our formulation. They also empirically demonstrated that this coefficient produces the correct
+discrete production-dissipation balance. We further demonstrated this in 
+https://github.com/CliMA/Oceananigans.jl/issues/4367.
 
-For more information about the default see the discussion at https://github.com/CliMA/Oceananigans.jl/issues/4367.
+`C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
 
 Examples
 ========
