@@ -103,7 +103,7 @@ end
 @testset "Implicit Diffusion Diagnostic" begin
     @info "Testing implicit diffusion diagnostic..."
     for arch in archs
-        schedules = [IterationInterval(1), IterationInterval(10)]
+        schedules = [IterationInterval(1), IterationInterval(10), IterationInterval(100)]
         for schedule in schedules
             @testset "Implicit Diffusion on $schedule schedule [$(typeof(arch))]" begin
                 @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in x-direction..."

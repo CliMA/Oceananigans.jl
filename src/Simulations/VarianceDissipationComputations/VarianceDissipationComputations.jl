@@ -146,6 +146,11 @@ function Callback(func::VarianceDissipation, schedule;
         callsite = UpdateStateCallsite()
     end
 
+    if schedule isa TimeInterval # Time step might change size between iterations invalidating `VarianceDissipation`
+        throw(ArgumentError("a VarianceDissipation computation must be executed on `IterationInterval`s. \n" *
+                            "The provided `TimeInterval` schedule is not supported"))
+    end
+
     if !(schedule isa ConsecutiveIterations || schedule == IterationInterval(1))
         @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" * 
               "Changing `schedule` to `ConsecutiveIterations(schedule)`."
