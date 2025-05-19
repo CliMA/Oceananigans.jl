@@ -100,7 +100,7 @@ r_Δtc² = FieldTimeSeries("one_d_simulation_RK3.jld2", "Δtc²")
 r_Acx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Acx")
 r_Dcx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Dcx")
 
-Nt = length(c.times)
+Nt = length(a_c.times)
 
 a_∫closs = [sum(interior(a_Δtc²[i], :, 1, 1))  for i in 1:Nt-1]
 a_∫A     = [sum(interior(a_Acx[i] , :, 1, 1))  for i in 1:Nt-1]
@@ -124,3 +124,5 @@ scatter!(ax, times, r_∫closs .* grid.Δxᶜᵃᵃ, label="total variance loss"
 lines!(ax, times, r_∫A, label="advection dissipation", color=:red, linestyle=:dash)
 lines!(ax, times, r_∫D, label="diffusive dissipation", color=:green, linestyle=:dash)
 lines!(ax, times, r_∫D .+ r_∫A, label="total dissipation", color=:purple, linestyle=:dash)
+
+lines((r_∫closs .* grid.Δxᶜᵃᵃ .- r_∫D) ./ r_∫A)
