@@ -1,3 +1,5 @@
+using ReactantCore: @trace
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -160,7 +162,7 @@ struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
     κe :: K
     Le :: L
     Jᵇ :: J
-    previous_compute_time :: T
+    clock :: T
     previous_velocities :: U
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
@@ -172,7 +174,7 @@ Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
                            adapt(to, catke_diffusivity_fields.κe),
                            adapt(to, catke_diffusivity_fields.Le),
                            adapt(to, catke_diffusivity_fields.Jᵇ),
-                           catke_diffusivity_fields.previous_compute_time[],
+                           adapt(to, catke_diffusivity_fields.clock),
                            adapt(to, catke_diffusivity_fields.previous_velocities),
                            adapt(to, catke_diffusivity_fields._tupled_tracer_diffusivities),
                            adapt(to, catke_diffusivity_fields._tupled_implicit_linear_coefficients))
@@ -200,7 +202,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-    previous_compute_time = Ref(clock.time)
+    clock = deepcopy(clock)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
@@ -213,18 +215,12 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
 
     return CATKEDiffusivityFields(κu, κc, κe, Le, Jᵇ,
-                                  previous_compute_time, previous_velocities,
+                                  clock, previous_velocities,
                                   _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
-
-function update_previous_compute_time!(diffusivities, model)
-    Δt = model.clock.time - diffusivities.previous_compute_time[]
-    diffusivities.previous_compute_time[] = model.clock.time
-    return Δt
-end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
     arch = model.architecture
@@ -232,15 +228,16 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     velocities = model.velocities
     tracers = model.tracers
     buoyancy = model.buoyancy
-    clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
-    Δt = update_previous_compute_time!(diffusivities, model)
+    Δt = model.clock.time - diffusivities.clock.time
 
-    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
-        # Compute e at the current time:
+    @trace if model.clock.iteration != diffusivities.clock.iteration # time-step TKE forward
+        # Compute e if the model has been stepped forward:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
         time_step_catke_equation!(model)
+        diffusivities.clock.time = model.clock.time
+        diffusivities.clock.iteration = model.clock.iteration
     end
 
     # Update "previous velocities"
@@ -251,7 +248,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            diffusivities.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+            diffusivities.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, model.clock, Δt)
 
     launch!(arch, grid, parameters,
             compute_CATKE_diffusivities!,
