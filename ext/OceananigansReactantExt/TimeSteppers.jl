@@ -22,7 +22,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     local_ab2_step!,
     compute_free_surface_tendency!
 
-import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
+import Oceananigans.TimeSteppers: Clock, unit_time, first_time_step!, time_step!, ab2_step!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -116,7 +116,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     return nothing
 end
 
-function first_time_step!(model::AbstractModel, Δt)
+function first_time_step!(model::ReactantModel, Δt)
     initialize!(model)
     # The first update_state is conditionally gated from within time_step! normally, but not Reactant
     update_state!(model)
@@ -124,7 +124,7 @@ function first_time_step!(model::AbstractModel, Δt)
     return nothing
 end
 
-function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
     # The first update_state is conditionally gated from within time_step! normally, but not Reactant
     update_state!(model)
