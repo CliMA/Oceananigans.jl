@@ -81,35 +81,24 @@ end
     end
 end
 
-@kernel function _cache_advective_fluxes!(Fⁿ, grid, ::Val{3}, advection, U, c)
+@kernel function _cache_advective_fluxes!(Fⁿ, grid, ::Val{3}, ℂ, advection, U, c)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin        
         # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c) / 6
-        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c) / 6
-        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f) / 6        
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c) * ℂ
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c) * ℂ
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f) * ℂ        
     end
 end
 
-@kernel function _cache_advective_fluxes!(Fⁿ, grid, ::Val{1}, advection, U, c)
+@kernel function _cache_advective_fluxes!(Fⁿ, grid, substep, ℂ, advection, U, c)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin        
         # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] += _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c) / 6
-        Fⁿ.y[i, j, k] += _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c) / 6
-        Fⁿ.z[i, j, k] += _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f) / 6        
-    end
-end
-
-@kernel function _cache_advective_fluxes!(Fⁿ, grid, ::Val{2}, advection, U, c)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds begin        
-        # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] += _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c) / 3 * 2
-        Fⁿ.y[i, j, k] += _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c) / 3 * 2
-        Fⁿ.z[i, j, k] += _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f) / 3 * 2        
+        Fⁿ.x[i, j, k] += _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c) * ℂ
+        Fⁿ.y[i, j, k] += _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c) * ℂ
+        Fⁿ.z[i, j, k] += _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f) * ℂ        
     end
 end

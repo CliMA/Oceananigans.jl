@@ -83,20 +83,26 @@ end
 cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, advection, U, c) = 
     launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
 
-cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, advection, U, c) = 
-    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, Val(stage), advection, U, c)
+function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, advection, U, c) 
+    ℂ = ifelse(stage == 2, ts.γ³, ts.γ³ * ts.γ²)
+    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, Val(stage), ℂ, advection, U, c)
+end
 
 cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
     launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
-cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
-    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, Val(stage), clo, D, B, c, tracer_id, clk, model_fields)
+function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) 
+    ℂ = ifelse(stage == 2, ts.γ³, ts.γ³ * ts.γ²)
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, Val(stage), ℂ, clo, D, B, c, tracer_id, clk, model_fields)
+end
 
 update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
-update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, U) =
-    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, Val(stage), U)
+function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, U) 
+    ℂ = ifelse(stage == 2, ts.γ³, ts.γ³ * ts.γ²) 
+    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, Val(stage), ℂ, U)
+end
 
 @kernel function _update_transport!(Uⁿ, Uⁿ⁻¹, grid, U)
     i, j, k = @index(Global, NTuple)
@@ -111,26 +117,18 @@ update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, 
     end
 end
 
-@kernel function _update_transport!(Uⁿ, grid, ::Val{3}, U)
+@kernel function _update_transport!(Uⁿ, grid, ::Val{3}, ℂ, U)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) / 6
-    @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) / 6
-    @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) / 6
+    @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) * ℂ
+    @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) * ℂ
+    @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) * ℂ
 end
 
-@kernel function _update_transport!(Uⁿ, grid, ::Val{1}, U)
+@kernel function _update_transport!(Uⁿ, grid, substep, ℂ, U)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Uⁿ.u[i, j, k] += U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) / 6
-    @inbounds Uⁿ.v[i, j, k] += U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) / 6
-    @inbounds Uⁿ.w[i, j, k] += U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) / 6
-end
-
-@kernel function _update_transport!(Uⁿ, grid, ::Val{2}, U)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds Uⁿ.u[i, j, k] += U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) / 3 * 2
-    @inbounds Uⁿ.v[i, j, k] += U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) / 3 * 2
-    @inbounds Uⁿ.w[i, j, k] += U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) / 3 * 2
+    @inbounds Uⁿ.u[i, j, k] += U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) * ℂ
+    @inbounds Uⁿ.v[i, j, k] += U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) * ℂ
+    @inbounds Uⁿ.w[i, j, k] += U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) * ℂ
 end
