@@ -5,7 +5,9 @@ using Oceananigans.Architectures
 # This should be deprectated. Calls GPU() which is only
 # defined when CUDA is loaded and maps to CUDAGPU()
 function versioninfo_with_gpu()
-    return versioninfo_with_gpu(GPU())
+    if isdefined(Main, :CUDA)
+        return versioninfo_with_gpu(GPU())
+    end
 end
 
 function versioninfo_with_gpu(::CPU)
