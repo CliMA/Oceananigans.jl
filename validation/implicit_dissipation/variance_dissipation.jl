@@ -104,27 +104,28 @@ r_Dcx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Dcx")
 
 Nt = length(a_c.times)
 
-a_∫closs = log.(- [sum(interior(a_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ)  for i in 2:Nt-1])
-a_∫A     = log.(- [sum(interior(a_Acx[i] , :, 1, 1))                for i in 2:Nt-1])
-a_∫D     = log.(- [sum(interior(a_Dcx[i] , :, 1, 1))                for i in 2:Nt-1])
-a_∫T     = log.(exp.(a_∫D) .+ exp.(a_∫A))
+a_∫closs = - [sum(interior(a_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ)  for i in 2:Nt-1]
+a_∫A     = - [sum(interior(a_Acx[i] , :, 1, 1))                for i in 2:Nt-1]
+a_∫D     = - [sum(interior(a_Dcx[i] , :, 1, 1))                for i in 2:Nt-1]
+a_∫T     = a_∫D .+ a_∫A
 
-r_∫closs = log.(- [sum(interior(r_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ)  for i in 2:Nt-1])
-r_∫A     = log.(- [sum(interior(r_Acx[i] , :, 1, 1))                for i in 2:Nt-1])
-r_∫D     = log.(- [sum(interior(r_Dcx[i] , :, 1, 1))                for i in 2:Nt-1])
-r_∫T     = log.(exp.(r_∫D) .+ exp.(r_∫A))
+r_∫closs = - [sum(interior(r_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ)  for i in 2:Nt-1]
+r_∫A     = - [sum(interior(r_Acx[i] , :, 1, 1))                for i in 2:Nt-1]
+r_∫D     = - [sum(interior(r_Dcx[i] , :, 1, 1))                for i in 2:Nt-1]
+r_∫T     = r_∫D .+ r_∫A
 
 times = a_c.times[2:end-1]
 
 fig = Figure()
-ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation")
+ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation", yscale=log10)
 
-scatter!(ax, times, a_∫closs, label="total variance loss", color=:blue)
-lines!(ax, times, a_∫A, label="advection dissipation", color=:red)
-lines!(ax, times, a_∫D, label="diffusive dissipation", color=:green)
-lines!(ax, times, a_∫T, label="total dissipation", color=:purple)
+scatter!(ax, times, a_∫closs, label="AB2 total variance loss", color=:blue)
+lines!(ax, times, a_∫A, label="AB2 advection dissipation", color=:red)
+lines!(ax, times, a_∫D, label="AB2 diffusive dissipation", color=:green)
+lines!(ax, times, a_∫T, label="AB2 total dissipation", color=:purple)
 
-scatter!(ax, times, r_∫closs, label="total variance loss", color=:blue, marker=:diamond)
-lines!(ax, times, r_∫A, label="advection dissipation", color=:red, linestyle=:dash)
-lines!(ax, times, r_∫D, label="diffusive dissipation", color=:green, linestyle=:dash)
-lines!(ax, times, r_∫T, label="total dissipation", color=:purple, linestyle=:dash)
+scatter!(ax, times, r_∫closs, label="RK3 total variance loss", color=:blue, marker=:diamond)
+lines!(ax, times, r_∫A, label="RK3 advection dissipation", color=:red, linestyle=:dash)
+lines!(ax, times, r_∫D, label="RK3 diffusive dissipation", color=:green, linestyle=:dash)
+lines!(ax, times, r_∫T, label="RK3 total dissipation", color=:purple, linestyle=:dash)
+axislegend(ax, position=:lb)
