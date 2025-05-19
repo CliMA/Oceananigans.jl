@@ -49,10 +49,12 @@ function c_grid_vector(grid)
 end
 
 """
-    VarianceDissipation(model; tracers=propertynames(model.tracers))
-
-Constructs a `VarianceDissipation` object for a given `model`. This function computes 
-the variance dissipation diagnostics for the specified tracers in the model. 
+    VarianceDissipation(tracer_name, grid;
+                        Uⁿ⁻¹ = VelocityFields(grid), 
+                        Uⁿ   = VelocityFields(grid))
+        
+Constructs a `VarianceDissipation` object for a tracer called `tracer_name` that lives on a `grid`. 
+This function computes the variance dissipation diagnostics for the specified tracer in the model. 
 These include the numerical dissipation implicit to the advection scheme and the explicit 
 dissipation associated to closures. 
 
@@ -62,15 +64,15 @@ like [`WENO`](@ref) or [`UpwindBiased`](@ref)
 Argument
 =========
 
-- `model`: The model for which variance dissipation is to be computed. 
-  The model must use a `QuasiAdamsBashforth2TimeStepper` for its time-stepping scheme.
+- `tracer_name`: The name of the tracer for which variance dissipation is computed. This should be a `Symbol`. 
+                 When calling `ϵ::VarianceDissipation` on the model, this name is used to identify the tracer in the model's state.
+- `grid`: The grid on which the tracer is defined. 
 
 Keyword Argument
 ================
 
-- `tracers`: An optional argument specifying the tracers for which variance dissipation 
-  is computed (can be a `Symbol` or a `Tuple` of `Symbols`). All symbols must be tracers evolved
-  by the `model`. Default: `propertynames(model.tracers)`.
+- `Uⁿ⁻¹`: The velocity field at the previous time step. Default: `VelocityFields(grid)`.
+- `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! Note
     At the moment, the variance dissipation diagnostic is supported only for `QuasiAdamsBashforth2` timesteppers.
