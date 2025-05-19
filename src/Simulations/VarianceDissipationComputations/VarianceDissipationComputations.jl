@@ -138,9 +138,9 @@ function Callback(func::VarianceDissipation, schedule;
         callsite = UpdateStateCallsite()
     end
 
-    if schedule isa TimeInterval # Time step might change size between iterations invalidating `VarianceDissipation`
-        throw(ArgumentError("a VarianceDissipation computation must be executed on `IterationInterval`s. \n" *
-                            "The provided `TimeInterval` schedule is not supported"))
+    if schedule isa TimeInterval # Time step might change size between iterations invalidating `VarianceDissipation` with AB2
+        @warn "Computing `VarianceDissipation` on a `TimeInterval` will produce incorrect results. \n" *
+              "if the model uses a QuasiAdamsBashforth2 timestepper."
     end
 
     if !(schedule isa ConsecutiveIterations || schedule == IterationInterval(1))
