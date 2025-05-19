@@ -202,7 +202,6 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-    clock = deepcopy(clock)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
