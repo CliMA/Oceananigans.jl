@@ -41,7 +41,7 @@ struct VarianceDissipation{P, K, A, D, S, G}
     tracer_name :: Symbol
 end
 
-function vector_field(grid)
+function c_grid_vector(grid)
     x = XFaceField(grid)
     y = YFaceField(grid)
     z = ZFaceField(grid)
@@ -79,12 +79,12 @@ function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid), 
                              Uⁿ   = VelocityFields(grid))
         
-    P    = vector_field(grid) 
-    K    = vector_field(grid)
-    Vⁿ   = vector_field(grid) 
-    Vⁿ⁻¹ = vector_field(grid) 
-    Fⁿ   = vector_field(grid) 
-    Fⁿ⁻¹ = vector_field(grid) 
+    P    = c_grid_vector(grid) 
+    K    = c_grid_vector(grid)
+    Vⁿ   = c_grid_vector(grid) 
+    Vⁿ⁻¹ = c_grid_vector(grid) 
+    Fⁿ   = c_grid_vector(grid) 
+    Fⁿ⁻¹ = c_grid_vector(grid) 
     cⁿ⁻¹ = CenterField(grid)
 
     previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ)
