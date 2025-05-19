@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.Simulations: VarianceDissipation
 using KernelAbstractions: @kernel, @index
+using GLMakie
 
 N = 200
 
@@ -35,7 +36,7 @@ end
 
 # Change to test pure advection schemes
 tracer_advection = WENO(order = 9)
-closure = ScalarDiffusivity(κ=1e-3)
+closure = ScalarDiffusivity(κ=1e-5)
 velocities = PrescribedVelocityFields(u=1)
 
 c⁻    = CenterField(grid)
@@ -64,7 +65,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         timestepper, 
                                         velocities, 
-                                        tracer_advection = nothing, 
+                                        tracer_advection, 
                                         closure, 
                                         tracers=:c,
                                         auxiliary_fields=(; Δtc², c⁻))

@@ -31,7 +31,7 @@ using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Simulations: Callback
 
-struct VarianceDissipation{P, K, A, D, S, G} 
+struct VarianceDissipation{P, K, A, D, S} 
     advective_production :: P
     diffusive_production :: K
     advective_fluxes :: A

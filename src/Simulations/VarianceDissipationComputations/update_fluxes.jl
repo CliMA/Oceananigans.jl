@@ -1,10 +1,10 @@
 using Oceananigans: fields
 using Oceananigans.Grids: topology, Flat
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper
 
 # Store advective and diffusive fluxes for dissipation computation
 function cache_fluxes!(model, dissipation, tracer_name::Symbol)
     grid = model.grid
-    arch = architecture(grid)
     sz   = size(model.tracers[1].data)
     of   = model.tracers[1].data.offsets
 
@@ -13,8 +13,10 @@ function cache_fluxes!(model, dissipation, tracer_name::Symbol)
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹ 
     U    = model.velocities
+    timestepper = model.timestepper
+    stage = model.clock.stage
 
-    launch!(arch, grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
+    update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
 
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
     cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
@@ -71,12 +73,30 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     if timestepper isa QuasiAdamsBashforth2TimeStepper
         parent(cⁿ⁻¹) .= parent(c)
-    elseif stage == 3
+    elseif stage == 3 
         parent(cⁿ⁻¹) .= parent(c)
     end
 
     return nothing
 end
+
+cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, advection, U, c) = 
+    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
+
+cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, advection, U, c) = 
+    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, Val(stage), advection, U, c)
+
+cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+
+cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, Val(stage), clo, D, B, c, tracer_id, clk, model_fields)
+
+update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
+    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
+
+update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, U) =
+    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, Val(stage), U)
 
 @kernel function _update_transport!(Uⁿ, Uⁿ⁻¹, grid, U)
     i, j, k = @index(Global, NTuple)
@@ -91,14 +111,26 @@ end
     end
 end
 
-cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, advection, U, c) = 
-    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
+@kernel function _update_transport!(Uⁿ, grid, ::Val{3}, U)
+    i, j, k = @index(Global, NTuple)
 
-cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, advection, U, c) = 
-    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Val(stage), grid, advection, U, c)
+    @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) / 6
+    @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) / 6
+    @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) / 6
+end
 
-cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
-    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+@kernel function _update_transport!(Uⁿ, grid, ::Val{1}, U)
+    i, j, k = @index(Global, NTuple)
 
-cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::SplitRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
-    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, stage, clo, D, B, c, tracer_id, clk, model_fields)
+    @inbounds Uⁿ.u[i, j, k] += U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) / 6
+    @inbounds Uⁿ.v[i, j, k] += U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) / 6
+    @inbounds Uⁿ.w[i, j, k] += U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) / 6
+end
+
+@kernel function _update_transport!(Uⁿ, grid, ::Val{2}, U)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds Uⁿ.u[i, j, k] += U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) / 3 * 2
+    @inbounds Uⁿ.v[i, j, k] += U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) / 3 * 2
+    @inbounds Uⁿ.w[i, j, k] += U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) / 3 * 2
+end
