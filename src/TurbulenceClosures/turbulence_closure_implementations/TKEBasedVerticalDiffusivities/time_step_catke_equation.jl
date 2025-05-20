@@ -75,6 +75,8 @@ function time_step_catke_equation!(model)
     return nothing
 end
 
+const c = Center()
+
 @kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
                                                    next_velocities, previous_velocities,
                                                    tracers, buoyancy, diffusivities,
@@ -118,7 +120,7 @@ end
     #
     #       Lᵂ = - Cᵂϵ * √e / Δz.
 
-    on_bottom = bottommost_active_node(i, j, k, grid)
+    on_bottom = bottommost_active_node(i, j, k, grid, c, c, c)
     active = !inactive_cell(i, j, k, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
