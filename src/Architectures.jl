@@ -104,9 +104,6 @@ cpu_architecture(::ReactantState) = CPU()
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
 
-# cu alters the type of `a`, so we convert it back to the correct type
-unified_array(::GPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))
-
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
 @inline unsafe_free!(a)          = nothing
