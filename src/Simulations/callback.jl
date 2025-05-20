@@ -159,7 +159,7 @@ function Callback(func::VarianceDissipation, schedule=IterationInterval(1);
         callsite = UpdateStateCallsite()
     end
 
-    schedule = validate_dissipation_schedule(func, schedule)
+    schedule = validate_schedule(func, schedule)
 
     return Callback(func, schedule, callsite, parameters)
 end
