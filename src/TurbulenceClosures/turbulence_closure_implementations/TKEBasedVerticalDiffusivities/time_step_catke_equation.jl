@@ -1,7 +1,7 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
@@ -118,7 +118,7 @@ end
     #
     #       Lᵂ = - Cᵂϵ * √e / Δz.
 
-    on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+    on_bottom = bottommost_active_node(i, j, k, grid)
     active = !inactive_cell(i, j, k, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
