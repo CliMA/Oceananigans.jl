@@ -35,7 +35,7 @@ function random_divergent_source_term(grid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
-    
+
     return R, U
 end
 
@@ -58,7 +58,7 @@ function random_divergence_free_source_term(grid)
 
     fill_halo_regions!(Ru)
     fill_halo_regions!(Rv)
-    
+
     arch = architecture(grid)
 
     compute_w_from_continuity!(U, arch, grid)
@@ -68,7 +68,7 @@ function random_divergence_free_source_term(grid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R)
-    
+
     return R
 end
 

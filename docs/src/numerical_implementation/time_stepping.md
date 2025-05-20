@@ -12,14 +12,14 @@ With the [pressure decomposition](@ref pressure_decomposition) as discussed, the
 where, e.g., for the non-hydrostatic model (ignoring background velocities and surface-wave effects)
 
 ```math
-\boldsymbol{G}_{\boldsymbol{v}} \equiv - \boldsymbol{\nabla}_h p_{\rm{hyd}} 
-                       - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v} 
-                       - \boldsymbol{f} \times \boldsymbol{v} 
-                       + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} 
+\boldsymbol{G}_{\boldsymbol{v}} \equiv - \boldsymbol{\nabla}_h p_{\rm{hyd}}
+                       - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
+                       - \boldsymbol{f} \times \boldsymbol{v}
+                       + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                        + \boldsymbol{F}_{\boldsymbol{v}}
 ```
 
-collects all terms on the right side of the momentum equation \eqref{eq:momentum-time-derivative}, *except* the 
+collects all terms on the right side of the momentum equation \eqref{eq:momentum-time-derivative}, *except* the
 contribution of non-hydrostatic pressure ``\boldsymbol{\nabla} p_{\rm{non}}``.
 
 The time-integral of the momentum equation \eqref{eq:momentum-time-derivative} from time step ``n`` at ``t = t_n``
@@ -27,12 +27,12 @@ to time step ``n+1`` at ``t_{n+1}`` is:
 ```math
     \begin{equation}
     \label{eq:momentum-time-integral}
-    \boldsymbol{v}^{n+1} - \boldsymbol{v}^n = 
+    \boldsymbol{v}^{n+1} - \boldsymbol{v}^n =
         \int_{t_n}^{t_{n+1}} \Big [ - \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{G}_{\boldsymbol{v}} \Big ] \, \mathrm{d} t \, ,
     \end{equation}
 ```
-where the superscript ``n`` and ``n+1`` imply evaluation at ``t_n`` and ``t_{n+1}``, such that 
-``\boldsymbol{v}^n \equiv \boldsymbol{v}(t=t_n)``. The crux of the fractional step method is 
+where the superscript ``n`` and ``n+1`` imply evaluation at ``t_n`` and ``t_{n+1}``, such that
+``\boldsymbol{v}^n \equiv \boldsymbol{v}(t=t_n)``. The crux of the fractional step method is
 to treat the pressure term ``\boldsymbol{\nabla} p_{\rm{non}}`` implicitly using the approximation
 ```math
     \begin{align}
@@ -41,8 +41,8 @@ to treat the pressure term ``\boldsymbol{\nabla} p_{\rm{non}}`` implicitly using
         \Delta t \boldsymbol{\nabla} p_{\rm{non}}^{n+1} \, ,
     \end{align}
 ```
-while treating the rest of the terms on the right hand side of \eqref{eq:momentum-time-integral} 
-explicitly. The implicit treatment of pressure ensures that the velocity field obtained at 
+while treating the rest of the terms on the right hand side of \eqref{eq:momentum-time-integral}
+explicitly. The implicit treatment of pressure ensures that the velocity field obtained at
 time step ``n+1`` is divergence-free.
 
 To effect such a fractional step method, we define an intermediate velocity field ``\boldsymbol{v}^\star`` such that
@@ -66,11 +66,11 @@ for any time-dependent function ``G(t)``, while a second-order Adams-Bashforth m
     \begin{equation}
     \label{eq:adams-bashforth}
     \int_{t_n}^{t_{n+1}} G \, \mathrm{d} t \approx
-        \Delta t \left [ \left ( \tfrac{3}{2} + \chi \right ) G^n 
+        \Delta t \left [ \left ( \tfrac{3}{2} + \chi \right ) G^n
         - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
     \end{equation}
 ```
-where ``\chi`` is a parameter. [Ascher95](@citet) claim that ``\chi = \tfrac{1}{8}`` is optimal; 
+where ``\chi`` is a parameter. [Ascher95](@citet) claim that ``\chi = \tfrac{1}{8}`` is optimal;
 ``\chi = -\tfrac{1}{2}`` yields the forward Euler scheme.
 
 Combining the equation \eqref{eq:intermediate-velocity-field} for ``\boldsymbol{v}^\star`` and the time integral
@@ -82,8 +82,8 @@ of the non-hydrostatic pressure \eqref{eq:pnon_implicit} yields
     \end{equation}
 ```
 
-Taking the divergence of fractional step equation \eqref{eq:fractional-step} and requiring that 
-``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^{n+1} = 0`` yields a Poisson equation 
+Taking the divergence of fractional step equation \eqref{eq:fractional-step} and requiring that
+``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^{n+1} = 0`` yields a Poisson equation
 for the kinematic pressure ``p_{\rm{non}}`` at time-step ``n+1``:
 ```math
     \begin{equation}
@@ -101,7 +101,7 @@ Tracers are stepped forward explicitly via
     c^{n+1} - c^n = \int_{t_n}^{t_{n+1}} G_c \, \mathrm{d} t \, ,
     \end{equation}
 ```
-where 
+where
 ```math
     \begin{equation}
     G_c \equiv - \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c + F_c \, ,

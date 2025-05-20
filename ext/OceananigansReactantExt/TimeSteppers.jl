@@ -22,7 +22,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     local_ab2_step!,
     compute_free_surface_tendency!
 
-import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
+import Oceananigans.TimeSteppers: Clock, unit_time, first_time_step!, time_step!, ab2_step!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -43,7 +43,7 @@ end
 function Clock(grid::ShardedGrid)
     FT = Oceananigans.defaults.FloatType
     arch = architecture(grid)
-    replicate = Sharding.NamedSharding(arch.connectivity, ())
+    replicate = Sharding.Replicated(arch.connectivity)
     t = ConcreteRNumber(zero(FT), sharding=replicate)
     iter = ConcreteRNumber(0, sharding=replicate)
     stage = 0 #ConcreteRNumber(0)
@@ -113,6 +113,22 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
 
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt, euler=true)
     return nothing
 end
 

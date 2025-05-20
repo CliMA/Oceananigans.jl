@@ -1,3 +1,5 @@
+using ReactantCore: @trace
+
 struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     tke_dissipation_equations :: KE
     stability_functions :: ST
@@ -21,7 +23,7 @@ function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                maximum_viscosity::FT,
                                                minimum_tke::FT,
                                                minimum_stratification_number_safety_factor::FT,
-                                               negative_tke_damping_time_scale::FT, 
+                                               negative_tke_damping_time_scale::FT,
                                                tke_dissipation_time_step::DT) where {TD, KE, ST, LMIN, FT, DT}
 
     return TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT}(tke_dissipation_equations,
@@ -62,7 +64,7 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
                                       tke_dissipation_time_step = nothing)
 
 Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical mixing by
-microscale ocean turbulence based on the prognostic evolution of two variables: the 
+microscale ocean turbulence based on the prognostic evolution of two variables: the
 turbulent kinetic energy (TKE), and the turbulent kinetic energy dissipation.
 Elsewhere this is referred to as "k-ϵ". For more information about k-ϵ, see
 Burchard and Bolding (2001), Umlauf and Buchard (2003), and Umlauf and Burchard (2005).
@@ -149,13 +151,14 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
+struct TKEDissipationDiffusivityFields{K, L, C, U, KC, LC}
     κu :: K
     κc :: K
     κe :: K
     κϵ :: K
     Le :: L
     Lϵ :: L
+    clock :: C
     previous_velocities :: U
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
@@ -168,11 +171,12 @@ Adapt.adapt_structure(to, tke_dissipation_diffusivity_fields::TKEDissipationDiff
                                     adapt(to, tke_dissipation_diffusivity_fields.κϵ),
                                     adapt(to, tke_dissipation_diffusivity_fields.Le),
                                     adapt(to, tke_dissipation_diffusivity_fields.Lϵ),
-                                    adapt(to, previous_velocities),
-                                    adapt(to, _tupled_tracer_diffusivities),
-                                    adapt(to, _tupled_implicit_linear_coefficients))
+                                    adapt(to, tke_dissipation_diffusivity_fields.clock),
+                                    adapt(to, tke_dissipation_diffusivity_fields.previous_velocities),
+                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_tracer_diffusivities),
+                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(catke_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
+function fill_halo_regions!(tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_diffusivity_fields.κu,
                                  tke_dissipation_diffusivity_fields.κc,
                                  tke_dissipation_diffusivity_fields.κe,
@@ -196,6 +200,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
     κϵ = ZFaceField(grid, boundary_conditions=bcs.κϵ)
     Le = CenterField(grid)
     Lϵ = CenterField(grid)
+    clock = deepcopy(clock)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
@@ -217,10 +222,11 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
                                                       for name in tracer_names)
 
     return TKEDissipationDiffusivityFields(κu, κc, κe, κϵ, Le, Lϵ,
+                                           clock,
                                            previous_velocities,
                                            _tupled_tracer_diffusivities,
                                            _tupled_implicit_linear_coefficients)
-end        
+end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
@@ -235,14 +241,16 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
+    @trace if model.clock.iteration != diffusivities.clock.iteration # time-step TKE forward
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
         time_step_tke_dissipation_equations!(model)
     end
 
-    # Update "previous velocities"
+    # Update the clock and "previous velocities"
+    diffusivities.clock.time = model.clock.time
+    diffusivities.clock.iteration = model.clock.iteration
     u, v, w = model.velocities
     u⁻, v⁻ = diffusivities.previous_velocities
     parent(u⁻) .= parent(u)
@@ -355,7 +363,7 @@ end
 
 @inline viscosity(::FlavorOfTD, diffusivities) = diffusivities.κu
 @inline diffusivity(::FlavorOfTD, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
-    
+
 #####
 ##### Show
 #####
@@ -378,7 +386,8 @@ function Base.show(io::IO, clo::TDVD)
               "├── tke_dissipation_equations: ", prettysummary(clo.tke_dissipation_equations), '\n',
               "│   ├── Cᵋϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵋϵ),  '\n',
               "│   ├── Cᴾϵ: ", prettysummary(clo.tke_dissipation_equations.Cᴾϵ),  '\n',
-              "│   ├── Cᵇϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ),  '\n',
+              "│   ├── Cᵇϵ⁺: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁺),  '\n',
+              "│   ├── Cᵇϵ⁻: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁻),  '\n',
               "│   ├── Cᵂu★: ", prettysummary(clo.tke_dissipation_equations.Cᵂu★), '\n',
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")

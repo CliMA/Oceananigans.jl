@@ -51,7 +51,7 @@ b = model.tracers.b
 
 tracers = model.tracers
 buoyancy = model.buoyancy
-velocities = model.velocities 
+velocities = model.velocities
 
 κc = model.diffusivity_fields.κc
 κe = model.diffusivity_fields.κe

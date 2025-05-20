@@ -17,4 +17,9 @@ include("state_checker.jl")
 include("cfl.jl")
 include("plotter.jl")
 
+# Implementation of the diagnostic for computing the dissipation rate
+include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
+
+using .VarianceDissipationComputations
+
 end # module

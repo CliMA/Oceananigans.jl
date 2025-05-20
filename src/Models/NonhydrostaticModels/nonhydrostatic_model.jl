@@ -7,7 +7,7 @@ using Oceananigans.Advection: Centered, adapt_advection_order
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, CenterField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -24,6 +24,7 @@ import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 
 # TODO: this concept may be more generally useful,
 # but for now we use it only for hydrostatic pressure anomalies for now.
@@ -105,11 +106,11 @@ Keyword arguments
                                     in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
                                     vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
                                     only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
-                                    is not computed. 
+                                    is not computed.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 """
 function NonhydrostaticModel(; grid,
                              clock = Clock(grid),
@@ -122,7 +123,7 @@ function NonhydrostaticModel(; grid,
                              boundary_conditions::NamedTuple = NamedTuple(),
                              tracers = (),
                              timestepper = :RungeKutta3,
-                             background_fields::NamedTuple = NamedTuple(),
+                             background_fields::BFOrNamedTuple = NamedTuple(),
                              particles::ParticlesOrNothing = nothing,
                              biogeochemistry::AbstractBGCOrNothing = nothing,
                              velocities = nothing,
@@ -194,14 +195,14 @@ function NonhydrostaticModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions()
-                                                                     for name in prognostic_field_names)
+    field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
+    default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions()
+                                                          for name in field_names)
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
@@ -234,7 +235,7 @@ function NonhydrostaticModel(; grid,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
 
     update_state!(model; compute_tendencies = false)
-    
+
     return model
 end
 
@@ -258,5 +259,5 @@ end
 
 # return the total advective velocities
 @inline total_velocities(m::NonhydrostaticModel) =
-    sum_of_velocities(m.velocities, m.background_fields.velocities) 
+    sum_of_velocities(m.velocities, m.background_fields.velocities)
 

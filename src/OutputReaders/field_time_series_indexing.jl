@@ -190,7 +190,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Otherwise, make a Field representing a linear interpolation in time
     # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
     update_field_time_series!(fts, n₁, n₂)
-    
+
     ψ₂ = fts[n₂]
     ψ₁ = fts[n₁]
     ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
@@ -245,7 +245,7 @@ end
     ix = interpolator(fi.i)
     iy = interpolator(fi.j)
     iz = interpolator(fi.k)
-    
+
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
     m₂ = memory_index(backend, time_indexing, Nt, n₂)
 

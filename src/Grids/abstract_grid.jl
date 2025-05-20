@@ -24,7 +24,7 @@ abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractUnder
 """
     AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
 
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT`, 
+Abstract supertype for horizontally-curvilinear grids with elements of type `FT`,
 topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} end
@@ -42,7 +42,7 @@ const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 isrectilinear(grid) = false
 
 # Fallback
-@inline  get_active_column_map(::AbstractGrid) = nothing
+@inline get_active_column_map(::AbstractGrid) = nothing
 @inline get_active_cells_map(::AbstractGrid, any_map_type) = nothing
 
 """
