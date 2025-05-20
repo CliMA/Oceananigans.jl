@@ -23,6 +23,7 @@
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
+using CUDA
 
 # ## Model set-up
 #

@@ -9,14 +9,14 @@ validate_devices(p, ::CPU, ::Nothing) = nothing
 validate_devices(p, ::GPU, ::Nothing) = 1
 
 function validate_devices(partition, arch::GPU, devices)
-    @assert length(unique(devices)) ≤ length(devices(arch))
-    @assert maximum(devices) ≤ length(devices(arch))
+    @assert length(unique(devices)) ≤ length(devices)
+    @assert maximum(devices) ≤ length(devices)
     @assert length(devices) ≤ length(partition)
     return devices
 end
 
 function validate_devices(partition, arch::GPU, devices::Number)
-    @assert devices ≤ length(devices(arch))
+    @assert devices ≤ length(devices)
     @assert devices ≤ length(partition)
     return devices
 end
