@@ -113,10 +113,10 @@ function (ϵ::VarianceDissipation)(model)
     end
 
     # First we compute the dissipation from previously computed fluxes
-    compute_dissipation!(model, ϵ, ϵ.tracer_name)
+    compute_dissipation!(ϵ, model, ϵ.tracer_name)
 
     # Then we update the fluxes to be used in the next time step
-    cache_fluxes!(model, ϵ, ϵ.tracer_name)
+    cache_fluxes!(ϵ, model, ϵ.tracer_name)
     
     return nothing
 end

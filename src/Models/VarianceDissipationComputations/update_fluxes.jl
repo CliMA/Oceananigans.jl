@@ -2,7 +2,7 @@ using Oceananigans: fields
 using Oceananigans.Grids: topology, Flat
 
 # Store advective and diffusive fluxes for dissipation computation
-function cache_fluxes!(model, dissipation, tracer_name::Symbol)
+function cache_fluxes!(dissipation, model, tracer_name)
     grid = model.grid
     arch = architecture(grid)
     sz   = size(model.tracers[1].data)
@@ -31,7 +31,7 @@ function flux_parameters(grid)
     return KernelParameters(Fx, Fy, Fz)
 end
 
-function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
+function cache_fluxes!(dissipation, model, tracer_name, tracer_id)
     
     # Grab tracer properties
     c    = model.tracers[tracer_name]
