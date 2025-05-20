@@ -23,7 +23,6 @@
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
-using CUDA
 
 # ## Model set-up
 #
@@ -34,7 +33,7 @@ using CUDA
 #
 # We use a modest resolution and the same total extent as Wagner et al. (2021),
 
-grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
+grid = RectilinearGrid(CPU(), size=(128, 128, 64), extent=(128, 128, 64))
 
 # ### The Stokes Drift profile
 #
