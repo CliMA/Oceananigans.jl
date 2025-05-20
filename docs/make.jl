@@ -170,7 +170,6 @@ pages = [
 #####
 
 format = Documenter.HTML(collapselevel = 1,
-                         prettyurls = true,
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
                          size_threshold = 2^20,
