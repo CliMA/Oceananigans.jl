@@ -231,6 +231,8 @@ include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 
 # Simulations
 include("OutputReaders/OutputReaders.jl")
+include("Diagnostics/Diagnostics.jl")
+include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")
 
 # TODO:
@@ -254,10 +256,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("Models/Models.jl")
-
-# Output and Physics, time-stepping, and models
-include("Diagnostics/Diagnostics.jl")
-include("OutputWriters/OutputWriters.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
