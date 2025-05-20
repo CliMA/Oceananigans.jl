@@ -30,5 +30,4 @@ include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
 
 using .VarianceDissipationComputations
 
-
 end # module
