@@ -54,7 +54,10 @@ function Field(operand::OperationOrFunctionField;
 
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
+    computed_field = Field(loc, grid, data, boundary_conditions, indices, operand, status)
+    compute!(computed_field)
+
+    return computed_field
 end
 
 """
