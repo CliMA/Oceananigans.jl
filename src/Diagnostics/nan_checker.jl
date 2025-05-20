@@ -1,5 +1,4 @@
 using Oceananigans.Utils: prettykeys
-using Oceananigans.Fields: AbstractField    
 
 mutable struct NaNChecker{F}
     fields :: F
