@@ -7,7 +7,6 @@ export Callback, add_callback!
 export iteration
 
 using Oceananigans
-using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
