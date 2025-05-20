@@ -205,8 +205,4 @@ include("seawater_density.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 
-# Model - dependent diagnostics
-include("cfl.jl")
-include("time_step_wizard.jl")
-
 end # module
