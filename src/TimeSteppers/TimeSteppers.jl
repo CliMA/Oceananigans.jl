@@ -68,14 +68,16 @@ TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)
-    update_state!(model)
+    # The first update_state is conditionally gated from within time_step!
+    # update_state!(model)
     time_step!(model, Δt)
     return nothing
 end
 
 function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
-    update_state!(model)
+    # The first update_state is conditionally gated from within time_step!
+    # update_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing
 end
