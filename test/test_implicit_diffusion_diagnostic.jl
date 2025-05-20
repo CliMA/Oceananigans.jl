@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans
-using Oceananigans.Simulations: VarianceDissipation
+using Oceananigans.Models.VarianceDissipationComputations
 using KernelAbstractions: @kernel, @index
 
 @kernel function _compute_dissipation!(Δtc², c⁻, c, Δtd², d⁻, d, grid, Δt)
@@ -87,8 +87,8 @@ function test_implicit_diffusion_diagnostic(arch, dim, schedule)
     @test ϵc.previous_state.Uⁿ   === ϵd.previous_state.Uⁿ
     @test ϵc.previous_state.Uⁿ⁻¹ === ϵd.previous_state.Uⁿ⁻¹
 
-    fc = Oceananigans.Simulations.VarianceDissipationComputations.flatten_dissipation_fields(ϵc)
-    fd = Oceananigans.Simulations.VarianceDissipationComputations.flatten_dissipation_fields(ϵd)
+    fc = flatten_dissipation_fields(ϵc)
+    fd = flatten_dissipation_fields(ϵd)
 
     outputs = merge(model.tracers, model.auxiliary_fields, fd, fc)
     

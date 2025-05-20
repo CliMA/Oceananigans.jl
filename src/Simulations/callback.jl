@@ -142,3 +142,30 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
     callback = Callback(func, schedule; callback_kw...)
     return add_callback!(simulation, callback; name)
 end
+
+# Specific `Callback` for `VarianceDissipation` computations.
+# A VarianceDissipation object requires a `ConsecutiveIteration` schedule to make sure
+# that the computed fluxes are correctly used in the next time step.
+# Also, the `VarianceDissipation` object needs to be called on `UpdateStateStepCallsite` to be correct.
+function Callback(func::VarianceDissipation, schedule;
+                  parameters = nothing,
+                  callsite = UpdateStateCallsite())
+
+    if !(callsite isa UpdateStateCallsite)
+        @warn "VarianceDissipation callback must be called on UpdateStateCallsite. Changing `callsite` to `UpdateStateCallsite()`."
+        callsite = UpdateStateCallsite()
+    end
+
+    if schedule isa TimeInterval # Time step might change size between iterations invalidating `VarianceDissipation`
+        throw(ArgumentError("a VarianceDissipation computation must be executed on `IterationInterval`s. \n" *
+                            "The provided `TimeInterval` schedule is not supported"))
+    end
+
+    if !(schedule isa ConsecutiveIterations || schedule == IterationInterval(1))
+        @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" * 
+              "Changing `schedule` to `ConsecutiveIterations(schedule)`."
+        schedule = ConsecutiveIterations(schedule)
+    end
+
+    return Callback(func, schedule, callsite, parameters)
+end

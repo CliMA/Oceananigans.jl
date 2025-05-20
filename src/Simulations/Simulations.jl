@@ -25,9 +25,4 @@ include("simulation.jl")
 include("run.jl")
 include("time_step_wizard.jl")
 
-# Implementation of the diagnostic for computing the dissipation rate
-include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
-
-using .VarianceDissipationComputations
-
 end # module
