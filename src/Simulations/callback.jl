@@ -176,7 +176,7 @@ function validate_schedule(::VarianceDissipation, schedule::IterationInterval)
     return schedule
 end
 
-function validate_dissipation_schedule(::VarianceDissipation, schedule::ConsecutiveIterations)
+function validate_schedule(::VarianceDissipation, schedule::ConsecutiveIterations)
     if !(schedule.parent isa IterationInterval)
        throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
                                                                          "Use an `IterationInterval` schedule instead."))  
