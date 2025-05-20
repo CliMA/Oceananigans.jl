@@ -1,5 +1,6 @@
 using Oceananigans: TurbulenceClosures
 using Oceananigans.Grids: prettysummary, architecture
+import Oceananigans.Diagnostics: cell_diffusion_timescale
 import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
@@ -79,7 +80,7 @@ function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
 
     # user wants to limit by diffusive CFL and did not provide custom function to calculate timescale
     if isfinite(diffusive_cfl) && (cell_diffusion_timescale === infinite_diffusion_timescale)
-       cell_diffusion_timescale = TurbulenceClosures.cell_diffusion_timescale
+       cell_diffusion_timescale = cell_diffusion_timescale
     end
 
     C = typeof(cell_advection_timescale)
