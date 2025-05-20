@@ -227,8 +227,14 @@ include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("DistributedComputations/DistributedComputations.jl")
-include("OutputReaders/OutputReaders.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+
+# Simulations
+include("OutputReaders/OutputReaders.jl")
+include("Simulations/Simulations.jl")
+# TODO:
+# include("Diagnostics/Diagnostics.jl") # or just delete
+# include("OutputWriters/OutputWriters.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
@@ -251,7 +257,6 @@ include("Models/Models.jl")
 # Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
