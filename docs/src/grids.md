@@ -260,6 +260,10 @@ architecture = Distributed(child_architecture)
 
 # output
 [ Info: MPI has not been initialized, so we are calling MPI.Init().
+┌ Warning: We are building a Distributed architecture on a single MPI rank.
+│ This can occur when MPI is incorrectly configured.
+│ See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details.
+└ @ Oceananigans.DistributedComputations ~/builds/tartarus-21/clima/oceananigans/src/DistributedComputations/distributed_architectures.jl:268
 Distributed{CPU} across 1 rank:
 ├── local_rank: 0 of 0-0
 ├── local_index: [1, 1, 1]
@@ -267,8 +271,8 @@ Distributed{CPU} across 1 rank:
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.
-In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
-so we're only "distributed" across 1 node.
+In this case, we didn't launch `julia` on multiple processes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
+so we're only "distributed" across 1 process.
 For more, see [Distributed grids](@ref).
 
 ### Specifying the topology for each dimension
