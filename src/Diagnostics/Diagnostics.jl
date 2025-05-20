@@ -13,11 +13,5 @@ import Base: show
 import Oceananigans: run_diagnostic!
 
 include("state_checker.jl")
-include("cfl.jl")
-
-# Implementation of the diagnostic for computing the dissipation rate
-include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
-
-using .VarianceDissipationComputations
 
 end # module

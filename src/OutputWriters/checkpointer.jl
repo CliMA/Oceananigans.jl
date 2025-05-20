@@ -116,8 +116,7 @@ end
 ##### Checkpointer utils
 #####
 
-checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
-checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+checkpointer_address(model) = ""
 
 """ Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
@@ -175,7 +174,7 @@ end
 ##### Writing checkpoints
 #####
 
-function write_output!(c::Checkpointer, model::AbstractModel)
+function write_output!(c::Checkpointer, model)
     filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
     addr = checkpointer_address(model)

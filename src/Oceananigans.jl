@@ -229,9 +229,9 @@ include("Solvers/Solvers.jl")
 include("DistributedComputations/DistributedComputations.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 
-# Simulations
-include("OutputReaders/OutputReaders.jl")
+# Simulations and output handling
 include("Diagnostics/Diagnostics.jl")
+include("OutputReaders/OutputReaders.jl")
 include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")
 

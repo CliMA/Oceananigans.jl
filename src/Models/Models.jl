@@ -186,10 +186,22 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 # have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
+# Extend output writer functionality to Ocenanaigans' models
+import Oceananigans.OutputWriters: default_included_properties, checkpointer_address
+
+default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
+default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
+
+checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
+checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
+checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
+include("cfl.jl")
 
 end # module
