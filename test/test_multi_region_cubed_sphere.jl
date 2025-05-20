@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
 using Oceananigans.BoundaryConditions: replace_horizontal_vector_halos!
 using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
@@ -186,7 +187,7 @@ end
     cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid_with_4_halos.jld2"
 
     for panel in 1:6
-        grid = conformal_cubed_sphere_panel(cs32_filepath; panel, Nz, z)
+        grid = ConformalCubedSpherePanelGrid(cs32_filepath; panel, Nz, z)
         @test grid isa OrthogonalSphericalShellGrid
     end
 

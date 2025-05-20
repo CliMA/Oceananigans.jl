@@ -176,7 +176,7 @@ velocity_forcing(::Val{1}, forcing) = (; u = forcing)
 velocity_forcing(::Val{2}, forcing) = (; v = forcing)
 velocity_forcing(::Val{3}, forcing) = (; w = forcing)
 
-function test_pertubation_advection_open_boundary_conditions(arch, FT)
+function test_perturbation_advection_open_boundary_conditions(arch, FT)
     for orientation in 1:3
         topology = tuple(map(n -> ifelse(n == orientation, Bounded, Flat), 1:3)...)
 
@@ -447,7 +447,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             A = typeof(arch)
             @info "  Testing open boundary conditions [$A, $FT]..."
             test_flat_extrapolation_open_boundary_conditions(arch, FT)
-            test_pertubation_advection_open_boundary_conditions(arch, FT)
+            test_perturbation_advection_open_boundary_conditions(arch, FT)
         end
     end
 end
