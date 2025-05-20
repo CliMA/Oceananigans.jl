@@ -1,6 +1,7 @@
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: prettysummary, ConsecutiveIterations
 using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.Models.VarianceDissipationComputations
 
 import Oceananigans: initialize!
 
