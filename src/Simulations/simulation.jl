@@ -1,11 +1,11 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
+using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
 
-import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.OutputWriters: write_output!
+import Oceananigans.Solvers: iteration
 
 default_progress(simulation) = nothing
 
@@ -181,7 +181,7 @@ function reset!(sim::Simulation)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
-    reset!(timestepper(sim.model))
+    reset!(model)
     return nothing
 end
 

@@ -21,6 +21,5 @@ import Base: show
 include("callback.jl")
 include("simulation.jl")
 include("run.jl")
-include("time_step_wizard.jl")
 
 end # module

@@ -211,13 +211,14 @@ end
 ##### set! for checkpointer filepaths
 #####
 
+# Should this go in Models? 
 """
     set!(model, filepath::AbstractString)
 
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
-function set!(model::AbstractModel, filepath::AbstractString)
+function set!(model, filepath::AbstractString)
 
     addr = checkpointer_address(model)
 

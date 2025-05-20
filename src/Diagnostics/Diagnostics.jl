@@ -13,5 +13,6 @@ import Base: show
 import Oceananigans: run_diagnostic!
 
 include("state_checker.jl")
+include("nan_checker.jl")
 
 end # module

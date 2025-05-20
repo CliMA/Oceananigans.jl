@@ -86,9 +86,6 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
-# Util for checking whether the model's prognostic state has NaN'd
-include("nan_checker.jl")
-
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
@@ -163,8 +160,13 @@ function reset!(model::OceananigansModels)
         fill!(field, 0)
     end
 
+    reset!(timestepper(model))
+
     return nothing
 end
+
+using Oceananigans.Diagnostics: NaNChecker
+import Oceananigans.Diagnostics: default_nan_checker
 
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
 function default_nan_checker(model::OceananigansModels)
@@ -202,6 +204,9 @@ checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceMod
 include("seawater_density.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
+
+# Model - dependent diagnostics
 include("cfl.jl")
+include("time_step_wizard.jl")
 
 end # module

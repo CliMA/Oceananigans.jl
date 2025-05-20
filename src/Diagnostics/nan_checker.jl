@@ -1,4 +1,5 @@
 using Oceananigans.Utils: prettykeys
+using Oceananigans.Fields: AbstractField    
 
 mutable struct NaNChecker{F}
     fields :: F
@@ -30,8 +31,8 @@ If `erroring=true`, the `NaNChecker` will throw an error on NaN detection.
 """
 NaNChecker(; fields, erroring=false) = NaNChecker(fields, erroring)
 
-hasnan(field) = any(isnan, parent(field))
-hasnan(model::AbstractModel) = hasnan(first(fields(model)))
+hasnan(field::AbstractField) = any(isnan, parent(field))
+hasnan(model) = hasnan(first(fields(model)))
 
 function (nc::NaNChecker)(simulation)
     for (name, field) in pairs(nc.fields)
