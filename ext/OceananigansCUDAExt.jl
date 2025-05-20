@@ -66,6 +66,9 @@ AC.on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 AC.on_architecture(::AC.CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 AC.on_architecture(::CUDAGPU, a::StepRangeLen) = a
 
+# cu alters the type of `a`, so we convert it back to the correct type
+unified_array(::CUDAGPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))
+
 ## GPU to GPU copy of contiguous data
 @inline function AC.device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false)
     n = length(src)
