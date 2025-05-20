@@ -130,6 +130,7 @@ end
 @inline UT.getdevice(cu::GPUVar)        = device(cu)
 @inline UT.switch_device!(dev::CuDevice)            = device!(dev)
 @inline UT.sync_device!(::CUDAGPU)      = CUDA.synchronize()
+@inline UT.sync_device!(::CUDABackend)      = CUDA.synchronize()
 AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(AC.child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:CuArray}) = AC.on_architecture(child_architecture(arch), a)
 
