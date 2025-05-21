@@ -168,7 +168,6 @@ pages = [
 #####
 ##### Build and deploy docs
 #####
-ci_build = get(ENV, "CI", nothing) == "true"
 
 format = Documenter.HTML(collapselevel = 1,
                          prettyurls = ci_build,
@@ -213,10 +212,8 @@ for pattern in [r"\.jld2", r"\.nc"]
     end
 end
 
-if ci_build
-    deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-               versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
-               forcepush = true,
-               push_preview = true,
-               devbranch = "main")
-end
+deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+            versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+            forcepush = true,
+            push_preview = true,
+            devbranch = "main")
