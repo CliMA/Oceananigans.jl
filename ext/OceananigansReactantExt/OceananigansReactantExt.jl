@@ -42,6 +42,7 @@ using .OutputReaders
 
 import ConstructionBase: constructorof
 
+constructorof(::Type{<:CATKEVerticalDiffusivity{TD}}) where {TD} = CATKEVerticalDiffusivity{TD}
 constructorof(::Type{<:LatitudeLongitudeGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = LatitudeLongitudeGrid{TX, TY, TZ}
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
 constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInvariant{N, FT, M}
