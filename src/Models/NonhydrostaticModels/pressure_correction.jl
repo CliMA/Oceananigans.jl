@@ -24,16 +24,16 @@ end
 #####
 
 """
-Update the predictor velocities u, v, and w with the non-hydrostatic pressure via
+Update the predictor velocities u, v, and w with the non-hydrostatic pressure multiplied by the timestep via
 
-    `u^{n+1} = u^n - δₓp_{NH} / Δx * Δt`
+    `u^{n+1} = u^n - δₓp_{NH} * Δt / Δx`
 """
-@kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
+@kernel function _pressure_correct_velocities!(U, grid, pNHSΔt)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
 "Update the solution variables (velocities and tracers)."
@@ -43,8 +43,11 @@ function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
             _pressure_correct_velocities!,
             model.velocities,
             model.grid,
-            Δt,
             model.pressures.pNHS)
+    
+    ϵ = eps(eltype(model.pressures.pNHS))
+    Δt⁺ = max(ϵ, Δt)
+    model.pressures.pNHS ./= Δt⁺
 
     return nothing
 end
