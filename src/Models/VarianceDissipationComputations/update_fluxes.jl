@@ -3,7 +3,7 @@ using Oceananigans.Grids: topology, Flat
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper
 
 # Store advective and diffusive fluxes for dissipation computation
-function cache_fluxes!(model, dissipation, tracer_name::Symbol)
+function cache_fluxes!(dissipation, model, tracer_name)
     grid = model.grid
     sz   = size(model.tracers[1].data)
     of   = model.tracers[1].data.offsets

@@ -22,7 +22,7 @@ U = 1.5 Uⁿ - 0.5 Uⁿ⁻¹
 
 For an RK3 method (not implemented at the moment), the whole substepping procedure needs to be accounted for.
 """
-function compute_dissipation!(model, dissipation, tracer_name::Symbol)
+function compute_dissipation!(dissipation, model, tracer_name)
     
     grid = model.grid
 
