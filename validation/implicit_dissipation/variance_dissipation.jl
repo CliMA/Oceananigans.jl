@@ -52,7 +52,7 @@ function compute_tracer_dissipation!(sim)
 end
 
 tracer_advection = WENO(order=5)
-closure = (ScalarDiffusivity(κ=1e-5), ScalarDiffusivity(κ=1e-4))
+closure = ScalarDiffusivity(κ=1e-5)
 velocities = PrescribedVelocityFields(u=1)
 
 c⁻    = CenterField(grid)
@@ -60,7 +60,6 @@ c⁻    = CenterField(grid)
 
 for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3))
     
-    @show tracer_advection
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         timestepper, 
                                         velocities, 
@@ -75,7 +74,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
     if ts == :AB2
        Δt = 0.2 * minimum_xspacing(grid)
     else
-       Δt = 0.6 * minimum_xspacing(grid)
+       Δt = 0.2 * minimum_xspacing(grid)
     end
 
     sim = Simulation(model; Δt, stop_time=10)
