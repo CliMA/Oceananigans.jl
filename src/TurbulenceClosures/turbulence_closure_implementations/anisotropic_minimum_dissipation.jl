@@ -32,7 +32,6 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
                                   C = 1/3, Cν = nothing, Cκ = nothing, Cb = nothing)
 
-
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
@@ -64,11 +63,11 @@ Keyword arguments
         and the impact of this approximation has not been tested or validated.
 
 By default: `C = Cν = Cκ = 1/3`, and `Cb = nothing`, which turns off the buoyancy modification term.
-The default Poincaré constant is found by discretizing subgrid scale energy production, assuming a 
-second-order advection scheme. [Verstappen14](@citeo) shows that the Poincaré constant 
-should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3` 
+The default Poincaré constant is found by discretizing subgrid scale energy production, assuming a
+second-order advection scheme. [Verstappen14](@citet) show that the Poincaré constant
+should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3`
 in our formulation. They also empirically demonstrated that this coefficient produces the correct
-discrete production-dissipation balance. We further demonstrated this in 
+discrete production-dissipation balance. We further demonstrated this in
 https://github.com/CliMA/Oceananigans.jl/issues/4367.
 
 `C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
@@ -81,8 +80,8 @@ julia> using Oceananigans
 
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
 AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
-           Poincaré constant for momentum eddy viscosity Cν: 0.5
-    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
+           Poincaré constant for momentum eddy viscosity Cν: 0.5
+    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
                         Buoyancy modification multiplier Cb: nothing
 ```
 
@@ -113,7 +112,7 @@ AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure wit
 References
 ==========
 
-Verstappen, R. & Rozema, W. & Bae, J.H. (2014), "Numerical scale separation in large-eddy 
+Verstappen, R., Rozema, W., and Bae, J. H. (2014), "Numerical scale separation in large-eddy
     simulation", Center for Turbulence ResearchProceedings of the Summer Program 2014.
 
 Vreugdenhil C., and Taylor J. (2018), "Large-eddy simulations of stratified plane Couette
@@ -122,7 +121,6 @@ Vreugdenhil C., and Taylor J. (2018), "Large-eddy simulations of stratified plan
 Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance the nonlinear
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
-}
 """
 function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Oceananigans.defaults.FloatType;
                                        C = FT(1/3), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
