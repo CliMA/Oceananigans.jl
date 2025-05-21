@@ -1,13 +1,3 @@
-function flatten_dissipation_fields(t::VarianceDissipation)
-    f = NamedTuple()
-    
-    for name in keys(t.advective_production)
-        f = merge(f, flatten_dissipation_fields(t, name))
-    end
-
-    return f
-end
-
 """
     flatten_dissipation_fields(t::VarianceDissipation, tracer_name)
 
@@ -17,10 +7,11 @@ Flattens the dissipation fields of a `VarianceDissipation` object into a named t
 - The dissipation associated with the closures in fields names `D-tracername-dir`
 - The squared gradients (necessary for computing an ``effective diffusivity'') in fields named `G-tracername-dir`
 """
-function flatten_dissipation_fields(t::VarianceDissipation, tracer_name) 
-    A = t.advective_production[tracer_name]
-    D = t.diffusive_production[tracer_name]
-    G = t.gradient_squared[tracer_name]
+function flatten_dissipation_fields(t::VarianceDissipation) 
+    A = t.advective_production
+    D = t.diffusive_production
+    G = t.gradient_squared
+    tracer_name = t.tracer_name
 
     dirs = (:x, :y, :z)
 
