@@ -254,20 +254,11 @@ true
 
 To use more than one CPU, we use the `Distributed` architecture,
 
-```jldoctest grids
+```@example grids
+using Oceananigans
+
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
-
-# output
-[ Info: MPI has not been initialized, so we are calling MPI.Init().
-┌ Warning: We are building a Distributed architecture on a single MPI rank.
-│ This can occur when MPI is incorrectly configured.
-│ See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details.
-└ @ Oceananigans.DistributedComputations ...
-Distributed{CPU} across 1 rank:
-├── local_rank: 0 of 0-0
-├── local_index: [1, 1, 1]
-└── connectivity:
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.
