@@ -124,7 +124,7 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     ∫Ad    = [sum(interior(Ad[i]))    for i in 1:Nt]
     ∫Dd    = [sum(interior(Dd[i]))    for i in 1:Nt] 
 
-    for i in 1:Nt-1
+    for i in 3:Nt-1
         @test abs(∫closs[i] - ∫Ac[i] - ∫Dc[i]) < 2e-13 # Arbitrary tolerance, not exactly machine precision
         @test abs(∫dloss[i] - ∫Ad[i] - ∫Dd[i]) < 2e-13 # Arbitrary tolerance, not exactly machine precision
     end

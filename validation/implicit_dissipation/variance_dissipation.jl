@@ -32,38 +32,6 @@ a = 0.5
     end
 end
 
-# Change to test pure advection schemes
-tracer_advection = WENO(order = 9)
-closure = ScalarDiffusivity(κ=1e-5)
-velocities = PrescribedVelocityFields(u=1)
-
-c⁻    = CenterField(grid)
-Δtc²  = CenterField(grid)
-
-model = HydrostaticFreeSurfaceModel(; grid, 
-                                      timestepper=:QuasiAdamsBashforth2, 
-                                      velocities, 
-                                      tracer_advection, 
-                                      closure, 
-                                      tracers=:c,
-                                      auxiliary_fields=(; Δtc², c⁻))
-
-set!(model, c=c₀)
-set!(model.auxiliary_fields.c⁻, c₀)
-
-sim = Simulation(model, Δt=Δt_max, stop_time=10)
-
-ϵ = VarianceDissipation(:c, grid)
-f = flatten_dissipation_fields(ϵ)
-
-outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
-add_callback!(sim, ϵ, IterationInterval(1))
-
-sim.output_writers[:solution] = JLD2Writer(model, outputs;
-                                           filename="one_d_simulation.jld2",
-                                           schedule=IterationInterval(100),
-                                           overwrite_existing=true)
-
 @kernel function _compute_dissipation!(Δtc², c⁻, c, Δt)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
@@ -83,9 +51,8 @@ function compute_tracer_dissipation!(sim)
     return nothing
 end
 
-tracer_advection = WENO(order=11)
-
-closure = ScalarDiffusivity(κ=1e-5)
+tracer_advection = WENO(order=5)
+closure = (ScalarDiffusivity(κ=1e-5), ScalarDiffusivity(κ=1e-4))
 velocities = PrescribedVelocityFields(u=1)
 
 c⁻    = CenterField(grid)
@@ -105,10 +72,10 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
     set!(model, c=c₀)
     set!(model.auxiliary_fields.c⁻, c₀)
 
-    Δt = if ts == :AB2
-       0.2 * minimum_xspacing(grid)
+    if ts == :AB2
+       Δt = 0.2 * minimum_xspacing(grid)
     else
-       0.6 * minimum_xspacing(grid)
+       Δt = 0.6 * minimum_xspacing(grid)
     end
 
     sim = Simulation(model; Δt, stop_time=10)
@@ -142,14 +109,14 @@ r_Dcx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Dcx")
 Nta = length(a_c.times)
 Ntr = length(r_c.times)
 
-a_∫closs = - [sum(interior(a_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Nta-1]
-a_∫A     = - [sum(interior(a_Acx[i] , :, 1, 1))               for i in 2:Nta-1]
-a_∫D     = - [sum(interior(a_Dcx[i] , :, 1, 1))               for i in 2:Nta-1]
+a_∫closs = abs.([sum(interior(a_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Nta-1])
+a_∫A     = abs.([sum(interior(a_Acx[i] , :, 1, 1))               for i in 2:Nta-1])
+a_∫D     = abs.([sum(interior(a_Dcx[i] , :, 1, 1))               for i in 2:Nta-1])
 a_∫T     = a_∫D .+ a_∫A
 
-r_∫closs = - [sum(interior(r_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Ntr-1]
-r_∫A     = - [sum(interior(r_Acx[i] , :, 1, 1))               for i in 2:Ntr-1]
-r_∫D     = - [sum(interior(r_Dcx[i] , :, 1, 1))               for i in 2:Ntr-1]
+r_∫closs = abs.([sum(interior(r_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Ntr-1])
+r_∫A     = abs.([sum(interior(r_Acx[i] , :, 1, 1))               for i in 2:Ntr-1])
+r_∫D     = abs.([sum(interior(r_Dcx[i] , :, 1, 1))               for i in 2:Ntr-1])
 r_∫T     = r_∫D .+ r_∫A
 
 atimes = a_c.times[2:end-1]
@@ -168,5 +135,3 @@ lines!(ax, rtimes, r_∫A, label="RK3 advection dissipation", color=:red, linest
 lines!(ax, rtimes, r_∫D, label="RK3 diffusive dissipation", color=:green, linestyle=:dash)
 lines!(ax, rtimes, r_∫T, label="RK3 total dissipation", color=:purple, linestyle=:dash)
 Legend(fig[1, 2], ax)
-
-save("diss_with_advection_$(adv_name(tracer_advection)).png", fig)
