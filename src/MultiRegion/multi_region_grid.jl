@@ -233,7 +233,7 @@ function with_halo(new_halo, mrg::MultiRegionGrid)
 end
 
 function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) where {FT, TX, TY, TZ, CZ}
-    new_grids = construct_regionally(on_architecture, CPU(), mrg)
+    new_grids = on_architecture(CPU(), mrg.region_grids)
     devices   = Tuple(CPU() for i in 1:length(mrg))
     return MultiRegionGrid{FT, TX, TY, TZ, CZ}(CPU(), mrg.partition, mrg.connectivity, new_grids, devices)
 end
