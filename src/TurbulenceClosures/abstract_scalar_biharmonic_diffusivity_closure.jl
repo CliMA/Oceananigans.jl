@@ -80,20 +80,15 @@ const AZBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantForm
 @inline ∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v) = δxᶠᶜᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v) - δyᶠᶜᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ,     u, v)
 @inline ∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v) = δxᶜᶠᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ,     u, v) + δyᶜᶠᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v)
 
-# These closures seem to be needed to help the compiler infer types (either of u and v or of the function arguments).
-@inline Δy_∇²u(i, j, k, grid, closure, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
-@inline Δx_∇²v(i, j, k, grid, closure, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
+@inline Δy_∇²u(i, j, k, grid, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
+@inline Δx_∇²v(i, j, k, grid, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
 
-@inline Δy_∇²v(i, j, k, grid, closure, u, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
-@inline Δx_∇²u(i, j, k, grid, closure, u, v) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
-
-@inline Δy_∇²u(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²u_vector_invariantᶠᶜᶜ, u, v)
-@inline Δx_∇²v(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²v_vector_invariantᶜᶠᶜ, u, v)
+@inline Δy_∇²v(i, j, k, grid, u, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
+@inline Δx_∇²u(i, j, k, grid, u, v) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
 
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
-@inline function δ★ᶜᶜᶜ(i, j, k, grid, closure, u, v)
-    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, closure, u, v) +
-                                     δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, closure, u, v))
+@inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u, v) + δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, u, v))
 end
 
 @inline function δ★ⱽᴵᶜᶜᶜ(i, j, k, grid, u, v)
@@ -101,9 +96,8 @@ end
                                      δyᶜᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, ∇²v_vector_invariantᶜᶠᶜ, u, v))
 end
 
-@inline function ζ★ᶠᶠᶜ(i, j, k, grid, closure, u, v)
-    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, closure, u, v) -
-                                     δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, closure, u, v))
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, u, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u, v))
 end
 
 @inline function ζ★ⱽᴵᶠᶠᶜ(i, j, k, grid, u, v)
