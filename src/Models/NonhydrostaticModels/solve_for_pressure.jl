@@ -13,28 +13,28 @@ using Oceananigans.Solvers: solve!
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    @inbounds rhs[i, j, k] = active * δ / Δt
+    @inbounds rhs[i, j, k] = active * δ
 end
 
 @kernel function _fourier_tridiagonal_source_term!(rhs, ::XDirection, grid, Δt, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    @inbounds rhs[i, j, k] = active * Δxᶜᶜᶜ(i, j, k, grid) * δ / Δt
+    @inbounds rhs[i, j, k] = active * Δxᶜᶜᶜ(i, j, k, grid) * δ
 end
 
 @kernel function _fourier_tridiagonal_source_term!(rhs, ::YDirection, grid, Δt, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    @inbounds rhs[i, j, k] = active * Δyᶜᶜᶜ(i, j, k, grid) * δ / Δt
+    @inbounds rhs[i, j, k] = active * Δyᶜᶜᶜ(i, j, k, grid) * δ
 end
 
 @kernel function _fourier_tridiagonal_source_term!(rhs, ::ZDirection, grid, Δt, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    @inbounds rhs[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ / Δt
+    @inbounds rhs[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ
 end
 
 function compute_source_term!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, Ũ)
@@ -76,12 +76,22 @@ end
 #####
 
 function solve_for_pressure!(pressure, solver, Δt, Ũ)
+    ϵ = eps(eltype(pressure))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
+
     compute_source_term!(pressure, solver, Δt, Ũ)
     solve!(pressure, solver)
     return pressure
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ)
+    ϵ = eps(eltype(pressure))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
+
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
