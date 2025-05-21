@@ -246,6 +246,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
         time_step_tke_dissipation_equations!(model)
+        nothing
     end
 
     # Update the clock and "previous velocities"

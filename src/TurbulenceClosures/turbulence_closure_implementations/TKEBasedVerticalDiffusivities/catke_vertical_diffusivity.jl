@@ -235,8 +235,10 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
         time_step_catke_equation!(model)
+        nothing
     else
         Δt = zero(model.clock.last_Δt)
+        nothing
     end
 
     # Update the clock and "previous velocities"
