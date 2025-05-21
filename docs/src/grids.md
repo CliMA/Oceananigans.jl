@@ -263,7 +263,7 @@ architecture = Distributed(child_architecture)
 ┌ Warning: We are building a Distributed architecture on a single MPI rank.
 │ This can occur when MPI is incorrectly configured.
 │ See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details.
-└ @ Oceananigans.DistributedComputations ~/builds/tartarus-21/clima/oceananigans/src/DistributedComputations/distributed_architectures.jl:268
+└ @ Oceananigans.DistributedComputations ...
 Distributed{CPU} across 1 rank:
 ├── local_rank: 0 of 0-0
 ├── local_index: [1, 1, 1]
@@ -591,7 +591,7 @@ and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
 
 Next we turn to the distribution of grids across disparate nodes.
 This is useful for running simulations that cannot fit on one node.
-It can also be used to speed up a simulation -- provided that the simulation 
+It can also be used to speed up a simulation -- provided that the simulation
 is large enough such that the added cost of communicating information between
 nodes does not exceed the benefit of dividing up the computation among different nodes.
 
