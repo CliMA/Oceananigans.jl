@@ -12,8 +12,6 @@ struct ScalarBiharmonicDiffusivity{F, N, V, K} <: AbstractScalarBiharmonicDiffus
     ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, N, V, K} = new{F, N, V, K}(ν, κ)
 end
 
-struct HorizontalVectorInvariantFormulation end
-
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
                          ScalarBiharmonicDiffusivity(FT::DataType;                                 kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
                  VerticalScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
@@ -40,6 +38,8 @@ Arguments
   - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
   - `VerticalFormulation()` for diffusivity applied in the vertical direction,
   - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+  - `HorizontalDivergenceFormulation()` for horizontal viscosity with "divergence damping" and no effect on tracers
+  - `HorizontalVectorInvariantFormulation()` for horizontally isotropic vector invariant diffusivity
 
 * `FT`: the float datatype (default: `Float64`)
 

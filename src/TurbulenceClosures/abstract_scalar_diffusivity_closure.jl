@@ -23,16 +23,16 @@ struct ThreeDimensionalFormulation <: AbstractDiffusivityFormulation end
 """
     struct HorizontalFormulation end
 
-Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
+Specifies a horizontally-isotropic `ScalarDiffusivity`.
 """
 struct HorizontalFormulation <: AbstractDiffusivityFormulation end
 
 """
-    struct VectorInvariantForm end
+    struct HorizontalVectorInvariantFormulation end
 
-Specifies a `VectorInvariant` `ScalarDiffusivity`.
+Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
 """
-struct VectorInvariantForm <: AbstractDiffusivityFormulation end
+struct HorizontalVectorInvariantFormulation <: AbstractDiffusivityFormulation end
 
 """
     struct HorizontalDivergenceFormulation end
