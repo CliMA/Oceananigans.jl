@@ -35,11 +35,6 @@ const ADBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalDivergenceFormulati
 const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 const AZBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantFormulation}
 
-@inline ν_σᶜᶜᶜ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, args...)
-@inline ν_σᶠᶠᶜ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶠᶠᶜ, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * σᶠᶠᶜ(i, j, k, grid, args...)
-@inline ν_σᶠᶜᶠ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
-@inline ν_σᶜᶠᶠ(i, j, k, grid, closure::AHBD, K, clock, fields, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
-
 @inline viscous_flux_ux(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields, ∂xᶜᶜᶜ, biharmonic_mask_x, ∇²ᶠᶜᶜ, fields.u)
 @inline viscous_flux_vx(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_x, ∂xᶠᶠᶜ, ∇²ᶜᶠᶜ, fields.v)
 @inline viscous_flux_wx(i, j, k, grid, closure::AIBD, K, clk, fields, b) = + ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields, biharmonic_mask_x, ∂xᶠᶜᶠ, ∇²ᶜᶜᶠ, fields.w)
