@@ -1,15 +1,15 @@
 using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, stretched_dimensions
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, stretched_dimensions
 
 import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
-                          grid :: G
+    grid :: G
     batched_tridiagonal_solver :: B
-                   source_term :: R
-                       storage :: S
-                        buffer :: β
-                    transforms :: T
+    source_term :: R
+    storage :: S
+    buffer :: β
+    transforms :: T
 end
 
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
@@ -62,14 +62,31 @@ infer_launch_configuration(::XDirection) = :yz
 infer_launch_configuration(::YDirection) = :xz
 infer_launch_configuration(::ZDirection) = :xy
 
-Δξᶠ(i, grid::YZRegularRG) = Δxᶠᵃᵃ(i, 1, 1, grid)
-Δξᶠ(j, grid::XZRegularRG) = Δyᵃᶠᵃ(1, j, 1, grid)
-Δξᶠ(k, grid::XYRegularRG) = Δzᵃᵃᶠ(1, 1, k, grid)
+Δξᶠ(i, grid, ::XDirection) = Δxᶠᵃᵃ(i, 1, 1, grid)
+Δξᶠ(j, grid, ::YDirection) = Δyᵃᶠᵃ(1, j, 1, grid)
+Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
-function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
-                                         tridiagonal_direction = stretched_direction(grid))
+"""
+    FourierTridiagonalPoissonSolver(grid, planner_flag = FFTW.PATIENT;
+                                    tridiagonal_direction = stretched_direction(grid))
+
+Construct a `FourierTridiagonalPoissonSolver` on `grid` with `tridiagonal_direction` either
+`XDirection()`, `YDirection()`, or `ZDirection()`. By default, the `tridiagonal_direction` will
+be selected as `stretched_direction(grid)`, or `ZDirection()` if no directions are stretched.
+variably spaced, the tridiagonal direction is
+selected to be the direction of stretched grid spacing.
+The Poisson equation is solved with an FFT-based eigenfunction expansion in the non-tridiagonal-directions
+augmented by a tridiagonal solve in `tridiagonal_direction`.
+The non-tridiagonal-directions must be uniformly spaced.
+"""
+function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridiagonal_direction=nothing)
+
+    # Try to guess what direction should be tridiagonal
+    if isnothing(tridiagonal_direction)
+        tridiagonal_direction = grid isa XYZRegularRG ? ZDirection() : stretched_direction(grid)
+    end
 
     tridiagonal_dim = dimension(tridiagonal_direction)
     if topology(grid, tridiagonal_dim) != Bounded
@@ -82,6 +99,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     N1, N2 = Tuple(el for (i, el) in enumerate(size(grid)) if i ≠ tridiagonal_dim)
     T1, T2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ tridiagonal_dim)
     L1, L2 = Tuple(el for (i, el) in enumerate(extent(grid)) if i ≠ tridiagonal_dim)
+
     λ1 = poisson_eigenvalues(N1, L1, 1, T1())
     λ2 = poisson_eigenvalues(N2, L2, 2, T2())
 
@@ -94,7 +112,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     transforms = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = CUDA.@allowscalar [1 / Δξᶠ(q, grid) for q in 2:size(grid, tridiagonal_dim)]
+    lower_diagonal = CUDA.@allowscalar [1 / Δξᶠ(q, grid, tridiagonal_direction) for q in 2:size(grid, tridiagonal_dim)]
     lower_diagonal = on_architecture(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
@@ -159,7 +177,6 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     launch!(arch, grid, :xyz, multiply_by_stretched_spacing!, solver.source_term, grid)
     return nothing
 end
-
 
 @kernel function multiply_by_stretched_spacing!(a, grid::YZRegularRG)
     i, j, k = @index(Global, NTuple)
