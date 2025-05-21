@@ -600,12 +600,11 @@ nodes does not exceed the benefit of dividing up the computation among different
 make_distributed_arch = """
 
 using Oceananigans
+using Oceananigans.DistributedComputations
+using MPI; MPI.Init()
 architecture = Distributed()
-on_rank_0 = architecture.local_rank == 0
-        
-if on_rank_0
-    @show architecture
-end
+@onrank 0 @show architecture
+@onrank 1 @show architecture
 """
 
 write("distributed_arch_example.jl", make_distributed_arch)
@@ -628,6 +627,10 @@ architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
 ├── local_rank: 0 of 0-1
 ├── local_index: [1, 1, 1]
 └── connectivity: east=1 west=1
+architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
+├── local_rank: 1 of 0-1
+├── local_index: [2, 1, 1]
+└── connectivity: east=0 west=0
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
@@ -643,12 +646,11 @@ Next, let's try to build a distributed grid:
 make_distributed_grid = """
 
 using Oceananigans
-using MPI
-MPI.Init()
+using Oceananigans.DistributedComputations
+using MPI; MPI.Init()
 
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
-on_rank_0 = architecture.local_rank == 0
 
 grid = RectilinearGrid(architecture,
                        size = (48, 48, 16),
@@ -657,9 +659,7 @@ grid = RectilinearGrid(architecture,
                        z = (0, 16),
                        topology = (Periodic, Periodic, Bounded))
 
-if on_rank_0
-    @show grid
-end
+@handshake @info grid
 """
 
 write("distributed_grid_example.jl", make_distributed_grid)
@@ -672,6 +672,10 @@ gives
 ```
 grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ (32.0, 64.0) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
 └── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
 ```
@@ -700,10 +704,18 @@ run(`$(mpiexec()) -n 3 julia --project distributed_grid_example.jl`)
 gives
 
 ```
-grid = 16×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 21.3333) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)          regularly spaced with Δy=1.33333
 └── Bounded  z ∈ [0.0, 16.0]          regularly spaced with Δz=1.0
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [21.3333, 42.6667) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)              regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]              regularly spaced with Δz=1.0
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [42.6667, 64.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)           regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]           regularly spaced with Δz=1.0
 ```
 
 Now we have three local grids, each with size `(16, 48, 16)`.
