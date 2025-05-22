@@ -1,4 +1,5 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
+using Oceananigans: defaults
 
 """
     PerturbationAdvection
@@ -30,24 +31,41 @@ where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
 where τ̃ = Δt/τ.
 
 The same operation can be repeated for left boundaries.
+
+The relaxation timescale ``τ`` can be set to different values depending on whether the 
+``U`` points in or out of the domain (`inflow_timescale`/`outflow_timescale`). Since the
+scheme is only valid when the flow is directed out of the domain the boundary condition
+falls back to relaxation to the prescribed value. By default this happens instantly but
+if the direction varies this may not be preferable. It is beneficial to relax the outflow
+(i.e. non-zero `outflow_timescale`) to reduce the shock when the flow changes direction
+to point into the domain.
+
+The ideal value of the timescales probably depend on the grid spacing and details of the
+boundary flow.
 """
-struct PerturbationAdvection{VT, FT}
-       backward_step :: VT
+struct PerturbationAdvection{FT}
     inflow_timescale :: FT
    outflow_timescale :: FT
 end
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
-    PerturbationAdvection(adapt(to, pe.backward_step),
-                          adapt(to, pe.inflow_timescale),
+    PerturbationAdvection(adapt(to, pe.inflow_timescale),
                           adapt(to, pe.outflow_timescale))
 
-function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64;
-                                                    backward_step = true,
-                                                    outflow_timescale = Inf,
-                                                    inflow_timescale = 300.0, kwargs...)
+"""
+    PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
+                                               outflow_timescale = Inf,
+                                               inflow_timescale = 0, kwargs...)
 
-    classification = Open(PerturbationAdvection(Val(backward_step), inflow_timescale, outflow_timescale))
+Creates a `PerturbationAdvectionOpenBoundaryCondition` with a given exterior value `val`, to which
+the flow is forced with an `outflow_timescale` for outflow and `inflow_timescale` for inflow. For
+details about this method, refer to the docstring for `PerturbationAdvection`.
+"""
+function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
+                                                    outflow_timescale = Inf,
+                                                    inflow_timescale = 0, kwargs...)
+
+    classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
 
     @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
 
@@ -56,109 +74,44 @@ end
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
-const BPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{true}}}}
-const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
-
-@inline function step_right_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+@inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
-
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
     uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
-
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
-
     τ̃ = Δt / τ
 
-    uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
+    relaxed_uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
+    uᵢⁿ⁺¹ = ifelse(τ == 0, ūⁿ⁺¹, relaxed_uᵢⁿ⁺¹)
 
     @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
 
     return nothing
 end
 
-@inline function step_left_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
+@inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
-
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
     uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
-
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
-
     τ̃ = Δt / τ
 
-    u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
-
-    @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
-    @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
-
-    return nothing
-end
-
-
-@inline function step_right_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                      grid, u, clock, model_fields, ΔX)
-    Δt = clock.last_stage_Δt
-
-    Δt = ifelse(isinf(Δt), 0, Δt)
-
-    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
-    uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
-    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
-    U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
-
-    pa = bc.classification.matching_scheme
-
-    τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
-
-    τ̃ = Δt / τ
-
-    uᵢⁿ⁺¹ = uᵢⁿ + U * (uᵢ₋₁ⁿ⁺¹ - ūⁿ⁺¹) + (ūⁿ⁺¹ - uᵢⁿ) * τ̃
-
-    @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
-
-    return nothing
-end
-
-@inline function step_left_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
-                                     grid, u, clock, model_fields, ΔX)
-    Δt = clock.last_stage_Δt
-
-    Δt = ifelse(isinf(Δt), 0, Δt)
-
-    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
-    uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
-    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
-    U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
-
-    pa = bc.classification.matching_scheme
-
-    τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
-
-    τ̃ = Δt / τ
-
-    u₁ⁿ⁺¹ = uᵢⁿ - U * (uᵢ₋₁ⁿ⁺¹ - ūⁿ⁺¹) + (ūⁿ⁺¹ - uᵢⁿ) * τ̃
+    relaxed_u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
+    u₁ⁿ⁺¹ = ifelse(τ == 0, ūⁿ⁺¹, relaxed_u₁ⁿ⁺¹)
 
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
@@ -168,7 +121,6 @@ end
 
 @inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
-
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
 
@@ -193,7 +145,6 @@ end
 
 @inline function _fill_north_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
     j = grid.Ny + 1
-
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
 
@@ -218,7 +169,6 @@ end
 
 @inline function _fill_top_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
     k = grid.Nz + 1
-
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j, k-1)
 
