@@ -52,11 +52,17 @@ function time_step_catke_equation!(model)
             χ = model.timestepper.χ
         end
 
-        # Compute the linear implicit component of the RHS (diffusivities, L)
-        # and step forward
+        # Compute the linear implicit component of the RHS (diffusivities, L)...
+        launch!(arch, grid, :xyz,
+                substep_turbulent_kinetic_energy_diffusivities!,
+                κe, Le, grid, closure,
+                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
+                model.tracers, model.buoyancy, diffusivity_fields)
+
+        # ... and step forward, in a separate kernel to avoid a race condition
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
-                κe, Le, grid, closure,
+                grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
@@ -75,10 +81,9 @@ function time_step_catke_equation!(model)
     return nothing
 end
 
-@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
-                                                   next_velocities, previous_velocities,
-                                                   tracers, buoyancy, diffusivities,
-                                                   Δτ, χ, slow_Gⁿe, G⁻e)
+@kernel function substep_turbulent_kinetic_energy_diffusivities!(κe, Le, grid, closure,
+                                                                 next_velocities, previous_velocities,
+                                                                 tracers, buoyancy, diffusivities)
 
     i, j, k = @index(Global, NTuple)
 
@@ -143,6 +148,17 @@ end
     # where ω = ϵ / e ∼ √e / ℓ.
 
     @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
+
+end
+
+@kernel function substep_turbulent_kinetic_energy!(grid, closure,
+                                                   next_velocities, previous_velocities,
+                                                   tracers, buoyancy, diffusivities,
+                                                   Δτ, χ, slow_Gⁿe, G⁻e)
+
+    i, j, k = @index(Global, NTuple)
+
+    active = !inactive_cell(i, j, k, grid)
 
     # Compute fast TKE RHS
     u⁺ = next_velocities.u
