@@ -31,7 +31,7 @@ maybe_polar_boundary_condition(grid, side, ::Type{Center},  LZ) = PolarValueBoun
 maybe_polar_boundary_condition(grid, side, ::Type{Face},    LZ) = PolarOpenBoundaryCondition(grid, side, LZ)
 
 # Just a column
-@inline getbc(pv::BC{<:Any, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[1, 1, k]
+@inline getbc(pv::PolarValue, i, k, args...) = @inbounds pv.data[1, 1, k]
 
 @kernel function _average_pole_value!(data, c, j, grid, loc)
     i′, j′, k = @index(Global, NTuple)
