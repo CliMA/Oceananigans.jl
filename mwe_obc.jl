@@ -17,10 +17,11 @@ u_boundaries = FieldBoundaryConditions(
 
 model = NonhydrostaticModel(; grid,
                               boundary_conditions = (; u = u_boundaries),
-                              pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=5),
+                              pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=10),
                               advection = WENO(; grid, order=5)
                              )
-set!(model, u=U, enforce_incompressibility=true)
+u₀(x, z) = U + 1e-2*rand()
+set!(model, u=u₀, enforce_incompressibility=true)
 
 Δt = 0.5 * minimum_zspacing(grid) / abs(U)
 simulation = Simulation(model; Δt = Δt, stop_time=10)
