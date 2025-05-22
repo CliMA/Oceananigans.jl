@@ -4,13 +4,13 @@
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
     δˣc² = δxᶠᶜᶜ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
-    
+
     δʸc★ = δyᶜᶠᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
     δʸc² = δyᶜᶠᶜ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
-    
+
     δᶻc★ = δzᶜᶜᶠ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
     δᶻc² = δzᶜᶜᶠ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
-    
+
     C₁  = convert(eltype(grid), 1.5 + χ)
     C₂  = convert(eltype(grid), 0.5 + χ)
 
@@ -45,12 +45,12 @@ end
         Fⁿ⁻¹.x[i, j, k] = Fⁿ.x[i, j, k]
         Fⁿ⁻¹.y[i, j, k] = Fⁿ.y[i, j, k]
         Fⁿ⁻¹.z[i, j, k] = Fⁿ.z[i, j, k]
-        
+
         # Calculate new advective fluxes
         Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c)
         Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c)
         Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f)
-        
+
         Gⁿ.x[i, j, k] = Axᶠᶜᶜ(i, j, k, grid) * δxᶠᶜᶜ(i, j, k, grid, c)^2 / Δxᶠᶜᶜ(i, j, k, grid)
         Gⁿ.y[i, j, k] = Ayᶜᶠᶜ(i, j, k, grid) * δyᶜᶠᶜ(i, j, k, grid, c)^2 / Δyᶜᶠᶜ(i, j, k, grid)
         Gⁿ.z[i, j, k] = Azᶜᶜᶠ(i, j, k, grid) * δzᶜᶜᶠ(i, j, k, grid, c)^2 / Δzᶜᶜᶠ(i, j, k, grid)

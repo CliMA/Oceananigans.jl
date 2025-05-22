@@ -41,11 +41,11 @@ velocities = PrescribedVelocityFields(u=1)
 c⁻    = CenterField(grid)
 Δtc²  = CenterField(grid)
 
-model = HydrostaticFreeSurfaceModel(; grid, 
-                                      timestepper=:QuasiAdamsBashforth2, 
-                                      velocities, 
-                                      tracer_advection, 
-                                      closure, 
+model = HydrostaticFreeSurfaceModel(; grid,
+                                      timestepper=:QuasiAdamsBashforth2,
+                                      velocities,
+                                      tracer_advection,
+                                      closure,
                                       tracers=:c,
                                       auxiliary_fields=(; Δtc², c⁻))
 
@@ -77,8 +77,8 @@ function compute_tracer_dissipation!(sim)
     c    = sim.model.tracers.c
     c⁻   = sim.model.auxiliary_fields.c⁻
     Δtc² = sim.model.auxiliary_fields.Δtc²
-    Oceananigans.Utils.launch!(CPU(), sim.model.grid, :xyz, 
-                               _compute_dissipation!, 
+    Oceananigans.Utils.launch!(CPU(), sim.model.grid, :xyz,
+                               _compute_dissipation!,
                                Δtc², c⁻, c, sim.Δt)
 
     return nothing
@@ -97,7 +97,7 @@ Nt = length(c.times)
 
 ∫closs = [sum(interior(Δtc²[i], :, 1, 1))  for i in 1:Nt]
 ∫A     = [sum(interior(Acx[i] , :, 1, 1))  for i in 1:Nt]
-∫D     = [sum(interior(Dcx[i] , :, 1, 1))  for i in 1:Nt] 
+∫D     = [sum(interior(Dcx[i] , :, 1, 1))  for i in 1:Nt]
 
 fig = Figure()
 ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation")
