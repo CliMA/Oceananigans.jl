@@ -17,6 +17,7 @@ const ComputedField = Field{<:Any, <:Any, <:Any, <:OperationOrFunctionField}
           data = nothing,
           indices = indices(operand),
           boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
+          compute = true,
           recompute_safely = true)
 
 Return a field `f` where `f.data` is computed from `f.operand` by calling `compute!(f)`.
@@ -29,11 +30,14 @@ Keyword arguments
 
 `boundary_conditions` (`FieldBoundaryConditions`): Boundary conditions for `f`.
 
-`recompute_safely` (`Bool`): whether or not to _always_ "recompute" `f` if `f` is
+`recompute_safely` (`Bool`): Whether or not to _always_ "recompute" `f` if `f` is
                              nested within another computation via an `AbstractOperation` or `FunctionField`.
                              If `data` is not provided then `recompute_safely=false` and
                              recomputation is _avoided_. If `data` is provided, then
                              `recompute_safely = true` by default.
+
+`compute`: If `true`, `compute!`, `Field` during construction, otherwise if `false`, initialize with zeros.
+           Default: `true`.
 """
 function Field(operand::OperationOrFunctionField;
                data = nothing,

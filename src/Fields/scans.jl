@@ -60,7 +60,7 @@ function Field(scan::Scan;
     scan_field = Field(loc, grid, data, boundary_conditions, indices, scan, status)
 
     if compute
-        compute!(scan_field)
+         compute!(scan_field)
     end
 
     return scan_field
@@ -112,7 +112,7 @@ Base.show(io::IO, s::Scan) =
 
 Return a `Reduction` of `operand` with `reduce!`, where `reduce!` can be called with
 
-```
+```julia
 reduce!(field, operand)
 ```
 
@@ -125,18 +125,12 @@ Example
 using Oceananigans
 
 Nx, Ny, Nz = 3, 3, 3
-
 grid = RectilinearGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(0, 1),
                        topology=(Periodic, Periodic, Periodic))
 
 c = CenterField(grid)
-
 set!(c, (x, y, z) -> x + y + z)
-
 max_c² = Field(Reduction(maximum!, c^2, dims=3))
-
-compute!(max_c²)
-
 max_c²[1:Nx, 1:Ny]
 
 # output
@@ -158,7 +152,7 @@ location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
 
 Return a `Accumulation` of `operand` with `accumulate!`, where `accumulate!` can be called with
 
-```
+```julia
 accumulate!(field, operand; dims)
 ```
 
@@ -171,18 +165,12 @@ Example
 using Oceananigans
 
 Nx, Ny, Nz = 3, 3, 3
-
 grid = RectilinearGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(0, 1),
                        topology=(Periodic, Periodic, Periodic))
 
 c = CenterField(grid)
-
 set!(c, (x, y, z) -> x + y + z)
-
 cumsum_c² = Field(Accumulation(cumsum!, c^2, dims=3))
-
-compute!(cumsum_c²)
-
 cumsum_c²[1:Nx, 1:Ny, 1:Nz]
 
 # output
