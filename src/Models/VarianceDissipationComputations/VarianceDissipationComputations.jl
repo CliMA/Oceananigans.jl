@@ -99,7 +99,7 @@ function (ϵ::VarianceDissipation)(model)
 
     # Check if the timestepper is supported
     if model.timestepper isa RungeKutta3TimeStepper
-        throw(ArgumentError("`VarianceDissipation` using a `RungeKutta3TimeStepper` are not supported."))
+        throw(ArgumentError("VarianceDissipation  using a RungeKutta3TimeStepper is not supported."))
     end
 
     # Check if the model has a velocity field
