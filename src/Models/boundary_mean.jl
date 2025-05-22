@@ -8,52 +8,46 @@ import Adapt: adapt_structure
 import Base: summary, show
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
-"""
-    BoundaryAdjacentMean
-
-Stores the boundary mean `value` of a `Field`. Updated by calling
-```jldoctest
-julia> using Oceananigans
-
-julia> using Oceananigans.Models: BoundaryAdjacentMean
-
-julia> grid = RectilinearGrid(size = (16, 16, 16), extent = (3, 4, 5))
-16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 3.0)  regularly spaced with Δx=0.1875
-├── Periodic y ∈ [0.0, 4.0)  regularly spaced with Δy=0.25
-└── Bounded  z ∈ [-5.0, 0.0] regularly spaced with Δz=0.3125
-
-julia> cf = CenterField(grid)
-16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> set!(cf, (x, y, z) -> sin(2π * y / 4))
-16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-    └── max=0.980785, min=-0.980785, mean=1.10534e-16
-
-julia> bam = BoundaryAdjacentMean(grid, :east)
-BoundaryAdjacentMean: (0.0)
-
-julia> bam(:east, cf)
--1.5612511283791264e-18
-
-```
-"""
 struct BoundaryAdjacentMean{FF, BV}
     flux_field :: FF
          value :: BV
 
-   BoundaryAdjacentMean(grid, side;
-                        flux_field::FF = boundary_reduced_field(Val(side), grid),
-                        value::BV = Ref(zero(grid))) where {FF, BV} =
+    @doc """
+        BoundaryAdjacentMean(grid, side;
+                             flux_field::FF = boundary_reduced_field(Val(side), grid),
+                             value::BV = Ref(zero(grid)))
+
+    Store the boundary mean `value` of a `Field`. Updated by calling
+
+    ```jldoctest
+    julia> using Oceananigans
+
+    julia> using Oceananigans.Models: BoundaryAdjacentMean
+
+    julia> grid = RectilinearGrid(size = (16, 16, 16), extent = (3, 4, 5));
+
+    julia> cf = CenterField(grid);
+
+    julia> set!(cf, (x, y, z) -> sin(2π * y / 4))
+    16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+    ├── boundary conditions: FieldBoundaryConditions
+    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+    └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+        └── max=0.980785, min=-0.980785, mean=1.10534e-16
+
+    julia> bam = BoundaryAdjacentMean(grid, :east)
+    BoundaryAdjacentMean: (0.0)
+
+    julia> bam(:east, cf)
+
+    julia> bam
+    BoundaryAdjacentMean: (-1.5612511283791264e-18)
+    ```
+    """
+    BoundaryAdjacentMean(grid, side;
+                         flux_field::FF = boundary_reduced_field(Val(side), grid),
+                         value::BV = Ref(zero(grid))) where {FF, BV} =
         new{FF, BV}(flux_field, value)
 end
 
