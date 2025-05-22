@@ -54,15 +54,15 @@ function time_step_catke_equation!(model)
 
         # Compute the linear implicit component of the RHS (diffusivities, L)...
         launch!(arch, grid, :xyz,
-                substep_turbulent_kinetic_energy_diffusivities!,
-                κe, Le, grid, closure,
+                compute_TKE_diffusivity!,
+                κe, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields)
 
         # ... and step forward, in a separate kernel to avoid a race condition
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
-                grid, closure,
+                Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
@@ -81,9 +81,9 @@ function time_step_catke_equation!(model)
     return nothing
 end
 
-@kernel function substep_turbulent_kinetic_energy_diffusivities!(κe, Le, grid, closure,
-                                                                 next_velocities, previous_velocities,
-                                                                 tracers, buoyancy, diffusivities)
+@kernel function compute_TKE_diffusivity!(κe, grid, closure,
+                                          next_velocities, previous_velocities,
+                                          tracers, buoyancy, diffusivities)
 
     i, j, k = @index(Global, NTuple)
 
@@ -95,6 +95,18 @@ end
     κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
     κe★ = mask_diffusivity(i, j, k, grid, κe★)
     @inbounds κe[i, j, k] = κe★
+
+end
+
+@kernel function substep_turbulent_kinetic_energy!(Le, grid, closure,
+                                                   next_velocities, previous_velocities,
+                                                   tracers, buoyancy, diffusivities,
+                                                   Δτ, χ, slow_Gⁿe, G⁻e)
+
+    i, j, k = @index(Global, NTuple)
+
+    e = tracers.e
+    closure_ij = getclosure(i, j, closure)
 
     # Compute additional diagonal component of the linear TKE operator
     wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
@@ -148,17 +160,6 @@ end
     # where ω = ϵ / e ∼ √e / ℓ.
 
     @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
-
-end
-
-@kernel function substep_turbulent_kinetic_energy!(grid, closure,
-                                                   next_velocities, previous_velocities,
-                                                   tracers, buoyancy, diffusivities,
-                                                   Δτ, χ, slow_Gⁿe, G⁻e)
-
-    i, j, k = @index(Global, NTuple)
-
-    active = !inactive_cell(i, j, k, grid)
 
     # Compute fast TKE RHS
     u⁺ = next_velocities.u
