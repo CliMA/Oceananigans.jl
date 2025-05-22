@@ -71,8 +71,8 @@ Keyword Argument
 - `Uⁿ⁻¹`: The velocity field at the previous time step. Default: `VelocityFields(grid)`.
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
-!!! Note
-    At the moment, the variance dissipation diagnostic is supported only for `QuasiAdamsBashforth2` timesteppers.
+!!! compat "Time stepper compatibility"
+    At the moment, the variance dissipation diagnostic is not supported for a [`RungeKutta3TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid; 
                              Uⁿ⁻¹ = VelocityFields(grid), 
@@ -96,6 +96,11 @@ function VarianceDissipation(tracer_name, grid;
 end
 
 function (ϵ::VarianceDissipation)(model)
+
+    # Check if the timestepper is supported
+    if model.timestepper isa RungeKutta3TimeStepper
+        throw(ArgumentError("`VarianceDissipation` using a `RungeKutta3TimeStepper` are not supported."))
+    end
 
     # Check if the model has a velocity field
     if !hasproperty(model, :velocities)
