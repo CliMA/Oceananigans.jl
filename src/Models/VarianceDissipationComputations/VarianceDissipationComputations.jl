@@ -28,6 +28,8 @@ using Oceananigans.Operators: volume
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
 
+const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper}
+
 struct VarianceDissipation{P, K, A, D, S, G}
     advective_production :: P
     diffusive_production :: K
