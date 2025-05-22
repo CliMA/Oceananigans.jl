@@ -53,13 +53,18 @@ masks `field` defined on `grid` with a value `val` at locations where `periphera
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
+    launch!(arch, grid, size(field), _mask_immersed_field!, field, loc, grid, value)
     return nothing
 end
 
 @kernel function _mask_immersed_field!(field, (ℓx, ℓy, ℓz), grid, value)
     i, j, k = @index(Global, NTuple)
-    masked  = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    masked  = immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    if ((i == 1) | (i == grid.Nx + 0)) & (ℓx isa Face)
+#        @show masked, i, j, k, ℓx, ℓy, ℓz
+    else
+#        @show i
+    end
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
 
@@ -90,7 +95,7 @@ mask_immersed_field_xy!(field, grid, loc, value, k) = nothing
 """
     mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k)
 
-Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_peripheral_node` returns `true`.
+Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_inactive_node` returns `true`.
 """
 function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value, k)
     arch = architecture(field)
@@ -100,7 +105,7 @@ end
 
 @kernel function _mask_immersed_field_xy!(field, (ℓx, ℓy, ℓz), grid, value, k)
     i, j = @index(Global, NTuple)
-    masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    masked = immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
 
@@ -126,7 +131,7 @@ end
 
     # The loop activates over the whole direction only if reduced directions
     for i in irange, j in jrange, k in krange
-        masked = masked & immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+        masked = masked & immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     end
 
     @inbounds field[i₀, j₀, k₀] = ifelse(masked, value, field[i₀, j₀, k₀])
