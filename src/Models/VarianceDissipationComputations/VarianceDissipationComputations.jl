@@ -9,7 +9,11 @@ using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
-using Oceananigans.TimeSteppers
+using Oceananigans.BoundaryConditions
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, 
+                                 RungeKutta3TimeStepper, 
+                                 SplitRungeKutta3TimeStepper
+
 using Oceananigans.TurbulenceClosures: viscosity,
                                        diffusivity,
                                        ScalarDiffusivity,
@@ -28,6 +32,8 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Operators: volume
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
+
+const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper}
 
 struct VarianceDissipation{P, K, A, D, S, G}
     advective_production :: P
@@ -74,7 +80,8 @@ Keyword Arguments
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is supported only for [`QuasiAdamsBashforth2TimeStepper`](@ref).
+    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref) 
+    and a [`SplitRungeKutta3TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid),
@@ -99,9 +106,9 @@ end
 
 function (ϵ::VarianceDissipation)(model)
 
-    # Check if the model is using a QuasiAdamsBashforth2 time stepper
-    if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
-        throw(ArgumentError("VarianceDissipation is only supported for QuasiAdamsBashforth2 time-stepping."))
+    # Check if the timestepper is supported
+    if model.timestepper isa RungeKutta3TimeStepper
+        throw(ArgumentError("VarianceDissipation  using a RungeKutta3TimeStepper is not supported."))
     end
 
     # Check if the model has a velocity field
