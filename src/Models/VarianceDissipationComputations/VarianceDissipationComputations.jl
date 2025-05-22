@@ -73,7 +73,7 @@ Keyword Arguments
 - `Uⁿ⁻¹`: The velocity field at the previous time step. Default: `VelocityFields(grid)`.
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
-!!! compat "Only compatible with QuasiAdamsBashforth2TimeStepper"
+!!! compat "Time stepper compatibility"
     At the moment, the variance dissipation diagnostic is supported only for [`QuasiAdamsBashforth2TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
