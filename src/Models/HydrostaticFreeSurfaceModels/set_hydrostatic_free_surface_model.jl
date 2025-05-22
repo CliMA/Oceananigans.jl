@@ -1,9 +1,8 @@
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
+using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 import Oceananigans.Fields: set!
-
-using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 """
     set!(model::HydrostaticFreeSurfaceModel; kwargs...)
@@ -108,6 +107,8 @@ function set_from_extrinsic_velocities!(velocities, grid, u, v)
     u isa ZeroField || set!(uᶜᶜᶜ, u)
     v isa ZeroField || set!(vᶜᶜᶜ, v)
     launch!(arch, grid, :xyz, _rotate_velocities!, uᶜᶜᶜ, vᶜᶜᶜ, grid)
+    fill_halo_regions!(uᶜᶜᶜ)
+    fill_halo_regions!(vᶜᶜᶜ)
     launch!(arch, grid, :xyz, _interpolate_velocities!,
             velocities.u, velocities.v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
     return nothing
