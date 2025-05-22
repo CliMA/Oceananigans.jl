@@ -56,7 +56,7 @@ end
 Adapt.adapt_structure(to, mo::BoundaryAdjacentMean) =
     BoundaryAdjacentMean(; flux_fields = nothing, value = adapt(to, mo.value[]))
 
-Base.show(io::IO, bam::BoundaryAdjacentMean) = print(io, summary(bam)*"\n")
+Base.show(io::IO, bam::BoundaryAdjacentMean) = print(io, summary(bam))
 Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[]))"
 
 @inline boundary_reduced_field(::Union{Val{:west}, Val{:east}}, grid)   = Field{Center, Nothing, Nothing}(grid)
