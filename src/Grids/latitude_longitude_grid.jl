@@ -417,7 +417,9 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid{TX, TY, TZ}(nothing,
                                              grid.Nx, grid.Ny, grid.Nz,
                                              grid.Hx, grid.Hy, grid.Hz,
-                                             grid.Lx, grid.Ly, grid.Lz,
+					     Adapt.adapt(to, grid.Lx),
+					     Adapt.adapt(to, grid.Ly),
+					     Adapt.adapt(to, grid.Lz),
                                              Adapt.adapt(to, grid.Δλᶠᵃᵃ),
                                              Adapt.adapt(to, grid.Δλᶜᵃᵃ),
                                              Adapt.adapt(to, grid.λᶠᵃᵃ),
@@ -437,7 +439,7 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                              Adapt.adapt(to, grid.Azᶠᶜᵃ),
                                              Adapt.adapt(to, grid.Azᶜᶠᵃ),
                                              Adapt.adapt(to, grid.Azᶠᶠᵃ),
-                                             grid.radius)
+					     Adapt.adapt(to, grid.radius))
 end
 
 #####
@@ -687,9 +689,9 @@ Keyword Arguments
 """
 function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
     arch = architecture(rectilinear_grid)
-    @show Nx, Ny, Nz = size(rectilinear_grid)
     Hx, Hy, Hz = halo_size(rectilinear_grid)
-    
+    Nx, Ny, Nz = size(rectilinear_grid)
+	
     λ₀, φ₀ = origin
 
     TX, TY, TZ = topology(rectilinear_grid)
@@ -707,9 +709,6 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth
 
     xᶠ = on_architecture(CPU(), xᶠ)
     yᶠ = on_architecture(CPU(), yᶠ)
-
-    @show xᶠ
-    @show yᶠ
     
     # Convert y coordinates to latitudes
     R = radius
