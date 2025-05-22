@@ -74,7 +74,6 @@ include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instant
                                interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
                                right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
-
 function southwest_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
@@ -409,7 +408,6 @@ end
 
 @testset "Distributed MPI Oceananigans" begin
     @info "Testing distributed MPI Oceananigans..."
-
     @testset "Multi architectures rank connectivity" begin
         @info "  Testing multi architecture rank connectivity..."
         test_triply_periodic_rank_connectivity_with_411_ranks()
@@ -464,6 +462,39 @@ end
         end
     end
 
+    @testset "Distributed reductions" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            arch = Distributed(child_arch; partition)
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 1), extent=(1, 2, 3))
+            c = CenterField(grid)
+            set!(c, arch.local_rank+1)
+
+            c_reduced = Field{Nothing, Nothing, Nothing}(grid)
+
+            N = grid.Nx * grid.Ny # local rank grid size
+            @test sum(c) == 1*N + 2*N + 3*N + 4*N
+
+            sum!(c_reduced, c)
+            @test CUDA.@allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
+
+            cbool = CenterField(grid, Bool)
+            cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
+            bool_val = arch.local_rank == 0 ? true : false        
+            set!(cbool, bool_val)            
+
+            @test any(cbool) == true
+            @test all(cbool) == false
+
+            any!(cbool_reduced, cbool)
+            @test CUDA.@allowscalar cbool_reduced[1, 1, 1] == true
+            
+            all!(cbool_reduced, cbool)
+            @test CUDA.@allowscalar cbool_reduced[1, 1, 1] == false
+        end
+    end
 
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
