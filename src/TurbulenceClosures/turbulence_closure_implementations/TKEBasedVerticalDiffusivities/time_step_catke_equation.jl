@@ -56,10 +56,9 @@ function time_step_catke_equation!(model)
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, diffusivity_fields)
-
-        # ... and step forward, in a separate kernel to avoid a race condition
+                model.velocities, model.tracers, model.buoyancy, diffusivity_fields)
+                
+        # ... and step forward.
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
                 Le, grid, closure,
@@ -82,20 +81,15 @@ function time_step_catke_equation!(model)
 end
 
 @kernel function compute_TKE_diffusivity!(κe, grid, closure,
-                                          next_velocities, previous_velocities,
-                                          tracers, buoyancy, diffusivities)
-
+                                          next_velocities, tracers, buoyancy, diffusivities)
     i, j, k = @index(Global, NTuple)
 
-    Jᵇ = diffusivities.Jᵇ
-    e = tracers.e
-    closure_ij = getclosure(i, j, closure)
-
     # Compute TKE diffusivity.
+    closure_ij = getclosure(i, j, closure)
+    Jᵇ = diffusivities.Jᵇ
     κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
     κe★ = mask_diffusivity(i, j, k, grid, κe★)
     @inbounds κe[i, j, k] = κe★
-
 end
 
 @kernel function substep_turbulent_kinetic_energy!(Le, grid, closure,
