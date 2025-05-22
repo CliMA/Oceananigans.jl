@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Grids: OrthogonalSphericalShellGrid, topology
 using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using Makie: Observable
@@ -137,6 +137,12 @@ function make_plottable_array(f)
 
     fi = interior(f, ii, jj, kk)
     fi_cpu = on_architecture(CPU(), fi)
+
+    if architecture(f) isa CPU
+        fi_cpu = deepcopy(fi_cpu) # so we can re-zero peripheral nodes
+    end
+
+    mask_immersed_field!(f)
 
     return fi_cpu
 end

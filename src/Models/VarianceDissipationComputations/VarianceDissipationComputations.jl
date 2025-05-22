@@ -1,5 +1,5 @@
 module VarianceDissipationComputations
- 
+
 export VarianceDissipation, flatten_dissipation_fields
 
 using Oceananigans.Grids: architecture
@@ -10,8 +10,8 @@ using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: viscosity,
-                                       diffusivity, 
-                                       ScalarDiffusivity, 
+                                       diffusivity,
+                                       ScalarDiffusivity,
                                        ScalarBiharmonicDiffusivity,
                                        AbstractTurbulenceClosure,
                                        HorizontalFormulation,
@@ -19,8 +19,8 @@ using Oceananigans.TurbulenceClosures: viscosity,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
 
-using Oceananigans.Advection: _advective_tracer_flux_x, 
-                              _advective_tracer_flux_y, 
+using Oceananigans.Advection: _advective_tracer_flux_x,
+                              _advective_tracer_flux_y,
                               _advective_tracer_flux_z
 
 using Oceananigans: UpdateStateCallsite
@@ -28,7 +28,7 @@ using Oceananigans.Operators: volume
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
 
-struct VarianceDissipation{P, K, A, D, S, G} 
+struct VarianceDissipation{P, K, A, D, S, G}
     advective_production :: P
     diffusive_production :: K
     advective_fluxes :: A
@@ -47,43 +47,43 @@ end
 
 """
     VarianceDissipation(tracer_name, grid;
-                        Uⁿ⁻¹ = VelocityFields(grid), 
+                        Uⁿ⁻¹ = VelocityFields(grid),
                         Uⁿ   = VelocityFields(grid))
-        
-Constructs a `VarianceDissipation` object for a tracer called `tracer_name` that lives on a `grid`. 
-This function computes the variance dissipation diagnostics for the specified tracer in the model. 
-These include the numerical dissipation implicit to the advection scheme and the explicit 
-dissipation associated to closures. 
+
+Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on a `grid`.
+This function computes the variance dissipation diagnostics for the specified tracer in the model.
+These include the numerical dissipation implicit to the advection scheme and the explicit
+dissipation associated to closures.
 
 This diagnostic is especially useful for models that use a dissipative advection scheme
-like [`WENO`](@ref) or [`UpwindBiased`](@ref)
+like [`WENO`](@ref) or [`UpwindBiased`](@ref).
 
-Argument
+Arguments
 =========
 
-- `tracer_name`: The name of the tracer for which variance dissipation is computed. This should be a `Symbol`. 
+- `tracer_name`: The name of the tracer for which variance dissipation is computed. This should be a `Symbol`.
                  When calling `ϵ::VarianceDissipation` on the model, this name is used to identify the tracer in the model's state.
-- `grid`: The grid on which the tracer is defined. 
+- `grid`: The grid on which the tracer is defined.
 
-Keyword Argument
-================
+Keyword Arguments
+=================
 
 - `Uⁿ⁻¹`: The velocity field at the previous time step. Default: `VelocityFields(grid)`.
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is not supported for a [`RungeKutta3TimeStepper`](@ref).
+    At the moment, the variance dissipation diagnostic is not supported for a [`RungeKutta3TimeStepper`](@ref Oceananigans.TimeSteppers.RungeKutta3TimeStepper).
 """
-function VarianceDissipation(tracer_name, grid; 
-                             Uⁿ⁻¹ = VelocityFields(grid), 
+function VarianceDissipation(tracer_name, grid;
+                             Uⁿ⁻¹ = VelocityFields(grid),
                              Uⁿ   = VelocityFields(grid))
-        
-    P    = c_grid_vector(grid) 
+
+    P    = c_grid_vector(grid)
     K    = c_grid_vector(grid)
-    Vⁿ   = c_grid_vector(grid) 
-    Vⁿ⁻¹ = c_grid_vector(grid) 
-    Fⁿ   = c_grid_vector(grid) 
-    Fⁿ⁻¹ = c_grid_vector(grid) 
+    Vⁿ   = c_grid_vector(grid)
+    Vⁿ⁻¹ = c_grid_vector(grid)
+    Fⁿ   = c_grid_vector(grid)
+    Fⁿ⁻¹ = c_grid_vector(grid)
     cⁿ⁻¹ = CenterField(grid)
 
     previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ)
@@ -117,7 +117,7 @@ function (ϵ::VarianceDissipation)(model)
 
     # Then we update the fluxes to be used in the next time step
     cache_fluxes!(ϵ, model, ϵ.tracer_name)
-    
+
     return nothing
 end
 

@@ -44,8 +44,8 @@ function compute_tracer_dissipation!(sim)
     c    = sim.model.tracers.c
     c⁻   = sim.model.auxiliary_fields.c⁻
     Δtc² = sim.model.auxiliary_fields.Δtc²
-    Oceananigans.Utils.launch!(CPU(), sim.model.grid, :xyz, 
-                               _compute_dissipation!, 
+    Oceananigans.Utils.launch!(CPU(), sim.model.grid, :xyz,
+                               _compute_dissipation!,
                                Δtc², c⁻, c, sim.Δt)
 
     return nothing
