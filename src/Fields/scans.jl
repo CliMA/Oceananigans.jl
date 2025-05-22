@@ -41,6 +41,7 @@ Base.summary(s::Scan) = string(summary(s.type), " ",
 function Field(scan::Scan;
                data = nothing,
                indices = indices(scan.operand),
+               compute = true,
                recompute_safely = true)
 
     operand = scan.operand
@@ -56,7 +57,13 @@ function Field(scan::Scan;
     boundary_conditions = FieldBoundaryConditions(grid, loc, indices)
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(loc, grid, data, boundary_conditions, indices, scan, status)
+    scan_field = Field(loc, grid, data, boundary_conditions, indices, scan, status)
+
+    if compute
+        compute!(scan_field)
+    end
+
+    return scan_field
 end
 
 const ScannedComputedField = Field{<:Any, <:Any, <:Any, <:Scan}
