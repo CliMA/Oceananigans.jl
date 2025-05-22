@@ -79,7 +79,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
 
-    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
+    ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
     uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
@@ -101,14 +101,14 @@ end
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
 
-    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-    uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
+    ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
+    uᵢⁿ     = ifelse(clock.iteration == 0, ūⁿ⁺¹, @inbounds getindex(u, boundary_secret_storage_indices...))
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
-    τ̃ = Δt / τ
+    τ̃ = Δt / τ # last stage Δt normalized by the inflow/output timescale
 
     relaxed_u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
     u₁ⁿ⁺¹ = ifelse(τ == 0, ūⁿ⁺¹, relaxed_u₁ⁿ⁺¹)

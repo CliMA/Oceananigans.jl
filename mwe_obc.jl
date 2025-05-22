@@ -20,7 +20,7 @@ model = NonhydrostaticModel(; grid,
                               pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=5),
                               advection = WENO(; grid, order=5)
                              )
-set!(model, u=U)
+set!(model, u=U, enforce_incompressibility=true)
 
 Δt = 0.5 * minimum_zspacing(grid) / abs(U)
 simulation = Simulation(model; Δt = Δt, stop_time=10)
