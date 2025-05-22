@@ -150,6 +150,13 @@ Modules = [Oceananigans.Models.LagrangianParticleTracking]
 Private = false
 ```
 
+### VarianceDissipationComputations
+
+```@autodocs
+Modules = [Oceananigans.Models.VarianceDissipationComputations]
+Private = false
+```
+
 ## MultiRegion
 
 ```@autodocs
