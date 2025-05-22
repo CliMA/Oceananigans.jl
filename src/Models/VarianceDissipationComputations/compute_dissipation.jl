@@ -7,18 +7,18 @@
 Compute the numerical dissipation for tracer `tracer_name`, from the previously calculated advective and diffusive fluxes, 
 the formulation is:
 
-A = 2 * δc★ * F - U δc²  # For advective dissipation 
-D = 2 * δc★ * F          # For diffusive dissipation
+    A = 2 * δc★ * F - U δc²  # For advective dissipation 
+    D = 2 * δc★ * F          # For diffusive dissipation
 
 Where ``F'' is the flux associated with the particular process,``U'' is the adecting velocity,
 while ``c★'' and ``c²'' are functions defined above.
 Note that ``F'' and ``U'' need to be numerically accurate for the budgets to close,
 i.e. for and AB2 scheme:
 
-F = 1.5 Fⁿ - 0.5 Fⁿ⁻¹
-U = 1.5 Uⁿ - 0.5 Uⁿ⁻¹
+    F = 1.5 Fⁿ - 0.5 Fⁿ⁻¹
+    U = 1.5 Uⁿ - 0.5 Uⁿ⁻¹
 
-For an RK3 method (not implemented at the moment), the whole substepping procedure needs to be accounted for.
+For a RK3 method (not implemented at the moment), the whole substepping procedure needs to be accounted for.
 """
 function compute_dissipation!(dissipation, model, tracer_name)
     

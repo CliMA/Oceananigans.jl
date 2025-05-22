@@ -2,9 +2,10 @@ module VarianceDissipationComputations
 
 export VarianceDissipation, flatten_dissipation_fields
 
+using Oceananigans.Advection
+using Oceananigans.BoundaryConditions
 using Oceananigans.Grids: architecture
 using Oceananigans.Utils
-using Oceananigans.TimeSteppers
 using Oceananigans.Fields
 using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
@@ -62,13 +63,14 @@ These include the numerical dissipation implicit to the advection scheme and the
 dissipation associated to closures.
 
 This diagnostic is especially useful for models that use a dissipative advection scheme
-like [`WENO`](@ref) or [`UpwindBiased`](@ref).
+like [`WENO`](@ref Oceananigans.Advection.WENO) or [`UpwindBiased`](@ref Oceananigans.Advection.UpwindBiased).
 
 Arguments
 =========
 
-- `tracer_name`: The name of the tracer for which variance dissipation is computed. This should be a `Symbol`.
-                 When calling `ϵ::VarianceDissipation` on the model, this name is used to identify the tracer in the model's state.
+- `tracer_name`: The name of the tracer for which variance dissipation is computed. This should
+                 be a `Symbol`. When calling `ϵ::VarianceDissipation` on the model, this name is
+                 used to identify the tracer in the model's state.
 - `grid`: The grid on which the tracer is defined.
 
 Keyword Arguments
@@ -78,7 +80,8 @@ Keyword Arguments
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is not supported for a [`RungeKutta3TimeStepper`](@ref Oceananigans.TimeSteppers.RungeKutta3TimeStepper).
+    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref) 
+    and a [`SplitRungeKutta3TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid),
