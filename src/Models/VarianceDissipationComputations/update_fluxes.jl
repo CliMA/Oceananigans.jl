@@ -73,7 +73,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     if timestepper isa QuasiAdamsBashforth2TimeStepper
         parent(cⁿ⁻¹) .= parent(c)
-    elseif stage == 3 
+    elseif (timestepper isa RungeKuttaScheme) && (stage == 3)
         parent(cⁿ⁻¹) .= parent(c)
     end
 
