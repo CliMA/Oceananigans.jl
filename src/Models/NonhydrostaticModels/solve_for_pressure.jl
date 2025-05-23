@@ -12,28 +12,32 @@ using Oceananigans.Solvers: solve!
 @kernel function _compute_source_term!(rhs, grid, Δt, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
     @inbounds rhs[i, j, k] = active * δ / Δt
 end
 
 @kernel function _fourier_tridiagonal_source_term!(rhs, ::XDirection, grid, Δt, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
     @inbounds rhs[i, j, k] = active * Δxᶜᶜᶜ(i, j, k, grid) * δ / Δt
 end
 
 @kernel function _fourier_tridiagonal_source_term!(rhs, ::YDirection, grid, Δt, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
     @inbounds rhs[i, j, k] = active * Δyᶜᶜᶜ(i, j, k, grid) * δ / Δt
 end
 
 @kernel function _fourier_tridiagonal_source_term!(rhs, ::ZDirection, grid, Δt, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
     @inbounds rhs[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ / Δt
 end
 
@@ -75,17 +79,17 @@ end
 ##### Solve for pressure
 #####
 
-function solve_for_pressure!(pressure, solver, Δt, Ũ)
-    compute_source_term!(pressure, solver, Δt, Ũ)
+function solve_for_pressure!(pressure, solver, args...)
+    compute_source_term!(pressure, solver, args...)
     solve!(pressure, solver)
     return pressure
 end
 
-function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ)
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, args...)
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, Ũ)
+    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, args...)
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 

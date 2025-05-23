@@ -214,7 +214,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     # Set up batched tridiagonal solver
     btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction)
 
-    # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
+    # We need to permute indices to apply bounded transforms on the GPU (r2r or r2c with twiddling)
     x_buffer_needed = child_arch isa GPU && TX == Bounded
     z_buffer_needed = child_arch isa GPU && TZ == Bounded
 

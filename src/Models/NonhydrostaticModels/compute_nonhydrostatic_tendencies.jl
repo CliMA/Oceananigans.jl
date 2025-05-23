@@ -160,7 +160,6 @@ end
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
-
 #####
 ##### Tracer(s)
 #####

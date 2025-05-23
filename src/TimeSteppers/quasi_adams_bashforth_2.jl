@@ -115,7 +115,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 end
 
 function correct_velocities_and_cache_previous_tendencies!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+    make_pressure_correction!(model, Δt)
     cache_previous_tendencies!(model)
     return nothing
 end

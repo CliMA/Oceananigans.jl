@@ -19,11 +19,14 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
     Nx = size(grid, 1)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
-    for i in 2:Nx-1
-        @inbounds D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
+    @inbounds begin
+        D[1, j, k]  = -1 / Δxᶠᵃᵃ( 2, j, k, grid) - Δxᶜᵃᵃ( 1, j, k, grid) * (λy[j] + λz[k])
+        D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
+
+        for i in 2:Nx-1
+            D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
+        end
     end
-    @inbounds D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
 end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
@@ -31,11 +34,14 @@ end
     Ny = size(grid, 2)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
-    for j in 2:Ny-1
-        @inbounds D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
+    @inbounds begin
+        D[i, 1, k]  = -1 / Δyᵃᶠᵃ(i,  2, k, grid) - Δyᵃᶜᵃ(i,  1, k, grid) * (λx[i] + λz[k])
+        D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
+
+        for j in 2:Ny-1
+            D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
+        end
     end
-    @inbounds D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
 end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
@@ -43,11 +49,14 @@ end
     Nz = size(grid, 3)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
-    for k in 2:Nz-1
-        @inbounds D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
+    @inbounds begin
+        D[i, j, 1]  = -1 / Δzᵃᵃᶠ(i, j,  2, grid) - Δzᵃᵃᶜ(i, j,  1, grid) * (λx[i] + λy[j])
+        D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+
+        for k in 2:Nz-1
+            D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
+        end
     end
-    @inbounds D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end
 
 stretched_direction(::YZRegularRG) = XDirection()
@@ -96,9 +105,9 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     end
 
     # Compute discrete Poisson eigenvalues
-    N1, N2 = Tuple(el for (i, el) in enumerate(size(grid)) if i ≠ tridiagonal_dim)
+    N1, N2 = Tuple(el for (i, el) in enumerate(size(grid))     if i ≠ tridiagonal_dim)
     T1, T2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ tridiagonal_dim)
-    L1, L2 = Tuple(el for (i, el) in enumerate(extent(grid)) if i ≠ tridiagonal_dim)
+    L1, L2 = Tuple(el for (i, el) in enumerate(extent(grid))   if i ≠ tridiagonal_dim)
 
     λ1 = poisson_eigenvalues(N1, L1, 1, T1())
     λ2 = poisson_eigenvalues(N2, L2, 2, T2())
