@@ -10,8 +10,6 @@ Distributed.addprocs(2)
     using CairoMakie # to avoid capturing precompilation output by Literate
     CairoMakie.activate!(type = "svg")
 
-    using MPI # for distributed doctests
-
     using Oceananigans
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
@@ -170,10 +168,8 @@ pages = [
 #####
 ##### Build and deploy docs
 #####
-ci_build = get(ENV, "CI", nothing) == "true"
 
 format = Documenter.HTML(collapselevel = 1,
-                         prettyurls = ci_build,
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
                          size_threshold = 2^20,
@@ -215,10 +211,8 @@ for pattern in [r"\.jld2", r"\.nc"]
     end
 end
 
-if ci_build
-    deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-               versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
-               forcepush = true,
-               push_preview = true,
-               devbranch = "main")
-end
+deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+            versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+            forcepush = true,
+            push_preview = true,
+            devbranch = "main")

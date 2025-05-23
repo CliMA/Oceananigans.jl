@@ -264,6 +264,12 @@ function Distributed(child_architecture = CPU();
     ranks = Rx, Ry, Rz = size(partition)
     partition_ranks = Rx * Ry * Rz
 
+    if partition_ranks == 1
+        @warn "We are building a Distributed architecture on a single MPI rank. \n" *
+              "This can occur when MPI is incorrectly configured. \n" *
+              "See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details."
+    end
+
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
     if partition_ranks != mpi_ranks
         throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
