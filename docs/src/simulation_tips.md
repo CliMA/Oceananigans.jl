@@ -99,9 +99,9 @@ T_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(surface_tempe
 
 `Field`s are the most convenient way to calculate diagnostics for your simulation. They will
 always work on CPUs, but when their complexity is high (in terms of number of abstract operations)
-the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized 
+the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
-For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
+For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating
 `ε` will not compile on GPUs when we call the command `compute!`:
 
 ```julia
@@ -205,11 +205,11 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store 
-data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for 
+Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store
+data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for
 CPU computations is that `CuArray` elements in general cannot be accessed outside kernels
-launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels 
-[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and 
+launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
+[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
 [here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
@@ -217,7 +217,7 @@ Oceananigans.jl disables CUDA scalar indexing by default. See the
 [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
-For example, if can be difficult to just view a `CuArray` since Julia needs to access 
+For example, if can be difficult to just view a `CuArray` since Julia needs to access
 its elements to do that. Consider the example below:
 
 ```julia
@@ -272,9 +272,9 @@ ERROR: Scalar indexing is disallowed.
 ```
 
 Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There are ways to
-overcome this limitation and allow scalar indexing (more about that 
+overcome this limitation and allow scalar indexing (more about that
 in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
-can be very slow on GPUs, so it is advised to only use this last method when using the REPL or 
+can be very slow on GPUs, so it is advised to only use this last method when using the REPL or
 prototyping -- never in production-ready scripts.
 
 You might also need to keep these differences in mind when using arrays

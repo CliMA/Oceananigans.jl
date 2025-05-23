@@ -5,7 +5,7 @@ import Oceananigans.Fields: interior
 
 # Are the test running on the GPUs?
 # Are the test running in parallel?
-child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
 # Sometimes when running tests in parallel, the CUDA.jl package is not loaded correctly.

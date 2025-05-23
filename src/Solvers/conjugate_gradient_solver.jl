@@ -6,7 +6,7 @@ using LinearAlgebra
 
 import Oceananigans.Architectures: architecture
 
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P} 
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P}
     architecture :: A
     grid :: G
     linear_operation! :: L
@@ -74,11 +74,11 @@ Arguments
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
 function ConjugateGradientSolver(linear_operation;
-                                               template_field::AbstractField,
-                                               maxiter = prod(size(template_field)),
-                                               reltol = sqrt(eps(eltype(template_field.grid))),
-                                               abstol = 0,
-                                               preconditioner = nothing)
+                                 template_field::AbstractField,
+                                 maxiter = prod(size(template_field)),
+                                 reltol = sqrt(eps(eltype(template_field.grid))),
+                                 abstol = 0,
+                                 preconditioner = nothing)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -94,18 +94,18 @@ function ConjugateGradientSolver(linear_operation;
     FT = eltype(grid)
 
     return ConjugateGradientSolver(arch,
-                                                 grid,
-                                                 linear_operation,
-                                                 FT(reltol),
-                                                 FT(abstol),
-                                                 maxiter,
-                                                 0,
-                                                 zero(FT),
-                                                 linear_operator_product,
-                                                 search_direction,
-                                                 residual,
-                                                 preconditioner,
-                                                 precondition_product)
+                                   grid,
+                                   linear_operation,
+                                   FT(reltol),
+                                   FT(abstol),
+                                   maxiter,
+                                   0,
+                                   zero(FT),
+                                   linear_operator_product,
+                                   search_direction,
+                                   residual,
+                                   preconditioner,
+                                   precondition_product)
 end
 
 """
@@ -113,11 +113,11 @@ end
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`
-    
+
 See figure 2.5 in
 
 > The Preconditioned Conjugate Gradient Method in "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods" Barrett et. al, 2nd Edition.
-    
+
 Given:
   * Linear Preconditioner operator `M!(solution, x, other_args...)` that computes `M * x = solution`
   * A matrix operator `A` as a function `A()`;
@@ -127,7 +127,7 @@ Given:
   * Local vectors: `z`, `r`, `p`, `q`
 
 This function executes the psuedocode algorithm
-    
+
 ```
 β  = 0
 r = b - A(x)
@@ -158,7 +158,6 @@ Loop:
 ```
 """
 function solve!(x, solver::ConjugateGradientSolver, b, args...)
-
     # Initialize
     solver.iteration = 0
 
@@ -176,7 +175,7 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
     end
-    
+
     return x
 end
 
@@ -189,7 +188,7 @@ function iterate!(x, solver, b, args...)
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
-    @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, x, args...) 
+    @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
     ρ = dot(z, r)
 
@@ -202,7 +201,7 @@ function iterate!(x, solver, b, args...)
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
-        
+
     @apply_regionally update_solution_and_residuals!(x, r, q, p, α)
 
     solver.iteration += 1

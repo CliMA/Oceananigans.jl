@@ -1,10 +1,10 @@
 using Oceananigans.Grids: halo_size
 using Oceananigans.AbstractOperations: Ax, Ay, GridMetricOperation
-# Has to be changed when the regression data is updated 
+# Has to be changed when the regression data is updated
 
 function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
 
-    # we have to account for halos when calculating Integrated areas, in case 
+    # we have to account for halos when calculating Integrated areas, in case
     # a periodic domain, where it is not guaranteed that ηₙ == ηₙ₊₁
     # 2 halos (instead of only 1) are necessary to accomodate the preconditioner
 
