@@ -97,7 +97,7 @@ CUDA.allowscalar() do
         @testset "Simulation tests" begin
             include("test_simulations.jl")
             include("test_diagnostics.jl")
-            # include("test_implicit_diffusion_diagnostic.jl")
+            include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
             include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
