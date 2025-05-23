@@ -39,19 +39,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update the boundary conditions
     @apply_regionally update_boundary_conditions!(fields(model), model)
 
-    if grid isa ConformalCubedSphereGrid
-        if model.tracers != nothing
-            for tracer in model.tracers
-                fill_halo_regions!(tracer)
-            end
-        end
-        if model.free_surface != nothing
-            fill_halo_regions!(model.free_surface.η)
-        end
-        fill_halo_regions!((model.velocities.u, model.velocities.v))
-    else
-        tupled_fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
-    end
+    tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model); async = true)
 
     @apply_regionally compute_auxiliaries!(model)
 

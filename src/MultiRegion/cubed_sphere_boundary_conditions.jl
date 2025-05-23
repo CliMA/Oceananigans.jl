@@ -2,7 +2,7 @@ using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
+function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs...)
     grid = field.grid
     Nz_grid = grid.Nz
 
@@ -96,7 +96,7 @@ end
     end
 end
 
-function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
+function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; kwargs...)
     grid = field.grid
 
     Nx, Ny, Nz = size(field)
@@ -208,10 +208,10 @@ end
     end
 end
 
-fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; signed = true, kwargs...) = fill_halo_regions!(fields...; signed)
+fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; signed = true, kwargs...) = fill_halo_regions!(fields...; signed, kwargs...)
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
-                            field_2::CubedSphereField{<:Center, <:Center}; signed = true)
+                            field_2::CubedSphereField{<:Center, <:Center}; signed = true, kwargs...)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(field_1)
@@ -334,7 +334,7 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
 end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
-                            field_2::CubedSphereField{<:Center, <:Face}; signed = true)
+                            field_2::CubedSphereField{<:Center, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
     Nz_grid = grid.Nz
 
@@ -566,7 +566,7 @@ end
 end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
-                            field_2::CubedSphereField{<:Face, <:Face}; signed = true)
+                            field_2::CubedSphereField{<:Face, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(field_1)

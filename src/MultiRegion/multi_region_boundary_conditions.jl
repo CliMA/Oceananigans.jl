@@ -31,11 +31,22 @@ import Oceananigans.BoundaryConditions:
 @inline extract_field_buffers(field::Field)          = field.communication_buffers
 @inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
-# This can be implemented once we have a buffer for field_tuples
-@inline function tupled_fill_halo_regions!(full_fields, grid::MultiRegionGrids, args...; kwargs...)
-    for field in full_fields
-        fill_halo_regions!(field, args...; kwargs...)
+@inline function tupled_fill_halo_regions!(fields::NamedTuple, grid::ConformalCubedSphereGrid, args...; kwargs...)
+    u = haskey(fields, :u) ? fields.u : nothing
+    v = haskey(fields, :v) ? fields.v : nothing
+
+    if !isnothing(u) && !isnothing(v)
+        fill_halo_regions!((u, v); kwargs...)
     end
+
+    other_keys = filter(k -> k != :u && k != :v, keys(fields))
+    other_fields = Tuple(fields[k] for k in other_keys)
+
+    for field in other_fields
+        fill_halo_regions!(field; kwargs...)
+    end
+
+    return nothing
 end
 
 function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
