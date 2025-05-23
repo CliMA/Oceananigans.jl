@@ -51,10 +51,10 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
-    u = vertically_integrated_lateral_areas.xᶠᶜᶜ
-    v = vertically_integrated_lateral_areas.yᶜᶠᶜ
+    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
+    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
 
-    grid isa ConformalCubedSphereGrid ? fill_halo_regions!((u, v); signed=false) :
+    grid isa ConformalCubedSphereGrid ? fill_halo_regions!((Ax, Ay); signed=false) :
                                         fill_halo_regions!(vertically_integrated_lateral_areas)
 
     # Set some defaults
