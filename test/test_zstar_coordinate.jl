@@ -146,8 +146,10 @@ end
     @test all(um.data .≈ us.data)
 end
 
+# vertical z-levels for tracer conservation tests
+z_stretched = MutableVerticalDiscretization(collect(-20:0))
+
 @testset "ZStar tracer conservation testset" begin
-    z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded),
                    (Periodic, Bounded, Bounded),
                    (Bounded, Periodic, Bounded),
@@ -237,55 +239,85 @@ end
             Δt = 2minutes
             test_zstar_coordinate(model, 100, Δt)
         end
-    
-        @testset "TripolarGrid ZStar tracer conservation tests" begin
-            @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
 
-            grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched)
 
-            # Code credit:
-            # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
-            function mtn₁(λ, φ)
-                λ₁ = 70
-                φ₁ = 55
-                dφ = 5
-                return exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2dφ^2)
-            end
-
-            function mtn₂(λ, φ)
-                λ₁ = 70
-                λ₂ = λ₁ + 180
-                φ₂ = 55
-                dφ = 5
-                return exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2dφ^2)
-            end
-
-            zb = - 20
-            h  = - zb + 10
-            gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
-
-            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
-            free_surface = SplitExplicitFreeSurface(grid; substeps=10)
-
-            model = HydrostaticFreeSurfaceModel(; grid,
-                                                  free_surface,
-                                                  tracers = (:b, :c),
-                                                  buoyancy = BuoyancyTracer(),
-                                                  vertical_coordinate = ZStar())
-
-            bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
-
-            # Instead of initializing with random velocities, infer them from a random initial streamfunction
-            # to ensure the velocity field is divergence-free at initialization.
-            ψ = Field{Center, Center, Center}(grid)
-            set!(ψ, rand(size(ψ)...))
-            uᵢ = ∂y(ψ)
-            vᵢ = -∂x(ψ)
-
-            set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ)
-
-            Δt = 2minutes
-            test_zstar_coordinate(model, 300, Δt)
-        end
     end
 end
+
+function make_tripolar_test_model(arch; with_wind = false)
+
+    grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched)
+
+    # Code credit:
+    # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
+    function mtn₁(λ, φ)
+        λ₁ = 70
+        φ₁ = 55
+        dφ = 5
+        return exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2dφ^2)
+    end
+
+    function mtn₂(λ, φ)
+        λ₁ = 70
+        λ₂ = λ₁ + 180
+        φ₂ = 55
+        dφ = 5
+        return exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2dφ^2)
+    end
+
+    zb = - 20
+    h  = - zb + 10
+    gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
+    free_surface = SplitExplicitFreeSurface(grid; substeps=10)
+    
+    kwargs = (;
+        grid,
+        free_surface,
+        tracers = (:b, :c),
+        buoyancy = BuoyancyTracer(),
+        vertical_coordinate = ZStar()
+    )
+
+    if with_wind
+        u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
+        model = HydrostaticFreeSurfaceModel(; kwargs..., boundary_conditions = (u = u_bcs,))
+    else
+        model = HydrostaticFreeSurfaceModel(; kwargs...)
+    end
+
+    bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
+
+    # Instead of initializing with random velocities, infer them from a random initial streamfunction
+    # to ensure the velocity field is divergence-free at initialization.
+    ψ = Field{Face, Face, Center}(grid)
+    set!(ψ, rand(size(ψ)...))
+    uᵢ = ∂y(ψ)
+    vᵢ = -∂x(ψ)
+
+    set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ)
+
+    return model
+end
+
+@testset "TripolarGrid ZStar tracer conservation tests" begin
+    for arch in archs
+    	@info "Testing ZStar coordinate with TripolarGrid on $(arch)..."
+
+    	model = make_tripolar_test_model(arch, with_wind=false)
+    	Δt = 2minutes
+    	test_zstar_coordinate(model, 300, Δt)
+    end
+end
+
+@testset "ZStar tracer conservation tests with wind stress" begin
+    for arch in archs
+        @info "Testing ZStar coordinate with TripolarGrid and wind stress on $(arch)..."
+    
+        model = make_tripolar_test_model(arch; with_wind=true)
+        Δt = 2minutes
+        test_zstar_coordinate(model, 300, Δt)
+    end
+end
+
