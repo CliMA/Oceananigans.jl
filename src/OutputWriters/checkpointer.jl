@@ -261,7 +261,9 @@ end
 
 function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     for name in propertynames(model_fields)
-        if string(name) ∈ keys(file["$addr/timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
+        tendency_in_model = hasproperty(timestepper.Gⁿ, name) 
+        tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
+        if tendency_in_model && tendency_in_checkpoint
             # Tendency "n"
             parent_data = file["$addr/timestepper/Gⁿ/$name/data"]
 
@@ -273,7 +275,7 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
 
             tendency⁻_field = timestepper.G⁻[name]
             copyto!(tendency⁻_field.data.parent, parent_data)
-        else
+        elseif tendency_in_model && !tendency_in_checkpoint
             @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
         end
     end

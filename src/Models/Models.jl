@@ -205,4 +205,9 @@ include("seawater_density.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 
+# Implementation of the diagnostic for computing the dissipation rate
+include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
+
+using .VarianceDissipationComputations
+
 end # module
