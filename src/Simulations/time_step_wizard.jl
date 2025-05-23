@@ -1,4 +1,3 @@
-using Oceananigans: TurbulenceClosures
 using Oceananigans.Grids: prettysummary, architecture
 import Oceananigans.Diagnostics: cell_diffusion_timescale
 import Oceananigans
