@@ -27,6 +27,9 @@ end
 architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
+@inline fill_halos_of_vertically_integrated_lateral_areas!(grid::AbstractGrid, vertically_integrated_lateral_areas) =
+    fill_halo_regions!(vertically_integrated_lateral_areas)
+
 """
     PCGImplicitFreeSurfaceSolver(grid, settings)
 
@@ -51,11 +54,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
-    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
-    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
-
-    grid isa ConformalCubedSphereGrid ? fill_halo_regions!((Ax, Ay); signed=false) :
-                                        fill_halo_regions!(vertically_integrated_lateral_areas)
+    fill_halos_of_vertically_integrated_lateral_areas!(grid, vertically_integrated_lateral_areas)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
@@ -71,8 +70,8 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
 
     solver = ConjugateGradientSolver(implicit_free_surface_linear_operation!;
-                                                   template_field = right_hand_side,
-                                                   settings...)
+                                     template_field = right_hand_side,
+                                     settings...)
 
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
