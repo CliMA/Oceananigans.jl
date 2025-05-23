@@ -65,11 +65,17 @@ function time_step_tke_dissipation_equations!(model)
             χ = model.timestepper.χ
         end
 
+        launch!(arch, grid, :xyz,
+                compute_tke_dissipation_diffusivities!,
+                κe, κϵ,
+                grid, closure,
+                model.velocities, model.tracers, model.buoyancy)
+
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
         launch!(arch, grid, :xyz,
                 substep_tke_dissipation!,
-                κe, κϵ, Le, Lϵ,
+                Le, Lϵ,
                 grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
@@ -91,7 +97,20 @@ function time_step_tke_dissipation_equations!(model)
     return nothing
 end
 
-@kernel function substep_tke_dissipation!(κe, κϵ, Le, Lϵ,
+# Compute TKE and dissipation diffusivities
+@kernel function compute_tke_dissipation_diffusivities!(κe, κϵ, grid, closure,
+                                                        velocities, tracers, buoyancy)
+    i, j, k = @index(Global, NTuple)
+    closure_ij = getclosure(i, j, closure)
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)
+    κϵ★ = κϵᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)
+    κe★ = mask_diffusivity(i, j, k, grid, κe★)
+    κϵ★ = mask_diffusivity(i, j, k, grid, κϵ★)
+    @inbounds κe[i, j, k] = κe★
+    @inbounds κϵ[i, j, k] = κϵ★
+end
+
+@kernel function substep_tke_dissipation!(Le, Lϵ,
                                           grid, closure,
                                           next_velocities, previous_velocities,
                                           tracers, buoyancy, diffusivities,
@@ -101,18 +120,7 @@ end
 
     e = tracers.e
     ϵ = tracers.ϵ
-
     closure_ij = getclosure(i, j, closure)
-
-    # Compute TKE and dissipation diffusivities
-    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy)
-    κϵ★ = κϵᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy)
-
-    κe★ = mask_diffusivity(i, j, k, grid, κe★)
-    κϵ★ = mask_diffusivity(i, j, k, grid, κϵ★)
-
-    @inbounds κe[i, j, k] = κe★
-    @inbounds κϵ[i, j, k] = κϵ★
 
     # Compute TKE and dissipation tendencies
     ϵ★ = dissipationᶜᶜᶜ(i, j, k, grid, closure_ij, tracers, buoyancy)

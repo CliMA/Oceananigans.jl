@@ -52,11 +52,16 @@ function time_step_catke_equation!(model)
             χ = model.timestepper.χ
         end
 
-        # Compute the linear implicit component of the RHS (diffusivities, L)
-        # and step forward
+        # Compute the linear implicit component of the RHS (diffusivities, L)...
+        launch!(arch, grid, :xyz,
+                compute_TKE_diffusivity!,
+                κe, grid, closure,
+                model.velocities, model.tracers, model.buoyancy, diffusivity_fields)
+                
+        # ... and step forward.
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
-                κe, Le, grid, closure,
+                Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
@@ -77,21 +82,27 @@ function time_step_catke_equation!(model)
     return nothing
 end
 
-@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
+@kernel function compute_TKE_diffusivity!(κe, grid, closure,
+                                          next_velocities, tracers, buoyancy, diffusivities)
+    i, j, k = @index(Global, NTuple)
+
+    # Compute TKE diffusivity.
+    closure_ij = getclosure(i, j, closure)
+    Jᵇ = diffusivities.Jᵇ
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
+    κe★ = mask_diffusivity(i, j, k, grid, κe★)
+    @inbounds κe[i, j, k] = κe★
+end
+
+@kernel function substep_turbulent_kinetic_energy!(Le, grid, closure,
                                                    next_velocities, previous_velocities,
                                                    tracers, buoyancy, diffusivities,
                                                    Δτ, χ, slow_Gⁿe, G⁻e)
 
     i, j, k = @index(Global, NTuple)
 
-    Jᵇ = diffusivities.Jᵇ
     e = tracers.e
     closure_ij = getclosure(i, j, closure)
-
-    # Compute TKE diffusivity.
-    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
-    κe★ = mask_diffusivity(i, j, k, grid, κe★)
-    @inbounds κe[i, j, k] = κe★
 
     # Compute additional diagonal component of the linear TKE operator
     wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
