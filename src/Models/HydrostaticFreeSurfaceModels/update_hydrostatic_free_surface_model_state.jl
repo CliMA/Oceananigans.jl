@@ -38,7 +38,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
     # Update the boundary conditions
-    @apply_regionally update_boundary_condition!(fields(model), model)
+    @apply_regionally update_boundary_conditions!(fields(model), model)
 
     if grid isa ConformalCubedSphereGrid
         if model.tracers != nothing

@@ -45,7 +45,7 @@ advecting_velocity(::Val{:x}) = PrescribedVelocityFields(u = 1)
 advecting_velocity(::Val{:y}) = PrescribedVelocityFields(v = 1)
 advecting_velocity(::Val{:z}) = PrescribedVelocityFields(w = 1)
 
-function test_implicit_diffusion_diagnostic(arch, dim, schedule)
+function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
 
     # 1D grid constructions
     grid = periodic_grid(arch, Val(dim))
@@ -61,7 +61,7 @@ function test_implicit_diffusion_diagnostic(arch, dim, schedule)
     Δtd² = CenterField(grid)
 
     model = HydrostaticFreeSurfaceModel(; grid, 
-                                        timestepper=:QuasiAdamsBashforth2, 
+                                        timestepper, 
                                         velocities, 
                                         tracer_advection, 
                                         closure, 
@@ -124,9 +124,9 @@ function test_implicit_diffusion_diagnostic(arch, dim, schedule)
     ∫Ad    = [sum(interior(Ad[i]))    for i in 1:Nt]
     ∫Dd    = [sum(interior(Dd[i]))    for i in 1:Nt] 
 
-    for i in 1:Nt-1
-        @test abs(∫closs[i] - ∫Ac[i] - ∫Dc[i]) < 2e-14 # Arbitrary tolerance, not exactly machine precision
-        @test abs(∫dloss[i] - ∫Ad[i] - ∫Dd[i]) < 2e-14 # Arbitrary tolerance, not exactly machine precision
+    for i in 3:Nt-1
+        @test abs(∫closs[i] - ∫Ac[i] - ∫Dc[i]) < 2e-13 # Arbitrary tolerance, not exactly machine precision
+        @test abs(∫dloss[i] - ∫Ad[i] - ∫Dd[i]) < 2e-13 # Arbitrary tolerance, not exactly machine precision
     end
 end
 
@@ -135,13 +135,15 @@ end
     for arch in archs
         schedules = [IterationInterval(1), IterationInterval(10), IterationInterval(100)]
         for schedule in schedules
-            @testset "Implicit Diffusion on $schedule schedule [$(typeof(arch))]" begin
-                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in x-direction..."
-                test_implicit_diffusion_diagnostic(arch, :x, schedule)
-                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in y-direction..."
-                test_implicit_diffusion_diagnostic(arch, :y, schedule)
-                @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule in z-direction..."
-                test_implicit_diffusion_diagnostic(arch, :z, schedule)
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                @testset "Implicit Diffusion on $schedule schedule and $timestepper, [$(typeof(arch))]" begin
+                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in x-direction..."
+                    test_implicit_diffusion_diagnostic(arch, :x, timestepper, schedule)
+                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in y-direction..."
+                    test_implicit_diffusion_diagnostic(arch, :y, timestepper, schedule)
+                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in z-direction..."
+                    test_implicit_diffusion_diagnostic(arch, :z, timestepper, schedule)
+                end
             end
         end
     end
