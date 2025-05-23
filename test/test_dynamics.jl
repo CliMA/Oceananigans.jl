@@ -600,7 +600,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
     end
-    #=
+    
     @testset "Gaussian immersed diffusion" begin
         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
 
@@ -731,5 +731,4 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
     end
-    =#
 end
