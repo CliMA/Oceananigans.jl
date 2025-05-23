@@ -1,6 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
 
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
@@ -238,5 +239,6 @@ end
 #####
 
 # Fallback, to be elaborated on
-write_output!(writer, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
 
