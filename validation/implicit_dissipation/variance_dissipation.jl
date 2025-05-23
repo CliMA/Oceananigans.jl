@@ -1,6 +1,7 @@
 using Oceananigans
-using Oceananigans.Diagnostics: VarianceDissipation
+using Oceananigans.Models.VarianceDissipationComputations
 using KernelAbstractions: @kernel, @index
+using GLMakie
 
 N = 200
 
@@ -31,39 +32,6 @@ a = 0.5
     end
 end
 
-Δt_max = 0.2 * minimum_xspacing(grid)
-
-# Change to test pure advection schemes
-tracer_advection = WENO(order = 9)
-closure = ScalarDiffusivity(κ=1e-5)
-velocities = PrescribedVelocityFields(u=1)
-
-c⁻    = CenterField(grid)
-Δtc²  = CenterField(grid)
-
-model = HydrostaticFreeSurfaceModel(; grid, 
-                                      timestepper=:QuasiAdamsBashforth2, 
-                                      velocities, 
-                                      tracer_advection, 
-                                      closure, 
-                                      tracers=:c,
-                                      auxiliary_fields=(; Δtc², c⁻))
-
-set!(model, c=c₀)
-set!(model.auxiliary_fields.c⁻, c₀)
-
-sim = Simulation(model, Δt=Δt_max, stop_time=10)
-
-ϵ = VarianceDissipation(model)
-f = Oceananigans.Diagnostics.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
-outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
-sim.diagnostics[:variance_dissipation] = ϵ
-
-sim.output_writers[:solution] = JLD2Writer(model, outputs;
-                                           filename="one_d_simulation.jld2",
-                                           schedule=IterationInterval(100),
-                                           overwrite_existing=true)
-
 @kernel function _compute_dissipation!(Δtc², c⁻, c, Δt)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
@@ -76,31 +44,93 @@ function compute_tracer_dissipation!(sim)
     c    = sim.model.tracers.c
     c⁻   = sim.model.auxiliary_fields.c⁻
     Δtc² = sim.model.auxiliary_fields.Δtc²
-    Oceananigans.Utils.launch!(CPU(), sim.model.grid, :xyz, 
-                               _compute_dissipation!, 
+    Oceananigans.Utils.launch!(CPU(), sim.model.grid, :xyz,
+                               _compute_dissipation!,
                                Δtc², c⁻, c, sim.Δt)
 
     return nothing
 end
 
-sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
+tracer_advection = WENO(order=5)
+closure = ScalarDiffusivity(κ=1e-5)
+velocities = PrescribedVelocityFields(u=1)
 
-run!(sim)
+c⁻    = CenterField(grid)
+Δtc²  = CenterField(grid)
 
-c    = FieldTimeSeries("one_d_simulation.jld2", "c")
-Δtc² = FieldTimeSeries("one_d_simulation.jld2", "Δtc²")
-Acx  = FieldTimeSeries("one_d_simulation.jld2", "Acx")
-Dcx  = FieldTimeSeries("one_d_simulation.jld2", "Dcx")
+for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3))
+    
+    model = HydrostaticFreeSurfaceModel(; grid, 
+                                        timestepper, 
+                                        velocities, 
+                                        tracer_advection, 
+                                        closure, 
+                                        tracers=:c,
+                                        auxiliary_fields=(; Δtc², c⁻))
+                                            
+    set!(model, c=c₀)
+    set!(model.auxiliary_fields.c⁻, c₀)
 
-Nt = length(c.times)
+    if ts == :AB2
+       Δt = 0.2 * minimum_xspacing(grid)
+    else
+       Δt = 0.2 * minimum_xspacing(grid)
+    end
 
-∫closs = [sum(interior(Δtc²[i], :, 1, 1))  for i in 1:Nt]
-∫A     = [sum(interior(Acx[i] , :, 1, 1))  for i in 1:Nt]
-∫D     = [sum(interior(Dcx[i] , :, 1, 1))  for i in 1:Nt] 
+    sim = Simulation(model; Δt, stop_time=10)
+
+    ϵ = VarianceDissipation(:c, grid)
+    f = Oceananigans.Simulations.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
+
+    outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
+    add_callback!(sim, ϵ, IterationInterval(1))
+
+    sim.output_writers[:solution] = JLD2Writer(model, outputs;
+                                            filename="one_d_simulation_$(ts).jld2",
+                                            schedule=IterationInterval(100),
+                                            overwrite_existing=true)
+
+    sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
+    
+    run!(sim)
+end
+
+a_c    = FieldTimeSeries("one_d_simulation_AB2.jld2", "c")
+a_Δtc² = FieldTimeSeries("one_d_simulation_AB2.jld2", "Δtc²")
+a_Acx  = FieldTimeSeries("one_d_simulation_AB2.jld2", "Acx")
+a_Dcx  = FieldTimeSeries("one_d_simulation_AB2.jld2", "Dcx")
+
+r_c    = FieldTimeSeries("one_d_simulation_RK3.jld2", "c")
+r_Δtc² = FieldTimeSeries("one_d_simulation_RK3.jld2", "Δtc²")
+r_Acx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Acx")
+r_Dcx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Dcx")
+
+Nta = length(a_c.times)
+Ntr = length(r_c.times)
+
+a_∫closs = abs.([sum(interior(a_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Nta-1])
+a_∫A     = abs.([sum(interior(a_Acx[i] , :, 1, 1))               for i in 2:Nta-1])
+a_∫D     = abs.([sum(interior(a_Dcx[i] , :, 1, 1))               for i in 2:Nta-1])
+a_∫T     = a_∫D .+ a_∫A
+
+r_∫closs = abs.([sum(interior(r_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Ntr-1])
+r_∫A     = abs.([sum(interior(r_Acx[i] , :, 1, 1))               for i in 2:Ntr-1])
+r_∫D     = abs.([sum(interior(r_Dcx[i] , :, 1, 1))               for i in 2:Ntr-1])
+r_∫T     = r_∫D .+ r_∫A
+
+atimes = a_c.times[2:end-1]
+rtimes = r_c.times[2:end-1]
 
 fig = Figure()
-ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation")
-scatter!(ax, c.times, ∫closs .* grid.Δxᶜᵃᵃ, label="total variance loss", color=:blue)
-lines!(ax, c.times, ∫A, label="advection dissipation", color=:red)
-lines!(ax, c.times, ∫D, label="diffusive dissipation", color=:green)
-lines!(ax, c.times, ∫D .+ ∫A, label="total dissipation", color=:purple)
+ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation", yscale=log10)
+
+scatter!(ax, atimes, a_∫closs, label="AB2 total variance loss", color=:blue)
+lines!(ax, atimes, a_∫A, label="AB2 advection dissipation", color=:red)
+lines!(ax, atimes, a_∫D, label="AB2 diffusive dissipation", color=:green)
+lines!(ax, atimes, a_∫T, label="AB2 total dissipation", color=:purple)
+
+scatter!(ax, rtimes, r_∫closs, label="RK3 total variance loss", color=:blue, marker=:diamond)
+lines!(ax, rtimes, r_∫A, label="RK3 advection dissipation", color=:red, linestyle=:dash)
+lines!(ax, rtimes, r_∫D, label="RK3 diffusive dissipation", color=:green, linestyle=:dash)
+lines!(ax, rtimes, r_∫T, label="RK3 total dissipation", color=:purple, linestyle=:dash)
+Legend(fig[1, 2], ax)
