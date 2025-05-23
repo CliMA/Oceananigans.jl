@@ -94,6 +94,7 @@ steps:
           - "👺 enzyme"
           - "👹 reactant_1"
           - "🎭 reactant_2"
+          - "🎨 makie"
     retry:
       automatic:
         - exit_status: 1
