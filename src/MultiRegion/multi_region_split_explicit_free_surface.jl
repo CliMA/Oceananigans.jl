@@ -58,6 +58,9 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     timestepper)
 end
 
+materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields,
+                         ::Union{ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiRegionGrid}, MultiRegionGrid}) = nothing
+
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::CubedSpherePartition) = (max(step_halo, old_halos[1]), max(step_halo, old_halos[2]), old_halos[3])

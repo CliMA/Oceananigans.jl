@@ -42,6 +42,9 @@ end
     region_E = connections.east.from_rank
     region_W = connections.west.from_rank
 
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
+
     #- E + W Halo for field:
     for i in 1:Hc
         if isodd(region)
@@ -71,6 +74,9 @@ end
     i, k = @index(Global, NTuple)
     region_N = connections.north.from_rank
     region_S = connections.south.from_rank
+
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
 
     #- N + S Halo for field:
     for j in 1:Hc
@@ -128,6 +134,9 @@ end
     region_W = connections.west.from_rank
     region_S = connections.south.from_rank
 
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
+
     #- E + W Halo for field:
     for i in 1:Hc
         if isodd(region)
@@ -169,6 +178,9 @@ end
     region_N = connections.north.from_rank
     region_W = connections.west.from_rank
     region_S = connections.south.from_rank
+    
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
 
     #- N + S Halo for field:
     for j in 1:Hc
@@ -247,6 +259,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     region_E = connections.east.from_rank
     region_W = connections.west.from_rank
 
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
+
     #- E + W Halo for field:
     for i in 1:Hc
         if isodd(region)
@@ -292,6 +307,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     i, k = @index(Global, NTuple)
     region_N = connections.north.from_rank
     region_S = connections.south.from_rank
+
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
 
     #- N + S Halo for field:
     for j in 1:Hc
@@ -402,6 +420,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     region_W = connections.west.from_rank
     region_S = connections.south.from_rank
 
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
+
     #- E + W Halo for field:
     for i in 1:Hc
         if isodd(region)
@@ -459,6 +480,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     region_W = connections.west.from_rank
     region_S = connections.south.from_rank
 
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
+
     #- N + S Halo for field:
     for j in 1:Hc
         if isodd(region)
@@ -510,6 +534,9 @@ end
 @kernel function _fill_cubed_sphere_face_center_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
     k, _ = @index(Global, NTuple)
 
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
+
     for i in 1:Hc
         @inbounds begin
             #=
@@ -538,6 +565,9 @@ end
 
 @kernel function _fill_cubed_sphere_center_face_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
     k, _ = @index(Global, NTuple)
+
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
 
     for j in 1:Hc
         @inbounds begin
@@ -605,6 +635,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     region_W = connections.west.from_rank
     region_S = connections.south.from_rank
 
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
+
     #- E + W Halo for field:
     for i in 1:Hc
         if isodd(region)
@@ -669,6 +702,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     region_N = connections.north.from_rank
     region_W = connections.west.from_rank
     region_S = connections.south.from_rank
+
+    # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
+    # verifying halo filling against schematics or physical cubed sphere models.
 
     #- N + S Halo for field:
     for j in 1:Hc
