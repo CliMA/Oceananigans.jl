@@ -182,7 +182,7 @@ function reset!(sim::Simulation)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
-    reset!(model)
+    reset!(timestepper(sim.model))
     return nothing
 end
 
