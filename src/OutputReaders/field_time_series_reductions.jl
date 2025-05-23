@@ -35,7 +35,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                 end
                 loc = LX, LY, LZ = reduced_location(location(fts); dims)
                 times = fts.times
-                rts = FieldTimeSeries{LX, LY, LZ}(fts.grid, times; kw...)
+                rts = FieldTimeSeries((LX, LY, LZ), fts.grid, times; indices=fts.indices, kw...)
                 return Base.$(reduction!)(f, rts, fts; kw...)
             end
         end
