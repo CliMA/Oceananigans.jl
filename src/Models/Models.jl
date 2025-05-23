@@ -161,8 +161,6 @@ function reset!(model::OceananigansModels)
         fill!(field, 0)
     end
 
-    reset!(timestepper(model))
-
     return nothing
 end
 
