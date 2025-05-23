@@ -3,7 +3,7 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_condition!, replace_horizontal_vector_halos!
+using Oceananigans.BoundaryConditions: update_boundary_conditions!, replace_horizontal_vector_halos!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
@@ -37,7 +37,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
     # Update the boundary conditions
-    @apply_regionally update_boundary_condition!(fields(model), model)
+    @apply_regionally update_boundary_conditions!(fields(model), model)
 
     tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
 
