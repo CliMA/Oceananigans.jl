@@ -23,7 +23,7 @@ abstract type AbstractTimeStepper end
 function update_state! end
 function compute_tendencies! end
 
-calculate_pressure_correction!(model, Δt) = nothing
+compute_pressure_correction!(model, Δt) = nothing
 make_pressure_correction!(model, Δt) = nothing
 
 # Interface for time-stepping Lagrangian particles

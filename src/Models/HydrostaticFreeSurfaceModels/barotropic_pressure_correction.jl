@@ -1,7 +1,7 @@
 using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector!
-import Oceananigans.TimeSteppers: calculate_pressure_correction!, make_pressure_correction!
+import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
 
-calculate_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
+compute_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
 
 #####
 ##### Barotropic pressure correction for models with a free surface

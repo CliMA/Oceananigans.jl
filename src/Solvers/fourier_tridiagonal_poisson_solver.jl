@@ -26,10 +26,6 @@ main_diagonal_launch_configuration(::XDirection) = :yz
 main_diagonal_launch_configuration(::YDirection) = :xz
 main_diagonal_launch_configuration(::ZDirection) = :xy
 
-Δξᶠ(i, grid, ::XDirection) = Δxᶠᵃᵃ(i, 1, 1, grid)
-Δξᶠ(j, grid, ::YDirection) = Δyᵃᶠᵃ(1, j, 1, grid)
-Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
-
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
 struct HomogeneousNeumannFormulation{D}
@@ -168,6 +164,10 @@ end
         end
     end
 end
+
+Δξᶠ(i, grid, ::XDirection) = Δxᶠᵃᵃ(i, 1, 1, grid)
+Δξᶠ(j, grid, ::YDirection) = Δyᵃᶠᵃ(1, j, 1, grid)
+Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 function compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
     dir = tridiagonal_direction(tridiagonal_formulation)

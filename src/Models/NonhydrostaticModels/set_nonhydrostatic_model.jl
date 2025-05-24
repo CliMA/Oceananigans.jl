@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, make_pressure_correction!
+using Oceananigans.TimeSteppers: update_state!, compute_pressure_correction!, make_pressure_correction!
 
 import Oceananigans.Fields: set!
 
@@ -51,7 +51,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
 
     if enforce_incompressibility
         FT = eltype(model.grid)
-        calculate_pressure_correction!(model, one(FT))
+        compute_pressure_correction!(model, one(FT))
         make_pressure_correction!(model, one(FT))
         update_state!(model; compute_tendencies = false)
     end

@@ -102,7 +102,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
 
-    calculate_pressure_correction!(model, Δt)
+    compute_pressure_correction!(model, Δt)
     @apply_regionally correct_velocities_and_cache_previous_tendencies!(model, Δt)
 
     update_state!(model, callbacks; compute_tendencies=true)

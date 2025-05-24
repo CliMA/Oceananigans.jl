@@ -1,11 +1,11 @@
-import Oceananigans.TimeSteppers: calculate_pressure_correction!, make_pressure_correction!
+import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
 
 """
-    calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
+    compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
+function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
