@@ -50,7 +50,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
     # output
     KernelFunctionOperation at (Face, Face, Center)
-    ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+    ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
     ├── kernel_function: ζ₃ᶠᶠᶜ (generic function with 1 method)
     └── arguments: ("Field", "Field")
     ```
