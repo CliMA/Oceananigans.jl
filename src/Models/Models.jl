@@ -7,6 +7,7 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
     LagrangianParticles,
+    BoundaryConditionOperation, ForcingOperation,
     seawater_density
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
@@ -191,6 +192,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 include("seawater_density.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
+include("forcing_operation.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
