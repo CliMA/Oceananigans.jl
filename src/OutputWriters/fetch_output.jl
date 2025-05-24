@@ -1,7 +1,6 @@
 using CUDA
 
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
-using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
 # TODO: figure out how to support this
 # using Oceananigans.OutputReaders: FieldTimeSeries
@@ -17,12 +16,6 @@ fetch_output(output, model) = output(model)
 function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
     return parent(field)
-end
-
-function fetch_output(lagrangian_particles::LagrangianParticles, model)
-    particle_properties = lagrangian_particles.properties
-    names = propertynames(particle_properties)
-    return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
 
 convert_output(output, writer) = output

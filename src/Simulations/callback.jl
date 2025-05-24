@@ -1,7 +1,6 @@
 using Oceananigans.Utils: prettysummary, ConsecutiveIterations
 using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Models.VarianceDissipationComputations
 
 import Oceananigans: initialize!
 
@@ -145,41 +144,3 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
 end
 
 validate_schedule(func, schedule) = schedule
-
-# Specific `Callback` for `VarianceDissipation` computations.
-# A VarianceDissipation object requires a `ConsecutiveIteration` schedule to make sure
-# that the computed fluxes are correctly used in the next time step.
-# Also, the `VarianceDissipation` object needs to be called on `UpdateStateStepCallsite` to be correct.
-function Callback(func::VarianceDissipation, schedule=IterationInterval(1);
-                  parameters = nothing,
-                  callsite = UpdateStateCallsite())
-
-    if !(callsite isa UpdateStateCallsite)
-        @warn "VarianceDissipation callback must be called on UpdateStateCallsite. Changing `callsite` to `UpdateStateCallsite()`."
-        callsite = UpdateStateCallsite()
-    end
-
-    schedule = validate_schedule(func, schedule)
-
-    return Callback(func, schedule, callsite, parameters)
-end
-
-validate_schedule(::VarianceDissipation, schedule) = throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
-                                                                         "Use an `IterationInterval` schedule instead."))
-
-function validate_schedule(::VarianceDissipation, schedule::IterationInterval)
-    if !(schedule == IterationInterval(1))
-        @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" *
-              "Changing `schedule` to `ConsecutiveIterations(schedule)`."
-        schedule = ConsecutiveIterations(schedule)
-    end
-    return schedule
-end
-
-function validate_schedule(::VarianceDissipation, schedule::ConsecutiveIterations)
-    if !(schedule.parent isa IterationInterval)
-       throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
-                                                                         "Use an `IterationInterval` schedule instead."))
-    end
-    return schedule
-end

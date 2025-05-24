@@ -1,13 +1,10 @@
 using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
-using Oceananigans.Models
 using Oceananigans.Utils: TimeInterval, prettykeys
 using Oceananigans.Fields: boundary_conditions, indices
 
-default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
-default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(model) = [:grid]
 
 mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
@@ -232,7 +229,7 @@ function iteration_exists(filepath, iter=0)
     return zero_exists
 end
 
-function write_output!(writer::JLD2Writer, model::AbstractModel)
+function write_output!(writer::JLD2Writer, model)
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
