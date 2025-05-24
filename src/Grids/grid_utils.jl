@@ -117,7 +117,7 @@ constant grid spacing `Δ`, and interior extent `L`.
 @inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
-@inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
+@inline domain(topo, N, ξ) = @allowscalar ξ[1], ξ[N+1]
 @inline domain(::Flat, N, ξ::AbstractArray) = ξ[1]
 @inline domain(::Flat, N, ξ::Number) = ξ
 @inline domain(::Flat, N, ::Nothing) = nothing

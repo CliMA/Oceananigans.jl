@@ -1,5 +1,3 @@
-using CUDA
-
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
