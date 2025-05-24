@@ -163,7 +163,7 @@ function ShallowWaterModel(;
     end
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
-    
+
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)
         set!(bathymetry_field, bathymetry)
@@ -212,7 +212,7 @@ end
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
-    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
+    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"*
                         "Use `momentum_advection = VectorInvariant()`."))
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 

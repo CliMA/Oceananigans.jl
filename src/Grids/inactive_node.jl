@@ -2,13 +2,27 @@
 const c = Center()
 const f = Face()
 
-function build_condition(Topo, side, dim) 
-    if Topo == :Bounded 
-        return :(($side < 1) | ($side > grid.$dim))
+using ReactantCore
+
+function build_condition(Topo, side, dim, array::Bool)
+    if Topo == :Bounded
+        if array
+            return :((ReactantCore.materialize_traced_array($side) .< 1) .| (ReactantCore.materialize_traced_array($side) .> grid.$dim))
+        else
+            return :(($side < 1) | ($side > grid.$dim))
+        end
     elseif Topo == :LeftConnected
-        return :(($side > grid.$dim))
+        if array
+            return :((ReactantCore.materialize_traced_array($side) .> grid.$dim))
+        else
+            return :(($side > grid.$dim))
+        end
     else # RightConnected
-        return :(($side < 1))
+        if array
+            return :((ReactantCore.materialize_traced_array($side) .< 1))
+        else
+            return :(($side < 1))
+        end
     end
 end
 
@@ -39,9 +53,13 @@ Topos = (:Bounded, :LeftConnected, :RightConnected)
 
 for PrimaryTopo in Topos
 
-    xcondition = build_condition(PrimaryTopo, :i, :Nx)
-    ycondition = build_condition(PrimaryTopo, :j, :Ny)
-    zcondition = build_condition(PrimaryTopo, :k, :Nz)
+    xcondition = build_condition(PrimaryTopo, :i, :Nx, false)
+    ycondition = build_condition(PrimaryTopo, :j, :Ny, false)
+    zcondition = build_condition(PrimaryTopo, :k, :Nz, false)
+
+    xcondition_ar = build_condition(PrimaryTopo, :i, :Nx, true)
+    ycondition_ar = build_condition(PrimaryTopo, :j, :Ny, true)
+    zcondition_ar = build_condition(PrimaryTopo, :k, :Nz, true)
 
     @eval begin
         XBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo}
@@ -49,15 +67,22 @@ for PrimaryTopo in Topos
         ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$PrimaryTopo}
 
         @inline inactive_cell(i, j, k, grid::XBoundedGrid) = $xcondition
+        @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XBoundedGrid) = $xcondition_ar
         @inline inactive_cell(i, j, k, grid::YBoundedGrid) = $ycondition
+        @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::YBoundedGrid) = $ycondition_ar
         @inline inactive_cell(i, j, k, grid::ZBoundedGrid) = $zcondition
+        @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ZBoundedGrid) = $zcondition_ar
     end
 
     for SecondaryTopo in Topos
 
-        xycondition = :( $xcondition | $(build_condition(SecondaryTopo, :j, :Ny)))
-        xzcondition = :( $xcondition | $(build_condition(SecondaryTopo, :k, :Nz)))
-        yzcondition = :( $ycondition | $(build_condition(SecondaryTopo, :k, :Nz)))
+        xycondition = :( $xcondition | $(build_condition(SecondaryTopo, :j, :Ny, false)))
+        xzcondition = :( $xcondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
+        yzcondition = :( $ycondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
+
+        xycondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :j, :Ny, true)))
+        xzcondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))
+        yzcondition_ar = :( $ycondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))
 
         @eval begin
             XYBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo}
@@ -65,17 +90,22 @@ for PrimaryTopo in Topos
             YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$PrimaryTopo, <:$SecondaryTopo}
 
             @inline inactive_cell(i, j, k, grid::XYBoundedGrid) = $xycondition
+            @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XYBoundedGrid) = $xycondition_ar
             @inline inactive_cell(i, j, k, grid::XZBoundedGrid) = $xzcondition
+            @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XZBoundedGrid) = $xzcondition_ar
             @inline inactive_cell(i, j, k, grid::YZBoundedGrid) = $yzcondition
+            @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::YZBoundedGrid) = $yzcondition_ar
         end
 
         for TertiaryTopo in Topos
-            xyzcondition = :( $xycondition | $(build_condition(TertiaryTopo, :k, :Nz)))
+            xyzcondition = :( $xycondition | $(build_condition(TertiaryTopo, :k, :Nz, false)))
+            xyzcondition_ar = :( $xyzcondition .| $(build_condition(TertiaryTopo, :k, :Nz, true)))
 
             @eval begin
                 XYZBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo, <:$TertiaryTopo}
 
                 @inline inactive_cell(i, j, k, grid::XYZBoundedGrid) = $xyzcondition
+                @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XYZBoundedGrid) = $xyzcondition_ar
             end
         end
     end

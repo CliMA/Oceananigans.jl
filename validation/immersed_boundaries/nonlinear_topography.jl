@@ -12,15 +12,15 @@ function run_simulation(solver, preconditioner)
     Nx = 1024
     Nz = Nx * 2
     Ny = 1
-    
+
     grid = RectilinearGrid(GPU(), Float64,
-                           size = (Nx, Ny, Nz), 
+                           size = (Nx, Ny, Nz),
                            halo = (4, 4, 4),
                            x = (0, 30),
                            y = (0, 1),
                            z = (0, 60),
                            topology = (Periodic, Periodic, Bounded))
-    
+
     k = 2π / 10
     Δt = 1e-3
     max_Δt = 1e-3
@@ -39,11 +39,11 @@ function run_simulation(solver, preconditioner)
     topography(x, y) = find_zero(h -> nonlinear_topography(h, x), 0.1) + h₀
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(topography))
-    
+
     @info "Created $grid"
-    
+
     uv_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(0), bottom=ValueBoundaryCondition(0), immersed=ValueBoundaryCondition(0))
-    
+
     b_initial(x, y, z) = N² * z
     b_target = LinearTarget{:z}(intercept=0, gradient=N²)
     mask_top = GaussianMask{:z}(center=58, width=0.5)
@@ -53,7 +53,7 @@ function run_simulation(solver, preconditioner)
     v_sponge = w_sponge = Relaxation(rate=damping_rate, mask=mask_top)
     u_sponge = Relaxation(rate=damping_rate, mask=mask_top, target=U₀)
     b_sponge = Relaxation(rate=damping_rate, mask=mask_top, target=b_target)
-    
+
     if solver == "FFT"
         model = NonhydrostaticModel(; grid,
                                     # advection = WENO(),
@@ -77,31 +77,31 @@ function run_simulation(solver, preconditioner)
 
     @info "Created $model"
     @info "with pressure solver $(model.pressure_solver)"
-    
+
     set!(model, b=b_initial, u=U₀)
-    
+
     #####
     ##### Simulation
     #####
-    
+
     simulation = Simulation(model, Δt=Δt, stop_time=20)
 
     # wizard = TimeStepWizard(max_change=1.05, max_Δt=max_Δt, cfl=0.6)
     # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
 
     wall_time = Ref(time_ns())
-    
+
     b = model.tracers.b
     u, v, w = model.velocities
     B = Field(Integral(b))
     compute!(B)
-    
+
     δ = Field(∂x(u) + ∂y(v) + ∂z(w))
     compute!(δ)
-    
+
     ζ = Field(∂z(u) - ∂x(w))
     compute!(ζ)
-    
+
     function print_progress(sim)
         elapsed = time_ns() - wall_time[]
 
@@ -118,36 +118,36 @@ function run_simulation(solver, preconditioner)
 
         pressure_solver = sim.model.pressure_solver
         if sim.model.pressure_solver isa ImmersedPoissonSolver
-            solver_iterations = pressure_solver.pcg_solver.iteration 
+            solver_iterations = pressure_solver.pcg_solver.iteration
             msg *= string(", solver iterations: ", solver_iterations)
         end
-    
+
         @info msg
-    
+
         wall_time[] = time_ns()
-    
+
         return nothing
     end
-                       
+
     simulation.callbacks[:p] = Callback(print_progress, IterationInterval(100))
-    
+
     solver_type = model.pressure_solver isa ImmersedPoissonSolver ? "ImmersedPoissonSolver" : "FFTBasedPoissonSolver"
     prefix = "nonlinear_topography_" * solver_type
-    
+
     outputs = merge(model.velocities, model.tracers, (; p=model.pressures.pNHS, δ, ζ))
-    
-    simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs;
-                                                        filename = prefix * "_fields",
+
+    simulation.output_writers[:jld2] = JLD2Writer(model, outputs;
+                                                  filename = prefix * "_fields",
+                                                  # schedule = TimeInterval(2e-3),
+                                                  schedule = IterationInterval(50),
+                                                  overwrite_existing = true)
+
+    simulation.output_writers[:timeseries] = JLD2Writer(model, (; B);
+                                                        filename = prefix * "_time_seriess",
                                                         # schedule = TimeInterval(2e-3),
                                                         schedule = IterationInterval(50),
                                                         overwrite_existing = true)
-    
-    simulation.output_writers[:timeseries] = JLD2OutputWriter(model, (; B);
-                                                              filename = prefix * "_time_seriess",
-                                                            # schedule = TimeInterval(2e-3),
-                                                        schedule = IterationInterval(50),
-                                                              overwrite_existing = true)
-    
+
     run!(simulation)
 end
 

@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length, total_size
-using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky
@@ -24,7 +23,7 @@ function euler_time_stepping_doesnt_propagate_NaNs(arch)
     CUDA.@allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
     time_step!(model, 1, euler=true)
     u111 = CUDA.@allowscalar model.velocities.u[1, 1, 1]
-    
+
     return !isnan(u111)
 end
 
@@ -40,7 +39,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; Model=Nonhydrostati
     # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
-    
+
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     closure = Closure === IsopycnalSkewSymmetricDiffusivity ? Closure(FT, κ_skew=1, κ_symmetric=1) : Closure(FT)
@@ -140,7 +139,7 @@ function incompressible_in_time(grid, Nt, timestepper)
 
     arch = architecture(grid)
     launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data)
-    
+
     min_div = CUDA.@allowscalar minimum(interior(div_U))
     max_div = CUDA.@allowscalar maximum(interior(div_U))
     max_abs_div = CUDA.@allowscalar maximum(abs, interior(div_U))
@@ -174,7 +173,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
-                                closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh), 
+                                closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh),
                                            VerticalScalarDiffusivity(ν=νz, κ=κz)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 

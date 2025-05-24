@@ -51,7 +51,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.closure,
                        model.diffusivity_fields,
                        nothing,
-                       model.clock, 
+                       model.clock,
                        Δt)
     end
 
@@ -77,7 +77,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        
+
         if catke_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
         elseif td_in_closures && tracer_name == :ϵ
@@ -108,7 +108,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 end
 
 #####
-##### Tracer update in mutable vertical coordinates 
+##### Tracer update in mutable vertical coordinates
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
@@ -125,13 +125,13 @@ end
 
     @inbounds begin
         ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
-        
-        # We store temporarily σθ in θ. 
+
+        # We store temporarily σθ in θ.
         # The unscaled θ will be retrieved with `unscale_tracers!`
         θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + Δt * ∂t_σθ
     end
 end
 
-# Fallback! We need to unscale the tracers only in case of 
+# Fallback! We need to unscale the tracers only in case of
 # a grid with a mutable vertical coordinate, i.e. where `σ != 1`
 unscale_tracers!(tracers, grid; kwargs...) = nothing

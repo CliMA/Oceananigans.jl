@@ -5,7 +5,7 @@ using Oceananigans.Units: minute, minutes, hour
 
 # Stretched grid
 Lz = 32          # (m) domain depth
-Lx = Ly = 64     # domain width    
+Lx = Ly = 64     # domain width
 Nx = Ny = 32
 Nz = 24          # number of points in the vertical direction
 

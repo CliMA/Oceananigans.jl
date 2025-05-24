@@ -72,14 +72,14 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 ##### Boundary conditions
 #####
 
-α  = 2e-4     # [K⁻¹] thermal expansion coefficient 
+α  = 2e-4     # [K⁻¹] thermal expansion coefficient
 g  = 9.8061   # [m s⁻²] gravitational constant
 cᵖ = 3994.0   # [J K⁻¹] heat capacity
 ρ  = 1024.0   # [kg m⁻³] reference density
 
-parameters = (Ly = Ly,  
-              Lz = Lz,    
-              Qᵇ = 10 / (ρ * cᵖ) * α * g,          # buoyancy flux magnitude [m² s⁻³]    
+parameters = (Ly = Ly,
+              Lz = Lz,
+              Qᵇ = 10 / (ρ * cᵖ) * α * g,          # buoyancy flux magnitude [m² s⁻³]
               y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
               τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
               μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
@@ -105,7 +105,7 @@ end
 
 u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
 
-@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
+@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1]
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
 
 u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form=true, parameters=parameters)
@@ -154,7 +154,7 @@ vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 diffusive_closure = (horizontal_closure, vertical_closure)
-                                       
+
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
@@ -228,7 +228,7 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 
@@ -272,11 +272,11 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         prefix = filename,
                                                         overwrite_existing = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      filename,
-                                                      verbose = false,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                schedule = TimeInterval(save_fields_interval),
+                                                filename,
+                                                verbose = false,
+                                                overwrite_existing = true)
 
 @info "Running the simulation..."
 
@@ -428,20 +428,20 @@ zlims = (-grid.Lz, 0)
 anim = @animate for i in 1:length(b_timeseries.times)-1
     b = b_timeseries[i]
     u = u_timeseries[i]
-    
+
     b_z .= ∂z(b)
 
     b_yz = interior(b)[1, :, :]
     u_yz = interior(u)[1, :, :]
-   
+
     b_z_yz = interior(b_z)[1, :, :]
-    
+
     @show bmax = max(1e-9, maximum(abs, b_yz))
 
     blims = (-bmax, bmax) .* 0.8
-    
+
     blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
-    
+
     u_yz_plot = contourf(yu * 1e-3, zu, u_yz',
                          xlabel = "y (km)",
                          ylabel = "z (m)",
@@ -452,7 +452,7 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
                          xlims = ylims,
                          ylims = zlims,
                          color = :balance)
-    
+
     bz_yz_plot = heatmap(yw * 1e-3, zw, b_z_yz',
                          xlabel = "y (km)",
                          ylabel = "z (m)",
@@ -460,7 +460,7 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
                          xlims = ylims,
                          ylims = zlims,
                          color = :balance)
-    
+
     contour!(u_yz_plot,
              yc * 1e-3, zc, b_yz',
              linewidth = 1,

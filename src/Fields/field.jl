@@ -3,13 +3,15 @@ using Oceananigans.Grids: parent_index_range, index_range_offset, default_indice
 using Oceananigans.Grids: index_range_contains
 
 using Adapt
+using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
-import Statistics: norm, mean, mean!
+import Statistics: mean, mean!
+import LinearAlgebra: dot, norm
 import Base: ==
 
 #####
@@ -23,7 +25,7 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     indices :: I
     operand :: O
     status :: S
-    boundary_buffers :: F
+    communication_buffers :: F
 
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
@@ -81,10 +83,10 @@ function validate_boundary_conditions(loc, grid, bcs)
 end
 
 # Some special validation for a zipper boundary condition
-validate_boundary_condition_location(bc::Zipper, loc::Center, side) = 
+validate_boundary_condition_location(bc::Zipper, loc::Center, side) =
     side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
 
-validate_boundary_condition_location(bc::Zipper, loc::Face, side) = 
+validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
     side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
 
 
@@ -97,10 +99,14 @@ function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, s
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
-    buffers = FieldBoundaryBuffers(grid, data, bcs)
+    buffers = communication_buffers(grid, data, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
+
+# Allocator for buffers used in fields that require ``communication''
+# Extended in the `DistributedComputations` and the `MultiRegion` module
+communication_buffers(grid, data, bcs) = nothing
 
 """
     Field{LX, LY, LZ}(grid::AbstractGrid,
@@ -284,15 +290,15 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
 
-julia> c = CenterField(grid)
+julia> c = CenterField(grid);
+
+julia> set!(c, rand(size(c)...))
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> c .= rand(size(c)...);
+    └── max=0.972136, min=0.0149088, mean=0.626341
 
 julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -411,8 +417,8 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
 @inline Base.fill!(f::Field, val) = fill!(parent(f), val)
 @inline Base.parent(f::Field) = parent(f.data)
-Adapt.parent_type(f::Field) = typeof(parent(f))
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
+Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O, G, I, D} = D
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
@@ -432,7 +438,7 @@ on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       on_architecture(arch, field.indices),
                       on_architecture(arch, field.operand),
                       on_architecture(arch, field.status),
-                      on_architecture(arch, field.boundary_buffers))
+                      on_architecture(arch, field.communication_buffers))
 
 #####
 ##### Interface for field computations
@@ -519,15 +525,6 @@ const ReducedField = Union{XReducedField,
                            XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(::Field)   = ()
-reduced_dimensions(::XReducedField)   = tuple(1)
-reduced_dimensions(::YReducedField)   = tuple(2)
-reduced_dimensions(::ZReducedField)   = tuple(3)
-reduced_dimensions(::YZReducedField)  = (2, 3)
-reduced_dimensions(::XZReducedField)  = (1, 3)
-reduced_dimensions(::XYReducedField)  = (1, 2)
-reduced_dimensions(::XYZReducedField) = (1, 2, 3)
-
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
 @propagate_inbounds Base.getindex(r::ZReducedField, i, j, k) = getindex(r.data, i, j, 1)
@@ -547,20 +544,15 @@ reduced_dimensions(::XYZReducedField) = (1, 2, 3)
 @propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
 
-const XFieldBC = BoundaryCondition{<:Any, XReducedField}
-const YFieldBC = BoundaryCondition{<:Any, YReducedField}
-const ZFieldBC = BoundaryCondition{<:Any, ZReducedField}
-
 # Boundary conditions reduced in one direction --- drop boundary-normal index
-@inline getbc(bc::XFieldBC, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[1, j, k]
-@inline getbc(bc::YFieldBC, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, 1, k]
-@inline getbc(bc::ZFieldBC, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j, 1]
+@inline getbc(condition::XReducedField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, j, k]
+@inline getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
+@inline getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
 # Boundary conditions reduced in two directions are ambiguous, so that's hard...
 
 # 0D boundary conditions --- easy case
-const XYZFieldBC = BoundaryCondition{<:Any, XYZReducedField}
-@inline getbc(bc::XYZFieldBC, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds bc.condition[1, 1, 1]
+@inline getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
@@ -596,17 +588,23 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
-reduced_dimensions(::AbstractField)   = ()
-reduced_dimensions(::XReducedAbstractField)   = tuple(1)
-reduced_dimensions(::YReducedAbstractField)   = tuple(2)
-reduced_dimensions(::ZReducedAbstractField)   = tuple(3)
-reduced_dimensions(::YZReducedAbstractField)  = (2, 3)
-reduced_dimensions(::XZReducedAbstractField)  = (1, 3)
-reduced_dimensions(::XYReducedAbstractField)  = (1, 2)
-reduced_dimensions(::XYZReducedAbstractField) = (1, 2, 3)
-
 # TODO: needs test
-Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing) 
+    ca = condition_operand(a, condition, 0)
+    cb = condition_operand(b, condition, 0)
+    
+    B = ca * cb # Binary operation
+    r = zeros(a.grid, 1)
+    
+    Base.mapreducedim!(identity, +, r, B)
+    return CUDA.@allowscalar r[1]
+end
+
+function LinearAlgebra.norm(a::AbstractField; condition = nothing)
+    r = zeros(a.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    return CUDA.@allowscalar sqrt(r[1])
+end
 
 # TODO: in-place allocations with function mappings need to be fixed in Julia Base...
 const SumReduction     = typeof(Base.sum!)
@@ -643,15 +641,14 @@ function reduced_dimension(loc)
     return dims
 end
 
-## Allow support for ConditionalOperation
-
 get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
-get_neutral_mask(::Union{SumReduction, MeanReduction}) =   0
-get_neutral_mask(::MinimumReduction) =   Inf
-get_neutral_mask(::MaximumReduction) = - Inf
-get_neutral_mask(::ProdReduction)    =   1
+get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
+get_neutral_mask(::ProdReduction)    = 1
 
-# If func = identity and condition = nothing, nothing happens
+# TODO make this Float32 friendly
+get_neutral_mask(::MinimumReduction) = +Inf
+get_neutral_mask(::MaximumReduction) = -Inf
+
 """
     condition_operand(f::Function, op::AbstractField, condition, mask)
 
@@ -661,8 +658,11 @@ If `f isa identity` and `isnothing(condition)` then `op` is returned without wra
 
 Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f isa identity)`.
 """
-@inline condition_operand(op::AbstractField, condition, mask) = condition_operand(identity, op, condition, mask)
-@inline condition_operand(::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
+@inline condition_operand(op::AbstractField, condition, mask) = condition_operand(nothing, op, condition, mask)
+
+# Do NOT condition if condition=nothing.
+# All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
+@inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
@@ -682,9 +682,11 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
+            operand = condition_operand(f, a, condition, mask)
+
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(f, a, condition, mask);
+                                      operand;
                                       kwargs...)
         end
 
@@ -707,12 +709,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    mask = get_neutral_mask(Base.$(reduction!)),
                                    dims = :)
 
+            conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
-            conditioned_c = condition_operand(f, c, condition, mask)
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, r, conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
                 return CUDA.@allowscalar first(r)
@@ -724,6 +726,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         Base.$(reduction)(c::AbstractField; kwargs...) = Base.$(reduction)(identity, c; kwargs...)
     end
 end
+
+# Improve me! We can should both the extrema in one single reduction instead of two
+Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
+Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     operator = condition_operand(f, c, condition, mask)
@@ -751,17 +757,11 @@ end
 
 Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
-function Statistics.norm(a::AbstractField; condition = nothing)
-    r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
-    return CUDA.@allowscalar sqrt(r[1])
-end
-
 function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
-    conditioned_a = condition_operand(a, nothing, one(eltype(a)))
-    conditioned_b = condition_operand(b, nothing, one(eltype(b)))
+    conditional_a = condition_operand(a, nothing, one(eltype(a)))
+    conditional_b = condition_operand(b, nothing, one(eltype(b)))
     # TODO: Make this non-allocating?
-    return all(isapprox.(conditioned_a, conditioned_b; kw...))
+    return all(isapprox.(conditional_a, conditional_b; kw...))
 end
 
 #####
@@ -782,3 +782,4 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
+

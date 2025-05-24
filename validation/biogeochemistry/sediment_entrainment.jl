@@ -100,11 +100,11 @@ end
 simulation.callbacks[:plot] = Callback(update_plot!, IterationInterval(100))
 
 simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ)),
-                     schedule = TimeInterval(1.0),
-                     with_halos = false,
-                     filename = "sediment_entrainment",
-                     overwrite_existing = true)
+    JLD2Writer(model, merge(model.velocities, model.tracers, (; ξ)),
+               schedule = TimeInterval(1.0),
+               with_halos = false,
+               filename = "sediment_entrainment",
+               overwrite_existing = true)
 
 run!(simulation)
 

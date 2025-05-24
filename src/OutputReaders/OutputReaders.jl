@@ -7,11 +7,11 @@ export Cyclical, Linear, Clamp
 export save_field_time_series
 
 """
-    auto_extension(filename, ext)                                                             
+    auto_extension(filename, ext)
 
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
-function auto_extension(filename, ext) 
+function auto_extension(filename, ext)
     if endswith(filename, ext)
         return filename
     else

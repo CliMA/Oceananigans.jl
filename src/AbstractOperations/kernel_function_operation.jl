@@ -7,22 +7,22 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
     @doc """
         KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)
-    
+
     Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` with `arguments`.
-    
+
     `kernel_function` is called with
-    
+
     ```julia
     kernel_function(i, j, k, grid, arguments...)
     ```
-    
+
     Note that `compute!(kfo::KernelFunctionOperation)` calls `compute!` on all `kfo.arguments`.
-    
+
     Examples
     ========
-    
+
     Construct a `KernelFunctionOperation` that returns random numbers:
-    
+
     ```jldoctest kfo
     using Oceananigans
 
@@ -39,10 +39,10 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     ├── kernel_function: random_kernel_function (generic function with 1 method)
     └── arguments: ()
     ```
-    
+
     Construct a `KernelFunctionOperation` using the vertical vorticity operator used internally
     to compute vertical vorticity on all grids:
-    
+
     ```jldoctest kfo
     using Oceananigans.Operators: ζ₃ᶠᶠᶜ # called with signature ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
