@@ -180,7 +180,7 @@ end
 @kernel function _compute_lower_diagonal!(lower_diagonal, formulation, grid)
     q = @index(Global)
     dir = tridiagonal_direction(formulation)
-    @inbounds lower_diagonal[q] = 1 / Δξᶠ(q, grid, dir)
+    @inbounds lower_diagonal[q] = 1 / Δξᶠ(q+1, grid, dir)
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
@@ -241,4 +241,3 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
-
