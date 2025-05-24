@@ -38,6 +38,10 @@ end
 
 tridiagonal_direction(formulation::HomogeneousNeumannFormulation) = formulation.direction
 
+const HomogeneousXFormulation = HomogeneousNeumannFormulation{<:XDirection}
+const HomogeneousYFormulation = HomogeneousNeumannFormulation{<:YDirection}
+const HomogeneousZFormulation = HomogeneousNeumannFormulation{<:ZDirection}
+
 """
     FourierTridiagonalPoissonSolver(grid, planner_flag = FFTW.PATIENT; tridiagonal_formulation=nothing)
 
@@ -112,15 +116,15 @@ end
 
 # Note: diagonal coefficients depend on non-tridiagonal directions because
 # eigenvalues depend on non-tridiagonal directions.
-function compute_main_diagonal!(main_diagonal, tridiagonal_formulation::HomogeneousNeumannFormulation, grid, λ1, λ2)
+function compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)
     tridiagonal_dir = tridiagonal_direction(tridiagonal_formulation)
     launch_config = main_diagonal_launch_configuration(tridiagonal_dir)
     arch = grid.architecture
-    launch!(arch, grid, launch_config, _compute_main_diagonal!, main_diagonal, grid, λ1, λ2, tridiagonal_dir)
+    launch!(arch, grid, launch_config, _compute_main_diagonal!, main_diagonal, grid, λ1, λ2, tridiagonal_formulation)
     return nothing
 end
 
-@kernel function _compute_main_diagonal!(D, grid, λy, λz, ::XDirection)
+@kernel function _compute_main_diagonal!(D, grid, λy, λz, ::HomogeneousXFormulation)
     j, k = @index(Global, NTuple)
     Nx = size(grid, 1)
 
@@ -135,7 +139,7 @@ end
     end
 end
 
-@kernel function _compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
+@kernel function _compute_main_diagonal!(D, grid, λx, λz, ::HomogeneousYFormulation)
     i, k = @index(Global, NTuple)
     Ny = size(grid, 2)
 
@@ -150,7 +154,7 @@ end
     end
 end
 
-@kernel function _compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
+@kernel function _compute_main_diagonal!(D, grid, λx, λy, ::HomogeneousZFormulation)
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
 
@@ -169,12 +173,13 @@ function compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
     dir = tridiagonal_direction(tridiagonal_formulation)
     N = length(lower_diagonal)
     arch = grid.architecture
-    launch!(arch, grid, tuple(N), _compute_lower_diagonal!, lower_diagonal, dir, grid)
+    launch!(arch, grid, tuple(N), _compute_lower_diagonal!, lower_diagonal, tridiagonal_formulation, grid)
     return nothing
 end
 
-@kernel function _compute_lower_diagonal!(lower_diagonal, dir, grid)
+@kernel function _compute_lower_diagonal!(lower_diagonal, formulation, grid)
     q = @index(Global)
+    dir = tridiagonal_direction(formulation)
     @inbounds lower_diagonal[q] = 1 / Δξᶠ(q, grid, dir)
 end
 
