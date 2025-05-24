@@ -25,7 +25,7 @@ const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMult
 const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:GriddedMultiRegionFieldTuple}
 
 # Utils
-Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
+Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
 
 @inline isregional(f::GriddedMultiRegionField) = true
 @inline devices(f::GriddedMultiRegionField) = devices(f.grid)
@@ -142,7 +142,7 @@ end
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
-validate_indices(indices, loc, mrg::MultiRegionGrid) =
+validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
 communication_buffers(grid::MultiRegionGrid, data, bcs) =
@@ -151,7 +151,10 @@ communication_buffers(grid::MultiRegionGrid, data, bcs) =
 communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
 communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
-FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
+FieldBoundaryBuffers(grid::MultiRegionGrids, args...; kwargs...) =
+    construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
+
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,

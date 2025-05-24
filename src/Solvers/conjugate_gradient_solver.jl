@@ -197,6 +197,10 @@ function iterate!(x, solver, b, args...)
 
     @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
 
+    auxiliary_actions!(solver.linear_operation!, q, p, args...)
+
+    @apply_regionally solver.linear_operation!(q, p, args...)
+
     α = ρ / dot(p, q)
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
@@ -209,6 +213,8 @@ function iterate!(x, solver, b, args...)
 
     return nothing
 end
+
+auxiliary_actions!(args...) = nothing
 
 """ first iteration of the PCG """
 function initialize_solution!(q, x, b, solver, args...)

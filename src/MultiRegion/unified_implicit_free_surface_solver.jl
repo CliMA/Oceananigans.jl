@@ -9,6 +9,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
                                                         PCGImplicitFreeSurfaceSolver
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver,
+                                                         fill_halos_of_vertically_integrated_lateral_areas!,
                                                          compute_implicit_free_surface_right_hand_side!
 
 import Oceananigans.Architectures: architecture, on_architecture
@@ -22,6 +23,12 @@ end
 
 architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
+
+@inline function fill_halos_of_vertically_integrated_lateral_areas!(grid::ConformalCubedSphereGrid, vertically_integrated_lateral_areas)
+    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
+    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
+    fill_halo_regions!((Ax, Ay); signed = false)
+end
 
 function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravitational_acceleration::Number; multiple_devices = false)
 
@@ -64,6 +71,8 @@ build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrids, settings, gr
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrids, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
 build_implicit_step_solver(::Val{:Default}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
+    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
     PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use Matrix solvers with ConformalCubedSphereGrid!! Select :Default or :PreconditionedConjugateGradient as solver_method"))

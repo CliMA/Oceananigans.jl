@@ -20,6 +20,7 @@ function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velociti
                                                grid, u, v, sefs.η)
 
     fill_halo_regions!((barotropic_velocities.U, barotropic_velocities.V))
+    fill_halo_regions!(sefs.η)
 
     return nothing
 end
