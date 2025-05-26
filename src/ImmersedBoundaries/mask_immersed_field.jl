@@ -53,7 +53,7 @@ masks `field` defined on `grid` with a value `val` at locations where `periphera
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    launch!(arch, grid, size(field), _mask_immersed_field!, field, loc, grid, value)
+    launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
     return nothing
 end
 
