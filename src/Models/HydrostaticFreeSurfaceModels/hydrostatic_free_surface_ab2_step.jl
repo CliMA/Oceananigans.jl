@@ -3,6 +3,8 @@ using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
+import Oceananigans.TimeSteppers: ab2_step!
+
 #####
 ##### Step everything
 #####
@@ -13,7 +15,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
-    χ  = convert(FT, model.timestepper.χ)
+    χ = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
@@ -110,6 +112,7 @@ end
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
+# with the `unscale_tracers!` function
 @kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
@@ -121,7 +124,14 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
-        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
+        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
+
+        # We store temporarily σθ in θ.
+        # The unscaled θ will be retrieved with `unscale_tracers!`
+        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + Δt * ∂t_σθ
     end
 end
+
+# Fallback! We need to unscale the tracers only in case of
+# a grid with a mutable vertical coordinate, i.e. where `σ != 1`
+unscale_tracers!(tracers, grid; kwargs...) = nothing
