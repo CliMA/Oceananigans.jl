@@ -27,9 +27,6 @@ end
 architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
-@inline fill_halos_of_vertically_integrated_lateral_areas!(grid::AbstractGrid, vertically_integrated_lateral_areas) =
-    fill_halo_regions!(vertically_integrated_lateral_areas)
-
 """
     PCGImplicitFreeSurfaceSolver(grid, settings)
 
