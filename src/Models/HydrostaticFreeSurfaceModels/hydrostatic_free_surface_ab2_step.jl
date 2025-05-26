@@ -3,7 +3,7 @@ using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
-import Oceananigans.TimeSteppers: ab2_step!
+import Oceananigans.TimeSteppers: ab2_step!, update_grid!, unscale_tracers!
 
 #####
 ##### Step everything
@@ -124,14 +124,14 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
+        ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
 
         # We store temporarily σθ in θ.
         # The unscaled θ will be retrieved with `unscale_tracers!`
-        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + Δt * ∂t_σθ
+        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
     end
 end
 
 # Fallback! We need to unscale the tracers only in case of
 # a grid with a mutable vertical coordinate, i.e. where `σ != 1`
-unscale_tracers!(tracers, grid; kwargs...) = nothing
+unscale_tracers!(tracers, grid) = nothing

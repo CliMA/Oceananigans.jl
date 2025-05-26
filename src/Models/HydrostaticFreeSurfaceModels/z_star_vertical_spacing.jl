@@ -1,4 +1,5 @@
 using Oceananigans.Grids
+using Oceananigans.Grids: halo_size
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
 #####
@@ -12,9 +13,9 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.bar
 barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback
-update_grid!(model, grid, ztype; parameters) = nothing
+update_grid!(model, grid, ztype) = nothing
 
-function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = :xy)
+function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar) #; parameters = :xy)
 
     # Scalings and free surface
     σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
@@ -26,7 +27,12 @@ function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = 
     ηⁿ    = grid.z.ηⁿ
     η     = model.free_surface.η
 
-    launch!(architecture(grid), grid, parameters, _update_grid_scaling!,
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    params = KernelParameters(-Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
+
+    launch!(architecture(grid), grid, params, _update_grid_scaling!,
             σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
 
     # the barotropic velocities are retrieved from the free surface model for a
@@ -36,7 +42,7 @@ function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = 
 
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    launch!(architecture(grid), grid, params, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
 
     return nothing
 end
@@ -130,29 +136,3 @@ end
 
 @inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) =
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
-
-####
-#### Removing the scaling of the vertical coordinate from the tracer fields
-####
-
-const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
-
-unscale_tracers!(::EmptyTuples, ::MutableGridOfSomeKind; kwargs...) = nothing
-
-function unscale_tracers!(tracers, grid::MutableGridOfSomeKind; parameters = :xy)
-
-    for tracer in tracers
-        launch!(architecture(grid), grid, parameters, _unscale_tracer!,
-                tracer, grid, Val(grid.Hz), Val(grid.Nz))
-    end
-
-    return nothing
-end
-
-@kernel function _unscale_tracer!(tracer, grid, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
-    i, j = @index(Global, NTuple)
-
-    @unroll for k in -Hz+1:Nz+Hz
-        tracer[i, j, k] /= σⁿ(i, j, k, grid, Center(), Center(), Center())
-    end
-end

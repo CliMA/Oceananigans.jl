@@ -198,5 +198,8 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    Gct  = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+    @inbounds Gc[i, j, k] = σᶜᶜⁿ * Gct
 end
+    
