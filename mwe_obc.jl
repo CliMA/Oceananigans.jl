@@ -1,6 +1,8 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Random: seed!
+seed!(198)
 
 Lx, Lz = 10, 3
 Nx = Nz = 8
@@ -9,7 +11,7 @@ grid_base = RectilinearGrid(topology = (Bounded, Flat, Bounded), size = (Nx, Nz)
 flat_bottom(x) = 1
 grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(flat_bottom))
 U = 1
-inflow_timescale = 1e-4
+inflow_timescale = 0.0
 outflow_timescale = Inf
 u_boundaries = FieldBoundaryConditions(
     west   = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale),
