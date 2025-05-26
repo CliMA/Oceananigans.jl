@@ -117,8 +117,6 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        Val(tracer_index),
                        model.clock,
                        Δt)
-
-        @show extrema(θ), tracer_name
     end
 
     return nothing
