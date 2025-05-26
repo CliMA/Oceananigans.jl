@@ -165,13 +165,13 @@ end
                         @info "  Testing a $info_msg"
                         model = HydrostaticFreeSurfaceModel(; grid,
                                                             free_surface,
-                                                            tracers = (:b, :c),
-                            				    buoyancy = BuoyancyTracer(),
+                                                            tracers = (:b, :c, :constant),
+                            				                buoyancy = BuoyancyTracer(),
                                                             vertical_coordinate = ZStar())
 
                         bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
-                        set!(model, c = (x, y, z) -> rand(), b = bᵢ)
+                        set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
                         Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
                         test_zstar_coordinate(model, 100, Δt)
