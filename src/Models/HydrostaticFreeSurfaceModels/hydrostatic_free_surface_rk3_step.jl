@@ -12,18 +12,19 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
 
     compute_free_surface_tendency!(grid, model, free_surface)
 
-    rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt, γⁿ, ζⁿ)
-    rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
-    rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
+    @apply_regionally begin
+        rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt, γⁿ, ζⁿ)
+        rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
+        rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
+    end
 
     # Full step for Implicit and Split-Explicit, substep for Explicit
     step_free_surface!(free_surface, model, timestepper, Δt)
 
     # Average free surface variables in the second stage
-    if model.clock.stage == 2
-        rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
-    end
-
+    model.clock.stage == 2 && 
+        @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
+    
     return nothing
 end
 
