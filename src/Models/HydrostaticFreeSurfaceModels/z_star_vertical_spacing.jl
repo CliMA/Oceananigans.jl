@@ -25,7 +25,6 @@ function ab2_step_grid!(model, grid::MutableGridOfSomeKind, ::ZStar, Δt, χ)
     σᶠᶠⁿ  = grid.z.σᶠᶠⁿ
     ηⁿ    = grid.z.ηⁿ
     δUⁿ   = grid.z.δUⁿ
-    ∂t_σ  = grid.z.∂t_σ
 
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
@@ -41,41 +40,102 @@ function ab2_step_grid!(model, grid::MutableGridOfSomeKind, ::ZStar, Δt, χ)
     return nothing
 end
 
+# Update η in the grid 
+# Note!!! This η is different than the free surface coming from the barotropic step!!
+# This η is the one used to compute the vertical spacing. The two different free surfaces
+# will need to be reconciled in future steps.
 @kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, δUⁿ, grid, Δt, χ, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3) 
 
+    C₁ = 3 * one(χ) / 2 + χ
+    C₂ =     one(χ) / 2 + χ
+    
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+
+    @inbounds ηⁿ[i, j, 1] -= Δt * (C₁ * δh_U - C₂ * δUⁿ[i, j, 1])
+    @inbounds δUⁿ[i, j, 1] = δh_U
+
+    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+end
+
+rk3_substep_grid!(model, grid, vertical_coordinate, Δt, γⁿ, ζⁿ) = nothing
+
+function rk3_substep_grid!(model, grid::MutableGridOfSomeKind, ::ZStar, Δt, γⁿ, ζⁿ)
+
+    # Scalings and free surface
+    σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
+    σᶜᶜⁿ = grid.z.σᶜᶜⁿ
+    σᶠᶜⁿ = grid.z.σᶠᶜⁿ
+    σᶜᶠⁿ = grid.z.σᶜᶠⁿ
+    σᶠᶠⁿ = grid.z.σᶠᶠⁿ
+    ηⁿ   = grid.z.ηⁿ
+    δUⁿ  = grid.z.δUⁿ
+    
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    U, V = barotropic_velocities(model.free_surface)
+    u, v, _ = model.velocities
+
+    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
+
+    launch!(architecture(grid), grid, params, _rk3_update_grid_scaling!,
+            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, δUⁿ, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
+
+    return nothing
+end
+
+# Update η in the grid 
+# Note!!! This η is different than the free surface coming from the barotropic step!!
+# This η is the one used to compute the vertical spacing. The two different free surfaces
+# will need to be reconciled in future steps.
+@kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, δUⁿ, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
+    i, j = @index(Global, NTuple)
+    kᴺ = size(grid, 3) 
+    
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+    
+    @inbounds ηⁿ[i, j, 1] = ζⁿ * δUⁿ[i, j, 1] + γⁿ * (ηⁿ[i, j, 1] + Δt * δh_U)
+
+    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+end
+
+@kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, δUⁿ, grid, Δt, ::Nothing, ::Nothing, U, V, u, v)
+    i, j = @index(Global, NTuple)
+    kᴺ = size(grid, 3) 
+
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+
+    @inbounds ηⁿ[i, j, 1] = ηⁿ[i, j, 1] + Δt * δh_U
+    
+    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+end
+
+
+@inline function update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    C₁ = 3 * one(χ) / 2 + χ
-    C₂ =     one(χ) / 2 + χ
-
-    @inbounds begin
-        # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
-        δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
-
-        δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
-    
-        # Update η in the grid (different than the free surface coming from the barotropic step!!)
-        ηⁿ[i, j, 1] -= Δt * (C₁ * δh_U - C₂ * δUⁿ[i, j, 1])
-        δUⁿ[i, j, 1] = δh_U
-    end
-
     Hᶜᶜ = column_depthᶜᶜᵃ(i, j, 1, grid, ηⁿ)
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, 1, grid, ηⁿ)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, 1, grid, ηⁿ)
     Hᶠᶠ = column_depthᶠᶠᵃ(i, j, 1, grid, ηⁿ)
+    
+    σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
+    σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
+    σᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)    
+    σᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), Hᶠᶠ / hᶠᶠ)
 
     @inbounds begin
-        σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
-        σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
-        σᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
-        σᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), Hᶠᶠ / hᶠᶠ)
-
         # Update previous scaling
         σᶜᶜ⁻[i, j, 1] = σᶜᶜⁿ[i, j, 1]
 
@@ -98,7 +158,7 @@ function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZS
     ∂t_σ  = grid.z.∂t_σ
 
     Nx, Ny, _ = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    Hx, Hy, _ = halo_size(grid)
 
     params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
 

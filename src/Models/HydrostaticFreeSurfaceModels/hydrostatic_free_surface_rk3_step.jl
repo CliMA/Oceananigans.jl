@@ -12,6 +12,7 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
 
     compute_free_surface_tendency!(grid, model, free_surface)
 
+    rk3_substep_grid!(model, model.grid, model.vertical_coordinate, Δt, γⁿ, ζⁿ)
     rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
     rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
 
@@ -133,16 +134,16 @@ end
 # by the vertical coordinate scaling factor: ψ⁻ = σ * θ
 @kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
-
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds θ[i, j, k] = ζⁿ * Ψ⁻[i, j, k] + γⁿ * σᶜᶜⁿ * (θ[i, j, k] + Δt * Gⁿ[i, j, k])
+    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    @inbounds θ[i, j, k] = (ζⁿ * Ψ⁻[i, j, k] + γⁿ * (σᶜᶜ⁻ * θ[i, j, k] + Δt * Gⁿ[i, j, k])) / σᶜᶜⁿ
 end
 
 # We store temporarily σθ in θ.
 # The unscaled θ will be retrieved with `unscale_tracers!`
 @kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, ::Nothing, ::Nothing, Gⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
-    @inbounds θ[i, j, k] = Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds θ[i, j, k] = (Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
 
 #####
@@ -169,6 +170,11 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
             launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
         else # Velocities and free surface are stored without the grid scaling
             parent(Ψ⁻) .= parent(Ψⁿ)
+        end
+
+        if grid isa MutableGridOfSomeKind
+            # We need to cache the grid spacing!
+            parent(model.grid.z.δUⁿ) .= parent(model.grid.z.ηⁿ)
         end
     end
 
