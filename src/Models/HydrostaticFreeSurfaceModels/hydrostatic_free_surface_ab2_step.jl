@@ -15,7 +15,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
-    χ = convert(FT, model.timestepper.χ)
+    χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
@@ -27,7 +27,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 end
 
 function local_ab2_step!(model, Δt, χ)
-    ab2_step_grid!(model, model.grid, model.vertical_coordinate, Δt, χ)
+    ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
     return nothing
@@ -113,7 +113,6 @@ end
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
-# with the `unscale_tracers!` function
 @kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
@@ -126,13 +125,6 @@ end
 
     @inbounds begin
         ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
-
-        # We store temporarily σθ in θ.
-        # The unscaled θ will be retrieved with `unscale_tracers!`
         θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
     end
 end
-
-# Fallback! We need to unscale the tracers only in case of
-# a grid with a mutable vertical coordinate, i.e. where `σ != 1`
-unscale_tracers!(tracers, grid; kwargs...) = nothing

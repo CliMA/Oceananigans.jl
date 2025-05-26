@@ -13,9 +13,9 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.bar
 barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback
-ab2_step_grid!(model, grid, ztype; parameters) = nothing
+ab2_step_grid!(grid, model, ztype; parameters) = nothing
 
-function ab2_step_grid!(model, grid::MutableGridOfSomeKind, ::ZStar, Δt, χ)
+function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, χ)
 
     # Scalings and free surface
     σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
@@ -61,9 +61,12 @@ end
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
 
-rk3_substep_grid!(model, grid, vertical_coordinate, Δt, γⁿ, ζⁿ) = nothing
+rk3_substep_grid!(grid, model, vertical_coordinate, Δt, γⁿ, ζⁿ) = nothing
 
-function rk3_substep_grid!(model, grid::MutableGridOfSomeKind, ::ZStar, Δt, γⁿ, ζⁿ)
+rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStar, Δt, ::Nothing, ::Nothing) = 
+    rk3_substep_grid!(grid, model, ztype, Δt, one(grid), zero(grid))
+
+function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, γⁿ, ζⁿ)
 
     # Scalings and free surface
     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
@@ -102,19 +105,6 @@ end
     
     @inbounds ηⁿ[i, j, 1] = ζⁿ * δUⁿ[i, j, 1] + γⁿ * (ηⁿ[i, j, 1] + Δt * δh_U)
 
-    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
-end
-
-@kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, δUⁿ, grid, Δt, ::Nothing, ::Nothing, U, V, u, v)
-    i, j = @index(Global, NTuple)
-    kᴺ = size(grid, 3) 
-
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
-    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
-
-    @inbounds ηⁿ[i, j, 1] = ηⁿ[i, j, 1] + Δt * δh_U
-    
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
 
@@ -221,29 +211,3 @@ end
 
 @inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) =
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
-
-####
-#### Removing the scaling of the vertical coordinate from the tracer fields
-####
-
-const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
-
-unscale_tracers!(::EmptyTuples, ::MutableGridOfSomeKind; kwargs...) = nothing
-
-function unscale_tracers!(tracers, grid::MutableGridOfSomeKind; parameters = :xy)
-
-    for tracer in tracers
-        launch!(architecture(grid), grid, parameters, _unscale_tracer!,
-                tracer, grid, Val(grid.Hz), Val(grid.Nz))
-    end
-
-    return nothing
-end
-
-@kernel function _unscale_tracer!(tracer, grid, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
-    i, j = @index(Global, NTuple)
-
-    @unroll for k in -Hz+1:Nz+Hz
-        tracer[i, j, k] /= σⁿ(i, j, k, grid, Center(), Center(), Center())
-    end
-end
