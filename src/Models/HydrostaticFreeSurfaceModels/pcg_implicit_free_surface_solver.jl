@@ -54,7 +54,9 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
-    fill_halos_of_vertically_integrated_lateral_areas!(grid, vertically_integrated_lateral_areas)
+    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
+    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
+    fill_halos_regions!((Ax, Ay); signed=false)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
