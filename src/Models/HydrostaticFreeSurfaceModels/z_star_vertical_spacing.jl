@@ -13,7 +13,7 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.bar
 barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback
-ab2_step_grid!(grid, model, ztype; parameters) = nothing
+ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
 
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, χ)
 
@@ -154,6 +154,8 @@ function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZS
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos
     launch!(architecture(grid), grid, params, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    
+    return nothing
 end
 
 @kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)
