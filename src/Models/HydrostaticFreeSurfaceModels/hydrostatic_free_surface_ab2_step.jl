@@ -112,7 +112,6 @@ end
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
-# with the `unscale_tracers!` function
 @kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
@@ -125,9 +124,6 @@ end
 
     @inbounds begin
         ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
-
-        # We store temporarily σθ in θ.
-        # The unscaled θ will be retrieved with `unscale_tracers!`
         θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
     end
 end
