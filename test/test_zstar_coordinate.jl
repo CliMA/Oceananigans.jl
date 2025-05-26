@@ -27,27 +27,30 @@ function test_zstar_coordinate(model, Ni, Δt)
     	compute!(∫b)
     	compute!(∫c)
 
-	condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-	@test condition
-	if !condition
-            @info "Stopping early: buoyancy not conserved at step $step"
-	    break
-	end
+        condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+        @test condition
+        if !condition
+                @info "Stopping early: buoyancy not conserved at step $step"
+            break
+        end
 
-	condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-	@test condition
-	if !condition
-            @info "Stopping early: c tracer not conserved at step $step"
-	    break
-	end
+        condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+        @test condition
+        if !condition
+                @info "Stopping early: c tracer not conserved at step $step"
+            break
+        end
 
-	condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
-	@test condition
-	if !condition
-            @info "Stopping early: nonzero vertical velocity at top at step $step"
-	    break
-	end
+        condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+        @test condition
+        if !condition
+                @info "Stopping early: nonzero vertical velocity at top at step $step"
+            break
+        end
 
+        # Constancy preservation test
+        @test maximum(model.tracers.constant) == 1 
+        @test minimum(model.tracers.constant) == 1 
     end
 
     return nothing
@@ -225,14 +228,14 @@ end
             split_free_surface = SplitExplicitFreeSurface(grid; substeps=50)
             model = HydrostaticFreeSurfaceModel(; grid, 
                                                 free_surface = split_free_surface, 
-                                                tracers = (:b, :c), 
+                                                tracers = (:b, :c, :constant), 
                                                 timestepper = :SplitRungeKutta3,
                                                 buoyancy = BuoyancyTracer(),
                                                 vertical_coordinate = ZStar())
 
             bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
 
-            set!(model, c = (x, y, z) -> rand(), b = bᵢ)
+            set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
             Δt = 2minutes
             test_zstar_coordinate(model, 100, Δt)
@@ -269,7 +272,7 @@ end
 
             model = HydrostaticFreeSurfaceModel(; grid,
                                                   free_surface,
-                                                  tracers = (:b, :c),
+                                                  tracers = (:b, :c, :constant),
                                                   buoyancy = BuoyancyTracer(),
                                                   vertical_coordinate = ZStar())
 
@@ -282,7 +285,7 @@ end
             uᵢ = ∂y(ψ)
             vᵢ = -∂x(ψ)
 
-            set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ)
+            set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ, constant = 1)
 
             Δt = 2minutes
             test_zstar_coordinate(model, 300, Δt)
