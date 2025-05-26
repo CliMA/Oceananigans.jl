@@ -1,4 +1,5 @@
 using Oceananigans.Grids
+using Oceananigans.Grids: halo_size
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
 #####
@@ -12,9 +13,9 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.bar
 barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback
-update_grid!(model, grid, ztype; parameters) = nothing
+ab2_step_grid!(model, grid, ztype; parameters) = nothing
 
-function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = :xy)
+function ab2_step_grid!(model, grid::MutableGridOfSomeKind, ::ZStar, Δt, χ)
 
     # Scalings and free surface
     σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
@@ -22,38 +23,52 @@ function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = 
     σᶠᶜⁿ  = grid.z.σᶠᶜⁿ
     σᶜᶠⁿ  = grid.z.σᶜᶠⁿ
     σᶠᶠⁿ  = grid.z.σᶠᶠⁿ
-    ∂t_σ  = grid.z.∂t_σ
     ηⁿ    = grid.z.ηⁿ
-    η     = model.free_surface.η
+    δUⁿ   = grid.z.δUⁿ
+    ∂t_σ  = grid.z.∂t_σ
 
-    launch!(architecture(grid), grid, parameters, _update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
 
-    # the barotropic velocities are retrieved from the free surface model for a
-    # SplitExplicitFreeSurface and are calculated for other free surface models
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
 
-    # Update the time derivative of the vertical spacing,
-    # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
+
+    launch!(architecture(grid), grid, params, _ab2_update_grid_scaling!,
+            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, δUⁿ, grid, Δt, χ, U, V, u, v)
 
     return nothing
 end
 
-@kernel function _update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
+@kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, δUⁿ, grid, Δt, χ, U, V, u, v)
     i, j = @index(Global, NTuple)
-    k_top = size(grid, 3) + 1
+    kᴺ = size(grid, 3) 
 
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, k_top, grid, η)
-    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
-    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, k_top, grid, η)
+    C₁ = 3 * one(χ) / 2 + χ
+    C₂ =     one(χ) / 2 + χ
+
+    @inbounds begin
+        # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
+        δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+        δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+
+        δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+    
+        # Update η in the grid (different than the free surface coming from the barotropic step!!)
+        ηⁿ[i, j, 1] -= Δt * (C₁ * δh_U - C₂ * δUⁿ[i, j, 1])
+        δUⁿ[i, j, 1] = δh_U
+    end
+
+    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, 1, grid, ηⁿ)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, 1, grid, ηⁿ)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, 1, grid, ηⁿ)
+    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, 1, grid, ηⁿ)
 
     @inbounds begin
         σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
@@ -69,10 +84,27 @@ end
         σᶠᶜⁿ[i, j, 1] = σᶠᶜ
         σᶜᶠⁿ[i, j, 1] = σᶜᶠ
         σᶠᶠⁿ[i, j, 1] = σᶠᶠ
-
-        # Update η in the grid
-        ηⁿ[i, j, 1] = η[i, j, k_top]
     end
+end
+
+update_grid_vertical_velocity!(model, grid, ztype) = nothing
+
+function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZStar)
+
+    # the barotropic velocities are retrieved from the free surface model for a
+    # SplitExplicitFreeSurface and are calculated for other free surface models
+    U, V = barotropic_velocities(model.free_surface)
+    u, v, _ = model.velocities
+    ∂t_σ  = grid.z.∂t_σ
+
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
+
+    # Update the time derivative of the vertical spacing,
+    # No need to fill the halo as the scaling is updated _IN_ the halos
+    launch!(architecture(grid), grid, params, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
 end
 
 @kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)

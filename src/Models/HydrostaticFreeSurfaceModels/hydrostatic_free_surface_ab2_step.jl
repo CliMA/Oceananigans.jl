@@ -27,6 +27,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 end
 
 function local_ab2_step!(model, Δt, χ)
+    ab2_step_grid!(model, model.grid, model.vertical_coordinate, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
     return nothing
@@ -124,11 +125,11 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
+        ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
 
         # We store temporarily σθ in θ.
         # The unscaled θ will be retrieved with `unscale_tracers!`
-        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + Δt * ∂t_σθ
+        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
     end
 end
 

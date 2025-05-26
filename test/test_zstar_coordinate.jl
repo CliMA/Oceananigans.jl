@@ -49,8 +49,8 @@ function test_zstar_coordinate(model, Ni, Δt)
         end
 
         # Constancy preservation test
-        @test maximum(model.tracers.constant) == 1 
-        @test minimum(model.tracers.constant) == 1 
+        @test maximum(model.tracers.constant) ≈ 1 
+        @test minimum(model.tracers.constant) ≈ 1 
     end
 
     return nothing
