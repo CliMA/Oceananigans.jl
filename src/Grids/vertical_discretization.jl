@@ -41,7 +41,7 @@ struct MutableVerticalDiscretization{C, D, E, F, H, U, CC, FC, CF, FF} <: Abstra
     Δᵃᵃᶠ :: E
     Δᵃᵃᶜ :: F
       ηⁿ :: H
-     δUⁿ :: U
+      Gⁿ :: U
     σᶜᶜⁿ :: CC
     σᶠᶜⁿ :: FC
     σᶜᶠⁿ :: CF
@@ -121,7 +121,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
     σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
-    δUⁿ  = new_data(FT, arch, (Center, Center, Nothing), args...) 
+    Gⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...) 
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # Fill all the scalings with one for now (i.e. z == r)
@@ -129,7 +129,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
         fill!(σ, 1)
     end
 
-    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, δUⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, Gⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end
 
 
@@ -155,7 +155,7 @@ Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
                                   Adapt.adapt(to, coord.Δᵃᵃᶠ),
                                   Adapt.adapt(to, coord.Δᵃᵃᶜ),
                                   Adapt.adapt(to, coord.ηⁿ),
-                                  Adapt.adapt(to, coord.δUⁿ),
+                                  Adapt.adapt(to, coord.Gⁿ),
                                   Adapt.adapt(to, coord.σᶜᶜⁿ),
                                   Adapt.adapt(to, coord.σᶠᶜⁿ),
                                   Adapt.adapt(to, coord.σᶜᶠⁿ),
@@ -169,7 +169,7 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
                                   on_architecture(arch, coord.Δᵃᵃᶠ),
                                   on_architecture(arch, coord.Δᵃᵃᶜ),
                                   on_architecture(arch, coord.ηⁿ),
-                                  on_architecture(arch, coord.δUⁿ),
+                                  on_architecture(arch, coord.Gⁿ),
                                   on_architecture(arch, coord.σᶜᶜⁿ),
                                   on_architecture(arch, coord.σᶠᶜⁿ),
                                   on_architecture(arch, coord.σᶜᶠⁿ),
