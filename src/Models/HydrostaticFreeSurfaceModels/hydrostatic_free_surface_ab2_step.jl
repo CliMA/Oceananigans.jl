@@ -131,7 +131,3 @@ end
         θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
     end
 end
-
-# Fallback! We need to unscale the tracers only in case of
-# a grid with a mutable vertical coordinate, i.e. where `σ != 1`
-unscale_tracers!(tracers, grid) = nothing
