@@ -10,6 +10,7 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     timestepper  = model.timestepper
     free_surface = model.free_surface
 
+    update_grid!(model, grid, model.vertical_coordinate)
     compute_free_surface_tendency!(grid, model, free_surface)
 
     rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)

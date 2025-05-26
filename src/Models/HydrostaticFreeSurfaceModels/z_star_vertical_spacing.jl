@@ -16,7 +16,7 @@ barotropic_velocities(free_surface) = nothing, nothing
 update_grid!(model, grid, ztype) = nothing
 
 function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar) #; parameters = :xy)
-
+    
     # Scalings and free surface
     σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
     σᶜᶜⁿ  = grid.z.σᶜᶜⁿ

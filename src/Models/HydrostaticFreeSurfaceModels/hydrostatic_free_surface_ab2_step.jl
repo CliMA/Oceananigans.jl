@@ -3,8 +3,6 @@ using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
-import Oceananigans.TimeSteppers: ab2_step!, update_grid!, unscale_tracers!
-
 #####
 ##### Step everything
 #####
@@ -12,6 +10,8 @@ import Oceananigans.TimeSteppers: ab2_step!, update_grid!, unscale_tracers!
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
     grid = model.grid
+
+    update_grid!(model, grid, model.vertical_coordinate)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
