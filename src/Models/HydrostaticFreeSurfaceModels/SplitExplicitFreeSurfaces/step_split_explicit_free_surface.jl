@@ -134,6 +134,15 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Wait for setup step to finish
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
 
+    barotropic_timestepper = free_surface.timestepper
+    baroclinic_timestepper = model.timestepper
+
+    stage = model.clock.stage
+
+    # Reset all the averaged fields to zero and possibly reset also the free surface state
+    # for the last stage of the split RK3 timestepping scheme
+    initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
+
     # Calculate the substepping parameterers
     # barotropic time step as fraction of baroclinic step and averaging weights
     Nsubsteps = calculate_substeps(substepping, Δt)

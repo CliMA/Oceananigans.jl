@@ -41,7 +41,7 @@ struct MutableVerticalDiscretization{C, D, E, F, H, U, CC, FC, CF, FF} <: Abstra
     Δᵃᵃᶠ :: E
     Δᵃᵃᶜ :: F
       ηⁿ :: H
-      Gⁿ :: U
+      Gⁿ :: U # Storage space used in different ways by different timestepping schemes.
     σᶜᶜⁿ :: CC
     σᶠᶜⁿ :: FC
     σᶜᶠⁿ :: CF
