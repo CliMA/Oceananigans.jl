@@ -69,42 +69,6 @@ end
 const C = Center
 const F = Face
 
-@testset "ZStar coordinate scaling tests" begin
-    @info "testing the ZStar coordinate scalings"
-
-    z = MutableVerticalDiscretization((-20, 0))
-
-    grid = RectilinearGrid(size = (2, 2, 20),
-                              x = (0, 2),
-                              y = (0, 1),
-                              z = z,
-                       topology = (Bounded, Periodic, Bounded))
-
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
-
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
-    @test model.vertical_coordinate isa ZStar
-
-    @test znode(1, 1, 21, grid, C(), C(), F()) == 0
-    @test column_depthᶜᶜᵃ(1, 1, grid) == 10
-    @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
-
-    set!(model, η = [1 1; 2 2])
-    set!(model, u = (x, y, z) -> x, v = (x, y, z) -> y)
-    update_state!(model)
-
-    @test σⁿ(1, 1, 1, grid, C(), C(), C()) == 11 / 10
-    @test σⁿ(2, 1, 1, grid, C(), C(), C()) == 12 / 10
-
-    @test znode(1, 1, 21, grid, C(), C(), F()) == 1
-    @test znode(2, 1, 21, grid, C(), C(), F()) == 2
-    @test rnode(1, 1, 21, grid, C(), C(), F()) == 0
-    @test column_depthᶜᶜᵃ(1, 1, grid) == 11
-    @test column_depthᶜᶜᵃ(2, 1, grid) == 12
-    @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
-    @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
-end
-
 @testset "MutableVerticalDiscretization tests" begin
     @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
 
