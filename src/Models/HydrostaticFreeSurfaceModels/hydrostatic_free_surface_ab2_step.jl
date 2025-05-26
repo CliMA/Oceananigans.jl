@@ -15,7 +15,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
-    χ = convert(FT, model.timestepper.χ)
+    χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
