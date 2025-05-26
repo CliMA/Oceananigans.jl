@@ -118,7 +118,6 @@ end
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
 
-
 @inline function update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
