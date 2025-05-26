@@ -170,11 +170,10 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     free_surface_grid = free_surface.η.grid
     U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
     V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
-    η = free_surface_displacement_field(velocities, free_surface, grid)
 
     tracers = TracerFields(tracer_names, grid, bcs)
 
-    return merge((u=u, v=v, U=U, V=V, η=η), tracers)
+    return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
 function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, grid, tracername, bcs)

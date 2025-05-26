@@ -170,11 +170,5 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         mask_immersed_field!(model.velocities.v)
     end
 
-    # Needed for Mutable to compute the barotropic correction.
-    # TODO: Would it be possible to remove it in some way?
-    if model.grid isa MutableGridOfSomeKind
-        fill_halo_regions!(η)
-    end
-
     return nothing
 end
