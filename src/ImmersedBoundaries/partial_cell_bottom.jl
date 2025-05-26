@@ -152,14 +152,14 @@ end
     # Get node at face above and defining nodes on c,c,f
     rᶜᶜᶠₖ₊₁ = rnode(i, j, k+1, underlying_grid, c, c, f)
 
-    # Get bottom z-coordinate and fractional Δz parameter
-    rᵇᵒᵗᵗᵒᵐ = @inbounds ib.bottom_height[i, j, 1]
+    # Get bottom r-coordinate and fractional Δr parameter
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
 
     # Are we in a bottom cell?
     at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
 
     full_Δr    = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    partial_Δr = rᶜᶜᶠₖ₊₁ - rᵇᵒᵗᵗᵒᵐ
+    partial_Δr = rᶜᶜᶠₖ₊₁ - rᵇ
 
     return ifelse(at_the_bottom, partial_Δr, full_Δr)
 end
@@ -172,7 +172,7 @@ end
     full_Δr    = Δrᶜᶜᶠ(i, j, k, ibg.underlying_grid)
     partial_Δr = rᶜ - rᶠ + Δrᶜᶜᶜ(i, j, k-1, ibg) / 2
 
-    return Δz = ifelse(just_above_bottom, partial_Δr, full_Δr)
+    return ifelse(just_above_bottom, partial_Δr, full_Δr)
 end
 
 @inline Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i-1, j, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
