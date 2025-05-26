@@ -10,8 +10,6 @@ using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_m
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
     grid = model.grid
-
-    update_grid!(model, grid, model.vertical_coordinate)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
