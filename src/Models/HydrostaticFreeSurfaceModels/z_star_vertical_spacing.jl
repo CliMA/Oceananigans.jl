@@ -42,8 +42,8 @@ end
 
 # Update η in the grid 
 # Note!!! This η is different than the free surface coming from the barotropic step!!
-# This η is the one used to compute the vertical spacing. The two different free surfaces
-# will need to be reconciled in future steps.
+# This η is the one used to compute the vertical spacing. 
+# TODO: The two different free surfaces need to be reconciled.
 @kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3) 
@@ -92,8 +92,8 @@ end
 
 # Update η in the grid 
 # Note!!! This η is different than the free surface coming from the barotropic step!!
-# This η is the one used to compute the vertical spacing. The two different free surfaces
-# will need to be reconciled in future steps.
+# This η is the one used to compute the vertical spacing. 
+# TODO: The two different free surfaces need to be reconciled.
 @kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3) 
