@@ -249,9 +249,6 @@ function update_solution_and_residuals!(x, r, q, p, α)
     xp .+= α .* pp
     rp .-= α .* qp
 
-    xp .-= mean(x)
-    rp .-= mean(r)
-
     return nothing
 end
 
