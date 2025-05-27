@@ -139,8 +139,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     stage = model.clock.stage
 
-    # Reset all the averaged fields to zero and possibly reset also the free surface state
-    # for the last stage of the split RK3 timestepping scheme
+    # Reset the filtered fields and the barotropic timestepper to zero. 
+    # In case of an RK3 timestepper, reset also the free surface state for the last stage.
     @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
 
     # Calculate the substepping parameterers
