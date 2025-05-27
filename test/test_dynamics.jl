@@ -311,8 +311,8 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     g̃ = (0, sind(θ), cosd(θ))
     buoyancy = BuoyancyForce(SeawaterBuoyancy(), gravity_unit_vector=g̃)
 
-    α  = buoyancy.model.equation_of_state.thermal_expansion
-    g₀ = buoyancy.model.gravitational_acceleration
+    α  = buoyancy.formulation.equation_of_state.thermal_expansion
+    g₀ = buoyancy.formulation.gravitational_acceleration
     ∂T∂z = N² / (g₀ * α)
 
     y_bc = GradientBoundaryCondition(∂T∂z * g̃[2])
@@ -600,7 +600,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
     end
-    #=
+    
     @testset "Gaussian immersed diffusion" begin
         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
 
@@ -731,5 +731,4 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
     end
-    =#
 end
