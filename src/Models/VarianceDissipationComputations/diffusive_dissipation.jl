@@ -85,18 +85,10 @@ end
     return nothing
 end
 
-@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple{<:Any, <:Any, <:Any}, K, args...) 
-    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[1], K[1], args...)
-    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[2], K[2], args...)
-    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[3], K[3], args...)
-    return nothing
-end
-
 @inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple, K, args...) 
     compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[1], K[1], args...)
     compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[2], K[2], args...)
-    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[3], K[3], args...)
-    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[4:end], K[4:end], args...)
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[3:end], K[3:end], args...)
     return nothing
 end
 
