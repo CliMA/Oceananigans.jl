@@ -47,14 +47,11 @@ function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid,
 
     Uⁿ⁻¹ = timestepper.Ψ⁻.U
     Vⁿ⁻¹ = timestepper.Ψ⁻.V
-    ηⁿ⁻¹ = timestepper.Ψ⁻.η
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
-    ηⁿ   = free_surface.η
     
     launch!(arch, grid, :xy, _rk3_average_free_surface!, Uⁿ, grid, Uⁿ⁻¹, γⁿ, ζⁿ)
     launch!(arch, grid, :xy, _rk3_average_free_surface!, Vⁿ, grid, Vⁿ⁻¹, γⁿ, ζⁿ)
-    launch!(arch, grid, :xy, _rk3_average_free_surface!, ηⁿ, grid, ηⁿ⁻¹, γⁿ, ζⁿ)
 
     return nothing
 end
