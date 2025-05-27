@@ -180,3 +180,15 @@ function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
     copyto!(x, solver.workspace.x.field)
     return x
 end
+
+function Base.show(io::IO, solver::KrylovSolver)
+    print(io, "KrylovSolver on ", summary(solver.architecture), "\n",
+              "├── method: ", solver.method, "\n",
+              "├── grid: ", summary(solver.grid), "\n",
+              "├── preconditioner: ", prettysummary(solver.preconditioner), "\n",
+              "├── reltol: ", prettysummary(solver.reltol), "\n",
+              "├── abstol: ", prettysummary(solver.abstol), "\n",
+              "├── maxiter: ", solver.maxiter, "\n",
+              "├── work field: ", summary(solver.workspace.r), "\n",
+              "└── linear operation: ", prettysummary(solver.op.fun))
+end
