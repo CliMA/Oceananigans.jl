@@ -165,11 +165,11 @@ function Callback(func::VarianceDissipation, schedule=IterationInterval(1);
 end
 
 validate_schedule(::VarianceDissipation, schedule) = throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
-                                                                         "Use an `IterationInterval` schedule instead."))     
+                                                                         "Use an `IterationInterval` schedule instead."))
 
-function validate_schedule(::VarianceDissipation, schedule::IterationInterval) 
+function validate_schedule(::VarianceDissipation, schedule::IterationInterval)
     if !(schedule == IterationInterval(1))
-        @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" * 
+        @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" *
               "Changing `schedule` to `ConsecutiveIterations(schedule)`."
         schedule = ConsecutiveIterations(schedule)
     end
@@ -179,7 +179,7 @@ end
 function validate_schedule(::VarianceDissipation, schedule::ConsecutiveIterations)
     if !(schedule.parent isa IterationInterval)
        throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
-                                                                         "Use an `IterationInterval` schedule instead."))  
+                                                                         "Use an `IterationInterval` schedule instead."))
     end
     return schedule
 end
