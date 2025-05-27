@@ -130,6 +130,11 @@ function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     shift = - sqrt(eps(eltype(r))) # to make the operator strictly negative definite
     solve!(p, preconditioner, preconditioner.storage, shift)
     p .*= -1
+
+    grid = r.grid
+    arch = architecture(p)
+    mean_p = mean(p)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
     return p
 end
 
