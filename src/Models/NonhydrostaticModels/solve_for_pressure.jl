@@ -75,7 +75,7 @@ end
 ##### Solve for pressure
 #####
 
-function solve_for_pressure!(pressure, solver, Δt, Ũ, model=nothing)
+function solve_for_pressure!(pressure, solver, Δt, Ũ)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)
@@ -86,7 +86,7 @@ function solve_for_pressure!(pressure, solver, Δt, Ũ, model=nothing)
     return pressure
 end
 
-function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ, model=nothing)
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)
