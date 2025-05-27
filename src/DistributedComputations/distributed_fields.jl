@@ -13,7 +13,6 @@ using Oceananigans.Fields: ReducedAbstractField,
 using Oceananigans.Fields: condition_operand, conditional_length
 using LinearAlgebra: dot, norm
 using Statistics: mean
-using KahanSummation: sum_kbn
 
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -213,7 +212,6 @@ end
 # Distributed dot product
 @inline function dot(u::DistributedField, v::DistributedField)
     dot_local = sum(interior(u) .* interior(v))
-    # dot_local = sum_kbn(interior(u) .* interior(v))
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end
