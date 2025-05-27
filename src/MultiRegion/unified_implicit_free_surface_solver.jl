@@ -9,7 +9,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
                                                         PCGImplicitFreeSurfaceSolver
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver,
-                                                         fill_halos_of_vertically_integrated_lateral_areas!,
                                                          compute_implicit_free_surface_right_hand_side!
 
 import Oceananigans.Architectures: architecture, on_architecture
@@ -34,8 +33,11 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravi
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
+    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+
+    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
+    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
+    fill_halos_regions!((Ax, Ay); signed=false)
 
     arch = architecture(mrg)
     right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
