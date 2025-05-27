@@ -75,18 +75,18 @@ end
 ##### Solve for pressure
 #####
 
-function solve_for_pressure!(pressure, solver, Δt, Ũ)
+function solve_for_pressure!(pressure, solver, Δt, Ũ, model=nothing)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)
     pressure .*= Δt★
 
-    compute_source_term!(pressure, solver, Δt, Ũ)
+    compute_source_term!(pressure, solver, Δt, Ũ)
     solve!(pressure, solver)
     return pressure
 end
 
-function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ)
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ, model=nothing)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)
@@ -95,7 +95,9 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, �
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, Ũ)
+    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, Ũ)
+
+    # The pressure field already contains the previous time step's pressure as initial guess
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 

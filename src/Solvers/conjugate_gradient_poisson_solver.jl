@@ -12,7 +12,7 @@ struct ConjugateGradientPoissonSolver{G, R, S}
     conjugate_gradient_solver :: S
 end
 
-architecture(solver::ConjugateGradientPoissonSolver) = architecture(cgps.grid)
+architecture(solver::ConjugateGradientPoissonSolver) = architecture(solver.grid)
 iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
 Base.summary(ips::ConjugateGradientPoissonSolver) =
@@ -64,11 +64,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
-        if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
-            preconditioner = fft_poisson_solver(grid.underlying_grid)
-        else
-            preconditioner = DiagonallyDominantPreconditioner()
-        end
+        preconditioner = DiagonallyDominantPreconditioner()
     end
 
     rhs = CenterField(grid)
