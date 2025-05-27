@@ -72,10 +72,29 @@ end
     compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
 end
 
-@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple, K::Tuple, args...)
-    for n in 1:length(clo)
-        compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[n], K[n], args...)
-    end
+# Deal with tuples of closures and diffusivities
+@inline compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple{<:Any}, K, args...) = 
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[1], K[1], args...)
+
+@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple{<:Any, <:Any}, K, args...) 
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[1], K[1], args...)
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[2], K[2], args...)
+    return nothing
+end
+
+@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple{<:Any, <:Any, <:Any}, K, args...) 
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[1], K[1], args...)
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[2], K[2], args...)
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[3], K[3], args...)
+    return nothing
+end
+
+@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple, K, args...) 
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[1], K[1], args...)
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[2], K[2], args...)
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[3], K[3], args...)
+    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[4:end], K[4:end], args...)
+    return nothing
 end
 
 compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, ::Nothing, K, b, c, c_id, clk, fields) = nothing
