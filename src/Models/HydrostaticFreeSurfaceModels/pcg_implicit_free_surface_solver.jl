@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear, halo_size
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!, auxiliary_actions!
+import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 
 """
@@ -145,7 +145,10 @@ end
 
 ImplicitFreeSurfaceOperation = typeof(implicit_free_surface_linear_operation!)
 
-auxiliary_actions!(::ImplicitFreeSurfaceOperation, L_ηⁿ⁺¹, ηⁿ⁺¹, args...) = fill_halo_regions!(ηⁿ⁺¹)
+@inline function my_linear_operation(linear_operation!::ImplicitFreeSurfaceOperation, q, p, args...)
+    fill_halo_regions!(p)
+    @apply_regionally linear_operation!(q, p, args...)
+end
 
 # Kernels that act on vertically integrated / surface quantities
 @inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, η) = @inbounds ∫ᶻ_Axᶠᶜᶜ[i, j, k] * ∂xᶠᶜᶠ(i, j, k, grid, η)
