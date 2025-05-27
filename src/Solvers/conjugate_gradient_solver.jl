@@ -160,7 +160,6 @@ Loop:
 function solve!(x, solver::ConjugateGradientSolver, b, args...)
     # Initialize
     solver.iteration = 0
-    b .-= mean(b)
 
     # q = A * x
     q = solver.linear_operator_product
