@@ -10,7 +10,9 @@ iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 function find_time_index(time::Number, file_times, Δt)
     # Accommodate round-off discrepancies between the FTS times and file times
     # (see https://github.com/CliMA/Oceananigans.jl/pull/4505)
-    ϵ = sqrt(eps(Δt))
+    ϵ1 = 100 * eps(Δt)
+    ϵ2 = 100 * eps(eltype(file_times))
+    ϵ  = max(ϵ2, ϵ1) 
     return findfirst(t -> isapprox(t, time; atol=ϵ), file_times)
 end
 
