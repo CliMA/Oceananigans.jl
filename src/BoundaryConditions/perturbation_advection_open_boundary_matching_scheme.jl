@@ -104,7 +104,7 @@ end
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
-    uᵢⁿ     = ifelse(clock.iteration == 0, ūⁿ⁺¹, @inbounds getindex(u, boundary_secret_storage_indices...))
+    uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
