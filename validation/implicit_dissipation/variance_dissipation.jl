@@ -58,15 +58,24 @@ velocities = PrescribedVelocityFields(u=1)
 c⁻    = CenterField(grid)
 Δtc²  = CenterField(grid)
 
-for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3))
-    
-    model = HydrostaticFreeSurfaceModel(; grid, 
-                                        timestepper, 
-                                        velocities, 
-                                        tracer_advection, 
-                                        closure, 
-                                        tracers=:c,
-                                        auxiliary_fields=(; Δtc², c⁻))
+for (ts, timestepper) in zip((:AB2, :RK3, :NRK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3, :RungeKutta3))
+    if ts == :NRK3
+        model = NonhydrostaticModel(; grid, 
+                                      timestepper, 
+                                      advection=tracer_advection, 
+                                      closure, 
+                                      tracers=:c,
+                                      auxiliary_fields=(; Δtc², c⁻))
+        fill!(model.velocities.u, 1.0)
+    else
+        model = HydrostaticFreeSurfaceModel(; grid, 
+                                              timestepper, 
+                                              velocities, 
+                                              tracer_advection, 
+                                              closure, 
+                                              tracers=:c,
+                                              auxiliary_fields=(; Δtc², c⁻))
+    end
                                             
     set!(model, c=c₀)
     set!(model.auxiliary_fields.c⁻, c₀)
@@ -74,7 +83,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
     if ts == :AB2
        Δt = 0.2 * minimum_xspacing(grid)
     else
-       Δt = 0.2 * minimum_xspacing(grid)
+       Δt = 0.6 * minimum_xspacing(grid)
     end
 
     sim = Simulation(model; Δt, stop_time=10)
@@ -105,6 +114,11 @@ r_Δtc² = FieldTimeSeries("one_d_simulation_RK3.jld2", "Δtc²")
 r_Acx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Acx")
 r_Dcx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Dcx")
 
+n_c    = FieldTimeSeries("one_d_simulation_NRK3.jld2", "c")
+n_Δtc² = FieldTimeSeries("one_d_simulation_NRK3.jld2", "Δtc²")
+n_Acx  = FieldTimeSeries("one_d_simulation_NRK3.jld2", "Acx")
+n_Dcx  = FieldTimeSeries("one_d_simulation_NRK3.jld2", "Dcx")
+
 Nta = length(a_c.times)
 Ntr = length(r_c.times)
 
@@ -118,8 +132,14 @@ r_∫A     = abs.([sum(interior(r_Acx[i] , :, 1, 1))               for i in 2:Nt
 r_∫D     = abs.([sum(interior(r_Dcx[i] , :, 1, 1))               for i in 2:Ntr-1])
 r_∫T     = r_∫D .+ r_∫A
 
+n_∫closs = abs.([sum(interior(n_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Ntr-1])
+n_∫A     = abs.([sum(interior(n_Acx[i] , :, 1, 1))               for i in 2:Ntr-1])
+n_∫D     = abs.([sum(interior(n_Dcx[i] , :, 1, 1))               for i in 2:Ntr-1])
+n_∫T     = n_∫D .+ n_∫A
+
 atimes = a_c.times[2:end-1]
 rtimes = r_c.times[2:end-1]
+ntimes = n_c.times[2:end-1]
 
 fig = Figure()
 ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation", yscale=log10)
@@ -133,4 +153,9 @@ scatter!(ax, rtimes, r_∫closs, label="RK3 total variance loss", color=:blue, m
 lines!(ax, rtimes, r_∫A, label="RK3 advection dissipation", color=:red, linestyle=:dash)
 lines!(ax, rtimes, r_∫D, label="RK3 diffusive dissipation", color=:green, linestyle=:dash)
 lines!(ax, rtimes, r_∫T, label="RK3 total dissipation", color=:purple, linestyle=:dash)
+
+scatter!(ax, ntimes, n_∫closs, label="NRK3 total variance loss", color=:blue, marker=:rect)
+lines!(ax, ntimes, n_∫A, label="NRK3 advection dissipation", color=:red, linestyle=:dot)
+lines!(ax, ntimes, n_∫D, label="NRK3 diffusive dissipation", color=:green, linestyle=:dot)
+lines!(ax, ntimes, n_∫T, label="NRK3 total dissipation", color=:purple, linestyle=:dot)
 Legend(fig[1, 2], ax)
