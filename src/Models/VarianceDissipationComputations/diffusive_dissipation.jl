@@ -43,6 +43,7 @@ end
     end
 end
 
+# QAB2 Implementation
 @kernel function _cache_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, clo, K, b, c, c_id, clk, fields) 
     i, j, k = @index(Global, NTuple)
 
@@ -57,6 +58,7 @@ end
     compute_diffusive_fluxes!(Vⁿ, 1, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
 end
 
+# RK3 Implementation for the last substep
 @kernel function _cache_diffusive_fluxes!(Vⁿ, grid, ::Val{3}, ℂ, clo, K, b, c, c_id, clk, fields) 
     i, j, k = @index(Global, NTuple)    
 
@@ -67,6 +69,7 @@ end
     compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
 end
 
+# RK3 Implementation for the intermediare substeps
 @kernel function _cache_diffusive_fluxes!(Vⁿ, grid, substep, ℂ, clo, K, b, c, c_id, clk, fields) 
     i, j, k = @index(Global, NTuple)    
     compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
