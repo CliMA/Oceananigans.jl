@@ -16,6 +16,8 @@ import Base
 
 struct KernelParameters{S, O} end
 
+get_active_cells_map(grid, any_map_type) = nothing
+
 """
     KernelParameters(size, offsets)
 
@@ -247,7 +249,7 @@ the architecture `arch`.
                                   exclude_periphery = false,
                                   reduced_dimensions = (),
                                   location = nothing,
-                                  active_cells_map = nothing)
+                                  active_cells_map = get_active_cells_map(grid, Val(:interior)))
 
 
     if !isnothing(active_cells_map) # everything else is irrelevant
