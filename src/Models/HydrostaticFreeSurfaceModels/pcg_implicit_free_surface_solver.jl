@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear, halo_size
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!
+import Oceananigans.Solvers: solve!, precondition!, perform_linear_operation!
 import Oceananigans.Architectures: architecture
 
 """
@@ -145,7 +145,7 @@ end
 
 ImplicitFreeSurfaceOperation = typeof(implicit_free_surface_linear_operation!)
 
-@inline function my_linear_operation(linear_operation!::ImplicitFreeSurfaceOperation, q, p, args...)
+@inline function perform_linear_operation!(linear_operation!::ImplicitFreeSurfaceOperation, q, p, args...)
     fill_halo_regions!(p)
     @apply_regionally linear_operation!(q, p, args...)
 end
