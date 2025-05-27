@@ -6,48 +6,134 @@ using Oceananigans.Solvers: compute_laplacian!
 # using CairoMakie
 using Printf
 
-const Nx = 32
-const Ny = 32
-const Nz = 32
+function initial_conditions!(model)
+    h = 0.05
+    x₀ = 0.5
+    y₀ = 0.5
+    z₀ = 0.55
+    bᵢ(x, y, z) = - exp(-((x - x₀)^2 + (y - y₀)^2 + (z - z₀)^2) / 2h^2)
 
-const Lx = 1
-const Ly = 1
-const Lz = 1
+    set!(model, b=bᵢ)
+end
 
-const Δx = Lz / Nz
-const Δy = Lz / Ny
-const Δz = Lz / Nz
+function setup_grid(N, arch)
+    grid = RectilinearGrid(arch, Float64,
+                        size = (N, N, N), 
+                        halo = (4, 4, 4),
+                        x = (0, 1),
+                        y = (0, 1),
+                        z = (0, 1),
+                        topology = (Bounded, Bounded, Bounded))
 
-const Δt = 1e-3
+    slope(x, y) = (5 + tanh(40*(x - 1/6)) + tanh(40*(x - 2/6)) + tanh(40*(x - 3/6)) + tanh(40*(x - 4/6)) + tanh(40*(x - 5/6))) / 20 + 
+                  (5 + tanh(40*(y - 1/6)) + tanh(40*(y - 2/6)) + tanh(40*(y - 3/6)) + tanh(40*(y - 4/6)) + tanh(40*(y - 5/6))) / 20
 
-@inline initial_u(x, y, z) = rand()
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(slope))
+    return grid
+end
+
+function setup_model(grid, pressure_solver)
+    model = NonhydrostaticModel(; grid, pressure_solver,
+                                  advection = WENO(),
+                                  coriolis = FPlane(f=0.1),
+                                  tracers = :b,
+                                  buoyancy = BuoyancyTracer())
+
+    initial_conditions!(model)
+    return model
+end
+
+reltol = abstol = 1e-7
+
+function setup_simulation(model, Δt, stop_iteration)
+    return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
+end
+
+function setup_simulation(model)
+    Δt = 2e-2
+    stop_iteration = 100
+    simulation = Simulation(model; Δt = Δt, stop_iteration = stop_iteration)
+    
+    wall_time = Ref(time_ns())
+
+    function progress(sim)
+        pressure_solver = sim.model.pressure_solver
+    
+        if pressure_solver isa ConjugateGradientPoissonSolver
+            pressure_iters = iteration(pressure_solver)
+        else
+            pressure_iters = 0
+        end
+
+        if sim.model.architecture isa Distributed
+            local_rank = sim.model.architecture.local_rank
+        else
+            local_rank = 0
+        end
+    
+        msg = @sprintf("rank %d, iter: %d, time: %s, Δt: %.4f, Poisson iters: %d",
+                        local_rank, iteration(sim), prettytime(time(sim)), sim.Δt, pressure_iters)
+    
+        elapsed = 1e-9 * (time_ns() - wall_time[])
+    
+        u, v, w = sim.model.velocities
+        d = Field(∂x(u) + ∂y(v) + ∂z(w))
+        compute!(d)
+    
+        msg *= @sprintf(", max u: %6.3e, max w: %6.3e, max b: %6.3e, max d: %6.3e, max pressure: %6.3e, wall time: %s",
+                        maximum(abs, sim.model.velocities.u),
+                        maximum(abs, sim.model.velocities.w),
+                        maximum(abs, sim.model.tracers.b),
+                        maximum(abs, d),
+                        maximum(abs, sim.model.pressures.pNHS),
+                        prettytime(elapsed))
+    
+        @info msg
+        wall_time[] = time_ns()
+    
+        return nothing
+    end
+
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+    
+    u, v, w = model.velocities
+    d = Field(∂x(u) + ∂y(v) + ∂z(w))
+
+    b = model.tracers.b
+    p = model.pressures.pNHS
+    
+    prefix = "2D_staircase_convection"
+
+    if model.architecture isa Distributed
+        prefix *= "_distributed"
+    else
+        prefix *= "_nondistributed"
+    end
+
+    outputs = (; u, v, w, b, d, p)
+
+    OUTPUT_PATH = "./"
+    simulation.output_writers[:jld2] = JLD2Writer(model, outputs,
+                                                        schedule = IterationInterval(10),
+                                                        filename = "$(OUTPUT_PATH)/$(prefix)_fields",
+                                                        overwrite_existing = true,
+                                                        with_halos = true)
+
+    return simulation
+end
+
+const N = 32
 
 # arch = Distributed(CPU(); synchronized_communication=true)
 # arch = Distributed(CPU())
-arch = Distributed(GPU())
-# arch = CPU()
+# arch = Distributed(GPU())
+arch = CPU()
 # arch = GPU()
 
-@info "Create underlying_grid"
-underlying_grid = RectilinearGrid(
-    arch,
-    size = (Nx, Ny, Nz),
-    x = (0.0, Lx),
-    y = (0.0, Ly),
-    z = (0.0, Lz),
-    topology = (Bounded, Bounded, Bounded),
-    halo = (4, 4, 4),
-)
-
-bottom_height(x, y) = 0.1
-
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-# grid = underlying_grid
-
-u_forcing = Forcing((x, y, z, t) -> rand())
+grid = setup_grid(N, arch)
 
 @info "Create pressure solver"
-preconditioner = nonhydrostatic_pressure_solver(underlying_grid)
+preconditioner = nonhydrostatic_pressure_solver(grid.underlying_grid)
 # preconditioner = nothing
 pressure_solver = ConjugateGradientPoissonSolver(
     grid, maxiter=10000, preconditioner=preconditioner)
@@ -55,49 +141,8 @@ pressure_solver = ConjugateGradientPoissonSolver(
 # pressure_solver = nothing
 
 @info "Create model"
-model = NonhydrostaticModel(;
-    grid,
-    advection = WENO(),
-    forcing = (; u = u_forcing),
-    pressure_solver = pressure_solver,
-)
+model = setup_model(grid, pressure_solver)
 
-@info "Set initial values"
-set!(model, u = initial_u)
-
-simulation = Oceananigans.Simulation(model; Δt = Δt, stop_iteration = 100)
-
-u, v, w = model.velocities
-d = Field(∂x(u) + ∂y(v) + ∂z(w))
-
-function progress(sim)
-    if pressure_solver isa ConjugateGradientPoissonSolver
-        pressure_iters = iteration(pressure_solver)
-    else
-        pressure_iters = 0
-    end
-
-    msg = @sprintf("rank %d, Iter: %d, time: %6.3e, Δt: %6.3e, Poisson iters: %d",
-                    arch.local_rank, iteration(sim), time(sim), sim.Δt, pressure_iters)
-
-    compute!(d)
-
-    msg *= @sprintf(", max u: %6.3e, max v: %6.3e, max w: %6.3e, max d: %6.3e, max pressure: %6.3e",
-                    maximum(abs, sim.model.velocities.u),
-                    maximum(abs, sim.model.velocities.v),
-                    maximum(abs, sim.model.velocities.w),
-                    maximum(abs, d),
-                    maximum(abs, sim.model.pressures.pNHS),
-    )
-
-    @info msg
-
-    return nothing
-end
-
-simulation.callbacks[:progress] = Callback(
-    progress,
-    IterationInterval(1),
-)
+simulation = setup_simulation(model)
 
 run!(simulation)
