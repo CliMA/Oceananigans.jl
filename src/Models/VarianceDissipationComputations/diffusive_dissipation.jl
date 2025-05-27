@@ -73,7 +73,7 @@ end
 end
 
 @inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple, K::Tuple, args...)
-    for n in eachindex(clo)
+    for n in 1:length(clo)
         compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[n], K[n], args...)
     end
 end
