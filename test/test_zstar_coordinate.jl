@@ -125,14 +125,14 @@ end
             Random.seed!(1234)
 
             rtgv = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
-            irtgv = ImmersedBoundaryGrid(rtgv,  GridFittedBottom((x, y) -> rand() - 10))
-            prtgv = ImmersedBoundaryGrid(rtgv, PartialCellBottom((x, y) -> rand() - 10))
+            irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
+            prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
                 llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
-                illgv = ImmersedBoundaryGrid(llgv,  GridFittedBottom((x, y) -> rand() - 10))
-                pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> rand() - 10))
+                illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
+                pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
 
                 # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
@@ -185,8 +185,8 @@ end
         topology = topologies[2]
         rtg  = RectilinearGrid(arch; size=(10, 10, 20), x=(0, 100kilometers), y=(-10kilometers, 10kilometers), topology, z=z_stretched)
         llg  = LatitudeLongitudeGrid(arch; size=(10, 10, 20), latitude=(0, 1), longitude=(0, 1), topology, z=z_stretched)
-        irtg = ImmersedBoundaryGrid(rtg, GridFittedBottom((x, y) -> rand()-10))
-        illg = ImmersedBoundaryGrid(llg, GridFittedBottom((x, y) -> rand()-10))
+        irtg = ImmersedBoundaryGrid(deepcopy(rtg), GridFittedBottom((x, y) -> rand()-10))
+        illg = ImmersedBoundaryGrid(deepcopy(llg), GridFittedBottom((x, y) -> rand()-10))
 
         for grid in [rtg, llg, irtg, illg]
             split_free_surface = SplitExplicitFreeSurface(grid; substeps=50)
