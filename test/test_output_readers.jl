@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
+using Random
 
 function generate_nonzero_simulation_data(Lx, Δt; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
@@ -279,8 +280,9 @@ end
 
         @testset "FieldTimeSeries pickup" begin
             @info "  Testing FieldTimeSeries pickup..."
-            for n in -3:3
-                Δt = 10.0^n
+            Random.seed!(1234)
+            for n in -4:4
+                Δt = (1.1 + rand()) * 10.0^n 
                 Lx = 10 * Δt
             
                 filename = generate_nonzero_simulation_data(Lx, Δt)
