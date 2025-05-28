@@ -182,6 +182,9 @@ has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 has_reference(T::Type{Function}, f::Field) =
     has_reference(T, f.data) || has_reference(T, f.boundary_conditions)
 
+# No functions in grids, so no need to check.
+has_reference(T::Type{Function}, f::AbstractGrid) = false
+
 """
     has_reference(has_type, obj)
 
