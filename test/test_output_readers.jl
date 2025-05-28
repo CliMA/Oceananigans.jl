@@ -4,6 +4,24 @@ using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
 
+function generate_nonzero_simulation_data(Lx, Δt; architecture=CPU())
+    grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
+    model = NonhydrostaticModel(; grid, tracers = (:T, :S), advection = nothing)
+
+    set!(model, T=30, S=35)
+
+    simulation = Simulation(model; Δt, stop_iteration=100)
+
+    simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers,
+                                                             filename = "constant_fields",
+                                                             schedule = IterationInterval(10),
+                                                             overwrite_existing = true)
+
+    run!(simulation)
+
+    return model
+end
+
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
@@ -256,6 +274,23 @@ end
                 s, u = pair
                 @test s.times == u.times
                 @test parent(s) == parent(u)
+            end
+        end
+
+        @testset "FieldTimeSeries pickup" begin
+            @info "  Testing FieldTimeSeries pickup..."
+            for n in -3:3
+                Δt = 10.0^n
+                Lx = 10 * Δt
+            
+                generate_nonzero_simulation_data(Lx, Δt)
+                Tfts = FieldTimeSeries("constant_fields.jld2", "T")
+                Sfts = FieldTimeSeries("constant_fields.jld2", "S")
+
+                for t in eachindex(Tfts.times)
+                    @test all(interior(Tfts[t]) .== 30)
+                    @test all(interior(Sfts[t]) .== 35)
+                end
             end
         end
 
