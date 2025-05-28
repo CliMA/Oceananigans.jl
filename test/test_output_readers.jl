@@ -299,7 +299,7 @@ end
 
             # Testing pickup using example that was failing in https://github.com/CliMA/Oceananigans.jl/issues/4077
             grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-            times = 0:0.1:3
+            times = collect(0:0.1:3)
             filename = "test_field_time_series_pickup.jld2"
             f_tmp = Field{Center,Center,Center}(grid) 
             f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
@@ -309,9 +309,13 @@ end
                 set!(f,f_tmp, it)
             end
 
+            # Create another time array that is slightly different at t=0
+            times_mod = copy(times)
+            times_mod[1] = 1e-16
+
             # Now we load the FTS partly in memory
             N_in_mem = 5
-            f_fts = FieldTimeSeries(filename, "f"; backend = InMemory(N_in_mem))
+            f_fts = FieldTimeSeries(filename, "f"; backend = InMemory(N_in_mem), times = times_mod)
             Nt = length(f_fts.times)
 
             for t in eachindex(times)

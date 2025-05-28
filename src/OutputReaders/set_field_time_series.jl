@@ -8,12 +8,11 @@ using Oceananigans.Architectures: cpu_architecture
 iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 
 function find_time_index(time::Number, file_times, Δt)
-    # Accommodate round-off discrepancies between the FTS times and file times
+    # We introduce an additional check with an absolute tolerance to accomodate
+    # time values very close to zero, for which a relative tolerance will not work
     # (see https://github.com/CliMA/Oceananigans.jl/pull/4505)
-    ϵ1 = 100 * eps(Δt)
-    ϵ2 = 100 * eps(eltype(file_times))
-    ϵ  = max(ϵ2, ϵ1) 
-    return findfirst(t -> isapprox(t, time; rtol=ϵ), file_times)
+    ϵ = 100 * eps(Δt)
+    return findfirst(t -> isapprox(t, time) || isapprox(t, time; atol=ϵ), file_times)
 end
 
 find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)
