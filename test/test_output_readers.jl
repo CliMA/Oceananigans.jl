@@ -296,6 +296,29 @@ end
                     end
                 end
             end
+
+            # Testing pickup using example that was failing in https://github.com/CliMA/Oceananigans.jl/issues/4077
+            grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:0.1:3
+            filename = "test_field_time_series_pickup.jld2"
+            f_tmp = Field{Center,Center,Center}(grid) 
+            f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=onDisk(), path=filename, name="f")
+
+            for (it, time) in enumerate(f.times)
+                set!(f_tmp,   30)
+                set!(f,f_tmp, it)
+            end
+
+            # Now we load the FTS partly in memory
+            N_in_mem = 5
+            f_fts = FieldTimeSeries(filename, "f"; backend = InMemory(N_in_mem))
+            Nt = length(f_fts.times)
+
+            for t in eachindex(times)
+                @test all(interior(f_fts[t]) .== 30)
+            end
+
+            rm(filename, force=true)
         end
 
         if arch isa GPU
