@@ -211,7 +211,14 @@ end
 
 # Distributed dot product
 @inline function dot(u::DistributedField, v::DistributedField)
-    dot_local = sum(interior(u) .* interior(v))
+     cu = condition_operand(u, condition, 0) 
+     cv = condition_operand(v, condition, 0) 
+      
+     B = cu * cv # Binary operation 
+     r = zeros(u.grid, 1) 
+      
+     Base.mapreducedim!(identity, +, r, B) 
+     dot_local = CUDA.@allowscalar r[1] 
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end
