@@ -5,7 +5,7 @@ using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
 using Random
 
-function generate_nonzero_simulation_data(Lx, Δt; architecture=CPU())
+function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
     model = NonhydrostaticModel(; grid, tracers = (:T, :S), advection = nothing)
 
@@ -16,6 +16,7 @@ function generate_nonzero_simulation_data(Lx, Δt; architecture=CPU())
     simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers,
                                                              filename = "constant_fields",
                                                              schedule = IterationInterval(10),
+                                                             array_type = Array{FT},
                                                              overwrite_existing = true)
 
     run!(simulation)
@@ -284,14 +285,15 @@ end
             for n in -4:4
                 Δt = (1.1 + rand()) * 10.0^n 
                 Lx = 10 * Δt
-            
-                filename = generate_nonzero_simulation_data(Lx, Δt)
-                Tfts = FieldTimeSeries(filename, "T")
-                Sfts = FieldTimeSeries(filename, "S")
+                for FT in (Float32, Float64)
+                    filename = generate_nonzero_simulation_data(Lx, Δt, FT)
+                    Tfts = FieldTimeSeries(filename, "T")
+                    Sfts = FieldTimeSeries(filename, "S")
 
-                for t in eachindex(Tfts.times)
-                    @test all(interior(Tfts[t]) .== 30)
-                    @test all(interior(Sfts[t]) .== 35)
+                    for t in eachindex(Tfts.times)
+                        @test all(interior(Tfts[t]) .== 30)
+                        @test all(interior(Sfts[t]) .== 35)
+                    end
                 end
             end
         end
