@@ -11,7 +11,7 @@ import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_fiel
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, communication_buffers
-import Oceananigans.Models: hasnan
+import Oceananigans.Diagnostics: hasnan
 
 import Base: fill!, axes
 
