@@ -8,11 +8,12 @@ using Oceananigans.Architectures: cpu_architecture
 iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 
 function find_time_index(time::Number, file_times, Δt)
-    # We introduce an additional check with an absolute tolerance to accomodate
+    # We introduce an additional absolute tolerance to accomodate
     # time values very close to zero, for which a relative tolerance will not work
     # (see https://github.com/CliMA/Oceananigans.jl/pull/4505)
-    ϵ = 100 * eps(Δt)
-    return findfirst(t -> isapprox(t, time) || isapprox(t, time; atol=ϵ), file_times)
+    ϵa = 100 * eps(Δt)
+    ϵr = sqrt(eps(eltype(file_times))) # The default relative tolerance used by `isapprox` when atol == 0
+    return findfirst(t -> isapprox(t, time; atol=ϵa, rtol=ϵr), file_times)
 end
 
 find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)
