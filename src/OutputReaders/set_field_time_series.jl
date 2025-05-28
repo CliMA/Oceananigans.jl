@@ -13,7 +13,7 @@ function find_time_index(time::Number, file_times, Δt)
     ϵ1 = 100 * eps(Δt)
     ϵ2 = 100 * eps(eltype(file_times))
     ϵ  = max(ϵ2, ϵ1) 
-    return findfirst(t -> isapprox(t, time; atol=ϵ), file_times)
+    return findfirst(t -> isapprox(t, time; rtol=ϵ), file_times)
 end
 
 find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)

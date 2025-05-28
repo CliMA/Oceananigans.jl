@@ -19,7 +19,7 @@ function generate_nonzero_simulation_data(Lx, Δt; architecture=CPU())
 
     run!(simulation)
 
-    return model
+    return simulation.output_writers[:constant_fields].filepath
 end
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
@@ -283,9 +283,9 @@ end
                 Δt = 10.0^n
                 Lx = 10 * Δt
             
-                generate_nonzero_simulation_data(Lx, Δt)
-                Tfts = FieldTimeSeries("constant_fields.jld2", "T")
-                Sfts = FieldTimeSeries("constant_fields.jld2", "S")
+                filename = generate_nonzero_simulation_data(Lx, Δt)
+                Tfts = FieldTimeSeries(filename, "T")
+                Sfts = FieldTimeSeries(filename, "S")
 
                 for t in eachindex(Tfts.times)
                     @test all(interior(Tfts[t]) .== 30)
