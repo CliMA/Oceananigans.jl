@@ -220,5 +220,21 @@ for arch in archs
         progress_cb = simulation.callbacks[:progress]
         progress_cb.schedule.first_actuation_time
         @test progress_cb.schedule.first_actuation_time == 4
+
+        @info "  Testing immmersed model checkpointer [$(typeof(arch))]..."
+        grid = RectilinearGrid(arch, size=(10, 10, 10), extent=(1, 1, 1))
+        grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> - 1 + 0.2 * rand()); active_cells_map=true)
+        model = HydrostaticFreeSurfaceModel(; grid)
+        simulation = Simulation(model, Δt=0.2, stop_iteration=6)
+
+        test_checkpointer = try 
+            simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5))
+            run!(simulation)
+            true
+        catch e
+            false
+        end
+
+        @test test_checkpointer 
     end
 end
