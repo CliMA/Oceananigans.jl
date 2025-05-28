@@ -1,8 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using TimesDates: TimeDate
-
-using Oceananigans.Models: erroring_NaNChecker!
+using Oceananigans.Diagnostics: erroring_NaNChecker!
 
 import Oceananigans.Simulations: finalize!, initialize!
 
