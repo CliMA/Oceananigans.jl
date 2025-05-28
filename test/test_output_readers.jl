@@ -101,6 +101,37 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     return filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath
 end
 
+function test_pickup_with_inaccurate_times()
+
+    # Testing pickup using example that was failing in https://github.com/CliMA/Oceananigans.jl/issues/4077
+    grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+    times = collect(0:0.1:3)
+    filename = "fts_inaccurate_times_test.jld2"
+    f_tmp = Field{Center,Center,Center}(grid) 
+    f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
+
+    for (it, time) in enumerate(f.times)
+        set!(f_tmp,   30)
+        set!(f,f_tmp, it)
+    end
+
+    # Create another time array that is slightly different at t=0
+    times_mod = copy(times)
+    times_mod[1] = 1e-16
+
+    # Now we load the FTS partly in memory
+    f_fts = FieldTimeSeries(filename, "f"; backend = InMemory(5), times = times_mod)
+    Nt = length(f_fts.times)
+
+    for t in eachindex(times)
+        @test all(interior(f_fts[t]) .== 30)
+    end
+
+    rm(filename, force=true)
+
+    return nothing
+end
+
 @testset "OutputReaders" begin
     @info "Testing output readers..."
 
@@ -279,50 +310,29 @@ end
             end
         end
 
-        @testset "FieldTimeSeries pickup" begin
-            @info "  Testing FieldTimeSeries pickup..."
-            Random.seed!(1234)
-            for n in -4:4
-                Δt = (1.1 + rand()) * 10.0^n 
-                Lx = 10 * Δt
-                for FT in (Float32, Float64)
-                    filename = generate_nonzero_simulation_data(Lx, Δt, FT)
-                    Tfts = FieldTimeSeries(filename, "T")
-                    Sfts = FieldTimeSeries(filename, "S")
+        if arch isa CPU
+            @testset "FieldTimeSeries pickup" begin
+                @info "  Testing FieldTimeSeries pickup..."
+                Random.seed!(1234)
+                for n in -4:4
+                    Δt = (1.1 + rand()) * 10.0^n 
+                    Lx = 10 * Δt
+                    for FT in (Float32, Float64)
+                        filename = generate_nonzero_simulation_data(Lx, Δt, FT)
+                        Tfts = FieldTimeSeries(filename, "T")
+                        Sfts = FieldTimeSeries(filename, "S")
 
-                    for t in eachindex(Tfts.times)
-                        @test all(interior(Tfts[t]) .== 30)
-                        @test all(interior(Sfts[t]) .== 35)
+                        for t in eachindex(Tfts.times)
+                            @test all(interior(Tfts[t]) .== 30)
+                            @test all(interior(Sfts[t]) .== 35)
+                        end
                     end
                 end
+
+
+                @info "  Testing FieldTimeSeries pickup with slightly inaccurate times..."
+                test_pickup_with_inaccurate_times()
             end
-
-            # Testing pickup using example that was failing in https://github.com/CliMA/Oceananigans.jl/issues/4077
-            grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-            times = collect(0:0.1:3)
-            filename = "test_field_time_series_pickup.jld2"
-            f_tmp = Field{Center,Center,Center}(grid) 
-            f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
-
-            for (it, time) in enumerate(f.times)
-                set!(f_tmp,   30)
-                set!(f,f_tmp, it)
-            end
-
-            # Create another time array that is slightly different at t=0
-            times_mod = copy(times)
-            times_mod[1] = 1e-16
-
-            # Now we load the FTS partly in memory
-            N_in_mem = 5
-            f_fts = FieldTimeSeries(filename, "f"; backend = InMemory(N_in_mem), times = times_mod)
-            Nt = length(f_fts.times)
-
-            for t in eachindex(times)
-                @test all(interior(f_fts[t]) .== 30)
-            end
-
-            rm(filename, force=true)
         end
 
         if arch isa GPU
