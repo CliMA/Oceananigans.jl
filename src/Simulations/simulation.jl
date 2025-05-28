@@ -1,11 +1,12 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
+using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
 
-import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.OutputWriters: write_output!
+import Oceananigans.Solvers: iteration
 
 default_progress(simulation) = nothing
 
@@ -238,5 +239,7 @@ end
 #####
 
 # Fallback, to be elaborated on
-write_output!(writer, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::Checkpointer, sim::Simulation) = write_output!(writer, sim.model)
 

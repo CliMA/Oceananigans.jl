@@ -1,3 +1,5 @@
+import Oceananigans.Diagnostics: cell_diffusion_timescale
+
 #####
 ##### Timescale for diffusion across one cell
 #####
