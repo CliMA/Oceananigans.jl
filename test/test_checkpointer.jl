@@ -224,7 +224,8 @@ for arch in archs
         @info "  Testing immmersed model checkpointer [$(typeof(arch))]..."
         grid = RectilinearGrid(arch, size=(10, 10, 10), extent=(1, 1, 1))
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> - 1 + 0.2 * rand()); active_cells_map=true)
-        model = HydrostaticFreeSurfaceModel(; grid)
+        closure = ScalarDiffusivity(VerticallyImplicitTImeDiscretization(), ν=1e-2)
+        model = HydrostaticFreeSurfaceModel(; grid, timestepper=:SplitRungeKutta3, closure)
         simulation = Simulation(model, Δt=0.2, stop_iteration=6)
 
         test_checkpointer = try 
