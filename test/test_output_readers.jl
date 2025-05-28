@@ -302,7 +302,7 @@ end
             times = 0:0.1:3
             filename = "test_field_time_series_pickup.jld2"
             f_tmp = Field{Center,Center,Center}(grid) 
-            f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=onDisk(), path=filename, name="f")
+            f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
 
             for (it, time) in enumerate(f.times)
                 set!(f_tmp,   30)
