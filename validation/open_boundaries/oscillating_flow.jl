@@ -122,6 +122,7 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
     end
 end
 
+inflow_timescale = outflow_timescale = 1/4
 matching_scheme_name(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
 for grid in (xygrid, xzgrid)
 
@@ -134,19 +135,15 @@ for grid in (xygrid, xzgrid)
     w_boundaries_fe = FieldBoundaryConditions(bottom = w_fe, top = w_fe)
     feobcs = (u = u_boundaries_fe, v = v_boundaries_fe, w = w_boundaries_fe)
 
-    u_pa = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U, T), inflow_timescale = 0.1, outflow_timescale = Inf)
-    v_pa = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale = 0.1, outflow_timescale = Inf)
-    w_pa = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale = 0.1, outflow_timescale = Inf)
-
-    u_boundaries_pa = FieldBoundaryConditions(west =  PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U, T), inflow_timescale = 1, outflow_timescale = 1),
-                                              east =  PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U, T), inflow_timescale = 1, outflow_timescale = 1))
-    v_boundaries_pa = FieldBoundaryConditions(south = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale = 1, outflow_timescale = 1),
-                                              north = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale = 1, outflow_timescale = 1))
-    w_boundaries_pa = FieldBoundaryConditions(bottom = w_pa, top = w_pa)
+    u_boundaries_pa = FieldBoundaryConditions(west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
+                                              east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
+    v_boundaries_pa = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
+                                              north  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
+    w_boundaries_pa = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
+                                              top    = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
     paobcs = (u = u_boundaries_pa, v = v_boundaries_pa, w = w_boundaries_pa)
 
-    for obcs in (paobcs,)
-    #for obcs in (feobcs, paobcs,)
+    for obcs in (feobcs, paobcs,)
         if grid isa Oceananigans.Grids.ZFlatGrid
             boundary_conditions = (u = obcs.u, v = obcs.v)
             simname = "xy_" * matching_scheme_name(boundary_conditions.u.east)
