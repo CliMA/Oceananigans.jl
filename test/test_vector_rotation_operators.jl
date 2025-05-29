@@ -65,7 +65,7 @@ function test_purely_meridional_flow(uᵢ, vᵢ, grid)
     return c1 & c2 & c3 & c4
 end
 
-function test_vector_rotation(grid)
+function test_cubed_sphere_vector_rotation(grid)
     u = CenterField(grid)
     v = CenterField(grid)
 
@@ -177,7 +177,7 @@ end
 # Test vector invariants i.e.
 # -> dot product of two vectors
 # -> cross product of two vectors
-function test_tripolar_vector_rotation(grid)
+function test_vector_rotation(grid)
     x₁ = CenterField(grid)
     y₁ = CenterField(grid)
 
@@ -203,18 +203,19 @@ function test_tripolar_vector_rotation(grid)
     dᵢ = compute!(Field(xᵢ₁ * xᵢ₂ + yᵢ₁ * yᵢ₂))
     cᵢ = compute!(Field(xᵢ₁ * yᵢ₂ - yᵢ₁ * xᵢ₂))
 
-    pointwise_approximate_equal(dᵢ, d)
-    pointwise_approximate_equal(cᵢ, c)
+    @apply_regionally pointwise_approximate_equal(dᵢ, d)
+    @apply_regionally pointwise_approximate_equal(cᵢ, c)
 end
 
 @testset "Vector rotation" begin
     for arch in archs
         @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
-            grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
-            test_vector_rotation(grid)
-            grid = TripolarGrid(arch; size = (100, 100, 1), z=(-1, 0))
-            TestModel_VerticallyStrectedRectGrid
+            cubed_sphere_grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
+            tripolar_grid = TripolarGrid(arch; size = (100, 100, 1), z=(-1, 0))
+            test_vector_rotation(cubed_sphere_grid)
+            test_vector_rotation(tripolar_grid)
+            test_cubed_sphere_vector_rotation(cubed_sphere_grid)
         end
     end
 end
