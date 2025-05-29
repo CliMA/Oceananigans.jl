@@ -12,16 +12,21 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
 
+    # Remove all this
     if Nz == 1 && first.(axes(field[1].data))[3] == Nz_grid + 1 # take ssh into consideration
         kernel_parameters = KernelParameters((Nc, 1), (0, Nz_grid))
     else
         kernel_parameters = KernelParameters((Nc, Nz), (0, 0))
     end
+    # Till here
 
     multiregion_field = Reference(field.data.regional_objects)
     region = Iterate(1:6)
 
     @apply_regionally begin
+        # sz = Oceananigans.BoundaryConditions.fill_halo_size(.....) # to get the size of the halo regions including windowed fields
+        # of = Oceananigans.BoundaryConditions.fill_halo_offset(.....) # to get the size of the halo regions including windowed fields
+        # params = KernelParameters(sz, of) # see fill_halo_event! in `BoundaryConditions/fill_halo_regions.jl`
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_field_east_west_halo_regions!, field, multiregion_field, region,
                 grid.connectivity.connections, Nc, Hc)
