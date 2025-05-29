@@ -121,8 +121,8 @@ end
     cosθ = Rcosθ / R
     sinθ = Rsinθ / R
 
-    uₑ = - u * cosθ + v * sinθ
-    vₑ = + u * sinθ + v * cosθ
+    uₑ = + u * cosθ + v * sinθ
+    vₑ = - u * sinθ + v * cosθ
 
     return uₑ, vₑ
 end
