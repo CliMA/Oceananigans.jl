@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics: mean
 using Oceananigans.Operators
+using Random
 
 # To be used in the test below as `KernelFunctionOperation`s
 @inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
@@ -29,9 +30,15 @@ function kinetic_energy(u, v)
     return compute!(ke)
 end
 
-function pointwise_approximate_equal(field, val)
-    CPU_field = on_architecture(CPU(), field)
-    @test all(interior(CPU_field) .≈ val)
+function pointwise_approximate_equal(field1, val::Number)
+    CPU_field1 = on_architecture(CPU(), field1)
+    @test all(interior(CPU_field1) .≈ val)
+end
+
+function pointwise_approximate_equal(field1, field2)
+    CPU_field1 = on_architecture(CPU(), field1)
+    CPU_field2 = on_architecture(CPU(), field2)
+    @test all(interior(CPU_field1) .≈ interior(CPU_field2))
 end
 
 # A purely zonal flow with an west-east velocity > 0
@@ -167,12 +174,47 @@ function test_vector_rotation(grid)
     @apply_regionally pointwise_approximate_equal(uₑ, 0.5)
 end
 
+# Test vector invariants i.e.
+# -> dot product of two vectors
+# -> cross product of two vectors
+function test_tripolar_vector_rotation(grid)
+    x₁ = CenterField(grid)
+    y₁ = CenterField(grid)
+
+    x₂ = CenterField(grid)
+    y₂ = CenterField(grid)
+
+    Random.seed!(1234)
+    set!(x₁, (x, y, z) -> rand())
+    set!(y₁, (x, y, z) -> rand())
+    set!(x₂, (x, y, z) -> rand())
+    set!(y₂, (x, y, z) -> rand())
+
+    fill_halo_regions!((x₁, y₁, x₂, y₂))
+
+    d = compute!(Field(x₁ * x₂ + y₁ * y₂))
+    c = compute!(Field(x₁ * y₂ - y₁ * x₂))
+
+    xᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁)
+    yᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁)
+    xᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₂, y₂)
+    yᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₂, y₂)
+
+    dᵢ = compute!(Field(xᵢ₁ * xᵢ₂ + yᵢ₁ * yᵢ₂))
+    cᵢ = compute!(Field(xᵢ₁ * yᵢ₂ - yᵢ₁ * xᵢ₂))
+
+    pointwise_approximate_equal(dᵢ, d)
+    pointwise_approximate_equal(cᵢ, c)
+end
+
 @testset "Vector rotation" begin
     for arch in archs
         @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
             grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
             test_vector_rotation(grid)
+            grid = TripolarGrid(arch; size = (100, 100, 1), z=(-1, 0))
+            TestModel_VerticallyStrectedRectGrid
         end
     end
 end
