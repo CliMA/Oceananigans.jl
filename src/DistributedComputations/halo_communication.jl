@@ -265,6 +265,8 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed,
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
+            sync_device!(arch)
+            
             only_local_halos && return nothing
 
             sync_device!(arch)
@@ -296,6 +298,8 @@ for side in [:west, :east, :south, :north]
         function $fill_side_halo!(c, bc_side::DCBCT, size, offset, loc, arch::Distributed, grid::DistributedGrid,
                                  buffers, args...; only_local_halos = false, kwargs...)
 
+            sync_device!(arch)
+                                 
             only_local_halos && return nothing
 
             sync_device!(arch)
