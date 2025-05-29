@@ -209,6 +209,21 @@ function test_vector_rotation(grid)
 
     @apply_regionally pointwise_approximate_equal(dᵢ, d)
     @apply_regionally pointwise_approximate_equal(cᵢ, c)
+
+    xₑ₁ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, xᵢ₁, yᵢ₁)
+    yₑ₁ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, xᵢ₁, yᵢ₁)
+    xₑ₂ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, xᵢ₂, yᵢ₂)
+    yₑ₂ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, xᵢ₂, yᵢ₂)
+
+    xₑ₁ = compute!(Field(xₑ₁))
+    yₑ₁ = compute!(Field(yₑ₁))
+    xₑ₂ = compute!(Field(xₑ₂))
+    yₑ₂ = compute!(Field(yₑ₂))
+
+    @apply_regionally pointwise_approximate_equal(xₑ₁, xᵢ₁)
+    @apply_regionally pointwise_approximate_equal(xₑ₁, xᵢ₁)
+    @apply_regionally pointwise_approximate_equal(yₑ₂, yᵢ₂)
+    @apply_regionally pointwise_approximate_equal(yₑ₂, yᵢ₂)
 end
 
 @testset "Vector rotation" begin
