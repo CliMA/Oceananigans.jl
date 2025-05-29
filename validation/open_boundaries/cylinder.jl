@@ -214,12 +214,13 @@ end
 
 u∞ = 1
 
-feobc = (east = FlatExtrapolationOpenBoundaryCondition(), west = OpenBoundaryCondition(u∞))
+feobcs = (west = OpenBoundaryCondition(u∞), east = FlatExtrapolationOpenBoundaryCondition(),)
 
-paobcs = (east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
-          west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = 0.1))
+paobcs = (west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = 0.1),
+          east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
+          )
 
-obcs = (; #flat_extrapolation=feobc,
+obcs = (; #flat_extrapolation=feobcs,
           perturbation_advection=paobcs)
 
 for (obc_name, obc) in pairs(obcs)
