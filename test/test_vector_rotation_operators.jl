@@ -43,6 +43,7 @@ function test_vector_rotation(grid)
     d = compute!(Field(x₁ * x₂ + y₁ * y₂))
     c = compute!(Field(x₁ * y₂ - y₁ * x₂))
 
+    @info "  Testing the conversion of a vector between to the Intrinsice reference frame on $(summary(grid))"
     xᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁)
     yᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁)
     xᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₂, y₂)
@@ -69,10 +70,11 @@ function test_vector_rotation(grid)
     xₑ₂ = compute!(Field(xₑ₂))
     yₑ₂ = compute!(Field(yₑ₂))
 
-    @apply_regionally pointwise_approximate_equal(xₑ₁, xᵢ₁)
-    @apply_regionally pointwise_approximate_equal(xₑ₁, xᵢ₁)
-    @apply_regionally pointwise_approximate_equal(yₑ₂, yᵢ₂)
-    @apply_regionally pointwise_approximate_equal(yₑ₂, yᵢ₂)
+    @info "  Testing the conversion of a vector between to the Extrinsic reference frame on $(summary(grid))"
+    @apply_regionally pointwise_approximate_equal(xₑ₁, x₁)
+    @apply_regionally pointwise_approximate_equal(xₑ₁, x₁)
+    @apply_regionally pointwise_approximate_equal(yₑ₂, y₂)
+    @apply_regionally pointwise_approximate_equal(yₑ₂, y₂)
 end
 
 @testset "Vector rotation" begin
