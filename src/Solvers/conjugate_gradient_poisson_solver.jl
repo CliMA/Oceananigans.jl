@@ -61,6 +61,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
+                                        enforce_gauge_condition = true,
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
@@ -78,6 +79,7 @@ function ConjugateGradientPoissonSolver(grid;
                                                         abstol,
                                                         preconditioner,
                                                         template_field = rhs,
+                                                        enforce_gauge_condition,
                                                         kw...)
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
@@ -131,17 +133,7 @@ function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     solve!(p, preconditioner, preconditioner.storage, shift)
     p .*= -1
 
-    grid = r.grid
-    arch = architecture(p)
-    mean_p = mean(p)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
     return p
-end
-
-@kernel function subtract_and_mask!(a, grid, b)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    a[i, j, k] = (a[i, j, k] - b) * active
 end
 
 #####
@@ -156,9 +148,6 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
     arch = architecture(p)
     fill_halo_regions!(r)
     launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
-
-    mean_p = mean(p)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
 
     return p
 end
