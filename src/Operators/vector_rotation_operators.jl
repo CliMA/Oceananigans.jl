@@ -80,8 +80,8 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
     cosθ = Rcosθ / R
     sinθ = Rsinθ / R
 
-    uᵢ =   u * cosθ + v * sinθ
-    vᵢ = - u * sinθ + v * cosθ
+    uᵢ = u * cosθ - v * sinθ
+    vᵢ = u * sinθ + v * cosθ
 
     return uᵢ, vᵢ
 end
@@ -121,8 +121,8 @@ end
     cosθ = Rcosθ / R
     sinθ = Rsinθ / R
 
-    uₑ = u * cosθ - v * sinθ
-    vₑ = u * sinθ + v * cosθ
+    uₑ = - u * cosθ + v * sinθ
+    vₑ = + u * sinθ + v * cosθ
 
     return uₑ, vₑ
 end
