@@ -98,13 +98,13 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     return nothing
 end
 
-@inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
+@inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices, previous_timestep_storage_indices,
                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
-    uᵢⁿ     = ifelse(clock.iteration == 0, ūⁿ⁺¹, @inbounds getindex(u, boundary_secret_storage_indices...))
+    uᵢⁿ     = ifelse(clock.iteration == 0, ūⁿ⁺¹, @inbounds getindex(u, previous_timestep_storage_indices...))
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
@@ -116,7 +116,7 @@ end
     u₁ⁿ⁺¹ = ifelse(τ == 0, ūⁿ⁺¹, relaxed_u₁ⁿ⁺¹)
 
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
-    @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
+    @inbounds setindex!(u, u₁ⁿ⁺¹, previous_timestep_storage_indices...)
 
     return nothing
 end
@@ -136,11 +136,11 @@ end
 @inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
-    boundary_secret_storage_indices = (0, j, k)
+    previous_timestep_storage_indices = (0, j, k)
 
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
 
-    step_left_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δx)
+    step_left_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, previous_timestep_storage_indices, grid, u, clock, model_fields, Δx)
 
     return nothing
 end
@@ -160,11 +160,11 @@ end
 @inline function _fill_south_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
     boundary_indices = (i, 1, k)
     boundary_adjacent_indices = (i, 2, k)
-    boundary_secret_storage_indices = (i, 0, k)
+    previous_timestep_storage_indices = (i, 0, k)
 
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
 
-    step_left_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δy)
+    step_left_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices, previous_timestep_storage_indices, grid, u, clock, model_fields, Δy)
 
     return nothing
 end
@@ -184,11 +184,11 @@ end
 @inline function _fill_bottom_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
     boundary_indices = (i, j, 1)
     boundary_adjacent_indices = (i, j, 2)
-    boundary_secret_storage_indices = (i, j, 0)
+    previous_timestep_storage_indices = (i, j, 0)
 
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
 
-    step_left_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δz)
+    step_left_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices, previous_timestep_storage_indices, grid, u, clock, model_fields, Δz)
 
     return nothing
 end
