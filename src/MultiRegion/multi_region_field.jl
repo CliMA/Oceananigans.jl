@@ -7,7 +7,7 @@ using Oceananigans.OutputWriters: output_indices
 using Base: @propagate_inbounds
 
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
-import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, communication_buffers
@@ -151,11 +151,8 @@ communication_buffers(grid::MultiRegionGrid, data, bcs) =
 communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
 communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
-FieldBoundaryBuffers(grid::MultiRegionGrids, args...; kwargs...) =
-    construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
-
-FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
-    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
+CommunicationBuffers(grid::MultiRegionGrids, args...; kwargs...) =
+    construct_regionally(CommunicationBuffers, grid, args...; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               mrg::MultiRegionGrids,
