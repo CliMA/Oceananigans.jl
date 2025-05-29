@@ -1,5 +1,6 @@
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
+using Oceananigans.Grids: bottommost_active_node
 using Printf
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ
@@ -144,43 +145,34 @@ Criterion is zb ≥ z - ϵ Δz
     return z★ < zb
 end
 
-@inline function bottom_cell(i, j, k, ibg::PCBIBG)
-    grid = ibg.underlying_grid
-    ib = ibg.immersed_boundary
-    # This one's not immersed, but the next one down is
-    return !immersed_cell(i, j, k, grid, ib) & immersed_cell(i, j, k-1, grid, ib)
-end
-
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::PCBIBG)
     underlying_grid = ibg.underlying_grid
     ib = ibg.immersed_boundary
 
     # Get node at face above and defining nodes on c,c,f
-    z = rnode(i, j, k+1, underlying_grid, c, c, f)
+    rᶜᶜᶠₖ₊₁ = rnode(i, j, k+1, underlying_grid, c, c, f)
 
-    # Get bottom z-coordinate and fractional Δz parameter
-    zb = @inbounds ib.bottom_height[i, j, 1]
+    # Get bottom r-coordinate and fractional Δr parameter
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
 
     # Are we in a bottom cell?
-    at_the_bottom = bottom_cell(i, j, k, ibg)
+    at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
 
-    full_Δz    = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    partial_Δz = z - zb
+    full_Δr    = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
+    partial_Δr = rᶜᶜᶠₖ₊₁ - rᵇ
 
-    return ifelse(at_the_bottom, partial_Δz, full_Δz)
+    return ifelse(at_the_bottom, partial_Δr, full_Δr)
 end
 
 @inline function Δrᶜᶜᶠ(i, j, k, ibg::PCBIBG)
-    just_above_bottom = bottom_cell(i, j, k-1, ibg)
-    zc = rnode(i, j, k, ibg.underlying_grid, c, c, c)
-    zf = rnode(i, j, k, ibg.underlying_grid, c, c, f)
+    just_above_bottom = bottommost_active_node(i, j, k, c, c, f)
+    rᶜ = rnode(i, j, k, ibg.underlying_grid, c, c, c)
+    rᶠ = rnode(i, j, k, ibg.underlying_grid, c, c, f)
 
-    full_Δz = Δrᶜᶜᶠ(i, j, k, ibg.underlying_grid)
-    partial_Δz = zc - zf + Δrᶜᶜᶜ(i, j, k-1, ibg) / 2
+    full_Δr    = Δrᶜᶜᶠ(i, j, k, ibg.underlying_grid)
+    partial_Δr = rᶜ - rᶠ + Δrᶜᶜᶜ(i, j, k-1, ibg) / 2
 
-    Δz = ifelse(just_above_bottom, partial_Δz, full_Δz)
-
-    return Δz
+    return ifelse(just_above_bottom, partial_Δr, full_Δr)
 end
 
 @inline Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i-1, j, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
