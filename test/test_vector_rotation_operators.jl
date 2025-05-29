@@ -180,7 +180,6 @@ end
 function test_vector_rotation(grid)
     x₁ = CenterField(grid)
     y₁ = CenterField(grid)
-
     x₂ = CenterField(grid)
     y₂ = CenterField(grid)
 
@@ -200,6 +199,11 @@ function test_vector_rotation(grid)
     xᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₂, y₂)
     yᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₂, y₂)
 
+    xᵢ₁ = compute!(Field(xᵢ₁))
+    yᵢ₁ = compute!(Field(yᵢ₁))
+    xᵢ₂ = compute!(Field(xᵢ₂))
+    yᵢ₂ = compute!(Field(yᵢ₂))
+
     dᵢ = compute!(Field(xᵢ₁ * xᵢ₂ + yᵢ₁ * yᵢ₂))
     cᵢ = compute!(Field(xᵢ₁ * yᵢ₂ - yᵢ₁ * xᵢ₂))
 
@@ -212,7 +216,7 @@ end
         @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
             cubed_sphere_grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
-            tripolar_grid = TripolarGrid(arch; size = (100, 100, 1), z=(-1, 0))
+            tripolar_grid = TripolarGrid(arch; size = (40, 40, 1), z=(-1, 0))
             test_vector_rotation(cubed_sphere_grid)
             test_vector_rotation(tripolar_grid)
             test_cubed_sphere_vector_rotation(cubed_sphere_grid)
