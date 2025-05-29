@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
+using Oceananigans.Solvers: DiagonallyDominantPreconditioner
 using Oceananigans.Grids: with_number_type
 using Printf
 using Statistics
@@ -48,9 +49,10 @@ closure = ScalarDiffusivity(ν = ν)
 c_forcing = Forcing(c_tendency, field_dependencies = (:c, ))
 u_forcing = Forcing(u_tendency, field_dependencies = (:u, ))
 
-# reduced_precision_grid = with_number_type(Float32, underlying_grid)
-# preconditioner = FFTBasedPoissonSolver(reduced_precision_grid)
-preconditioner = FFTBasedPoissonSolver(underlying_grid)
+reduced_precision_grid = with_number_type(Float32, underlying_grid)
+preconditioner = FFTBasedPoissonSolver(reduced_precision_grid)
+# preconditioner = FFTBasedPoissonSolver(underlying_grid)
+# preconditioner = DiagonallyDominantPreconditioner()
 # preconditioner = nothing
 pressure_solver = ConjugateGradientPoissonSolver(
     grid, maxiter=1000, preconditioner=preconditioner)
@@ -101,32 +103,31 @@ simulation.callbacks[:progress] = Callback(
     IterationInterval(1),
 )
 
-# u, v, w = model.velocities
-# c = model.tracers.c
-# d = Field(∂x(u) + ∂y(v) + ∂z(w))
-# p = model.pressures.pNHS
+u, v, w = model.velocities
+c = model.tracers.c
+d = Field(∂x(u) + ∂y(v) + ∂z(w))
+p = model.pressures.pNHS
 
-# output_fields = (; u, v, w, c, d, p)
+output_fields = (; u, v, w, c, d, p)
 
-# simulation.output_writers[:output_writer] = JLD2Writer(
-#     model,
-#     output_fields,
-#     filename = "vortex_sheet2",
-#     schedule = TimeInterval(Δt * 50),
-#     overwrite_existing = true,
-# )
+simulation.output_writers[:output_writer] = JLD2Writer(
+    model,
+    output_fields,
+    filename = "vortex_sheet",
+    schedule = TimeInterval(Δt * 50),
+    overwrite_existing = true,
+)
 
 run!(simulation)
 #%%
-u_data = FieldTimeSeries("./vortex_sheet2.jld2", "u")
-w_data = FieldTimeSeries("./vortex_sheet2.jld2", "w")
-c_data = FieldTimeSeries("./vortex_sheet2.jld2", "c")
-d_data = FieldTimeSeries("./vortex_sheet2.jld2", "d")
-p_data = FieldTimeSeries("./vortex_sheet2.jld2", "p")
+u_data = FieldTimeSeries("./vortex_sheet.jld2", "u")
+w_data = FieldTimeSeries("./vortex_sheet.jld2", "w")
+c_data = FieldTimeSeries("./vortex_sheet.jld2", "c")
+d_data = FieldTimeSeries("./vortex_sheet.jld2", "d")
+p_data = FieldTimeSeries("./vortex_sheet.jld2", "p")
 #%%
 times = u_data.times
 Nt = length(times)
-Nx, Ny, Nz = u_data.grid.underlying_grid.Nx, u_data.grid.Ny, u_data.grid.Nz
 
 xC = u_data.grid.underlying_grid.xᶜᵃᵃ[1:Nx]
 xF = u_data.grid.underlying_grid.xᶠᵃᵃ[1:Nx+1]
