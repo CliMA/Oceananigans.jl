@@ -2,8 +2,8 @@ include("dependencies_for_runtests.jl")
 
 using Statistics: mean
 using Oceananigans.Operators
-using Oceananigans.Operators: rotation_matrix
-using Oceananigans.Grids: haversine
+using Oceananigans.Operators: rotation_angle
+using Distances: haversine
 
 # To be used in the test below as `KernelFunctionOperation`s
 @inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
@@ -78,40 +78,54 @@ function test_vector_rotation(grid)
 end
 
 @testset "Vector rotation" begin
-    if arch isa CPU
-        
-        # Build a custom grid that is rotated and test that the rotation matrix is correct.
-        # We build a grid that is rotated by θᵢ degrees clockwise from the vertical.
-        grid = OrthogonalSphericalShellGrid(; size=(4, 4, 1), z=(0, 1), radius=1, conformal_mapping=nothing)
-        
-        angles = [-22.5, 30, 45, 60]
-        
-        for θᵢ in angles
-            sinθ = sind(θᵢ)
-            cosθ = cosd(θᵢ)
+    for arch in archs
+        @testset "Rotation between Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
 
-            for i in 1:6, j in 1:6
-                grid.λᶠᶠᵃ[i, j, 1] = (  (i-1) * cosθ + (j-1) * sinθ) * 1e-4 
-                grid.φᶠᶠᵃ[i, j, 1] = (- (i-1) * sinθ + (j-1) * cosθ) * 1e-4 
-            end
+            if arch isa CPU
+                @info "  Testing the calculation of the rotation angle between the Intrinsic and Extrinsic reference frame"
 
-            λᶠᶠᵃ = grid.λᶠᶠᵃ
-            φᶠᶠᵃ = grid.φᶠᶠᵃ
+                # Build a custom grid that is rotated by θᵢ degrees clockwise from the vertical
+                # and test that the rotation_angle is computed correctly.
 
-            for i in 1:6, j in 1:6
-                grid.Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), 1)
-                grid.Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), 1)
-            end
-            
-            for i in 1:3, j in 1:3
-                cosθ, sinθ = rotation_matrix(i, j, grid)
-                θ = atand(sinθ / cosθ)
-                @test θ ≈ θᵢ
+                # Since we want to test the rotation angle, we build a grid with coordinates
+                # that are uniformly spaced Δ << 1 apart. Small coordinate angle spacing ensures
+                # that geometric factors related with spherical geometry don't come into play.
+                Δ = 1e-3
+
+                angles = [-22.5, 30, 45, 60]
+
+                for θᵢ in angles
+                    radius = 1
+                    Nx, Ny = 4, 4
+
+                    # allocate an empty grid
+                    grid = OrthogonalSphericalShellGrid(; size=(Nx, Ny, 1), z=(0, 1), radius, conformal_mapping=nothing)
+                    λᶠᶠᵃ = grid.λᶠᶠᵃ
+                    φᶠᶠᵃ = grid.φᶠᶠᵃ
+
+                    # fill in coordinates
+                    sinθ = sind(θᵢ)
+                    cosθ = cosd(θᵢ)
+                    for i in 1:Nx+1, j in 1:Ny+1
+                        λᶠᶠᵃ[i, j, 1] =   (i-1) * Δ * cosθ + (j-1) * Δ * sinθ
+                        φᶠᶠᵃ[i, j, 1] = - (i-1) * Δ * sinθ + (j-1) * Δ * cosθ
+                    end
+
+                    # fill in metrics
+                    for i in 1:Nx+1, j in 1:Ny+1
+                        grid.Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+                        grid.Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+                    end
+
+                    # ensure that rotation_angle returns θᵢ
+                    for i in 1:Nx, j in 1:Ny
+                        θ = rotation_angle(i, j, grid)
+                        @test θ ≈ θᵢ
+                    end
+                end
             end
         end
-    end
 
-    for arch in archs
         @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
             cubed_sphere_grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
