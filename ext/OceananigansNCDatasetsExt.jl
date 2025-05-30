@@ -614,8 +614,8 @@ default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
     "u" => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
     "v" => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
     "w" => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
-    "η" => Dict("long_name" => "Sea surface height", "units" => "m/s"),
-    "eta" => Dict("long_name" => "Sea surface height", "units" => "m/s")) # non-unicode default
+    "η" => Dict("long_name" => "Sea surface height", "units" => "m"),
+    "eta" => Dict("long_name" => "Sea surface height", "units" => "m")) # non-unicode default
 
 default_velocity_attributes(ibg::ImmersedBoundaryGrid) = default_velocity_attributes(ibg.underlying_grid)
 
