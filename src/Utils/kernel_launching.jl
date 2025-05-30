@@ -44,7 +44,7 @@ See [`launch!`](@ref).
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
 # If `size` and `offsets` are numbers, we convert them to tuples
-KernelParametes(s::Number, o::Number) = KernelParameters(tuple(s), tuple(o))
+KernelParameters(s::Number, o::Number) = KernelParameters(tuple(s), tuple(o))
 
 """
     KernelParameters(range1, [range2, range3])
