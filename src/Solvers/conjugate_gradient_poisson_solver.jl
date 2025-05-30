@@ -1,7 +1,6 @@
 using Oceananigans.Operators
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
-using Oceananigans.Grids: XYZRegularRG
 
 using KernelAbstractions: @kernel, @index
 
@@ -11,7 +10,6 @@ struct ConjugateGradientPoissonSolver{G, R, S}
     grid :: G
     right_hand_side :: R
     conjugate_gradient_solver :: S
-    symmetrized :: Bool
 end
 
 architecture(solver::ConjugateGradientPoissonSolver) = architecture(cgps.grid)
@@ -45,44 +43,7 @@ function compute_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
-@kernel function multiply_with_sqrt_spacing_operator(a, grid, operator)
-    i, j, k = @index(Global, NTuple)
-    a[i, j, k] = sqrt(operator(i, j, k, grid)) * a[i, j, k]
-end
-
-# @kernel function symmetric_laplacian!(∇²ϕ, grid, ϕ)
-#     i, j, k = @index(Global, NTuple)
-
-#     @inbounds ϕ[i, j, k] = sqrt(V⁻¹ᶜᶜᶜ(i, j, k, grid)) * ϕ[i, j, k]
-#     @inbounds ∇²ϕ[i, j, k] = sqrt(Vᶜᶜᶜ(i, j, k, grid)) * ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
-#     @inbounds ϕ[i, j, k] = sqrt(Vᶜᶜᶜ(i, j, k, grid)) * ϕ[i, j, k]
-# end
-
-function compute_symmetric_laplacian!(∇²ϕ, ϕ)
-    grid = ϕ.grid
-    arch = architecture(grid)
-    
-    # launch!(arch, grid, :xyz, symmetric_laplacian!, ∇²ϕ, grid, ϕ)
-    launch!(arch, grid, :xyz, multiply_with_sqrt_spacing_operator, ϕ, grid, V⁻¹ᶜᶜᶜ)
-    fill_halo_regions!(ϕ)
-    launch!(arch, grid, :xyz, laplacian!, ∇²ϕ, grid, ϕ)
-    launch!(arch, grid, :xyz, multiply_with_sqrt_spacing_operator, ∇²ϕ, grid, Vᶜᶜᶜ)
-    launch!(arch, grid, :xyz, multiply_with_sqrt_spacing_operator, ϕ, grid, Vᶜᶜᶜ)
-    return nothing
-end
-
 struct DefaultPreconditioner end
-
-function symmetrize_or_not(grid)
-    if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa XYZRegularRG
-        symmetrized = false
-    elseif grid isa XYZRegularRG
-        symmetrized = false
-    else
-        symmetrized = true
-    end
-    return symmetrized
-end
 
 """
     ConjugateGradientPoissonSolver(grid;
@@ -100,8 +61,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
-                                        symmetrized = symmetrize_or_not(grid),
-                                        enforce_gauge_condition = !symmetrize_or_not(grid),
+                                        enforce_gauge_condition = true,
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
@@ -114,9 +74,7 @@ function ConjugateGradientPoissonSolver(grid;
 
     rhs = CenterField(grid)
 
-    linear_operation = symmetrized ? compute_symmetric_laplacian! : compute_laplacian!
-
-    conjugate_gradient_solver = ConjugateGradientSolver(linear_operation;
+    conjugate_gradient_solver = ConjugateGradientSolver(compute_laplacian!;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
@@ -124,7 +82,7 @@ function ConjugateGradientPoissonSolver(grid;
                                                         enforce_gauge_condition,
                                                         kw...)
 
-    return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver, symmetrized)
+    return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
 end
 
 #####
@@ -172,8 +130,7 @@ const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPo
 function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     shift = - sqrt(eps(eltype(r))) # to make the operator strictly negative definite
-    # solve!(p, preconditioner, preconditioner.storage, shift)
-    solve!(p, preconditioner, preconditioner.storage)
+    solve!(p, preconditioner, preconditioner.storage, shift)
     p .*= -1
 
     return p

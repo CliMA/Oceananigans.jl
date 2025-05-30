@@ -4,8 +4,6 @@ using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.Solvers: solve!
-using Oceananigans.Solvers: multiply_with_sqrt_spacing_operator, subtract_and_mask!
-using Statistics
 
 #####
 ##### Calculate the right-hand-side of the non-hydrostatic pressure Poisson equation.
@@ -98,23 +96,6 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, �
     grid = solver.grid
     arch = architecture(grid)
     launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, Ũ)
-
-    if solver.symmetrized
-        launch!(arch, grid, :xyz, multiply_with_sqrt_spacing_operator, rhs, grid, Vᶜᶜᶜ)
-    end
-
-    solve!(pressure, solver.conjugate_gradient_solver, rhs)
-
-    if solver.symmetrized
-        launch!(arch, grid, :xyz, multiply_with_sqrt_spacing_operator, pressure, grid, V⁻¹ᶜᶜᶜ)
-    end
-
-    mean_p = mean(pressure)
-    mean_rhs = mean(rhs)
-
-    launch!(arch, grid, :xyz, subtract_and_mask!, pressure, grid, mean_p)
-    launch!(arch, grid, :xyz, subtract_and_mask!, rhs, grid, mean_rhs)
-
-    return pressure
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 
