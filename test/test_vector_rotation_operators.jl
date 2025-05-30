@@ -84,13 +84,6 @@ end
         # We build a grid that is rotated by θᵢ degrees clockwise from the vertical.
         grid = OrthogonalSphericalShellGrid(; size=(4, 4, 1), z=(0, 1), radius=1, conformal_mapping=nothing)
         
-        # This is not really correct we are removing the lat-lon stretching factor,
-        # but computing the spacings like this leads to a grid with exactly 1m spacing every one degree.
-        # We use this to test that the grid is rotated by θᵢ degrees from the vertical 
-        # -> i.e. a θᵢ degree clockwise rotation.
-        fill!(grid.Δxᶜᶠᵃ, 1)
-        fill!(grid.Δyᶜᶠᵃ, 1)
-
         angles = [-22.5, 30, 45, 60]
         
         for θᵢ in angles
@@ -98,13 +91,18 @@ end
             cosθ = cosd(θᵢ)
 
             for i in 1:6, j in 1:6
-                grid.λᶠᶠᵃ[i, j, 1] =   (i-1) * cosθ + (j-1) * sinθ
-                grid.φᶠᶠᵃ[i, j, 1] = - (i-1) * sinθ + (j-1) * cosθ
+                grid.λᶠᶠᵃ[i, j, 1] = (  (i-1) * cosθ + (j-1) * sinθ) * 1e-4 
+                grid.φᶠᶠᵃ[i, j, 1] = (- (i-1) * sinθ + (j-1) * cosθ) * 1e-4 
             end
 
             λᶠᶠᵃ = grid.λᶠᶠᵃ
             φᶠᶠᵃ = grid.φᶠᶠᵃ
 
+            for i in 1:6, j in 1:6
+                grid.Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), 1)
+                grid.Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), 1)
+            end
+            
             for i in 1:3, j in 1:3
                 cosθ, sinθ = rotation_matrix(i, j, grid)
                 θ = atand(sinθ / cosθ)
