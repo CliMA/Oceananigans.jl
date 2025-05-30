@@ -13,8 +13,6 @@ Oceananigans.defaults.FloatType = Float32
 filename = "baroclinic_adjustment"
 
 # Architecture
-using Metal
-metal = Metal.MetalBackend()
 # arch = GPU(metal)
 arch = CPU()
 
