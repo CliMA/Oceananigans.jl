@@ -78,21 +78,21 @@ function test_vector_rotation(grid)
 end
 
 @testset "Vector rotation" begin
-    # Build a custom grid that is rotated by 60 degrees
-    # and test that the rotation matrix is correct.
     if arch isa CPU
+        
+        # Build a custom grid that is rotated and test that the rotation matrix is correct.
+        # We build a grid that is rotated by θᵢ degrees clockwise from the vertical.
         grid = OrthogonalSphericalShellGrid(; size=(4, 4, 1), z=(0, 1), radius=1, conformal_mapping=nothing)
         
         # This is not really correct we are removing the lat-lon stretching factor,
         # but computing the spacings like this leads to a grid with exactly 1m spacing every one degree.
-        # We use this to test that the grid is rotated by 60 degrees from the vertical -> i.e. a 60 degree
-        # clockwise rotation.
+        # We use this to test that the grid is rotated by θᵢ degrees from the vertical 
+        # -> i.e. a θᵢ degree clockwise rotation.
         fill!(grid.Δxᶜᶠᵃ, 1)
         fill!(grid.Δyᶜᶠᵃ, 1)
 
         angles = [-22.5, 30, 45, 60]
         
-        # We build a grid that is rotated by θᵢ degrees clockwise from the vertical.
         for θᵢ in angles
             sinθ = sind(θᵢ)
             cosθ = cosd(θᵢ)
