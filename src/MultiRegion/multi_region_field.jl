@@ -188,6 +188,9 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
 
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
+    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
+
 function Base.show(io::IO, field::MultiRegionField)
     bcs = getregion(field, 1).boundary_conditions
 
