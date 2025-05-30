@@ -98,7 +98,7 @@ end
             cosθ = cosd(θᵢ)
 
             for i in 1:6, j in 1:6
-                grid.λᶠᶠᵃ[1, j, 1] =   (i-1) * cosθ + (j-1) * sinθ
+                grid.λᶠᶠᵃ[i, j, 1] =   (i-1) * cosθ + (j-1) * sinθ
                 grid.φᶠᶠᵃ[i, j, 1] = - (i-1) * sinθ + (j-1) * cosθ
             end
 
