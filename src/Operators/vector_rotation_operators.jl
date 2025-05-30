@@ -53,6 +53,8 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
     rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
 
 Return the rotation angle (in degrees) of the `i, j`-th point of the `grid`.
+The rotation angle is the angle (positive counter-clockwise) that we need to rotate
+the grid's intrinsic coordinates in order to match the grid's extrinsic coordinates.
 """
 @inline function rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
 
@@ -78,7 +80,8 @@ Return the rotation angle (in degrees) of the `i, j`-th point of the `grid`.
 
     cosθ, sinθ = Rcosθ / R, Rsinθ / R
 
-    return atand(sinθ / cosθ)
+    θ_degrees = atand(sinθ / cosθ)
+    return θ_degrees
 end
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
@@ -90,12 +93,12 @@ end
 # 2D vectors
 @inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uₑ, vₑ)
 
+    u = getvalue(uₑ, i, j, k, grid)
+    v = getvalue(vₑ, i, j, k, grid)
+
     θ_degrees = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
     sinθ = sind(θ_degrees)
     cosθ = cosd(θ_degrees)
-
-    u  = getvalue(uₑ, i, j, k, grid)
-    v  = getvalue(vₑ, i, j, k, grid)
 
     uᵢ = u * cosθ - v * sinθ
     vᵢ = u * sinθ + v * cosθ
@@ -115,12 +118,12 @@ end
 # 2D vectors
 @inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ)
 
+    u = getvalue(uᵢ, i, j, k, grid)
+    v = getvalue(vᵢ, i, j, k, grid)
+
     θ_degrees = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
     sinθ = sind(θ_degrees)
     cosθ = cosd(θ_degrees)
-
-    u  = getvalue(uᵢ, i, j, k, grid)
-    v  = getvalue(vᵢ, i, j, k, grid)
 
     uₑ = + u * cosθ + v * sinθ
     vₑ = - u * sinθ + v * cosθ
