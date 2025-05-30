@@ -81,7 +81,8 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
                        model.closure,
                        model.diffusivity_fields,
                        nothing,
-                       model.clock,
+                       model.clock, 
+                       fields(model),
                        Δt)
     end
 
@@ -117,6 +118,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        model.diffusivity_fields,
                        Val(tracer_index),
                        model.clock,
+                       fields(model),
                        Δt)
     end
 

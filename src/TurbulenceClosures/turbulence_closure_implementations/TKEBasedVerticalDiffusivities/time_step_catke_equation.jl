@@ -74,7 +74,9 @@ function time_step_catke_equation!(model)
 
         implicit_step!(e, implicit_solver, closure,
                        diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
+                       model.clock, 
+                       fields(model), 
+                       Δτ)
     end
 
     return nothing
@@ -154,6 +156,8 @@ end
     #                  = Lⁱ
     #
     # where ω = ϵ / e ∼ √e / ℓ.
+    
+    active = !inactive_cell(i, j, k, grid)
 
     @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
 
@@ -177,7 +181,7 @@ end
     # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
-
+    
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
         e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active
