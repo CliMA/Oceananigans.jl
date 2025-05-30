@@ -1,38 +1,41 @@
+
+using Oceananigans.Grids: size, halo_size
+using Oceananigans.Fields: location
+using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset, fill_west_and_east_halo!,
+    fill_south_and_north_halo!
 using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs...)
     grid = field.grid
-    Nz_grid = grid.Nz
 
     Nx, Ny, Nz = size(field)
-    Hx, Hy, _ = halo_size(grid)
+    Hx, Hy, Hz = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
-
-    # Remove all this
-    if Nz == 1 && first.(axes(field[1].data))[3] == Nz_grid + 1 # take ssh into consideration
-        kernel_parameters = KernelParameters((Nc, 1), (0, Nz_grid))
-    else
-        kernel_parameters = KernelParameters((Nc, Nz), (0, 0))
-    end
-    # Till here
 
     multiregion_field = Reference(field.data.regional_objects)
     region = Iterate(1:6)
 
     @apply_regionally begin
-        # sz = Oceananigans.BoundaryConditions.fill_halo_size(.....) # to get the size of the halo regions including windowed fields
-        # of = Oceananigans.BoundaryConditions.fill_halo_offset(.....) # to get the size of the halo regions including windowed fields
-        # params = KernelParameters(sz, of) # see fill_halo_event! in `BoundaryConditions/fill_halo_regions.jl`
+        sz = fill_halo_size(field.data, fill_west_and_east_halo!, (Any, field.indices[2], field.indices[3]),
+                            location(field), grid)
+        of = fill_halo_offset(sz, fill_west_and_east_halo!, (Any, field.indices[2], field.indices[3]))
+        kernel_parameters = KernelParameters(sz, of)
+
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_field_east_west_halo_regions!, field, multiregion_field, region,
                 grid.connectivity.connections, Nc, Hc)
     end
 
     @apply_regionally begin
+        sz = fill_halo_size(field.data, fill_south_and_north_halo!, (field.indices[1], Any, field.indices[3]),
+                            location(field), grid)
+        of = fill_halo_offset(sz, fill_south_and_north_halo!, (field.indices[1], Any, field.indices[3]))
+        kernel_parameters = KernelParameters(sz, of)
+
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_field_north_south_halo_regions!, field, multiregion_field, region,
                 grid.connectivity.connections, Nc, Hc)
@@ -359,10 +362,9 @@ end
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
-    Nz_grid = grid.Nz
 
     Nx, Ny, Nz = size(field_1)
-    Hx, Hy, _ = halo_size(grid)
+    Hx, Hy, Hz = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
@@ -373,19 +375,23 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     multiregion_field_2 = Reference(field_2.data.regional_objects)
     region = Iterate(1:6)
 
-    if Nz == 1 && first.(axes(field_1[1].data))[3] == Nz_grid # take barotropic velocities into consideration
-        kernel_parameters = KernelParameters((Nc, 1), (0, Nz_grid-1))
-    else
-        kernel_parameters = KernelParameters((Nc, Nz), (0, 0))
-    end
-
     @apply_regionally begin
+        sz = fill_halo_size(field_1.data, fill_west_and_east_halo!, (Any, field_1.indices[2], field_1.indices[3]),
+                            location(field_1), grid)
+        of = fill_halo_offset(sz, fill_west_and_east_halo!, (Any, field_1.indices[2], field_1.indices[3]))
+        kernel_parameters = KernelParameters(sz, of)
+
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
+        sz = fill_halo_size(field_1.data, fill_south_and_north_halo!, (field_1.indices[1], Any, field_1.indices[3]),
+                            location(field_1), grid)
+        of = fill_halo_offset(sz, fill_south_and_north_halo!, (field_1.indices[1], Any, field_1.indices[3]))
+        kernel_parameters = KernelParameters(sz, of)
+
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
@@ -393,21 +399,24 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
 
     #=
     Add one valid field_1, field_2 value next to the corner, that allows us to compute vorticity on a wider stencil
-    (e.g., vort3(0,1) & (1,0)).
+    (e.g., ζ[0, 1, k] and ζ[1, 0, k]).
     =#
-
-    if Nz == 1 && first.(axes(field_1[1].data))[3] == Nz_grid # take barotropic velocities into consideration
-        kernel_parameters = KernelParameters((1, 1), (Nz_grid-1, 0))
-    else
-        kernel_parameters = KernelParameters((Nz, 1), (0, 0))
-    end
 
     if Hc > 1
         @apply_regionally begin
+            sz = Nz
+            of = field_1.indices[3] == Colon() ? 0 : first(field_1.indices[3])-1
+            kernel_parameters = KernelParameters(sz, of)
+
             launch!(grid.architecture, grid, kernel_parameters,
                     _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
         end
+
         @apply_regionally begin
+            sz = Nz
+            of = field_1.indices[3] == Colon() ? 0 : first(field_1.indices[3])-1
+            kernel_parameters = KernelParameters(sz, of)
+
             launch!(grid.architecture, grid, kernel_parameters,
                     _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
         end
@@ -537,7 +546,7 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
 end
 
 @kernel function _fill_cubed_sphere_face_center_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k, _ = @index(Global, NTuple)
+    k = @index(Global, Linear)
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -569,7 +578,7 @@ end
 end
 
 @kernel function _fill_cubed_sphere_center_face_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k, _ = @index(Global, NTuple)
+    k = @index(Global, Linear)
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
