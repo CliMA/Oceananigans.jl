@@ -17,7 +17,7 @@ function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velociti
     u, v, w = velocities
     @apply_regionally compute_barotropic_mode!(barotropic_velocities.U,
                                                barotropic_velocities.V,
-                                               grid, u, v, sefs.η)
+                                               grid, u, v)
 
     fill_halo_regions!((barotropic_velocities.U, barotropic_velocities.V))
     fill_halo_regions!(sefs.η)
