@@ -1,5 +1,4 @@
 using Adapt
-using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size, rnode
