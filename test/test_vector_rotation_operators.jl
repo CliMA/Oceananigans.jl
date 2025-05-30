@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using Statistics: mean
 using Oceananigans.Operators
-using Random
 
 # To be used in the test below as `KernelFunctionOperation`s
 @inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
@@ -32,7 +31,6 @@ function test_vector_rotation(grid)
     x₂ = CenterField(grid)
     y₂ = CenterField(grid)
 
-    Random.seed!(1234)
     set!(x₁, (x, y, z) -> rand())
     set!(y₁, (x, y, z) -> rand())
     set!(x₂, (x, y, z) -> rand())

@@ -36,7 +36,7 @@ CUDA.allowscalar() do
             include("test_grids.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
-            # include("test_vector_rotation_operators.jl")
+            include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_regrid.jl")
