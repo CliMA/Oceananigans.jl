@@ -80,12 +80,17 @@ function interpolation_operator(::Nothing, to)
     return getglobal(@__MODULE__, identity)
 end
 
-assumed_field_location(name) = name === :u  ? (Face, Center, Center) :
-                               name === :v  ? (Center, Face, Center) :
-                               name === :w  ? (Center, Center, Face) :
-                               name === :uh ? (Face, Center, Center) :
-                               name === :vh ? (Center, Face, Center) :
-                                              (Center, Center, Center)
+function assumed_field_location(name)
+    name === :u  && return (Face, Center, Center)
+    name === :uh && return (Face, Center, Center)
+    name === :ρu && return (Face, Center, Center)
+    name === :v  && return (Center, Face, Center)
+    name === :vh && return (Center, Face, Center)
+    name === :ρv && return (Center, Face, Center)
+    name === :w  && return (Center, Center, Face)
+    name === :ρw && return (Center, Center, Face)
+    return (Center, Center, Center)
+end
 
 """
     index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
