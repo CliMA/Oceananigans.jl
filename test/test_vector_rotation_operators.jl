@@ -2,6 +2,8 @@ include("dependencies_for_runtests.jl")
 
 using Statistics: mean
 using Oceananigans.Operators
+using Oceananigans.Operators: rotation_matrix
+using Oceananigans.Grids: haversine
 
 # To be used in the test below as `KernelFunctionOperation`s
 @inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
@@ -76,6 +78,41 @@ function test_vector_rotation(grid)
 end
 
 @testset "Vector rotation" begin
+    # Build a custom grid that is rotated by 60 degrees
+    # and test that the rotation matrix is correct.
+    if arch isa CPU
+        grid = OrthogonalSphericalShellGrid(; size=(4, 4, 1), z=(0, 1), radius=1, conformal_mapping=nothing)
+        
+        # This is not really correct we are removing the lat-lon stretching factor,
+        # but computing the spacings like this leads to a grid with exactly 1m spacing every one degree.
+        # We use this to test that the grid is rotated by 60 degrees from the vertical -> i.e. a 60 degree
+        # clockwise rotation.
+        fill!(grid.Δxᶜᶠᵃ, 1)
+        fill!(grid.Δyᶜᶠᵃ, 1)
+
+        angles = [-22.5, 30, 45, 60]
+        
+        # We build a grid that is rotated by θᵢ degrees clockwise from the vertical.
+        for θᵢ in angles
+            sinθ = sind(θᵢ)
+            cosθ = cosd(θᵢ)
+
+            for i in 1:6, j in 1:6
+                grid.λᶠᶠᵃ[1, j, 1] =   (i-1) * cosθ + (j-1) * sinθ
+                grid.φᶠᶠᵃ[i, j, 1] = - (i-1) * sinθ + (j-1) * cosθ
+            end
+
+            λᶠᶠᵃ = grid.λᶠᶠᵃ
+            φᶠᶠᵃ = grid.φᶠᶠᵃ
+
+            for i in 1:3, j in 1:3
+                cosθ, sinθ = rotation_matrix(i, j, grid)
+                θ = atand(sinθ / cosθ)
+                @test θ ≈ θᵢ
+            end
+        end
+    end
+
     for arch in archs
         @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
