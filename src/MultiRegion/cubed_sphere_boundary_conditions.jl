@@ -20,9 +20,8 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
     region = Iterate(1:6)
 
     @apply_regionally begin
-        sz = fill_halo_size(field.data, fill_west_and_east_halo!, (Any, field.indices[2], field.indices[3]),
-                            location(field), grid)
-        of = fill_halo_offset(sz, fill_west_and_east_halo!, (Any, field.indices[2], field.indices[3]))
+        sz = fill_halo_size(field.data, fill_west_and_east_halo!, field.indices, location(field), grid)
+        of = fill_halo_offset(sz, fill_west_and_east_halo!, field.indices)
         kernel_parameters = KernelParameters(sz, of)
 
         launch!(grid.architecture, grid, kernel_parameters,
@@ -31,9 +30,8 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
     end
 
     @apply_regionally begin
-        sz = fill_halo_size(field.data, fill_south_and_north_halo!, (field.indices[1], Any, field.indices[3]),
-                            location(field), grid)
-        of = fill_halo_offset(sz, fill_south_and_north_halo!, (field.indices[1], Any, field.indices[3]))
+        sz = fill_halo_size(field.data, fill_south_and_north_halo!, field.indices, location(field), grid)
+        of = fill_halo_offset(sz, fill_south_and_north_halo!, field.indices)
         kernel_parameters = KernelParameters(sz, of)
 
         launch!(grid.architecture, grid, kernel_parameters,
@@ -359,6 +357,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     end
 end
 
+@inline vertical_offset(::Tuple{<:Any, <:Any, <:Colon}) = 0
+@inline vertical_offset(indices) = first(indices[3]) - 1
+
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
@@ -376,9 +377,8 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        sz = fill_halo_size(field_1.data, fill_west_and_east_halo!, (Any, field_1.indices[2], field_1.indices[3]),
-                            location(field_1), grid)
-        of = fill_halo_offset(sz, fill_west_and_east_halo!, (Any, field_1.indices[2], field_1.indices[3]))
+        sz = fill_halo_size(field_1.data, fill_west_and_east_halo!, field_1.indices, location(field_1), grid)
+        of = fill_halo_offset(sz, fill_west_and_east_halo!, field_1.indices)
         kernel_parameters = KernelParameters(sz, of)
 
         launch!(grid.architecture, grid, kernel_parameters,
@@ -387,9 +387,8 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     end
 
     @apply_regionally begin
-        sz = fill_halo_size(field_1.data, fill_south_and_north_halo!, (field_1.indices[1], Any, field_1.indices[3]),
-                            location(field_1), grid)
-        of = fill_halo_offset(sz, fill_south_and_north_halo!, (field_1.indices[1], Any, field_1.indices[3]))
+        sz = fill_halo_size(field_1.data, fill_south_and_north_halo!, field_1.indices, location(field_1), grid)
+        of = fill_halo_offset(sz, fill_south_and_north_halo!, field_1.indices)
         kernel_parameters = KernelParameters(sz, of)
 
         launch!(grid.architecture, grid, kernel_parameters,
@@ -404,18 +403,16 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
 
     if Hc > 1
         @apply_regionally begin
-            sz = Nz
-            of = field_1.indices[3] == Colon() ? 0 : first(field_1.indices[3])-1
-            kernel_parameters = KernelParameters(sz, of)
+            of = vertical_offset(field_1.indices)
+            kernel_parameters = KernelParameters(Nz, of)
 
             launch!(grid.architecture, grid, kernel_parameters,
                     _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
         end
 
         @apply_regionally begin
-            sz = Nz
-            of = field_1.indices[3] == Colon() ? 0 : first(field_1.indices[3])-1
-            kernel_parameters = KernelParameters(sz, of)
+            of = vertical_offset(field_1.indices)
+            kernel_parameters = KernelParameters(Nz, of)
 
             launch!(grid.architecture, grid, kernel_parameters,
                     _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
