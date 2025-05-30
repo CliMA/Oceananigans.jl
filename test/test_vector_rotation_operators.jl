@@ -84,7 +84,7 @@ end
             if arch isa CPU
                 @info "  Testing the calculation of the rotation angle between the Intrinsic and Extrinsic reference frame"
 
-                # Build a custom grid that is rotated by θᵢ degrees clockwise from the vertical
+                # Build a custom grid that is rotated by θᵢ degrees _clockwise_ from the vertical
                 # and test that the rotation_angle is computed correctly.
 
                 # Since we want to test the rotation angle, we build a grid with coordinates
@@ -130,8 +130,10 @@ end
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
             cubed_sphere_grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
             tripolar_grid = TripolarGrid(arch; size = (40, 40, 1), z=(-1, 0))
-            test_vector_rotation(cubed_sphere_grid)
-            test_vector_rotation(tripolar_grid)
+
+            for grid in (cubed_sphere_grid, tripolar_grid)
+                test_vector_rotation(grid)
+            end
         end
     end
 end
