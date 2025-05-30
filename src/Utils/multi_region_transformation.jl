@@ -225,6 +225,11 @@ macro apply_regionally(expr)
             Nret = length(expr.args[1].args)
         end
         exp = expr.args[2]
+        if exp isa Symbol # It is not a function call! Just a variable assignment
+            return quote
+                $ret = $(esc(exp))
+            end
+        end
         func = exp.args[1]
         args = exp.args[2:end]
         multi_region = quote
