@@ -3,23 +3,25 @@ using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Utils: prettysummary
 using Statistics: norm, dot
 using LinearAlgebra
+using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: architecture
 
 mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P}
-    architecture :: A
-    grid :: G
-    linear_operation! :: L
-    reltol :: T
-    abstol :: T
-    maxiter :: Int
-    iteration :: Int
-    ρⁱ⁻¹ :: T
+               architecture :: A
+                       grid :: G
+          linear_operation! :: L
+                     reltol :: T
+                     abstol :: T
+                    maxiter :: Int
+                  iteration :: Int
+                       ρⁱ⁻¹ :: T
     linear_operator_product :: F
-    search_direction :: F
-    residual :: F
-    preconditioner :: M
-    preconditioner_product :: P
+           search_direction :: F
+                   residual :: F
+             preconditioner :: M
+     preconditioner_product :: P
+    enforce_gauge_condition :: Bool
 end
 
 architecture(solver::ConjugateGradientSolver) = solver.architecture
@@ -78,7 +80,8 @@ function ConjugateGradientSolver(linear_operation;
                                  maxiter = prod(size(template_field)),
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
-                                 preconditioner = nothing)
+                                 preconditioner = nothing, 
+                                 enforce_gauge_condition = false)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -105,7 +108,8 @@ function ConjugateGradientSolver(linear_operation;
                                    search_direction,
                                    residual,
                                    preconditioner,
-                                   precondition_product)
+                                   precondition_product,
+                                   enforce_gauge_condition)
 end
 
 """
@@ -202,7 +206,7 @@ function iterate!(x, solver, b, args...)
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
 
-    @apply_regionally update_solution_and_residuals!(x, r, q, p, α)
+    @apply_regionally update_solution_and_residuals!(x, r, q, p, α, solver.enforce_gauge_condition)
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ
@@ -239,7 +243,13 @@ function perform_iteration!(q, p, ρ, z, solver, args...)
     return nothing
 end
 
-function update_solution_and_residuals!(x, r, q, p, α)
+@kernel function subtract_and_mask!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    a[i, j, k] = (a[i, j, k] - b) * active
+end
+
+function update_solution_and_residuals!(x, r, q, p, α, enforce_gauge_condition)
     xp = parent(x)
     rp = parent(r)
     qp = parent(q)
@@ -247,6 +257,17 @@ function update_solution_and_residuals!(x, r, q, p, α)
 
     xp .+= α .* pp
     rp .-= α .* qp
+
+    if enforce_gauge_condition
+        grid = r.grid
+        arch = architecture(grid)
+
+        mean_x = mean(x)
+        mean_r = mean(r)
+
+        launch!(arch, grid, :xyz, subtract_and_mask!, x, grid, mean_x)
+        launch!(arch, grid, :xyz, subtract_and_mask!, r, grid, mean_r)
+    end
 
     return nothing
 end
