@@ -245,7 +245,7 @@ set!(c, 1)
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
 ├── status: time=0.0
 └── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
 ```
 
 A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`.
@@ -296,7 +296,7 @@ conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # integrate o
 ├── operand: Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition cond (generic function with 1 method) over dims (1, 2)
 ├── status: time=0.0
 └── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=1.27516e14, min=1.27516e14, mean=1.27516e14
 ```
 
 Above we have attached a condition to the operand.
