@@ -372,7 +372,7 @@ const TBB = Union{typeof(fill_bottom_and_top_halo!), typeof(fill_bottom_halo!), 
 # Calculate kernel size for windowed fields. This code is only called when
 # one or more of the elements of `idx` is not Colon in the two direction perpendicular
 # to the halo region and `bc` is not `PeriodicBoundaryCondition`.
-@inline function fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid)
+@inline function fill_halo_size(c::OffsetArray, ::WEB, idx, loc, grid)
     @inbounds begin
         whole_y_halo = whole_halo(idx[2], loc[2])
         whole_z_halo = whole_halo(idx[3], loc[3])
@@ -387,7 +387,7 @@ const TBB = Union{typeof(fill_bottom_and_top_halo!), typeof(fill_bottom_halo!), 
     return (Sy, Sz)
 end
 
-@inline function fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid)
+@inline function fill_halo_size(c::OffsetArray, ::SNB, idx, loc, grid)
     @inbounds begin
         whole_x_halo = whole_halo(idx[1], loc[1])
         whole_z_halo = whole_halo(idx[3], loc[3])
@@ -402,7 +402,7 @@ end
     return (Sx, Sz)
 end
 
-@inline function fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid)
+@inline function fill_halo_size(c::OffsetArray, ::TBB, idx, loc, grid)
     @inbounds begin
         whole_x_halo = whole_halo(idx[1], loc[1])
         whole_y_halo = whole_halo(idx[2], loc[2])
