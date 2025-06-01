@@ -318,8 +318,8 @@ bₙ = @lift power_method_data[$n].b
 
 σₙ = @lift [(i-1, i==1 ? NaN : growth_rates[i-1]) for i in 1:$n]
 
-ω_lims = @lift (-maximum(abs, power_method_data[$n].ω) - 1e-16, maximum(abs, power_method_data[$n].ω) + 1e-16)
-b_lims = @lift (-maximum(abs, power_method_data[$n].b) - 1e-16, maximum(abs, power_method_data[$n].b) + 1e-16)
+ω_lims = @lift (-maximum(abs, power_method_data[$n].ω), maximum(abs, power_method_data[$n].ω))
+b_lims = @lift (-maximum(abs, power_method_data[$n].b), maximum(abs, power_method_data[$n].b))
 
 hm_ω = heatmap!(ax_ω, ωₙ; colorrange = ω_lims, colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
@@ -427,8 +427,8 @@ ax_KE = Axis(fig[3, :];
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-ω_lims = @lift (-maximum(abs, ω_timeseries[$n]) - 1e-16, maximum(abs, ω_timeseries[$n]) + 1e-16)
-b_lims = @lift (-maximum(abs, b_timeseries[$n]) - 1e-16, maximum(abs, b_timeseries[$n]) + 1e-16)
+ω_lims = @lift (-maximum(abs, ω_timeseries[$n]), maximum(abs, ω_timeseries[$n]))
+b_lims = @lift (-maximum(abs, b_timeseries[$n]), maximum(abs, b_timeseries[$n]))
 
 hm_ω = heatmap!(ax_ω, ωₙ; colorrange = ω_lims, colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
