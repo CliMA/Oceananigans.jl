@@ -107,16 +107,6 @@ julia> density_field = Field(density_operation)
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
 └── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> compute!(density_field)
-1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-├── operand: KernelFunctionOperation at (Center, Center, Center)
-├── status: time=0.0
-└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
     └── max=1032.38, min=1027.73, mean=1030.06
 ```
 
