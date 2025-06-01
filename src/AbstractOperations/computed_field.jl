@@ -32,11 +32,11 @@ Keyword arguments
 
 `recompute_safely` (`Bool`): Whether or not to _always_ "recompute" `f` if `f` is
                              nested within another computation via an `AbstractOperation` or `FunctionField`.
-                             If `data` is not provided then `recompute_safely=false` and
+                             If `data` is not provided then `recompute_safely = false` and
                              recomputation is _avoided_. If `data` is provided, then
                              `recompute_safely = true` by default.
 
-`compute`: If `true`, `compute!`, `Field` during construction, otherwise if `false`, initialize with zeros.
+`compute`: If `true`, `compute!` the `Field` during construction, otherwise if `false`, initialize with zeros.
            Default: `true`.
 """
 function Field(operand::OperationOrFunctionField;
@@ -69,9 +69,10 @@ function Field(operand::OperationOrFunctionField;
 end
 
 """
-    compute!(comp::ComputedField)
+    compute!(comp::ComputedField, time=nothing)
 
 Compute `comp.operand` and store the result in `comp.data`.
+If `time` then computation happens if `time != field.status.time`.
 """
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
