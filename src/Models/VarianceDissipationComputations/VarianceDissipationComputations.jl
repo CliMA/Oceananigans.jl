@@ -11,8 +11,7 @@ using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
-                                 RungeKutta3TimeStepper,
-                                 SplitRungeKutta3TimeStepper
+                                 RungeKutta3TimeStepper
 
 using Oceananigans.TurbulenceClosures: viscosity,
                                        diffusivity,
