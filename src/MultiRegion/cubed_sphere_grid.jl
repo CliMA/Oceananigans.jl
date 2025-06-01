@@ -276,12 +276,12 @@ end
 function fill_halo_regions!(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     Nx, Ny, Nz = size(grid)
 
-    λᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
-    φᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
-    Azᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    λᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
-    φᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
-    Azᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    λᶜᶜᵃ  = Field((Center, Center, Nothing), grid, indices = (:, :, 1:1))
+    φᶜᶜᵃ  = Field((Center, Center, Nothing), grid, indices = (:, :, 1:1))
+    Azᶜᶜᵃ = Field((Center, Center, Nothing), grid, indices = (:, :, 1:1))
+    λᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid, indices = (:, :, 1:1))
+    φᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid, indices = (:, :, 1:1))
+    Azᶠᶠᵃ = Field((Face,   Face,   Nothing), grid, indices = (:, :, 1:1))
 
     for (field, name) in zip(( λᶜᶜᵃ, φᶜᶜᵃ,   Azᶜᶜᵃ,  λᶠᶠᵃ,  φᶠᶠᵃ,  Azᶠᶠᵃ),
                              (:λᶜᶜᵃ, :φᶜᶜᵃ, :Azᶜᶜᵃ, :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ))
@@ -299,24 +299,24 @@ function fill_halo_regions!(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
         end
     end
 
-    Δxᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    Δxᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
-    Δyᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
-    λᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
-    φᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
-    Azᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
-    Δxᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    Δxᶜᶜᵃ = Field((Center, Center, Nothing), grid, indices = (:, :, 1:1))
+    Δxᶠᶜᵃ = Field((Face,   Center, Nothing), grid, indices = (:, :, 1:1))
+    Δyᶠᶜᵃ = Field((Face,   Center, Nothing), grid, indices = (:, :, 1:1))
+    λᶠᶜᵃ  = Field((Face,   Center, Nothing), grid, indices = (:, :, 1:1))
+    φᶠᶜᵃ  = Field((Face,   Center, Nothing), grid, indices = (:, :, 1:1))
+    Azᶠᶜᵃ = Field((Face,   Center, Nothing), grid, indices = (:, :, 1:1))
+    Δxᶠᶠᵃ = Field((Face,   Face,   Nothing), grid, indices = (:, :, 1:1))
 
     fields₁ = ( Δxᶜᶜᵃ,   Δxᶠᶜᵃ,   Δyᶠᶜᵃ,   λᶠᶜᵃ,    φᶠᶜᵃ,    Azᶠᶜᵃ ,  Δxᶠᶠᵃ)
     names₁  = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
 
-    Δyᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    Δyᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
-    Δxᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
-    λᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
-    φᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
-    Azᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
-    Δyᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    Δyᶜᶜᵃ = Field((Center, Center, Nothing), grid, indices = (:, :, 1:1))
+    Δyᶜᶠᵃ = Field((Center, Face,   Nothing), grid, indices = (:, :, 1:1))
+    Δxᶜᶠᵃ = Field((Center, Face,   Nothing), grid, indices = (:, :, 1:1))
+    λᶜᶠᵃ  = Field((Center, Face,   Nothing), grid, indices = (:, :, 1:1))
+    φᶜᶠᵃ  = Field((Center, Face,   Nothing), grid, indices = (:, :, 1:1))
+    Azᶜᶠᵃ = Field((Center, Face,   Nothing), grid, indices = (:, :, 1:1))
+    Δyᶠᶠᵃ = Field((Face,   Face,   Nothing), grid, indices = (:, :, 1:1))
 
     fields₂ = ( Δyᶜᶜᵃ,   Δyᶜᶠᵃ,   Δxᶜᶠᵃ,   λᶜᶠᵃ,    φᶜᶠᵃ,    Azᶜᶠᵃ ,  Δyᶠᶠᵃ)
     names₂  = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ , :Δyᶠᶠᵃ)

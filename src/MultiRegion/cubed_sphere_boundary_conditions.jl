@@ -1,6 +1,4 @@
 
-using Oceananigans.Grids: size, halo_size
-using Oceananigans.Fields: location
 using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset, fill_west_and_east_halo!,
     fill_south_and_north_halo!
 using Oceananigans.MultiRegion: number_of_regions
@@ -20,7 +18,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
     region = Iterate(1:6)
 
     @apply_regionally begin
-        sz = fill_halo_size(field.data, fill_west_and_east_halo!, field.indices, location(field), grid)
+        sz = fill_halo_size(field.data, fill_west_and_east_halo!, field.indices, topology(grid, 1), location(field), grid)
         of = fill_halo_offset(sz, fill_west_and_east_halo!, field.indices)
         kernel_parameters = KernelParameters(sz, of)
 
@@ -30,7 +28,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
     end
 
     @apply_regionally begin
-        sz = fill_halo_size(field.data, fill_south_and_north_halo!, field.indices, location(field), grid)
+        sz = fill_halo_size(field.data, fill_south_and_north_halo!, field.indices, topology(grid, 2), location(field), grid)
         of = fill_halo_offset(sz, fill_south_and_north_halo!, field.indices)
         kernel_parameters = KernelParameters(sz, of)
 
@@ -377,7 +375,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        sz = fill_halo_size(field_1.data, fill_west_and_east_halo!, field_1.indices, location(field_1), grid)
+        sz = fill_halo_size(field_1.data, fill_west_and_east_halo!, field_1.indices, topology(grid, 1), location(field_1), grid)
         of = fill_halo_offset(sz, fill_west_and_east_halo!, field_1.indices)
         kernel_parameters = KernelParameters(sz, of)
 
@@ -387,7 +385,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     end
 
     @apply_regionally begin
-        sz = fill_halo_size(field_1.data, fill_south_and_north_halo!, field_1.indices, location(field_1), grid)
+        sz = fill_halo_size(field_1.data, fill_south_and_north_halo!, field_1.indices, topology(grid, 2), location(field_1), grid)
         of = fill_halo_offset(sz, fill_south_and_north_halo!, field_1.indices)
         kernel_parameters = KernelParameters(sz, of)
 
