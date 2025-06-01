@@ -307,7 +307,7 @@ n = Observable(1)
 
 fig = Figure(size=(800, 600))
 
-kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+kwargs = (xlabel="x", ylabel="z", limits = ((-5, 5), (-5, 5)), aspect=1)
 
 ω_title(t) = t === nothing ? @sprintf("vorticity") : @sprintf("vorticity at t = %.2f", t)
 b_title(t) = t === nothing ? @sprintf("buoyancy")  : @sprintf("buoyancy at t = %.2f", t)
@@ -410,8 +410,8 @@ t_final = times[end]
 
 n = Observable(1)
 
-ωₙ = @lift interior(ω_timeseries, :, 1, :, $n)
-bₙ = @lift interior(b_timeseries, :, 1, :, $n)
+ωₙ = @lift view(ω_timeseries[$n], :, 1, :)
+bₙ = @lift view(b_timeseries[$n], :, 1, :)
 
 fig = Figure(size=(800, 600))
 
@@ -430,13 +430,13 @@ ax_KE = Axis(fig[3, :];
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-ω_lims = @lift (-maximum(abs, interior(ω_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(ω_timeseries, :, 1, :, $n)) + 1e-16)
-b_lims = @lift (-maximum(abs, interior(b_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(b_timeseries, :, 1, :, $n)) + 1e-16)
+ω_lims = @lift (-maximum(abs, ω_timeseries[$n]) - 1e-16, maximum(abs, ω_timeseries[$n]) + 1e-16)
+b_lims = @lift (-maximum(abs, b_timeseries[$n]) - 1e-16, maximum(abs, b_timeseries[$n]) + 1e-16)
 
-hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+hm_ω = heatmap!(ax_ω, ωₙ; colorrange = ω_lims, colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+hm_b = heatmap!(ax_b, bₙ; colorrange = b_lims, colormap = :balance)
 Colorbar(fig[2, 4], hm_b)
 
 tₙ = @lift times[1:$n]
@@ -469,12 +469,12 @@ nothing #hide
 # And then the same for total vorticity & buoyancy of the fluid.
 n = Observable(1)
 
-Ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
-Bₙ = @lift interior(B_timeseries, :, 1, :, $n)
+Ωₙ = @lift view(Ω_timeseries[$n], :, 1, :)
+Bₙ = @lift view(B_timeseries[$n], :, 1, :)
 
 fig = Figure(size=(800, 600))
 
-kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+kwargs = (xlabel="x", ylabel="z", limits = ((-5, 5), (-5, 5)), aspect=1)
 
 title = @lift @sprintf("t = %.2f", times[$n])
 
@@ -489,10 +489,10 @@ ax_KE = Axis(fig[3, :];
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-hm_Ω = heatmap!(ax_Ω, xω, zω, Ωₙ; colorrange = (-1, 1), colormap = :balance)
+hm_Ω = heatmap!(ax_Ω, Ωₙ; colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_Ω)
 
-hm_B = heatmap!(ax_B, xb, zb, Bₙ; colorrange = (-0.05, 0.05), colormap = :balance)
+hm_B = heatmap!(ax_B, Bₙ; colorrange = (-0.05, 0.05), colormap = :balance)
 Colorbar(fig[2, 4], hm_B)
 
 tₙ = @lift times[1:$n]
