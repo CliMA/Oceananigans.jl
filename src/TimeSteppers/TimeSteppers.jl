@@ -3,7 +3,6 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
-    SplitRungeKutta3TimeStepper,
     time_step!,
     Clock,
     tendencies
