@@ -1,5 +1,6 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
+# using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear, halo_size
@@ -53,7 +54,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
     Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
-    fill_halos_regions!((Ax, Ay); signed=false)
+    fill_halo_regions!((Ax, Ay); signed=false)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
