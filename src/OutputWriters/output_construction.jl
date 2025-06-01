@@ -54,7 +54,11 @@ end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
     indices = output_indices(user_output, grid, user_indices, with_halos)
-    return Field(user_output; indices)
+
+    # Don't compute AbstractOperations or Reductions
+    additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)
+
+    return Field(user_output; indices, additional_kw...)
 end
 
 #####
