@@ -145,7 +145,7 @@ model = NonhydrostaticModel(; grid,
                             buoyancy = BuoyancyTracer(),
                             tracers = :b)
 
-# We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow furtherdown:
+# We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow further down:
 # viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point
 # it becomes nonlinear.
 
@@ -251,7 +251,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
     σ = []
     power_method_data = []
     compute!(ω)
-    push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=deepcopy(view(ω, :, 1, :)), b=deepcopy(view(b, :, 1, :)), σ=deepcopy(σ)))
 
     while convergence(σ) > convergence_criterion
         compute!(energy)
@@ -265,7 +265,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
         compute!(ω)
         rescale!(simulation.model, energy)
-        push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
+        push!(power_method_data, (ω=deepcopy(view(ω, :, 1, :)), b=deepcopy(view(b, :, 1, :)), σ=deepcopy(σ)))
     end
 
     return σ, power_method_data
@@ -280,9 +280,6 @@ u, v, w = model.velocities
 b = model.tracers.b
 
 perturbation_vorticity = Field(∂z(u) - ∂x(w))
-
-xω, yω, zω = nodes(perturbation_vorticity)
-xb, yb, zb = nodes(b)
 
 # # Rev your engines...
 #
@@ -324,10 +321,10 @@ bₙ = @lift power_method_data[$n].b
 ω_lims = @lift (-maximum(abs, power_method_data[$n].ω) - 1e-16, maximum(abs, power_method_data[$n].ω) + 1e-16)
 b_lims = @lift (-maximum(abs, power_method_data[$n].b) - 1e-16, maximum(abs, power_method_data[$n].b) + 1e-16)
 
-hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+hm_ω = heatmap!(ax_ω, ωₙ; colorrange = ω_lims, colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+hm_b = heatmap!(ax_b, bₙ; colorrange = b_lims, colormap = :balance)
 Colorbar(fig[2, 4], hm_b)
 
 eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
@@ -345,7 +342,7 @@ scatter!(ax_σ, σₙ; color = :blue)
 frames = 1:length(power_method_data)
 
 record(fig, "powermethod.mp4", frames, framerate=1) do i
-       n[] = i
+    n[] = i
 end
 
 nothing #hide
@@ -415,7 +412,7 @@ bₙ = @lift view(b_timeseries[$n], :, 1, :)
 
 fig = Figure(size=(800, 600))
 
-kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+kwargs = (xlabel="x", ylabel="z", limits = ((-5, 5), (-5, 5)), aspect=1)
 
 title = @lift @sprintf("t = %.2f", times[$n])
 
