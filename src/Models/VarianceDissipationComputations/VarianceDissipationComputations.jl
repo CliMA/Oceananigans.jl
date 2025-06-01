@@ -10,8 +10,8 @@ using Oceananigans.Fields
 using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, 
-                                 RungeKutta3TimeStepper, 
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
+                                 RungeKutta3TimeStepper,
                                  SplitRungeKutta3TimeStepper
 
 using Oceananigans.TurbulenceClosures: viscosity,
@@ -80,7 +80,7 @@ Keyword Arguments
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref) 
+    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref)
     and a [`SplitRungeKutta3TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
