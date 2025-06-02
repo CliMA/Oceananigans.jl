@@ -37,7 +37,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravi
 
     Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
     Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
-    fill_halos_regions!((Ax, Ay); signed=false)
+    fill_halo_regions!((Ax, Ay); signed=false)
 
     arch = architecture(mrg)
     right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
