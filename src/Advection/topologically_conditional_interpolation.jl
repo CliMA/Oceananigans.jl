@@ -74,8 +74,8 @@ end
 # Separate High order advection from low order advection
 const HOADV = Union{WENO,
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
-                    Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...}
-const LOADV = Union{UpwindBiased{1}, Centered{1}}
+                    Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
+const LOADV = Union{UpwindBiased{1}, Centered{1}, MPData}
 
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
