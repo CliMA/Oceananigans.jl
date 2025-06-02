@@ -46,6 +46,12 @@ and `ζ³ = -5/12`.
 The state at the first substep is taken to be the one that corresponds to
 the ``n``-th timestep, `U¹ = Uⁿ`, and the state after the third substep is
 then the state at the `Uⁿ⁺¹ = U⁴`.
+
+References
+==========
+Le, H. and Moin, P. (1991). "An improvement of fractional step methods for the incompressible
+    Navier–Stokes equations." Journal of Computational Physics, 92, 369–379.
+
 """
 function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 implicit_solver::TI = nothing,
