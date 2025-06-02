@@ -95,30 +95,30 @@ end
 ##### A preconditioner based on the FFT solver
 #####
 
-@kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs)
+@kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs, grid)
     i, j, k = @index(Global, NTuple)
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k]
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
 end
 
 function compute_preconditioner_rhs!(solver::FFTBasedPoissonSolver, rhs)
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs)
+    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs, grid)
     return nothing
 end
 
@@ -133,10 +133,18 @@ end
 
 const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
 
-function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
+function precondition!(p, preconditioner::FFTBasedPoissonSolver, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     shift = - sqrt(eps(eltype(r))) # to make the operator strictly negative definite
     solve!(p, preconditioner, preconditioner.storage, shift)
+    p .*= -1
+
+    return p
+end
+
+function precondition!(p, preconditioner::FourierTridiagonalPoissonSolver, r, args...)
+    compute_preconditioner_rhs!(preconditioner, r)
+    solve!(p, preconditioner, preconditioner.storage)
     p .*= -1
 
     return p
