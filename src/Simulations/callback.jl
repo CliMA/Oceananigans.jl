@@ -36,7 +36,6 @@ which in turn does nothing by default.
 
 `finalize!` can be specialized on `callback.parameters`,
 or specialized for `callback.func`.
-`
 """
 finalize!(callback::Callback, sim) = finalize!(callback.func, sim)
 
@@ -55,7 +54,7 @@ If `isnothing(parameters)`, `func(sim::Simulation)` is called.
 Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
 
 The `callsite` determines where `Callback` is executed. The possible values for
-`callsite` are
+`callsite` are:
 
 * `TimeStepCallsite()`: after a time-step.
 
