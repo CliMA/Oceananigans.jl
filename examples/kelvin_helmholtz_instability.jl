@@ -251,7 +251,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
     σ = []
     power_method_data = []
     compute!(ω)
-    push!(power_method_data, (ω=deepcopy(view(ω, :, 1, :)), b=deepcopy(view(b, :, 1, :)), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=deepcopy(ω), b=deepcopy(b), σ=deepcopy(σ)))
 
     while convergence(σ) > convergence_criterion
         compute!(energy)
@@ -265,7 +265,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
         compute!(ω)
         rescale!(simulation.model, energy)
-        push!(power_method_data, (ω=deepcopy(view(ω, :, 1, :)), b=deepcopy(view(b, :, 1, :)), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=deepcopy(ω), b=deepcopy(b), σ=deepcopy(σ)))
     end
 
     return σ, power_method_data
@@ -407,8 +407,8 @@ t_final = times[end]
 
 n = Observable(1)
 
-ωₙ = @lift view(ω_timeseries[$n], :, 1, :)
-bₙ = @lift view(b_timeseries[$n], :, 1, :)
+ωₙ = @lift ω_timeseries[$n]
+bₙ = @lift b_timeseries[$n]
 
 fig = Figure(size=(800, 600))
 
@@ -466,8 +466,8 @@ nothing #hide
 # And then the same for total vorticity & buoyancy of the fluid.
 n = Observable(1)
 
-Ωₙ = @lift view(Ω_timeseries[$n], :, 1, :)
-Bₙ = @lift view(B_timeseries[$n], :, 1, :)
+Ωₙ = @lift Ω_timeseries[$n]
+Bₙ = @lift B_timeseries[$n]
 
 fig = Figure(size=(800, 600))
 
