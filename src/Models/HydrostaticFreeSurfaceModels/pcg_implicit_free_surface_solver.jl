@@ -1,6 +1,5 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
-# using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear, halo_size
