@@ -28,7 +28,7 @@ Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
 to the `prognostic_fields` can be modified via the optional `kwargs`.
 
-The scheme is described by [LeMoin1991](@citet). In a nutshel, the 3rd-order
+The scheme is described by [LeMoin1991](@citet). In a nutshell, the 3rd-order
 Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
 A pressure correction step is applied after at each substep.
 
