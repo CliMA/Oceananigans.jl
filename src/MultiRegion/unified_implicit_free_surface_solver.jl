@@ -67,9 +67,9 @@ build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrids, settings, gr
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrids, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
 build_implicit_step_solver(::Val{:Default}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
-    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
+    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration; signed=false)
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
-    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
+    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration; signed=false)
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use Matrix solvers with ConformalCubedSphereGrid!! Select :Default or :PreconditionedConjugateGradient as solver_method"))
 
