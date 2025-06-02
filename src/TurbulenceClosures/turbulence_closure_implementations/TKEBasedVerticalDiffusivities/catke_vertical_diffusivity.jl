@@ -100,6 +100,7 @@ Keyword arguments
 
 References
 ==========
+
 Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill,
     C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). "Formulation and calibration of CATKE,
     a one-equation parameterization for microscale ocean mixing." J. Adv. Model. Earth Sy., 17, e2024MS004522.
