@@ -1,11 +1,12 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
+using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
 
-import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.OutputWriters: write_output!
+import Oceananigans.Solvers: iteration
 
 default_progress(simulation) = nothing
 
@@ -27,7 +28,8 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
 end
 
 """
-    Simulation(model; Δt,
+    Simulation(model;
+               Δt,
                verbose = true,
                stop_iteration = Inf,
                stop_time = Inf,
@@ -42,12 +44,21 @@ Keyword arguments
 - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
         for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
 
-- `stop_iteration`: Stop the simulation after this many iterations.
+- `stop_iteration`: Stop the simulation after this many iterations. Default: `Inf`.
 
-- `stop_time`: Stop the simulation once this much model clock time has passed.
+- `stop_time`: Stop the simulation once this much model clock time has passed. Default: `Inf`.
 
 - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
-                     seconds of wall clock time.
+                     seconds of wall clock time. Default: `Inf`.
+
+- `align_time_step`: When `true` it implies that the simulation will automatically adjust the
+                     time-step to meet a constraint imposed by various schedules like `ScheduledTimes`,
+                     `TimeInterval`, `AveragedTimeInterval`, as well as a `stop_time` criterion.
+                     If `false`, i.e., no time-step alignment, then the simulation might blithely step passed
+                     the specified time. Default: `true`.
+                     By `align_time_step = false` we ensure that the time-step does _not_ change within
+                     `time_step!(simulation)`
+
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
                            Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
@@ -238,5 +249,7 @@ end
 #####
 
 # Fallback, to be elaborated on
-write_output!(writer, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::Checkpointer, sim::Simulation) = write_output!(writer, sim.model)
 
