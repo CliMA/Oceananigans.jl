@@ -80,7 +80,7 @@ on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(a
 function on_architecture(arch, ib::GridFittedBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
     arch_grid = on_architecture(arch, ib.bottom_height.grid)
-    new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
+    new_bottom_height = Field{Center, Center, Nothing}(arch_grid, indices = (:, :, 1:1))
     set!(new_bottom_height, ib.bottom_height)
     fill_halo_regions!(new_bottom_height)
     return GridFittedBottom(new_bottom_height, ib.immersed_condition)
@@ -97,7 +97,7 @@ top-most interface of the last ``immersed`` cell in the column. If `ib` is a `Gr
 `ib.mask` is a field of booleans that indicates whether a cell is immersed or not.
 """
 function materialize_immersed_boundary(grid, ib::GridFittedBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
+    bottom_field = Field{Center, Center, Nothing}(grid, indices = (:, :, 1:1))
     set!(bottom_field, ib.bottom_height)
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
