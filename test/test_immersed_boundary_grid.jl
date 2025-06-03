@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, xnode, ynode, znode
 using Oceananigans.Operators: Δx, Δy, Δz, volume
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition
 
 #####
 ##### Basic immersed boundary grid construction tests
@@ -214,6 +214,68 @@ function test_immersed_volume_calculation(FT, arch, boundary_type)
 end
 
 #####
+##### GridFittedBoundary tests
+#####
+
+function test_grid_fitted_boundary_with_function(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(2, 2, 1))
+
+    # Create a spherical immersed region
+    mask_function(x, y, z) = x^2 + y^2 + z^2 ≤ 0.25
+    ib = GridFittedBoundary(mask_function)
+    ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+
+    # Basic grid properties
+    @test architecture(ibg) === arch
+    @test eltype(ibg) === FT
+    @test size(ibg) == size(underlying_grid)
+    @test halo_size(ibg) == halo_size(underlying_grid)
+    @test topology(ibg) == topology(underlying_grid)
+
+    # Test that immersed boundary was materialized
+    @test ibg.immersed_boundary.mask isa Field
+    @test eltype(ibg.immersed_boundary.mask) === Bool
+
+    # Test immersed cell detection
+    for i in 1:4, j in 1:4, k in 1:4
+        x, y, z = xnode(i, j, k, ibg, Center(), Center(), Center()),
+                  ynode(i, j, k, ibg, Center(), Center(), Center()),
+                  znode(i, j, k, ibg, Center(), Center(), Center())
+        expected_immersed = mask_function(x, y, z)
+        @test _immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary) == expected_immersed
+    end
+
+    return nothing
+end
+
+function test_grid_fitted_boundary_with_array(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+
+    # Create a 3D mask array
+    Nx, Ny, Nz = size(underlying_grid)
+    mask_array = zeros(Bool, Nx, Ny, Nz)
+
+    # Mark center cell as immersed
+    mask_array[2, 2, 2] = true
+
+    ib = GridFittedBoundary(mask_array)
+    ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+
+    @test architecture(ibg) === arch
+    @test eltype(ibg) === FT
+    @test size(ibg) == size(underlying_grid)
+
+    # Test that the center cell is immersed
+    @test _immersed_cell(2, 2, 2, ibg.underlying_grid, ibg.immersed_boundary) == true
+
+    # Test that corner cells are not immersed
+    @test _immersed_cell(1, 1, 1, ibg.underlying_grid, ibg.immersed_boundary) == false
+    @test _immersed_cell(3, 3, 3, ibg.underlying_grid, ibg.immersed_boundary) == false
+
+    return nothing
+end
+
+#####
 ##### Show function tests
 #####
 
@@ -368,6 +430,17 @@ end
                     test_immersed_volume_calculation(FT, arch, boundary_type)
                     test_immersed_boundary_grid_nodes_and_spacings(FT, arch, boundary_type)
                 end
+            end
+        end
+    end
+
+    @testset "GridFittedBoundary" begin
+        @info "  Testing GridFittedBoundary..."
+
+        for arch in archs, FT in float_types
+            @testset "GridFittedBoundary [$FT, $(typeof(arch))]" begin
+                test_grid_fitted_boundary_with_function(FT, arch)
+                test_grid_fitted_boundary_with_array(FT, arch)
             end
         end
     end
