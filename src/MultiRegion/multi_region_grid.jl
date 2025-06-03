@@ -194,8 +194,15 @@ reconstruct_global_immersed_boundary(g::GridFittedBottom{<:Field})   =   GridFit
 reconstruct_global_immersed_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
 reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
 
-@inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), _getregion(mrg.immersed_boundary, r))
-@inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}( getregion(mrg.underlying_grid, r),  getregion(mrg.immersed_boundary, r))
+@inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), 
+                                                                                                                              _getregion(mrg.immersed_boundary, r),
+                                                                                                                              _getregion(mrg.interior_active_cells, r),
+                                                                                                                              _getregion(mrg.interior_active_cells_mask, r))
+
+@inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(getregion(mrg.underlying_grid, r),  
+                                                                                                                              getregion(mrg.immersed_boundary, r),
+                                                                                                                              getregion(mrg.interior_active_cells, r),
+                                                                                                                              getregion(mrg.interior_active_cells_mask, r))
 
 """
     multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
