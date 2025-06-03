@@ -20,9 +20,9 @@ struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, D, Arch} <: AbstractUnderlyi
         new{FT, TX, TY, TZ, CZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
 end
 
-const ImmersedMultiRegionGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiRegionGrid}
+const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid} 
 
-const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
+const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, ImmersedMultiRegionGrid{FT, TX, TY, TZ}}
 
 @inline isregional(mrg::MultiRegionGrids)       = true
 @inline getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
@@ -197,12 +197,12 @@ reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}) = GridFitte
 @inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), 
                                                                                                                               _getregion(mrg.immersed_boundary, r),
                                                                                                                               _getregion(mrg.interior_active_cells, r),
-                                                                                                                              _getregion(mrg.interior_active_cells_mask, r))
+                                                                                                                              _getregion(mrg.active_z_columns, r))
 
 @inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(getregion(mrg.underlying_grid, r),  
                                                                                                                               getregion(mrg.immersed_boundary, r),
                                                                                                                               getregion(mrg.interior_active_cells, r),
-                                                                                                                              getregion(mrg.interior_active_cells_mask, r))
+                                                                                                                              getregion(mrg.active_z_columns, r))
 
 """
     multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
@@ -245,10 +245,10 @@ function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) where 
     return MultiRegionGrid{FT, TX, TY, TZ, CZ}(CPU(), mrg.partition, mrg.connectivity, new_grids, devices)
 end
 
-Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
-Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+Base.show(io::IO, mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
