@@ -96,9 +96,8 @@ uh, vh, h = model.solution
 u = uh / h
 v = vh / h
 
-## Build and compute mean vorticity discretely
+## Build mean vorticity discretely
 ω = Field(∂x(v) - ∂y(u))
-compute!(ω)
 
 ## Copy mean vorticity to a new field
 ωⁱ = Field((Face, Face, Nothing), model.grid)

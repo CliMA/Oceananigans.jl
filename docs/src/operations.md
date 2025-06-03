@@ -245,26 +245,10 @@ set!(c, 1)
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
 ├── status: time=0.0
 └── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
 ```
 
 A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`.
-Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
-No computation has been done yet.
-To compute `∫c`, we call [`compute!`](@ref),
-
-```jldoctest operations_avg_int
-compute!(∫c)
-
-# output
-1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
-├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
-├── status: time=0.0
-└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
-    └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
-```
 
 Above we see that the max, min and mean of the field are all the same.
 Let's check that these values are what we expect:
@@ -296,15 +280,14 @@ conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # integrate o
 ├── operand: Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition cond (generic function with 1 method) over dims (1, 2)
 ├── status: time=0.0
 └── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=1.27516e14, min=1.27516e14, mean=1.27516e14
 ```
 
 Above we have attached a condition to the operand.
 Now the operand is applied only when the condition is true.
-Let's compute and see if we get 1/4 of the area of the sphere
+Let's see if that is 1/4 of the area of the sphere
 
 ```jldoctest operations_avg_int
-compute!(conditional_∫c)
 conditional_∫c[1, 1, 1] ≈ π * grid.radius^2 # area of spherical zone with 0ᵒ ≤ φ ≤ 30ᵒ
 
 # output
@@ -319,7 +302,6 @@ cond_array[:, 1:5, :] .= false # set the first half of the latitude range to fal
 
 conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond_array))
 
-compute!(conditional_∫c)
 conditional_∫c[1, 1, 1] ≈ π * grid.radius^2 # area of spherical zone with 0ᵒ ≤ φ ≤ 30ᵒ
 
 # output

@@ -43,6 +43,9 @@ See [`launch!`](@ref).
 """
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
+# If `size` and `offsets` are numbers, we convert them to tuples
+KernelParameters(s::Number, o::Number) = KernelParameters(tuple(s), tuple(o))
+
 """
     KernelParameters(range1, [range2, range3])
 
@@ -93,8 +96,8 @@ A `MappedFunction` is a wrapper around a function `func` of a kernel that is map
 The `index_map` is a one-dimensional `AbstractArray` where the elements are tuple of indices `(i, j, k, ....)`.
 
 A kernel launched over a `MappedFunction` **needs** to be launched with a one-dimensional **static** workgroup and worksize.
-If using `launch!` with a non-nothing `active_cells_map` keyword argument, the kernel function will be automatically wrapped 
-in a `MappedFunction` with `index_map = active_cells_map` and the resulting kernel will be launched with a 
+If using `launch!` with a non-nothing `active_cells_map` keyword argument, the kernel function will be automatically wrapped
+in a `MappedFunction` with `index_map = active_cells_map` and the resulting kernel will be launched with a
 one-dimensional workgroup and worksize equal  to the length of the `active_cells_map`.
 """
 struct MappedFunction{F, M} <: Function
@@ -219,25 +222,23 @@ end
                      exclude_periphery = false,
                      reduced_dimensions = (),
                      location = nothing,
-                     active_cells_map = nothing,
-                     only_local_halos = false,
-                     async = false)
+                     active_cells_map = nothing)
 
 Configure `kernel!` to launch over the `dims` of `grid` on
 the architecture `arch`.
 
-# Arguments
-============
+Arguments
+=========
 
 - `arch`: The architecture on which the kernel will be launched.
 - `grid`: The grid on which the kernel will be executed.
 - `workspec`: The workspec that defines the work distribution.
 - `kernel!`: The kernel function to be executed.
 
-# Keyword Arguments
-====================
+Keyword Arguments
+=================
 
-- `include_right_boundaries`: A boolean indicating whether to include right boundaries `(N + 1)`. Default is `false`.
+- `exclude_periphery`: A boolean indicating whether to exclude the periphery. Default is `false`.
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
@@ -275,7 +276,7 @@ end
     mf = MappedFunction(f, map)
     return Kernel{Dev, B, W, typeof(mf)}(dev, mf)
 end
-       
+
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
@@ -477,14 +478,14 @@ const MappedKernel{D} = Kernel{D, <:Any, <:Any, <:MappedFunction} where D
 @inline get_mapped_kernel_property(k, ::Val{:index_map}) = getfield(getfield(k, :f), :index_map)
 @inline get_mapped_kernel_property(k, ::Val{:f})         = getfield(getfield(k, :f), :func)
 
-Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} = 
+Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} =
     NDRange{N, B, W}(Adapt.adapt(to, ndrange.blocks), Adapt.adapt(to, ndrange.workitems))
 
-# Extending the partition function to include the index_map in NDRange: note that in this case the 
+# Extending the partition function to include the index_map in NDRange: note that in this case the
 # index_map takes the place of the DynamicWorkitems which we assume is not needed in static kernels
 function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
-    
+
     # Calculate the static NDRange and WorkgroupSize
     index_map = kernel.index_map
     range = length(index_map)
@@ -494,7 +495,7 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
 
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
-    
+
     iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(IndexMap(), index_map)
 
     return iterspace, dynamic
@@ -506,8 +507,8 @@ end
 
 const MappedCompilerMetadata{N, C} = CompilerMetadata{N, C, <:Any, <:Any, <:MappedNDRange} where {N<:StaticSize, C}
 
-Adapt.adapt_structure(to, cm::MappedCompilerMetadata{N, C}) where {N, C} = 
-    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex), 
+Adapt.adapt_structure(to, cm::MappedCompilerMetadata{N, C}) where {N, C} =
+    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex),
                            Adapt.adapt(to, cm.ndrange),
                            Adapt.adapt(to, cm.iterspace))
 
@@ -528,7 +529,7 @@ Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, groupidx
     return (gidx - 1) * stride + idx.I[1]
 end
 
-# To check whether the index is valid in the index map, we need to 
+# To check whether the index is valid in the index map, we need to
 # check whether the linear index is smaller than the size of the index map
 
 # CPU version, the index is passed explicitly

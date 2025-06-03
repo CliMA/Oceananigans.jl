@@ -121,5 +121,3 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            last_stage_Δt = clock.last_stage_Δt,
                                            iteration     = clock.iteration,
                                            stage         = clock.stage)
-
-

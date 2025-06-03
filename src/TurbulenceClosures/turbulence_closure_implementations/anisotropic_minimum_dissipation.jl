@@ -55,7 +55,7 @@ Keyword arguments
 
 * `Cκ`: Poincaré constant for tracer eddy diffusivities. If one number or function, the same
         number or function is applied to all tracers. If a `NamedTuple`, it must possess
-        a field specifying the Poncaré constant for every tracer.
+        a field specifying the Poincaré constant for every tracer.
 
 * `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@citet)).
         *Note*: that we _do not_ subtract the horizontally-average component before computing this
@@ -67,8 +67,8 @@ The default Poincaré constant is found by discretizing subgrid scale energy pro
 second-order advection scheme. [Verstappen14](@citet) show that the Poincaré constant
 should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3`
 in our formulation. They also empirically demonstrated that this coefficient produces the correct
-discrete production-dissipation balance. We further demonstrated this in
-https://github.com/CliMA/Oceananigans.jl/issues/4367.
+discrete production-dissipation balance. Further demonstration of this can be found at
+[https://github.com/CliMA/Oceananigans.jl/issues/4367](https://github.com/CliMA/Oceananigans.jl/issues/4367).
 
 `C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
 

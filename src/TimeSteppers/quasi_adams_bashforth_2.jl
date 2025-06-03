@@ -16,7 +16,7 @@ end
 
 Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
 on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to
-the prognostic_fields passed as positional argument, can be specified via  optional `kwargs`.
+the `prognostic_fields` that is passed as positional argument, can be specified via optional `kwargs`.
 
 The 2nd-order quasi Adams-Bashforth timestepper steps forward the state `Uⁿ` by `Δt` via
 

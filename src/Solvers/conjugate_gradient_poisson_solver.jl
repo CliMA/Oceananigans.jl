@@ -12,7 +12,7 @@ struct ConjugateGradientPoissonSolver{G, R, S}
     conjugate_gradient_solver :: S
 end
 
-architecture(solver::ConjugateGradientPoissonSolver) = architecture(cgps.grid)
+architecture(solver::ConjugateGradientPoissonSolver) = architecture(solver.grid)
 iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
 Base.summary(ips::ConjugateGradientPoissonSolver) =
