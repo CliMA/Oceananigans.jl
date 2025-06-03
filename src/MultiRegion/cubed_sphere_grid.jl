@@ -14,6 +14,9 @@ import Oceananigans.Grids: grid_name
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
+const ConformalCubedSphereGridOfSomeKind = Union{ConformalCubedSphereGrid, 
+                                                 ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}}
+
 
 """
     ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
