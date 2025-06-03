@@ -166,7 +166,7 @@ end
 end
 
 @inline function Δrᶜᶜᶠ(i, j, k, ibg::PCBIBG)
-    just_above_bottom = bottommost_active_node(i, j, k, c, c, f)
+    just_above_bottom = bottommost_active_node(i, j, k, ibg, c, c, f)
     rᶜ = rnode(i, j, k, ibg.underlying_grid, c, c, c)
     rᶠ = rnode(i, j, k, ibg.underlying_grid, c, c, f)
 
