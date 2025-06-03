@@ -154,7 +154,7 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
     grid = r.grid
     arch = architecture(p)
     fill_halo_regions!(r)
-    launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
+    launch!(arch, grid, size(grid), _diagonally_dominant_precondition!, p, grid, r)
 
     mean_p = mean(p)
     launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
