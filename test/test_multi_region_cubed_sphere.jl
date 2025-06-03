@@ -263,6 +263,32 @@ panel_sizes = ((8, 8, 1), (9, 9, 2))
     end
 end
 
+@testset "Immersed Cubed sphere construction" begin
+    for FT in float_types
+        for arch in archs
+            Nx, Ny, Nz = 10, 10, 10
+
+            @info "  Testing immersed cubed sphere grid [$FT, $(typeof(arch))]..."
+            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1)
+            
+            bottom(x, y) = abs(y) < 30 ? - grid.Lz - 1 : FT(0)
+
+            # Test that the grid is constructed correctly
+            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
+
+            for panel in 1:6
+                grid = getregion(grid, panel)
+
+                if panel == 3 || panel == 6 # North and South panels should be completely immersed
+                    @test isempty(grid.interior_active_cells_map)
+                else # Other panels should have some active cells
+                    @test !isempty(grid.interior_active_cells_map)
+                end
+            end
+        end
+    end
+end
+
 #=
 # TODO
 @testset "Testing conformal cubed sphere metric/coordinate halo filling" begin
