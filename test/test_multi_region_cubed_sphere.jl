@@ -280,9 +280,9 @@ end
                 grid = getregion(grid, panel)
 
                 if panel == 3 || panel == 6 # North and South panels should be completely immersed
-                    @test isempty(grid.interior_active_cells_map)
+                    @test isempty(grid.interior_active_cells)
                 else # Other panels should have some active cells
-                    @test !isempty(grid.interior_active_cells_map)
+                    @test !isempty(grid.interior_active_cells)
                 end
             end
         end
