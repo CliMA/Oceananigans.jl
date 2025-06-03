@@ -23,7 +23,7 @@ end
 architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
-function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravitational_acceleration::Number; multiple_devices = false)
+function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravitational_acceleration::Number; multiple_devices = false, kwargs...)
 
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
@@ -37,7 +37,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravi
 
     Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
     Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
-    fill_halo_regions!((Ax, Ay); signed=false)
+    fill_halo_regions!((Ax, Ay); kwargs...)
 
     arch = architecture(mrg)
     right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
