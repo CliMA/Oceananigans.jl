@@ -43,6 +43,23 @@ function compute_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
+@kernel function subtract_and_mask!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    a[i, j, k] = (a[i, j, k] - b) * active
+end
+
+function enforce_zero_mean_gauge!(x, r)
+    grid = r.grid
+    arch = architecture(grid)
+
+    mean_x = mean(x)
+    mean_r = mean(r)
+
+    launch!(arch, grid, :xyz, subtract_and_mask!, x, grid, mean_x)
+    launch!(arch, grid, :xyz, subtract_and_mask!, r, grid, mean_r)
+end
+
 struct DefaultPreconditioner end
 
 """
@@ -61,7 +78,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
-                                        enforce_gauge_condition = true,
+                                        enforce_gauge_condition! = enforce_zero_mean_gauge!,
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
@@ -79,7 +96,7 @@ function ConjugateGradientPoissonSolver(grid;
                                                         abstol,
                                                         preconditioner,
                                                         template_field = rhs,
-                                                        enforce_gauge_condition,
+                                                        # enforce_gauge_condition!,
                                                         kw...)
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)

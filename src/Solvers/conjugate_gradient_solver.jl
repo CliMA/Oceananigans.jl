@@ -7,21 +7,21 @@ using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: architecture
 
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P}
-               architecture :: A
-                       grid :: G
-          linear_operation! :: L
-                     reltol :: T
-                     abstol :: T
-                    maxiter :: Int
-                  iteration :: Int
-                       ρⁱ⁻¹ :: T
-    linear_operator_product :: F
-           search_direction :: F
-                   residual :: F
-             preconditioner :: M
-     preconditioner_product :: P
-    enforce_gauge_condition :: Bool
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
+                architecture :: A
+                        grid :: G
+           linear_operation! :: L
+                      reltol :: T
+                      abstol :: T
+                     maxiter :: Int
+                   iteration :: Int
+                        ρⁱ⁻¹ :: T
+     linear_operator_product :: F
+            search_direction :: F
+                    residual :: F
+              preconditioner :: M
+      preconditioner_product :: P
+    enforce_gauge_condition! :: E
 end
 
 architecture(solver::ConjugateGradientSolver) = solver.architecture
@@ -34,6 +34,9 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 
 # "Nothing" preconditioner
 @inline precondition!(z, ::Nothing, r, args...) = r
+
+# Default no gauge condition enforcement
+@inline no_gauge_enforcement!(x, r) = nothing
 
 """
     ConjugateGradientSolver(linear_operation;
@@ -81,7 +84,7 @@ function ConjugateGradientSolver(linear_operation;
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
                                  preconditioner = nothing, 
-                                 enforce_gauge_condition = false)
+                                 enforce_gauge_condition! = no_gauge_enforcement!)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -109,7 +112,7 @@ function ConjugateGradientSolver(linear_operation;
                                    residual,
                                    preconditioner,
                                    precondition_product,
-                                   enforce_gauge_condition)
+                                   enforce_gauge_condition!)
 end
 
 """
@@ -206,7 +209,7 @@ function iterate!(x, solver, b, args...)
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
 
-    @apply_regionally update_solution_and_residuals!(x, r, q, p, α, solver.enforce_gauge_condition)
+    @apply_regionally update_solution_and_residuals!(x, r, q, p, α, solver.enforce_gauge_condition!)
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ
@@ -243,13 +246,7 @@ function perform_iteration!(q, p, ρ, z, solver, args...)
     return nothing
 end
 
-@kernel function subtract_and_mask!(a, grid, b)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    a[i, j, k] = (a[i, j, k] - b) * active
-end
-
-function update_solution_and_residuals!(x, r, q, p, α, enforce_gauge_condition)
+function update_solution_and_residuals!(x, r, q, p, α, enforce_gauge_condition!)
     xp = parent(x)
     rp = parent(r)
     qp = parent(q)
@@ -258,16 +255,7 @@ function update_solution_and_residuals!(x, r, q, p, α, enforce_gauge_condition)
     xp .+= α .* pp
     rp .-= α .* qp
 
-    if enforce_gauge_condition
-        grid = r.grid
-        arch = architecture(grid)
-
-        mean_x = mean(x)
-        mean_r = mean(r)
-
-        launch!(arch, grid, :xyz, subtract_and_mask!, x, grid, mean_x)
-        launch!(arch, grid, :xyz, subtract_and_mask!, r, grid, mean_r)
-    end
+    enforce_gauge_condition!(x, r)
 
     return nothing
 end
