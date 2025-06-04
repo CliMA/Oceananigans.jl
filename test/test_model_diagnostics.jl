@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models: BoundaryConditionOperation, BoundaryConditionField
+using Oceananigans.Models: ForcingOperation, ForcingField
 
 u_bottom_drag_continuous(x, y, t, grid, u, v, Cᴰ) = -Cᴰ * u * sqrt(u^2 + v^2)
 v_bottom_drag_discrete(i, j, grid, clock, fields, Cᴰ) = - @inbounds Cᴰ * fields.v[i, j, 1]
@@ -105,3 +106,30 @@ c_bottom_flux(i, j, grid, clock, fields, t★) = - @inbounds fields.c[i, j, 1] /
     end
 end
 
+damping(x, y, z, t, c, τ) = - c / τ
+
+@testset "ForcingOperation and ForcingField" begin
+    for arch in archs
+        grid = RectilinearGrid(arch,
+                               size=(4, 4, 4),
+                               x = (0, 1),
+                               y = (0, 1),
+                               z = (-1, 1),
+                               topology=(Bounded, Bounded, Bounded))
+
+
+        c_forcing = Forcing(damping, field_dependencies=:c, parameters=60)
+        model = NonhydrostaticModel(; grid, tracers=:c, forcing=(; c=c_forcing))
+        c_forcing_op = ForcingOperation(:c, model)
+        @test c_forcing_op isa ForcingOperation
+        @test c_forcing_op.func isa ForcingKernelFunction
+        @test c_forcing_op.func.forcing isa Forcing
+        @test c_forcing_op.func.forcing.parameters == 60
+
+        set!(model, c=1)
+        c_forcing_field = ForcingField(:c, model)
+        compute!(c_forcing_field)
+        @test c_forcing_field isa Field
+        @test all(interior(c_forcing_field) == 1/60)
+    end
+end
