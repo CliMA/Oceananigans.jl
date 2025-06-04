@@ -132,7 +132,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries
         @info "Testing CG solver with ImmersedBoundaryGrid using $preconditioner_name..."
         seed!(198)  # For reproducible results
 
-        grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(1.0))
+        grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(-0.6))
         cg_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=10)
         @test cg_solver isa ConjugateGradientPoissonSolver
 
@@ -140,26 +140,21 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries
         U = 1
         inflow_timescale = 1e-4
         outflow_timescale = Inf
-        u_boundaries = FieldBoundaryConditions(
-            west = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale),
-            east = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale),
-        )
+        u_boundaries = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale),
+                                               east = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale))
 
-        # Create model with CG solver and boundary conditions
-        model = NonhydrostaticModel(
-            grid = grid,
-            boundary_conditions = (u = u_boundaries,),
-            pressure_solver = cg_solver,
-            advection = WENO(; grid, order=5)
-        )
+        model = NonhydrostaticModel(grid = grid,
+                                    boundary_conditions = (u = u_boundaries,),
+                                    pressure_solver = cg_solver,
+                                    advection = WENO(; grid, order=5))
 
         @test model.pressure_solver isa ConjugateGradientPoissonSolver
 
-        # Set initial conditions
-        u₀(x, z) = U + 1e-2*rand()
+        u₀(x, y, z) = U + 1e-2 * rand()
         set!(model, u=u₀)
+
         @test norm(interior(model.velocities.u)) / grid.Nx < 1e2 # Test that u didn't blow up
-        @test all(interior(model.pressures.pNHS, :, 1, 1:8÷3) .== 0) # Pressure is zero inside immersed boundary
+        @test all(interior(model.pressures.pNHS, :, 1, 1:grid.Nz÷3) .== 0) # Pressure is zero inside immersed boundary
 
         # Test that pressure correction works with immersed boundaries
         Δt = 0.5 * minimum_zspacing(grid) / abs(U)
@@ -189,24 +184,22 @@ end
 @testset "Conjugate gradient Poisson solver" begin
     @info "Testing Conjugate gradient poisson solver..."
     for arch in archs
-        grid_base_3d = RectilinearGrid(arch, size=(8, 8, 8), extent=(1, 1, 1))
-        grid_base_2d = RectilinearGrid(arch, topology = (Bounded, Flat, Bounded),
-                                       size = (8, 8), x = (0, 10), z = (0, 3))
+        underlying_grid = RectilinearGrid(arch, topology = (Bounded, Periodic, Bounded), size=(4, 4, 4), extent=(1, 1, 1))
 
         # Test basic functionality with both preconditioners
-        test_conjugate_gradient_basic_functionality(arch, "DiagonallyDominant", grid_base_3d, DiagonallyDominantPreconditioner())
-        test_conjugate_gradient_basic_functionality(arch, "FFT",                grid_base_3d, fft_poisson_solver(grid_base_3d))
+        test_conjugate_gradient_basic_functionality(arch, "DiagonallyDominant", underlying_grid, DiagonallyDominantPreconditioner())
+        test_conjugate_gradient_basic_functionality(arch, "FFT",                underlying_grid, fft_poisson_solver(underlying_grid))
 
         # Test default constructor behavior
         test_conjugate_gradient_default_constructor(arch)
 
         # Test with NonhydrostaticModel using both preconditioners
-        test_conjugate_gradient_with_nonhydrostatic_model(arch, "DiagonallyDominant", grid_base_3d, DiagonallyDominantPreconditioner())
-        test_conjugate_gradient_with_nonhydrostatic_model(arch, "FFT",                grid_base_3d, fft_poisson_solver(grid_base_3d))
+        test_conjugate_gradient_with_nonhydrostatic_model(arch, "DiagonallyDominant", underlying_grid, DiagonallyDominantPreconditioner())
+        test_conjugate_gradient_with_nonhydrostatic_model(arch, "FFT",                underlying_grid, fft_poisson_solver(underlying_grid))
 
         # Test immersed boundary grids with both preconditioners
-        test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, "DiagonallyDominant", grid_base_2d, DiagonallyDominantPreconditioner())
-        test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, "FFT",                grid_base_2d, fft_poisson_solver(grid_base_2d))
+        test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, "DiagonallyDominant", underlying_grid, DiagonallyDominantPreconditioner())
+        test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, "FFT",                underlying_grid, fft_poisson_solver(underlying_grid))
     end
 end
 
