@@ -19,7 +19,6 @@ using Oceananigans.TimeSteppers:
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
-    local_ab2_step!,
     compute_free_surface_tendency!
 
 import Oceananigans.TimeSteppers: Clock, unit_time, first_time_step!, time_step!, ab2_step!

@@ -7,8 +7,6 @@ export Callback, add_callback!
 export iteration
 
 using Oceananigans
-using Oceananigans.Models
-using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
 using Oceananigans.Utils
@@ -19,6 +17,9 @@ using Oceananigans: AbstractDiagnostic, AbstractOutputWriter, fields
 using OrderedCollections: OrderedDict
 
 import Base: show
+
+# To be extended in the `Models` module
+timestepper(model) = nothing
 
 include("callback.jl")
 include("simulation.jl")
