@@ -127,12 +127,12 @@ function test_conjugate_gradient_with_nonhydrostatic_model(arch, preconditioner_
     end
 end
 
-function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, preconditioner_name, grid_base, preconditioner)
+function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, preconditioner_name, underlying_grid, preconditioner)
     @testset "Conjugate gradient solver with ImmersedBoundaryGrid [$arch, $preconditioner_name]" begin
         @info "Testing CG solver with ImmersedBoundaryGrid using $preconditioner_name..."
         seed!(198)  # For reproducible results
 
-        grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(-0.6))
+        grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-0.6))
         cg_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=10)
         @test cg_solver isa ConjugateGradientPoissonSolver
 
