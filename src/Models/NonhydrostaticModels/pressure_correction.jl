@@ -7,6 +7,10 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 """
 function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
+    # Update open boundary conditions so that the wall-normal predictor velocity can be filled with
+    # the wall-normal physical velocity at time step n+1
+    update_boundary_conditions!(fields(model), model)
+
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
 
