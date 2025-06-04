@@ -5,11 +5,14 @@ using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             stretched_direction,
+                            tridiagonal_direction,
                             dimension,
+                            HomogeneousNeumannFormulation,
                             ZTridiagonalSolver,
                             YTridiagonalSolver,
                             XTridiagonalSolver,
-                            compute_main_diagonal!
+                            compute_main_diagonal!,
+                            compute_lower_diagonal!
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P
@@ -207,7 +210,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     Nd > 0 && compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
 
     # Set up batched tridiagonal solver
-    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction)
+    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, upper_diagonal,
+                                        diagonal = main_diagonal,
+                                        tridiagonal_direction = tridiagonal_dir)
 
     # We need to permute indices to apply bounded transforms on the GPU (r2r or r2c with twiddling)
     x_buffer_needed = child_arch isa GPU && TX == Bounded
