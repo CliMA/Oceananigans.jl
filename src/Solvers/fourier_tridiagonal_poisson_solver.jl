@@ -85,11 +85,13 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
 
     # Lower and upper diagonals are the same
     main_diagonal = zeros(grid, size(grid)...)
-    lower_diagonal = zeros(grid, size(grid, tridiagonal_dim) - 1)
+
+    Nd = size(grid, tridiagonal_dim) - 1
+    lower_diagonal = zeros(grid, Nd) 
     upper_diagonal = lower_diagonal
 
     compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)
-    compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
+    Nd > 0 && compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
 
     # Set up batched tridiagonal solver
     btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, upper_diagonal,
@@ -170,8 +172,7 @@ end
 Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 function compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
-    dir = tridiagonal_direction(tridiagonal_formulation)
-    N = length(lower_diagonal)
+    @show N = length(lower_diagonal)
     arch = grid.architecture
     launch!(arch, grid, tuple(N), _compute_lower_diagonal!, lower_diagonal, tridiagonal_formulation, grid)
     return nothing

@@ -25,7 +25,7 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure mu
 
     `u^{n+1} = u^n - δₓp_{NH} * Δt / Δx`
 """
-@kernel function _make_pressure_correction!(U, grid, Δt, pNHS)
+@kernel function _make_pressure_correction!(U, grid, pNHSΔt)
     i, j, k = @index(Global, NTuple)
 
     @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHSΔt)
