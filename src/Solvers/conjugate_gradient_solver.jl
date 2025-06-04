@@ -44,7 +44,8 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
                                           maxiter = size(template_field.grid),
                                           reltol = sqrt(eps(template_field.grid)),
                                           abstol = 0,
-                                          preconditioner = nothing)
+                                          preconditioner = nothing,
+                                          enforce_gauge_condition! = no_gauge_enforcement!)
 
 Returns a `ConjugateGradientSolver` that solves the linear equation
 ``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
@@ -75,6 +76,15 @@ Arguments
 
 * `preconditioner`: Object for which `precondition!(z, preconditioner, r, args...)` computes `z = P * r`,
                     where `r` is the residual. Typically `P` is approximately `A⁻¹`.
+
+* `enforce_gauge_condition!`: Function with signature `enforce_gauge_condition!(x, r)` that
+                              enforces a gauge condition on the solution `x` and residual `r`.
+                              This is useful for problems where the solution is not unique, such as
+                              the Poisson equation with purely Neumann boundary conditions. 
+                              The function is called at the end of each iteration of a conjugate 
+                              gradient iteration to ensure that the solution remains consistent 
+                              with the gauge condition.
+                              The default is `no_gauge_enforcement!`, which does not enforce a gauge condition.
 
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
