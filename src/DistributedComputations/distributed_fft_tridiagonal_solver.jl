@@ -171,7 +171,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     T = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
     storage_field = CenterField(local_grid)
-    storage = TransposableField(CenterField(local_grid), T)
+    storage = TransposableField(storage_field, T)
 
     TX, TY, TZ = topology(global_grid)
     tx, ty, tz = TX(), TY(), TZ()

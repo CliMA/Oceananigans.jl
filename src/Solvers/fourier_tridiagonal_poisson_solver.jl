@@ -172,7 +172,7 @@ end
 Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 function compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
-    @show N = length(lower_diagonal)
+    N = length(lower_diagonal)
     arch = grid.architecture
     launch!(arch, grid, tuple(N), _compute_lower_diagonal!, lower_diagonal, tridiagonal_formulation, grid)
     return nothing
