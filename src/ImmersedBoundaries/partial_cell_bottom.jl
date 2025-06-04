@@ -138,12 +138,12 @@ Criterion is zb ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    z⁺ = rnode(i, j, k+1, underlying_grid, c, c, f)
+    r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
-    Δz = Δrᶜᶜᶜ(i, j, k, underlying_grid)
-    z★ = z⁺ - Δz * ϵ
-    zb = @inbounds ib.bottom_height[i, j, 1]
-    return z★ < zb
+    Δr = Δrᶜᶜᶜ(i, j, k, underlying_grid)
+    r★ = r⁺ - Δr * ϵ
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
+    return r★ < rᵇ
 end
 
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::PCBIBG)
@@ -151,7 +151,7 @@ end
     ib = ibg.immersed_boundary
 
     # Get node at face above and defining nodes on c,c,f
-    rᶜᶜᶠₖ₊₁ = rnode(i, j, k+1, underlying_grid, c, c, f)
+    r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
 
     # Get bottom r-coordinate and fractional Δr parameter
     rᵇ = @inbounds ib.bottom_height[i, j, 1]
@@ -160,7 +160,7 @@ end
     at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
 
     full_Δr    = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    partial_Δr = rᶜᶜᶠₖ₊₁ - rᵇ
+    partial_Δr = r⁺ - rᵇ
 
     return ifelse(at_the_bottom, partial_Δr, full_Δr)
 end
