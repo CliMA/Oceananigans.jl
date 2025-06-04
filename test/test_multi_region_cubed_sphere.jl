@@ -277,12 +277,12 @@ end
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
 
             for panel in 1:6
-                grid = getregion(grid, panel)
+                region_grid = getregion(grid, panel)
 
                 if panel == 3 || panel == 6 # North and South panels should be completely immersed
-                    @test isempty(grid.interior_active_cells)
+                    @test isempty(region_grid.interior_active_cells)
                 else # Other panels should have some active cells
-                    @test !isempty(grid.interior_active_cells)
+                    @test !isempty(region_grid.interior_active_cells)
                 end
             end
         end
