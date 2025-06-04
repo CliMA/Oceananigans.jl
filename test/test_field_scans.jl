@@ -376,10 +376,12 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             c = CenterField(grid)
             set!(c, (x, y, z) -> x + y + z)
 
-            max_c² = Field(Reduction(maximum, c^2, dims=3))
+            max_c² = Field(Reduction(maximum!, c^2, dims=3))
             ∫max_c² = Integral(max_c², dims=(1, 2))
-            compute!(∫max_c²)
             @test ∫max_c² isa Reduction
+            ∫max_c²_field = Field(∫max_c²)
+            @test ∫max_c²_field isa Field
+            @test ∫max_c²_field.operand === ∫max_c²
 
             @info "  Testing conditional reductions of immersed Fields [$(typeof(arch))]"
 
