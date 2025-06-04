@@ -220,7 +220,7 @@ paobcs = (west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timesca
           east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
           )
 
-obcs = (; #flat_extrapolation=feobcs,
+obcs = (; flat_extrapolation=feobcs,
           perturbation_advection=paobcs)
 
 for (obc_name, obc) in pairs(obcs)
