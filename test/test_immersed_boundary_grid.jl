@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, xnode, ynode, znode
+using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode
 using Oceananigans.Operators: Δx, Δy, Δz, volume
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition
 
@@ -178,6 +178,24 @@ function test_partial_cell_bottom_grid_spacings(FT, arch)
         @test Δz_partial > 0
         @test Δz_partial ≤ Δz_original  # Partial cells should be smaller or equal
     end
+
+    return nothing
+end
+
+function test_partial_cell_bottom_spacings_mwe(FT, arch)
+    grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=3, extent=1)
+    ibg = ImmersedBoundaryGrid(grid, PartialCellBottom(-1/2))
+
+    dz = Field(zspacings(ibg, Center(), Center(), Center()))
+    dr = Field(rspacings(ibg, Center(), Center(), Center()))
+
+    # Test that dz equals dr for this configuration
+    @test interior(dz) == interior(dr)
+
+    # Test the specific spacing pattern from the MWE
+    expected_spacings = FT.([1, 1/2, 1] ./ 3)
+    actual_spacings = interior(dz, 1, 1, :)
+    @test actual_spacings ≈ expected_spacings
 
     return nothing
 end
@@ -425,6 +443,7 @@ end
         for arch in archs, FT in float_types
             @testset "Spacings [$FT, $(typeof(arch))]" begin
                 test_partial_cell_bottom_grid_spacings(FT, arch)
+                test_partial_cell_bottom_spacings_mwe(FT, arch)
 
                 for boundary_type in (GridFittedBottom, PartialCellBottom)
                     test_immersed_volume_calculation(FT, arch, boundary_type)
