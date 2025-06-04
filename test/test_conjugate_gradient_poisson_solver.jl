@@ -132,11 +132,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries
         @info "Testing CG solver with ImmersedBoundaryGrid using $preconditioner_name..."
         seed!(198)  # For reproducible results
 
-        # Create immersed boundary grid
-        flat_bottom(x) = 1
-        grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(flat_bottom))
-
-        # Test that CG solver can be created for immersed boundary grid with specified preconditioner
+        grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(1.0))
         cg_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=10)
         @test cg_solver isa ConjugateGradientPoissonSolver
 
