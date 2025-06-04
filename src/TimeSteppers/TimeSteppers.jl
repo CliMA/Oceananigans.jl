@@ -3,6 +3,7 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
+    SplitRungeKutta3TimeStepper,
     time_step!,
     Clock,
     tendencies
@@ -42,13 +43,13 @@ include("split_hydrostatic_runge_kutta_3.jl")
 """
     TimeStepper(name::Symbol, args...; kwargs...)
 
-Returns a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
+Return a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 
 Example
 =======
 
 ```julia
-julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
+julia> stepper = TimeStepper(:QuasiAdamsBashforth2, grid, tracernames)
 ```
 """
 TimeStepper(name::Symbol, args...; kwargs...) = TimeStepper(Val(name), args...; kwargs...)
