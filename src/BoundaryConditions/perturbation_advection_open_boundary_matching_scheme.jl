@@ -78,12 +78,14 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
 @inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
+    iᵇᵈ, jᵇᵈ, kᵇᵈ = boundary_indices
+    iᵃᵈ, jᵃᵈ, kᵃᵈ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
-    uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
-    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
+    uᵢⁿ     = @inbounds getindex(u, iᵇᵈ, jᵇᵈ, kᵇᵈ)
+    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᵃᵈ, jᵃᵈ, kᵃᵈ)
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
@@ -93,7 +95,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     relaxed_uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
     uᵢⁿ⁺¹         = ifelse(τ == 0, ūⁿ⁺¹, relaxed_uᵢⁿ⁺¹)
 
-    @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
+    @inbounds setindex!(u, uᵢⁿ⁺¹, iᵇᵈ, jᵇᵈ, kᵇᵈ)
 
     return nothing
 end
