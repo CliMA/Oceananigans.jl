@@ -410,7 +410,6 @@ end
 
     @testset "Basic construction" begin
         @info "  Testing basic immersed boundary grid construction..."
-
         for arch in archs, FT in float_types
             for boundary_type in (GridFittedBottom, PartialCellBottom)
                 @testset "Construction [$FT, $(typeof(arch)), $boundary_type]" begin
@@ -425,7 +424,6 @@ end
 
     @testset "Grid fitting and cell detection" begin
         @info "  Testing grid fitting and immersed cell detection..."
-
         for arch in archs, FT in float_types
             @testset "Cell detection [$FT, $(typeof(arch))]" begin
                 test_grid_fitted_bottom_cell_detection(FT, arch)
@@ -455,7 +453,6 @@ end
 
     @testset "GridFittedBoundary" begin
         @info "  Testing GridFittedBoundary..."
-
         for arch in archs, FT in float_types
             @testset "GridFittedBoundary [$FT, $(typeof(arch))]" begin
                 test_grid_fitted_boundary_with_function(FT, arch)
@@ -477,7 +474,6 @@ end
 
     @testset "Error conditions" begin
         @info "  Testing error conditions..."
-
         for arch in archs, FT in float_types
             @testset "Errors [$FT, $(typeof(arch))]" begin
                 test_immersed_boundary_grid_errors(FT, arch)
@@ -487,7 +483,6 @@ end
 
     @testset "Flat topologies" begin
         @info "  Testing flat topologies..."
-
         for arch in archs, FT in float_types
             for boundary_type in (GridFittedBottom, PartialCellBottom)
                 @testset "Flat [$FT, $(typeof(arch)), $boundary_type]" begin
