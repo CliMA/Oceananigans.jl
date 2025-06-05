@@ -41,7 +41,7 @@ end
     @inbounds rhs[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ
 end
 
-@kernel function _cg_source_term!(rhs, grid, Δt, Ũ)
+@kernel function _cg_source_term!(rhs, grid, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
@@ -53,7 +53,6 @@ function compute_source_term!(solver::DistributedFFTBasedPoissonSolver, Ũ)
     rhs  = solver.storage.zfield
     arch = architecture(solver)
     grid = solver.local_grid
-    launch!(arch, grid, :xyz, _fft_based_source_term!, rhs, grid, Δt, Ũ)
     launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Ũ)
     return nothing
 end
@@ -104,6 +103,6 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, �
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, args...)
+    launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, args...)
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
