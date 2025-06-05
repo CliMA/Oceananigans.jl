@@ -168,8 +168,8 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
     free_surface_grid = free_surface.η.grid
-    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
+    U = Field{Face, Center, Nothing}(free_surface_grid, indices = (:, :, 1:1), boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(free_surface_grid, indices = (:, :, 1:1), boundary_conditions=V_bcs)
 
     tracers = TracerFields(tracer_names, grid, bcs)
 
@@ -181,8 +181,8 @@ function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velociti
     V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
     free_surface_grid = free_surface.η.grid
-    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
+    U = Field{Face, Center, Nothing}(free_surface_grid, indices = (:, :, 1:1), boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(free_surface_grid, indices = (:, :, 1:1), boundary_conditions=V_bcs)
     η = free_surface_displacement_field(velocities, free_surface, grid)
 
     return (; U=U, V=V, η=η)
@@ -213,11 +213,11 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     u_bcs = barotropic_velocity_boundary_conditions(baroclinic_u_bcs)
     v_bcs = barotropic_velocity_boundary_conditions(baroclinic_v_bcs)
 
-    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
+    U = Field{Face, Center, Nothing}(maybe_extended_grid, indices = (:, :, 1:1), boundary_conditions = u_bcs)
+    V = Field{Center, Face, Nothing}(maybe_extended_grid, indices = (:, :, 1:1), boundary_conditions = v_bcs)
 
-    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
+    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, indices = (:, :, 1:1), boundary_conditions = u_bcs)
+    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, indices = (:, :, 1:1), boundary_conditions = v_bcs)
 
     filtered_state = (η = η̅, U = U̅, V = V̅)
     barotropic_velocities = (U = U, V = V)
