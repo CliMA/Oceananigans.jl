@@ -144,7 +144,7 @@ end
 ##### GPU capabilities
 #####
 
-"Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `MultiaryOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     MultiaryOperation{LX, LY, LZ}(Adapt.adapt(to, multiary.op),
                                   Adapt.adapt(to, multiary.args),
