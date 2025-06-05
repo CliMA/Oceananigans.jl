@@ -67,13 +67,14 @@ struct DefaultPreconditioner end
                                    preconditioner = DefaultPreconditioner(),
                                    reltol = sqrt(eps(grid)),
                                    abstol = sqrt(eps(grid)),
+                                   gauge_condition = enforce_zero_mean_gauge!,
                                    kw...)
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
 pressure solution is smaller than `reltol` and the absolute error is smaller than `abstol`. Other
 keyword arguments are passed to `ConjugateGradientSolver`.
-The Poisson solver has a zero mean gauge condition enforced, which pins the pressure field to have a mean of zero.
+The Poisson solver has a zero mean gauge condition enforced with `gauge_condition = enforce_zero_mean_gauge!`, which pins the pressure field to have a mean of zero.
 This is because the pressure field is defined only up to an arbitrary constant, and the zero mean gauge condition
 is a common choice to remove this degree of freedom.
 
