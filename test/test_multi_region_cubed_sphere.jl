@@ -778,11 +778,9 @@ end
     end
 end
 
-@testset "Testing simulation on conformal cubed sphere grid" begin
+@testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
     for FT in float_types
         for arch in archs
-            @info "  Testing simulation [$FT, $(typeof(arch))]..."
-
             Nx, Ny, Nz = 18, 18, 9
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
@@ -793,6 +791,12 @@ end
             grids = (underlying_grid, immersed_grid)
             
             for grid in grids
+                if grid == underlying_grid
+                    @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                else
+                    @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                end
+
                 model = HydrostaticFreeSurfaceModel(; grid,
                                                     momentum_advection = WENOVectorInvariant(order=5),
                                                     tracer_advection = WENO(order=5),
