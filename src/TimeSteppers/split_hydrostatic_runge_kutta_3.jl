@@ -96,8 +96,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 1
 
     split_rk3_substep!(model, Δt, nothing, nothing)
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
@@ -107,8 +107,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 2
 
     split_rk3_substep!(model, Δt, γ², ζ²)
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
@@ -118,8 +118,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 3
 
     split_rk3_substep!(model, Δt, γ³, ζ³)
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
     step_lagrangian_particles!(model, Δt)
