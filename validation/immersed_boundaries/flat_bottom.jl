@@ -27,19 +27,19 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
         # Total height = 1.5, so Nz = 1.5 / Δz
         total_height = 1.5
         Nz = round(Int, total_height / Δz)
-        
+
         underlying_grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (4, 4),
                                           x = (0, 2), z = (-0.5, 1.0),
                                           topology = (Bounded, Flat, Bounded))
         @assert 0 ∈ znodes(immersed_sim.model.grid, Face()) "Δz is such that the immersed boundary does not exactly align with the bottom of the non-immersed domain"
-        
+
         # Create flat bottom at z = 0
         flat_bottom(x) = 0.0
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(flat_bottom))
-        
+
         @info "Using immersed boundary grid with flat bottom at z = 0"
         @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
-        
+
         # Use user-provided pressure solver or default ConjugateGradient solver for immersed boundaries
         if immersed_pressure_solver === nothing
             pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100, reltol=1e-8, abstol=1e-10)
@@ -53,14 +53,14 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
         # Total height = 1.0, so Nz = 1.0 / Δz
         total_height = 1.0
         Nz = round(Int, total_height / Δz)
-        
+
         grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (4, 4),
                                x = (0, 2), z = (0, 1),
                                topology = (Bounded, Flat, Bounded))
-        
+
         @info "Using regular grid from z = 0 to 1"
         @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
-        
+
         # Use default FFT solver for regular grids (faster)
         pressure_solver = nothing
         @info "Using default FFT pressure solver"
@@ -136,7 +136,7 @@ function create_visualization(regular_filename, immersed_filename)
 
     # Load results from both simulations
     u_regular = FieldTimeSeries(regular_filename * ".jld2", "u")
-    w_regular = FieldTimeSeries(regular_filename * ".jld2", "w") 
+    w_regular = FieldTimeSeries(regular_filename * ".jld2", "w")
     p_regular = FieldTimeSeries(regular_filename * ".jld2", "p")
     div_regular = FieldTimeSeries(regular_filename * ".jld2", "divergence")
 
@@ -164,11 +164,11 @@ function create_visualization(regular_filename, immersed_filename)
 
     # Title
     title = @lift string("Comparison at t = ", @sprintf("%.2f", times[$n]))
-    Label(fig[1, 1:6], title, textsize = 24)
+    Label(fig[1, 1:6], title, fontsize = 24)
 
     # Column labels
-    Label(fig[2, 1:3], "Regular Grid (z: 0 → 1)", textsize = 20)
-    Label(fig[2, 4:6], "Immersed Boundary (z: -0.5 → 1, flat bottom at z=0)", textsize = 20)
+    Label(fig[2, 1:3], "Regular Grid (z: 0 → 1)", fontsize = 20)
+    Label(fig[2, 4:6], "Immersed Boundary (z: -0.5 → 1, flat bottom at z=0)", fontsize = 20)
 
     # Create axes for each variable and simulation
     ax_u_reg = Axis(fig[3, 1], aspect = DataAspect(), title = "u velocity", xlabel = "x", ylabel = "z")
@@ -186,7 +186,7 @@ function create_visualization(regular_filename, immersed_filename)
         interior(un, :, 1, :)
     end
 
-    u_imm_data = @lift begin 
+    u_imm_data = @lift begin
         un = u_immersed[$n]
         mask_immersed_field!(un, NaN)
         interior(un, :, 1, :)
@@ -222,7 +222,7 @@ function create_visualization(regular_filename, immersed_filename)
     hm_u_reg = heatmap!(ax_u_reg, x_reg, z_reg, u_reg_data, colorrange = (-u_max, u_max), colormap = :balance)
     hm_u_imm = heatmap!(ax_u_imm, x_imm, z_imm, u_imm_data, colorrange = (-u_max, u_max), colormap = :balance)
 
-    hm_p_reg = heatmap!(ax_p_reg, x_reg, z_reg, p_reg_data, colorrange = (-p_max, p_max), colormap = :balance)  
+    hm_p_reg = heatmap!(ax_p_reg, x_reg, z_reg, p_reg_data, colorrange = (-p_max, p_max), colormap = :balance)
     hm_p_imm = heatmap!(ax_p_imm, x_imm, z_imm, p_imm_data, colorrange = (-p_max, p_max), colormap = :balance)
 
     hm_div_reg = heatmap!(ax_div_reg, x_reg, z_reg, div_reg_data, colorrange = (-div_max, div_max), colormap = :balance)
@@ -231,14 +231,14 @@ function create_visualization(regular_filename, immersed_filename)
     # Add colorbars
     Colorbar(fig[3, 2], hm_u_reg, label = "u")
     Colorbar(fig[3, 5], hm_u_imm, label = "u")
-    Colorbar(fig[4, 2], hm_p_reg, label = "p") 
+    Colorbar(fig[4, 2], hm_p_reg, label = "p")
     Colorbar(fig[4, 5], hm_p_imm, label = "p")
     Colorbar(fig[5, 2], hm_div_reg, label = "∇⋅u")
     Colorbar(fig[5, 5], hm_div_imm, label = "∇⋅u")
 
     # Add flat bottom line to immersed boundary plots
     hlines!(ax_u_imm, 0.0, color = :black, linewidth = 3, label = "flat bottom")
-    hlines!(ax_p_imm, 0.0, color = :black, linewidth = 3, label = "flat bottom") 
+    hlines!(ax_p_imm, 0.0, color = :black, linewidth = 3, label = "flat bottom")
     hlines!(ax_div_imm, 0.0, color = :black, linewidth = 3, label = "flat bottom")
 
     display(fig)
