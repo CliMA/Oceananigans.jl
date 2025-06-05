@@ -1,9 +1,10 @@
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Grids: bottommost_active_node
+using Oceananigans.Grids: bottommost_active_node, AbstractStaticGrid
 using Printf
 
-import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ
+import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
+                               Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
 
 #####
 ##### PartialCellBottom
@@ -137,12 +138,12 @@ Criterion is zb ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    z⁺ = rnode(i, j, k+1, underlying_grid, c, c, f)
+    r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
-    Δz = Δrᶜᶜᶜ(i, j, k, underlying_grid)
-    z★ = z⁺ - Δz * ϵ
-    zb = @inbounds ib.bottom_height[i, j, 1]
-    return z★ < zb
+    Δr = Δrᶜᶜᶜ(i, j, k, underlying_grid)
+    r★ = r⁺ - Δr * ϵ
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
+    return r★ < rᵇ
 end
 
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::PCBIBG)
@@ -150,7 +151,7 @@ end
     ib = ibg.immersed_boundary
 
     # Get node at face above and defining nodes on c,c,f
-    rᶜᶜᶠₖ₊₁ = rnode(i, j, k+1, underlying_grid, c, c, f)
+    r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
 
     # Get bottom r-coordinate and fractional Δr parameter
     rᵇ = @inbounds ib.bottom_height[i, j, 1]
@@ -159,13 +160,13 @@ end
     at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
 
     full_Δr    = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    partial_Δr = rᶜᶜᶠₖ₊₁ - rᵇ
+    partial_Δr = r⁺ - rᵇ
 
     return ifelse(at_the_bottom, partial_Δr, full_Δr)
 end
 
 @inline function Δrᶜᶜᶠ(i, j, k, ibg::PCBIBG)
-    just_above_bottom = bottommost_active_node(i, j, k, c, c, f)
+    just_above_bottom = bottommost_active_node(i, j, k, ibg, c, c, f)
     rᶜ = rnode(i, j, k, ibg.underlying_grid, c, c, c)
     rᶠ = rnode(i, j, k, ibg.underlying_grid, c, c, f)
 
@@ -195,3 +196,14 @@ YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Partial
 @inline Δrᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
+
+# Vertically-static, partial cell bottom, immergsed boundary grid
+VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellBottom}
+@inline Δzᶜᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Δzᶠᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
+@inline Δzᶜᶠᶜ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
+@inline Δzᶜᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
+@inline Δzᶠᶠᶜ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶜ(i, j, k, ibg)
+@inline Δzᶜᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
+@inline Δzᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
+@inline Δzᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
