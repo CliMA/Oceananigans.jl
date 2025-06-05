@@ -82,7 +82,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
-                                        enforce_gauge_condition! = enforce_zero_mean_gauge!,
+                                        gauge_condition = enforce_zero_mean_gauge!,
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
