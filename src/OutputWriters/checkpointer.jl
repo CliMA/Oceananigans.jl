@@ -18,7 +18,7 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
 end
 
 function default_checkpointed_properties(model)
-    properties = [:grid, :particles, :clock]
+    properties = [:grid, :clock]
     if has_ab2_timestepper(model)
        push!(properties, :timestepper)
     end
@@ -31,7 +31,7 @@ catch
     false
 end
 
-required_checkpoint_properties(model) = [:grid, :clock, :particles]
+required_checkpoint_properties(model) = [:grid, :clock]
 
 """
     Checkpointer(model;
