@@ -1,9 +1,9 @@
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
-using CUDA: @allowscalar
+using GPUArraysCore: @allowscalar
 
-using Oceananigans.Fields: ReducedAbstractField, 
+using Oceananigans.Fields: ReducedAbstractField,
                            get_neutral_mask,
                            condition_operand,
                            initialize_reduced_field!,
@@ -113,7 +113,7 @@ end
 Return the partitioned dimensions of a distributed field or architecture.
 """
 function partition_dimensions(arch::Distributed)
-    R = ranks(arch) 
+    R = ranks(arch)
     dims = []
     for r in eachindex(R)
         if R[r] > 1

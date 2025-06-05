@@ -210,7 +210,7 @@ end
 ##### GPU capabilities
 #####
 
-"Adapt `BinaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `BinaryOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     BinaryOperation{LX, LY, LZ}(Adapt.adapt(to, binary.op),
                                 Adapt.adapt(to, binary.a),
