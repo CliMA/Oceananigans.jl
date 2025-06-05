@@ -62,7 +62,7 @@ function compute_source_term!(solver::FourierTridiagonalPoissonSolver, Ũ)
     rhs = solver.source_term
     arch = architecture(solver)
     grid = solver.grid
-    @show tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
+    tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Ũ)
     return nothing
 end
