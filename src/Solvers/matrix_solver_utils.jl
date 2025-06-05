@@ -92,7 +92,7 @@ is provided, then the `input` and `output` fields inherit the default boundary c
 according to the `template_field`.
 
 For `architecture = CPU()` the matrix returned is a `SparseArrays.SparseMatrixCSC`; for `GPU()`
-is a `CUDA.CuSparseMatrixCSC`.
+it will be a GPU sparse matrix.
 """
 function compute_matrix_for_linear_operation(::CPU, template_field, linear_operation!, args...;
                                              boundary_conditions_input=nothing,

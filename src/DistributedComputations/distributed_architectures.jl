@@ -280,7 +280,7 @@ function Distributed(child_architecture = CPU();
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
     local_connectivity = NeighboringRanks(local_index, ranks)
 
-    # Assign CUDA device if on GPUs
+    # Assign GPU device if on GPUs
     if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
