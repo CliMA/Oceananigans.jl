@@ -6,33 +6,24 @@ using CairoMakie
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
 
-# Monin-Obukhov drag coefficient
-z₀ = 1e-2 # Charnock roughness
-κ = 0.4 # Von Karman constant
-Cᴰ(Δz) = (κ / log(Δz / 2z₀))^2
-
-@inline bottom_drag_u(x, y, t, u, w, Cᴰ) = - Cᴰ * u * sqrt(u^2 + w^2)
-@inline bottom_drag_w(x, y, t, u, w, Cᴰ) = - Cᴰ * w * sqrt(u^2 + w^2)
-@inline bottom_drag_u(x, y, z, t, u, w, Cᴰ) = - Cᴰ * u * sqrt(u^2 + w^2)
-@inline bottom_drag_w(x, y, z, t, u, w, Cᴰ) = - Cᴰ * w * sqrt(u^2 + w^2)
-
-function run_simulation(; use_immersed_boundary = false,
+#+++ Create simulation
+function create_flat_bottom_simulation(; use_immersed_boundary = false,
                          Nx = 64,
                          Nz = 32, 
                          U_constant = 1.0,
                          stop_time = 2.0,
                          save_interval = 0.1,
                          architecture = CPU(),
-                         filename = "simulation")
+                         filename = "flat_bottom")
 
     if use_immersed_boundary
         # Domain from -1/2 to 1 with flat bottom at z = 0
         underlying_grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (4, 4),
                                           x = (0, 2π), z = (-0.5, 1.0),
                                           topology = (Bounded, Flat, Bounded))
-        
+
         # Create flat bottom at z = 0
-        flat_bottom(x, y) = 0.0
+        flat_bottom(x) = 0.0
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(flat_bottom))
         @info "Using immersed boundary grid with flat bottom at z = 0"
     else
@@ -46,31 +37,18 @@ function run_simulation(; use_immersed_boundary = false,
     # Set constant velocity boundary conditions at west and east boundaries
     u_constant_bc = OpenBoundaryCondition(U_constant)
     u_bcs = FieldBoundaryConditions(west = u_constant_bc, east = u_constant_bc)
-    
-    # For immersed boundaries, add no-slip condition
-    if use_immersed_boundary
-        no_slip = ValueBoundaryCondition(0)
-        u_bcs = FieldBoundaryConditions(west = u_constant_bc, east = u_constant_bc, 
-                                        bottom = no_slip, immersed = no_slip)
-        w_bcs = FieldBoundaryConditions(immersed = no_slip)
-        boundary_conditions = (; u = u_bcs, w = w_bcs)
-    else
-        # For regular grid, just set west and east boundaries
-        boundary_conditions = (; u = u_bcs)
-    end
+    boundary_conditions = (; u = u_bcs,)
 
     model = NonhydrostaticModel(; grid, boundary_conditions,
                                 advection = UpwindBiased(order=3),
-                                timestepper = :RungeKutta3,
-                                tracers = :b,
-                                buoyancy = BuoyancyTracer())
+                                hydrostatic_pressure_anomaly = CenterField(grid),
+                                timestepper = :RungeKutta3,)
 
     # Initial conditions with small perturbations
-    bᵢ(x, z) = 1e-3 * sin(2x) * cos(2π * z) + 1e-4 * rand()
     uᵢ(x, z) = U_constant + 1e-2 * sin(x) * cos(π * z)
     wᵢ(x, z) = 1e-3 * cos(x) * sin(π * z)
     
-    set!(model, b=bᵢ, u=uᵢ, w=wᵢ)
+    set!(model, u=uᵢ, w=wᵢ)
 
     # Time stepping
     Δx = 2π / Nx
@@ -96,11 +74,12 @@ function run_simulation(; use_immersed_boundary = false,
 
     # Compute pressure and divergence for output
     u, v, w = model.velocities
-    p = model.pressures.pHY′
+    p = sum(model.pressures)
     
     # Compute divergence: ∇⋅u = ∂u/∂x + ∂w/∂z
     divergence = ∂x(u) + ∂z(w)
 
+    Main.@infiltrate
     # Output writer
     simulation.output_writers[:fields] =
         JLD2Writer(model, (; u, w, p, divergence);
@@ -116,7 +95,9 @@ function run_simulation(; use_immersed_boundary = false,
 
     return simulation
 end
+#---
 
+#+++ Animate output
 function create_visualization(regular_filename, immersed_filename)
     @info "Loading results for visualization..."
     
@@ -240,6 +221,7 @@ function create_visualization(regular_filename, immersed_filename)
     @info "Movie saved as: $moviename"
     return fig
 end
+#---
 
 #####
 ##### Main execution
@@ -249,14 +231,14 @@ end
 
 # Run both simulations
 @info "Running regular grid simulation..."
-regular_sim = run_simulation(use_immersed_boundary = false, 
+regular_sim = create_flat_bottom_simulation(use_immersed_boundary = false, 
                             filename = "regular_grid",
                             Nx = 64, Nz = 32,
                             stop_time = 2.0)
-run!(regular_sim)
+#run!(regular_sim)
 
 @info "Running immersed boundary simulation..."
-immersed_sim = run_simulation(use_immersed_boundary = true,
+immersed_sim = create_flat_bottom_simulation(use_immersed_boundary = true,
                              filename = "immersed_boundary", 
                              Nx = 64, Nz = 32,
                              stop_time = 2.0)
