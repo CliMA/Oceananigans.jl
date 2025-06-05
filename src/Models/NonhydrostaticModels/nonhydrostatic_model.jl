@@ -222,7 +222,6 @@ function NonhydrostaticModel(; grid,
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
-
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver=implicit_solver)
