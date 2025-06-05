@@ -249,7 +249,7 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     arch = architecture(solver)
     solver.source_term .= source_term
     tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
-    launch!(arch, grid, :xyz, multiply_by_spacing!, solver.source_term, tdir, gri)
+    launch!(arch, grid, :xyz, multiply_by_spacing!, solver.source_term, tdir, grid)
     return nothing
 end
 
