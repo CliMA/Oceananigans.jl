@@ -100,7 +100,7 @@ function ConjugateGradientPoissonSolver(grid;
                                                         abstol,
                                                         preconditioner,
                                                         template_field = rhs,
-                                                        enforce_gauge_condition!,
+                                                        enforce_gauge_condition! = gauge_condition,
                                                         kw...)
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
