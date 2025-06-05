@@ -85,7 +85,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     set!(model, u=uᵢ, w=wᵢ)
 
     # Time stepping
-    Δt = 0.01 * Δx / U_constant
+    Δt = 0.1 * Δx / U_constant
     simulation = Simulation(model; Δt, stop_time)
 
     # Progress callback
@@ -98,12 +98,10 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
         wall_clock[] = time_ns()
         return nothing
     end
-
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(50))
+    add_callback!(simulation, progress, IterationInterval(50); name = :progress)
 
     # Adaptive time stepping
-    wizard = TimeStepWizard(cfl=0.3)
-    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+    conjure_time_step_wizard!(simulation, IterationInterval(5), cfl=0.5)
 
     # Compute pressure and divergence for output
     u, v, w = model.velocities
@@ -249,21 +247,20 @@ end
 
 # Run both simulations with the same Δz
 Δz = 0.05  # Grid spacing
+stop_time = 2
 
 # Run both simulations
 @info "Running regular grid simulation..."
-#regular_sim = create_flat_bottom_simulation(use_immersed_boundary = false,
-#                                            filename = "regular_grid",
-#                                            Δz = Δz,
-#                                            stop_time = 2.0)
-#run!(relar_sim)
-#
-#@info "nng immersed boundary simulation..."
-#immersed_sim create_flat_bottom_simulation(use_immersed_boundary = true,
-#                                           filename = "immersed_boundary",
-#                                           Δz = Δz,
-#                                           stop_time = 2.0)
-#run!(immersed_sim)
+regular_sim = create_flat_bottom_simulation(use_immersed_boundary = false,
+                                            filename = "regular_grid";
+                                            Δz, stop_time)
+run!(regular_sim)
+
+@info "Running immersed boundary simulation..."
+immersed_sim = create_flat_bottom_simulation(use_immersed_boundary = true,
+                                             filename = "immersed_boundary";
+                                             Δz, stop_time)
+run!(immersed_sim)
 
 @info "Creating visualization..."
 fig = create_visualization("regular_grid", "immersed_boundary")
