@@ -12,6 +12,12 @@ struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
     transforms :: T
 end
 
+function Base.show(io::IO, solver::FourierTridiagonalPoissonSolver)
+    print(io, "FourierTridiagonalPoissonSolver", '\n')
+    print(io, "├── batched_tridiagonal_solver: ", prettysummary(solver.batched_tridiagonal_solver), '\n')
+    print(io, "└── grid: ", prettysummary(solver.grid))
+end
+
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
 
 stretched_direction(::YZRegularRG) = XDirection()
@@ -42,12 +48,28 @@ const HomogeneousZFormulation = HomogeneousNeumannFormulation{<:ZDirection}
     FourierTridiagonalPoissonSolver(grid, planner_flag = FFTW.PATIENT; tridiagonal_formulation=nothing)
 
 Construct a `FourierTridiagonalPoissonSolver` on `grid` with `tridiagonal_formulation` either
-`XDirection()`, `YDirection()`, or `ZDirection()`. By default, the `tridiagonal_direction` will
-be selected as `stretched_direction(grid)`, or `ZDirection()` if no directions are stretched.
-variably spaced, the tridiagonal direction is
-selected to be the direction of stretched grid spacing.
-The Poisson equation is solved with an FFT-based eigenfunction expansion in the non-tridiagonal-directions
-augmented by a tridiagonal solve in `tridiagonal_direction`.
+`XDirection()`, `YDirection()`, or `ZDirection()`. The `tridiagonal_formulation` can be used to tweak
+the tridiagonal matrices to solve variants on the Poisson equation, such as the screened Poisson equation,
+
+```math
+(∇² + m) ϕ = b
+```
+
+or the Poisson-like equation
+
+```math
+∂x² ϕ + ∂y² ϕ + ∂z (L ∂z ϕ) = b
+```
+
+or to implement boundary conditions other than the standard homogeneous Neumann boundary conditions.
+
+The tridiagonal direction is determined by is `tridiagonal_direction(tridiagonal_formulation)`.
+
+If `tridiagonal_formulation` is not specified, the tridiagonal direction is selected as the variably-spaced
+direction of the grid, or as the `ZDirection()` for grids with uniform spacing in all three directions.
+
+The (possibly perturbed) Poisson equation is solved with an FFT-based eigenfunction expansion in the non-tridiagonal-directions
+augmented by a tridiagonal solve in the tridiagonal direction.
 The non-tridiagonal-directions must be uniformly spaced.
 """
 function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridiagonal_formulation=nothing)
@@ -61,6 +83,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     end
 
     tridiagonal_dim = dimension(tridiagonal_dir)
+
     if topology(grid, tridiagonal_dim) != Bounded
         msg = "`FourierTridiagonalPoissonSolver` can only be used \
                 when the stretched direction's topology is `Bounded`."
@@ -80,8 +103,9 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     λ2 = on_architecture(arch, λ2)
 
     # Plan required transforms for x and y
-    sol_storage = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
-    transforms = plan_transforms(grid, sol_storage, planner_flag)
+    CT = complex(eltype(grid))
+    sol_storage = on_architecture(arch, zeros(CT, size(grid)...))
+    transforms = plan_transforms(grid, sol_storage, planner_flag, tridiagonal_dim)
 
     # Lower and upper diagonals are the same
     main_diagonal = zeros(grid, size(grid)...)
@@ -103,7 +127,8 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation
-    rhs = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
+    CT = complex(eltype(grid))
+    rhs = on_architecture(arch, zeros(CT, size(grid)...))
 
     return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
 end
@@ -187,15 +212,13 @@ end
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     !isnothing(b) && set_source_term!(solver, b) # otherwise, assume source term is set correctly
 
-    arch = architecture(solver)
-    ϕ = solver.storage
-
     # Apply forward transforms in order
     for transform! in solver.transforms.forward
         transform!(solver.source_term, solver.buffer)
     end
 
     # Solve tridiagonal system of linear equations at every column.
+    ϕ = solver.storage
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
@@ -209,6 +232,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # so that the solution has zero-mean.
     ϕ .= ϕ .- mean(ϕ)
 
+    arch = architecture(solver)
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
 
     return nothing
@@ -224,21 +248,22 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid
     arch = architecture(solver)
     solver.source_term .= source_term
-    launch!(arch, grid, :xyz, multiply_by_stretched_spacing!, solver.source_term, grid)
+    tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
+    launch!(arch, grid, :xyz, multiply_by_spacing!, solver.source_term, tdir, grid)
     return nothing
 end
 
-@kernel function multiply_by_stretched_spacing!(a, grid::YZRegularRG)
+@kernel function multiply_by_spacing!(b, ::XDirection, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds a[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
+    @inbounds b[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
 end
 
-@kernel function multiply_by_stretched_spacing!(a, grid::XZRegularRG)
+@kernel function multiply_by_spacing!(b, ::YDirection, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds a[i, j, k] *= Δyᵃᶜᵃ(i, j, k, grid)
+    @inbounds b[i, j, k] *= Δyᵃᶜᵃ(i, j, k, grid)
 end
 
-@kernel function multiply_by_stretched_spacing!(a, grid::XYRegularRG)
+@kernel function multiply_by_spacing!(b, ::ZDirection, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
+    @inbounds b[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
