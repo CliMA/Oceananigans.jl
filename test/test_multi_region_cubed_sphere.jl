@@ -87,7 +87,6 @@ function get_boundary_indices(Nx, Ny, Hx, Hy, ::North; operation=nothing, index=
     return range_x, Ny-Hy+1:Ny
 end
 
-
 # Solid body rotation
 R = 1        # sphere's radius
 U = 1        # velocity scale
@@ -131,17 +130,17 @@ create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros
 end
 
 """
-    same_longitude_at_poles!(grid1, grid2)
+    same_longitude_at_poles!(grid_1, grid_2)
 
-Change the longitude values in `grid1` that correspond to points situated _exactly_ at
-the poles so that they match the corresponding longitude values of `grid2`.
+Change the longitude values in `grid_1` that correspond to points situated _exactly_ at the poles so that they match the 
+corresponding longitude values of `grid_2`.
 """
-function same_longitude_at_poles!(grid1::ConformalCubedSphereGrid, grid2::ConformalCubedSphereGrid)
-    number_of_regions(grid1) == number_of_regions(grid2) || error("grid1 and grid2 must have same number of regions")
+function same_longitude_at_poles!(grid_1::ConformalCubedSphereGrid, grid_2::ConformalCubedSphereGrid)
+    number_of_regions(grid_1) == number_of_regions(grid_2) || error("grid_1 and grid_2 must have same number of regions")
 
-    for region in 1:number_of_regions(grid1)
-        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]
-        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]
+    for region in 1:number_of_regions(grid_1)
+        grid_1[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== +90]= grid_2[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== +90]
+        grid_1[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== -90]= grid_2[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== -90]
     end
 
     return nothing
@@ -150,9 +149,8 @@ end
 """
     zero_out_corner_halos!(array::OffsetArray, N, H)
 
-Zero out the values at the corner halo regions of the two-dimensional `array :: OffsetArray`.
-It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and the halo
-region is `H` in both dimensions.
+Zero out the values at the corner halo regions of the two-dimensional `array :: OffsetArray`. It is expected that the
+interior of the offset `array` is `(Nx, Ny) = (N, N)` and the halo region is `H` in both dimensions.
 """
 function zero_out_corner_halos!(array::OffsetArray, N, H)
     size(array) == (N+2H, N+2H)
@@ -228,7 +226,6 @@ end
     end
 end
 
-
 panel_sizes = ((8, 8, 1), (9, 9, 2))
 
 @testset "Testing area metrics" begin
@@ -288,7 +285,8 @@ end
 
             Nx, Ny, Nz = 9, 9, 1
 
-            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       horizontal_direction_halo = 3)
             bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
@@ -357,9 +355,10 @@ end
         for arch in archs
             @info "  Testing fill halos for horizontal velocities [$FT, $(typeof(arch))]..."
 
-            Nx, Ny, Nz = 3, 3, 1
+            Nx, Ny, Nz = 9, 9, 1
 
-            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       horizontal_direction_halo = 3)
             bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
@@ -501,7 +500,8 @@ end
                                         index=:first) == - create_v_test_data(grid, 5)[east_indices_first...]
                 end # CUDA.@allowscalar
 
-                # Confirm that the meridional velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
+                # Confirm that the meridional velocity halos were filled according to connectivity described at
+                # ConformalCubedSphereGrid docstring.
                 CUDA.@allowscalar begin
                     switch_device!(grid, 1)
 
@@ -773,6 +773,39 @@ end
                                         operation=:endpoint,
                                         index=:first) == create_ψ_test_data(grid, 5)[east_indices_first...]
                 end # CUDA.@allowscalar
+            end
+        end
+    end
+end
+
+@testset "Testing simulation on conformal cubed sphere grid" begin
+    for FT in float_types
+        for arch in archs
+            @info "  Testing simulation [$FT, $(typeof(arch))]..."
+
+            Nx, Ny, Nz = 27, 27, 9
+
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       horizontal_direction_halo = 4)
+            bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+
+            grids = (underlying_grid, immersed_grid)
+            
+            for grid in grids
+                model = HydrostaticFreeSurfaceModel(; grid,
+                                                    momentum_advection = WENOVectorInvariant(order=3),
+                                                    tracer_advection = WENO(order=3),
+                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=9),
+                                                    coriolis = HydrostaticSphericalCoriolis(),
+                                                    tracers = :b,
+                                                    buoyancy = BuoyancyTracer())
+                
+                simulation = Simulation(model, Δt=1minute, stop_iteration=3)
+                run!(simulation)
+                
+                @test iteration(simulation) == 3
+                @test time(simulation) == 3minutes
             end
         end
     end
