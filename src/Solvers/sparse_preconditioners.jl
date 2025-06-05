@@ -1,7 +1,6 @@
 using Oceananigans.Architectures
 using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
-using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
 
 using LinearAlgebra, SparseArrays
@@ -84,9 +83,6 @@ function build_preconditioner(::Val{:ILUFactorization},  A, settings)
         return ilu(A, τ = settings.τ)
     end
 end
-
-@inline architecture(::CuSparseMatrixCSC) = GPU()
-@inline architecture(::SparseMatrixCSC)   = CPU()
 
 abstract type AbstractInversePreconditioner{M} end
 
