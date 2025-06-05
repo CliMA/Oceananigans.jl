@@ -1,9 +1,13 @@
+using Adapt
 
 import Oceananigans.Utils: prettysummary
 
 struct ForcingKernelFunction{F}
     forcing :: F
 end
+
+Adapt.adapt_structure(to, fkf::ForcingKernelFunction) =
+    ForcingKernelFunction(adapt(to, fkf.forcing))
 
 prettysummary(kf::ForcingKernelFunction) = "ForcingKernelFunction"
 
