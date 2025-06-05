@@ -4,7 +4,6 @@ using Oceananigans
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Models: OceananigansModels
 
 import Oceananigans.Fields: set! 
 
@@ -19,14 +18,6 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
 end
 
 function default_checkpointed_properties(model)
-    properties = [:grid, :clock]
-    if has_ab2_timestepper(model)
-       push!(properties, :timestepper)
-    end
-    return properties
-end
-
-function default_checkpointed_properties(model::OceananigansModels)
     properties = [:grid, :particles, :clock]
     if has_ab2_timestepper(model)
        push!(properties, :timestepper)
@@ -40,8 +31,7 @@ catch
     false
 end
 
-required_checkpoint_properties(model) = [:grid, :clock]
-required_checkpoint_properties(::OceananigansModels) = [:grid, :clock, :particles]
+required_checkpoint_properties(model) = [:grid, :clock, :particles]
 
 """
     Checkpointer(model;
