@@ -1,7 +1,52 @@
+#=
+# Flat Bottom Immersed Boundary Validation
+
+This script validates immersed boundary implementations by comparing flow simulations
+with and without immersed boundaries under various boundary condition scenarios.
+
+## Purpose
+- Test the accuracy of immersed boundary methods against regular grid solutions
+- Validate that flow physics are correctly captured near immersed boundaries
+- Compare different boundary condition implementations and their effects
+
+## Test Setup
+The script runs two similar simulations side-by-side for comparison:
+
+1. **Regular Grid Simulation**:
+   - Domain: x ∈ [0, 2], z ∈ [0, 1]
+   - No immersed boundaries
+   - Uses fast FFT pressure solver
+
+2. **Immersed Boundary Simulation**:
+   - Domain: x ∈ [0, 2], z ∈ [-0.5, 1]
+   - Flat bottom immersed boundary at z = 0
+   - Uses ConjugateGradient pressure solver for immersed boundaries
+
+## Output and Validation
+For each boundary condition case, the script:
+- Runs both regular and immersed boundary simulations
+- Outputs u velocity, pressure, and divergence fields
+- Creates side-by-side comparison movies showing:
+  * Flow development over time
+  * Pressure field evolution
+  * Velocity divergence (should be ~0 for incompressible flow)
+- Validates that immersed boundary preserves expected flow physics
+
+## Expected Results
+- Similar flow patterns in the overlapping domain region (z > 0)
+- Proper no-slip condition enforcement at the flat bottom (z = 0)
+- Comparable pressure fields and divergence magnitudes
+- Stable time integration for all boundary condition types
+
+This validation helps ensure that immersed boundary methods accurately represent
+physical boundaries without introducing numerical artifacts.
+=#
+
 using Oceananigans
 using Printf
 using Statistics
 using CairoMakie
+using OrderedCollections
 
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
@@ -249,7 +294,7 @@ outflow_timescale = Inf
 @inline u₀(z, t) = u₀(t)
 
 # Define different boundary condition cases
-boundary_condition_cases = Dict(
+boundary_condition_cases = OrderedDict(
     "constant_velocity" => FieldBoundaryConditions(
         west = OpenBoundaryCondition(U₀), 
         east = OpenBoundaryCondition(U₀)
