@@ -783,10 +783,10 @@ end
         for arch in archs
             @info "  Testing simulation [$FT, $(typeof(arch))]..."
 
-            Nx, Ny, Nz = 27, 27, 9
+            Nx, Ny, Nz = 18, 18, 9
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
-                                                       horizontal_direction_halo = 4)
+                                                       horizontal_direction_halo = 6)
             bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
@@ -794,9 +794,9 @@ end
             
             for grid in grids
                 model = HydrostaticFreeSurfaceModel(; grid,
-                                                    momentum_advection = WENOVectorInvariant(order=3),
-                                                    tracer_advection = WENO(order=3),
-                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=9),
+                                                    momentum_advection = WENOVectorInvariant(order=5),
+                                                    tracer_advection = WENO(order=5),
+                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=12),
                                                     coriolis = HydrostaticSphericalCoriolis(),
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer())
