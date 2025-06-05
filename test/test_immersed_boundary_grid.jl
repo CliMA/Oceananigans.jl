@@ -155,9 +155,15 @@ end
 ##### Grid spacing tests for PartialCellBottom
 #####
 
-function test_partial_cell_bottom_grid_spacings(FT, arch)
+function test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid = false)
     Nz = 3; Lz = 1
-    underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, extent=Lz)
+    if mutable_grid
+        @info "    Testing grid with a MutableVerticalDiscretization"
+        underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=MutableVerticalDiscretization((-Lz, 0)))
+    else
+        @info "    Testing grid with a StaticVerticalDiscretization"
+        underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=(-Lz, 0))
+    end
 
     bottom_height = -Lz/2 # Bottom height is modway through the water column
     ϵ = 0.2
@@ -415,7 +421,8 @@ end
         for arch in archs, FT in float_types
             @info "  Testing grid spacings and metrics [$FT, $(typeof(arch))]..."
             @testset "Spacings [$FT, $(typeof(arch))]" begin
-                test_partial_cell_bottom_grid_spacings(FT, arch)
+                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=false)
+                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=true)
 
                 for boundary_type in (GridFittedBottom, PartialCellBottom)
                     test_immersed_volume_calculation(FT, arch, boundary_type)
