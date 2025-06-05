@@ -39,7 +39,14 @@ import Oceananigans.BoundaryConditions:
         fill_halo_regions!((u, v); kwargs...)
     end
 
-    other_keys = filter(k -> k != :u && k != :v, keys(fields))
+    U = haskey(fields, :U) ? fields.U : nothing
+    V = haskey(fields, :V) ? fields.V : nothing
+
+    if !isnothing(U) && !isnothing(V)
+        fill_halo_regions!((U, V); kwargs...)
+    end
+
+    other_keys = filter(k -> k != :u && k != :v && k != :U && k != :V, keys(fields))
     other_fields = Tuple(fields[k] for k in other_keys)
 
     for field in other_fields
