@@ -1,6 +1,6 @@
 using CUDA
 
-using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
+using Oceananigans.Fields: AbstractField, ZeroField, compute_at!, reduced_dimensions
 
 # TODO: figure out how to support this
 # using Oceananigans.OutputReaders: FieldTimeSeries
@@ -16,6 +16,28 @@ fetch_output(output, model) = output(model)
 function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
     return parent(field)
+end
+
+const XWindowedIndices = Tuple{<:UnitRange, Colon, Colon}
+const YWindowedIndices = Tuple{Colon, <:UnitRange, Colon}
+const ZWindowedIndices = Tuple{Colon, Colon, <:UnitRange}
+const XYWindowedIndices = Tuple{<:UnitRange, <:UnitRange, Colon}
+const XZWindowedIndices = Tuple{<:UnitRange, Colon, <:UnitRange}
+const YZWindowedIndices = Tuple{Colon, <:UnitRange, <:UnitRange}
+const XYZWindowedIndices = Tuple{<:UnitRange, <:UnitRange, <:UnitRange}
+const WindowedIndices = Union{XWindowedIndices, YWindowedIndices, ZWindowedIndices, XYWindowedIndices, XZWindowedIndices, YZWindowedIndices, XYZWindowedIndices}
+const WindowedFieldByIndices = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedIndices}
+
+function fetch_output(field::WindowedFieldByIndices, model)
+    compute_at!(field, time(model))
+    data = parent(field)
+
+    reduced_dims = reduced_dimensions(field)
+    if !isempty(reduced_dims)
+        data = dropdims(data; dims=reduced_dims)
+    end
+
+    return data
 end
 
 convert_output(output, writer) = output
