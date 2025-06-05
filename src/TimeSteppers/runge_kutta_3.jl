@@ -111,8 +111,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, first_stage_Δt; stage=true)
     model.clock.last_stage_Δt = first_stage_Δt
 
-    calculate_pressure_correction!(model, first_stage_Δt)
-    pressure_correct_velocities!(model, first_stage_Δt)
+    compute_pressure_correction!(model, first_stage_Δt)
+    make_pressure_correction!(model, first_stage_Δt)
 
     cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -127,8 +127,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, second_stage_Δt; stage=true)
     model.clock.last_stage_Δt = second_stage_Δt
 
-    calculate_pressure_correction!(model, second_stage_Δt)
-    pressure_correct_velocities!(model, second_stage_Δt)
+    compute_pressure_correction!(model, second_stage_Δt)
+    make_pressure_correction!(model, second_stage_Δt)
 
     cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -149,8 +149,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     model.clock.last_stage_Δt = corrected_third_stage_Δt
     model.clock.last_Δt = Δt
 
-    calculate_pressure_correction!(model, third_stage_Δt)
-    pressure_correct_velocities!(model, third_stage_Δt)
+    compute_pressure_correction!(model, third_stage_Δt)
+    make_pressure_correction!(model, third_stage_Δt)
 
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, third_stage_Δt)
