@@ -14,13 +14,14 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
                                         stop_time = 2.0,
                                         save_interval = 0.1,
                                         architecture = CPU(),
-                                        filename = "flat_bottom")
+                                        filename = "flat_bottom",
+                                        immersed_pressure_solver = nothing)
 
     # Calculate Nx and Nz from Δz
     # Domain x: 0 → 2, so Nx = 2 / Δx where Δx ≈ Δz for roughly square cells
     Δx = Δz
     Nx = round(Int, 2 / Δx)
-    
+
     if use_immersed_boundary
         # Domain from -1/2 to 1 with flat bottom at z = 0
         # Total height = 1.5, so Nz = 1.5 / Δz
@@ -39,9 +40,14 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
         @info "Using immersed boundary grid with flat bottom at z = 0"
         @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
         
-        # Use ConjugateGradient solver for immersed boundaries
-        pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100, reltol=1e-8, abstol=1e-10)
-        @info "Using ConjugateGradientPoissonSolver for immersed boundary"
+        # Use user-provided pressure solver or default ConjugateGradient solver for immersed boundaries
+        if immersed_pressure_solver === nothing
+            pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100, reltol=1e-8, abstol=1e-10)
+            @info "Using default ConjugateGradientPoissonSolver for immersed boundary"
+        else
+            pressure_solver = immersed_pressure_solver
+            @info "Using user-provided pressure solver for immersed boundary"
+        end
     else
         # Regular domain from 0 to 1, no immersed boundary
         # Total height = 1.0, so Nz = 1.0 / Δz
@@ -73,7 +79,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     # Initial conditions with small perturbations
     uᵢ(x, z) = U_constant + 1e-2 * sin(x) * cos(π * z)
     wᵢ(x, z) = 1e-3 * cos(x) * sin(π * z)
-    
+
     set!(model, u=uᵢ, w=wᵢ)
 
     # Time stepping
@@ -100,7 +106,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     # Compute pressure and divergence for output
     u, v, w = model.velocities
     p = sum(model.pressures)
-    
+
     # Compute divergence: ∇⋅u = ∂u/∂x + ∂w/∂z
     divergence = ∂x(u) + ∂z(w)
 
@@ -116,11 +122,9 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     @show model.grid
     @info "Boundary conditions:"
     @show model.velocities.u.boundary_conditions
-    
-    if pressure_solver !== nothing
-        @info "Pressure solver:"
-        @show pressure_solver
-    end
+
+    @info "Pressure solver:"
+    @show pressure_solver
 
     return simulation
 end
@@ -129,13 +133,13 @@ end
 #+++ Animate output
 function create_visualization(regular_filename, immersed_filename)
     @info "Loading results for visualization..."
-    
+
     # Load results from both simulations
     u_regular = FieldTimeSeries(regular_filename * ".jld2", "u")
     w_regular = FieldTimeSeries(regular_filename * ".jld2", "w") 
     p_regular = FieldTimeSeries(regular_filename * ".jld2", "p")
     div_regular = FieldTimeSeries(regular_filename * ".jld2", "divergence")
-    
+
     u_immersed = FieldTimeSeries(immersed_filename * ".jld2", "u")
     w_immersed = FieldTimeSeries(immersed_filename * ".jld2", "w")
     p_immersed = FieldTimeSeries(immersed_filename * ".jld2", "p")
@@ -144,20 +148,20 @@ function create_visualization(regular_filename, immersed_filename)
     # Get coordinates
     x_reg, y_reg, z_reg = nodes(u_regular)
     x_imm, y_imm, z_imm = nodes(u_immersed)
-    
+
     # Determine number of time steps
     Nt = min(length(u_regular.times), length(u_immersed.times))
     times = u_regular.times[1:Nt]
-    
+
     @info "Creating visualization with $Nt time steps..."
 
     # Create figure
     fig = Figure(size = (1600, 1200))
-    
+
     # Time slider
     slider = Slider(fig[7, 1:6], range = 1:Nt, startvalue = 1)
     n = slider.value
-    
+
     # Title
     title = @lift string("Comparison at t = ", @sprintf("%.2f", times[$n]))
     Label(fig[1, 1:6], title, textsize = 24)
@@ -169,10 +173,10 @@ function create_visualization(regular_filename, immersed_filename)
     # Create axes for each variable and simulation
     ax_u_reg = Axis(fig[3, 1], aspect = DataAspect(), title = "u velocity", xlabel = "x", ylabel = "z")
     ax_u_imm = Axis(fig[3, 4], aspect = DataAspect(), title = "u velocity", xlabel = "x", ylabel = "z")
-    
+
     ax_p_reg = Axis(fig[4, 1], aspect = DataAspect(), title = "pressure", xlabel = "x", ylabel = "z")
     ax_p_imm = Axis(fig[4, 4], aspect = DataAspect(), title = "pressure", xlabel = "x", ylabel = "z")
-    
+
     ax_div_reg = Axis(fig[5, 1], aspect = DataAspect(), title = "divergence", xlabel = "x", ylabel = "z")
     ax_div_imm = Axis(fig[5, 4], aspect = DataAspect(), title = "divergence", xlabel = "x", ylabel = "z")
 
@@ -181,7 +185,7 @@ function create_visualization(regular_filename, immersed_filename)
         un = u_regular[$n]
         interior(un, :, 1, :)
     end
-    
+
     u_imm_data = @lift begin 
         un = u_immersed[$n]
         mask_immersed_field!(un, NaN)
@@ -192,7 +196,7 @@ function create_visualization(regular_filename, immersed_filename)
         pn = p_regular[$n]
         interior(pn, :, 1, :)
     end
-    
+
     p_imm_data = @lift begin
         pn = p_immersed[$n]
         mask_immersed_field!(pn, NaN)
@@ -203,7 +207,7 @@ function create_visualization(regular_filename, immersed_filename)
         dn = div_regular[$n]
         interior(dn, :, 1, :)
     end
-    
+
     div_imm_data = @lift begin
         dn = div_immersed[$n]
         mask_immersed_field!(dn, NaN)
@@ -217,10 +221,10 @@ function create_visualization(regular_filename, immersed_filename)
 
     hm_u_reg = heatmap!(ax_u_reg, x_reg, z_reg, u_reg_data, colorrange = (-u_max, u_max), colormap = :balance)
     hm_u_imm = heatmap!(ax_u_imm, x_imm, z_imm, u_imm_data, colorrange = (-u_max, u_max), colormap = :balance)
-    
+
     hm_p_reg = heatmap!(ax_p_reg, x_reg, z_reg, p_reg_data, colorrange = (-p_max, p_max), colormap = :balance)  
     hm_p_imm = heatmap!(ax_p_imm, x_imm, z_imm, p_imm_data, colorrange = (-p_max, p_max), colormap = :balance)
-    
+
     hm_div_reg = heatmap!(ax_div_reg, x_reg, z_reg, div_reg_data, colorrange = (-div_max, div_max), colormap = :balance)
     hm_div_imm = heatmap!(ax_div_imm, x_imm, z_imm, div_imm_data, colorrange = (-div_max, div_max), colormap = :balance)
 
@@ -246,7 +250,7 @@ function create_visualization(regular_filename, immersed_filename)
         n[] = i
         i % 10 == 0 && @info "Frame $i of $Nt"
     end
-    
+
     @info "Movie saved as: $moviename"
     return fig
 end
