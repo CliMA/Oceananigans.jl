@@ -168,24 +168,24 @@ function create_visualization(regular_filename, immersed_filename)
 
     # Title
     title = @lift @sprintf("Flat Bottom Comparison - t = %.2f", times[$n])
-    Label(fig[1, 1:6], title, fontsize = 24)
+    Label(fig[1, 1:4], title, fontsize = 24)
 
     # Column labels
-    Label(fig[2, 1:3], "Regular Grid (z: 0 → 1)", fontsize = 20)
-    Label(fig[2, 4:6], "Immersed Boundary (z: -0.5 → 1, flat bottom at z=0)", fontsize = 20)
+    Label(fig[2, 1:2], "Regular Grid (z: 0 → 1)", fontsize = 20)
+    Label(fig[2, 3:4], "Immersed Boundary (z: -0.5 → 1, flat bottom at z=0)", fontsize = 20)
 
     # Consistent axis kwargs with y limits from -0.5 to 1 for both columns
     axis_kwargs = (xlabel = "x", ylabel = "z", limits = ((0, 2), (-0.5, 1.0)))
 
     # Create axes for each variable and simulation
     ax_u_reg = Axis(fig[3, 1]; title = "u velocity", axis_kwargs...)
-    ax_u_imm = Axis(fig[3, 4]; title = "u velocity", axis_kwargs...)
+    ax_u_imm = Axis(fig[3, 3]; title = "u velocity", axis_kwargs...)
 
     ax_p_reg = Axis(fig[4, 1]; title = "pressure", axis_kwargs...)
-    ax_p_imm = Axis(fig[4, 4]; title = "pressure", axis_kwargs...)
+    ax_p_imm = Axis(fig[4, 3]; title = "pressure", axis_kwargs...)
 
     ax_div_reg = Axis(fig[5, 1]; title = "divergence", axis_kwargs...)
-    ax_div_imm = Axis(fig[5, 4]; title = "divergence", axis_kwargs...)
+    ax_div_imm = Axis(fig[5, 3]; title = "divergence", axis_kwargs...)
 
     # Create observables for data (simplified using FieldTimeSeries directly)
     u_reg_plot = @lift u_regular[$n]
@@ -207,13 +207,13 @@ function create_visualization(regular_filename, immersed_filename)
     hm_div_reg = heatmap!(ax_div_reg, div_reg_plot; colorrange = (-div_max, div_max), colormap = :balance)
     hm_div_imm = heatmap!(ax_div_imm, div_imm_plot; colorrange = (-div_max, div_max), colormap = :balance)
 
-    # Add colorbars (shared between left and right columns)
-    Colorbar(fig[3, 2:3], hm_u_reg; label = "u velocity")
-    Colorbar(fig[3, 5:6], hm_u_imm; label = "u velocity")
-    Colorbar(fig[4, 2:3], hm_p_reg; label = "pressure")
-    Colorbar(fig[4, 5:6], hm_p_imm; label = "pressure")
-    Colorbar(fig[5, 2:3], hm_div_reg; label = "∇⋅u")
-    Colorbar(fig[5, 5:6], hm_div_imm; label = "∇⋅u")
+    # Add colorbars (single columns for wider panels)
+    Colorbar(fig[3, 2], hm_u_reg; label = "u velocity")
+    Colorbar(fig[3, 4], hm_u_imm; label = "u velocity")
+    Colorbar(fig[4, 2], hm_p_reg; label = "pressure")
+    Colorbar(fig[4, 4], hm_p_imm; label = "pressure")
+    Colorbar(fig[5, 2], hm_div_reg; label = "∇⋅u")
+    Colorbar(fig[5, 4], hm_div_imm; label = "∇⋅u")
 
     # Add flat bottom line to immersed boundary plots
     hlines!(ax_u_imm, 0.0; color = :black, linewidth = 3)
@@ -221,7 +221,7 @@ function create_visualization(regular_filename, immersed_filename)
     hlines!(ax_div_imm, 0.0; color = :black, linewidth = 3)
 
     # Time slider
-    slider = Slider(fig[6, 1:6]; range = 1:Nt, startvalue = 1)
+    slider = Slider(fig[6, 1:4]; range = 1:Nt, startvalue = 1)
     n = slider.value
 
     display(fig)
