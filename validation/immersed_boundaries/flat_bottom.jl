@@ -31,11 +31,13 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
         underlying_grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (4, 4),
                                           x = (0, 2), z = (-0.5, 1.0),
                                           topology = (Bounded, Flat, Bounded))
-        @assert 0 ∈ znodes(immersed_sim.model.grid, Face()) "Δz is such that the immersed boundary does not exactly align with the bottom of the non-immersed domain"
 
         # Create flat bottom at z = 0
         flat_bottom(x) = 0.0
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(flat_bottom))
+        
+        # Check that z = 0 is aligned with a grid face
+        @assert 0 ∈ znodes(grid, Face()) "Δz is such that the immersed boundary does not exactly align with the bottom of the non-immersed domain"
 
         @info "Using immersed boundary grid with flat bottom at z = 0"
         @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
@@ -136,12 +138,10 @@ function create_visualization(regular_filename, immersed_filename)
 
     # Load results from both simulations
     u_regular = FieldTimeSeries(regular_filename * ".jld2", "u")
-    w_regular = FieldTimeSeries(regular_filename * ".jld2", "w")
     p_regular = FieldTimeSeries(regular_filename * ".jld2", "p")
     div_regular = FieldTimeSeries(regular_filename * ".jld2", "divergence")
 
     u_immersed = FieldTimeSeries(immersed_filename * ".jld2", "u")
-    w_immersed = FieldTimeSeries(immersed_filename * ".jld2", "w")
     p_immersed = FieldTimeSeries(immersed_filename * ".jld2", "p")
     div_immersed = FieldTimeSeries(immersed_filename * ".jld2", "divergence")
 
@@ -155,98 +155,83 @@ function create_visualization(regular_filename, immersed_filename)
 
     @info "Creating visualization with $Nt time steps..."
 
+    # Calculate consistent color ranges across both simulations
+    u_max = max(maximum(abs, u_regular), maximum(abs, u_immersed))
+    p_max = max(maximum(abs, p_regular), maximum(abs, p_immersed))
+    div_max = max(maximum(abs, div_regular), maximum(abs, div_immersed))
+
     # Create figure
     fig = Figure(size = (1600, 1200))
 
-    # Time slider
-    slider = Slider(fig[7, 1:6], range = 1:Nt, startvalue = 1)
-    n = slider.value
+    # Observable for animation
+    n = Observable(1)
 
     # Title
-    title = @lift string("Comparison at t = ", @sprintf("%.2f", times[$n]))
+    title = @lift @sprintf("Flat Bottom Comparison - t = %.2f", times[$n])
     Label(fig[1, 1:6], title, fontsize = 24)
 
     # Column labels
     Label(fig[2, 1:3], "Regular Grid (z: 0 → 1)", fontsize = 20)
     Label(fig[2, 4:6], "Immersed Boundary (z: -0.5 → 1, flat bottom at z=0)", fontsize = 20)
 
+    # Consistent axis kwargs with y limits from -0.5 to 1 for both columns
+    axis_kwargs = (xlabel = "x", ylabel = "z", limits = ((0, 2), (-0.5, 1.0)))
+
     # Create axes for each variable and simulation
-    ax_u_reg = Axis(fig[3, 1], aspect = DataAspect(), title = "u velocity", xlabel = "x", ylabel = "z")
-    ax_u_imm = Axis(fig[3, 4], aspect = DataAspect(), title = "u velocity", xlabel = "x", ylabel = "z")
+    ax_u_reg = Axis(fig[3, 1]; title = "u velocity", axis_kwargs...)
+    ax_u_imm = Axis(fig[3, 4]; title = "u velocity", axis_kwargs...)
 
-    ax_p_reg = Axis(fig[4, 1], aspect = DataAspect(), title = "pressure", xlabel = "x", ylabel = "z")
-    ax_p_imm = Axis(fig[4, 4], aspect = DataAspect(), title = "pressure", xlabel = "x", ylabel = "z")
+    ax_p_reg = Axis(fig[4, 1]; title = "pressure", axis_kwargs...)
+    ax_p_imm = Axis(fig[4, 4]; title = "pressure", axis_kwargs...)
 
-    ax_div_reg = Axis(fig[5, 1], aspect = DataAspect(), title = "divergence", xlabel = "x", ylabel = "z")
-    ax_div_imm = Axis(fig[5, 4], aspect = DataAspect(), title = "divergence", xlabel = "x", ylabel = "z")
+    ax_div_reg = Axis(fig[5, 1]; title = "divergence", axis_kwargs...)
+    ax_div_imm = Axis(fig[5, 4]; title = "divergence", axis_kwargs...)
 
-    # Create observables for the data
-    u_reg_data = @lift begin
-        un = u_regular[$n]
-        interior(un, :, 1, :)
-    end
+    # Create observables for data (simplified using FieldTimeSeries directly)
+    u_reg_plot = @lift u_regular[$n]
+    u_imm_plot = @lift u_immersed[$n]
 
-    u_imm_data = @lift begin
-        un = u_immersed[$n]
-        mask_immersed_field!(un, NaN)
-        interior(un, :, 1, :)
-    end
+    p_reg_plot = @lift p_regular[$n]
+    p_imm_plot = @lift p_immersed[$n]
 
-    p_reg_data = @lift begin
-        pn = p_regular[$n]
-        interior(pn, :, 1, :)
-    end
+    div_reg_plot = @lift div_regular[$n]
+    div_imm_plot = @lift div_immersed[$n]
+   
+    # Create heatmaps with consistent color ranges
+    hm_u_reg = heatmap!(ax_u_reg, u_reg_plot; colorrange = (-u_max, u_max), colormap = :balance)
+    hm_u_imm = heatmap!(ax_u_imm, u_imm_plot; colorrange = (-u_max, u_max), colormap = :balance)
+        
+    hm_p_reg = heatmap!(ax_p_reg, p_reg_plot; colorrange = (-p_max, p_max), colormap = :balance)
+    hm_p_imm = heatmap!(ax_p_imm, p_imm_plot; colorrange = (-p_max, p_max), colormap = :balance)
+       
+    hm_div_reg = heatmap!(ax_div_reg, div_reg_plot; colorrange = (-div_max, div_max), colormap = :balance)
+    hm_div_imm = heatmap!(ax_div_imm, div_imm_plot; colorrange = (-div_max, div_max), colormap = :balance)
 
-    p_imm_data = @lift begin
-        pn = p_immersed[$n]
-        mask_immersed_field!(pn, NaN)
-        interior(pn, :, 1, :)
-    end
-
-    div_reg_data = @lift begin
-        dn = div_regular[$n]
-        interior(dn, :, 1, :)
-    end
-
-    div_imm_data = @lift begin
-        dn = div_immersed[$n]
-        mask_immersed_field!(dn, NaN)
-        interior(dn, :, 1, :)
-    end
-
-    # Create heatmaps
-    u_max = max(maximum(abs, u_regular), maximum(abs, u_immersed))
-    p_max = max(maximum(abs, p_regular), maximum(abs, p_immersed))
-    div_max = max(maximum(abs, div_regular), maximum(abs, div_immersed))
-
-    hm_u_reg = heatmap!(ax_u_reg, x_reg, z_reg, u_reg_data, colorrange = (-u_max, u_max), colormap = :balance)
-    hm_u_imm = heatmap!(ax_u_imm, x_imm, z_imm, u_imm_data, colorrange = (-u_max, u_max), colormap = :balance)
-
-    hm_p_reg = heatmap!(ax_p_reg, x_reg, z_reg, p_reg_data, colorrange = (-p_max, p_max), colormap = :balance)
-    hm_p_imm = heatmap!(ax_p_imm, x_imm, z_imm, p_imm_data, colorrange = (-p_max, p_max), colormap = :balance)
-
-    hm_div_reg = heatmap!(ax_div_reg, x_reg, z_reg, div_reg_data, colorrange = (-div_max, div_max), colormap = :balance)
-    hm_div_imm = heatmap!(ax_div_imm, x_imm, z_imm, div_imm_data, colorrange = (-div_max, div_max), colormap = :balance)
-
-    # Add colorbars
-    Colorbar(fig[3, 2], hm_u_reg, label = "u")
-    Colorbar(fig[3, 5], hm_u_imm, label = "u")
-    Colorbar(fig[4, 2], hm_p_reg, label = "p")
-    Colorbar(fig[4, 5], hm_p_imm, label = "p")
-    Colorbar(fig[5, 2], hm_div_reg, label = "∇⋅u")
-    Colorbar(fig[5, 5], hm_div_imm, label = "∇⋅u")
+    # Add colorbars (shared between left and right columns)
+    Colorbar(fig[3, 2:3], hm_u_reg; label = "u velocity")
+    Colorbar(fig[3, 5:6], hm_u_imm; label = "u velocity")
+    Colorbar(fig[4, 2:3], hm_p_reg; label = "pressure")
+    Colorbar(fig[4, 5:6], hm_p_imm; label = "pressure")
+    Colorbar(fig[5, 2:3], hm_div_reg; label = "∇⋅u")
+    Colorbar(fig[5, 5:6], hm_div_imm; label = "∇⋅u")
 
     # Add flat bottom line to immersed boundary plots
-    hlines!(ax_u_imm, 0.0, color = :black, linewidth = 3, label = "flat bottom")
-    hlines!(ax_p_imm, 0.0, color = :black, linewidth = 3, label = "flat bottom")
-    hlines!(ax_div_imm, 0.0, color = :black, linewidth = 3, label = "flat bottom")
+    hlines!(ax_u_imm, 0.0; color = :black, linewidth = 3)
+    hlines!(ax_p_imm, 0.0; color = :black, linewidth = 3)
+    hlines!(ax_div_imm, 0.0; color = :black, linewidth = 3)
+
+    # Time slider
+    slider = Slider(fig[6, 1:6]; range = 1:Nt, startvalue = 1)
+    n = slider.value
 
     display(fig)
 
     # Create movie
     moviename = "flat_bottom_comparison.mp4"
     @info "Recording movie: $moviename"
-    record(fig, moviename, 1:Nt, framerate = 8) do i
+    
+    frames = 1:Nt
+    record(fig, moviename, frames; framerate = 8) do i
         n[] = i
         i % 10 == 0 && @info "Frame $i of $Nt"
     end
@@ -267,18 +252,18 @@ end
 
 # Run both simulations
 @info "Running regular grid simulation..."
-regular_sim = create_flat_bottom_simulation(use_immersed_boundary = false, 
-                                            filename = "regular_grid",
-                                            Δz = Δz,
-                                            stop_time = 2.0)
-run!(regular_sim)
-
-@info "Running immersed boundary simulation..."
-immersed_sim = create_flat_bottom_simulation(use_immersed_boundary = true,
-                                             filename = "immersed_boundary", 
-                                             Δz = Δz,
-                                             stop_time = 2.0)
-run!(immersed_sim)
+#regular_sim = create_flat_bottom_simulation(use_immersed_boundary = false,
+#                                            filename = "regular_grid",
+#                                            Δz = Δz,
+#                                            stop_time = 2.0)
+#run!(relar_sim)
+#
+#@info "nng immersed boundary simulation..."
+#immersed_sim create_flat_bottom_simulation(use_immersed_boundary = true,
+#                                           filename = "immersed_boundary",
+#                                           Δz = Δz,
+#                                           stop_time = 2.0)
+#run!(immersed_sim)
 
 @info "Creating visualization..."
 fig = create_visualization("regular_grid", "immersed_boundary")
