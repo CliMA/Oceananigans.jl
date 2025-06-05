@@ -6,16 +6,19 @@ using CairoMakie
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 
 #+++ Create simulation
 function create_flat_bottom_simulation(; use_immersed_boundary = false,
                                         Δz = 0.05,
-                                        U_constant = 1.0,
+                                        U₀ = 1.0,
                                         stop_time = 2.0,
-                                        save_interval = 0.1,
+                                        save_interval = 0.01,
                                         architecture = CPU(),
                                         filename = "flat_bottom",
-                                        immersed_pressure_solver = nothing)
+                                        immersed_pressure_solver = nothing,
+                                        u_boundary_conditions = nothing,
+                                        verbose = false)
 
     # Calculate Nx and Nz from Δz
     # Domain x: 0 → 2, so Nx = 2 / Δx where Δx ≈ Δz for roughly square cells
@@ -39,16 +42,16 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
         # Check that z = 0 is aligned with a grid face
         @assert 0 ∈ znodes(grid, Face()) "Δz is such that the immersed boundary does not exactly align with the bottom of the non-immersed domain"
 
-        @info "Using immersed boundary grid with flat bottom at z = 0"
-        @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
+        @info "    Using immersed boundary grid with flat bottom at z = 0"
+        @info "    Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
 
         # Use user-provided pressure solver or default ConjugateGradient solver for immersed boundaries
         if immersed_pressure_solver === nothing
             pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100, reltol=1e-8, abstol=1e-10)
-            @info "Using default ConjugateGradientPoissonSolver for immersed boundary"
+            @info "    Using default ConjugateGradientPoissonSolver for immersed boundary"
         else
             pressure_solver = immersed_pressure_solver
-            @info "Using user-provided pressure solver for immersed boundary"
+            @info "    Using user-provided pressure solver for immersed boundary"
         end
     else
         # Regular domain from 0 to 1, no immersed boundary
@@ -60,18 +63,22 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
                                x = (0, 2), z = (0, 1),
                                topology = (Bounded, Flat, Bounded))
 
-        @info "Using regular grid from z = 0 to 1"
-        @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
+        @info "    Using regular grid from z = 0 to 1"
+        @info "    Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
 
         # Use default FFT solver for regular grids (faster)
         pressure_solver = nothing
-        @info "Using default FFT pressure solver"
+        @info "    Using default FFT pressure solver"
     end
 
-    # Set constant velocity boundary conditions at west and east boundaries
-    u_constant_bc = OpenBoundaryCondition(U_constant)
-    u_bcs = FieldBoundaryConditions(west = u_constant_bc, east = u_constant_bc)
-    boundary_conditions = (; u = u_bcs,)
+    # Set u boundary conditions
+    if u_boundary_conditions === nothing
+        # Default: constant velocity boundary conditions at west and east boundaries
+        u_constant_bc = OpenBoundaryCondition(U₀)
+        u_boundary_conditions = FieldBoundaryConditions(west = u_constant_bc, east = u_constant_bc)
+    end
+
+    boundary_conditions = (; u = u_boundary_conditions,)
 
     model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver,
                                 advection = UpwindBiased(order=3),
@@ -79,26 +86,26 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
                                 timestepper = :RungeKutta3,)
 
     # Initial conditions with small perturbations
-    uᵢ(x, z) = U_constant + 1e-2 * sin(x) * cos(π * z)
-    wᵢ(x, z) = 1e-3 * cos(x) * sin(π * z)
-
-    set!(model, u=uᵢ, w=wᵢ)
+    uᵢ(x, z) = U₀ + 1e-2 * sin(x) * cos(π * z)
+    set!(model, u=uᵢ)
 
     # Time stepping
-    Δt = 0.1 * Δx / U_constant
-    simulation = Simulation(model; Δt, stop_time)
+    Δt = 0.1 * Δx / U₀
+    simulation = Simulation(model; Δt, stop_time, verbose)
 
     # Progress callback
-    wall_clock = Ref(time_ns())
-    function progress(sim)
-        u, v, w = model.velocities
-        elapsed = 1e-9 * (time_ns() - wall_clock[])
-        @info @sprintf("Iter: %d, time: %.3f, max|u|: %.3f, max|w|: %.3f, wall time: %s",
-                       iteration(sim), time(sim), maximum(abs, u), maximum(abs, w), prettytime(elapsed))
-        wall_clock[] = time_ns()
-        return nothing
+    if verbose
+        wall_clock = Ref(time_ns())
+        function progress(sim)
+            u, v, w = model.velocities
+            elapsed = 1e-9 * (time_ns() - wall_clock[])
+            @info @sprintf("Iter: %d, time: %.3f, max|u|: %.3f, max|w|: %.3f, wall time: %s",
+                           iteration(sim), time(sim), maximum(abs, u), maximum(abs, w), prettytime(elapsed))
+            wall_clock[] = time_ns()
+            return nothing
+        end
+        add_callback!(simulation, progress, IterationInterval(50); name = :progress)
     end
-    add_callback!(simulation, progress, IterationInterval(50); name = :progress)
 
     # Adaptive time stepping
     conjure_time_step_wizard!(simulation, IterationInterval(5), cfl=0.5)
@@ -118,21 +125,13 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
                    filename,
                    overwrite_existing = true)
 
-    @info "Created simulation with grid:"
-    @show model.grid
-    @info "Boundary conditions:"
-    @show model.velocities.u.boundary_conditions
-
-    @info "Pressure solver:"
-    @show pressure_solver
-
     return simulation
 end
 #---
 
 #+++ Animate output
-function create_visualization(regular_filename, immersed_filename)
-    @info "Loading results for visualization..."
+function create_visualization(regular_filename, immersed_filename; suffix = "")
+    @info "Loading results for visualization using files $regular_filename and $immersed_filename..."
 
     # Load results from both simulations
     u_regular = FieldTimeSeries(regular_filename * ".jld2", "u")
@@ -156,7 +155,7 @@ function create_visualization(regular_filename, immersed_filename)
     # Calculate consistent color ranges across both simulations
     u_max = max(maximum(abs, u_regular), maximum(abs, u_immersed))
     p_max = max(maximum(abs, p_regular), maximum(abs, p_immersed))
-    div_max = max(maximum(abs, div_regular), maximum(abs, div_immersed))
+    div_max = max(maximum(abs, div_regular), maximum(abs, div_immersed)) / 1000
 
     # Create figure
     fig = Figure(size = (1600, 1200))
@@ -218,18 +217,12 @@ function create_visualization(regular_filename, immersed_filename)
     hlines!(ax_p_imm, 0.0; color = :black, linewidth = 3)
     hlines!(ax_div_imm, 0.0; color = :black, linewidth = 3)
 
-    # Time slider
-    slider = Slider(fig[6, 1:4]; range = 1:Nt, startvalue = 1)
-    n = slider.value
-
-    display(fig)
-
     # Create movie
-    moviename = "flat_bottom_comparison.mp4"
+    moviename = "flat_bottom_comparison$suffix.mp4"
     @info "Recording movie: $moviename"
     
     frames = 1:Nt
-    record(fig, moviename, frames; framerate = 8) do i
+    record(fig, moviename, frames; framerate = 14) do i
         n[] = i
         i % 10 == 0 && @info "Frame $i of $Nt"
     end
@@ -245,25 +238,72 @@ end
 
 @info "Starting flat bottom comparison simulations..."
 
-# Run both simulations with the same Δz
+# Simulation parameters
 Δz = 0.05  # Grid spacing
 stop_time = 2
+U₀ = 1.0
+inflow_timescale = 1e-4
+outflow_timescale = Inf
 
-# Run both simulations
-@info "Running regular grid simulation..."
-regular_sim = create_flat_bottom_simulation(use_immersed_boundary = false,
-                                            filename = "regular_grid";
-                                            Δz, stop_time)
-run!(regular_sim)
+@inline u₀(t) = U₀ * sin(2π * t)
+@inline u₀(z, t) = u₀(t)
 
-@info "Running immersed boundary simulation..."
-immersed_sim = create_flat_bottom_simulation(use_immersed_boundary = true,
-                                             filename = "immersed_boundary";
-                                             Δz, stop_time)
-run!(immersed_sim)
+# Define different boundary condition cases
+boundary_condition_cases = Dict(
+    "constant_velocity" => FieldBoundaryConditions(
+        west = OpenBoundaryCondition(U₀), 
+        east = OpenBoundaryCondition(U₀)
+    ),
+    "sine_velocity" => FieldBoundaryConditions(
+        west = OpenBoundaryCondition(u₀),
+        east = OpenBoundaryCondition(u₀)
+    ),
+    "constant_velocity_pad" => FieldBoundaryConditions(
+        west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),   
+        east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)     
+    ),       
+    "sine_velocity_pad" => FieldBoundaryConditions(        
+        west = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale),
+        east = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale)
+    ),
+)
 
-@info "Creating visualization..."
-fig = create_visualization("regular_grid", "immersed_boundary")
+for (bc_name, u_bcs) in boundary_condition_cases
+    println()
+    @info "Running simulations with boundary condition: $bc_name"
 
-@info "Done!"
+    # Adjust topology for periodic case
+    if bc_name == "periodic"
+        # Skip periodic for now as it requires different grid setup
+        @info "Skipping periodic case - requires different topology setup"
+        continue
+    end
 
+    # Run regular grid simulation
+    @info "  Running regular grid simulation..."
+    regular_filename = "regular_grid_$(bc_name)"
+    regular_sim = create_flat_bottom_simulation(
+        use_immersed_boundary = false,
+        filename = regular_filename,
+        u_boundary_conditions = u_bcs;
+        Δz, stop_time, U₀
+    )
+    run!(regular_sim)
+
+    # Run immersed boundary simulation
+    @info "  Running immersed boundary simulation..."
+    immersed_filename = "immersed_boundary_$(bc_name)"
+    immersed_sim = create_flat_bottom_simulation(
+        use_immersed_boundary = true,
+        filename = immersed_filename,
+        u_boundary_conditions = u_bcs;
+        Δz, stop_time, U₀
+    )
+    run!(immersed_sim)
+
+    # Create visualization for this boundary condition case
+    @info "  Creating visualization for $bc_name..."
+    fig = create_visualization(regular_filename, immersed_filename, suffix = "_$bc_name");
+end
+
+@info "All simulations completed!"
