@@ -5,33 +5,59 @@ using CairoMakie
 
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 
 #+++ Create simulation
 function create_flat_bottom_simulation(; use_immersed_boundary = false,
-                         Nx = 64,
-                         Nz = 32, 
-                         U_constant = 1.0,
-                         stop_time = 2.0,
-                         save_interval = 0.1,
-                         architecture = CPU(),
-                         filename = "flat_bottom")
+                                        Δz = 0.05,
+                                        U_constant = 1.0,
+                                        stop_time = 2.0,
+                                        save_interval = 0.1,
+                                        architecture = CPU(),
+                                        filename = "flat_bottom")
 
+    # Calculate Nx and Nz from Δz
+    # Domain x: 0 → 2, so Nx = 2 / Δx where Δx ≈ Δz for roughly square cells
+    Δx = Δz
+    Nx = round(Int, 2 / Δx)
+    
     if use_immersed_boundary
         # Domain from -1/2 to 1 with flat bottom at z = 0
+        # Total height = 1.5, so Nz = 1.5 / Δz
+        total_height = 1.5
+        Nz = round(Int, total_height / Δz)
+        
         underlying_grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (4, 4),
-                                          x = (0, 2π), z = (-0.5, 1.0),
+                                          x = (0, 2), z = (-0.5, 1.0),
                                           topology = (Bounded, Flat, Bounded))
-
+        @assert 0 ∈ znodes(immersed_sim.model.grid, Face()) "Δz is such that the immersed boundary does not exactly align with the bottom of the non-immersed domain"
+        
         # Create flat bottom at z = 0
         flat_bottom(x) = 0.0
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(flat_bottom))
+        
         @info "Using immersed boundary grid with flat bottom at z = 0"
+        @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
+        
+        # Use ConjugateGradient solver for immersed boundaries
+        pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100, reltol=1e-8, abstol=1e-10)
+        @info "Using ConjugateGradientPoissonSolver for immersed boundary"
     else
         # Regular domain from 0 to 1, no immersed boundary
+        # Total height = 1.0, so Nz = 1.0 / Δz
+        total_height = 1.0
+        Nz = round(Int, total_height / Δz)
+        
         grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (4, 4),
-                               x = (0, 2π), z = (0, 1),
+                               x = (0, 2), z = (0, 1),
                                topology = (Bounded, Flat, Bounded))
+        
         @info "Using regular grid from z = 0 to 1"
+        @info "Grid size: Nx = $Nx, Nz = $Nz, Δz = $Δz"
+        
+        # Use default FFT solver for regular grids (faster)
+        pressure_solver = nothing
+        @info "Using default FFT pressure solver"
     end
 
     # Set constant velocity boundary conditions at west and east boundaries
@@ -39,7 +65,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     u_bcs = FieldBoundaryConditions(west = u_constant_bc, east = u_constant_bc)
     boundary_conditions = (; u = u_bcs,)
 
-    model = NonhydrostaticModel(; grid, boundary_conditions,
+    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver,
                                 advection = UpwindBiased(order=3),
                                 hydrostatic_pressure_anomaly = CenterField(grid),
                                 timestepper = :RungeKutta3,)
@@ -51,7 +77,6 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     set!(model, u=uᵢ, w=wᵢ)
 
     # Time stepping
-    Δx = 2π / Nx
     Δt = 0.01 * Δx / U_constant
     simulation = Simulation(model; Δt, stop_time)
 
@@ -79,7 +104,6 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     # Compute divergence: ∇⋅u = ∂u/∂x + ∂w/∂z
     divergence = ∂x(u) + ∂z(w)
 
-    Main.@infiltrate
     # Output writer
     simulation.output_writers[:fields] =
         JLD2Writer(model, (; u, w, p, divergence);
@@ -92,6 +116,11 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     @show model.grid
     @info "Boundary conditions:"
     @show model.velocities.u.boundary_conditions
+    
+    if pressure_solver !== nothing
+        @info "Pressure solver:"
+        @show pressure_solver
+    end
 
     return simulation
 end
@@ -229,19 +258,22 @@ end
 
 @info "Starting flat bottom comparison simulations..."
 
+# Run both simulations with the same Δz
+Δz = 0.05  # Grid spacing
+
 # Run both simulations
 @info "Running regular grid simulation..."
 regular_sim = create_flat_bottom_simulation(use_immersed_boundary = false, 
-                            filename = "regular_grid",
-                            Nx = 64, Nz = 32,
-                            stop_time = 2.0)
-#run!(regular_sim)
+                                            filename = "regular_grid",
+                                            Δz = Δz,
+                                            stop_time = 2.0)
+run!(regular_sim)
 
 @info "Running immersed boundary simulation..."
 immersed_sim = create_flat_bottom_simulation(use_immersed_boundary = true,
-                             filename = "immersed_boundary", 
-                             Nx = 64, Nz = 32,
-                             stop_time = 2.0)
+                                             filename = "immersed_boundary", 
+                                             Δz = Δz,
+                                             stop_time = 2.0)
 run!(immersed_sim)
 
 @info "Creating visualization..."
