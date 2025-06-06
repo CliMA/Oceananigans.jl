@@ -77,6 +77,7 @@ WENO(order=7)
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
               grid = nothing,
+              buffer_scheme = nothing,
               bounds = nothing)
 
     if !(grid isa Nothing)
@@ -95,7 +96,9 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
     else
         N = Int((order + 1) ÷ 2)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme = WENO(FT; grid, order=order-2, bounds)
+        if isnothing(buffer_scheme)
+            buffer_scheme = WENO(FT; grid, order=order-2, bounds)
+        end
     end
 
     return WENO{N, FT, FT2}(bounds, buffer_scheme, advecting_velocity_scheme)
