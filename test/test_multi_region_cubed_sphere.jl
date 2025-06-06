@@ -271,7 +271,8 @@ end
             @info "  Testing immersed cubed sphere grid [$FT, $(typeof(arch))]..."
             grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1)
             
-            @inline bottom(x, y) = ifelse(abs(y) < 30, - grid.Lz - 1, zero(grid.Lz))
+            Lz = grid.Lz
+            @inline bottom(x, y) = ifelse(abs(y) < FT(30), - Lz - one(Lz), zero(Lz))
 
             # Test that the grid is constructed correctly
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
