@@ -4,6 +4,7 @@ using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 function poisson_solver_instantiates(grid, planner_flag)
     solver = FFTBasedPoissonSolver(grid, planner_flag)

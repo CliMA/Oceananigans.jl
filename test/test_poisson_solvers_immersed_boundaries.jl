@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
-using Oceananigans.Solvers: fft_poisson_solver
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 
 #####
 ##### Run pressure solver tests
