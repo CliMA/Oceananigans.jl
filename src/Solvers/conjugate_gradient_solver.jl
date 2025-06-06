@@ -3,23 +3,25 @@ using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Utils: prettysummary
 using Statistics: norm, dot, mean
 using LinearAlgebra
+using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: architecture
 
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P}
-    architecture :: A
-    grid :: G
-    linear_operation! :: L
-    reltol :: T
-    abstol :: T
-    maxiter :: Int
-    iteration :: Int
-    ρⁱ⁻¹ :: T
-    linear_operator_product :: F
-    search_direction :: F
-    residual :: F
-    preconditioner :: M
-    preconditioner_product :: P
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
+                architecture :: A
+                        grid :: G
+           linear_operation! :: L
+                      reltol :: T
+                      abstol :: T
+                     maxiter :: Int
+                   iteration :: Int
+                        ρⁱ⁻¹ :: T
+     linear_operator_product :: F
+            search_direction :: F
+                    residual :: F
+              preconditioner :: M
+      preconditioner_product :: P
+    enforce_gauge_condition! :: E
 end
 
 architecture(solver::ConjugateGradientSolver) = solver.architecture
@@ -33,13 +35,17 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 # "Nothing" preconditioner
 @inline precondition!(z, ::Nothing, r, args...) = r
 
+# Default no gauge condition enforcement
+@inline no_gauge_enforcement!(x, r) = nothing
+
 """
     ConjugateGradientSolver(linear_operation;
                                           template_field,
                                           maxiter = size(template_field.grid),
                                           reltol = sqrt(eps(template_field.grid)),
                                           abstol = 0,
-                                          preconditioner = nothing)
+                                          preconditioner = nothing,
+                                          enforce_gauge_condition! = no_gauge_enforcement!)
 
 Returns a `ConjugateGradientSolver` that solves the linear equation
 ``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
@@ -71,6 +77,15 @@ Arguments
 * `preconditioner`: Object for which `precondition!(z, preconditioner, r, args...)` computes `z = P * r`,
                     where `r` is the residual. Typically `P` is approximately `A⁻¹`.
 
+* `enforce_gauge_condition!`: Function with signature `enforce_gauge_condition!(x, r)` that
+                              enforces a gauge condition on the solution `x` and residual `r`.
+                              This is useful for problems where the solution is not unique, such as
+                              the Poisson equation with purely Neumann boundary conditions. 
+                              The function is called at the end of each iteration of a conjugate 
+                              gradient iteration to ensure that the solution remains consistent 
+                              with the gauge condition.
+                              The default is `no_gauge_enforcement!`, which does not enforce a gauge condition.
+
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
 function ConjugateGradientSolver(linear_operation;
@@ -78,7 +93,8 @@ function ConjugateGradientSolver(linear_operation;
                                  maxiter = prod(size(template_field)),
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
-                                 preconditioner = nothing)
+                                 preconditioner = nothing, 
+                                 enforce_gauge_condition! = no_gauge_enforcement!)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -105,7 +121,8 @@ function ConjugateGradientSolver(linear_operation;
                                    search_direction,
                                    residual,
                                    preconditioner,
-                                   precondition_product)
+                                   precondition_product,
+                                   enforce_gauge_condition!)
 end
 
 """
@@ -202,7 +219,7 @@ function iterate!(x, solver, b, args...)
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
 
-    @apply_regionally update_solution_and_residuals!(x, r, q, p, α)
+    @apply_regionally update_solution_and_residuals!(x, r, q, p, α, solver.enforce_gauge_condition!)
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ
@@ -239,7 +256,7 @@ function perform_iteration!(q, p, ρ, z, solver, args...)
     return nothing
 end
 
-function update_solution_and_residuals!(x, r, q, p, α)
+function update_solution_and_residuals!(x, r, q, p, α, enforce_gauge_condition!)
     xp = parent(x)
     rp = parent(r)
     qp = parent(q)
@@ -247,6 +264,8 @@ function update_solution_and_residuals!(x, r, q, p, α)
 
     xp .+= α .* pp
     rp .-= α .* qp
+
+    enforce_gauge_condition!(x, r)
 
     return nothing
 end

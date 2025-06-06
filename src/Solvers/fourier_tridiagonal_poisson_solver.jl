@@ -1,54 +1,18 @@
 using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, stretched_dimensions
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, stretched_dimensions
 
 import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
-                          grid :: G
+    grid :: G
     batched_tridiagonal_solver :: B
-                   source_term :: R
-                       storage :: S
-                        buffer :: β
-                    transforms :: T
+    source_term :: R
+    storage :: S
+    buffer :: β
+    transforms :: T
 end
 
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
-
-@kernel function compute_main_diagonal!(D, grid, λy, λz, ::XDirection)
-    j, k = @index(Global, NTuple)
-    Nx = size(grid, 1)
-
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
-    for i in 2:Nx-1
-        @inbounds D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
-    end
-    @inbounds D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
-end
-
-@kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
-    i, k = @index(Global, NTuple)
-    Ny = size(grid, 2)
-
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
-    for j in 2:Ny-1
-        @inbounds D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
-    end
-    @inbounds D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
-end
-
-@kernel function compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
-    i, j = @index(Global, NTuple)
-    Nz = size(grid, 3)
-
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
-    for k in 2:Nz-1
-        @inbounds D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
-    end
-    @inbounds D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
-end
 
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
@@ -58,20 +22,45 @@ dimension(::XDirection) = 1
 dimension(::YDirection) = 2
 dimension(::ZDirection) = 3
 
-infer_launch_configuration(::XDirection) = :yz
-infer_launch_configuration(::YDirection) = :xz
-infer_launch_configuration(::ZDirection) = :xy
-
-Δξᶠ(i, grid::YZRegularRG) = Δxᶠᵃᵃ(i, 1, 1, grid)
-Δξᶠ(j, grid::XZRegularRG) = Δyᵃᶠᵃ(1, j, 1, grid)
-Δξᶠ(k, grid::XYRegularRG) = Δzᵃᵃᶠ(1, 1, k, grid)
+main_diagonal_launch_configuration(::XDirection) = :yz
+main_diagonal_launch_configuration(::YDirection) = :xz
+main_diagonal_launch_configuration(::ZDirection) = :xy
 
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
-function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
-                                         tridiagonal_direction = stretched_direction(grid))
+struct HomogeneousNeumannFormulation{D}
+    direction :: D
+end
 
-    tridiagonal_dim = dimension(tridiagonal_direction)
+tridiagonal_direction(formulation::HomogeneousNeumannFormulation) = formulation.direction
+
+const HomogeneousXFormulation = HomogeneousNeumannFormulation{<:XDirection}
+const HomogeneousYFormulation = HomogeneousNeumannFormulation{<:YDirection}
+const HomogeneousZFormulation = HomogeneousNeumannFormulation{<:ZDirection}
+
+"""
+    FourierTridiagonalPoissonSolver(grid, planner_flag = FFTW.PATIENT; tridiagonal_formulation=nothing)
+
+Construct a `FourierTridiagonalPoissonSolver` on `grid` with `tridiagonal_formulation` either
+`XDirection()`, `YDirection()`, or `ZDirection()`. By default, the `tridiagonal_direction` will
+be selected as `stretched_direction(grid)`, or `ZDirection()` if no directions are stretched.
+variably spaced, the tridiagonal direction is
+selected to be the direction of stretched grid spacing.
+The Poisson equation is solved with an FFT-based eigenfunction expansion in the non-tridiagonal-directions
+augmented by a tridiagonal solve in `tridiagonal_direction`.
+The non-tridiagonal-directions must be uniformly spaced.
+"""
+function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridiagonal_formulation=nothing)
+
+    # Try to guess what direction should be tridiagonal
+    if isnothing(tridiagonal_formulation)
+        tridiagonal_dir = grid isa XYZRegularRG ? ZDirection() : stretched_direction(grid)
+        tridiagonal_formulation = HomogeneousNeumannFormulation(tridiagonal_dir)
+    else
+        tridiagonal_dir = tridiagonal_direction(tridiagonal_formulation)
+    end
+
+    tridiagonal_dim = dimension(tridiagonal_dir)
     if topology(grid, tridiagonal_dim) != Bounded
         msg = "`FourierTridiagonalPoissonSolver` can only be used \
                 when the stretched direction's topology is `Bounded`."
@@ -79,9 +68,10 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     end
 
     # Compute discrete Poisson eigenvalues
-    N1, N2 = Tuple(el for (i, el) in enumerate(size(grid)) if i ≠ tridiagonal_dim)
+    N1, N2 = Tuple(el for (i, el) in enumerate(size(grid))     if i ≠ tridiagonal_dim)
     T1, T2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ tridiagonal_dim)
-    L1, L2 = Tuple(el for (i, el) in enumerate(extent(grid)) if i ≠ tridiagonal_dim)
+    L1, L2 = Tuple(el for (i, el) in enumerate(extent(grid))   if i ≠ tridiagonal_dim)
+
     λ1 = poisson_eigenvalues(N1, L1, 1, T1())
     λ2 = poisson_eigenvalues(N2, L2, 2, T2())
 
@@ -94,17 +84,19 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     transforms = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = CUDA.@allowscalar [1 / Δξᶠ(q, grid) for q in 2:size(grid, tridiagonal_dim)]
-    lower_diagonal = on_architecture(arch, lower_diagonal)
+    main_diagonal = zeros(grid, size(grid)...)
+
+    Nd = size(grid, tridiagonal_dim) - 1
+    lower_diagonal = zeros(grid, Nd) 
     upper_diagonal = lower_diagonal
 
-    # Compute diagonal coefficients for each grid point
-    diagonal = on_architecture(arch, zeros(size(grid)...))
-    launch_config = infer_launch_configuration(tridiagonal_direction)
-    launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, tridiagonal_direction)
+    compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)
+    Nd > 0 && compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
 
     # Set up batched tridiagonal solver
-    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction)
+    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, upper_diagonal,
+                                        diagonal = main_diagonal,
+                                        tridiagonal_direction = tridiagonal_dir)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (T1, T2)
@@ -114,6 +106,82 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     rhs = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
 
     return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
+end
+
+#####
+##### Setup utilities
+#####
+
+# Note: diagonal coefficients depend on non-tridiagonal directions because
+# eigenvalues depend on non-tridiagonal directions.
+function compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)
+    tridiagonal_dir = tridiagonal_direction(tridiagonal_formulation)
+    launch_config = main_diagonal_launch_configuration(tridiagonal_dir)
+    arch = grid.architecture
+    launch!(arch, grid, launch_config, _compute_main_diagonal!, main_diagonal, grid, λ1, λ2, tridiagonal_formulation)
+    return nothing
+end
+
+@kernel function _compute_main_diagonal!(D, grid, λy, λz, ::HomogeneousXFormulation)
+    j, k = @index(Global, NTuple)
+    Nx = size(grid, 1)
+
+    # Using a homogeneous Neumann (zero Gradient) boundary condition:
+    @inbounds begin
+        D[1, j, k]  = -1 / Δxᶠᵃᵃ( 2, j, k, grid) - Δxᶜᵃᵃ( 1, j, k, grid) * (λy[j] + λz[k])
+        D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
+
+        for i in 2:Nx-1
+            D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
+        end
+    end
+end
+
+@kernel function _compute_main_diagonal!(D, grid, λx, λz, ::HomogeneousYFormulation)
+    i, k = @index(Global, NTuple)
+    Ny = size(grid, 2)
+
+    # Using a homogeneous Neumann (zero Gradient) boundary condition:
+    @inbounds begin
+        D[i, 1, k]  = -1 / Δyᵃᶠᵃ(i,  2, k, grid) - Δyᵃᶜᵃ(i,  1, k, grid) * (λx[i] + λz[k])
+        D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
+
+        for j in 2:Ny-1
+            D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
+        end
+    end
+end
+
+@kernel function _compute_main_diagonal!(D, grid, λx, λy, ::HomogeneousZFormulation)
+    i, j = @index(Global, NTuple)
+    Nz = size(grid, 3)
+
+    # Using a homogeneous Neumann (zero Gradient) boundary condition:
+    @inbounds begin
+        D[i, j, 1]  = -1 / Δzᵃᵃᶠ(i, j,  2, grid) - Δzᵃᵃᶜ(i, j,  1, grid) * (λx[i] + λy[j])
+        D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+
+        for k in 2:Nz-1
+            D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
+        end
+    end
+end
+
+Δξᶠ(i, grid, ::XDirection) = Δxᶠᵃᵃ(i, 1, 1, grid)
+Δξᶠ(j, grid, ::YDirection) = Δyᵃᶠᵃ(1, j, 1, grid)
+Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
+
+function compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
+    N = length(lower_diagonal)
+    arch = grid.architecture
+    launch!(arch, grid, tuple(N), _compute_lower_diagonal!, lower_diagonal, tridiagonal_formulation, grid)
+    return nothing
+end
+
+@kernel function _compute_lower_diagonal!(lower_diagonal, formulation, grid)
+    q = @index(Global)
+    dir = tridiagonal_direction(formulation)
+    @inbounds lower_diagonal[q] = 1 / Δξᶠ(q+1, grid, dir)
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
@@ -160,7 +228,6 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     return nothing
 end
 
-
 @kernel function multiply_by_stretched_spacing!(a, grid::YZRegularRG)
     i, j, k = @index(Global, NTuple)
     @inbounds a[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
@@ -175,4 +242,3 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
-

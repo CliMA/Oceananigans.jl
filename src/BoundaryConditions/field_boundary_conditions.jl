@@ -69,6 +69,7 @@ FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in propertynames(bcs))...)
 
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
+FieldBoundaryConditions(indices::Tuple, ::Missing) = nothing
 
 # return boundary conditions only if the field is not windowed!
 window_boundary_conditions(::UnitRange,  left, right) = nothing, nothing
