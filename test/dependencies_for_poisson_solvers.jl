@@ -4,6 +4,7 @@ using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 function poisson_solver_instantiates(grid, planner_flag)
     solver = FFTBasedPoissonSolver(grid, planner_flag)
@@ -35,6 +36,37 @@ function random_divergent_source_term(grid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
+
+    return R, U
+end
+
+function random_divergent_source_term(grid::ImmersedBoundaryGrid)
+    arch = architecture(grid)
+    default_bcs = FieldBoundaryConditions()
+    u_bcs = regularize_field_boundary_conditions(default_bcs, grid, :u)
+    v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
+    w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
+
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
+    U = (u=Ru, v=Rv, w=Rw)
+
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
+    
+    mask_immersed_field!(Ru)
+    mask_immersed_field!(Rv)
+    mask_immersed_field!(Rw)
+
+    fill_halo_regions!(Ru)
+    fill_halo_regions!(Rv)
+    fill_halo_regions!(Rw)
+
+    # Compute the right hand side R = ∇⋅U
+    ArrayType = array_type(arch)
+    R = CenterField(grid)
+    launch!(arch, grid, :xyz, divergence!, grid, U.u, U.v, U.w, R)
 
     return R, U
 end
