@@ -296,13 +296,6 @@ for (bc_name, u_bcs) in boundary_condition_cases
     println()
     @info "Running simulations with boundary condition: $bc_name"
 
-    # Adjust topology for periodic case
-    if bc_name == "periodic"
-        # Skip periodic for now as it requires different grid setup
-        @info "Skipping periodic case - requires different topology setup"
-        continue
-    end
-
     # Run regular grid simulation
     @info "  Running regular grid simulation..."
     regular_filename = "regular_grid_$(bc_name)"
