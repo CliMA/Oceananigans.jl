@@ -7,6 +7,7 @@ using Oceananigans.Grids: R_Earth,
 
 using CubedSphere
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
 
 using Distances
 
@@ -14,6 +15,10 @@ import Oceananigans.Grids: grid_name
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
+const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} = 
+    Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ},
+          ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}}
+
 
 """
     ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
@@ -273,7 +278,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
     return new_grid
 end
 
-function fill_halo_regions!(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+function fill_halo_regions!(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     Nx, Ny, Nz = size(grid)
 
     λᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
@@ -457,12 +462,21 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
     return new_grid
 end
 
-function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+function with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid})
+    active_cells_map = has_active_cells_map(getregion(ibg, 1))
+    active_z_columns = has_active_z_columns(getregion(ibg, 1))
+    underlying_grid = with_halo(halo, ibg.underlying_grid)
+    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
+                                active_cells_map,
+                                active_z_columns)
+end
+
+function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     return string(size_summary(size(grid)),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-radius(mrg::ConformalCubedSphereGrid) = first(mrg).radius
+radius(mrg::ConformalCubedSphereGridOfSomeKind) = first(mrg).radius
 
-grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"
+grid_name(mrg::ConformalCubedSphereGridOfSomeKind) = "ConformalCubedSphereGrid"

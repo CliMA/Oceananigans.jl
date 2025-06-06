@@ -3,14 +3,16 @@ using Oceananigans.Fields: AbstractField, FunctionField
 
 # Flavors of CubedSphereField
 const CubedSphereField{LX, LY, LZ} =
-    Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
-        Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
+    Union{Field{LX, LY, LZ, <:Any, <:ConformalCubedSphereGrid},
+          Field{LX, LY, LZ, <:Any, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}}}
 
 const CubedSphereFunctionField{LX, LY, LZ} =
-    FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}
+    Union{FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid},
+          FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}}}
 
 const CubedSphereAbstractField{LX, LY, LZ} =
-    AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
+    Union{AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid},
+          AbstractField{LX, LY, LZ, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}}}
 
 const AbstractCubedSphereField{LX, LY, LZ} =
     Union{CubedSphereAbstractField{LX, LY, LZ},
