@@ -5,27 +5,31 @@ using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-@inline function fill_cubed_halo_event!(field, grid, multiregion_field, region, fill_halo_function!, _fill_halo_kernel!)
-    sz = fill_halo_size(field.data, fill_halo_function!, field.indices, FullyConnected, location(field), grid)
-    of = fill_halo_offset(sz, fill_halo_function!, field.indices)
-    kernel_parameters = KernelParameters(sz, of)
-    reduced_dims = reduced_dimensions(field)
-
-    return launch!(grid.architecture, grid, kernel_parameters,
-                    _fill_halo_kernel!, field, multiregion_field, region,
-                    grid.connectivity.connections, Nc, Hc; reduced_dimensions = reduced_dims)
-end
-
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs...)
     grid = field.grid
 
     multiregion_field = Reference(field.data.regional_objects)
     regions = Iterate(1:6)
 
-    @apply_regionally fill_cubed_halo_event!(field, grid, multiregion_field, regions, fill_west_and_east_halo!,   _fill_cubed_sphere_center_center_field_east_west_halo_regions!)
-    @apply_regionally fill_cubed_halo_event!(field, grid, multiregion_field, regions, fill_south_and_north_halo!, _fill_cubed_sphere_center_center_field_north_south_halo_regions!)
-   
+    @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
+        grid.connectivity.connections, fill_west_and_east_halo!,
+        _fill_cubed_sphere_center_center_field_east_west_halo_regions!)
+    @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
+        grid.connectivity.connections, fill_south_and_north_halo!,
+        _fill_cubed_sphere_center_center_field_north_south_halo_regions!)
+
     return nothing
+end
+
+@inline function fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, region, connections,
+                                                     fill_halo_function!, _fill_halo_kernel!)
+    sz = fill_halo_size(field.data, fill_halo_function!, field.indices, FullyConnected, location(field), grid)
+    of = fill_halo_offset(sz, fill_halo_function!, field.indices)
+    kernel_parameters = KernelParameters(sz, of)
+    reduced_dims = reduced_dimensions(field)
+
+    return launch!(grid.architecture, grid, kernel_parameters, _fill_halo_kernel!, field, multiregion_field, region,
+                   connections, grid.Nx, grid.Hx; reduced_dimensions = reduced_dims)
 end
 
 @kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, region,
@@ -97,26 +101,15 @@ end
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; kwargs...)
     grid = field.grid
 
-    Nx, Ny, Nz = size(field)
-    Hx, Hy, _ = halo_size(grid)
-
-    # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
-    Nc, Hc = Nx, Hx
-
     multiregion_field = Reference(field.data.regional_objects)
-    region = Iterate(1:6)
+    regions = Iterate(1:6)
 
-    @apply_regionally begin
-        reduced_dims = reduced_dimensions(field)
-        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_east_west_halo_regions!, field,
-                multiregion_field, region, grid.connectivity.connections, Nc, Hc; reduced_dimensions = reduced_dims)
-    end
-
-    @apply_regionally begin
-        reduced_dims = reduced_dimensions(field)
-        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_north_south_halo_regions!, field,
-                multiregion_field, region, grid.connectivity.connections, Nc, Hc; reduced_dimensions = reduced_dims)
-    end
+    @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
+        grid.connectivity.connections, fill_west_and_east_halo!,
+        _fill_cubed_sphere_face_face_field_east_west_halo_regions!)
+    @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
+        grid.connectivity.connections, fill_south_and_north_halo!,
+        _fill_cubed_sphere_face_face_field_north_south_halo_regions!)
 
     return nothing
 end
@@ -220,35 +213,33 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                             field_2::CubedSphereField{<:Center, <:Center}; signed = true, kwargs...)
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(field_1)
-    Hx, Hy, _ = halo_size(grid)
-
-    # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
-    Nc, Hc = Nx, Hx
-
     signed ? plmn = -1 : plmn = 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)
-    region = Iterate(1:6)
+    regions = Iterate(1:6)
 
-    @apply_regionally begin
-        reduced_dims = reduced_dimensions(field_1)
-        launch!(grid.architecture, grid, (Nc, Nz),
-                _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
-                reduced_dimensions = reduced_dims)
-    end
-
-    @apply_regionally begin
-        reduced_dims = reduced_dimensions(field_1)
-        launch!(grid.architecture, grid, (Nc, Nz),
-                _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
-                reduced_dimensions = reduced_dims)
-    end
+    @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_west_and_east_halo!,
+        _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!)
+    @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_south_and_north_halo!,
+        _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!)
 
     return nothing
+end
+
+@inline function fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
+                                                           multiregion_field_2, region, connections, plmn,
+                                                           fill_halo_function!, _fill_halo_kernel!)
+    sz = fill_halo_size(field_1.data, fill_halo_function!, field_1.indices, FullyConnected, location(field_1), grid)
+    of = fill_halo_offset(sz, fill_halo_function!, field_1.indices)
+    kernel_parameters = KernelParameters(sz, of)
+    reduced_dims = reduced_dimensions(field_1)
+
+    return launch!(grid.architecture, grid, kernel_parameters, _fill_halo_kernel!, field_1, multiregion_field_1,
+                   field_2, multiregion_field_2, region, connections, grid.Nx, grid.Hx, plmn;
+                   reduced_dimensions = reduced_dims)
 end
 
 @kernel function _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!(
@@ -349,77 +340,49 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
     end
 end
 
-@inline vertical_offset(::Tuple{<:Any, <:Any, <:Colon}) = 0
-@inline vertical_offset(indices) = first(indices[3]) - 1
-
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
-
-    Nx, Ny, Nz = size(field_1)
-    Hx, Hy, Hz = halo_size(grid)
-
-    # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
-    Nc, Hc = Nx, Hx
 
     signed ? plmn = -1 : plmn = 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)
-    region = Iterate(1:6)
+    regions = Iterate(1:6)
 
-    @apply_regionally begin
-        sz = fill_halo_size(field_1.data, fill_west_and_east_halo!, field_1.indices, topology(grid, 1), location(field_1), grid)
-        of = fill_halo_offset(sz, fill_west_and_east_halo!, field_1.indices)
-        kernel_parameters = KernelParameters(sz, of)
-        reduced_dims = reduced_dimensions(field_1)
-
-        launch!(grid.architecture, grid, kernel_parameters,
-                _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
-                reduced_dimensions = reduced_dims)
-    end
-
-    @apply_regionally begin
-        sz = fill_halo_size(field_1.data, fill_south_and_north_halo!, field_1.indices, topology(grid, 2), location(field_1), grid)
-        of = fill_halo_offset(sz, fill_south_and_north_halo!, field_1.indices)
-        kernel_parameters = KernelParameters(sz, of)
-        reduced_dims = reduced_dimensions(field_1)
-
-        launch!(grid.architecture, grid, kernel_parameters,
-                _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
-                reduced_dimensions = reduced_dims)
-    end
+    @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_west_and_east_halo!,
+        _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!)
+    @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_south_and_north_halo!,
+        _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!)
 
     #=
     Add one valid field_1, field_2 value next to the corner, that allows us to compute vorticity on a wider stencil
     (e.g., ζ[0, 1, k] and ζ[1, 0, k]).
     =#
 
-    if Hc > 1
-        @apply_regionally begin
-            of = vertical_offset(field_1.indices)
-            kernel_parameters = KernelParameters(Nz, of)
-            reduced_dims = reduced_dimensions(field_1)
-
-            launch!(grid.architecture, grid, kernel_parameters,
-                    _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn;
-                    reduced_dimensions = reduced_dims)
-        end
-
-        @apply_regionally begin
-            of = vertical_offset(field_1.indices)
-            kernel_parameters = KernelParameters(Nz, of)
-            reduced_dims = reduced_dimensions(field_1)
-
-            launch!(grid.architecture, grid, kernel_parameters,
-                    _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn;
-                    reduced_dimensions = reduced_dims)
-        end
+    if grid.Hx > 1
+        @apply_regionally fill_cubed_sphere_field_pairs_corner_halo_event!(grid, field_1, field_2, plmn,
+            _fill_cubed_sphere_face_center_field_corner_halo_regions!)
+        @apply_regionally fill_cubed_sphere_field_pairs_corner_halo_event!(grid, field_1, field_2, plmn,
+            _fill_cubed_sphere_center_face_field_corner_halo_regions!)
     end
 
     return nothing
+end
+
+@inline vertical_offset(::Tuple{<:Any, <:Any, <:Colon}) = 0
+@inline vertical_offset(indices) = first(indices[3]) - 1
+
+@inline function fill_cubed_sphere_field_pairs_corner_halo_event!(grid, field_1, field_2, plmn, _fill_halo_kernel!)
+    Nz = size(field_1, 3)
+    of = vertical_offset(field_1.indices)
+    kernel_parameters = KernelParameters(Nz, of)
+    reduced_dims = reduced_dimensions(field_1)
+    
+    return launch!(grid.architecture, grid, kernel_parameters, _fill_halo_kernel!, field_1, field_2, grid.Nx, grid.Hx,
+                   plmn; reduced_dimensions = reduced_dims)
 end
 
 @kernel function _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!(
@@ -610,33 +573,18 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                             field_2::CubedSphereField{<:Face, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(field_1)
-    Hx, Hy, _ = halo_size(grid)
-
-    # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
-    Nc, Hc = Nx, Hx
-
     signed ? plmn = -1 : plmn = 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)
-    region = Iterate(1:6)
+    regions = Iterate(1:6)
 
-    @apply_regionally begin
-        reduced_dims = reduced_dimensions(field_1)
-        launch!(grid.architecture, grid, (Nc, Nz),
-                _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
-                reduced_dimensions = reduced_dims)
-    end
-
-    @apply_regionally begin
-        reduced_dims = reduced_dimensions(field_1)
-        launch!(grid.architecture, grid, (Nc, Nz),
-                _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
-                reduced_dimensions = reduced_dims)
-    end
+    @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_west_and_east_halo!,
+        _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!)
+    @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_south_and_north_halo!,
+        _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!)
 
     return nothing
 end
