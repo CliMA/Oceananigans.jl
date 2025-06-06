@@ -27,6 +27,7 @@ function make_random_immersed_grid(grid)
 end
 
 function compute_pressure_solution(grid)
+    arch = architecture(grid)
     reltol = abstol = eps(eltype(grid))
     solver = ConjugateGradientPoissonSolver(grid; reltol, abstol, maxiter=Int(1e10))
     R, U = random_divergent_source_term(grid)
