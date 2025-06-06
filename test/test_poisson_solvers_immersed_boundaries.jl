@@ -4,7 +4,7 @@ include("dependencies_for_poisson_solvers.jl")
 using Oceananigans.Solvers: fft_poisson_solver
 
 #####
-##### Run pressure solver tests 1
+##### Run pressure solver tests
 #####
 
 topos = [(Periodic, Bounded,  Bounded),
