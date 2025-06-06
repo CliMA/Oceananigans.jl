@@ -1,6 +1,6 @@
-
 using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset, fill_west_and_east_halo!,
     fill_south_and_north_halo!
+using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -21,20 +21,22 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
         sz = fill_halo_size(field.data, fill_west_and_east_halo!, field.indices, topology(grid, 1), location(field), grid)
         of = fill_halo_offset(sz, fill_west_and_east_halo!, field.indices)
         kernel_parameters = KernelParameters(sz, of)
+        reduced_dims = reduced_dimensions(field)
 
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_field_east_west_halo_regions!, field, multiregion_field, region,
-                grid.connectivity.connections, Nc, Hc)
+                grid.connectivity.connections, Nc, Hc; reduced_dimensions = reduced_dims)
     end
 
     @apply_regionally begin
         sz = fill_halo_size(field.data, fill_south_and_north_halo!, field.indices, topology(grid, 2), location(field), grid)
         of = fill_halo_offset(sz, fill_south_and_north_halo!, field.indices)
         kernel_parameters = KernelParameters(sz, of)
+        reduced_dims = reduced_dimensions(field)
 
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_field_north_south_halo_regions!, field, multiregion_field, region,
-                grid.connectivity.connections, Nc, Hc)
+                grid.connectivity.connections, Nc, Hc; reduced_dimensions = reduced_dims)
     end
 
     return nothing
@@ -119,13 +121,15 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; kwargs...)
     region = Iterate(1:6)
 
     @apply_regionally begin
+        reduced_dims = reduced_dimensions(field)
         launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_east_west_halo_regions!, field,
-                multiregion_field, region, grid.connectivity.connections, Nc, Hc)
+                multiregion_field, region, grid.connectivity.connections, Nc, Hc; reduced_dimensions = reduced_dims)
     end
 
     @apply_regionally begin
+        reduced_dims = reduced_dimensions(field)
         launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_north_south_halo_regions!, field,
-                multiregion_field, region, grid.connectivity.connections, Nc, Hc)
+                multiregion_field, region, grid.connectivity.connections, Nc, Hc; reduced_dimensions = reduced_dims)
     end
 
     return nothing
@@ -243,15 +247,19 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     region = Iterate(1:6)
 
     @apply_regionally begin
+        reduced_dims = reduced_dimensions(field_1)
         launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
+                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
+                reduced_dimensions = reduced_dims)
     end
 
     @apply_regionally begin
+        reduced_dims = reduced_dimensions(field_1)
         launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
+                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
+                reduced_dimensions = reduced_dims)
     end
 
     return nothing
@@ -378,20 +386,24 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
         sz = fill_halo_size(field_1.data, fill_west_and_east_halo!, field_1.indices, topology(grid, 1), location(field_1), grid)
         of = fill_halo_offset(sz, fill_west_and_east_halo!, field_1.indices)
         kernel_parameters = KernelParameters(sz, of)
+        reduced_dims = reduced_dimensions(field_1)
 
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
+                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
+                reduced_dimensions = reduced_dims)
     end
 
     @apply_regionally begin
         sz = fill_halo_size(field_1.data, fill_south_and_north_halo!, field_1.indices, topology(grid, 2), location(field_1), grid)
         of = fill_halo_offset(sz, fill_south_and_north_halo!, field_1.indices)
         kernel_parameters = KernelParameters(sz, of)
+        reduced_dims = reduced_dimensions(field_1)
 
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
+                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
+                reduced_dimensions = reduced_dims)
     end
 
     #=
@@ -403,17 +415,21 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
         @apply_regionally begin
             of = vertical_offset(field_1.indices)
             kernel_parameters = KernelParameters(Nz, of)
+            reduced_dims = reduced_dimensions(field_1)
 
             launch!(grid.architecture, grid, kernel_parameters,
-                    _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
+                    _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn;
+                    reduced_dimensions = reduced_dims)
         end
 
         @apply_regionally begin
             of = vertical_offset(field_1.indices)
             kernel_parameters = KernelParameters(Nz, of)
+            reduced_dims = reduced_dimensions(field_1)
 
             launch!(grid.architecture, grid, kernel_parameters,
-                    _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
+                    _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn;
+                    reduced_dimensions = reduced_dims)
         end
     end
 
@@ -621,15 +637,19 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     region = Iterate(1:6)
 
     @apply_regionally begin
+        reduced_dims = reduced_dimensions(field_1)
         launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
+                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
+                reduced_dimensions = reduced_dims)
     end
 
     @apply_regionally begin
+        reduced_dims = reduced_dimensions(field_1)
         launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!, field_1,
-                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
+                multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn;
+                reduced_dimensions = reduced_dims)
     end
 
     return nothing
