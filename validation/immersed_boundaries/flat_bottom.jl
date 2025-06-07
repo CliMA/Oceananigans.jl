@@ -32,6 +32,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.Diagnostics: AdvectiveCFL
 
 #+++ Create simulation
 function create_flat_bottom_simulation(; use_immersed_boundary = false,
@@ -116,17 +117,19 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     set!(model, u=uᵢ)
 
     # Time stepping
-    Δt = 0.1 * Δx / U₀
+    Δt = 0.5 * Δx / U₀
     simulation = Simulation(model; Δt, stop_time, verbose, minimum_relative_step = 1e-10)
 
     # Progress callback
     if verbose
         wall_clock = Ref(time_ns())
+        cfl_calculator = AdvectiveCFL(simulation.Δt)
         function progress(sim)
             u, v, w = model.velocities
             elapsed = 1e-9 * (time_ns() - wall_clock[])
-            @info @sprintf("Iter: %d, time: %.3f, max|u|: %.3f, max|w|: %.3f, wall time: %s",
-                           iteration(sim), time(sim), maximum(abs, u), maximum(abs, w), prettytime(elapsed))
+            cfl_value = cfl_calculator(model)
+            @info @sprintf("Iter: %d, time: %.3f, max|u|: %.3f, max|w|: %.3f, CFL: %.4f, wall time: %s, Δt: %s",
+                           iteration(sim), time(sim), maximum(abs, u), maximum(abs, w), cfl_value, prettytime(elapsed), prettytime(sim.Δt))
             wall_clock[] = time_ns()
             return nothing
         end
@@ -134,7 +137,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     end
 
     # Adaptive time stepping
-    conjure_time_step_wizard!(simulation, IterationInterval(5), cfl=0.8)
+    conjure_time_step_wizard!(simulation, IterationInterval(1), cfl=0.8)
 
     # Compute pressure and divergence for output
     u, v, w = model.velocities
@@ -179,14 +182,13 @@ function create_visualization(regular_filename, immersed_filename; suffix = "")
     @info "Creating visualization with $Nt time steps..."
 
     # Calculate consistent color ranges across both simulations
+    exclude_beginning = (:, :, :, 10:Nt)
     u_max = max(maximum(abs, u_regular), maximum(abs, u_immersed))
-    p_max = max(maximum(abs, p_regular), maximum(abs, p_immersed))
-    div_max = maximum(abs, div_regular)
+    p_max = max(maximum(abs, p_regular[exclude_beginning...]), maximum(abs, p_immersed[exclude_beginning...]))
+    div_max = maximum(abs, div_regular[exclude_beginning...])
 
     # Create figure (wider for 3 columns)
     fig = Figure(size = (2400, 1200))
-
-    # Observable for animation
     n = Observable(1)
 
     # Title
@@ -335,45 +337,47 @@ end
 @info "Starting flat bottom comparison simulations..."
 
 # Simulation parameters
-Δz = 0.05  # Grid spacing
+Δz = 0.025  # Grid spacing
 stop_time = 1
-U₀ = 1.0
-U₁ = 0.1
+verbose = true
 inflow_timescale = 1e-4
-outflow_timescale = Inf
+outflow_timescale = 1e-1
+
+U₀ = 1.0
 f₀ = 10/second
+m₀ = 0/meters
+
+U₁ = 0.1
 f₁ = 1000/second
+m₁ = 5/meters
 
-boundary_cfl = U₀ / (f₀ * Δz)
-@info "Boundary CFL is $boundary_cfl"
-
-@inline u₀(t) = U₀ * sin(2π * t * f₀)
-@inline u₀(z, t) = u₀(t)
+@inline u₀(t, p) = p.U₀ * cos(2π * t * p.f₀)
+@inline u₀(z, t, p) = u₀(t, p) * cos(2π * z * p.m₀)
 
 # Composite boundary condition with higher f₀ and wavenumber
-@inline u₀_composite(z, t) = u₀(z, t) + U₁ * sin(2π * t * f₁) * sin(2π * z * 5)
+@inline u_composite(z, t, p) = u₀(z, t, p) + p.U₁ * cos(2π * t * p.f₁) * cos(2π * z * p.m₁)
 
 # Define different boundary condition cases
 boundary_condition_cases = OrderedDict(
-#    "constant_velocity" => FieldBoundaryConditions(
-#        west = OpenBoundaryCondition(U₀),
-#        east = OpenBoundaryCondition(U₀)
-#    ),
-    "sine_velocity" => FieldBoundaryConditions(
-        west = OpenBoundaryCondition(u₀),
-        east = OpenBoundaryCondition(u₀)
+    "constant_velocity" => FieldBoundaryConditions(
+        west = OpenBoundaryCondition(u₀, parameters=(; U₀, f₀=0, m₀, U₁=0, f₁, m₁)),
+        east = OpenBoundaryCondition(u₀, parameters=(; U₀, f₀=0, m₀, U₁=0, f₁, m₁))
     ),
-    "composite_velocity" => FieldBoundaryConditions(
-        west = OpenBoundaryCondition(u₀_composite),
-        east = OpenBoundaryCondition(u₀_composite)
-    ),
-#    "constant_velocity_pad" => FieldBoundaryConditions(
-#        west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
-#        east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)
+#    "sine_velocity" => FieldBoundaryConditions(
+#        west = OpenBoundaryCondition(u₀, parameters=(; U₀, f₀, m₀, U₁=0, f₁, m₁)),
+#        east = OpenBoundaryCondition(u₀, parameters=(; U₀, f₀, m₀, U₁=0, f₁, m₁))
 #    ),
+#    "composite_velocity" => FieldBoundaryConditions(
+#        west = OpenBoundaryCondition(u_composite, parameters=(; U₀, f₀, m₀, U₁, f₁, m₁)),
+#        east = OpenBoundaryCondition(u_composite, parameters=(; U₀, f₀, m₀, U₁, f₁, m₁))
+#    ),
+    "constant_velocity_pad" => FieldBoundaryConditions(
+        west = PerturbationAdvectionOpenBoundaryCondition(u_composite; parameters=(; U₀, f₀=0, m₀, U₁=0, f₁, m₁), inflow_timescale, outflow_timescale),
+        east = PerturbationAdvectionOpenBoundaryCondition(u_composite; parameters=(; U₀, f₀=0, m₀, U₁=0, f₁, m₁), inflow_timescale, outflow_timescale)
+    ),
 #    "sine_velocity_pad" => FieldBoundaryConditions(
-#        west = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale),
-#        east = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale)
+#        west = PerturbationAdvectionOpenBoundaryCondition(u₀; parameters=(; U₀, f₀, m₀, U₁=0, f₁, m₁), inflow_timescale, outflow_timescale),
+#        east = PerturbationAdvectionOpenBoundaryCondition(u₀; parameters=(; U₀, f₀, m₀, U₁=0, f₁, m₁), inflow_timescale, outflow_timescale)
 #    ),
 )
 
@@ -389,7 +393,7 @@ for (bc_name, u_bcs) in boundary_condition_cases
         use_immersed_boundary = false,
         filename = regular_filename,
         u_boundary_conditions = u_bcs;
-        Δz, stop_time, U₀
+        Δz, stop_time, U₀, verbose,
     )
     run!(regular_sim)
 
@@ -399,7 +403,7 @@ for (bc_name, u_bcs) in boundary_condition_cases
         use_immersed_boundary = true,
         filename = immersed_filename,
         u_boundary_conditions = u_bcs;
-        Δz, stop_time, U₀
+        Δz, stop_time, U₀, verbose,
     )
     run!(immersed_sim)
 
