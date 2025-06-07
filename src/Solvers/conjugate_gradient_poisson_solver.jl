@@ -155,9 +155,6 @@ function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     return p
 end
 
-    return p
-end
-
 #####
 ##### The "DiagonallyDominantPreconditioner" (Marshall et al 1997)
 #####
