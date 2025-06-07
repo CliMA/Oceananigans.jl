@@ -33,6 +33,7 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Diagnostics: AdvectiveCFL
+using Oceananigans.Models: BoundaryAdjacentMean
 
 #+++ Create simulation
 function create_flat_bottom_simulation(; use_immersed_boundary = false,
@@ -128,12 +129,15 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
             u, v, w = model.velocities
             elapsed = 1e-9 * (time_ns() - wall_clock[])
             cfl_value = cfl_calculator(model)
-            @info @sprintf("Iter: %d, time: %.3f, max|u|: %.3f, max|w|: %.3f, CFL: %.4f, wall time: %s, Δt: %s",
-                           iteration(sim), time(sim), maximum(abs, u), maximum(abs, w), cfl_value, prettytime(elapsed), prettytime(sim.Δt))
+            west_mass_flux = Field(Average(view(u, 1, :, :)))[]
+            east_mass_flux = Field(Average(view(u, grid.Nx+1, :, :)))[]
+            net_mass_flux = east_mass_flux - west_mass_flux
+            @info @sprintf("Iter: %d, time: %.3f, max|u|: %.3f, max|w|: %.3f, CFL: %.4f, wall time: %s, Δt: %s, mass flux: %.4e",
+                           iteration(sim), time(sim), maximum(abs, u), maximum(abs, w), cfl_value, prettytime(elapsed), prettytime(sim.Δt), net_mass_flux)
             wall_clock[] = time_ns()
             return nothing
         end
-        add_callback!(simulation, progress, IterationInterval(50); name = :progress)
+        add_callback!(simulation, progress, IterationInterval(10); name = :progress)
     end
 
     # Adaptive time stepping
