@@ -22,6 +22,7 @@ The script runs two similar simulations side-by-side for comparison:
 =#
 
 using Oceananigans
+using Oceananigans.Units
 using Printf
 using Statistics
 using CairoMakie
@@ -108,7 +109,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
                                 advection = UpwindBiased(order=3),
                                 hydrostatic_pressure_anomaly = CenterField(grid),
                                 timestepper = :RungeKutta3,)
-    @info "Using $(summary(model.pressure_solver))"
+    @info "      Using $(summary(model.pressure_solver))"
 
     # Initial conditions with small perturbations
     uᵢ(x, z) = U₀ + 1e-2 * sin(x) * cos(π * z)
@@ -337,15 +338,20 @@ end
 Δz = 0.05  # Grid spacing
 stop_time = 1
 U₀ = 1.0
+U₁ = 0.1
 inflow_timescale = 1e-4
 outflow_timescale = Inf
-frequency = 100
+f₀ = 10/second
+f₁ = 1000/second
 
-boundary_cfl = U₀ / (frequency * Δz)
+boundary_cfl = U₀ / (f₀ * Δz)
 @info "Boundary CFL is $boundary_cfl"
 
-@inline u₀(t) = U₀ * sin(2π * t * frequency)
+@inline u₀(t) = U₀ * sin(2π * t * f₀)
 @inline u₀(z, t) = u₀(t)
+
+# Composite boundary condition with higher f₀ and wavenumber
+@inline u₀_composite(z, t) = u₀(z, t) + U₁ * sin(2π * t * f₁) * sin(2π * z * 5)
 
 # Define different boundary condition cases
 boundary_condition_cases = OrderedDict(
@@ -356,6 +362,10 @@ boundary_condition_cases = OrderedDict(
     "sine_velocity" => FieldBoundaryConditions(
         west = OpenBoundaryCondition(u₀),
         east = OpenBoundaryCondition(u₀)
+    ),
+    "composite_velocity" => FieldBoundaryConditions(
+        west = OpenBoundaryCondition(u₀_composite),
+        east = OpenBoundaryCondition(u₀_composite)
     ),
 #    "constant_velocity_pad" => FieldBoundaryConditions(
 #        west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
