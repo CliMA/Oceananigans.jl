@@ -62,7 +62,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
         # Create flat bottom at z = 0
         flat_bottom(x) = 0.0
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(flat_bottom))
-        
+
         # Check that z = 0 is aligned with a grid face
         @assert 0 ∈ znodes(grid, Face()) "Δz is such that the immersed boundary does not exactly align with the bottom of the non-immersed domain"
 
@@ -71,7 +71,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
 
         # Use user-provided pressure solver or default ConjugateGradient solver for immersed boundaries
         if immersed_pressure_solver === nothing
-            pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100, reltol=1e-8, abstol=1e-10)
+            pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100)
             @info "    Using default ConjugateGradientPoissonSolver for immersed boundary"
         else
             pressure_solver = immersed_pressure_solver
@@ -108,6 +108,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
                                 advection = UpwindBiased(order=3),
                                 hydrostatic_pressure_anomaly = CenterField(grid),
                                 timestepper = :RungeKutta3,)
+    @info "Using $(summary(model.pressure_solver))"
 
     # Initial conditions with small perturbations
     uᵢ(x, z) = U₀ + 1e-2 * sin(x) * cos(π * z)
@@ -115,7 +116,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
 
     # Time stepping
     Δt = 0.1 * Δx / U₀
-    simulation = Simulation(model; Δt, stop_time, verbose)
+    simulation = Simulation(model; Δt, stop_time, verbose, minimum_relative_step = 1e-10)
 
     # Progress callback
     if verbose
@@ -132,7 +133,7 @@ function create_flat_bottom_simulation(; use_immersed_boundary = false,
     end
 
     # Adaptive time stepping
-    conjure_time_step_wizard!(simulation, IterationInterval(5), cfl=0.5)
+    conjure_time_step_wizard!(simulation, IterationInterval(5), cfl=0.8)
 
     # Compute pressure and divergence for output
     u, v, w = model.velocities
@@ -179,21 +180,22 @@ function create_visualization(regular_filename, immersed_filename; suffix = "")
     # Calculate consistent color ranges across both simulations
     u_max = max(maximum(abs, u_regular), maximum(abs, u_immersed))
     p_max = max(maximum(abs, p_regular), maximum(abs, p_immersed))
-    div_max = max(maximum(abs, div_regular), maximum(abs, div_immersed)) / 1000
+    div_max = maximum(abs, div_regular)
 
-    # Create figure
-    fig = Figure(size = (1600, 1200))
+    # Create figure (wider for 3 columns)
+    fig = Figure(size = (2400, 1200))
 
     # Observable for animation
     n = Observable(1)
 
     # Title
     title = @lift @sprintf("Flat Bottom Comparison - t = %.2f", times[$n])
-    Label(fig[1, 1:4], title, fontsize = 24)
+    Label(fig[1, 1:6], title, fontsize = 24)
 
     # Column labels
-    Label(fig[2, 1:2], "Regular Grid (z: 0 → 1)", fontsize = 20)
-    Label(fig[2, 3:4], "Immersed Boundary (z: -0.5 → 1, flat bottom at z=0)", fontsize = 20)
+    Label(fig[2, 1:2], "Regular Grid", fontsize = 18)
+    Label(fig[2, 3:4], "Immersed Boundary", fontsize = 18)
+    Label(fig[2, 5:6], "Difference (Regular - Immersed)", fontsize = 18)
 
     # Consistent axis kwargs with y limits from -0.5 to 1 for both columns
     axis_kwargs = (xlabel = "x", ylabel = "z", limits = ((0, 2), (-0.5, 1.0)))
@@ -201,14 +203,23 @@ function create_visualization(regular_filename, immersed_filename; suffix = "")
     # Create axes for each variable and simulation
     ax_u_reg = Axis(fig[3, 1]; title = "u velocity", axis_kwargs...)
     ax_u_imm = Axis(fig[3, 3]; title = "u velocity", axis_kwargs...)
+    ax_u_diff = Axis(fig[3, 5]; title = "u difference", axis_kwargs...)
 
     ax_p_reg = Axis(fig[4, 1]; title = "pressure", axis_kwargs...)
     ax_p_imm = Axis(fig[4, 3]; title = "pressure", axis_kwargs...)
+    ax_p_diff = Axis(fig[4, 5]; title = "pressure difference", axis_kwargs...)
 
     ax_div_reg = Axis(fig[5, 1]; title = "divergence", axis_kwargs...)
     ax_div_imm = Axis(fig[5, 3]; title = "divergence", axis_kwargs...)
+    ax_div_diff = Axis(fig[5, 5]; title = "divergence difference", axis_kwargs...)
 
     # Create observables for data (simplified using FieldTimeSeries directly)
+    for (n, time) in enumerate(u_immersed.times)
+        mask_immersed_field!(u_immersed[n], NaN)
+        mask_immersed_field!(p_immersed[n], NaN)
+        mask_immersed_field!(div_immersed[n], NaN)
+    end
+
     u_reg_plot = @lift u_regular[$n]
     u_imm_plot = @lift u_immersed[$n]
 
@@ -217,34 +228,94 @@ function create_visualization(regular_filename, immersed_filename; suffix = "")
 
     div_reg_plot = @lift div_regular[$n]
     div_imm_plot = @lift div_immersed[$n]
-   
+
+    # Create difference plots (interpolating immersed to regular grid and computing difference)
+    u_diff_plot = @lift begin
+        # Get interior data for comparison in overlapping region (z > 0)
+        u_reg_interior = interior(u_regular[$n], :, 1, :)
+        u_imm_interior = interior(u_immersed[$n], :, 1, :)
+
+        # Find the overlapping z range (z > 0 for both grids)
+        z_reg_range = findall(z_reg .>= 0)
+        z_imm_range = findall(z_imm .>= 0)
+
+        # Create difference array initialized with NaN
+        u_diff = fill(NaN, size(u_reg_interior))
+
+        # Compute difference in overlapping region
+        if !isempty(z_reg_range) && !isempty(z_imm_range)
+            # Use the minimum overlap
+            nz_overlap = min(length(z_reg_range), length(z_imm_range))
+            u_diff[:, z_reg_range[1:nz_overlap]] = u_reg_interior[:, z_reg_range[1:nz_overlap]] - u_imm_interior[:, z_imm_range[1:nz_overlap]]
+        end
+
+        u_diff
+    end
+
+    p_diff_plot = @lift begin
+        p_reg_interior = interior(p_regular[$n], :, 1, :)
+        p_imm_interior = interior(p_immersed[$n], :, 1, :)
+
+        z_reg_range = findall(z_reg .>= 0)
+        z_imm_range = findall(z_imm .>= 0)
+
+        p_diff = fill(NaN, size(p_reg_interior))
+
+        if !isempty(z_reg_range) && !isempty(z_imm_range)
+            nz_overlap = min(length(z_reg_range), length(z_imm_range))
+            p_diff[:, z_reg_range[1:nz_overlap]] = p_reg_interior[:, z_reg_range[1:nz_overlap]] - p_imm_interior[:, z_imm_range[1:nz_overlap]]
+        end
+
+        p_diff
+    end
+
+    div_diff_plot = @lift begin
+        div_reg_interior = interior(div_regular[$n], :, 1, :)
+        div_imm_interior = interior(div_immersed[$n], :, 1, :)
+
+        z_reg_range = findall(z_reg .>= 0)
+        z_imm_range = findall(z_imm .>= 0)
+
+        div_diff = fill(NaN, size(div_reg_interior))
+
+        if !isempty(z_reg_range) && !isempty(z_imm_range)
+            nz_overlap = min(length(z_reg_range), length(z_imm_range))
+            div_diff[:, z_reg_range[1:nz_overlap]] = div_reg_interior[:, z_reg_range[1:nz_overlap]] - div_imm_interior[:, z_imm_range[1:nz_overlap]]
+        end
+
+        div_diff
+    end
+
     # Create heatmaps with consistent color ranges
     hm_u_reg = heatmap!(ax_u_reg, u_reg_plot; colorrange = (-u_max, u_max), colormap = :balance)
-    hm_u_imm = heatmap!(ax_u_imm, u_imm_plot; colorrange = (-u_max, u_max), colormap = :balance)
-        
+    hm_u_imm = heatmap!(ax_u_imm, u_imm_plot; colorrange = (-u_max, u_max), colormap = :balance, nan_color=:lightgray)
+    hm_u_diff = heatmap!(ax_u_diff, x_reg, z_reg, u_diff_plot; colorrange = (-u_max/10000, u_max/10000), colormap = :balance, nan_color=:lightgray)
+
     hm_p_reg = heatmap!(ax_p_reg, p_reg_plot; colorrange = (-p_max, p_max), colormap = :balance)
-    hm_p_imm = heatmap!(ax_p_imm, p_imm_plot; colorrange = (-p_max, p_max), colormap = :balance)
-       
+    hm_p_imm = heatmap!(ax_p_imm, p_imm_plot; colorrange = (-p_max, p_max), colormap = :balance, nan_color=:lightgray)
+    hm_p_diff = heatmap!(ax_p_diff, x_reg, z_reg, p_diff_plot; colorrange = (-p_max/10000, p_max/10000), colormap = :balance, nan_color=:lightgray)
+
     hm_div_reg = heatmap!(ax_div_reg, div_reg_plot; colorrange = (-div_max, div_max), colormap = :balance)
-    hm_div_imm = heatmap!(ax_div_imm, div_imm_plot; colorrange = (-div_max, div_max), colormap = :balance)
+    hm_div_imm = heatmap!(ax_div_imm, div_imm_plot; colorrange = (-div_max, div_max), colormap = :balance, nan_color=:lightgray)
+    hm_div_diff = heatmap!(ax_div_diff, x_reg, z_reg, div_diff_plot; colorrange = (-div_max, div_max), colormap = :balance, nan_color=:lightgray)
 
     # Add colorbars (single columns for wider panels)
     Colorbar(fig[3, 2], hm_u_reg; label = "u velocity")
     Colorbar(fig[3, 4], hm_u_imm; label = "u velocity")
+    Colorbar(fig[3, 6], hm_u_diff; label = "u difference")
+
     Colorbar(fig[4, 2], hm_p_reg; label = "pressure")
     Colorbar(fig[4, 4], hm_p_imm; label = "pressure")
+    Colorbar(fig[4, 6], hm_p_diff; label = "pressure diff")
+
     Colorbar(fig[5, 2], hm_div_reg; label = "∇⋅u")
     Colorbar(fig[5, 4], hm_div_imm; label = "∇⋅u")
-
-    # Add flat bottom line to immersed boundary plots
-    hlines!(ax_u_imm, 0.0; color = :black, linewidth = 3)
-    hlines!(ax_p_imm, 0.0; color = :black, linewidth = 3)
-    hlines!(ax_div_imm, 0.0; color = :black, linewidth = 3)
+    Colorbar(fig[5, 6], hm_div_diff; label = "∇⋅u difference")
 
     # Create movie
     moviename = "flat_bottom_comparison$suffix.mp4"
     @info "Recording movie: $moviename"
-    
+
     frames = 1:Nt
     record(fig, moviename, frames; framerate = 14) do i
         n[] = i
@@ -264,41 +335,46 @@ end
 
 # Simulation parameters
 Δz = 0.05  # Grid spacing
-stop_time = 2
+stop_time = 1
 U₀ = 1.0
 inflow_timescale = 1e-4
 outflow_timescale = Inf
+frequency = 100
 
-@inline u₀(t) = U₀ * sin(2π * t)
+boundary_cfl = U₀ / (frequency * Δz)
+@info "Boundary CFL is $boundary_cfl"
+
+@inline u₀(t) = U₀ * sin(2π * t * frequency)
 @inline u₀(z, t) = u₀(t)
 
 # Define different boundary condition cases
 boundary_condition_cases = OrderedDict(
-    "constant_velocity" => FieldBoundaryConditions(
-        west = OpenBoundaryCondition(U₀), 
-        east = OpenBoundaryCondition(U₀)
-    ),
+#    "constant_velocity" => FieldBoundaryConditions(
+#        west = OpenBoundaryCondition(U₀),
+#        east = OpenBoundaryCondition(U₀)
+#    ),
     "sine_velocity" => FieldBoundaryConditions(
         west = OpenBoundaryCondition(u₀),
         east = OpenBoundaryCondition(u₀)
     ),
-    "constant_velocity_pad" => FieldBoundaryConditions(
-        west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),   
-        east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)     
-    ),       
-    "sine_velocity_pad" => FieldBoundaryConditions(        
-        west = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale),
-        east = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale)
-    ),
+#    "constant_velocity_pad" => FieldBoundaryConditions(
+#        west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
+#        east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)
+#    ),
+#    "sine_velocity_pad" => FieldBoundaryConditions(
+#        west = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale),
+#        east = PerturbationAdvectionOpenBoundaryCondition(u₀; inflow_timescale, outflow_timescale)
+#    ),
 )
 
 for (bc_name, u_bcs) in boundary_condition_cases
     println()
     @info "Running simulations with boundary condition: $bc_name"
+    regular_filename = "regular_grid_$(bc_name)"
+    immersed_filename = "immersed_boundary_$(bc_name)"
 
     # Run regular grid simulation
     @info "  Running regular grid simulation..."
-    regular_filename = "regular_grid_$(bc_name)"
     regular_sim = create_flat_bottom_simulation(
         use_immersed_boundary = false,
         filename = regular_filename,
@@ -309,7 +385,6 @@ for (bc_name, u_bcs) in boundary_condition_cases
 
     # Run immersed boundary simulation
     @info "  Running immersed boundary simulation..."
-    immersed_filename = "immersed_boundary_$(bc_name)"
     immersed_sim = create_flat_bottom_simulation(
         use_immersed_boundary = true,
         filename = immersed_filename,
@@ -322,5 +397,3 @@ for (bc_name, u_bcs) in boundary_condition_cases
     @info "  Creating visualization for $bc_name..."
     fig = create_visualization(regular_filename, immersed_filename, suffix = "_$bc_name");
 end
-
-@info "All simulations completed!"
