@@ -6,7 +6,7 @@ function ordered_dict_show(dict::OrderedDict, padchar)
 
     if N == 0
         return "$name with no entries"
-    else if N == 1
+    elseif N == 1
         k = dict |> keys |> first
         sum_v = dict |> values |> first |> summary
         return "$name with 1 entry:\n$padchar   └── $k => $sum_v"
