@@ -113,6 +113,48 @@ const F = Face
     @test all(um.data .≈ us.data)
 end
 
+@testset "ZStar diffusion test" begin
+    @info "testing the ZStar diffusion in a HydrostaticFreeSurfaceModel"
+
+    z_static = (-15, 0)
+    z_moving = MutableVerticalDiscretization((-10, 0))
+    
+    for arch in archs
+        for TD in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
+            Random.seed!(1234)
+            c₀ = rand(20)
+
+            grid_static = RectilinearGrid(arch; size=20, z=z_static, topology=(Flat, Flat, Bounded))
+            grid_moving = RectilinearGrid(arch; size=20, z=z_moving, topology=(Flat, Flat, Bounded))
+
+            fill!(grid_moving.z.ηⁿ,   5)
+            fill!(grid_moving.z.σᶜᶜ⁻, 1.5)
+            fill!(grid_moving.z.σᶜᶜⁿ, 1.5)
+            fill!(grid_moving.z.σᶜᶠⁿ, 1.5)
+            fill!(grid_moving.z.σᶠᶠⁿ, 1.5)
+            fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
+            
+            model_static = HydrostaticFreeSurfaceModel(; grid = grid_static, 
+                                                        tracers = :c,
+                                                        closure = VerticalScalarDiffusivity(TD(), κ=0.1))
+                                                            
+            model_moving = HydrostaticFreeSurfaceModel(; grid = grid_moving, 
+                                                        tracers = :c,
+                                                        closure = VerticalScalarDiffusivity(TD(), κ=0.1))
+                                                    
+            set!(model_static, c = c₀)
+            set!(model_moving, c = c₀)
+
+            for _ in 1:1000
+                time_step!(model_static, 1.0)
+                time_step!(model_moving, 1.0)
+            end
+
+            @test all(Array(interior(model_static.tracers.c)) .≈ Array(interior(model_moving.tracers.c)))
+        end
+    end
+end
+
 @testset "ZStar tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded),
