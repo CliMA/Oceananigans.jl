@@ -115,17 +115,18 @@ end
 
 @testset "ZStar diffusion test" begin
     @info "testing the ZStar diffusion in a HydrostaticFreeSurfaceModel"
-
-    z_static = (-15, 0)
-    z_moving = MutableVerticalDiscretization((-10, 0))
+    Random.seed!(1234)
+    z_static = [i + rand() for i in -15:0]
+    z_static[1] = -15
+    z_static[end] = 0
+    z_moving = MutableVerticalDiscretization(z_static ./ 1.5)
     
     for arch in archs
         for TD in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
-            Random.seed!(1234)
-            c₀ = rand(20)
+            c₀ = rand(15)
 
-            grid_static = RectilinearGrid(arch; size=20, z=z_static, topology=(Flat, Flat, Bounded))
-            grid_moving = RectilinearGrid(arch; size=20, z=z_moving, topology=(Flat, Flat, Bounded))
+            grid_static = RectilinearGrid(arch; size=15, z=z_static, topology=(Flat, Flat, Bounded))
+            grid_moving = RectilinearGrid(arch; size=15, z=z_moving, topology=(Flat, Flat, Bounded))
 
             fill!(grid_moving.z.ηⁿ,   5)
             fill!(grid_moving.z.σᶜᶜ⁻, 1.5)
