@@ -116,6 +116,8 @@ end
 @testset "ZStar diffusion test" begin
     @info "testing the ZStar diffusion in a HydrostaticFreeSurfaceModel"
     Random.seed!(1234)
+
+    # Build a stretched vertical coordinate
     z_static = [i + rand() for i in -15:0]
     z_static[1] = -15
     z_static[end] = 0
