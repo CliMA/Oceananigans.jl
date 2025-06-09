@@ -2,13 +2,14 @@ using Adapt
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, default_indices, location
-using Oceananigans.Operators: Δx, Δy, Δz, Ax, Δλ, Δφ, Ay, Az, volume
+using Oceananigans.Operators: Δx, Δy, Δz, Δr, Δλ, Δφ, Ax, Ay, Az, volume
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
 const AbstractGridMetric = Union{typeof(Δx),
                                  typeof(Δy),
                                  typeof(Δz),
+                                 typeof(Δr),
                                  typeof(Δλ),
                                  typeof(Δφ),
                                  typeof(Ax),
@@ -156,6 +157,32 @@ KernelFunctionOperation at (Center, Center, Face)
 function zspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δz, grid, ℓx, ℓy, ℓz)
+    return Δz_op
+end
+
+"""
+    rspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``r`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> zspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δz (generic function with 28 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+function rspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δr, grid, ℓx, ℓy, ℓz)
     return Δz_op
 end
 
