@@ -261,7 +261,7 @@ end
             @info "  Testing immersed cubed sphere grid [$FT, $(typeof(arch))]..."
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1)
-            bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             # Test that the grid is constructed correctly
@@ -287,7 +287,7 @@ end
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
                                                        horizontal_direction_halo = 3)
-            bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
@@ -359,7 +359,7 @@ end
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
                                                        horizontal_direction_halo = 3)
-            bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
@@ -614,7 +614,7 @@ end
             grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
             
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
-            bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
@@ -785,7 +785,7 @@ end
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
                                                        horizontal_direction_halo = 6)
-            bottom(x, y) = abs(y) < 30 ? - underlying_grid.Lz - 1 : FT(0)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
