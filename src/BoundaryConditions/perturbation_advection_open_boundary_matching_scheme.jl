@@ -43,14 +43,16 @@ to point into the domain.
 The ideal value of the timescales probably depend on the grid spacing and details of the
 boundary flow.
 """
-struct PerturbationAdvection{FT}
+struct PerturbationAdvection{FT, MT}
     inflow_timescale :: FT
    outflow_timescale :: FT
+   average_mass_flux :: MT
 end
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
-                          adapt(to, pe.outflow_timescale))
+                          adapt(to, pe.outflow_timescale),
+                          adapt(to, pe.average_mass_flux))
 
 """
     PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
@@ -63,9 +65,10 @@ details about this method, refer to the docstring for `PerturbationAdvection`.
 """
 function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
                                                     outflow_timescale = Inf,
-                                                    inflow_timescale = 0, kwargs...)
+                                                    inflow_timescale = 0,
+                                                    average_mass_flux = nothing, kwargs...)
 
-    classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
+    classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale, average_mass_flux))
 
     @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
 
