@@ -145,9 +145,6 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     return nothing
 end
 
-@inline get_buffers(::Val{fill_bottom_and_top_halo!}, buffers) = nothing
-@inline get_buffers(side, buffers) = buffers
-
 # Find a better way to do this (this will not work for corners!!)
 function fill_multiregion_send_buffers!(c, buffers, grid, bcs)
 
