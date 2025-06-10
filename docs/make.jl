@@ -106,6 +106,7 @@ model_setup_pages = [
 
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
+    "Vertical coordinates" => "physics/zstar_vertical_coordinate.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
