@@ -155,7 +155,7 @@ function plan_transforms(grid, storage, planner_flag, untransformed_dim)
     elseif untransformed_dim == 2
         (1, 3)
     elseif untransformed_dim == 1
-        (1, 2)
+        (2, 3)
     else
         error("Invalid untransformed dimension: $untransformed_dim")
     end
