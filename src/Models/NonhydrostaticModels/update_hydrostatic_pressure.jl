@@ -18,7 +18,7 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid
 end
 
 """
-    update_hydrostatic_pressure!(pHY′, grid, buoyancy, tracers, coriolis, velocities; kernel_parameters)
+    update_hydrostatic_pressure!(pHY′, grid, buoyancy, tracers, coriolis, velocities; parameters=:xy)
 
 Update the hydrostatic pressure perturbation pHY′. This is done by integrating
 the `buoyancy_perturbationᶜᶜᶜ` downwards:
