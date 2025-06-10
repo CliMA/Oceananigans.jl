@@ -145,8 +145,8 @@ end
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
-    devs = isnothing(multi_region_args) ? 
-        multi_region_kwargs : multi_region_args |> devices
+    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
+    devs = devices(devs)
 
 
     # Evaluate regional_func on the device of that region and collect
