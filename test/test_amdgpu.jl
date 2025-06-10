@@ -2,6 +2,20 @@ include("dependencies_for_runtests.jl")
 
 using AMDGPU
 
+function timestep_simulation(model)
+    for field in merge(model.velocities, model.tracers)
+        @test parent(field) isa ROCArray
+    end
+
+    simulation = Simulation(model, Δt=1minute, stop_iteration=3)
+    run!(simulation)
+
+    @test iteration(simulation) == 3
+    @test time(simulation) == 3minutes
+
+    return nothing
+end
+
 @testset "AMDGPU extension" begin
     roc = AMDGPU.ROCBackend()
     arch = GPU(roc)
@@ -16,47 +30,32 @@ using AMDGPU
         @test eltype(grid) == FT
         @test architecture(grid) isa GPU
 
-        model = HydrostaticFreeSurfaceModel(; grid,
-                                            coriolis = FPlane(latitude=45),
-                                            buoyancy = BuoyancyTracer(),
-                                            tracers = :b,
-                                            momentum_advection = WENO(order=5),
-                                            tracer_advection = WENO(order=5),
-                                            free_surface = SplitExplicitFreeSurface(grid; substeps=60))
-
-        for field in merge(model.velocities, model.tracers)
-            @test parent(field) isa ROCArray
-        end
-
-        simulation = Simulation(model, Δt=1minute, stop_iteration=3)
-        run!(simulation)
-
-        @test iteration(simulation) == 3
-        @test time(simulation) == 3minutes
-
-        @info "    Testing NonhydrostaticModel on $arch with $FT"
+        coriolis = FPlane(latitude=45)
+        buoyancy = BuoyancyTracer()
+        tracers = :b
+        advection = WENO(order=5)
+        momentum_advection = tracer_advection = advection
 
         pressure_solvers = (Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid, maxiter=10; reltol=1e-7, abstol=1e-7, preconditioner=nothing),
                             Oceananigans.Solvers.FFTBasedPoissonSolver(grid))
 
+        free_surface = SplitExplicitFreeSurface(grid; substeps=60)
+
+        model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+                                            coriolis, buoyancy, tracers,
+                                            momentum_advection, tracer_advection)
+
+        timestep_simulation(model)
+
+        @info "    Testing NonhydrostaticModel on $arch with $FT"
+
+
         for pressure_solver in pressure_solvers
+            model = NonhydrostaticModel(; grid, pressure_solver,
+                                        coriolis, buoyancy,
+                                        tracers, advection)
 
-            model = NonhydrostaticModel(; grid, pressure_solver
-                                        coriolis = FPlane(latitude=45),
-                                        buoyancy = BuoyancyTracer(),
-                                        tracers = :b,
-                                        momentum_advection = WENO(order=5),
-                                        tracer_advection = WENO(order=5),)
-
-            for field in merge(model.velocities, model.tracers)
-                @test parent(field) isa ROCArray
-            end
-
-            simulation = Simulation(model, Δt=1minute, stop_iteration=3)
-            run!(simulation)
-
-            @test iteration(simulation) == 3
-            @test time(simulation) == 3minutes
+            timestep_simulation(model)
         end
     end
 end
