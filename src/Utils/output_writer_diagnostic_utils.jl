@@ -13,7 +13,11 @@ defaultname(::AbstractOutputWriter, nelems) = Symbol(:writer, nelems+1)
 
 const DiagOrWriterDict = OrderedDict{S, <:Union{AbstractDiagnostic, AbstractOutputWriter}} where S
 
-push!(container::DiagOrWriterDict, elem) = (container[defaultname(elem, length(container))] = elem; nothing)
+function push!(container::DiagOrWriterDict, elem)
+    name = defaultname(elem, length(container))
+    container[name] = elem
+    return nothing
+end
 
 getindex(container::DiagOrWriterDict, inds::Integer...) = getindex(container.vals, inds...)
 
