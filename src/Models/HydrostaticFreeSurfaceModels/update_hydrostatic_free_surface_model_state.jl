@@ -75,24 +75,24 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
                                                                   p_parameters = p_kernel_parameters(model.grid),
                                                                   κ_parameters = :xyz)
 
-    grid        = model.grid
-    closure     = model.closure
-    tracers     = model.tracers
-    diffusivity = model.diffusivity_fields
-    buoyancy    = model.buoyancy
-
-    P    = model.pressure.pHY′
-    arch = architecture(grid)
-
     # Update the vertical velocity to comply with the barotropic correction step
+    grid = model.grid
     update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
 
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
 
-    # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
+    update_hydrostatic_pressure!(model.pressure.pHY′,
+                                 grid,
+                                 model.buoyancy,
+                                 model.tracers,
+                                 model.coriolis,
+                                 model.velocities;
+                                 parameters = p_parameters)
+
+    closure = model.closure
+    diffusivity_fields = model.diffusivity_fields
+    compute_diffusivities!(diffusivity_fields, closure, model; parameters = κ_parameters)
 
     return nothing
 end

@@ -3,39 +3,52 @@ using Oceananigans.ImmersedBoundaries: PartialCellBottom, ImmersedBoundaryGrid
 using Oceananigans.Grids: topology
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 
-"""
-Update the hydrostatic pressure perturbation pHY′. This is done by integrating
-the `buoyancy_perturbationᶜᶜᶜ` downwards:
-
-    `pHY′ = ∫ buoyancy_perturbationᶜᶜᶜ dz` from `z=0` down to `z=-Lz`
-"""
-@kernel function _update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
+@kernel function _update_hydrostatic_pressure!(pHY′, grid, buoyancy, tracers, coriolis, velocities)
     i, j = @index(Global, NTuple)
 
-    @inbounds pHY′[i, j, grid.Nz] = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
+    dpdz⁺ = z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, tracers) - z_f_cross_U(i, j, grid.Nz+1, grid, coriolis, velocities)
+    @inbounds pHY′[i, j, grid.Nz] = - dpdz⁺ * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
 
     for k in grid.Nz-1 : -1 : 1
-        @inbounds pHY′[i, j, k] = pHY′[i, j, k+1] - z_dot_g_bᶜᶜᶠ(i, j, k+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
+        dpdz⁺ = z_dot_g_bᶜᶜᶠ(i, j, k+1, grid, buoyancy, tracers) - z_f_cross_U(i, j, k+1, grid, coriolis, velocities)
+
+        # Using dpdz = (p⁺ - pᵏ) / Δzᶜᶜᶠ
+        @inbounds pHY′[i, j, k] = pHY′[i, j, k+1] - dpdz⁺ * Δzᶜᶜᶠ(i, j, k+1, grid)
     end
 end
 
-update_hydrostatic_pressure!(model; kwargs...) = update_hydrostatic_pressure!(model.grid, model; kwargs...)
-update_hydrostatic_pressure!(::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, model; kwargs...) = nothing
-update_hydrostatic_pressure!(grid, model; kwargs...) =
-    update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers; kwargs...)
+"""
+    update_hydrostatic_pressure!(pHY′, grid, buoyancy, tracers, coriolis, velocities; kernel_parameters)
+
+Update the hydrostatic pressure perturbation pHY′. This is done by integrating
+the `buoyancy_perturbationᶜᶜᶜ` downwards:
+
+```math
+pHY′ = ∫ b - ẑ ⋅ (f × u) dz′
+```
+
+from ``z′=0`` down to ``z′=z``.
+"""
+function update_hydrostatic_pressure!(pHY′, grid, buoyancy, tracers,
+                                      coriolis=nothing, velocities=nothing; parameters=:xy)
+    arch = grid.architecture
+    launch!(arch, grid, parameters,
+            _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers, coriolis, velocities)
+    return nothing
+end
+
+# Catch some special cases
+update_hydrostatic_pressure!(pHY′, ::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, args...; kwargs...) = nothing
 
 # Partial cell "algorithm"
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = p_kernel_parameters(ibg.underlying_grid)) =
-    update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; parameters)
+update_hydrostatic_pressure!(pHY′, ibg::PCBIBG, args...; kwargs...)
+    update_hydrostatic_pressure!(pHY′, ibg.underlying_grid, args...; kwargs...)
 
-update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = p_kernel_parameters(grid)) =
-    launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
-
-update_hydrostatic_pressure!(::Nothing, arch, grid, args...; kw...) = nothing
-update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothing
+update_hydrostatic_pressure!(::Nothing, grid, args...; kw...) = nothing
+update_hydrostatic_pressure!(::Nothing, ::PCBIBG, args...; kw...) = nothing
 
 # extend p kernel to compute also the boundaries
 @inline function p_kernel_parameters(grid)
