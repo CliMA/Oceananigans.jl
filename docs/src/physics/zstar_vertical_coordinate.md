@@ -28,6 +28,7 @@ Such that the chain-rule above for horizontal spatial derivatives (``x`` and ``y
 & \frac{\partial \phi}{\partial y}\bigg\rvert_{z} && =  \frac{\partial \phi}{\partial y}\bigg\rvert_{r} - \frac{1}{\sigma}\frac{\partial \phi}{\partial r}\cdot \frac{\partial z}{\partial y}  
 \end{alignat}
 ```
+## Continuity Equation
 Following this ruleset, the divergence of the velocity field can be rewritten as
 ```math
 \begin{align}
@@ -76,4 +77,4 @@ The above equation is used to diagnose the vertical velocity (in `r` space) give
 ```
 where $Ax = \Delta y \Delta z$ and $Ay = \Delta x \Delta z$.
 
-
+## Tracer equations
