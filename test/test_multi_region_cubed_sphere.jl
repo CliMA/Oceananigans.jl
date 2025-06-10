@@ -798,10 +798,10 @@ end
                 end
 
                 model = HydrostaticFreeSurfaceModel(; grid,
-                                                    momentum_advection = WENOVectorInvariant(order=5),
-                                                    tracer_advection = WENO(order=5),
+                                                    momentum_advection = WENOVectorInvariant(FT; order=5),
+                                                    tracer_advection = WENO(FT; order=5),
                                                     free_surface = SplitExplicitFreeSurface(grid; substeps=12),
-                                                    coriolis = HydrostaticSphericalCoriolis(),
+                                                    coriolis = HydrostaticSphericalCoriolis(FT),
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer())
                 
