@@ -136,14 +136,14 @@ end
     boundary_area = zero(eltype(u))
 
     # Calculate current mass flux and total area
-    current_flux = Field(Average(view(u, 1, :, :)))[]
+    current_flux = Field(Average(view(u, i, :, :)))[]
 
     # Calculate and apply correction
     flux_correction = (target_flux - current_flux)
     for j in 1:grid.Ny, k in 1:grid.Nz
         @inbounds u[i, j, k] += flux_correction
     end
-    
+
     return nothing
 end
 
@@ -153,7 +153,7 @@ end
     boundary_area = zero(eltype(u))
     
     # Calculate current mass flux and total area
-    current_flux = Field(Average(view(u, grid.Nx + 1, :, :)))[]
+    current_flux = Field(Average(view(u, i, :, :)))[]
     
     # Calculate and apply correction
     flux_correction = (target_flux - current_flux)
@@ -168,7 +168,7 @@ end
     j = 1
     current_flux = zero(eltype(u))
     boundary_area = zero(eltype(u))
-    
+
     # Calculate current mass flux and total area
     for i in 1:grid.Nx, k in 1:grid.Nz
         velocity = @inbounds u[i, j, k]
@@ -176,7 +176,7 @@ end
         current_flux += velocity * area
         boundary_area += area
     end
-    
+
     # Calculate and apply correction
     flux_correction = (target_flux - current_flux) / boundary_area
     for i in 1:grid.Nx, k in 1:grid.Nz
