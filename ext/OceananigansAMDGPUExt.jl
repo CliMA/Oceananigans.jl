@@ -45,8 +45,8 @@ function plan_backward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, 
     return AMDGPU.rocFFT.plan_bfft!(A, dims)
 end
 
-plan_backward_transform(A::ROCArray, ::Flat, args...) = nothing
 plan_forward_transform(A::ROCArray, ::Flat, args...) = nothing
+plan_backward_transform(A::ROCArray, ::Flat, args...) = nothing
 
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
