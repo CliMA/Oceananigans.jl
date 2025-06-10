@@ -1,5 +1,7 @@
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
+using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay, Az_qᶜᶜᶠ
 using Oceananigans: defaults
+using Oceananigans.AbstractOperations: Average
+using Oceananigans.Fields: Field
 
 """
     PerturbationAdvection
@@ -77,6 +79,179 @@ end
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
+"""
+    correct_boundary_mass_flux!(grid, u, boundary_conditions)
+
+Corrects the mass flux across boundaries that use `PerturbationAdvection` with a specified
+`average_mass_flux`. This function should be called after all boundary conditions have been
+applied to ensure mass flux conservation.
+
+This is a two-stage process where:
+1. First, all perturbation advection boundary conditions are applied
+2. Then, this function corrects the mass flux across each boundary to match the target value
+
+# Arguments
+- `grid`: The computational grid
+- `u`: The velocity field (can be u, v, or w component)
+- `boundary_conditions`: The boundary conditions for this velocity component
+
+# Usage
+This function should be called at a higher level in the boundary condition filling process,
+after all individual boundary points have been processed by the perturbation advection scheme.
+"""
+function correct_boundary_mass_flux!(grid, u, boundary_conditions)
+    # Process each boundary
+    for side in [:west, :east, :south, :north, :bottom, :top, :immersed]
+        bc = getproperty(boundary_conditions, side)
+        if bc isa PAOBC
+            pa = bc.classification.matching_scheme
+            target_flux = pa.average_mass_flux
+            
+            # Only process if average_mass_flux is specified
+            isnothing(target_flux) && continue
+            
+            # Apply correction based on boundary side
+            if side == :west
+                _correct_west_boundary_mass_flux!(grid, u, bc, target_flux)
+            elseif side == :east
+                _correct_east_boundary_mass_flux!(grid, u, bc, target_flux)
+            elseif side == :south
+                _correct_south_boundary_mass_flux!(grid, u, bc, target_flux)
+            elseif side == :north
+                _correct_north_boundary_mass_flux!(grid, u, bc, target_flux)
+            elseif side == :bottom
+                _correct_bottom_boundary_mass_flux!(grid, u, bc, target_flux)
+            elseif side == :top
+                _correct_top_boundary_mass_flux!(grid, u, bc, target_flux)
+            end
+        end
+    end
+    
+    return nothing
+end
+
+@inline function _correct_west_boundary_mass_flux!(grid, u, bc, target_flux)
+    i = 1
+    current_flux = zero(eltype(u))
+    boundary_area = zero(eltype(u))
+
+    # Calculate current mass flux and total area
+    current_flux = Field(Average(view(u, 1, :, :)))[]
+
+    # Calculate and apply correction
+    flux_correction = (target_flux - current_flux)
+    for j in 1:grid.Ny, k in 1:grid.Nz
+        @inbounds u[i, j, k] += flux_correction
+    end
+    
+    return nothing
+end
+
+@inline function _correct_east_boundary_mass_flux!(grid, u, bc, target_flux)
+    i = grid.Nx + 1
+    current_flux = zero(eltype(u))
+    boundary_area = zero(eltype(u))
+    
+    # Calculate current mass flux and total area
+    current_flux = Field(Average(view(u, grid.Nx + 1, :, :)))[]
+    
+    # Calculate and apply correction
+    flux_correction = (target_flux - current_flux)
+    for j in 1:grid.Ny, k in 1:grid.Nz
+        @inbounds u[i, j, k] += flux_correction
+    end
+    
+    return nothing
+end
+
+@inline function _correct_south_boundary_mass_flux!(grid, u, bc, target_flux)
+    j = 1
+    current_flux = zero(eltype(u))
+    boundary_area = zero(eltype(u))
+    
+    # Calculate current mass flux and total area
+    for i in 1:grid.Nx, k in 1:grid.Nz
+        velocity = @inbounds u[i, j, k]
+        area = Ax_qᶠᶜᶜ(i, j, k, grid) * Δzᶜᶜᶠ(i, j, k, grid)
+        current_flux += velocity * area
+        boundary_area += area
+    end
+    
+    # Calculate and apply correction
+    flux_correction = (target_flux - current_flux) / boundary_area
+    for i in 1:grid.Nx, k in 1:grid.Nz
+        @inbounds u[i, j, k] += flux_correction
+    end
+    
+    return nothing
+end
+
+@inline function _correct_north_boundary_mass_flux!(grid, u, bc, target_flux)
+    j = grid.Ny + 1
+    current_flux = zero(eltype(u))
+    boundary_area = zero(eltype(u))
+    
+    # Calculate current mass flux and total area
+    for i in 1:grid.Nx, k in 1:grid.Nz
+        velocity = @inbounds u[i, j, k]
+        area = Ax_qᶠᶜᶜ(i, j, k, grid) * Δzᶜᶜᶠ(i, j, k, grid)
+        current_flux += velocity * area
+        boundary_area += area
+    end
+    
+    # Calculate and apply correction
+    flux_correction = (target_flux - current_flux) / boundary_area
+    for i in 1:grid.Nx, k in 1:grid.Nz
+        @inbounds u[i, j, k] += flux_correction
+    end
+    
+    return nothing
+end
+
+@inline function _correct_bottom_boundary_mass_flux!(grid, u, bc, target_flux)
+    k = 1
+    current_flux = zero(eltype(u))
+    boundary_area = zero(eltype(u))
+    
+    # Calculate current mass flux and total area
+    for i in 1:grid.Nx, j in 1:grid.Ny
+        velocity = @inbounds u[i, j, k]
+        area = Az_qᶜᶜᶠ(i, j, k, grid)
+        current_flux += velocity * area
+        boundary_area += area
+    end
+    
+    # Calculate and apply correction
+    flux_correction = (target_flux - current_flux) / boundary_area
+    for i in 1:grid.Nx, j in 1:grid.Ny
+        @inbounds u[i, j, k] += flux_correction
+    end
+    
+    return nothing
+end
+
+@inline function _correct_top_boundary_mass_flux!(grid, u, bc, target_flux)
+    k = grid.Nz + 1
+    current_flux = zero(eltype(u))
+    boundary_area = zero(eltype(u))
+    
+    # Calculate current mass flux and total area
+    for i in 1:grid.Nx, j in 1:grid.Ny
+        velocity = @inbounds u[i, j, k]
+        area = Az_qᶜᶜᶠ(i, j, k, grid)
+        current_flux += velocity * area
+        boundary_area += area
+    end
+    
+    # Calculate and apply correction
+    flux_correction = (target_flux - current_flux) / boundary_area
+    for i in 1:grid.Nx, j in 1:grid.Ny
+        @inbounds u[i, j, k] += flux_correction
+    end
+    
+    return nothing
+end
+
 @inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
@@ -95,6 +270,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     uᵢⁿ⁺¹ = ifelse(τ == 0, ūⁿ⁺¹, relaxed_uᵢⁿ⁺¹)
 
     @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
+    #Main.@infiltrate
 
     return nothing
 end
