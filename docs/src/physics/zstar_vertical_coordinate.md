@@ -63,6 +63,8 @@ Which finally leads to the continuity equation
 ```math
 \frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}  + \frac{\partial \omega}{\partial r} = 0
 ```
+### Finite volume discretization of the continuity equation
+
 It is usefull to think about this equation in the discrete form in a finite volume staggered C-grid framework, where we integrate over a volume $V_r = \Delta x \Delta y \Delta r$ remembering that in the discrete $\Delta z = \sigma \Delta r$. The indices `i`, `j`, `k` correspond to the `x`, `y`, and vertical direction.
 ```math
 \frac{1}{V_r}\int_{V_r} \frac{\partial \sigma}{\partial t} dV + \frac{1}{V_r} \int_{V_r} \left(\frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}  + \frac{\partial \omega}{\partial r}\right) dV = 0
@@ -78,15 +80,47 @@ The above equation is used to diagnose the vertical velocity (in `r` space) give
 where $Ax = \Delta y \Delta z$, $Ay = \Delta x \Delta z$, and $Az = \Delta x \Delta y$.
 
 ## Tracer equations
-
-Doing the same as above for the tracer equation $\partial_t T + \boldsymbol{\nabla} \cdot \boldsymbol{u}T = 0$ yields
+The tracer equation with vertical diffusion reads
+```math
+\frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T = \frac{\partial}{\partial z} \left( \kappa \frac{\partial T}{\partial z} \right)
+```
+Using the same procedure we followed in the case of the velocity gradient for $\partial_t T + \boldsymbol{\nabla} \cdot \boldsymbol{u}T$ yields
 ```math
 \begin{align}
 \frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T & = \frac{\partial T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r}\left( T\omega + T \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \\
 & = \frac{\partial T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} T\left( \frac{\partial \omega}{\partial r} + \frac{\partial \sigma}{\partial t} \right) + \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)\frac{\partial T}{\partial r}\\
-& = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} T \frac{\partial \omega}{\partial r}+ \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)\frac{\partial T}{\partial r}\\
+& = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} T \frac{\partial \omega}{\partial r}+ \frac{1}{\sigma} \omega\frac{\partial T}{\partial r}\\
 \end{align}
 ```
-Finally leading to the tracer equation
+We add vertical diffusion to the RHS to recover the tracer equation
 ```math
-\frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} = - \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) - \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} 
+\frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} = \frac{1}{\sigma}\frac{\partial}{\partial r} \left( \kappa \frac{\partial T}{\partial z} \right)
+```
+### Finite volume discretization of the tracer equation
+
+We discretize the equation in a finite volume framework
+```math
+\frac{1}{V_r}\int_{V_r} \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} + \frac{1}{V_r} \int_{V_r} \left[ \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r}\right] dV = \frac{1}{V_r}\int_{V_r} \frac{1}{\sigma}\frac{\partial}{\partial r} \left( \kappa \frac{\partial T}{\partial z} \right) dV
+```
+leading to
+```math
+\frac{1}{\sigma}\frac{\partial \sigma \overline{T}}{\partial t} + \frac{UT\rvert_{i-1/2}^{i+1/2} + VT\rvert_{j-1/2}^{j+1/2} + \Omega T\rvert_{k-1/2}^{k+1/2}}{V} = \frac{1}{V} \left(K \frac{\partial T}{\partial z}\bigg\rvert_{k-1/2}^{k+1/2} \right)
+```
+where $V = \sigma V_r = \Delta x \Delta y \Delta z$, $U = Axu$, $V = Ay v$, $W = Az w$, and $K = Az \kappa$.
+In case of an explicit discretization of the diffusive fluxes, the time discretization of the following equation (using Forward Euler) yields
+```math
+\begin{equation}
+T^{n+1} = \frac{\sigma^n}{\sigma^{n+1}}\left(T^n + \Delta t G^n \right) 
+\end{equation}
+```
+where $G^n$ is tendency computed on the `z`-grid.
+Note that in case of a multi-step method like second order Adams Bashorth, the grid at different time-steps must be accounted for, and the time discretization becomes
+```math
+\begin{equation}
+T^{n+1} = \frac{1}{\sigma^{n+1}}\left[\sigma^n T^n + \Delta t \left(\frac{3}{2}\sigma^n G^n - \frac{1}{2} \sigma^{n-1} G^{n-1} \right)\right]
+\end{equation}
+```
+For this reason, in Oceananigans, we store tendencies pre-multipled by the grid spacing.
+In case of an implicit discretization of the diffusive fluxes we first compute $T^{n+1}$ as in the above equation (where $G^n$ does not contain the diffusive fluxes). Then the implicit step is done on a `z`-grid as if the grid was static, using the grid at $n+1$ which includes $\sigma^{n+1}$.
+
+
