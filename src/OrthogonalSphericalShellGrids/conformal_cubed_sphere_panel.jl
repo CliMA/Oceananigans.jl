@@ -38,6 +38,9 @@ end
 
 const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = 
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:CubedSphereConformalMapping, CC, FC, CF, FF, Arch}
+const ConformalCubedSpherePanelGridOfSomeKind{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = 
+    Union{ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch},
+          ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}}}
 
 # architecture = CPU() by default, assuming that a DataType positional arg is specifying the floating point type.
 ConformalCubedSpherePanelGrid(FT::DataType; kwargs...) = ConformalCubedSpherePanelGrid(CPU(), FT; kwargs...)
@@ -740,42 +743,42 @@ end
 
 import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ
 
-@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, c) =
+@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
               ifelse((i == grid.Nx+1) & (j < 1),       c[grid.Nx-j+1, 1, k] - c[grid.Nx, j, k],
               ifelse((i == grid.Nx+1) & (j > grid.Ny), c[j, grid.Ny, k]     - c[grid.Nx, j, k],
               ifelse((i == 1) & (j > grid.Ny),         c[1, j, k]           - c[grid.Ny-j+1, grid.Ny, k],
                                                        c[i, j, k]           - c[i-1, j, k]))))
 
-@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGrid, c) = δxᶠᶜᶜ(i, j, k, grid, c)
+@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) = δxᶠᶜᶜ(i, j, k, grid, c)
 
-@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, c) =
+@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i < 1) & (j == 1),               c[i, 1, k]           - c[1, i, k],
               ifelse((i > grid.Nx) & (j == 1),         c[i, 1, k]           - c[grid.Nx, grid.Ny+1-i, k],
               ifelse((i > grid.Nx) & (j == grid.Ny+1), c[grid.Nx, i, k]     - c[i, grid.Ny, k],
               ifelse((i < 1) & (j == grid.Ny+1),       c[1, grid.Ny-i+1, k] - c[i, grid.Ny, k],
                                                        c[i, j, k]           - c[i, j-1, k]))))
 
-@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGrid, c) = δyᶜᶠᶜ(i, j, k, grid, c)
+@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) = δyᶜᶠᶜ(i, j, k, grid, c)
 
-@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, f::F, args...) where F<:Function =
+@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i == 1) & (j < 1),               f(1, j, k, grid, args...)           - f(j, 1, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j < 1),       f(grid.Nx-j+1, 1, k, grid, args...) - f(grid.Nx, j, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j > grid.Ny), f(j, grid.Ny, k, grid, args...)     - f(grid.Nx, j, k, grid, args...),
               ifelse((i == 1) & (j > grid.Ny),         f(1, j, k, grid, args...)           - f(grid.Nx-j+1, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i-1, j, k, grid, args...)))))
 
-@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGrid, f::F, args...) where F<:Function =
+@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     δxᶠᶜᶜ(i, j, k, grid, f, args...)
 
-@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, f::F, args...) where F<:Function =
+@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i < 1) & (j == 1),               f(i, 1, k, grid, args...)           - f(1, i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == 1),         f(i, 1, k, grid, args...)           - f(grid.Nx, grid.Ny+1-i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == grid.Ny+1), f(grid.Nx, i, k, grid, args...)     - f(i, grid.Ny, k, grid, args...),
               ifelse((i < 1) & (j == grid.Ny+1),       f(1, grid.Ny-i+1, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i, j-1, k, grid, args...)))))
 
-@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGrid, f::F, args...) where F<:Function =
+@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     δyᶜᶠᶜ(i, j, k, grid, f, args...)
 
 #####
@@ -796,7 +799,7 @@ import Oceananigans.Operators: Γᶠᶠᶜ
 
 The vertical circulation associated with horizontal velocities ``u`` and ``v``.
 """
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
