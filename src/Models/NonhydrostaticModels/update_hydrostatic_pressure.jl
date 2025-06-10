@@ -24,7 +24,7 @@ Update the hydrostatic pressure perturbation pHY′. This is done by integrating
 the `buoyancy_perturbationᶜᶜᶜ` downwards:
 
 ```math
-pHY′ = ∫ b - ẑ ⋅ (f × u) dz′
+pHY′ = ∫ [ b - ẑ ⋅ (f × u) ] dz′
 ```
 
 from ``z′=0`` down to ``z′=z``.
