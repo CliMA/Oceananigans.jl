@@ -78,3 +78,19 @@ The above equation is used to diagnose the vertical velocity (in `r` space) give
 where $Ax = \Delta y \Delta z$ and $Ay = \Delta x \Delta z$.
 
 ## Tracer equations
+
+Doing the same as above for the tracer equation $\partial_t T + \boldsymbol{\nabla} \cdot \boldsymbol{u}T$ yields
+```math
+\frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T  = \frac{\partial T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r} \left( Tu \frac{\partial z}{\partial x} +  Tv \frac{\partial z}{\partial y} + Tw \right) 
+```
+Finally leading to 
+```math
+\frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T =\frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right)  + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} + \frac{\partial T}{\partial t} + \frac{1}{\sigma} T \frac{\partial \sigma}{\partial t} 
+```
+We can group the time derivative terms
+```math
+\frac{\partial T}{\partial t} + \frac{1}{\sigma} T \frac{\partial \sigma}{\partial t}  = \frac{1}{\sigma} \frac{\partial \sigma T}{\partial t}
+```
+To get the final tracer equation
+```math
+\frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} = - \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) - \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} 
