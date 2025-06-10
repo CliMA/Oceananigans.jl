@@ -120,7 +120,7 @@ Note that in case of a multi-step method like second order Adams Bashorth, the g
 T^{n+1} = \frac{1}{\sigma^{n+1}}\left[\sigma^n T^n + \Delta t \left(\frac{3}{2}\sigma^n G^n - \frac{1}{2} \sigma^{n-1} G^{n-1} \right)\right]
 \end{equation}
 ```
-For this reason, in Oceananigans, we store tendencies pre-multipled by the grid spacing.
+For this reason, in Oceananigans, we store tendencies pre-multipled by $\sigma$ at their current time-level.
 In case of an implicit discretization of the diffusive fluxes we first compute $T^{n+1}$ as in the above equation (where $G^n$ does not contain the diffusive fluxes). Then the implicit step is done on a `z`-grid as if the grid was static, using the grid at $n+1$ which includes $\sigma^{n+1}$.
 
 
