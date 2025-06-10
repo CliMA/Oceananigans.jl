@@ -23,5 +23,8 @@ getindex(container::DiagOrWriterDict, inds::Integer...) = getindex(container.val
 
 setindex!(container::DiagOrWriterDict, newvals, inds::Integer...) = setindex!(container.vals, newvals, inds...)
 
-push!(container::DiagOrWriterDict, elems...) = (foreach(e -> push!(container, e), elems); nothing)
+function push!(container::DiagOrWriterDict, elems...)
+    foreach(elem -> push!(container, elem), elems)
+    return nothing
+end
 
