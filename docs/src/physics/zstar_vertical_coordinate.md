@@ -46,11 +46,11 @@ We can rewrite $\partial_x \sigma \rvert_r = \partial_r(\partial_x z)$ and the s
 ```
 Here, $w$ is the vertical velocity corresponding to the ``z`` coordinate. We can define a vertical velocity $w_p$ of a point moving with the horizontal velocity along an ``r`` surface 
 ```math
-w_p = \frac{\partial z}{\partial t} \bigg\rvert_s + u \frac{\partial z}{\partial x} +  v \frac{\partial z}{\partial y}
+w_p = \frac{\partial z}{\partial t} \bigg\rvert_r + u \frac{\partial z}{\partial x} +  v \frac{\partial z}{\partial y}
 ```
 The vertical velocity across the ``r`` surfaces will be
 ```math
-\omega = w - w_p = w - \frac{\partial z}{\partial t} \bigg\rvert_s - u \frac{\partial z}{\partial x} - v \frac{\partial z}{\partial y}
+\omega = w - w_p = w - \frac{\partial z}{\partial t} \bigg\rvert_r - u \frac{\partial z}{\partial x} - v \frac{\partial z}{\partial y}
 ```
 Therefore, adding the definition of $\omega$ to the velocity divergence we get
 ```math
