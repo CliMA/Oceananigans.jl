@@ -53,7 +53,10 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
+function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; 
+                            signed = true,  # This kwarg is active only for a `ConformalCubedSphereGrid`, here we discard it.
+                            kwargs...)
+
     flattened = flattened_unique_values(maybe_nested_tuple)
 
     # Look for grid within the flattened field tuple:
