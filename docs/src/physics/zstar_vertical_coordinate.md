@@ -1,4 +1,4 @@
-# ZStar vertical coordinate
+# Generalized vertical coordinate
 
 The user can choose between a `ZCoordinate` and a `ZStar` vertical coordinate. A `ZStar` vertical coordinate conserves tracers and volume with the grid following the evolution of the free surface in the domain. To obtain the (discrete) equations evolved  in a general framework where the vertical coordinate is moving, we perform a scaling of the continuous primitive equations to a generalized coordinate ``r(x, y, z, t)``.
 
@@ -84,7 +84,7 @@ The tracer equation with vertical diffusion reads
 ```math
 \frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T = \frac{\partial}{\partial z} \left( \kappa \frac{\partial T}{\partial z} \right)
 ```
-Using the same procedure we followed in the case of the velocity gradient for $\partial_t T + \boldsymbol{\nabla} \cdot \boldsymbol{u}T$ yields
+Using the same procedure we followed for the continuity equation, $\partial_t T + \boldsymbol{\nabla} \cdot \boldsymbol{u}T$ yields
 ```math
 \begin{align}
 \frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T & = \frac{\partial T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r}\left( T\omega + T \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \\
