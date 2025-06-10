@@ -63,11 +63,11 @@ Which finally leads to the continuity equation
 ```math
 \frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}  + \frac{\partial \omega}{\partial r} = 0
 ```
-It is usefull to think about this equation in the discrete form in a finite volume staggered C-grid framework, where we integrate over a physical volume $V = \Delta x \Delta y \Delta r$ remembering that in the discrete $\Delta z = \sigma \Delta r$. The indices `i`, `j`, `k` correspond to the `x`, `y`, and vertical direction.
+It is usefull to think about this equation in the discrete form in a finite volume staggered C-grid framework, where we integrate over a volume $V_r = \Delta x \Delta y \Delta r$ remembering that in the discrete $\Delta z = \sigma \Delta r$. The indices `i`, `j`, `k` correspond to the `x`, `y`, and vertical direction.
 ```math
-\frac{1}{V}\int_V\frac{\partial \sigma}{\partial t} dV + \frac{1}{V} \int_V \left(\frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}  + \frac{\partial \omega}{\partial r}\right) dV = 0
+\frac{1}{V_r}\int_{V_r} \frac{\partial \sigma}{\partial t} dV + \frac{1}{V_r} \int_{V_r} \left(\frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}  + \frac{\partial \omega}{\partial r}\right) dV = 0
 ```
-Using the divergence theorem, and introducing the notation of cell-average values $V^{-1}\int_V \phi dV = \overline{\phi}$
+Using the divergence theorem, and introducing the notation of cell-average values $V_r^{-1}\int_{V_r} \phi dV = \overline{\phi}$
 ```math
 \frac{\partial \overline{\sigma}}{\partial t} + \frac{1}{\Delta x\Delta y \Delta r} \left( \Delta y \Delta r \sigma u\rvert_{i-1/2}^{i+1/2} + \Delta x \Delta r \sigma v\rvert_{j-1/2}^{j+1/2} \right ) + \frac{\overline{\omega}_{k+1/2} - \overline{\omega}_{k-1/2}}{\Delta r} = 0
 ```
@@ -75,22 +75,18 @@ The above equation is used to diagnose the vertical velocity (in `r` space) give
 ```math
 \overline{\omega}_{k+1/2} = \overline{\omega}_{k-1/2} + \Delta r \frac{\partial \overline{\sigma}}{\partial t} + \frac{1}{Az} \left( Ay u\rvert_{i-1/2}^{i+1/2} + Ax v\rvert_{j-1/2}^{j+1/2} \right )
 ```
-where $Ax = \Delta y \Delta z$ and $Ay = \Delta x \Delta z$.
+where $Ax = \Delta y \Delta z$, $Ay = \Delta x \Delta z$, and $Az = \Delta x \Delta y$.
 
 ## Tracer equations
 
-Doing the same as above for the tracer equation $\partial_t T + \boldsymbol{\nabla} \cdot \boldsymbol{u}T$ yields
+Doing the same as above for the tracer equation $\partial_t T + \boldsymbol{\nabla} \cdot \boldsymbol{u}T = 0$ yields
 ```math
-\frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T  = \frac{\partial T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r} \left( Tu \frac{\partial z}{\partial x} +  Tv \frac{\partial z}{\partial y} + Tw \right) 
+\begin{align}
+\frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T & = \frac{\partial T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r}\left( T\omega + T \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \\
+& = \frac{\partial T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} T\left( \frac{\partial \omega}{\partial r} + \frac{\partial \sigma}{\partial t} \right) + \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)\frac{\partial T}{\partial r}\\
+& = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} T \frac{\partial \omega}{\partial r}+ \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)\frac{\partial T}{\partial r}\\
+\end{align}
 ```
-Finally leading to 
-```math
-\frac{\partial T}{\partial t} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T =\frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right)  + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} + \frac{\partial T}{\partial t} + \frac{1}{\sigma} T \frac{\partial \sigma}{\partial t} 
-```
-We can group the time derivative terms
-```math
-\frac{\partial T}{\partial t} + \frac{1}{\sigma} T \frac{\partial \sigma}{\partial t}  = \frac{1}{\sigma} \frac{\partial \sigma T}{\partial t}
-```
-To get the final tracer equation
+Finally leading to the tracer equation
 ```math
 \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} = - \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) - \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} 
