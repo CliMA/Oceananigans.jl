@@ -79,13 +79,13 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 @inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
     iᴮ, jᴮ, kᴮ = boundary_indices
-    iᴵ, jᴵ, kᴵ = boundary_adjacent_indices
+    iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
     uᵢⁿ     = @inbounds getindex(u, iᴮ, jᴮ, kᴮ)
-    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴵ, jᴵ, kᴵ)
+    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
@@ -103,13 +103,13 @@ end
 @inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                      grid, u, clock, model_fields, ΔX)
     iᴮ, jᴮ, kᴮ = boundary_indices
-    iᴵ, jᴵ, kᴵ = boundary_adjacent_indices
+    iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
     uᵢⁿ     = @inbounds getindex(u, iᴮ, jᴮ, kᴮ)
-    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴵ, jᴵ, kᴵ)
+    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
