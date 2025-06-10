@@ -120,8 +120,8 @@ Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
-    devs = isnothing(multi_region_args) ? 
-        multi_region_kwargs : multi_region_args |> devices
+    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
+    devs = devices(devs)
 
 
     for (r, dev) in enumerate(devs)
