@@ -106,10 +106,10 @@ end
     return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * Γ
 end
 
-using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, on_south_west_corner, 
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGridOfSomeKind, on_south_west_corner, 
     on_north_west_corner, on_south_east_corner, on_north_east_corner
 
-@inline function ζ★ⱽᴵᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGrid, u, v)
+@inline function ζ★ⱽᴵᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),

@@ -2,8 +2,6 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 
 using DocStringExtensions
 
-import Oceananigans.BoundaryConditions: replace_horizontal_vector_halos!
-
 struct CubedSpherePartition{M, P} <: AbstractPartition
     div :: Int
     Rx :: M
@@ -62,10 +60,10 @@ Base.length(p::CubedSpherePartition) = p.div
     pᵢ = intra_panel_index_x(r, p)
     pⱼ = intra_panel_index_y(r, p)
 
-    bottom_left  = pᵢ == 1    && pⱼ == 1    ? true : false
-    bottom_right = pᵢ == p.Rx && pⱼ == 1    ? true : false
-    top_left     = pᵢ == 1    && pⱼ == p.Ry ? true : false
-    top_right    = pᵢ == p.Rx && pⱼ == p.Ry ? true : false
+    bottom_left  = (pᵢ == 1   ) & (pⱼ == 1   )
+    bottom_right = (pᵢ == p.Rx) & (pⱼ == 1   )
+    top_left     = (pᵢ == 1   ) & (pⱼ == p.Ry)
+    top_right    = (pᵢ == p.Rx) & (pⱼ == p.Ry)
 
     return (; bottom_left, bottom_right, top_left, top_right)
 end
@@ -88,37 +86,6 @@ end
 
 # A cubed sphere panel grid is an OSSG grid that is fully connected in xy
 const SpherePanelGrid = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}
-
-# TODO: move prescribed velocity field stuff to Model/HydrostaticFreeSurfaceModels/prescribed_velocity_fields.jl
-replace_horizontal_vector_halos!(::PrescribedVelocityFields, ::AbstractGrid; kw...) = nothing
-replace_horizontal_vector_halos!(::PrescribedVelocityFields, ::SpherePanelGrid; kw...) = nothing
-
-function replace_horizontal_vector_halos!(velocities, grid::SpherePanelGrid; signed=true)
-    u, v, _ = velocities
-
-    ubuff = u.communication_buffers
-    vbuff = v.communication_buffers
-
-    conn_west  = u.boundary_conditions.west.condition.from_side
-    conn_east  = u.boundary_conditions.east.condition.from_side
-    conn_south = u.boundary_conditions.south.condition.from_side
-    conn_north = u.boundary_conditions.north.condition.from_side
-
-    Hx, Hy, _ = halo_size(u.grid)
-    Nx, Ny, _ = size(grid)
-
-     replace_west_u_halos!(parent(u), vbuff, Nx, Hx, conn_west; signed)
-     replace_east_u_halos!(parent(u), vbuff, Nx, Hx, conn_east; signed)
-    replace_south_u_halos!(parent(u), vbuff, Ny, Hy, conn_south; signed)
-    replace_north_u_halos!(parent(u), vbuff, Ny, Hy, conn_north; signed)
-
-     replace_west_v_halos!(parent(v), ubuff, Nx, Hx, conn_west; signed)
-     replace_east_v_halos!(parent(v), ubuff, Nx, Hx, conn_east; signed)
-    replace_south_v_halos!(parent(v), ubuff, Ny, Hy, conn_south; signed)
-    replace_north_v_halos!(parent(v), ubuff, Ny, Hy, conn_north; signed)
-
-    return nothing
-end
 
 for vel in (:u, :v), dir in (:east, :west, :north, :south)
     @eval $(Symbol(:replace_, dir, :_, vel, :_halos!))(u, buff, N, H, conn; signed=true) = nothing
