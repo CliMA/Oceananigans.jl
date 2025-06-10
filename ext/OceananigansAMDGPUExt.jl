@@ -1,6 +1,7 @@
 module OceananigansAMDGPUExt
 
 using AMDGPU
+using AMDGPU.rocFFT
 using Oceananigans
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
@@ -33,6 +34,16 @@ on_architecture(::ROCGPU, a::StepRangeLen) = a
 
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
+
+function plan_forward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+    length(dims) == 0 && return nothing
+    return AMDGPU.rocFFT.plan_fft!(A, dims)
+end
+
+function plan_backward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+    length(dims) == 0 && return nothing
+    return AMDGPU.rocFFT.plan_bfft!(A, dims)
+end
 
 plan_backward_transform(A::ROCArray, ::Flat, args...) = nothing
 plan_forward_transform(A::ROCArray, ::Flat, args...) = nothing
