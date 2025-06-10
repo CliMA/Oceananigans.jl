@@ -75,9 +75,9 @@ Using the divergence theorem, and introducing the notation of cell-average value
 ```
 The above equation is used to diagnose the vertical velocity (in `r` space) given the grid velocity and the horizontal velocity divergence:
 ```math
-\overline{\omega}_{k+1/2} = \overline{\omega}_{k-1/2} + \Delta r \frac{\partial \overline{\sigma}}{\partial t} + \frac{1}{Az} \left( Ay u\rvert_{i-1/2}^{i+1/2} + Ax v\rvert_{j-1/2}^{j+1/2} \right )
+\overline{\omega}_{k+1/2} = \overline{\omega}_{k-1/2} + \Delta r \frac{\partial \overline{\sigma}}{\partial t} + \frac{1}{Az} \left( \mathcal{U}\rvert_{i-1/2}^{i+1/2} + \mathcal{V}\rvert_{j-1/2}^{j+1/2} \right )
 ```
-where $Ax = \Delta y \Delta z$, $Ay = \Delta x \Delta z$, and $Az = \Delta x \Delta y$.
+where $\mathcal{U} = Axu$, $\mathcal{V} = Ayv$, $Ax = \Delta y \Delta z$, $Ay = \Delta x \Delta z$, and $Az = \Delta x \Delta y$.
 
 ## Tracer equations
 The tracer equation with vertical diffusion reads
@@ -104,16 +104,16 @@ We discretize the equation in a finite volume framework
 ```
 leading to
 ```math
-\frac{1}{\sigma}\frac{\partial \sigma \overline{T}}{\partial t} + \frac{UT\rvert_{i-1/2}^{i+1/2} + VT\rvert_{j-1/2}^{j+1/2} + \Omega T\rvert_{k-1/2}^{k+1/2}}{V} = \frac{1}{V} \left(K \frac{\partial T}{\partial z}\bigg\rvert_{k-1/2}^{k+1/2} \right)
+\frac{1}{\sigma}\frac{\partial \sigma \overline{T}}{\partial t} + \frac{\mathcal{U}T\rvert_{i-1/2}^{i+1/2} + \mathcal{V}T\rvert_{j-1/2}^{j+1/2} + \mathcal{W} T\rvert_{k-1/2}^{k+1/2}}{V} = \frac{1}{V} \left(\mathcal{K} \frac{\partial T}{\partial z}\bigg\rvert_{k-1/2}^{k+1/2} \right)
 ```
-where $V = \sigma V_r = \Delta x \Delta y \Delta z$, $U = Axu$, $V = Ay v$, $W = Az w$, and $K = Az \kappa$.
-In case of an explicit discretization of the diffusive fluxes, the time discretization of the following equation (using Forward Euler) yields
+where $V = \sigma V_r = \Delta x \Delta y \Delta z$, $\mathcal{U} = Axu$, $\mathcal{V} = Ay v$, $\mathcal{W} = Az \omega$, and $\mathcal{K} = Az \kappa$. <br>
+In case of an explicit formulation of the diffusive fluxes, the time discretization of the above equation (using Forward Euler) yields
 ```math
 \begin{equation}
 T^{n+1} = \frac{\sigma^n}{\sigma^{n+1}}\left(T^n + \Delta t G^n \right) 
 \end{equation}
 ```
-where $G^n$ is tendency computed on the `z`-grid.
+where $G^n$ is tendency computed on the `z`-grid. <br>
 Note that in case of a multi-step method like second order Adams Bashorth, the grid at different time-steps must be accounted for, and the time discretization becomes
 ```math
 \begin{equation}
