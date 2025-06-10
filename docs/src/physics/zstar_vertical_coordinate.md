@@ -52,7 +52,7 @@ w_p = \frac{\partial z}{\partial t} \bigg\rvert_r + u \frac{\partial z}{\partial
 ```
 Then, the vertical velocity across the ``r`` surfaces is the difference of $w$ and $w_p$
 ```math
-\omega \euiv w - w_p = w - \frac{\partial z}{\partial t} \bigg\rvert_r - u \frac{\partial z}{\partial x} - v \frac{\partial z}{\partial y}
+\omega = w - w_p = w - \frac{\partial z}{\partial t} \bigg\rvert_r - u \frac{\partial z}{\partial x} - v \frac{\partial z}{\partial y}
 ```
 Therefore, adding the definition of $\omega$ to the velocity divergence we get
 ```math
