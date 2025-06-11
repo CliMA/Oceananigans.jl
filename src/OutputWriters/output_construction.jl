@@ -1,6 +1,7 @@
 using Oceananigans.Fields: validate_indices, Reduction
 using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
+using Oceananigans.Utils: getregion, @apply_regionally
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
@@ -44,7 +45,7 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
     if !with_halos # Maybe chop those indices
         loc = map(instantiate, location(output))
         topo = map(instantiate, topology(grid))
-        indices = map(restrict_to_interior, indices, loc, topo, size(grid))
+        @apply_regionally indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
     intersected = intersect_indices(output, indices)
@@ -53,7 +54,8 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
-    indices = output_indices(user_output, grid, user_indices, with_halos)
+    multi_region_indices = output_indices(user_output, grid, user_indices, with_halos)
+    indices = grid isa ConformalCubedSphereGrid ? getregion(multi_region_indices, 1) : multi_region_indices
 
     # Don't compute AbstractOperations or Reductions
     additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)

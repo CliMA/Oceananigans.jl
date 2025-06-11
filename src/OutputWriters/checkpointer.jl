@@ -219,7 +219,6 @@ Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
 function set!(model, filepath::AbstractString)
-
     addr = checkpointer_address(model)
 
     jldopen(filepath, "r") do file
@@ -235,14 +234,14 @@ function set!(model, filepath::AbstractString)
         for name in keys(model_fields)
             if string(name) ∈ keys(file[addr]) # Test if variable exists in checkpoint.
                 model_field = model_fields[name]
-                parent_data = file["$addr/$name/data"]
-                copyto!(parent(model_field), parent_data)
+                parent_data = on_architecture(model.architecture, file["$addr/$name/data"])
+                @apply_regionally copyto!(parent(model_field), parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
         end
 
-        set_time_stepper!(model.timestepper, file, model_fields, addr)
+        set_time_stepper!(model.timestepper, model.architecture, file, model_fields, addr)
 
         if !isnothing(model.particles)
             copyto!(model.particles.properties, file["$addr/particles"])
@@ -259,22 +258,22 @@ function set!(model, filepath::AbstractString)
     return nothing
 end
 
-function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
+function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, addr)
     for name in propertynames(model_fields)
         tendency_in_model = hasproperty(timestepper.Gⁿ, name) 
         tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
         if tendency_in_model && tendency_in_checkpoint
             # Tendency "n"
-            parent_data = file["$addr/timestepper/Gⁿ/$name/data"]
+            parent_data = on_architecture(arch, file["$addr/timestepper/Gⁿ/$name/data"])
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
-            copyto!(tendencyⁿ_field.data.parent, parent_data)
+            @apply_regionally copyto!(tendencyⁿ_field.data.parent, parent_data)
 
             # Tendency "n-1"
-            parent_data = file["$addr/timestepper/G⁻/$name/data"]
+            parent_data = on_architecture(arch, file["$addr/timestepper/G⁻/$name/data"])
 
             tendency⁻_field = timestepper.G⁻[name]
-            copyto!(tendency⁻_field.data.parent, parent_data)
+            @apply_regionally copyto!(tendency⁻_field.data.parent, parent_data)
         elseif tendency_in_model && !tendency_in_checkpoint
             @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
         end
