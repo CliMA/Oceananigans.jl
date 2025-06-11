@@ -10,7 +10,6 @@ using CUDA
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
-using Oceananigans.Models
 
 using Oceananigans: AbstractOutputWriter
 using Oceananigans.Grids: interior_indices
@@ -37,7 +36,7 @@ include("checkpointer.jl")
 
 function written_names(filename)
     field_names = String[]
-    jldopen(filename, "r") do file 
+    jldopen(filename, "r") do file
         all_names = keys(file["timeseries"])
         field_names = filter(n -> n != "t", all_names)
     end

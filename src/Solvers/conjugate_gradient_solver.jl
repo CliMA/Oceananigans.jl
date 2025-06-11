@@ -6,7 +6,7 @@ using LinearAlgebra
 
 import Oceananigans.Architectures: architecture
 
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P} 
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P}
     architecture :: A
     grid :: G
     linear_operation! :: L
@@ -113,11 +113,11 @@ end
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`
-    
+
 See figure 2.5 in
 
 > The Preconditioned Conjugate Gradient Method in "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods" Barrett et. al, 2nd Edition.
-    
+
 Given:
   * Linear Preconditioner operator `M!(solution, x, other_args...)` that computes `M * x = solution`
   * A matrix operator `A` as a function `A()`;
@@ -127,7 +127,7 @@ Given:
   * Local vectors: `z`, `r`, `p`, `q`
 
 This function executes the psuedocode algorithm
-    
+
 ```
 β  = 0
 r = b - A(x)
@@ -175,8 +175,12 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
     end
-    
+
     return x
+end
+
+@inline function perform_linear_operation!(linear_operation!, q, p, args...)
+    @apply_regionally linear_operation!(q, p, args...)
 end
 
 function iterate!(x, solver, b, args...)
@@ -197,11 +201,13 @@ function iterate!(x, solver, b, args...)
 
     @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
 
+    perform_linear_operation!(solver.linear_operation!, q, p, args...)
+
     α = ρ / dot(p, q)
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
-        
+
     @apply_regionally update_solution_and_residuals!(x, r, q, p, α)
 
     solver.iteration += 1

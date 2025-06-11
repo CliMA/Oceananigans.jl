@@ -1,7 +1,7 @@
-"""Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes for the Vector Invariant formulation""" 
+"""Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes for the Vector Invariant formulation"""
 abstract type AbstractUpwindingTreatment end
 
-struct OnlySelfUpwinding{A, U, V, U2, V2} <: AbstractUpwindingTreatment 
+struct OnlySelfUpwinding{A, U, V, U2, V2} <: AbstractUpwindingTreatment
     cross_scheme    :: A  # advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)
     δU_stencil      :: U  # stencil used for assessing U-x-difference smoothness
     δV_stencil      :: V  # stencil used for assessing V-y-difference smoothness
@@ -9,14 +9,14 @@ struct OnlySelfUpwinding{A, U, V, U2, V2} <: AbstractUpwindingTreatment
     δv²_stencil     :: V2 # stencil used for assessing v²-y-difference smoothness
 end
 
-struct CrossAndSelfUpwinding{A, D, U, V} <: AbstractUpwindingTreatment 
+struct CrossAndSelfUpwinding{A, D, U, V} <: AbstractUpwindingTreatment
     cross_scheme       :: A # advection scheme for cross-reconstructed terms in the kinetic energy gradient
     divergence_stencil :: D # stencil used for assessing divergence smoothness
     δu²_stencil        :: U # stencil used for assessing u²-x-difference smoothness
     δv²_stencil        :: V # stencil used for assessing v²-y-difference smoothness
 end
 
-struct VelocityUpwinding{A} <: AbstractUpwindingTreatment     
+struct VelocityUpwinding{A} <: AbstractUpwindingTreatment
     cross_scheme    :: A # advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)
 end
 
@@ -33,22 +33,22 @@ end
                         δu²_stencil  = FunctionStencil(u_smoothness),
                         δv²_stencil  = FunctionStencil(v_smoothness))
 
-Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes in the Vector Invariant formulation, whereas only 
-the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and 
-terms in `v` in the meridional momentum equation). The terms corresponding to the tangential velocities (`v` in zonal 
+Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes in the Vector Invariant formulation, whereas only
+the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and
+terms in `v` in the meridional momentum equation). The terms corresponding to the tangential velocities (`v` in zonal
 direction and `u` in meridional direction) are not upwinded.
 This is the default upwinding treatment for the Vector Invariant formulation.
 
 Keyword arguments
-=================  
+=================
 
-- `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities) 
+- `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities)
                   in the kinetic energy gradient and the divergence flux. Defaults to `Centered()`.
-- `δU_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. 
+- `δU_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction.
                 Defaults to `FunctionStencil(divergence_smoothness)`
 - `δV_stencil`: Same as `δU_stencil` but for the smoothness of `δy_V`
-- `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. 
-                 Defaults to `FunctionStencil(u_smoothness)` 
+- `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction.
+                 Defaults to `FunctionStencil(u_smoothness)`
 - `δv²_stencil`: Same as `δu²_stencil` but for the smoothness of `δy_v²`
                  Defaults to `FunctionStencil(v_smoothness)`
 """
@@ -63,22 +63,22 @@ OnlySelfUpwinding(; cross_scheme = Centered(),
     CrossAndSelfUpwinding(; cross_scheme       = Centered(),
                             divergence_stencil = DefaultStencil(),
                             δu²_stencil        = FunctionStencil(u_smoothness),
-                            δv²_stencil        = FunctionStencil(v_smoothness)) 
-                            
+                            δv²_stencil        = FunctionStencil(v_smoothness))
+
 Upwinding treatment of Divergence fluxes in the Vector Invariant formulation, whereas both terms corresponding to
-the transporting velocity (`u` in the zonal direction and terms in `v` in the meridional direction) and the 
-tangential velocities (`v` in the zonal direction and terms in `u` in the meridional direction) are upwinded. 
+the transporting velocity (`u` in the zonal direction and terms in `v` in the meridional direction) and the
+tangential velocities (`v` in the zonal direction and terms in `u` in the meridional direction) are upwinded.
 Contrarily, only the Kinetic Energy gradient term corresponding to the transporting velocity is upwinded.
 
 Keyword arguments
-=================  
+=================
 
-- `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities) 
+- `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities)
                   in the kinetic energy gradient. Defaults to `Centered()`.
-- `divergence_stencil`: Stencil used for smoothness indicators of `δx_U + δy_V` in case of a 
+- `divergence_stencil`: Stencil used for smoothness indicators of `δx_U + δy_V` in case of a
                         `WENO` upwind reconstruction. Defaults to `DefaultStencil()`.
-- `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. 
-                 Defaults to `FunctionStencil(u_smoothness)` 
+- `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction.
+                 Defaults to `FunctionStencil(u_smoothness)`
 - `δv²_stencil`: Same as `δu²_stencil` but for the smoothness of `δy_v²`
                  Defaults to `FunctionStencil(v_smoothness)`
 """
@@ -96,12 +96,12 @@ Base.show(io::IO, a::OnlySelfUpwinding) =
             " KE gradient and Divergence flux cross terms reconstruction: ", "\n",
             " └── $(summary(a.cross_scheme))", "\n",
             " Smoothness measures: ", "\n",
-            " ├── smoothness δU: $(a.δU_stencil)", "\n", 
+            " ├── smoothness δU: $(a.δU_stencil)", "\n",
             " ├── smoothness δV: $(a.δV_stencil)", "\n",
             " ├── smoothness δu²: $(a.δu²_stencil)", "\n",
             " └── smoothness δv²: $(a.δv²_stencil)")
 
-Adapt.adapt_structure(to, scheme::OnlySelfUpwinding) = 
+Adapt.adapt_structure(to, scheme::OnlySelfUpwinding) =
     OnlySelfUpwinding(Adapt.adapt(to, scheme.cross_scheme),
                       Adapt.adapt(to, scheme.δU_stencil),
                       Adapt.adapt(to, scheme.δV_stencil),
@@ -113,11 +113,11 @@ Base.show(io::IO, a::CrossAndSelfUpwinding) =
             " KE gradient cross terms reconstruction: ", "\n",
             " └── $(summary(a.cross_scheme))", "\n",
             " Smoothness measures: ", "\n",
-            " ├── smoothness δ: $(a.divergence_stencil)", "\n", 
+            " ├── smoothness δ: $(a.divergence_stencil)", "\n",
             " ├── smoothness δu²: $(a.δu²_stencil)", "\n",
             " └── smoothness δv²: $(a.δv²_stencil)")
 
-Adapt.adapt_structure(to, scheme::CrossAndSelfUpwinding) = 
+Adapt.adapt_structure(to, scheme::CrossAndSelfUpwinding) =
     CrossAndSelfUpwinding(Adapt.adapt(to, scheme.cross_scheme),
                           Adapt.adapt(to, scheme.divergence_stencil),
                           Adapt.adapt(to, scheme.δu²_stencil),

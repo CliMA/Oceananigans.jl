@@ -69,6 +69,7 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
@@ -106,14 +107,27 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
+
     # Utils
-    prettytime
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using CUDA
 using DocStringExtensions
 using FFTW
 
 function __init__()
+    if VERSION >= v"1.12.0"
+        @warn """You are using Julia v1.12 or later!"
+                 Oceananigans is currently tested on Julia v1.11.5."
+                 If you find issues with Julia v1.12 or later,"
+                 please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
+
+    end
+
     threads = Threads.nthreads()
     if threads > 1
         @info "Oceananigans will use $threads threads"
@@ -213,8 +227,17 @@ include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("DistributedComputations/DistributedComputations.jl")
-include("OutputReaders/OutputReaders.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+
+# Simulations and output handling
+include("Diagnostics/Diagnostics.jl")
+include("OutputReaders/OutputReaders.jl")
+include("OutputWriters/OutputWriters.jl")
+include("Simulations/Simulations.jl")
+
+# TODO:
+# include("Diagnostics/Diagnostics.jl") # or just delete
+# include("OutputWriters/OutputWriters.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
@@ -233,11 +256,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("Models/Models.jl")
-
-# Output and Physics, time-stepping, and models
-include("Diagnostics/Diagnostics.jl")
-include("OutputWriters/OutputWriters.jl")
-include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")

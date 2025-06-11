@@ -106,7 +106,7 @@ validate_condition(cond::AbstractArray, ::OneField) = cond
 
 function validate_condition(cond::AbstractArray, operand::AbstractField)
     if size(cond) !== size(operand)
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand)) but has size $(size(cond))"))
     end
     return cond
 end

@@ -16,15 +16,15 @@ L  = 25.0e3
 Δh = 0.9H
 dx = 5.0e3
 Lx = dx*Nx
-Ly = dx*Ny  
+Ly = dx*Ny
 
 f  = 1e-4
-N  = 1.5*f*L/H 
+N  = 1.5*f*L/H
 
-@inline gaussian_bump(x, y) = - H + Δh * exp( - (x^2 + y^2) / (2*L^2)) 
+@inline gaussian_bump(x, y) = - H + Δh * exp( - (x^2 + y^2) / (2*L^2))
 
-grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (4, 4, 4), 
-                       x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-H, 0), 
+grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (4, 4, 4),
+                       x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-H, 0),
                        topology = (Periodic, Periodic, Bounded))
 
 ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_bump))
@@ -50,7 +50,7 @@ parameters = (ΔB = 0.04,
     target_b = initial_buoyancy(z, p)
     b = @inbounds fields.b[i, j, k]
 
-    return - p.λ * (b - target_b) * mask(i, p) 
+    return - p.λ * (b - target_b) * mask(i, p)
 end
 
 u_forcing =  Forcing(velocity_restoring_u; discrete_form=true, parameters)
@@ -67,8 +67,8 @@ buoyancy = BuoyancyTracer()
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1] * speed(i, j, 1, grid, fields)
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1] * speed(i, j, 1, grid, fields)
 
-@inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, k] * speed(i, j, k, grid, fields) 
-@inline v_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, k] * speed(i, j, k, grid, fields) 
+@inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, k] * speed(i, j, k, grid, fields)
+@inline v_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, k] * speed(i, j, k, grid, fields)
 
 drag_u = FluxBoundaryCondition(u_immersed_bottom_drag, discrete_form=true, parameters = μ)
 drag_v = FluxBoundaryCondition(v_immersed_bottom_drag, discrete_form=true, parameters = μ)
@@ -83,17 +83,17 @@ u_bcs = FieldBoundaryConditions(bottom = u_bottom_drag_bc, immersed = u_immersed
 v_bcs = FieldBoundaryConditions(bottom = u_bottom_drag_bc, immersed = v_immersed_bc)
 
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ = 1e-4, ν = 1e-4)
-horizontal_diffusivity = HorizontalDivergenceScalarDiffusivity(ν = 1e6) 
+horizontal_diffusivity = HorizontalDivergenceScalarDiffusivity(ν = 1e6)
 closure = (vertical_diffusivity, horizontal_diffusivity)
 
 model = HydrostaticFreeSurfaceModel(; grid = ibg,
                                     buoyancy, coriolis = FPlane(; f),
                                     free_surface = ImplicitFreeSurface(),
-                                    tracers = :b, 
+                                    tracers = :b,
                                     tracer_advection = WENO(),
                                     forcing = (; u = u_forcing, v = v_forcing, b = b_forcing),
                                     boundary_conditions = (u = u_bcs, v = v_bcs),
-                                    closure, 
+                                    closure,
                                     momentum_advection = WENO())
 
 g  = model.free_surface.gravitational_acceleration
