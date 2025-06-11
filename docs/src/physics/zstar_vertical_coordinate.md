@@ -8,7 +8,7 @@ We have that:
 
 ```math
 \begin{alignat}{2}
-& \frac{\partial \phi}{\partial s}\bigg\rvert_{z} && =  \frac{\partial \phi}{\partial s}\bigg\rvert_{r} + \frac{\partial \phi}{\partial r}\cdot \frac{\partial r}{\partial s} \\ 
+& \frac{\partial \phi}{\partial s}\bigg\rvert_{z} && =  \frac{\partial \phi}{\partial s}\bigg\rvert_{r} + \frac{\partial \phi}{\partial r} \frac{\partial r}{\partial s} \\ 
 & \frac{\partial \phi}{\partial z} && = \frac{1}{\sigma}\frac{\partial \phi}{\partial r}
 \end{alignat}
 ```
