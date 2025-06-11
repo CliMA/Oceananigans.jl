@@ -35,7 +35,7 @@ Following the above ruleset, the divergence of the velocity field can be rewritt
 ```math
 \begin{align}
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} & = \frac{\partial u}{\partial x} \bigg\rvert_{z} + \frac{\partial v}{\partial y} \bigg\rvert_{z} + \frac{\partial w}{\partial z} \\
-& = \frac{\partial u}{\partial x} \bigg\rvert_{r} + \frac{\partial v}{\partial y} \bigg\rvert_{r} - \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial y} \frac{\partial z}{\partial y}  - \frac{\partial w}{\partial r} \right) \\ 
+& = \frac{\partial u}{\partial x} \bigg\rvert_{r} + \frac{\partial v}{\partial y} \bigg\rvert_{r} - \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial r} \frac{\partial z}{\partial y}  - \frac{\partial w}{\partial r} \right) \\ 
 & = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y} \bigg\rvert_{r} - u \frac{\partial \sigma}{\partial x} \bigg\rvert_{r} -  v \frac{\partial \sigma}{\partial y} \bigg\rvert_{r} \right)- \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial y} \frac{\partial z}{\partial y}  - \frac{\partial w}{\partial r} \right)
 \end{align}
 ```
@@ -103,7 +103,7 @@ We recover the time derivative of the tracer at constant `r` by rewriting the la
 ```
 As such, $\partial_t T\rvert_{z} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T$ can be rewritten in ``r``-coordinates as
 ```math
-\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t}\bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r}
+\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t}\bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial \omega T}{\partial r}
 ```
 We add vertical diffusion to the RHS to recover the tracer equation
 ```math
@@ -113,7 +113,7 @@ We add vertical diffusion to the RHS to recover the tracer equation
 
 We discretize the equation in a finite volume framework
 ```math
-\frac{1}{V_r}\int_{V_r} \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} + \frac{1}{V_r} \int_{V_r} \left[ \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r}\right] \, \mathrm{d}V = \frac{1}{V_r}\int_{V_r} \frac{1}{\sigma}\frac{\partial}{\partial r} \left( \kappa \frac{\partial T}{\partial z} \right) \, \mathrm{d}V
+\frac{1}{V_r}\int_{V_r} \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} + \frac{1}{V_r} \int_{V_r} \left[ \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial \omega T}{\partial r}\right] \, \mathrm{d}V = \frac{1}{V_r}\int_{V_r} \frac{1}{\sigma}\frac{\partial}{\partial r} \left( \kappa \frac{\partial T}{\partial z} \right) \, \mathrm{d}V
 ```
 leading to
 ```math
@@ -138,4 +138,70 @@ T^{n+1} = \frac{1}{\sigma^{n+1}}\left[\sigma^n T^n + \Delta t \left(\frac{3}{2}\
 For this reason, we store tendencies pre-multipled by $\sigma$ at their current time-level.
 In case of an implicit discretization of the diffusive fluxes we first compute $T^{n+1}$ as in the above equation (where $G^n$ does not contain the diffusive fluxes).
 Then the implicit step is done on a `z`-grid as if the grid was static, using the grid at $n+1$ which includes $\sigma^{n+1}$.
+
+## Momentum equations in vector invariant form
+
+We set out to transform in ``r``-coordinates the material derivative of the horizontal velocity in vector invariant form 
+```math
+\frac{D \boldsymbol{u}_h}{Dt} \bigg\rvert_z = \frac{\partial \boldsymbol{u}_h}{\partial t} \bigg\rvert_z + \zeta \boldsymbol{z} \times \boldsymbol{u}_h + \boldsymbol{\nabla}_h K + w \frac{\partial \boldsymbol{u}_h}{\partial z}
+```
+where $\boldsymbol{u}_h = (u, v)$ is the horizontal velocity, $\zeta = \partial_xv - \partial_y u$ is the vertical vorticity and $K = (u^2 + v^2)/2$ is the horizontal kinetic energy.
+In particular we will focus on the $u$ component of the velocity. The derivation of the $v$ component follows the same steps. In particular, we are transforming
+```math
+\begin{align}
+\frac{D u}{Dt} \bigg\rvert_z & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta \rvert_z v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+
+& = \frac{\partial u}{\partial t} \bigg\rvert_z + \left(\frac{\partial u}{\partial y}\bigg\rvert_z - \frac{\partial v}{\partial x}\bigg\rvert_z \right)  v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+
+& = \frac{\partial u}{\partial t} \bigg\rvert_z + \bigg(\underbrace{\frac{\partial u}{\partial y}\bigg\rvert_r - \frac{\partial v}{\partial x}\bigg\rvert_r}_{- \zeta|_r}  - \frac{1}{\sigma} \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} + \frac{1}{\sigma}  \frac{\partial v}{\partial r} \frac{\partial z}{\partial x}   \bigg)  v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+
+& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x}   \right)  v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+
+& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x}   \right)  v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_r - \frac{1}{2\sigma} \frac{\partial (u^2 + v^2)}{\partial r}\frac{\partial z}{\partial x} + w \frac{\partial u}{\partial z} 
+\end{align}
+```
+Combining all terms divided by $\sigma$ we obtain
+```math
+\begin{align}
+\frac{D u}{Dt} \bigg\rvert_z & =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
+\frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v\frac{\partial u}{\partial r} \frac{\partial z}{\partial y}  + v\frac{\partial v}{\partial r} \frac{\partial z}{\partial x}    - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}- v \frac{\partial v}{\partial r}\frac{\partial z}{\partial x}\right)  \\
+
+& =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
+\frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v \frac{\partial u}{\partial r} \frac{\partial z}{\partial y}  - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}\right)  \\
+
+& =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
+\frac{1}{\sigma} \left( w - v \frac{\partial z}{\partial y}  - u \frac{\partial z}{\partial x}\right)  \frac{\partial u}{\partial r}  \\
+\end{align}
+```
+Once again, 
+```math
+\omega + \frac{\partial z}{\partial t}\bigg\rvert_r =  w - v \frac{\partial z}{\partial y}  - u \frac{\partial z}{\partial x}
+```
+So that it is possible to write
+```math
+\begin{align}
+\frac{D u}{Dt} \bigg\rvert_z &  =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
+\frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \frac{\partial u}{\partial r}  \\
+\end{align}
+```
+As done above for the tracer, the last term on the right-hand side, using the chain rule for the time derivative yields
+```math
+\frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \frac{\partial u}{\partial r} = \frac{\omega}{\sigma}\frac{\partial u}{\partial r} + \frac{\partial u}{\partial t}\bigg\rvert_r - \frac{\partial u}{\partial t}\bigg\rvert_z
+```
+Which completes the derivation of the u-momentum equations in ``r``-coordinates
+```math
+\frac{D u}{Dt} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{\omega}{\sigma}\frac{\partial u}{\partial r} 
+```
+We can further split the vertical advection term into a conservative vertical advection and a horizontal divergence term to obtain
+```math
+\frac{D u}{Dt} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma}\frac{\partial \omega u}{\partial r} - \frac{u}{\sigma} \frac{\partial \omega}{\partial r}
+```
+Where we can make use of the continuity equation to obtain
+```math
+\frac{D u}{Dt} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma}\frac{\partial \omega u}{\partial r} + \frac{u}{\sigma} \left( \frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}\right)
+```
+
+
+
+
 
