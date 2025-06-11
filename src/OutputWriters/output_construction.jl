@@ -48,7 +48,7 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
         @apply_regionally indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
-    intersected = intersect_indices(output, indices)
+    @apply_regionally intersected = intersect_indices(output, indices)
 
     return intersected
 end

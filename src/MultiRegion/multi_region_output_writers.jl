@@ -14,16 +14,6 @@ function fetch_output(mrf::MultiRegionField, model)
     return parent(field)
 end
 
-function construct_output(mrf::MultiRegionField, grid, user_indices, with_halos)
-    # TODO: support non-default indices I guess
-    # for that we have to figure out how to partition indices, eg user_indices is "global"
-    # indices = output_indices(user_output, grid, user_indices, with_halos)
-
-    indices = (:, :, user_indices[3]) # sorry user
-
-    return construct_output(mrf, indices)
-end
-
 function serializeproperty!(file, location, mrf::MultiRegionField{LX, LY, LZ}) where {LX, LY, LZ}
     p = reconstruct_global_field(mrf)
 
