@@ -33,7 +33,7 @@ Following the above ruleset, the divergence of the velocity field can be rewritt
 ```math
 \begin{align}
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} & = \frac{\partial u}{\partial x} \bigg\rvert_{z} + \frac{\partial v}{\partial y} \bigg\rvert_{z} + \frac{\partial w}{\partial z} \\
-& = \frac{\partial u}{\partial x} \bigg\rvert_{r} + \frac{\partial v}{\partial y} \bigg\rvert_{r} - \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial r} \frac{\partial z}{\partial y}  - \frac{\partial w}{\partial r} \right) \\
+& = \frac{\partial u}{\partial x} \bigg\rvert_{r} + \frac{\partial v}{\partial y} \bigg\rvert_{r} - \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial w}{\partial r} \right) \\
 & = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y} \bigg\rvert_{r} - u \frac{\partial \sigma}{\partial x} \bigg\rvert_{r} - v \frac{\partial \sigma}{\partial y} \bigg\rvert_{r} \right)- \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial y} \frac{\partial z}{\partial y}  - \frac{\partial w}{\partial r} \right)
 \end{align}
 ```
@@ -61,13 +61,14 @@ Therefore, adding the definition of $\omega$ to the velocity divergence we get
 ```
 which finally leads to the continuity equation
 ```math
-\frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}  + \frac{\partial \omega}{\partial r} = 0
+\frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r} + \frac{\partial \omega}{\partial r} = 0
 ```
 ### Finite volume discretization of the continuity equation
 
-It is usefull to think about this equation in the discrete form in a finite volume staggered C-grid framework, where we integrate over a volume $V_r = \Delta x \Delta y \Delta r$ remembering that in the discrete $\Delta z = \sigma \Delta r$. The indices `i`, `j`, `k` correspond to the `x`, `y`, and the vertical direction.
+It is useful to think about this equation in the discrete form in a finite volume staggered C-grid framework, where we integrate over a volume $V_r = \Delta x \Delta y \Delta r$ remembering that in the discrete $\Delta z = \sigma \Delta r$.
+The indices `i`, `j`, `k` correspond to the `x`, `y`, and the vertical direction.
 ```math
-\frac{1}{V_r}\int_{V_r} \frac{\partial \sigma}{\partial t} \, \mathrm{d}V + \frac{1}{V_r} \int_{V_r} \left(\frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}  + \frac{\partial \omega}{\partial r}\right) \, \mathrm{d}V = 0
+\frac{1}{V_r}\int_{V_r} \frac{\partial \sigma}{\partial t} \, \mathrm{d}V + \frac{1}{V_r} \int_{V_r} \left(\frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r} + \frac{\partial \omega}{\partial r}\right) \, \mathrm{d}V = 0
 ```
 Using the divergence theorem, and introducing the notation of cell-average values $V_r^{-1} \int_{V_r} \phi \,\mathrm{d}V = \overline{\phi}$
 ```math
@@ -103,10 +104,11 @@ As such, $\partial_t T\rvert_{z} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T$ ca
 ```math
 \frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \cdot \boldsymbol{u}T = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t}\bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial \omega T}{\partial r}
 ```
-We add vertical diffusion to the RHS to recover the tracer equation
+We add vertical diffusion to the right-hand side to recover the tracer equation
 ```math
 \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t}\bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} = \frac{1}{\sigma}\frac{\partial}{\partial r} \left( \kappa \frac{\partial T}{\partial z} \right)
 ```
+
 ### Finite-volume discretization of the tracer equation
 
 We discretize the equation in a finite volume framework
@@ -172,9 +174,9 @@ In particular we will focus on the $u$ component of the velocity. The derivation
 
 & = \frac{\partial u}{\partial t} \bigg\rvert_z + \left(\frac{\partial u}{\partial y}\bigg\rvert_z - \frac{\partial v}{\partial x}\bigg\rvert_z \right) v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
 
-& = \frac{\partial u}{\partial t} \bigg\rvert_z + \bigg(\underbrace{\frac{\partial u}{\partial y}\bigg\rvert_r - \frac{\partial v}{\partial x}\bigg\rvert_r}_{- \zeta|_r} - \frac{1}{\sigma} \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} + \frac{1}{\sigma}  \frac{\partial v}{\partial r} \frac{\partial z}{\partial x} \bigg) v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+& = \frac{\partial u}{\partial t} \bigg\rvert_z + \bigg(\underbrace{\frac{\partial u}{\partial y}\bigg\rvert_r - \frac{\partial v}{\partial x}\bigg\rvert_r}_{- \zeta|_r} - \frac{1}{\sigma} \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} + \frac{1}{\sigma} \frac{\partial v}{\partial r} \frac{\partial z}{\partial x} \bigg) v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
 
-& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x}   \right)  v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x} \right) v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
 
 & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x}   \right)  v + \frac{1}{2}\frac{\partial (u^2 + v^2)}{\partial x}\bigg\rvert_r - \frac{1}{2\sigma} \frac{\partial (u^2 + v^2)}{\partial r}\frac{\partial z}{\partial x} + w \frac{\partial u}{\partial z}
 \end{align}
@@ -185,7 +187,7 @@ Combining all terms divided by $\sigma$ we obtain
 \frac{D u}{Dt} \bigg\rvert_z & =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
 \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v\frac{\partial u}{\partial r} \frac{\partial z}{\partial y}  + v\frac{\partial v}{\partial r} \frac{\partial z}{\partial x}    - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}- v \frac{\partial v}{\partial r}\frac{\partial z}{\partial x}\right)  \\
 
-& =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
+& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
 \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v \frac{\partial u}{\partial r} \frac{\partial z}{\partial y}  - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}\right)  \\
 
 & =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r +
@@ -207,13 +209,13 @@ As done above for the tracer, the last term on the right-hand side, using the ch
 ```math
 \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \frac{\partial u}{\partial r} = \frac{\omega}{\sigma}\frac{\partial u}{\partial r} + \frac{\partial u}{\partial t}\bigg\rvert_r - \frac{\partial u}{\partial t}\bigg\rvert_z
 ```
-Which completes the derivation of the u-momentum equations in ``r``-coordinates
+Which completes the derivation of the ``u``-momentum equations in ``r``-coordinates
 ```math
 \frac{D u}{Dt} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{\omega}{\sigma}\frac{\partial u}{\partial r}
 ```
 We can further split the vertical advection term into a conservative vertical advection and a horizontal divergence term to obtain
 ```math
-\frac{D u}{Dt} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma}\frac{\partial \omega u}{\partial r} - \frac{u}{\sigma} \frac{\partial \omega}{\partial r}
+\frac{D u}{Dt} \bigg\rvert_z = \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma}\frac{\partial \omega u}{\partial r} - \frac{u}{\sigma} \frac{\partial \omega}{\partial r}
 ```
 Where we can make use of the continuity equation to obtain
 ```math
@@ -222,7 +224,7 @@ Where we can make use of the continuity equation to obtain
 
 ### Horizontal pressure gradient
 
-The horizontal pressure gradient $\partial_x p$ can be transformed using the chain rule for spatial derivatives as
+The horizontal pressure gradient, e.g., $\partial_x p$, can be transformed using the chain rule for spatial derivatives as
 ```math
 \begin{align}
 \frac{\partial p}{\partial x}\bigg\rvert_z = & \frac{\partial p}{\partial x}\bigg\rvert_r - \frac{1}{\sigma}\frac{\partial p}{\partial r}\frac{\partial z}{\partial x} \\
