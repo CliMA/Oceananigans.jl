@@ -66,9 +66,6 @@ function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType
                                                     inflow_timescale = 0, kwargs...)
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
-
-    inflow_timescale = convert(FT, inflow_timescale)
-    outflow_timescale = convert(FT, outflow_timescale)
     classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
 
     @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
