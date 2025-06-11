@@ -106,7 +106,6 @@ model_setup_pages = [
 
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
-    "Vertical coordinates" => "physics/zstar_vertical_coordinate.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
@@ -120,6 +119,7 @@ physics_pages = [
     "Boundary conditions" => "physics/boundary_conditions.md",
     "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
+    "Vertical coordinates" => "physics/zstar_vertical_coordinate.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
     "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
 ]
