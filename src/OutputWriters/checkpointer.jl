@@ -60,7 +60,7 @@ Keyword arguments
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
                 `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: calls [`required_checkpointed_properties`](@ref) on
+                `:timestepper`. Default: calls [`required_checkpoint_properties`](@ref) on
                 `model` to get these properties.
 """
 function Checkpointer(model; schedule,
