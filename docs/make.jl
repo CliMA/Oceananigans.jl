@@ -107,21 +107,21 @@ model_setup_pages = [
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
-    "`NonhydrostaticModel`" => [
-        "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
-        ],
-    "`HydrostaticFreeSurfaceModel`" => [
-        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
-        ],
-    "`ShallowWaterModel`" => [
-        "Shallow water model" => "physics/shallow_water_model.md"
-        ],
-    "Boundary conditions" => "physics/boundary_conditions.md",
-    "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
-    "Coriolis forces" => "physics/coriolis_forces.md",
+    # "`NonhydrostaticModel`" => [
+    #     "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
+    #     ],
+    # "`HydrostaticFreeSurfaceModel`" => [
+    #     "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
+    #     ],
+    # "`ShallowWaterModel`" => [
+    #     "Shallow water model" => "physics/shallow_water_model.md"
+    #     ],
+    # "Boundary conditions" => "physics/boundary_conditions.md",
+    # "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
+    # "Coriolis forces" => "physics/coriolis_forces.md",
     "Vertical coordinates" => "physics/zstar_vertical_coordinate.md",
-    "Turbulence closures" => "physics/turbulence_closures.md",
-    "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
+    # "Turbulence closures" => "physics/turbulence_closures.md",
+    # "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
 ]
 
 numerical_pages = [
@@ -144,26 +144,26 @@ appendix_pages = [
 ]
 
 pages = [
-    "Home" => "index.md",
-    "Quick start" => "quick_start.md",
-    "Examples" => example_pages,
-    "Grids" => "grids.md",
-    "Fields" => "fields.md",
-    "Operations" => "operations.md",
+    # "Home" => "index.md",
+    # "Quick start" => "quick_start.md",
+    # "Examples" => example_pages,
+    # "Grids" => "grids.md",
+    # "Fields" => "fields.md",
+    # "Operations" => "operations.md",
     # TODO:
     #   - Develop the following three tutorials on reductions, simulations, and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
     # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
     # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Model setup (legacy)" => model_setup_pages,
+    # "Model setup (legacy)" => model_setup_pages,
     "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
-    "Gallery" => "gallery.md",
-    "References" => "references.md",
-    "Appendix" => appendix_pages
+    # "Numerical implementation" => numerical_pages,
+    # "Simulation tips" => "simulation_tips.md",
+    # "Contributor's guide" => "contributing.md",
+    # "Gallery" => "gallery.md",
+    # "References" => "references.md",
+    # "Appendix" => appendix_pages
 ]
 
 #####
