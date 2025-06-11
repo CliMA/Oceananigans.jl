@@ -141,6 +141,24 @@ Then the implicit step is done on a `z`-grid as if the grid was static, using th
 
 ## Momentum equations in vector invariant form
 
+The momentum equations solved in Primitive equations models read
+```math
+\frac{D \boldsymbol{u}_h}{Dt} \bigg\rvert_z + f\boldsymbol{z} \times \boldsymbol{u}_h = - \nabla p \rvert_z - g\nabla \eta \rvert_z + \frac{\partial }{\partial z} \left( \nu \frac{\partial \boldsymbol{u}_h}{\partial z}\right)
+```
+complemented by the hydrostatic relation
+```math
+\frac{\partial p}{\partial z} = b
+```
+Of the above, the Coriolis term is independent of the vertical frame of reference and the viscous stress is treated similarly to the diffusion of a tracer. In this derivation we focus on (1) the hydrostatic relation, (2) the material derivative in the momentum equation, and (3) the horizontal pressure gradient terms.
+
+### Hydrostatic relation
+This equation is simple to transform by using the definition of a `z`-derivative in `r`-coordinates
+```math
+\frac{\partial p}{\partial r} = \sigma b
+```
+
+### Material derivative in vector invariant form
+
 We set out to transform in ``r``-coordinates the material derivative of the horizontal velocity in vector invariant form 
 ```math
 \frac{D \boldsymbol{u}_h}{Dt} \bigg\rvert_z = \frac{\partial \boldsymbol{u}_h}{\partial t} \bigg\rvert_z + \zeta \boldsymbol{z} \times \boldsymbol{u}_h + \boldsymbol{\nabla}_h K + w \frac{\partial \boldsymbol{u}_h}{\partial z}
@@ -201,7 +219,26 @@ Where we can make use of the continuity equation to obtain
 \frac{D u}{Dt} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma}\frac{\partial \omega u}{\partial r} + \frac{u}{\sigma} \left( \frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}\right)
 ```
 
+### Horizontal pressure gradient
 
-
-
+The horizontal pressure gradient $\partial_x p$ can be transformed using the chain rule for spatial derivatives as
+```math
+\begin{align}
+\frac{\partial p}{\partial x}\bigg\rvert_z = & \frac{\partial p}{\partial x}\bigg\rvert_r - \frac{1}{\sigma}\frac{\partial p}{\partial r}\frac{\partial z}{\partial x} \\
+\end{align}
+```
+where using the hydrostatic relation we can write
+```math
+\begin{equation}
+\frac{\partial p}{\partial x}\bigg\rvert_z = \frac{\partial p}{\partial x}\bigg\rvert_r - b \frac{\partial z}{\partial x} 
+\end{equation}
+```
+where the additional term describes the pressure gradient associated with the horizontal tilting of the grid.
+The gradient of surface pressure (the free surface) remains unchanged under vertical coordinate transformation
+```math
+\begin{align}
+g \frac{\partial \eta}{\partial x}\bigg\rvert_z & = g \frac{\partial \eta}{\partial x}\bigg\rvert_r - \frac{g}{\sigma} \frac{\partial \eta}{\partial r}\frac{\partial z}{\partial x} \\
+& = g \frac{\partial \eta}{\partial x}\bigg\rvert_r
+\end{align}
+```
 
