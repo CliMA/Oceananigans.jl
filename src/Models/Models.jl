@@ -16,6 +16,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
 using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
+using Oceananigans.OutputWriters: has_ab2_timestepper
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
 using Oceananigans.Utils: Time
 
@@ -189,7 +190,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to Ocenanaigans' models
-import Oceananigans.OutputWriters: default_included_properties, checkpointer_address
+import Oceananigans.OutputWriters: default_included_properties, checkpointer_address, default_checkpointed_properties
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
@@ -198,6 +199,14 @@ default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, 
 checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+
+function default_checkpointed_properties(model::OceananigansModels)
+    properties = [:grid, :clock, :particles]
+    if has_ab2_timestepper(model)
+       push!(properties, :timestepper)
+    end
+    return properties
+end
 
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`

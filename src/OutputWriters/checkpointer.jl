@@ -17,13 +17,7 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     cleanup :: Bool
 end
 
-function default_checkpointed_properties(model)
-    properties = [:grid, :particles, :clock, :timestepper]
-    #if has_ab2_timestepper(model)
-    #    push!(properties, :timestepper)
-    #end
-    return properties
-end
+default_checkpointed_properties(model) = [:grid, :clock]
 
 has_ab2_timestepper(model) = try
     model.timestepper isa QuasiAdamsBashforth2TimeStepper
