@@ -17,19 +17,7 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     cleanup :: Bool
 end
 
-function default_checkpointed_properties(model) 
-    properties = [:grid, :clock]
-    if has_ab2_timestepper(model)
-        push!(properties, :timestepper)
-    end 
-    return properties
-end
-
-has_ab2_timestepper(model) = try
-    model.timestepper isa QuasiAdamsBashforth2TimeStepper
-catch
-    false
-end
+required_checkpointed_properties(model) = [:grid, :clock]
 
 """
     Checkpointer(model;
@@ -72,7 +60,7 @@ Keyword arguments
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
                 `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
+                `:timestepper`. Default: calls [`required_checkpointed_properties`](@ref) on
                 `model` to get these properties.
 """
 function Checkpointer(model; schedule,
@@ -81,15 +69,11 @@ function Checkpointer(model; schedule,
                       overwrite_existing = false,
                       verbose = false,
                       cleanup = false,
-                      properties = default_checkpointed_properties(model))
+                      properties = required_checkpointed_properties(model))
+
+    required_properties = required_checkpointed_properties(model)
 
     # Certain properties are required for `set!` to pickup from a checkpoint.
-    required_properties = [:grid, :clock]
-
-    if has_ab2_timestepper(model)
-        push!(required_properties, :timestepper)
-    end
-
     for rp in required_properties
         if rp ∉ properties
             @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
