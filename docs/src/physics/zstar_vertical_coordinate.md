@@ -46,7 +46,7 @@ We can rewrite $\partial_x \sigma \rvert_r = \partial_r(\partial_x z)$ and the s
 & = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r} \left( u \frac{\partial z}{\partial x} +  v \frac{\partial z}{\partial y} + w \right) 
 \end{align}
 ```
-Here, $w$ is the vertical velocity corresponding to the ``z`` coordinate. We can define a vertical velocity $w_p$ of a point moving with the horizontal velocity along an ``r`` surface 
+Here, $w$ is the vertical velocity referenced to the ``z`` coordinate. We can define a vertical velocity $w_p$ of a point moving with the horizontal velocity along an ``r`` surface reference to the ``z`` coordinate
 ```math
 w_p = \frac{\partial z}{\partial t} \bigg\rvert_r + u \frac{\partial z}{\partial x} +  v \frac{\partial z}{\partial y}
 ```
