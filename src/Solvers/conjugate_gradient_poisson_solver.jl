@@ -151,10 +151,7 @@ const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPo
 
 function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
-    shift = - sqrt(eps(eltype(r))) # to make the operator strictly negative definite
-    solve!(p, preconditioner, preconditioner.storage, shift)
-    p .*= -1
-
+    solve!(p, preconditioner, preconditioner.storage)
     return p
 end
 
