@@ -2,7 +2,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_conditions!, correct_boundary_mass_flux!
+using Oceananigans.BoundaryConditions: update_boundary_conditions!#, correct_boundary_mass_flux!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -35,9 +35,9 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
                        fill_boundary_normal_velocities = false, async = true)
 
     # Correct mass flux for PerturbationAdvection open boundary conditions
-    correct_boundary_mass_flux!(model.grid, model.velocities.u, model.velocities.u.boundary_conditions)
-    correct_boundary_mass_flux!(model.grid, model.velocities.v, model.velocities.v.boundary_conditions)
-    correct_boundary_mass_flux!(model.grid, model.velocities.w, model.velocities.w.boundary_conditions)
+    #correct_boundary_mass_flux!(model.grid, model.velocities.u, model.velocities.u.boundary_conditions)
+    #correct_boundary_mass_flux!(model.grid, model.velocities.v, model.velocities.v.boundary_conditions)
+    #correct_boundary_mass_flux!(model.grid, model.velocities.w, model.velocities.w.boundary_conditions)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
