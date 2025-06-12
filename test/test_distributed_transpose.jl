@@ -4,10 +4,10 @@ MPI.Init()
 
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.DistributedComputations: TransposableField,                
-                                            transpose_z_to_y!,                
-                                            transpose_y_to_z!,                
-                                            transpose_y_to_x!,                
+using Oceananigans.DistributedComputations: TransposableField,
+                                            transpose_z_to_y!,
+                                            transpose_y_to_z!,
+                                            transpose_y_to_x!,
                                             transpose_x_to_y!
 
 function test_transpose(grid_points, ranks, topo, child_arch)
@@ -23,7 +23,7 @@ function test_transpose(grid_points, ranks, topo, child_arch)
     # Fill ϕ with random data
     set!(ϕ, ϕ₀)
     set!(Φ.zfield, ϕ)
-    
+
     # Complete a full transposition cycle
     transpose_z_to_y!(Φ)
     transpose_y_to_x!(Φ)
@@ -38,7 +38,7 @@ function test_transpose(grid_points, ranks, topo, child_arch)
 end
 
 @testset "Distributed Transpose" begin
-    for topology in ((Periodic, Periodic, Periodic), 
+    for topology in ((Periodic, Periodic, Periodic),
                      (Periodic, Periodic, Bounded),
                      (Periodic, Bounded, Bounded),
                      (Bounded, Bounded, Bounded))

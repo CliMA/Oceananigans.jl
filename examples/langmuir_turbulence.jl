@@ -1,7 +1,7 @@
 # # Langmuir turbulence example
 #
-# This example implements a Langmuir turbulence simulation reported in section
-# 4 of
+# This example implements a Langmuir turbulence simulation similar to the one
+# reported in section 4 of
 #
 # > [Wagner et al., "Near-inertial waves and turbulence driven by the growth of swell", Journal of Physical Oceanography (2021)](https://journals.ametsoc.org/view/journals/phoc/51/5/JPO-D-20-0178.1.xml)
 #
@@ -33,7 +33,7 @@ using Oceananigans.Units: minute, minutes, hours
 #
 # We use a modest resolution and the same total extent as Wagner et al. (2021),
 
-grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
+grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
 
 # ### The Stokes Drift profile
 #
@@ -44,7 +44,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 # (half the distance from wave crest to wave trough), which determine the wave
 # frequency and the vertical scale of the Stokes drift profile.
 
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 
  amplitude = 0.8 # m
 wavelength = 60  # m
@@ -91,7 +91,6 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 # At the surface ``z = 0``, Wagner et al. (2021) impose
 
 τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
-
 u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
@@ -125,11 +124,9 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(),
-                            timestepper = :RungeKutta3,
+                            advection = WENO(order=9),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 
@@ -202,13 +199,13 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 output_interval = 5minutes
 
-fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
+fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, fields_to_output,
-                     schedule = TimeInterval(output_interval),
-                     filename = "langmuir_turbulence_fields.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, fields_to_output,
+               schedule = TimeInterval(output_interval),
+               filename = "langmuir_turbulence_fields.jld2",
+               overwrite_existing = true)
 
 # ### An "averages" writer
 #
@@ -225,10 +222,10 @@ wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
 simulation.output_writers[:averages] =
-    JLD2OutputWriter(model, (; U, V, B, wu, wv),
-                     schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                     filename = "langmuir_turbulence_averages.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, (; U, V, B, wu, wv),
+               schedule = AveragedTimeInterval(output_interval, window=2minutes),
+               filename = "langmuir_turbulence_averages.jld2",
+               overwrite_existing = true)
 
 # ## Running the simulation
 #
@@ -313,7 +310,7 @@ Vₙ = @lift view(time_series.V[$n], 1, 1, :)
 wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
 wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
 
-k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
+k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
 wxyₙ = @lift view(time_series.w[$n], :, :, k)
 wxzₙ = @lift view(time_series.w[$n], :, 1, :)
 uxzₙ = @lift view(time_series.u[$n], :, 1, :)

@@ -1,9 +1,9 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: retrieve_interior_active_cells_map
+using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
-using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
 
@@ -52,11 +52,16 @@ function time_step_catke_equation!(model)
             χ = model.timestepper.χ
         end
 
-        # Compute the linear implicit component of the RHS (diffusivities, L)
-        # and step forward
+        # Compute the linear implicit component of the RHS (diffusivities, L)...
+        launch!(arch, grid, :xyz,
+                compute_TKE_diffusivity!,
+                κe, grid, closure,
+                model.velocities, model.tracers, model.buoyancy, diffusivity_fields)
+                
+        # ... and step forward.
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
-                κe, Le, grid, closure,
+                Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
@@ -75,21 +80,29 @@ function time_step_catke_equation!(model)
     return nothing
 end
 
-@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
+const c = Center()
+
+@kernel function compute_TKE_diffusivity!(κe, grid, closure,
+                                          next_velocities, tracers, buoyancy, diffusivities)
+    i, j, k = @index(Global, NTuple)
+
+    # Compute TKE diffusivity.
+    closure_ij = getclosure(i, j, closure)
+    Jᵇ = diffusivities.Jᵇ
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
+    κe★ = mask_diffusivity(i, j, k, grid, κe★)
+    @inbounds κe[i, j, k] = κe★
+end
+
+@kernel function substep_turbulent_kinetic_energy!(Le, grid, closure,
                                                    next_velocities, previous_velocities,
                                                    tracers, buoyancy, diffusivities,
                                                    Δτ, χ, slow_Gⁿe, G⁻e)
 
     i, j, k = @index(Global, NTuple)
 
-    Jᵇ = diffusivities.Jᵇ
     e = tracers.e
     closure_ij = getclosure(i, j, closure)
-
-    # Compute TKE diffusivity.
-    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
-    κe★ = mask_diffusivity(i, j, k, grid, κe★)
-    @inbounds κe[i, j, k] = κe★
 
     # Compute additional diagonal component of the linear TKE operator
     wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
@@ -118,7 +131,8 @@ end
     #
     #       Lᵂ = - Cᵂϵ * √e / Δz.
 
-    on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+    on_bottom = bottommost_active_node(i, j, k, grid, c, c, c)
+    active = !inactive_cell(i, j, k, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
     e⁺ = clip(eⁱʲᵏ)
@@ -141,7 +155,7 @@ end
     #
     # where ω = ϵ / e ∼ √e / ℓ.
 
-    @inbounds Le[i, j, k] = wb⁻_e - ω + div_Jᵉ_e
+    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
 
     # Compute fast TKE RHS
     u⁺ = next_velocities.u
@@ -166,8 +180,8 @@ end
 
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k])
-        G⁻e[i, j, k] = total_Gⁿe
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active
+        G⁻e[i, j, k] = total_Gⁿe * active
     end
 end
 

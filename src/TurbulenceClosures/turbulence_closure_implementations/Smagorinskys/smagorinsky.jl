@@ -19,7 +19,7 @@ import ..TurbulenceClosures:
     κᶜᶠᶜ,
     κᶜᶜᶠ,
     compute_diffusivities!,
-    DiffusivityFields,
+    build_diffusivity_fields,
     tracer_diffusivities
 
 #####
@@ -41,6 +41,9 @@ end
 
 @inline viscosity(::Smagorinsky, K) = K.νₑ
 @inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
+
+Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
+    Smagorinsky{TD}(adapt(to, smag.coefficient), adapt(to, smag.Pr))
 
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
@@ -72,7 +75,7 @@ number modification to the eddy viscosity.
 to the analysis by [Lilly66](@citet). For other options, see `LillyCoefficient`
 and `DynamicCoefficient`.
 """
-function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;
+function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                      coefficient = 0.16, Pr = 1.0) where TD
     Pr = convert_diffusivity(FT, Pr; discrete_form=false)
     return Smagorinsky{TD}(coefficient, Pr)
@@ -122,7 +125,7 @@ end
 
 allocate_coefficient_fields(closure, grid) = NamedTuple()
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::Smagorinsky)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
     coefficient_fields = allocate_coefficient_fields(closure, grid)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))

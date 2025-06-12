@@ -155,7 +155,7 @@ For both float types, the benchmarked GPU times of the nonhydrostatic model star
 
 ## Distributed Shallow Water Model
 
-By using `MPI.jl` the shallow water model can be run on multiple CPUs and multiple GPUs. For the benchmark results shown below, each rank is run on one CPU core and each uses a distinct GPU if applicable. 
+By using `MPI.jl` the shallow water model can be run on multiple CPUs and multiple GPUs. For the benchmark results shown below, each rank is run on one CPU core and each uses a distinct GPU if applicable.
 
 ### Weak Scaling Shallow Water Model
 ```
@@ -204,7 +204,7 @@ Environment:
 └───────────────┴──────────┴──────────┴────────────┴──────────┴─────────┘
 ```
 
-As seen in the tables above and in the graph below, efficiency drops off to around 80% and remains as such from 16 to 128 ranks. GPUs are not used in this or the next benchmark setup. 
+As seen in the tables above and in the graph below, efficiency drops off to around 80% and remains as such from 16 to 128 ranks. GPUs are not used in this or the next benchmark setup.
 
 ![ws_shallow_water_efficiency](https://user-images.githubusercontent.com/45054739/129826042-6ed4345b-b53a-49af-b375-6b7f11f53f31.png)
 
@@ -277,7 +277,7 @@ Environment:
   JULIA_CUDA_USE_BINARYBUILDER = false
   JULIA_DEPOT_PATH = /nobackup/users/henryguo/projects/henry-test/Oceananigans.jl/benchmark/.julia
   GPU: Tesla V100-SXM2-32GB
-  
+
                               Shallow water model weak scaling benchmark
 ┌───────────────┬──────────┬─────────┬─────────┬─────────┬─────────┬──────────┬────────┬─────────┐
 │          size │    ranks │     min │  median │    mean │     max │   memory │ allocs │ samples │
@@ -520,7 +520,7 @@ Environment:
 ## Tracers
 
 This benchmark tests the performance impacts of running with various amounts of active
-and passive tracers and compares the difference in speedup going from CPU to GPU. Number of tracers are listed in the tracers column as (active, passive). 
+and passive tracers and compares the difference in speedup going from CPU to GPU. Number of tracers are listed in the tracers column as (active, passive).
 
 ```
 Oceananigans v0.58.1

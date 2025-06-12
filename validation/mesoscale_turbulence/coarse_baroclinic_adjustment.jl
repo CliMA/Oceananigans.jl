@@ -22,7 +22,7 @@ stop_time = 30days
 
 grid = RectilinearGrid(architecture;
                        topology = (Bounded, Bounded, Bounded),
-                       size = (Ny, Ny, Nz), 
+                       size = (Ny, Ny, Nz),
                        x = (-Ly/2, Ly/2),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
@@ -49,8 +49,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,
                                     tracers = (:b, :c),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(order=5),
+                                    tracer_advection = WENO(order=5),
                                     free_surface = ImplicitFreeSurface())
 
 @info "Built $model."
@@ -110,16 +110,16 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      filename = filename * "_fields",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                schedule = TimeInterval(save_fields_interval),
+                                                filename = filename * "_fields",
+                                                verwrite_existing = true)
 
 @info "Running the simulation..."
 
@@ -140,7 +140,7 @@ bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
 
 # Build coordinates, rescaling the vertical coordinate
-x, y, z = nodes((Center, Center, Center), grid)
+x, y, z = nodes(bt)
 
 zscale = 1
 z = z .* zscale

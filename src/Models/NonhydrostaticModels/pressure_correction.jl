@@ -1,23 +1,31 @@
-import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
+import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: step_free_surface!
 
 """
-    calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
+    compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
+<<<<<<< HEAD
 function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
     #saves current w before correction?
     if hasfield(typeof(model.auxiliary_fields), :w_star)
         copyto!(model.auxiliary_fields.w_star.data, model.velocities.w.data)
     end
+=======
+function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
+>>>>>>> upstream/main
 
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
+<<<<<<< HEAD
 
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities, model.free_surface.η)
+=======
+    solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
+>>>>>>> upstream/main
     fill_halo_regions!(model.pressures.pNHS)
 
     if !isnothing(model.free_surface)
@@ -35,10 +43,11 @@ end
 #####
 
 """
-Update the predictor velocities u, v, and w with the non-hydrostatic pressure via
+Update the predictor velocities u, v, and w with the non-hydrostatic pressure multiplied by the timestep via
 
-    `u^{n+1} = u^n - δₓp_{NH} / Δx * Δt`
+    `u^{n+1} = u^n - δₓp_{NH} * Δt / Δx`
 """
+<<<<<<< HEAD
 
 # puts in free surface correction after velocity correction
 @kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS, η)
@@ -58,17 +67,33 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
         η[i,j] = (pNHS[i,j,k] + pNHS[i,j,k+1]) / (2g)
 
     end
+=======
+@kernel function _make_pressure_correction!(U, grid, pNHSΔt)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
+>>>>>>> upstream/main
 end
 
 "Update the solution variables (velocities and tracers)."
-function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
+function make_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     launch!(model.architecture, model.grid, :xyz,
-            _pressure_correct_velocities!,
+            _make_pressure_correction!,
             model.velocities,
             model.grid,
+<<<<<<< HEAD
             Δt,
             model.pressures.pNHS, model.free_surface.η)  
+=======
+            model.pressures.pNHS)
+    
+    ϵ = eps(eltype(model.pressures.pNHS))
+    Δt⁺ = max(ϵ, Δt)
+    model.pressures.pNHS ./= Δt⁺
+>>>>>>> upstream/main
 
     return nothing
 end

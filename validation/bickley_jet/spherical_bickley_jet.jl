@@ -36,8 +36,8 @@ C(y, L) = sin(2π * y / L)
 ψ̃(x, y, ℓ, k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
 
 # Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
-ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2) 
-ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
+ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2)
+ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x)
 
 """
     run_bickley_jet(output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
@@ -58,14 +58,14 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     @inline toplft(x, y) = (((x > 45) & (x < 135)) & (((y > 15) & (y < 30)) | ((y > 45) & (y < 60))))
     @inline botlft(x, y) = (((x > 45) & (x < 135)) & (((y < -15) & (y > -30)) | ((y < -45) & (y > -60))))
-    
+
     @inline toprgt(x, y) = (((x < - 45) & (x > - 135)) & (((y > 15) & (y < 30)) | ((y > 45) & (y < 60))))
     @inline botrgt(x, y) = (((x < - 45) & (x > - 135)) & (((y < -15) & (y > -30)) | ((y < -45) & (y > -60))))
-    
+
     @inline bottom(x, y) = Int(toplft(x, y) | botlft(x, y) | toprgt(x, y) | botrgt(x, y))
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -1))
-                            
+
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1)
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
@@ -131,16 +131,16 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     @show experiment_name = "bickley_jet_Nh_$(Nh)_$(name)"
 
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs,
-                                schedule =TimeInterval(output_time_interval),
-                                filename = experiment_name,
-                                overwrite_existing = true)
+        JLD2Writer(model, outputs,
+                   schedule =TimeInterval(output_time_interval),
+                   filename = experiment_name,
+                   overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
     run!(simulation)
 
-    return experiment_name 
+    return experiment_name
 end
 
 

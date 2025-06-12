@@ -5,7 +5,6 @@ include("dependencies_for_runtests.jl")
         @info "    Testing Reductions on Immersed fields"
 
         grid = RectilinearGrid(arch, size = (6, 1, 1), extent = (1, 1, 1))
-
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 0.5)))
 
         fful = Field{Center, Center, Center}(grid)
@@ -33,18 +32,18 @@ include("dependencies_for_runtests.jl")
 
         @test prod(fful) == prod(fimm) * 8
         @test all(Array(interior(prod(fful, dims=1)) .== interior(prod(fimm, dims=1)) .* 8))
-    
+
         @info "    Testing Reductions in Standard fields"
-        
+
         fcon = Field{Center, Center, Center}(grid)
-        
+
         fcon .= 2
 
         fcon[1, :, :] .= 1e6
         fcon[2, :, :] .= -1e4
         fcon[3, :, :] .= -12.5
 
-        @test norm(fful) ≈ √2 * norm(fcon, condition = (i, j, k, x, y) -> i > 3) 
+        @test norm(fful) ≈ √2 * norm(fcon, condition = (i, j, k, x, y) -> i > 3)
 
         for reduc in (mean, maximum, minimum)
             @test reduc(fful) == reduc(fcon, condition = (i, j, k, x, y) -> i > 3)
@@ -55,9 +54,9 @@ include("dependencies_for_runtests.jl")
 
         @test prod(fful) == prod(fcon, condition = (i, j, k, x, y) -> i > 3) * 8
         @test all(Array(interior(prod(fful, dims=1)) .== interior(prod(fcon, condition = (i, j, k, x, y) -> i > 3, dims=1)) .* 8))
-    
+
         @info "    Testing in-place conditional reductions"
-    
+
         redimm = Field{Nothing, Center, Center}(ibg)
         for (reduc, reduc!) in zip((mean, maximum, minimum, sum, prod), (mean!, maximum!, minimum!, sum!, prod!))
             @test CUDA.@allowscalar reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]

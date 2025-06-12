@@ -8,8 +8,8 @@ using LinearAlgebra
 using Adapt
 
 function boundary_clustered(N, L, ini)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + Δz(k-1)
     end
@@ -18,8 +18,8 @@ function boundary_clustered(N, L, ini)
 end
 
 function center_clustered(N, L, ini)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
     end
@@ -27,8 +27,8 @@ function center_clustered(N, L, ini)
     return z_faces
 end
 
-grid = RectilinearGrid(GPU(), size=(512, 256), 
-                       x = (-10, 10), 
+grid = RectilinearGrid(GPU(), size=(512, 256),
+                       x = (-10, 10),
                        z = (0, 5),
                 topology = (Periodic, Flat, Bounded))
 
@@ -43,7 +43,7 @@ mrg_with_bump  = MultiRegionGrid(grid_with_bump, partition=XPartition(2), device
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
 for free_surface in (ExplicitFreeSurface, )
-    
+
     model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                         momentum_advection = Centered(),
                                         free_surface = free_surface(gravitational_acceleration=10),
@@ -61,16 +61,16 @@ for free_surface in (ExplicitFreeSurface, )
                                 s.model.clock.time, maximum(abs, model.velocities.w))
 
     gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
-    
+
     Δt = CUDA.@allowscalar 0.1 * minimum(grid.Δxᶜᵃᵃ) / gravity_wave_speed
-    
+
     simulation = Simulation(model, Δt = Δt, stop_time = 50000Δt)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                          schedule = TimeInterval(0.1),
-                                                          filename = "internal_tide_$(show_name(time_stepper))",
-                                                          init = serialize_grid,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                    schedule = TimeInterval(0.1),
+                                                    filename = "internal_tide_$(show_name(time_stepper))",
+                                                    init = serialize_grid,
+                                                    overwrite_existing = true)
 
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
@@ -116,7 +116,7 @@ function visualize_internal_tide_simulation(prefix)
 
     b₀ = file["timeseries/b/0"][:, 1, :]
 
-    iterations = parse.(Int, keys(file["timeseries/t"]))    
+    iterations = parse.(Int, keys(file["timeseries/t"]))
 
     anim = @animate for (i, iter) in enumerate(iterations)
 
@@ -132,10 +132,10 @@ function visualize_internal_tide_simulation(prefix)
         wlims, wlevels = nice_divergent_levels(w, 1e-4)
         ulims, ulevels = nice_divergent_levels(u, 1e-3)
         blims, blevels = nice_divergent_levels(b′, 1e-4)
-        
+
         nan_solid(xu, zu, u, bump)
         nan_solid(xw, zw, w, bump)
-        nan_solid(xb, zb, b, bump) 
+        nan_solid(xb, zb, b, bump)
 
         u_title = @sprintf("x velocity, t = %.2f", t)
 
@@ -156,7 +156,7 @@ function plot_implicit_explicit_difference(filename)
     file_explicit = jldopen(filename * "_explicit.jld2")
     file_implicit = jldopen(filename * "_implicit.jld2")
 
-    iterations = parse.(Int, keys(file_explicit["timeseries/t"]))   
+    iterations = parse.(Int, keys(file_explicit["timeseries/t"]))
 
     comparison_u = zeros(length(iterations))
     comparison_w = zeros(length(iterations))
@@ -171,10 +171,10 @@ function plot_implicit_explicit_difference(filename)
         u_implicit = file_implicit["timeseries/u/$iter"][:, 1, :]
         w_implicit = file_implicit["timeseries/w/$iter"][:, 1, :]
         b_implicit = file_implicit["timeseries/b/$iter"][:, 1, :]
-        
-        comparison_u[i] = norm(u_explicit .- u_implicit) 
-        comparison_w[i] = norm(w_explicit .- w_implicit) 
-        comparison_b[i] = norm(b_explicit .- b_implicit) 
+
+        comparison_u[i] = norm(u_explicit .- u_implicit)
+        comparison_w[i] = norm(w_explicit .- w_implicit)
+        comparison_b[i] = norm(b_explicit .- b_implicit)
     end
 
     kwargs = (linewidth = 2, foreground_color_legend = nothing, legendfontsize = 12, legend = :right, grid = false,

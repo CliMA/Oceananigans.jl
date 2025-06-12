@@ -2,14 +2,14 @@ module HydrostaticFreeSurfaceModels
 
 export
     HydrostaticFreeSurfaceModel,
-    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
-    PrescribedVelocityFields
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
+    PrescribedVelocityFields, ZStar, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
-using Oceananigans.Utils: launch!, SumOfArrays
+using Oceananigans.Utils: launch!
 using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
@@ -22,6 +22,9 @@ import Oceananigans.Architectures: on_architecture
 using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 abstract type AbstractFreeSurface{E, G} end
+
+struct ZCoordinate end
+struct ZStar end
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -52,13 +55,16 @@ include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-
 using .SplitExplicitFreeSurfaces
 
-include("hydrostatic_free_surface_field_tuples.jl")
+# ZStar implementation
+include("z_star_vertical_spacing.jl")
+
+# Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
@@ -75,10 +81,19 @@ cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_ti
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) = 
+@inline fields(model::HydrostaticFreeSurfaceModel) =
     merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
           model.auxiliary_fields,
           biogeochemical_auxiliary_fields(model.biogeochemistry))
+
+velocity_names(user_velocities) = (:u, :v, :w)
+
+constructor_field_names(user_velocities, user_tracers, user_free_surface, auxiliary_fields, biogeochemistry, grid) =
+    tuple(velocity_names(user_velocities)...,
+          tracernames(user_tracers)...,
+          free_surface_names(user_free_surface, user_velocities, grid)...,
+          keys(auxiliary_fields)...,
+          keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)
@@ -88,40 +103,27 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 @inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
     hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
 
-@inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
-                                                                                  v = velocities.v,
-                                                                                  η = free_surface.η),
-                                                                                  tracers)
+@inline horizontal_velocities(velocities) = (u=velocities.u, v=velocities.v)
 
-@inline hydrostatic_prognostic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
-                                                                                                            v = velocities.v,
-                                                                                                            η = free_surface.η,
-                                                                                                            U = free_surface.barotropic_velocities.U,
-                                                                                                            V = free_surface.barotropic_velocities.V),
-                                                                                                            tracers)
+# Note: we do not distinguish between prognostic and auxiliary free surface fields
+# even though arguably the "filtered state" is an auxiliary part of the free surface state.
+@inline free_surface_names(free_surface, velocities, grid) = tuple(:η)
+@inline free_surface_names(free_surface::SplitExplicitFreeSurface, velocities, grid) = (:η, :U, :V)
 
-@inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
-                                                                               v = velocities.v),
-                                                                               tracers)
-                                               
-@inline hydrostatic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
-                                                                       v = velocities.v,
-                                                                       w = velocities.w),
-                                                                       tracers,
-                                                                       (; η = free_surface.η))
+@inline free_surface_fields(free_surface) = (; η=free_surface.η)
+@inline free_surface_fields(::Nothing) = NamedTuple()
+@inline free_surface_fields(free_surface::SplitExplicitFreeSurface) = (η = free_surface.η,
+                                                                       U = free_surface.barotropic_velocities.U,
+                                                                       V = free_surface.barotropic_velocities.V)
 
-@inline hydrostatic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
-                                                                                                 v = velocities.v,
-                                                                                                 w = velocities.w,
-                                                                                                 η = free_surface.η,
-                                                                                                 U = free_surface.barotropic_velocities.U,
-                                                                                                 V = free_surface.barotropic_velocities.V),
-                                                                                                 tracers)
+@inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) =
+    merge(horizontal_velocities(velocities), tracers, free_surface_fields(free_surface))
 
-@inline hydrostatic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
-                                                                    v = velocities.v,
-                                                                    w = velocities.w),
-                                                                    tracers)
+# Include vertical velocity
+@inline hydrostatic_fields(velocities, free_surface, tracers) =
+    merge((u=velocities.u, v=velocities.v, w=velocities.w),
+          tracers,
+          free_surface_fields(free_surface))
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
@@ -136,7 +138,7 @@ include("compute_hydrostatic_free_surface_buffers.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk3_step.jl")
-include("store_hydrostatic_free_surface_tendencies.jl")
+include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")
 include("slice_ensemble_model_mode.jl")
@@ -145,6 +147,6 @@ include("slice_ensemble_model_mode.jl")
 ##### Some diagnostics
 #####
 
-include("vertical_vorticity_field.jl")
+include("vertical_vorticity.jl")
 
 end # module

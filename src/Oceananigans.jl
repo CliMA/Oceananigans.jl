@@ -11,11 +11,14 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    nodes, xnodes, ynodes, znodes, λnodes, φnodes,
-    xspacings, yspacings, zspacings, λspacings, φspacings,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
+    xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
+    # Pointwise spacing, area, and volume operators
+    xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
+    
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
@@ -44,8 +47,8 @@ export
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
 
-    # BuoyancyModels and equations of state
-    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
+    # BuoyancyFormulations and equations of state
+    BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, TEOS10,
     BuoyancyField,
 
@@ -66,6 +69,7 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
@@ -93,7 +97,7 @@ export
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    NetCDFWriter, JLD2Writer, Checkpointer,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
@@ -103,14 +107,27 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
+
     # Utils
-    prettytime
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using CUDA
 using DocStringExtensions
 using FFTW
 
 function __init__()
+    if VERSION >= v"1.11.0"
+        @warn """You are using Julia v1.11 or later!"
+                 Oceananigans is currently tested on Julia v1.10."
+                 If you find issues with Julia v1.11 or later,"
+                 please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
+
+    end
+
     threads = Threads.nthreads()
     if threads > 1
         @info "Oceananigans will use $threads threads"
@@ -129,6 +146,22 @@ function __init__()
     end
 end
 
+# List of fully-supported floating point types where applicable.
+# Currently used only in the Advection module to specialize 
+# reconstruction schemes (WENO, UpwindBiased, and Centered).
+const fully_supported_float_types = (Float32, Float64)
+
+#####
+##### Default settings for constructors
+#####
+
+mutable struct Defaults
+    FloatType :: DataType
+end
+
+Defaults(; FloatType=Float64) = Defaults(FloatType)
+const defaults = Defaults()
+
 #####
 ##### Abstract types
 #####
@@ -138,7 +171,7 @@ end
 
 Abstract supertype for models.
 """
-abstract type AbstractModel{TS} end
+abstract type AbstractModel{TS, A} end
 
 """
     AbstractDiagnostic
@@ -189,19 +222,33 @@ include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
-include("TimeSteppers/TimeSteppers.jl")
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
+include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+
+# Simulations and output handling
+include("Diagnostics/Diagnostics.jl")
+include("OutputReaders/OutputReaders.jl")
+include("OutputWriters/OutputWriters.jl")
+include("Simulations/Simulations.jl")
+
+# TODO:
+# include("Diagnostics/Diagnostics.jl") # or just delete
+# include("OutputWriters/OutputWriters.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
+# TODO: move here
+# include("Advection/Advection.jl")
+# include("TimeSteppers/TimeSteppers.jl")
+# include("Solvers/Solvers.jl")
 include("Coriolis/Coriolis.jl")
-include("BuoyancyModels/BuoyancyModels.jl")
+include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
@@ -209,11 +256,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("Models/Models.jl")
-
-# Output and Physics, time-stepping, and models
-include("Diagnostics/Diagnostics.jl")
-include("OutputWriters/OutputWriters.jl")
-include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
@@ -227,10 +269,11 @@ using .Architectures
 using .Utils
 using .Advection
 using .Grids
+using .OrthogonalSphericalShellGrids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .BuoyancyModels
+using .BuoyancyFormulations
 using .StokesDrifts
 using .TurbulenceClosures
 using .Solvers
@@ -238,6 +281,7 @@ using .OutputReaders
 using .Forcings
 using .ImmersedBoundaries
 using .DistributedComputations
+using .OrthogonalSphericalShellGrids
 using .Models
 using .TimeSteppers
 using .Diagnostics

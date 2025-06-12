@@ -84,7 +84,11 @@ function validate_halo(TX, TY, TZ, size, halo)
     halo = inflate_tuple(TX, TY, TZ, halo, default=0)
 
     for i in 1:2
-        !(halo[i] ≤ size[i]) && throw(ArgumentError("halo must be ≤ size for coordinate $(coordinate_name(i))"))
+        H = halo[i]
+        N = size[i]
+        if !(H ≤ N)
+            throw(ArgumentError("halo=$H must be ≤ size=$N for coordinate $(coordinate_name(i))"))
+        end
     end
 
     return halo
@@ -131,15 +135,13 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
 
     ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should have increasing values."))
 
-    # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
+    # Validate the length of ξ: error is ξ is too short, error if ξ is too long.
     Nξ = length(ξ)
     N⁺¹ = N + 1
     if Nξ < N⁺¹
         throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $(N)!"))
     elseif Nξ > N⁺¹
-        msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
-              "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
-        @warn msg
+        throw(ArgumentError("length($dir) = $Nξ has too many interfaces for the dimension size $(N)!"))
     end
 
     return ξ
@@ -189,9 +191,9 @@ function validate_index(idx, loc, topo, N, H)
 end
 
 validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
+validate_index(idx::AbstractRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
 
-function validate_index(idx::UnitRange, loc, topo, N, H)
+function validate_index(idx::AbstractRange, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
     (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx

@@ -30,16 +30,15 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
 
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
-                                  C = 1/12, Cν = nothing, Cκ = nothing, Cb = nothing)
-                                  
-                                       
+                                  C = 1/3, Cν = nothing, Cκ = nothing, Cb = nothing)
+
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Arguments
 =========
 
-* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`,
                          which integrates the terms involving only ``z``-derivatives in the
                          viscous and diffusive fluxes with an implicit time discretization.
                          Default `ExplicitTimeDiscretization()`.
@@ -49,24 +48,29 @@ Arguments
 
 Keyword arguments
 =================
-* `C`: Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
-       for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+* `C`: Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
+       for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respectively.
 
-* `Cν`: Poincaré constant for momentum eddy viscosity.
+* `Cν`: Poincaré constant for momentum eddy viscosity.
 
-* `Cκ`: Poincaré constant for tracer eddy diffusivities. If one number or function, the same
+* `Cκ`: Poincaré constant for tracer eddy diffusivities. If one number or function, the same
         number or function is applied to all tracers. If a `NamedTuple`, it must possess
-        a field specifying the Poncaré constant for every tracer.
+        a field specifying the Poincaré constant for every tracer.
 
 * `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@citet)).
         *Note*: that we _do not_ subtract the horizontally-average component before computing this
         buoyancy modification term. This implementation differs from [Abkar16](@citet)'s proposal
         and the impact of this approximation has not been tested or validated.
 
-By default: `C = Cν = Cκ = 1/12`, which is appropriate for a finite-volume method employing a
-second-order advection scheme, and `Cb = nothing`, which turns off the buoyancy modification term.
+By default: `C = Cν = Cκ = 1/3`, and `Cb = nothing`, which turns off the buoyancy modification term.
+The default Poincaré constant is found by discretizing subgrid scale energy production, assuming a
+second-order advection scheme. [Verstappen14](@citet) show that the Poincaré constant
+should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3`
+in our formulation. They also empirically demonstrated that this coefficient produces the correct
+discrete production-dissipation balance. Further demonstration of this can be found at
+[https://github.com/CliMA/Oceananigans.jl/issues/4367](https://github.com/CliMA/Oceananigans.jl/issues/4367).
 
-`Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
+`C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
 
 Examples
 ========
@@ -90,7 +94,7 @@ julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz))
 
 julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
 AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
-           Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
+           Poincaré constant for momentum eddy viscosity Cν: 0.3333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
                         Buoyancy modification multiplier Cb: nothing
 ```
@@ -100,13 +104,16 @@ julia> using Oceananigans
 
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
 AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
-           Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
+           Poincaré constant for momentum eddy viscosity Cν: 0.3333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
                         Buoyancy modification multiplier Cb: nothing
 ```
 
 References
 ==========
+
+Verstappen, R., Rozema, W., and Bae, J. H. (2014), "Numerical scale separation in large-eddy
+    simulation", Center for Turbulence ResearchProceedings of the Summer Program 2014.
 
 Vreugdenhil C., and Taylor J. (2018), "Large-eddy simulations of stratified plane Couette
     flow using the anisotropic minimum-dissipation model", Physics of Fluids 30, 085104.
@@ -115,8 +122,8 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Float64;
-                                       C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
+function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Oceananigans.defaults.FloatType;
+                                       C = FT(1/3), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
 
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
@@ -145,7 +152,7 @@ end
 
 @kernel function _compute_AMD_viscosity!(νₑ, grid, closure::AMD, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
-    
+
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., velocities.u, velocities.v, velocities.w)
@@ -200,7 +207,7 @@ function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumD
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
-        launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
+        launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
@@ -303,13 +310,13 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     return Cb * (wx_bx + wy_by + wz_bz)
 end
@@ -343,10 +350,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### DiffusivityFields
+##### build_diffusivity_fields
 #####
 
-function DiffusivityFields(grid, tracer_names, user_bcs, ::AMD)
+function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)

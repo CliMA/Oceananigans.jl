@@ -1,12 +1,13 @@
 module OceananigansMakieExt
 
 using Oceananigans
-using Oceananigans.Grids: OrthogonalSphericalShellGrid
+using Oceananigans.Grids: OrthogonalSphericalShellGrid, topology
 using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
+using Makie: Observable
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
 import Makie: args_preferred_axis
@@ -25,8 +26,62 @@ function drop_singleton_indices(N)
     end
 end
 
+"""
+    deduce_dimensionality(f)
+
+Deduce the dimensionality of the field `f` and return a 3-tuple `d1, d2, D`, where
+`d1` is the first dimension along which `f` varies, `d2` is the second dimension (if any),
+and `D` is the total dimensionality of `f`.
+"""
+function deduce_dimensionality(f)
+    # Find indices of the dimensions along which `f` varies
+    d1 = findfirst(n -> n > 1, size(f))
+    d2 =  findlast(n -> n > 1, size(f))
+
+    # Deduce total dimensionality
+    Nx, Ny, Nz = size(f)
+    D = (Nx > 1) + (Ny > 1) + (Nz > 1)
+
+    return d1, d2, D
+end
+
+axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
+axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
+axis_str(::OrthogonalSphericalShellGrid, dim) = ""
+axis_str(grid::ImmersedBoundaryGrid, dim) = axis_str(grid.underlying_grid, dim)
+
+const LLGOrIBLLG = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
+
 function _create_plot(F::Function, attributes::Dict, f::Field)
     converted_args = convert_field_argument(f)
+
+    if !(:axis ∈ keys(attributes)) # Let's try to automatically add labels and ticks
+        d1, d2, D = deduce_dimensionality(f)
+        grid = f.grid
+
+        if D === 1 # 1D plot
+
+            # See `convert_field_argument` for this horizontal/vertical plotting convention.
+            if d1 === 1 # This is a horizontal plot, so we add xlabel
+                axis = (; xlabel=axis_str(grid, 1))
+            else # vertical plot with a ylabel
+                axis = (; ylabel=axis_str(grid, d1))
+            end
+
+        elseif D === 2 # it's a two-dimensional plot
+            axis = (xlabel=axis_str(grid, d1), ylabel=axis_str(grid, d2))
+        else
+            throw(ArgumentError("Cannot create axis labels for a 3D field!"))
+        end
+
+        # if longitude wraps around the globe then adjust the longitude ticks
+        if grid isa LLGOrIBLLG && grid.Lx == 360 && topology(grid, 1) == Periodic
+            axis = merge(axis, (xticks = -360:60:360,))
+        end
+
+        attributes[:axis] = axis
+    end
+
     return _create_plot(F, attributes, converted_args...)
 end
 
@@ -35,6 +90,9 @@ function _create_plot(F::Function, attributes::Dict, op::AbstractOperation)
     compute!(f)
     return _create_plot(F::Function, attributes::Dict, f)
 end
+
+_create_plot(F::Function, attributes::Dict, f::Observable{<:Field}) =
+    _create_plot(F, attributes, f[])
 
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
@@ -80,23 +138,20 @@ function make_plottable_array(f)
     fi = interior(f, ii, jj, kk)
     fi_cpu = on_architecture(CPU(), fi)
 
+    if architecture(f) isa CPU
+        fi_cpu = deepcopy(fi_cpu) # so we can re-zero peripheral nodes
+    end
+
+    mask_immersed_field!(f)
+
     return fi_cpu
 end
 
 function convert_field_argument(f::Field)
 
     fi_cpu = make_plottable_array(f)
-
-    # Indices of the non-zero dimensions
-    d1 = findfirst(n -> n > 1, size(f))
-    d2 =  findlast(n -> n > 1, size(f))
-    
-    # Nodes shenanigans
+    d1, d2, D = deduce_dimensionality(f)
     fnodes = nodes(f)
-
-    # Deduce dimensionality
-    Nx, Ny, Nz = size(f)
-    D = (Nx > 1) + (Ny > 1) + (Nz > 1)
 
     if D == 1
 
@@ -147,4 +202,3 @@ function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::Ab
 end
 
 end # module
-

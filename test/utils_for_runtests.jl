@@ -5,7 +5,7 @@ import Oceananigans.Fields: interior
 
 # Are the test running on the GPUs?
 # Are the test running in parallel?
-child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
 # Sometimes when running tests in parallel, the CUDA.jl package is not loaded correctly.
@@ -43,12 +43,12 @@ function test_architectures()
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
     if mpi_test
         if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-            return (Distributed(child_arch; partition = Partition(4)),
-                    Distributed(child_arch; partition = Partition(1, 4)),
-                    Distributed(child_arch; partition = Partition(2, 2)),
-                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
-                    Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
-                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal())))
+            return (Distributed(child_arch; partition=Partition(4)),
+                    Distributed(child_arch; partition=Partition(1, 4)),
+                    Distributed(child_arch; partition=Partition(2, 2)),
+                    Distributed(child_arch; partition=Partition(x = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition=Partition(y = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition=Partition(x = Fractional(1, 2), y = Equal())))
         else
             return throw("The MPI partitioning is not correctly configured.")
         end
@@ -205,12 +205,11 @@ end
 ##### Boundary condition utils
 #####
 
-discrete_func(i, j, grid, clock, model_fields) = - model_fields.u[i, j, grid.Nz]
-parameterized_discrete_func(i, j, grid, clock, model_fields, p) = - p.μ * model_fields.u[i, j, grid.Nz]
-
-parameterized_fun(ξ, η, t, p) = p.μ * cos(p.ω * t)
-field_dependent_fun(ξ, η, t, u, v, w) = - w * sqrt(u^2 + v^2)
-exploding_fun(ξ, η, t, T, S, p) = - p.μ * cosh(S - p.S0) * exp((T - p.T0) / p.λ)
+@inline parameterized_discrete_func(i, j, grid, clock, model_fields, p) = - p.μ * model_fields.u[i, j, grid.Nz]
+@inline discrete_func(i, j, grid, clock, model_fields) = - model_fields.u[i, j, grid.Nz]
+@inline parameterized_fun(ξ, η, t, p) = p.μ * cos(p.ω * t)
+@inline field_dependent_fun(ξ, η, t, u, v, w) = - w * sqrt(u^2 + v^2)
+@inline exploding_fun(ξ, η, t, T, S, p) = - p.μ * cosh(S - p.S0) * exp((T - p.T0) / p.λ)
 
 # Many bc. Very many
                  integer_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, 1)

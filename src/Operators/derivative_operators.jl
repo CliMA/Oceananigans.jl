@@ -4,30 +4,37 @@
 
 for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
 
-    x_derivative = Symbol(:∂x, LX, LY, LZ)
-    x_spacing    = Symbol(:Δx, LX, LY, LZ)
-    x_difference = Symbol(:δx, LX, LY, LZ)
+    x_derivative  = Symbol(:∂x, LX, LY, LZ)
+    rcp_x_spacing = Symbol(:Δx⁻¹, LX, LY, LZ)
+    x_difference  = Symbol(:δx, LX, LY, LZ)
 
-    y_derivative = Symbol(:∂y, LX, LY, LZ)
-    y_spacing    = Symbol(:Δy, LX, LY, LZ)
-    y_difference = Symbol(:δy, LX, LY, LZ)
+    y_derivative  = Symbol(:∂y, LX, LY, LZ)
+    rcp_y_spacing = Symbol(:Δy⁻¹, LX, LY, LZ)
+    y_difference  = Symbol(:δy, LX, LY, LZ)
 
-    z_derivative = Symbol(:∂z, LX, LY, LZ)
-    z_spacing    = Symbol(:Δz, LX, LY, LZ)
-    z_difference = Symbol(:δz, LX, LY, LZ)
+    z_derivative  = Symbol(:∂z, LX, LY, LZ)
+    rcp_z_spacing = Symbol(:Δz⁻¹, LX, LY, LZ)
+    z_difference  = Symbol(:δz, LX, LY, LZ)
 
     @eval begin
-        @inline $x_derivative(i, j, k, grid, c) = $x_difference(i, j, k, grid, c) / $x_spacing(i, j, k, grid)
-        @inline $y_derivative(i, j, k, grid, c) = $y_difference(i, j, k, grid, c) / $y_spacing(i, j, k, grid)
-        @inline $z_derivative(i, j, k, grid, c) = $z_difference(i, j, k, grid, c) / $z_spacing(i, j, k, grid)
+        @inline $x_derivative(i, j, k, grid, c) = $x_difference(i, j, k, grid, c) * $rcp_x_spacing(i, j, k, grid)
+        @inline $y_derivative(i, j, k, grid, c) = $y_difference(i, j, k, grid, c) * $rcp_y_spacing(i, j, k, grid)
+        @inline $z_derivative(i, j, k, grid, c) = $z_difference(i, j, k, grid, c) * $rcp_z_spacing(i, j, k, grid)
 
         @inline $x_derivative(i, j, k, grid, c::Number) = zero(grid)
         @inline $y_derivative(i, j, k, grid, c::Number) = zero(grid)
         @inline $z_derivative(i, j, k, grid, c::Number) = zero(grid)
 
-        @inline $x_derivative(i, j, k, grid, f::Function, args...) = $x_difference(i, j, k, grid, f, args...) / $x_spacing(i, j, k, grid)
-        @inline $y_derivative(i, j, k, grid, f::Function, args...) = $y_difference(i, j, k, grid, f, args...) / $y_spacing(i, j, k, grid)
-        @inline $z_derivative(i, j, k, grid, f::Function, args...) = $z_difference(i, j, k, grid, f, args...) / $z_spacing(i, j, k, grid)
+        @inline $x_derivative(i, j, k, grid, f::Function, args...) = $x_difference(i, j, k, grid, f, args...) * $rcp_x_spacing(i, j, k, grid)
+        @inline $y_derivative(i, j, k, grid, f::Function, args...) = $y_difference(i, j, k, grid, f, args...) * $rcp_y_spacing(i, j, k, grid)
+        @inline $z_derivative(i, j, k, grid, f::Function, args...) = $z_difference(i, j, k, grid, f, args...) * $rcp_z_spacing(i, j, k, grid)
+
+        export $x_derivative
+        export $x_difference
+        export $y_derivative
+        export $y_difference
+        export $z_derivative
+        export $z_difference
     end
 end
 

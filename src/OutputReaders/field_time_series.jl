@@ -4,6 +4,7 @@ using OffsetArrays
 using Statistics
 using JLD2
 using Adapt
+using Glob
 using CUDA: @allowscalar
 
 using Dates: AbstractTime
@@ -13,7 +14,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range, AbstractGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices, index_binary_search,
                            indices_summary, boundary_conditions
@@ -22,7 +24,7 @@ using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
+import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc, FieldBoundaryConditions
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 #####
@@ -121,22 +123,23 @@ struct Clamp end # clamp to nearest value
 @inline shift_index(n, n₀) = n - (n₀ - 1)
 @inline reverse_index(m, n₀) = m + n₀ - 1
 
-@inline memory_index(backend::PartlyInMemory, ::Linear, Nt, n) = shift_index(n, backend.start)
-
-@inline function memory_index(backend::PartlyInMemory, ::Clamp, Nt, n)
-    n̂ = clamp(n, 1, Nt)
-    m = shift_index(n̂, backend.start)
-    return m
-end
-
 """
     time_index(backend::PartlyInMemory, time_indexing, Nt, m)
 
 Compute the time index of a snapshot currently stored at the memory index `m`,
 given `backend`, `time_indexing`, and number of times `Nt`.
 """
-@inline time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m) =
-    reverse_index(m, backend.start)
+@inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = mod1(n, Nt) # wrap index
+    return ñ
+end
+
+@inline function time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = ifelse(n > Nt, Nt, n)
+    return ñ
+end
 
 """
     memory_index(backend::PartlyInMemory, time_indexing, Nt, n)
@@ -182,10 +185,10 @@ m̃ = mod1(7, 5)  # = 2 ✓
     return m̃
 end
 
-@inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
-    n = reverse_index(m, backend.start)
-    ñ = mod1(n, Nt) # wrap index
-    return ñ
+@inline function memory_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, n)
+    n̂ = clamp(n, 1, Nt)
+    m = shift_index(n̂, backend.start)
+    return m
 end
 
 """
@@ -244,9 +247,9 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            # Try to convert to a range, cuz
+            # Try to convert to a lighter-weight range for efficiency
             time_range = range(first(times), last(times), length=length(times))
-            if all(time_range .≈ times) # good enough for most
+            if isapprox(time_range, times) 
                 times = time_range
             end
 
@@ -350,10 +353,11 @@ new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
 # fail on x86 processors where `Int` is implied to be `Int32`
-# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
+# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at
+# https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
 function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
+    underlying_data = zeros(architecture(grid), FT, space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
     return data
 end
@@ -368,8 +372,8 @@ function FieldTimeSeries(loc, grid, times=();
                          backend = InMemory(),
                          path = nothing,
                          name = nothing,
-                         time_indexing = Linear(),
-                         boundary_conditions = nothing,
+                         time_indexing = Clamp(),
+                         boundary_conditions = FieldBoundaryConditions(grid, loc),
                          reader_kw = NamedTuple())
 
     LX, LY, LZ = loc
@@ -384,6 +388,35 @@ function FieldTimeSeries(loc, grid, times=();
 
     return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                        times, path, name, time_indexing, reader_kw)
+end
+
+isreconstructed(grid::JLD2.ReconstructedStatic) = true
+isreconstructed(grid::AbstractGrid) = false
+isreconstructed(grid::ImmersedBoundaryGrid) = isreconstructed(grid.underlying_grid)
+reconstructed_name(::JLD2.ReconstructedStatic{N}) where N = string(N)
+
+function reconstructed_topology(grid::JLD2.ReconstructedStatic)
+    name = reconstructed_name(grid)
+    firstcurly = findfirst('{', name)
+    grid_type = name[1:firstcurly-1]
+
+    type_parameters = name[firstcurly+1:end-1]
+    parameter_list = split(type_parameters, ',')
+
+    FTstr = parameter_list[1]
+    TXstr = parameter_list[2]
+    TYstr = parameter_list[3]
+    TZstr = parameter_list[4]
+
+    TXsym = Symbol(TXstr)
+    TYsym = Symbol(TYstr)
+    TZsym = Symbol(TZstr)
+
+    TX = eval(:($(TXsym)))
+    TY = eval(:($(TYsym)))
+    TZ = eval(:($(TZsym)))
+
+    return (TX, TY, TZ)
 end
 
 """
@@ -453,20 +486,26 @@ function FieldTimeSeries(path::String, name::String;
                          times = nothing,
                          reader_kw = NamedTuple())
 
-    file = jldopen(path; reader_kw...)
+    path = auto_extension(path, ".jld2")
 
-    # Defaults
-    isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
-    isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
-    isnothing(location)     && (Location   = file["timeseries/$name/serialized/location"])
+    if !isfile(path)
+        start = path[1:end-5]
+        # Look for part1, etc
+        lookfor = string(start, "_part*.jld2")
+        part_paths = glob(lookfor)
+        Nparts = length(part_paths)
+        path = first(part_paths) # part1 is first?
+    else
+        Nparts = nothing
+    end
+
+    file = jldopen(path; reader_kw...)
 
     indices = try
         file["timeseries/$name/serialized/indices"]
     catch
         (:, :, :)
     end
-
-    isnothing(grid) && (grid = file["serialized/grid"])
 
     if isnothing(architecture) # determine architecture
         if isnothing(grid) # go to default
@@ -476,11 +515,60 @@ function FieldTimeSeries(path::String, name::String;
         end
     end
 
-    if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
-        boundary_conditions = on_architecture(architecture, boundary_conditions)
-    end
+    isnothing(grid) && (grid = file["serialized/grid"])
 
+    # If isreconstructed(grid), it probably means that the data was generated prior to
+    # Oceananigans version 0.95.0 (12/13/2024). In this case, the best we can do is to try to rebuild
+    # the grids manually using the non-serialized grid data. Here, we support RectilinearGrid
+    # and LatitudeLongitudeGrid (but not OrthogonalSphericalShellGrid) and we also assume
+    # GridFittedBottom if the grid is an ImmersedBoundaryGrid. If these assumptions can be relaxed
+    # in the future, they should.
+    if isreconstructed(grid)
+        isibg = grid isa ImmersedBoundaryGrid
+        test_grid = isibg ? grid.underlying_grid : grid
+        address = isibg ? "grid/underlying_grid" : "grid"
+        Nx = file["$address/Nx"]
+        Ny = file["$address/Ny"]
+        Nz = file["$address/Nz"]
+        Hx = file["$address/Hx"]
+        Hy = file["$address/Hy"]
+        Hz = file["$address/Hz"]
+        zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
+        z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
+
+        if isibg
+            topo = topology(grid)
+        else
+            topo = reconstructed_topology(grid)
+        end
+
+        size = (Nx, Ny, Nz)
+        halo = (Hx, Hy, Hz)
+
+        if :λᶜᵃᵃ ∈ propertynames(test_grid) # I guess its a LatitudeLongitudeGrid.
+            λᶠᵃᵃ = file["$address/λᶠᵃᵃ"]
+            φᵃᶠᵃ = file["$address/φᵃᶠᵃ"]
+            λ = file["$address/Δλᶠᵃᵃ"] isa Number ? (λᶠᵃᵃ[1], λᶠᵃᵃ[Nx+1]) : λᶠᵃᵃ[1:Nx+1]
+            φ = file["$address/Δφᵃᶠᵃ"] isa Number ? (φᵃᶠᵃ[1], φᵃᶠᵃ[Ny+1]) : φᵃᶠᵃ[1:Ny+1]
+            domain = (latitude=φ, longitude=λ, z=z)
+            underlying_grid = LatitudeLongitudeGrid(architecture; size, halo, topology=topo, domain...)
+        else
+            xᶠᵃᵃ = file["$address/xᶠᵃᵃ"]
+            yᵃᶠᵃ = file["$address/yᵃᶠᵃ"]
+            x = file["$address/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ[1:Nx+1]
+            y = file["$address/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ[1:Ny+1]
+            domain = (; x, y, z)
+            underlying_grid = RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+        end
+
+        if isibg
+            bottom_height = file["grid/immersed_boundary/bottom_height"]
+            bottom_height = view(bottom_height, 1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+        else
+            grid = underlying_grid
+        end
+    end
 
     # This should be removed eventually... (4/5/2022)
     grid = try
@@ -529,18 +617,55 @@ function FieldTimeSeries(path::String, name::String;
         end
     end
 
-    close(file)
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = on_architecture(architecture, boundary_conditions)
+    end
 
-    LX, LY, LZ = Location
+    isnothing(location) && (location = file["timeseries/$name/serialized/location"])
+    LX, LY, LZ = location
+    loc = map(instantiate, location)
 
-    loc = map(instantiate, Location)
+    if isnothing(Nparts)
+        isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))
+        isnothing(times) && (times = [file["timeseries/t/$i"] for i in iterations])
+        close(file)
+    else
+        all_iterations = []
+        all_times = []
+        part_iterations = parse.(Int, keys(file["timeseries/t"]))
+        part_times = [file["timeseries/t/$i"] for i in part_iterations]
+        push!(all_iterations, part_iterations)
+        push!(all_times, part_times)
+        close(file)
+
+        for part in 2:Nparts
+            path = part_paths[part]
+            file = jldopen(path; reader_kw...)
+            part_iterations = parse.(Int, keys(file["timeseries/t"]))
+            part_times = [file["timeseries/t/$i"] for i in part_iterations]
+            push!(all_iterations, part_iterations)
+            push!(all_times, part_times)
+            close(file)
+        end
+
+        iterations = vcat(all_iterations...)
+        times = vcat(all_times...)
+    end
+
     Nt = time_indices_length(backend, times)
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
 
-    set!(time_series, path, name)
+    if isnothing(Nparts)
+        set!(time_series, path, name)
+    else
+        for path in part_paths
+            set!(time_series, path, name; warn_missing_data=false)
+        end
+    end
 
     return time_series
 end
@@ -617,11 +742,7 @@ function interior(fts::FieldTimeSeries)
 end
 
 # FieldTimeSeries boundary conditions
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC}
-
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
+@inline getbc(condition::Union{FTS, GPUFTS}, i::Int, j::Int, grid::AbstractGrid, clock, args...) = condition[i, j, Time(clock.time)]
 
 #####
 ##### Fill halo regions

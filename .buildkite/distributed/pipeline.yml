@@ -1,7 +1,7 @@
 agents:
   queue: new-central
   slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues 
-  modules: climacommon/2024_10_08
+  modules: climacommon/2024_10_10
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
@@ -10,15 +10,17 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 8
   JULIA_NUM_THREADS: 8
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
+  MPI_TEST: "true"
 
 steps:
   - label: "initialize"
     key: "init_central"
     env:
       TEST_GROUP: "init"
-      GPU_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
+      MPI_TEST: "false" # initialization is not an MPI test
     command:
-      - echo "--- Initialize tests"
+      - echo "--- Initialize distributed tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 8G
@@ -31,7 +33,7 @@ steps:
     key: "distributed_cpu"
     env:
       TEST_GROUP: "distributed"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -46,8 +48,7 @@ steps:
     key: "distributed_gpu"
     env:
       TEST_GROUP: "distributed"
-      GPU_TEST: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -63,7 +64,6 @@ steps:
     key: "distributed_solvers_cpu"
     env:
       TEST_GROUP: "distributed_solvers"
-      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -78,8 +78,7 @@ steps:
     key: "distributed_solvers_gpu"
     env:
       TEST_GROUP: "distributed_solvers"
-      GPU_TEST: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -95,7 +94,7 @@ steps:
     key: "distributed_hydrostatic_model_cpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -110,8 +109,7 @@ steps:
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
-      GPU_TEST: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -127,7 +125,7 @@ steps:
     key: "distributed_nonhydrostatic_regression_cpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -142,8 +140,7 @@ steps:
     key: "distributed_nonhydrostatic_regression_gpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
-      GPU_TEST: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
