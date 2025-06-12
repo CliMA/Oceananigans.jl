@@ -2,7 +2,7 @@ module OceananigansAMDGPUExt
 
 using Oceananigans
 using InteractiveUtils
-using AMDGPU, AMDGPU.ROCSPARSE, AMDGPU.ROCFFT
+using AMDGPU, AMDGPU.rocSPARSE, AMDGPU.rocFFT
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
@@ -18,7 +18,7 @@ import KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds,
                            __validindex, CompilerMetadata
 import Oceananigans.DistributedComputations: Distributed
 
-const GPUVar = Union{ROCArray, CuContext, CuPtr, Ptr}
+const GPUVar = Union{ROCArray, Ptr}
 
 function __init__()
     if AMDGPU.functional()
@@ -46,12 +46,12 @@ AC.on_architecture(::ROCGPU, a::ROCArray) = a
 AC.on_architecture(::ROCGPU, a::BitArray) = ROCArray(a)
 AC.on_architecture(::ROCGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
 AC.on_architecture(::ROCGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)
-AC.on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = Array(a)
+AC.on_architecture(::AC.CPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = Array(a)
 AC.on_architecture(::ROCGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::ROCArray) = AC.on_architecture(AC.child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:ROCArray}) = AC.on_architecture(child_architecture(arch), a)
 
-function unified_array(::AMDGPU, a::AbstractArray)
+function unified_array(::ROCGPU, a::AbstractArray)
     error("unified_array is not implemented for ROCGPU.")
 end
 
@@ -86,7 +86,7 @@ BC.validate_boundary_condition_architecture(::ROCArray, ::AC.CPU, bc, side) =
 
 function SO.plan_forward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return AMDGPU.ROCFFT.plan_fft!(A, dims)
+    return AMDGPU.rocFFT.plan_fft!(A, dims)
 end
 
 FD.set!(v::Field, a::ROCArray) = FD._set!(v, a)
@@ -94,7 +94,7 @@ DC.set!(v::DC.DistributedField, a::ROCArray) = DC._set!(v, a)
 
 function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return AMDGPU.ROCFFT.plan_ifft!(A, dims)
+    return AMDGPU.rocFFT.plan_ifft!(A, dims)
 end
 
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
@@ -106,11 +106,11 @@ AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompiler
     end
 end
 
-@inline UT.sync_device!(::ROCDevice)  = ROC.synchronize()
+@inline UT.sync_device!(dev::Int64)  = AMDGPU.synchronize()
 @inline UT.getdevice(roc::GPUVar, i)     = device(roc)
 @inline UT.getdevice(roc::GPUVar)        = device(roc)
-@inline UT.switch_device!(dev::ROCDevice)            = device!(dev)
-@inline UT.sync_device!(::ROCGPU)      = ROC.synchronize()
-@inline UT.sync_device!(::ROCBackend)      = ROC.synchronize()
+@inline UT.switch_device!(dev::Int64)            = device!(dev)
+@inline UT.sync_device!(::ROCGPU)      = AMDGPU.synchronize()
+@inline UT.sync_device!(::ROCBackend)      = AMDGPU.synchronize()
 
 end # module
