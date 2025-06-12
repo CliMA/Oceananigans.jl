@@ -110,14 +110,14 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
-on_architecture(::CPU, mo::MultiRegionObject) = MultiRegionObject(on_architecture(CPU(), mo.regional_objects))
+on_architecture(arch::CPU, mo::MultiRegionObject) = MultiRegionObject(on_architecture(arch, mo.regional_objects))
 
 # TODO: Properly define on_architecture(::GPU, mo::MultiRegionObject) to handle cases where MultiRegionObject can be
 # distributed across different devices. Currently, the implementation assumes that all regional objects reside on a
 # single GPU.
-on_architecture(::GPU, mo::MultiRegionObject) =
-    MultiRegionObject(on_architecture(GPU(), mo.regional_objects);
-                      devices = Tuple(CUDA.device() for i in 1:length(mo.regional_objects)))
+on_architecture(arch::GPU, mo::MultiRegionObject) =
+    MultiRegionObject(on_architecture(arch, mo.regional_objects);
+                      devices = Tuple(device(arch) for i in 1:length(mo.regional_objects)))
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
