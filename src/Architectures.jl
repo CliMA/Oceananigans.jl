@@ -117,8 +117,10 @@ unified_array(::GPU, a) = a
 @inline constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
 @inline constructors(::GPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
 
+@inline unpack_constructors(::CPU, constr::Tuple) = (constr[3], constr[4], constr[5])
 @inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
 
+@inline copy_unpack_constructors(::CPU, constr::Tuple) = deepcopy((constr[3], constr[4], constr[5]))
 @inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
 
 @inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
