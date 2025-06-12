@@ -267,13 +267,13 @@ function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, add
             parent_data = on_architecture(arch, file["$addr/timestepper/Gⁿ/$name/data"])
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
-            @apply_regionally copyto!(tendencyⁿ_field.data.parent, parent_data)
+            @apply_regionally copyto!(parent(tendencyⁿ_field), parent_data)
 
             # Tendency "n-1"
             parent_data = on_architecture(arch, file["$addr/timestepper/G⁻/$name/data"])
 
             tendency⁻_field = timestepper.G⁻[name]
-            @apply_regionally copyto!(tendency⁻_field.data.parent, parent_data)
+            @apply_regionally copyto!(parent(tendency⁻_field), parent_data)
         elseif tendency_in_model && !tendency_in_checkpoint
             @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
         end
