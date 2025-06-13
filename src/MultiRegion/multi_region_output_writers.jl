@@ -40,6 +40,17 @@ end
 convert_output(mo::MultiRegionObject, writer) = 
     MultiRegionObject(Tuple(convert(writer.array_type, obj) for obj in mo.regional_objects))
 
+function construct_output(user_output::Union{AbstractField, Reduction}, grid::ConformalCubedSphereGridOfSomeKind,
+                          user_indices, with_halos)
+    multi_region_indices = output_indices(user_output, grid, user_indices, with_halos)
+    indices = getregion(multi_region_indices, 1)
+
+    # Don't compute AbstractOperations or Reductions
+    additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)
+
+    return Field(user_output; indices, additional_kw...)
+end
+
 function serializeproperty!(file, location, csf::CubedSphereField{LX, LY, LZ}) where {LX, LY, LZ}
     csf_CPU = on_architecture(CPU(), csf)
 
@@ -50,6 +61,6 @@ function serializeproperty!(file, location, csf::CubedSphereField{LX, LY, LZ}) w
     return nothing
 end
 
-function serializeproperty!(file, location, csg::ConformalCubedSphereGrid)
+function serializeproperty!(file, location, csg::ConformalCubedSphereGridOfSomeKind)
     file[location] = on_architecture(CPU(), csg)
 end

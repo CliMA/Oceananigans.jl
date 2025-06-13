@@ -54,8 +54,7 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
-    multi_region_indices = output_indices(user_output, grid, user_indices, with_halos)
-    indices = grid isa ConformalCubedSphereGrid ? getregion(multi_region_indices, 1) : multi_region_indices
+    indices = output_indices(user_output, grid, user_indices, with_halos)
 
     # Don't compute AbstractOperations or Reductions
     additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)
