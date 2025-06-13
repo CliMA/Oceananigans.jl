@@ -76,7 +76,7 @@ function adapt_advection_order(advection::Centered{B}, N::Int, grid::AbstractGri
     if N >= B
         return advection
     else
-        return Centered(; order=2N)
+        return Centered(grid; order=2N)
     end
 end
 
@@ -84,13 +84,14 @@ function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::Abstrac
     if N >= B
         return advection
     else
-        return UpwindBiased(; order=2N-1)
+        return UpwindBiased(grid; order=2N-1)
     end
 end
+
 function adapt_advection_order(advection::WENO{B}, N::Int, grid::AbstractGrid) where B
     if N >= B
         return advection
     else
-        return WENO(order=2N-1)
+        return WENO(grid; order=2N-1)
     end
 end
