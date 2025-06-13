@@ -132,9 +132,6 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::NNFluxClosure)
     arch = architecture(grid)
     wT = ZFaceField(grid)
     wS = ZFaceField(grid)
-    ∂T∂z_scaled = ZFaceField(grid)
-    ∂S∂z_scaled = ZFaceField(grid)
-    ∂σ∂z_scaled = ZFaceField(grid)
 
     first_index = Field((Center, Center, Nothing), grid, Int)
     last_index = Field((Center, Center, Nothing), grid, Int)
@@ -190,7 +187,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::NNFluxClosure)
     main_to_wrk = (; lower_grid_point = lower_grid_point_main, weights = interpolation_weights_main)
     wrk_to_main = (; lower_grid_point = lower_grid_point_wrk, weights = interpolation_weights_wrk)
 
-    return (; wrk_in, wrk_wT, wrk_wS, wT, wS, ∂T∂z_scaled, ∂S∂z_scaled, ∂σ∂z_scaled, first_index, last_index, wrk_grid, main_to_wrk, wrk_to_main)
+    return (; wrk_in, wrk_wT, wrk_wS, wT, wS, first_index, last_index, wrk_grid, main_to_wrk, wrk_to_main)
 end
 
 function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; parameters = :xyz)
@@ -212,10 +209,6 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
     wT = diffusivities.wT
     wS = diffusivities.wS
     
-    ∂T∂z_scaled = diffusivities.∂T∂z_scaled
-    ∂S∂z_scaled = diffusivities.∂S∂z_scaled
-    ∂σ∂z_scaled = diffusivities.∂σ∂z_scaled
-
     first_index = diffusivities.first_index
     last_index = diffusivities.last_index
 
@@ -228,33 +221,16 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
 
     kp_wrk = KernelParameters((Nx_in, Ny_in, N_levels), (0, 0, 0))
 
-    launch!(arch, grid, kp, _compute_scaled_input!, ∂T∂z_scaled, ∂S∂z_scaled, ∂σ∂z_scaled, grid, closure, tracers, buoyancy, clock)
-
     launch!(arch, grid, kp_2D, _find_NN_active_region!, Ri, grid, diffusivities.wrk_grid, Riᶜ, first_index, last_index, closure)
 
     launch!(arch, grid, kp_wrk, 
-            _populate_input!, wrk_in, first_index, last_index, grid, diffusivities.wrk_grid, diffusivities.main_to_wrk, closure, tracers, velocities, buoyancy, top_tracer_bcs, Ri, ∂T∂z_scaled, ∂S∂z_scaled, ∂σ∂z_scaled, clock)
+            _populate_input!, wrk_in, first_index, last_index, grid, diffusivities.wrk_grid, diffusivities.main_to_wrk, closure, tracers, velocities, buoyancy, top_tracer_bcs, Ri, clock)
 
     wrk_wT .= dropdims(closure.wT(wrk_in), dims=1)
     wrk_wS .= dropdims(closure.wS(wrk_in), dims=1)
 
     launch!(arch, grid, kp, _fill_adjust_nn_fluxes!, diffusivities, first_index, last_index, wrk_wT, wrk_wS, grid, diffusivities.wrk_grid, diffusivities.wrk_to_main, closure, tracers, velocities, buoyancy, top_tracer_bcs, clock)
     return nothing
-end
-
-@kernel function _compute_scaled_input!(∂T∂z_scaled, ∂S∂z_scaled, ∂σ∂z_scaled, grid, closure::NNFluxClosure, tracers, buoyancy, clock)
-    i, j, k = @index(Global, NTuple)
-
-    scaling = closure.scaling
-
-    ρ₀ = buoyancy.model.equation_of_state.reference_density
-    g  = buoyancy.model.gravitational_acceleration
-
-    T, S = tracers.T, tracers.S
-
-    @inbounds ∂T∂z_scaled[i, j, k] = scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k, grid, T))
-    @inbounds ∂S∂z_scaled[i, j, k] = scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k, grid, S))
-    @inbounds ∂σ∂z_scaled[i, j, k] = scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k, grid, buoyancy, tracers) / g)
 end
 
 @inline function clamp_k_interior(k, grid)
@@ -307,10 +283,14 @@ end
     @inbounds first_index[i, j, 1] = ifelse(nonbackground_κ_index_wrk == top_index, top_index, clamp_k_interior(background_κ_index_wrk - grid_point_below_kappa + 1, wrk_grid))
 end
 
-@kernel function _populate_input!(input, first_index, last_index, main_grid, wrk_grid, main_to_wrk, closure::NNFluxClosure, tracers, velocities, buoyancy, top_tracer_bcs, Ri, ∂T∂z_scaled, ∂S∂z_scaled, ∂σ∂z_scaled, clock)
+@kernel function _populate_input!(input, first_index, last_index, main_grid, wrk_grid, main_to_wrk, closure::NNFluxClosure, tracers, velocities, buoyancy, top_tracer_bcs, Ri, clock)
     i, j, k = @index(Global, NTuple)
 
     scaling = closure.scaling
+    T, S = tracers.T, tracers.S
+
+    ρ₀ = buoyancy.model.equation_of_state.reference_density
+    g = buoyancy.model.gravitational_acceleration
 
     @inbounds k_first = first_index[i, j, 1]
     @inbounds k_last = last_index[i, j, 1]
@@ -349,23 +329,23 @@ end
     @inbounds input[4, i, j, k] = ifelse(quiescent, 0, interpolate_value(atan(Ri[i, j, k_lower₊₁]), atan(Ri[i, j, k_lower₊₁ + 1]), w_lower₊₁, w_upper₊₁))
     @inbounds input[5, i, j, k] = ifelse(quiescent, 0, interpolate_value(atan(Ri[i, j, k_lower₊₂]), atan(Ri[i, j, k_lower₊₂ + 1]), w_lower₊₂, w_upper₊₂))
 
-    @inbounds input[6, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂T∂z_scaled[i, j, k_lower₋₂], ∂T∂z_scaled[i, j, k_lower₋₂ + 1], w_lower₋₂, w_upper₋₂))
-    @inbounds input[7, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂T∂z_scaled[i, j, k_lower₋₁], ∂T∂z_scaled[i, j, k_lower₋₁ + 1], w_lower₋₁, w_upper₋₁))
-    @inbounds input[8, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂T∂z_scaled[i, j, k_lower₀], ∂T∂z_scaled[i, j, k_lower₀ + 1], w_lower₀, w_upper₀))
-    @inbounds input[9, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂T∂z_scaled[i, j, k_lower₊₁], ∂T∂z_scaled[i, j, k_lower₊₁ + 1], w_lower₊₁, w_upper₊₁))
-    @inbounds input[10, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂T∂z_scaled[i, j, k_lower₊₂], ∂T∂z_scaled[i, j, k_lower₊₂ + 1], w_lower₊₂, w_upper₊₂))
+    @inbounds input[6, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₋₂, main_grid, T)), scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₋₂ + 1, main_grid, T)), w_lower₋₂, w_upper₋₂))
+    @inbounds input[7, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₋₁, main_grid, T)), scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₋₁ + 1, main_grid, T)), w_lower₋₁, w_upper₋₁))
+    @inbounds input[8, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₀, main_grid, T)), scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₀ + 1, main_grid, T)), w_lower₀, w_upper₀))
+    @inbounds input[9, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₊₁, main_grid, T)), scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₊₁ + 1, main_grid, T)), w_lower₊₁, w_upper₊₁))
+    @inbounds input[10, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₊₂, main_grid, T)), scaling.∂T∂z(∂zᶜᶜᶠ(i, j, k_lower₊₂ + 1, main_grid, T)), w_lower₊₂, w_upper₊₂))
 
-    @inbounds input[11, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂S∂z_scaled[i, j, k_lower₋₂], ∂S∂z_scaled[i, j, k_lower₋₂ + 1], w_lower₋₂, w_upper₋₂))
-    @inbounds input[12, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂S∂z_scaled[i, j, k_lower₋₁], ∂S∂z_scaled[i, j, k_lower₋₁ + 1], w_lower₋₁, w_upper₋₁))
-    @inbounds input[13, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂S∂z_scaled[i, j, k_lower₀], ∂S∂z_scaled[i, j, k_lower₀ + 1], w_lower₀, w_upper₀))
-    @inbounds input[14, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂S∂z_scaled[i, j, k_lower₊₁], ∂S∂z_scaled[i, j, k_lower₊₁ + 1], w_lower₊₁, w_upper₊₁))
-    @inbounds input[15, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂S∂z_scaled[i, j, k_lower₊₂], ∂S∂z_scaled[i, j, k_lower₊₂ + 1], w_lower₊₂, w_upper₊₂))
+    @inbounds input[11, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₋₂, main_grid, S)), scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₋₂ + 1, main_grid, S)), w_lower₋₂, w_upper₋₂))
+    @inbounds input[12, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₋₁, main_grid, S)), scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₋₁ + 1, main_grid, S)), w_lower₋₁, w_upper₋₁))
+    @inbounds input[13, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₀, main_grid, S)), scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₀ + 1, main_grid, S)), w_lower₀, w_upper₀))
+    @inbounds input[14, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₊₁, main_grid, S)), scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₊₁ + 1, main_grid, S)), w_lower₊₁, w_upper₊₁))
+    @inbounds input[15, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₊₂, main_grid, S)), scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k_lower₊₂ + 1, main_grid, S)), w_lower₊₂, w_upper₊₂))
 
-    @inbounds input[16, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂σ∂z_scaled[i, j, k_lower₋₂], ∂σ∂z_scaled[i, j, k_lower₋₂ + 1], w_lower₋₂, w_upper₋₂))
-    @inbounds input[17, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂σ∂z_scaled[i, j, k_lower₋₁], ∂σ∂z_scaled[i, j, k_lower₋₁ + 1], w_lower₋₁, w_upper₋₁))
-    @inbounds input[18, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂σ∂z_scaled[i, j, k_lower₀], ∂σ∂z_scaled[i, j, k_lower₀ + 1], w_lower₀, w_upper₀))
-    @inbounds input[19, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂σ∂z_scaled[i, j, k_lower₊₁], ∂σ∂z_scaled[i, j, k_lower₊₁ + 1], w_lower₊₁, w_upper₊₁))
-    @inbounds input[20, i, j, k] = ifelse(quiescent, 0, interpolate_value(∂σ∂z_scaled[i, j, k_lower₊₂], ∂σ∂z_scaled[i, j, k_lower₊₂ + 1], w_lower₊₂, w_upper₊₂))
+    @inbounds input[16, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₋₂, main_grid, buoyancy, tracers) / g), scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₋₂ + 1, main_grid, buoyancy, tracers) / g), w_lower₋₂, w_upper₋₂))
+    @inbounds input[17, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₋₁, main_grid, buoyancy, tracers) / g), scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₋₁ + 1, main_grid, buoyancy, tracers) / g), w_lower₋₁, w_upper₋₁))
+    @inbounds input[18, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₀, main_grid, buoyancy, tracers) / g), scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₀ + 1, main_grid, buoyancy, tracers) / g), w_lower₀, w_upper₀))
+    @inbounds input[19, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₊₁, main_grid, buoyancy, tracers) / g), scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₊₁ + 1, main_grid, buoyancy, tracers) / g), w_lower₊₁, w_upper₊₁))
+    @inbounds input[20, i, j, k] = ifelse(quiescent, 0, interpolate_value(scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₊₂, main_grid, buoyancy, tracers) / g), scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k_lower₊₂ + 1, main_grid, buoyancy, tracers) / g), w_lower₊₂, w_upper₊₂))
 
     @inbounds input[21, i, j, k] = scaling.wb(top_buoyancy_flux(i, j, main_grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers)))
 end
