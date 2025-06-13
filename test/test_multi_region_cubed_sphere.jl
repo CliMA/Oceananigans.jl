@@ -806,6 +806,15 @@ end
                                                     buoyancy = BuoyancyTracer())
                 
                 simulation = Simulation(model, Δt=1minute, stop_iteration=3)
+
+                save_fields_interval = 1minute
+                outputs = fields(model)
+                filename_output_writer = "cubed_sphere_output"
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
                 run!(simulation)
                 
                 @test iteration(simulation) == 3
