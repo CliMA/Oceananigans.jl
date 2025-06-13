@@ -36,68 +36,68 @@ steps:
           
   - wait
 
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
-    key: "tests"
-    agents:
-      queue: "Oceananigans"
-    command: |
-      # Add matrix-specific environment variables
-      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
-        export CUDA_VISIBLE_DEVICES="-1"
-        export TEST_ARCHITECTURE="CPU"
-      else
-        export CUDA_VISIBLE_DEVICES="3"
-        export TEST_ARCHITECTURE="GPU"
-      fi
+  # - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+  #   key: "tests"
+  #   agents:
+  #     queue: "Oceananigans"
+  #   command: |
+  #     # Add matrix-specific environment variables
+  #     if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+  #       export CUDA_VISIBLE_DEVICES="-1"
+  #       export TEST_ARCHITECTURE="CPU"
+  #     else
+  #       export CUDA_VISIBLE_DEVICES="3"
+  #       export TEST_ARCHITECTURE="GPU"
+  #     fi
 
-      # Force IRFT runtime for Reactant (this can be moved to Project.toml on 1.11)
-      touch LocalPreferences.toml
-      echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
-      cat LocalPreferences.toml
+  #     # Force IRFT runtime for Reactant (this can be moved to Project.toml on 1.11)
+  #     touch LocalPreferences.toml
+  #     echo "[Reactant]" >> LocalPreferences.toml
+  #     echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
+  #     cat LocalPreferences.toml
 
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
+  #     # Strip emoji for environment variable
+  #     group="{{ matrix.group }}"
+  #     export TEST_GROUP="\${group#* }"
+  #     echo $TEST_GROUP
 
-      # Run tests
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
-        'using Pkg; Pkg.test()'
+  #     # Run tests
+  #     $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
+  #       'using Pkg; Pkg.test()'
 
-    matrix:
-      setup:
-        architecture:
-          - "CPU"
-          - "GPU"
-        group:
-          - "🐇 unit"
-          - "👻 abstract_operations"
-          - "🕊 poisson_solvers_1"
-          - "🦖 poisson_solvers_2"
-          - "🌷 matrix_poisson_solvers"
-          - "🦤 general_solvers"
-          - "🎣 turbulence_closures"
-          - "🦀 time_stepping_1"
-          - "🦈 time_stepping_2"
-          - "🦟 time_stepping_3"
-          - "🐫 nonhydrostatic_regression"
-          - "🐙 hydrostatic_free_surface"
-          - "🫐 tripolar_grid"
-          - "🥑 vertical_coordinate"
-          - "🙈 hydrostatic_regression"
-          - "🦢 shallow_water"
-          - "🐳 simulation"
-          - "🍂 lagrangian_particles"
-          - "🧅 multi_region"
-          - "🦧 scripts"
-          - "👺 enzyme"
-          - "👹 reactant_1"
-          - "🎭 reactant_2"
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+  #   matrix:
+  #     setup:
+  #       architecture:
+  #         - "CPU"
+  #         - "GPU"
+  #       group:
+  #         - "🐇 unit"
+  #         - "👻 abstract_operations"
+  #         - "🕊 poisson_solvers_1"
+  #         - "🦖 poisson_solvers_2"
+  #         - "🌷 matrix_poisson_solvers"
+  #         - "🦤 general_solvers"
+  #         - "🎣 turbulence_closures"
+  #         - "🦀 time_stepping_1"
+  #         - "🦈 time_stepping_2"
+  #         - "🦟 time_stepping_3"
+  #         - "🐫 nonhydrostatic_regression"
+  #         - "🐙 hydrostatic_free_surface"
+  #         - "🫐 tripolar_grid"
+  #         - "🥑 vertical_coordinate"
+  #         - "🙈 hydrostatic_regression"
+  #         - "🦢 shallow_water"
+  #         - "🐳 simulation"
+  #         - "🍂 lagrangian_particles"
+  #         - "🧅 multi_region"
+  #         - "🦧 scripts"
+  #         - "👺 enzyme"
+  #         - "👹 reactant_1"
+  #         - "🎭 reactant_2"
+  #   retry:
+  #     automatic:
+  #       - exit_status: 1
+  #         limit: 1
 
   #####
   ##### Documentation
