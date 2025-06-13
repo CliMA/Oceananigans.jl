@@ -1,6 +1,5 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
-using CUDA: ndevices, device!
 
 import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
 import Oceananigans.Grids: zeros
@@ -281,11 +280,11 @@ function Distributed(child_architecture = CPU();
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
     local_connectivity = NeighboringRanks(local_index, ranks)
 
-    # Assign CUDA device if on GPUs
+    # Assign GPU device if on GPUs
     if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
-        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1])
+        isnothing(devices) ? device!(child_architecture, node_rank % ndevices(child_architecture)) : device!(child_architecture, devices[node_rank+1])
     end
 
     mpi_requests = MPI.Request[]
