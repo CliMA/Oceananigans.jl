@@ -1,5 +1,5 @@
 using Oceananigans.Grids
-using Oceananigans.Grids: halo_size
+using Oceananigans.Grids: halo_size, topology, AbstractGrid
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
 #####
@@ -15,6 +15,21 @@ barotropic_velocities(free_surface) = nothing, nothing
 # Fallback
 ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
 
+function zstar_params(grid::AbstractGrid) 
+
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    xrange = params_range(Hx, Nx, Tx)
+    yrange = params_range(Hy, Ny, Ty)
+
+    return KernelParameters(xrange, yrange)
+end
+
+params_range(H, N, ::Type{Flat}) = 1:1
+params_range(H, N, T) = -H+2:N+H-1
+
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, χ)
 
     # Scalings and free surface
@@ -26,13 +41,10 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, χ)
     ηⁿ    = grid.z.ηⁿ
     Gⁿ    = grid.z.Gⁿ
 
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
 
-    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
+    params = zstar_params(grid)
 
     launch!(architecture(grid), grid, params, _ab2_update_grid_scaling!,
             σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
@@ -75,14 +87,10 @@ function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, γ�
     σᶠᶠⁿ = grid.z.σᶠᶠⁿ
     ηⁿ   = grid.z.ηⁿ
     ηⁿ⁻¹ = grid.z.Gⁿ
-    
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
 
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
-
-    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
+    params = zstar_params(grid)
 
     launch!(architecture(grid), grid, params, _rk3_update_grid_scaling!,
             σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
@@ -101,7 +109,7 @@ end
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
-    
+
     @inbounds ηⁿ[i, j, 1] = ζⁿ * ηⁿ⁻¹[i, j, 1] + γⁿ * (ηⁿ[i, j, 1] - Δt * δh_U)
 
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
@@ -145,10 +153,7 @@ function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZS
     u, v, _ = model.velocities
     ∂t_σ  = grid.z.∂t_σ
 
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
-    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
+    params = zstar_params(grid)
 
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos
