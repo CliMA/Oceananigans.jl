@@ -8,6 +8,7 @@ using Oceananigans: AbstractOutputWriter, AbstractDiagnostic
 #####
 
 defaultname(::AbstractDiagnostic, nelems) = Symbol(:diag, nelems+1)
+
 defaultname(::AbstractOutputWriter, nelems) = Symbol(:writer, nelems+1)
 
 const DiagOrWriterDict = OrderedDict{S, <:Union{AbstractDiagnostic, AbstractOutputWriter}} where S
@@ -19,11 +20,11 @@ function push!(container::DiagOrWriterDict, elem)
 end
 
 getindex(container::DiagOrWriterDict, inds::Integer...) = getindex(container.vals, inds...)
+
 setindex!(container::DiagOrWriterDict, newvals, inds::Integer...) = setindex!(container.vals, newvals, inds...)
 
 function push!(container::DiagOrWriterDict, elems...)
-    for elem in elems
-        push!(container, elem)
-    end
+    foreach(elem -> push!(container, elem), elems)
     return nothing
 end
+
