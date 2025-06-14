@@ -1,20 +1,20 @@
 using CubedSphere
 using JLD2
 
-struct CubedSphereConformalMapping{Rotation, F, C}
+struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
-    ξᶠᵃᵃ :: F
-    ηᵃᶠᵃ :: F
-    ξᶜᵃᵃ :: C
-    ηᵃᶜᵃ :: C
+    ξᶠᵃᵃ :: Fξ
+    ηᵃᶠᵃ :: Fη
+    ξᶜᵃᵃ :: Cξ
+    ηᵃᶜᵃ :: Cη
 
     CubedSphereConformalMapping(
         rotation::Rotation,
-        ξᶠᵃᵃ::F,
-        ηᵃᶠᵃ::F,
-        ξᶜᵃᵃ::C,
-        ηᵃᶜᵃ::C
-    ) where {Rotation, F, C} = new{Rotation, F, C}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+        ξᶠᵃᵃ::Fξ,
+        ηᵃᶠᵃ::Fη,
+        ξᶜᵃᵃ::Cξ,
+        ηᵃᶜᵃ::Cη
+    ) where {Rotation, Fξ, Fη, Cξ, Cη} = new{Rotation, Fξ, Fη, Cξ, Cη}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
 end
 
 function on_architecture(architecture, conformal_mapping::CubedSphereConformalMapping)
