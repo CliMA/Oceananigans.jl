@@ -44,58 +44,64 @@ function compute_pressure_solution(grid)
     return ϕ, ∇²ϕ, R
 end
 
-@testset "Poisson solvers immersed" begin
-    @info "Testing immersed Poisson solvers..."
+default_Ns() = [7, 16]
+default_rect_Ns() = [11, 16]
 
-    for arch in archs
-        @testset "Divergence-free solution [$(typeof(arch))]" begin
-            @info "  Testing divergence-free solution [$(typeof(arch))]..."
+function test_divergence_free_solution(arch, topos, two_dimensional_topologies)
+    for topo in topos
+        for N in default_Ns()
+            grids_3d = [make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(N, N, N), extent=(1, 1, 1))),
+                        make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(1, N, N), extent=(1, 1, 1))),
+                        make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(N, 1, N), extent=(1, 1, 1))),
+                        make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(N, N, 1), extent=(1, 1, 1)))]
 
-            for topo in topos
-                for N in [7, 16]
+            grids_2d = [make_random_immersed_grid(RectilinearGrid(arch, size=(N, N), extent=(1, 1), topology=topo))
+                        for topo in two_dimensional_topologies]
 
-                    grids_3d = [make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(N, N, N), extent=(1, 1, 1))),
-                                make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(1, N, N), extent=(1, 1, 1))),
-                                make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(N, 1, N), extent=(1, 1, 1))),
-                                make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(N, N, 1), extent=(1, 1, 1)))]
+            grids = []
+            push!(grids, grids_3d..., grids_2d...)
 
-                    grids_2d = [make_random_immersed_grid(RectilinearGrid(arch, size=(N, N), extent=(1, 1), topology=topo))
-                                for topo in two_dimensional_topologies]
-
-                    grids = []
-                    push!(grids, grids_3d..., grids_2d...)
-
-                    for grid in grids
-                        N == 7 && @info "    Testing $(topology(grid)) topology on square grids [$(typeof(arch))]..."
-
-                        ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
-                        @test CUDA.@allowscalar interior(∇²ϕ) ≈ interior(R)
-                        @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
-                    end
-                end
-            end
-
-            Ns = [11, 16]
-            for topo in topos
-                @info "    Testing $topo topology on rectangular grids with even and prime sizes [$(typeof(arch))]..."
-                for Nx in Ns, Ny in Ns, Nz in Ns
-                    grid = make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1)))
-
-                    ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
-                    @test CUDA.@allowscalar interior(∇²ϕ) ≈ interior(R)
-                    @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
-                end
-            end
-
-            # Do a couple at Float32 (since its too expensive to repeat all tests...)
-            Float32_grids = [make_random_immersed_grid(RectilinearGrid(arch, Float32, topology=(Periodic, Bounded, Bounded), size=(16, 16, 16), extent=(1, 1, 1))),
-                             make_random_immersed_grid(RectilinearGrid(arch, Float32, topology=(Bounded, Bounded, Bounded), size=(7, 11, 13), extent=(1, 1, 1)))]
-
-            for grid in Float32_grids
+            for grid in grids
+                N == 7 && @info "    Testing $(topology(grid)) topology on square grids [$(typeof(arch))]..."
                 ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
                 @test CUDA.@allowscalar interior(∇²ϕ) ≈ interior(R)
                 @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
             end
+        end
+    end
+end
+
+function test_rectangular_grids(arch, topos)
+    Ns = default_rect_Ns()
+    for topo in topos
+        @info "    Testing $topo topology on rectangular grids with even and prime sizes [$(typeof(arch))]..."
+        for Nx in Ns, Ny in Ns, Nz in Ns
+            grid = make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1)))
+            ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
+            @test CUDA.@allowscalar interior(∇²ϕ) ≈ interior(R)
+            @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
+        end
+    end
+end
+
+function test_float32_grids(arch)
+    Float32_grids = [make_random_immersed_grid(RectilinearGrid(arch, Float32, topology=(Periodic, Bounded, Bounded), size=(16, 16, 16), extent=(1, 1, 1))),
+                     make_random_immersed_grid(RectilinearGrid(arch, Float32, topology=(Bounded, Bounded, Bounded), size=(7, 11, 13), extent=(1, 1, 1)))]
+    for grid in Float32_grids
+        ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
+        @test CUDA.@allowscalar interior(∇²ϕ) ≈ interior(R)
+        @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
+    end
+end
+
+@testset "Poisson solvers immersed" begin
+    @info "Testing immersed Poisson solvers..."
+    for arch in archs
+        @testset "Divergence-free solution [$(typeof(arch))]" begin
+            @info "  Testing divergence-free solution [$(typeof(arch))]..."
+            test_divergence_free_solution(arch, topos, two_dimensional_topologies)
+            test_rectangular_grids(arch, topos)
+            test_float32_grids(arch)
         end
     end
 end

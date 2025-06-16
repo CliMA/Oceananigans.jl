@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner
 using Oceananigans.Models.NonhydrostaticModels
-using Oceananigans.TimeSteppers: calculate_pressure_correction!
+using Oceananigans.TimeSteppers: compute_pressure_correction!
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 using LinearAlgebra: norm
 using Random: seed!
@@ -92,7 +92,7 @@ function test_conjugate_gradient_with_nonhydrostatic_model(arch, preconditioner_
 
         # Perform pressure correction (calls CG solver)
         Δt = 0.01
-        calculate_pressure_correction!(model, Δt)
+        compute_pressure_correction!(model, Δt)
 
         # Check results
         final_pressure = Array(interior(model.pressures.pNHS))
@@ -113,7 +113,7 @@ function test_conjugate_gradient_with_nonhydrostatic_model(arch, preconditioner_
         @test pressure_before_norm > 0  # Should start with non-zero pressure from first solve
 
         # Perform second pressure correction
-        calculate_pressure_correction!(model, Δt)
+        compute_pressure_correction!(model, Δt)
 
         final_pressure_2 = Array(interior(model.pressures.pNHS))
         final_norm_2 = norm(final_pressure_2)
@@ -158,7 +158,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries
 
         # Test that pressure correction works with immersed boundaries
         Δt = 0.5 * minimum_zspacing(grid) / abs(U)
-        calculate_pressure_correction!(model, Δt)
+        compute_pressure_correction!(model, Δt)
 
         final_pressure_norm = norm(Array(interior(model.pressures.pNHS)))
         iterations = iteration(model.pressure_solver.conjugate_gradient_solver)
