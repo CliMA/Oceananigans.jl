@@ -44,7 +44,7 @@ update_hydrostatic_pressure!(pHY′, ::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
-update_hydrostatic_pressure!(pHY′, ibg::PCBIBG, args...; kwargs...)
+update_hydrostatic_pressure!(pHY′, ibg::PCBIBG, args...; kwargs...) =
     update_hydrostatic_pressure!(pHY′, ibg.underlying_grid, args...; kwargs...)
 
 update_hydrostatic_pressure!(::Nothing, grid, args...; kw...) = nothing
