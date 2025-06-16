@@ -65,10 +65,13 @@ details about this method, refer to the docstring for `PerturbationAdvection`.
 """
 function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
                                                     outflow_timescale = Inf,
-                                                    inflow_timescale = 0, kwargs...)
+                                                    inflow_timescale = 0,
+                                                    average_mass_flux = 0,
+                                                    kwargs...)
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
-    classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
+    average_mass_flux = convert(FT, average_mass_flux)
+    classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale, average_mass_flux))
 
     @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
 
