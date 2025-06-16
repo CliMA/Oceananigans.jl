@@ -58,8 +58,14 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     timestepper)
 end
 
+materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
+
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::CubedSpherePartition) = (max(step_halo, old_halos[1]), max(step_halo, old_halos[2]), old_halos[3])
+
+iterate_split_explicit!(free_surface, grid::MultiRegionGrids, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps =
+    @apply_regionally iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
 
 @inline augmented_kernel_size(grid, ::XPartition)           = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
 @inline augmented_kernel_size(grid, ::YPartition)           = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
