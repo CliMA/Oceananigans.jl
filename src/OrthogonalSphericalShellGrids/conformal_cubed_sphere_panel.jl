@@ -91,12 +91,13 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                               x = ξ, y = η, z, halo)
 
      ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-     ξᶠᵃᵃ = ntuple(i -> FT(ξᶠᵃᵃ[i]), length(ξᶠᵃᵃ))
      ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-     ξᶜᵃᵃ = ntuple(i -> FT(ξᶜᵃᵃ[i]), length(ξᶜᵃᵃ))
      ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-     ηᵃᶠᵃ = ntuple(i -> FT(ηᵃᶠᵃ[i]), length(ηᵃᶠᵃ))
      ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+
+     ξᶠᵃᵃ = ntuple(i -> FT(ξᶠᵃᵃ[i]), length(ξᶠᵃᵃ))
+     ξᶜᵃᵃ = ntuple(i -> FT(ξᶜᵃᵃ[i]), length(ξᶜᵃᵃ))
+     ηᵃᶠᵃ = ntuple(i -> FT(ηᵃᶠᵃ[i]), length(ηᵃᶠᵃ))
      ηᵃᶜᵃ = ntuple(i -> FT(ηᵃᶜᵃ[i]), length(ηᵃᶜᵃ))
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
