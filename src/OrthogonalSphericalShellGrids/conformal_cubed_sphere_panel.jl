@@ -1,20 +1,20 @@
 using CubedSphere
 using JLD2
 
-struct CubedSphereConformalMapping{Rotation, F, C}
+struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
-    ξᶠᵃᵃ :: F
-    ηᵃᶠᵃ :: F
-    ξᶜᵃᵃ :: C
-    ηᵃᶜᵃ :: C
+    ξᶠᵃᵃ :: Fξ
+    ηᵃᶠᵃ :: Fη
+    ξᶜᵃᵃ :: Cξ
+    ηᵃᶜᵃ :: Cη
 
     CubedSphereConformalMapping(
         rotation::Rotation,
-        ξᶠᵃᵃ::F,
-        ηᵃᶠᵃ::F,
-        ξᶜᵃᵃ::C,
-        ηᵃᶜᵃ::C
-    ) where {Rotation, F, C} = new{Rotation, F, C}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+        ξᶠᵃᵃ::Fξ,
+        ηᵃᶠᵃ::Fη,
+        ξᶜᵃᵃ::Cξ,
+        ηᵃᶜᵃ::Cη
+    ) where {Rotation, Fξ, Fη, Cξ, Cη} = new{Rotation, Fξ, Fη, Cξ, Cη}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
 end
 
 function on_architecture(architecture, conformal_mapping::CubedSphereConformalMapping)
@@ -91,9 +91,13 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                               x = ξ, y = η, z, halo)
 
      ξᶠᵃᵃ = xnodes(ξη_grid, Face())
+     ξᶠᵃᵃ = ntuple(i -> FT(ξᶠᵃᵃ[i]), length(ξᶠᵃᵃ))
      ξᶜᵃᵃ = xnodes(ξη_grid, Center())
+     ξᶜᵃᵃ = ntuple(i -> FT(ξᶜᵃᵃ[i]), length(ξᶜᵃᵃ))
      ηᵃᶠᵃ = ynodes(ξη_grid, Face())
+     ηᵃᶠᵃ = ntuple(i -> FT(ηᵃᶠᵃ[i]), length(ηᵃᶠᵃ))
      ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+     ηᵃᶜᵃ = ntuple(i -> FT(ηᵃᶜᵃ[i]), length(ηᵃᶜᵃ))
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
      λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topology, N, H)
@@ -306,6 +310,10 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
             ηᵃᶠᵃ = ynodes(ξη_grid, Face())
             ηᵃᶜᵃ = ynodes(ξη_grid, Center())
         end
+        ξᶠᵃᵃ = ntuple(i -> FT(ξᶠᵃᵃ[i]), length(ξᶠᵃᵃ))
+        ξᶜᵃᵃ = ntuple(i -> FT(ξᶜᵃᵃ[i]), length(ξᶜᵃᵃ))
+        ηᵃᶠᵃ = ntuple(i -> FT(ηᵃᶠᵃ[i]), length(ηᵃᶠᵃ))
+        ηᵃᶜᵃ = ntuple(i -> FT(ηᵃᶜᵃ[i]), length(ηᵃᶜᵃ))
     end
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
