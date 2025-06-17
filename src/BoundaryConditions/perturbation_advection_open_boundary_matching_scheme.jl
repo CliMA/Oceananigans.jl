@@ -66,7 +66,6 @@ function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType
                                                     inflow_timescale = 0, kwargs...)
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
-
     classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
 
     @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
@@ -139,7 +138,6 @@ end
 @inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
-
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
     step_left_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
 
