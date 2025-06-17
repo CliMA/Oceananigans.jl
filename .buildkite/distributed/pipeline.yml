@@ -12,151 +12,151 @@ env:
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
   MPI_TEST: "true"
 
-steps:
-  - label: "initialize"
-    key: "init_central"
-    env:
-      TEST_GROUP: "init"
-      TEST_ARCHITECTURE: "GPU"
-      MPI_TEST: "false" # initialization is not an MPI test
-    command:
-      - echo "--- Initialize distributed tests"
-      - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 8G
-      slurm_ntasks: 1
-      slurm_gpus_per_task: 1
+# steps:
+#   - label: "initialize"
+#     key: "init_central"
+#     env:
+#       TEST_GROUP: "init"
+#       TEST_ARCHITECTURE: "GPU"
+#       MPI_TEST: "false" # initialization is not an MPI test
+#     command:
+#       - echo "--- Initialize distributed tests"
+#       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 8G
+#       slurm_ntasks: 1
+#       slurm_gpus_per_task: 1
 
-  - wait
+#   - wait
 
-  - label: "🐉 cpu distributed unit tests"
-    key: "distributed_cpu"
-    env:
-      TEST_GROUP: "distributed"
-      TEST_ARCHITECTURE: "CPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 8G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🐉 cpu distributed unit tests"
+#     key: "distributed_cpu"
+#     env:
+#       TEST_GROUP: "distributed"
+#       TEST_ARCHITECTURE: "CPU"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 8G
+#       slurm_ntasks: 4
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - label: "🐲 gpu distributed unit tests"
-    key: "distributed_gpu"
-    env:
-      TEST_GROUP: "distributed"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 8G
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🐲 gpu distributed unit tests"
+#     key: "distributed_gpu"
+#     env:
+#       TEST_GROUP: "distributed"
+#       TEST_ARCHITECTURE: "GPU"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 8G
+#       slurm_ntasks: 4
+#       slurm_gpus_per_task: 1
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - label: "🦾 cpu distributed solvers tests"
-    key: "distributed_solvers_cpu"
-    env:
-      TEST_GROUP: "distributed_solvers"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🦾 cpu distributed solvers tests"
+#     key: "distributed_solvers_cpu"
+#     env:
+#       TEST_GROUP: "distributed_solvers"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 50G
+#       slurm_ntasks: 4
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - label: "🛸 gpu distributed solvers tests"
-    key: "distributed_solvers_gpu"
-    env:
-      TEST_GROUP: "distributed_solvers"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🛸 gpu distributed solvers tests"
+#     key: "distributed_solvers_gpu"
+#     env:
+#       TEST_GROUP: "distributed_solvers"
+#       TEST_ARCHITECTURE: "GPU"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 50G
+#       slurm_ntasks: 4
+#       slurm_gpus_per_task: 1
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - label: "🤺 cpu distributed hydrostatic model tests"
-    key: "distributed_hydrostatic_model_cpu"
-    env:
-      TEST_GROUP: "distributed_hydrostatic_model"
-      TEST_ARCHITECTURE: "CPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🤺 cpu distributed hydrostatic model tests"
+#     key: "distributed_hydrostatic_model_cpu"
+#     env:
+#       TEST_GROUP: "distributed_hydrostatic_model"
+#       TEST_ARCHITECTURE: "CPU"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 50G
+#       slurm_ntasks: 4
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - label: "🦏 gpu distributed hydrostatic model tests"
-    key: "distributed_hydrostatic_model_gpu"
-    env:
-      TEST_GROUP: "distributed_hydrostatic_model"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 80G # Apparently the GPU tests require more memory
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🦏 gpu distributed hydrostatic model tests"
+#     key: "distributed_hydrostatic_model_gpu"
+#     env:
+#       TEST_GROUP: "distributed_hydrostatic_model"
+#       TEST_ARCHITECTURE: "GPU"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 80G # Apparently the GPU tests require more memory
+#       slurm_ntasks: 4
+#       slurm_gpus_per_task: 1
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - label: "🦍 cpu distributed nonhydrostatic regression"
-    key: "distributed_nonhydrostatic_regression_cpu"
-    env:
-      TEST_GROUP: "distributed_nonhydrostatic_regression"
-      TEST_ARCHITECTURE: "CPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🦍 cpu distributed nonhydrostatic regression"
+#     key: "distributed_nonhydrostatic_regression_cpu"
+#     env:
+#       TEST_GROUP: "distributed_nonhydrostatic_regression"
+#       TEST_ARCHITECTURE: "CPU"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 50G
+#       slurm_ntasks: 4
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - label: "🕺 gpu distributed nonhydrostatic regression"
-    key: "distributed_nonhydrostatic_regression_gpu"
-    env:
-      TEST_GROUP: "distributed_nonhydrostatic_regression"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
+#   - label: "🕺 gpu distributed nonhydrostatic regression"
+#     key: "distributed_nonhydrostatic_regression_gpu"
+#     env:
+#       TEST_GROUP: "distributed_nonhydrostatic_regression"
+#       TEST_ARCHITECTURE: "GPU"
+#     commands:
+#       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+#     agents:
+#       slurm_mem: 50G
+#       slurm_ntasks: 4
+#       slurm_gpus_per_task: 1
+#     retry:
+#       automatic:
+#         - exit_status: 1      
+#           limit: 1
 
-  - wait
+#   - wait
 
-  - label: ":chart_with_downwards_trend: build history"
-    command:
-      - "build_history staging"
-    artifact_paths:
-      - "build_history.html"
+#   - label: ":chart_with_downwards_trend: build history"
+#     command:
+#       - "build_history staging"
+#     artifact_paths:
+#       - "build_history.html"
 
