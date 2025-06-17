@@ -196,18 +196,18 @@ struct PiecewiseLinearMask{D, T}
 end
 
 @inline function (p::PiecewiseLinearMask{:x})(x, y, z)
-    d = abs(x - p.center)
-    return d > p.width ? 0.0 : 1.0 - d/p.width
+    d = 1 - abs(x - p.center) / p.width
+    return max(0, d)
 end
 
 @inline function (p::PiecewiseLinearMask{:y})(x, y, z)
-    d = abs(y - p.center)
-    return d > p.width ? 0.0 : 1.0 - d/p.width
+    d = 1 - abs(y - p.center) / p.width
+    return max(0, d)
 end
 
 @inline function (p::PiecewiseLinearMask{:z})(x, y, z)
-    d = abs(z - p.center)
-    return d > p.width ? 0.0 : 1.0 - d/p.width
+    d = 1 - abs(z - p.center) / p.width
+    return max(0, d)
 end
 
 Base.summary(p::PiecewiseLinearMask{D}) where D =
