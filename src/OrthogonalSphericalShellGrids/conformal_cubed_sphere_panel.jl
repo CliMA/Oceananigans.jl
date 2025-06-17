@@ -149,9 +149,12 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     conformal_mapping)
 end
 
-using Oceananigans.Grids: cpu_face_constructor_ξ, cpu_face_constructor_η
+@inline cpu_face_constructor_ξ(grid::ConformalCubedSpherePanelGrid) = (grid.conformal_mapping.ξᶠᵃᵃ[1],
+                                                                       grid.conformal_mapping.ξᶠᵃᵃ[size(grid, 1)+1])
+@inline cpu_face_constructor_η(grid::ConformalCubedSpherePanelGrid) = (grid.conformal_mapping.ηᵃᶠᵃ[1],
+                                                                       grid.conformal_mapping.ηᵃᶠᵃ[size(grid, 2)+1])
 
-function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=architecture(old_grid), rotation=nothing)
+function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
