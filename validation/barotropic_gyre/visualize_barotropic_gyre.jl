@@ -40,9 +40,9 @@ function visualize_barotropic_gyre(filepath)
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 
-    xu, yu, zu = geographic2cartesian(xnodes(grid, Face(), Face()), ynodes(grid, Center()))
-    xv, yv, zv = geographic2cartesian(xnodes(grid, Center(), Center()), ynodes(grid, Face()))
-    xc, yc, zc = geographic2cartesian(xnodes(grid, Center(), Center()), ynodes(grid, Center()))
+    xu, yu, zu = geographic2cartesian(λnodes(grid, Face()), φnodes(grid, Center()))
+    xv, yv, zv = geographic2cartesian(λnodes(grid, Center()), φnodes(grid, Face()))
+    xc, yc, zc = geographic2cartesian(λnodes(grid, Center()), φnodes(grid, Center()))
 
     iter = Observable(0)
 
