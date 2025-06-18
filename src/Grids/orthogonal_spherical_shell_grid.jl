@@ -8,6 +8,7 @@ using Adapt: adapt_structure
 
 using Oceananigans
 using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
+using GPUArraysCore
 
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
@@ -91,7 +92,7 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                                          λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                          φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
                                                         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, 
+                                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                                                         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                         radius, conformal_mapping)
 end
@@ -570,15 +571,15 @@ end
 @inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
 
-@inline λnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
-@inline λnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline λnode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline λnode(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline λnode(i, j, grid::OSSG, ::Center, ::Center) = @allowscalar @inbounds grid.λᶜᶜᵃ[i, j]
+@inline λnode(i, j, grid::OSSG, ::Face  , ::Center) = @allowscalar @inbounds grid.λᶠᶜᵃ[i, j]
+@inline λnode(i, j, grid::OSSG, ::Center, ::Face  ) = @allowscalar @inbounds grid.λᶜᶠᵃ[i, j]
+@inline λnode(i, j, grid::OSSG, ::Face  , ::Face  ) = @allowscalar @inbounds grid.λᶠᶠᵃ[i, j]
 
-@inline φnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.φᶜᶜᵃ[i, j]
-@inline φnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline φnode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline φnode(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φnode(i, j, grid::OSSG, ::Center, ::Center) = @allowscalar @inbounds grid.φᶜᶜᵃ[i, j]
+@inline φnode(i, j, grid::OSSG, ::Face  , ::Center) = @allowscalar @inbounds grid.φᶠᶜᵃ[i, j]
+@inline φnode(i, j, grid::OSSG, ::Center, ::Face  ) = @allowscalar @inbounds grid.φᶜᶠᵃ[i, j]
+@inline φnode(i, j, grid::OSSG, ::Face  , ::Face  ) = @allowscalar @inbounds grid.φᶠᶠᵃ[i, j]
 
 @inline xnode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, j, grid, ℓx, ℓy)) * hack_cosd((φnode(i, j, grid, ℓx, ℓy)))
 @inline ynode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(φnode(i, j, grid, ℓx, ℓy))

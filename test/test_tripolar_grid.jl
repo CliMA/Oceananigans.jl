@@ -59,15 +59,16 @@ end
         φᶜᶜᵃ = φnodes(grid, Center(), Center())
 
         min_Δφ = CUDA.@allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
+        @allowscalar begin
+            @test minimum(λᶜᶜᵃ) ≥ 0
+            @test maximum(λᶜᶜᵃ) ≤ 360
+            @test maximum(φᶜᶜᵃ) ≤ 90
 
-        @test CUDA.@allowscalar minimum(λᶜᶜᵃ) ≥ 0
-        @test CUDA.@allowscalar maximum(λᶜᶜᵃ) ≤ 360
-        @test CUDA.@allowscalar maximum(φᶜᶜᵃ) ≤ 90
-
-        # The minimum latitude is not exactly the southermost latitude because the grid
-        # undulates slightly to maintain the same analytical description in the whole sphere
-        # (i.e. constant latitude lines do not exist anywhere in this grid)
-        @test CUDA.@allowscalar minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
+            # The minimum latitude is not exactly the southermost latitude because the grid
+            # undulates slightly to maintain the same analytical description in the whole sphere
+            # (i.e. constant latitude lines do not exist anywhere in this grid)
+            @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
+        end
     end
 end
 
@@ -205,20 +206,27 @@ end
         fill_halo_regions!(u)
         fill_halo_regions!(v)
 
-        north_boundary_c = on_architecture(CPU(), view(c.data, :, Ny+1:Ny+Hy, 1))
-        north_boundary_cy = on_architecture(CPU(), view(cy.data, :, Ny+1:Ny+Hy, 1))
-        north_boundary_v = on_architecture(CPU(), view(v.data, :, Ny+1:Ny+Hy, 1))
+        c = on_architecture(CPU(), c)
+        cy = on_architecture(CPU(), cy)
+        v = on_architecture(CPU(), v)
+        north_boundary_c = view(c.data, :, Ny+1:Ny+Hy, 1)
+        north_boundary_cy = view(cy.data, :, Ny+1:Ny+Hy, 1)
+        north_boundary_v = view(v.data, :, Ny+1:Ny+Hy, 1)
         @test all(north_boundary_c .== 1)
         @test all(north_boundary_cy .== 1)
         @test all(north_boundary_v .== -1)
 
-        north_interior_boundary_cx = on_architecture(CPU(), view(cx.data, 2:Nx-1, Ny+1:Ny+Hy, 1))
-        north_interior_boundary_u = on_architecture(CPU(), view(u.data, 2:Nx-1, Ny+1:Ny+Hy, 1))
+        cx = on_architecture(CPU(), cx)
+        u = on_architecture(CPU(), u)
+        north_interior_boundary_cx = view(cx.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
+        north_interior_boundary_u = view(u.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
+
+        @show typeof(north_interior_boundary_cx)
         @test all(north_interior_boundary_cx .== 1)
         @test all(north_interior_boundary_u .== -1)
 
-        north_boundary_u_left  = on_architecture(CPU(), view(u.data, 1, Ny+1:Ny+Hy, 1))
-        north_boundary_u_right = on_architecture(CPU(), view(u.data, Nx+1, Ny+1:Ny+Hy, 1))
+        north_boundary_u_left  = view(u.data, 1, Ny+1:Ny+Hy, 1)
+        north_boundary_u_right = view(u.data, Nx+1, Ny+1:Ny+Hy, 1)
         @test all(north_boundary_u_left  .== 1)
         @test all(north_boundary_u_right .== 1)
 
