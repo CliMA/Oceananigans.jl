@@ -2,9 +2,9 @@ using Adapt
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, default_indices, location
-using Oceananigans.Operators: Δx, Δy, Δz, Δr, Δλ, Δφ, Ax, Ay, Az, volume
+using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
 
-import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
+import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
 const AbstractGridMetric = Union{typeof(Δx),
                                  typeof(Δy),
@@ -173,17 +173,17 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 
-julia> zspacings(grid, Center(), Center(), Face())
+julia> rspacings(grid, Center(), Center(), Face())
 KernelFunctionOperation at (Center, Center, Face)
 ├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δz (generic function with 28 methods)
+├── kernel_function: Δr (generic function with 28 methods)
 └── arguments: ("Center", "Center", "Face")
 ```
 """
 function rspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δr, grid, ℓx, ℓy, ℓz)
-    return Δz_op
+    Δr_op = KernelFunctionOperation{LX, LY, LZ}(Δr, grid, ℓx, ℓy, ℓz)
+    return Δr_op
 end
 
 """
