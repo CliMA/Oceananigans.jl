@@ -109,7 +109,7 @@ end
 
 simulation = Simulation(model,
                         Δt = 3600,
-                        stop_time = 1years)
+                        stop_time = 365days)
 
 simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
 
