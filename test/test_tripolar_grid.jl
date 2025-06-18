@@ -60,14 +60,14 @@ end
 
         min_Δφ = CUDA.@allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
 
-        @test minimum(λᶜᶜᵃ) ≥ 0
-        @test maximum(λᶜᶜᵃ) ≤ 360
-        @test maximum(φᶜᶜᵃ) ≤ 90
+        @test CUDA.@allowscalar minimum(λᶜᶜᵃ) ≥ 0
+        @test CUDA.@allowscalar maximum(λᶜᶜᵃ) ≤ 360
+        @test CUDA.@allowscalar maximum(φᶜᶜᵃ) ≤ 90
 
         # The minimum latitude is not exactly the southermost latitude because the grid
         # undulates slightly to maintain the same analytical description in the whole sphere
         # (i.e. constant latitude lines do not exist anywhere in this grid)
-        @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
+        @test CUDA.@allowscalar minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
     end
 end
 
@@ -171,7 +171,7 @@ end
         c = CenterField(grid)
         cx = XFaceField(grid)
         cy = YFaceField(grid)
-        
+
         bcs = FieldBoundaryConditions()
         u_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :u)
         v_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :v)
@@ -202,7 +202,7 @@ end
         fill_halo_regions!(c)
         fill_halo_regions!(cx)
         fill_halo_regions!(cy)
-        fill_halo_regions!(u)   
+        fill_halo_regions!(u)
         fill_halo_regions!(v)
 
         north_boundary_c = on_architecture(CPU(), view(c.data, :, Ny+1:Ny+Hy, 1))

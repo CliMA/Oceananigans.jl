@@ -12,6 +12,7 @@ using OffsetArrays
 using SeawaterPolynomials
 using CUDA
 using MPI
+using Adapt
 
 MPI.Initialized() || MPI.Init()
 
