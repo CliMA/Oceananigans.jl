@@ -14,6 +14,16 @@ function fetch_output(mrf::MultiRegionField, model)
     return parent(field)
 end
 
+function construct_output(mrf::MultiRegionField, grid, user_indices, with_halos)
+    # TODO: support non-default indices I guess
+    # for that we have to figure out how to partition indices, eg user_indices is "global"
+    # indices = output_indices(user_output, grid, user_indices, with_halos)
+
+    indices = (:, :, user_indices[3]) # sorry user
+
+    return construct_output(mrf, indices)
+end
+
 function serializeproperty!(file, location, mrf::MultiRegionField{LX, LY, LZ}) where {LX, LY, LZ}
     p = reconstruct_global_field(mrf)
 
@@ -40,15 +50,12 @@ end
 convert_output(mo::MultiRegionObject, writer) = 
     MultiRegionObject(Tuple(convert(writer.array_type, obj) for obj in mo.regional_objects))
 
-function construct_output(user_output::Union{AbstractField, Reduction}, grid::ConformalCubedSphereGridOfSomeKind,
-                          user_indices, with_halos)
-    multi_region_indices = output_indices(user_output, grid, user_indices, with_halos)
+function construct_output(csf::CubedSphereField{LX, LY, LZ}, grid::ConformalCubedSphereGridOfSomeKind, user_indices,
+                          with_halos) where {LX, LY, LZ}
+    multi_region_indices = output_indices(csf, grid, user_indices, with_halos)
     indices = getregion(multi_region_indices, 1)
 
-    # Don't compute AbstractOperations or Reductions
-    additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)
-
-    return Field(user_output; indices, additional_kw...)
+    return Field(csf; indices, NamedTuple()...)
 end
 
 function serializeproperty!(file, location, csf::CubedSphereField{LX, LY, LZ}) where {LX, LY, LZ}
