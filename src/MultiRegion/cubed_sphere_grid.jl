@@ -15,7 +15,7 @@ import Oceananigans.Grids: grid_name
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
-const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} = 
+const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ},
           ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}}
 
@@ -208,9 +208,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
 
     # First we construct the grid on CPU, and then convert to user-prescribed architecture later...
     devices = validate_devices(partition, CPU(), devices)
-    devices = assign_devices(arch, partition, devices)
+    devices = assign_devices(CPU(), partition, devices)
 
-    connectivity = CubedSphereConnectivity(devices, partition)
+    connectivity = CubedSphereConnectivity(CPU(), devices, partition)
 
     region_size = []
     region_η = []
@@ -231,7 +231,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
         push!(region_rotation, connectivity.rotations[panel_index(r, partition)])
     end
 
-    region_size = MultiRegionObject(tuple(region_size...), devices)
+    region_size = MultiRegionObject(CPU(), tuple(region_size...), devices)
     region_ξ = Iterate(region_ξ)
     region_η = Iterate(region_η)
     region_rotation = Iterate(region_rotation)
@@ -267,7 +267,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
 
     new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(device(arch) for _ in 1:length(partition))
 
-    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
+    new_region_grids = MultiRegionObject(arch, new_region_grids.regional_objects, new_devices)
 
     new_grid = MultiRegionGrid{FT, region_topology..., CZ}(arch,
                                                            partition,
@@ -401,7 +401,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
     devices = validate_devices(partition, arch, devices)
     devices = assign_devices(arch, partition, devices)
 
-    region_Nz = MultiRegionObject(Tuple(repeat([Nz], length(partition))), devices)
+    region_Nz = MultiRegionObject(arch, Tuple(repeat([Nz], length(partition))), devices)
     region_panels = Iterate(Array(1:length(partition)))
 
     region_grids = construct_regionally(ConformalCubedSpherePanelGrid, filepath, arch, FT;
@@ -412,7 +412,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
                                         radius,
                                         halo = panel_halo)
 
-    connectivity = CubedSphereConnectivity(devices, partition)
+    connectivity = CubedSphereConnectivity(arch, devices, partition)
 
     CZ = typeof(getregion(region_grids, 1).z)
 

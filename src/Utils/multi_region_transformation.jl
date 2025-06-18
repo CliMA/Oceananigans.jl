@@ -35,7 +35,7 @@ MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple, devices::
     MultiRegionObject(device(arch), regional_objects, devices)
 
 """
-    MultiRegionObject(regional_objects::Tuple; devices)
+    MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple; devices)
 
 Return a MultiRegionObject
 """
