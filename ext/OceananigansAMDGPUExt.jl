@@ -106,7 +106,6 @@ AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompiler
     end
 end
 
-@inline UT.sync_device!(dev::Int64)  = AMDGPU.synchronize()
 @inline UT.getdevice(roc::GPUVar, i)     = device(roc)
 @inline UT.getdevice(roc::GPUVar)        = device(roc)
 @inline UT.switch_device!(dev::Int64)            = device!(dev)

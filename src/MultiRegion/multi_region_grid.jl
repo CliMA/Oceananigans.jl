@@ -20,7 +20,7 @@ struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, D, Arch} <: AbstractUnderlyi
         new{FT, TX, TY, TZ, CZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
 end
 
-const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid} 
+const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid}
 
 const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, ImmersedMultiRegionGrid{FT, TX, TY, TZ}}
 
@@ -119,9 +119,9 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     connectivity = Connectivity(devices, partition, global_grid)
 
     global_grid  = on_architecture(CPU(), global_grid)
-    local_size   = MultiRegionObject(partition_size(partition, global_grid), devices)
-    local_extent = MultiRegionObject(partition_extent(partition, global_grid), devices)
-    local_topo   = MultiRegionObject(partition_topology(partition, global_grid), devices)
+    local_size   = MultiRegionObject(arch, partition_size(partition, global_grid), devices)
+    local_extent = MultiRegionObject(arch, partition_extent(partition, global_grid), devices)
+    local_topo   = MultiRegionObject(arch, partition_topology(partition, global_grid), devices)
 
     global_topo  = topology(global_grid)
 
@@ -194,12 +194,12 @@ reconstruct_global_immersed_boundary(g::GridFittedBottom{<:Field})   =   GridFit
 reconstruct_global_immersed_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
 reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
 
-@inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), 
+@inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r),
                                                                                                                               _getregion(mrg.immersed_boundary, r),
                                                                                                                               _getregion(mrg.interior_active_cells, r),
                                                                                                                               _getregion(mrg.active_z_columns, r))
 
-@inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(getregion(mrg.underlying_grid, r),  
+@inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(getregion(mrg.underlying_grid, r),
                                                                                                                               getregion(mrg.immersed_boundary, r),
                                                                                                                               getregion(mrg.interior_active_cells, r),
                                                                                                                               getregion(mrg.active_z_columns, r))
