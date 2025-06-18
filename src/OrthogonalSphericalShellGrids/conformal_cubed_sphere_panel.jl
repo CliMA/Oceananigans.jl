@@ -90,15 +90,10 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-     ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-     ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-     ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-     ηᵃᶜᵃ = ynodes(ξη_grid, Center())
-
-     ξᶠᵃᵃ = ntuple(i -> FT(ξᶠᵃᵃ[i]), length(ξᶠᵃᵃ))
-     ξᶜᵃᵃ = ntuple(i -> FT(ξᶜᵃᵃ[i]), length(ξᶜᵃᵃ))
-     ηᵃᶠᵃ = ntuple(i -> FT(ηᵃᶠᵃ[i]), length(ηᵃᶠᵃ))
-     ηᵃᶜᵃ = ntuple(i -> FT(ηᵃᶜᵃ[i]), length(ηᵃᶜᵃ))
+     ξᶠᵃᵃ = Array(xnodes(ξη_grid, Face()))
+     ξᶜᵃᵃ = Array(xnodes(ξη_grid, Center()))
+     ηᵃᶠᵃ = Array(ynodes(ξη_grid, Face()))
+     ηᵃᶜᵃ = Array(ynodes(ξη_grid, Center()))
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
      λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topology, N, H)
@@ -306,18 +301,16 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
         if non_uniform_conformal_mapping
             ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
             optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing_type))
-            ξᶜᵃᵃ = [0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1]) for i in 1:Nξ]
-            ηᵃᶜᵃ = [0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1]) for j in 1:Nη]
+            ξᶠᵃᵃ = map(FT, ξᶠᵃᵃ)
+            ηᵃᶠᵃ = map(FT, ηᵃᶠᵃ)
+            ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
+            ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
         else
-            ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-            ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-            ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-            ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+            ξᶠᵃᵃ = Array(xnodes(ξη_grid, Face()))
+            ξᶜᵃᵃ = Array(xnodes(ξη_grid, Center()))
+            ηᵃᶠᵃ = Array(ynodes(ξη_grid, Face()))
+            ηᵃᶜᵃ = Array(ynodes(ξη_grid, Center()))
         end
-        ξᶠᵃᵃ = ntuple(i -> FT(ξᶠᵃᵃ[i]), length(ξᶠᵃᵃ))
-        ξᶜᵃᵃ = ntuple(i -> FT(ξᶜᵃᵃ[i]), length(ξᶜᵃᵃ))
-        ηᵃᶠᵃ = ntuple(i -> FT(ηᵃᶠᵃ[i]), length(ηᵃᶠᵃ))
-        ηᵃᶜᵃ = ntuple(i -> FT(ηᵃᶜᵃ[i]), length(ηᵃᶜᵃ))
     end
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
