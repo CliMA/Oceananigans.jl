@@ -196,6 +196,10 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     return x
 end
 
+@inline function perform_linear_operation!(linear_operation!, q, p, args...)
+    @apply_regionally linear_operation!(q, p, args...)
+end
+
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
@@ -213,6 +217,8 @@ function iterate!(x, solver, b, args...)
     @debug "ConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
     @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
+
+    perform_linear_operation!(solver.linear_operation!, q, p, args...)
 
     α = ρ / dot(p, q)
 
