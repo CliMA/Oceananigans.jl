@@ -221,7 +221,6 @@ end
         north_interior_boundary_cx = view(cx.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
         north_interior_boundary_u = view(u.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
 
-        @show typeof(north_interior_boundary_cx)
         @test all(north_interior_boundary_cx .== 1)
         @test all(north_interior_boundary_u .== -1)
 

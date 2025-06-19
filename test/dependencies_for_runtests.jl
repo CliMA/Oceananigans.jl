@@ -13,6 +13,7 @@ using SeawaterPolynomials
 using CUDA
 using MPI
 using Adapt
+using GPUArraysCore
 
 MPI.Initialized() || MPI.Init()
 
