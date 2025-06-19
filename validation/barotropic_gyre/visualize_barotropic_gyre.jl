@@ -60,7 +60,7 @@ function visualize_barotropic_gyre(filepath)
 
     statenames = ["u", "v", "η"]
     for (n, var) in enumerate([u, v, η])
-        ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
+        ax = fig[3:7, 3n-2:3n] = LScene(fig, show_axis=false) # make plot area wider
         wireframe!(ax, Sphere(Point3f(0), 0.99f0))
         surface!(ax, x[n], y[n], z[n], color=var, colormap=:balance) #, colorrange=clims[n])
         rotate_cam!(ax.scene, (0, 3π/4, 0))
