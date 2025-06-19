@@ -32,7 +32,6 @@ end
 const ROCGPU = AC.GPU{ROCBackend}
 ROCGPU() = AC.GPU(AMDGPU.ROCBackend())
 
-architecture(::ROCArray) = ROCGPU()
 Base.summary(::ROCGPU) = "ROCGPU"
 
 AC.architecture(::ROCArray) = ROCGPU()
@@ -51,7 +50,7 @@ AC.on_architecture(::ROCGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::ROCArray) = AC.on_architecture(AC.child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:ROCArray}) = AC.on_architecture(child_architecture(arch), a)
 
-function unified_array(::ROCGPU, a::AbstractArray)
+function AC.unified_array(::ROCGPU, a::AbstractArray)
     error("unified_array is not implemented for ROCGPU.")
 end
 
