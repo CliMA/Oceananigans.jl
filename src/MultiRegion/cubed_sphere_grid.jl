@@ -451,7 +451,7 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
 
     new_devices = csg.region_grids.devices
 
-    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
+    new_region_grids = MultiRegionObject(arch, new_region_grids.regional_objects, new_devices)
 
     new_grid = MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch,
                                                    partition,
