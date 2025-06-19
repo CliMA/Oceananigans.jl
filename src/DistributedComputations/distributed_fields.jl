@@ -204,21 +204,21 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 end
 
 # Distributed norm
-@inline function norm(u::DistributedField)
-    n² = dot(u, u)
+@inline function norm(u::DistributedField; condition=nothing)
+    n² = dot(u, u; condition)
     return sqrt(n²)
 end
 
 # Distributed dot product
-@inline function dot(u::DistributedField, v::DistributedField)
-     cu = condition_operand(u, condition, 0) 
-     cv = condition_operand(v, condition, 0) 
-      
-     B = cu * cv # Binary operation 
-     r = zeros(u.grid, 1) 
-      
-     Base.mapreducedim!(identity, +, r, B) 
-     dot_local = CUDA.@allowscalar r[1] 
+@inline function dot(u::DistributedField, v::DistributedField; condition=nothing)
+    cu = condition_operand(u, condition, 0) 
+    cv = condition_operand(v, condition, 0) 
+     
+    B = cu * cv # Binary operation 
+    r = zeros(u.grid, 1) 
+     
+    Base.mapreducedim!(identity, +, r, B) 
+    dot_local = @allowscalar r[1] 
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end

@@ -9,7 +9,9 @@ using Random
 using LinearAlgebra: norm
 Random.seed!(123)
 
-arch = Distributed(CPU(), partition = Partition(x=2, y=Equal()))
+# arch = Distributed(CPU(), partition = Partition(x=2, y=Equal()))
+# arch = Distributed(CPU(), partition = Partition(x=1, y=Equal()))
+arch = Distributed(CPU())
 @show arch
 Nx = Ny = Nz = 64
 topology = (Periodic, Periodic, Periodic)
@@ -18,6 +20,11 @@ x = y = z = (0, 2π)
 
 local_grid  = RectilinearGrid(arch; x, y, z, topology, size=(Nx, Ny, Nz))
 global_grid = RectilinearGrid(;     x, y, z, topology, size=(Nx, Ny, Nz))
+
+@inline bottom_height(x, y) = 0.5
+
+local_grid = ImmersedBoundaryGrid(local_grid, GridFittedBottom(bottom_height))
+global_grid = ImmersedBoundaryGrid(global_grid, GridFittedBottom(bottom_height))
 
 @handshake @info rank, "build local grid"
 
@@ -68,13 +75,15 @@ norm_serial   = Oceananigans.Solvers.norm(b_global)
 @info arch.local_rank, norm_parallel, norm_serial, norm_parallel ≈ norm_serial
 
 reltol = abstol = 1e-7
-preconditioner_global = FFTBasedPoissonSolver(global_grid)
-preconditioner_local  = Oceananigans.DistributedComputations.DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+# preconditioner_global = FFTBasedPoissonSolver(global_grid)
+# preconditioner_local  = Oceananigans.DistributedComputations.DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+preconditioner_global = FFTBasedPoissonSolver(global_grid.underlying_grid)
+preconditioner_local  = Oceananigans.DistributedComputations.DistributedFFTBasedPoissonSolver(global_grid.underlying_grid, local_grid.underlying_grid)
 # preconditioner_local  = nothing
 # preconditioner_global = nothing
 
-pcg_local  = ConjugateGradientPoissonSolver(local_grid,  maxiter=200; reltol, abstol, preconditioner=preconditioner_local)
-pcg_global = ConjugateGradientPoissonSolver(global_grid, maxiter=200; reltol, abstol, preconditioner=preconditioner_global)
+pcg_local  = ConjugateGradientPoissonSolver(local_grid,  maxiter=1000; reltol, abstol, preconditioner=preconditioner_local)
+pcg_global = ConjugateGradientPoissonSolver(global_grid, maxiter=1000; reltol, abstol, preconditioner=preconditioner_global)
 
 # Serial solution
 solve!(xpcg_global, pcg_global.conjugate_gradient_solver, b_global)
@@ -88,10 +97,10 @@ fill!(xpcg_local, 0)
 t_pcg = @timed solve!(xpcg_local, pcg_local.conjugate_gradient_solver, b_local)
 @info "PCG iteration $(pcg_local.conjugate_gradient_solver.iteration), time $(t_pcg.time), residual $(norm(pcg_local.conjugate_gradient_solver.residual))"
 
-xpcg_reconstruct = reconstruct_global_field(xpcg_local)
+# xpcg_reconstruct = reconstruct_global_field(xpcg_local)
 
-@handshake @info arch.local_rank maximum(abs, interior(xpcg_reconstruct))
-@handshake @info arch.local_rank maximum(abs, interior(xpcg_global))
-@handshake @info arch.local_rank maximum(abs, interior(xpcg_reconstruct) .- interior(xpcg_global))
+# @info arch.local_rank maximum(abs, interior(xpcg_reconstruct))
+# @info arch.local_rank maximum(abs, interior(xpcg_global))
+# @info arch.local_rank maximum(abs, interior(xpcg_reconstruct) .- interior(xpcg_global))
 
 
