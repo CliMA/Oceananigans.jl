@@ -4,7 +4,6 @@ using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
-using CUDA, CUDA.CUSPARSE
 using IterativeSolvers: CGStateVariables
 
 import Oceananigans.Grids: architecture

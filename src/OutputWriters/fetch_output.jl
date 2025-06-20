@@ -1,5 +1,3 @@
-using CUDA
-
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
 
 # TODO: figure out how to support this
