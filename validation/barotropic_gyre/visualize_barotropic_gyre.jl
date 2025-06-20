@@ -26,7 +26,6 @@ function geographic2cartesian(λ, φ, r=1)
 end
 
 function visualize_barotropic_gyre(filepath)
-
     file = jldopen(filepath)
 
     Nx = file["grid/Nx"]
@@ -69,7 +68,7 @@ function visualize_barotropic_gyre(filepath)
 
     supertitle = fig[0, :] = Label(fig, plot_title, fontsize=50)
 
-    record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
+    record(fig, output_prefix * ".mp4", iterations, framerate=18) do i
         @info "Animating iteration $i/$(iterations[end])..."
         iter[] = i
     end
