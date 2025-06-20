@@ -1,20 +1,20 @@
 using CubedSphere
 using JLD2
 
-struct CubedSphereConformalMapping{Rotation, F, C}
+struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
-    ξᶠᵃᵃ :: F
-    ηᵃᶠᵃ :: F
-    ξᶜᵃᵃ :: C
-    ηᵃᶜᵃ :: C
+    ξᶠᵃᵃ :: Fξ
+    ηᵃᶠᵃ :: Fη
+    ξᶜᵃᵃ :: Cξ
+    ηᵃᶜᵃ :: Cη
 
     CubedSphereConformalMapping(
         rotation::Rotation,
-        ξᶠᵃᵃ::F,
-        ηᵃᶠᵃ::F,
-        ξᶜᵃᵃ::C,
-        ηᵃᶜᵃ::C
-    ) where {Rotation, F, C} = new{Rotation, F, C}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+        ξᶠᵃᵃ::Fξ,
+        ηᵃᶠᵃ::Fη,
+        ξᶜᵃᵃ::Cξ,
+        ηᵃᶜᵃ::Cη
+    ) where {Rotation, Fξ, Fη, Cξ, Cη} = new{Rotation, Fξ, Fη, Cξ, Cη}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
 end
 
 function on_architecture(architecture, conformal_mapping::CubedSphereConformalMapping)
@@ -90,10 +90,10 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-     ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-     ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-     ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-     ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+     ξᶠᵃᵃ = Array(xnodes(ξη_grid, Face()))
+     ξᶜᵃᵃ = Array(xnodes(ξη_grid, Center()))
+     ηᵃᶠᵃ = Array(ynodes(ξη_grid, Face()))
+     ηᵃᶜᵃ = Array(ynodes(ξη_grid, Center()))
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
      λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topology, N, H)
@@ -144,9 +144,12 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     conformal_mapping)
 end
 
-using Oceananigans.Grids: cpu_face_constructor_ξ, cpu_face_constructor_η
+@inline cpu_face_constructor_ξ(grid::ConformalCubedSpherePanelGrid) = (grid.conformal_mapping.ξᶠᵃᵃ[1],
+                                                                       grid.conformal_mapping.ξᶠᵃᵃ[size(grid, 1)+1])
+@inline cpu_face_constructor_η(grid::ConformalCubedSpherePanelGrid) = (grid.conformal_mapping.ηᵃᶠᵃ[1],
+                                                                       grid.conformal_mapping.ηᵃᶠᵃ[size(grid, 2)+1])
 
-function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=architecture(old_grid), rotation=nothing)
+function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
@@ -298,13 +301,15 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
         if non_uniform_conformal_mapping
             ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
             optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing_type))
-            ξᶜᵃᵃ = [0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1]) for i in 1:Nξ]
-            ηᵃᶜᵃ = [0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1]) for j in 1:Nη]
+            ξᶠᵃᵃ = map(FT, ξᶠᵃᵃ)
+            ηᵃᶠᵃ = map(FT, ηᵃᶠᵃ)
+            ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
+            ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
         else
-            ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-            ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-            ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-            ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+            ξᶠᵃᵃ = Array(xnodes(ξη_grid, Face()))
+            ξᶜᵃᵃ = Array(xnodes(ξη_grid, Center()))
+            ηᵃᶠᵃ = Array(ynodes(ξη_grid, Face()))
+            ηᵃᶜᵃ = Array(ynodes(ξη_grid, Center()))
         end
     end
 
