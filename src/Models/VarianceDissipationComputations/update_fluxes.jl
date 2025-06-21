@@ -87,6 +87,13 @@ function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKu
     launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, Val(stage), ℂ, advection, U, c)
 end
 
+function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::RungeKutta3TimeStepper, stage, advection, U, c) 
+    ℂ = ifelse(stage == 2, ts.γ³, 
+        ifelse(stage == 1, ts.ζ³ + ts.γ²,
+                           ts.ζ² + ts.γ¹)) 
+    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, Val(stage), ℂ, advection, U, c)
+end
+
 cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) = 
     launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
@@ -95,11 +102,25 @@ function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKut
     launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, Val(stage), ℂ, clo, D, B, c, tracer_id, clk, model_fields)
 end
 
+function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::RungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) 
+    ℂ = ifelse(stage == 2, ts.γ³, 
+        ifelse(stage == 1, ts.ζ³ + ts.γ²,
+                           ts.ζ² + ts.γ¹)) 
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, Val(stage), ℂ, clo, D, B, c, tracer_id, clk, model_fields)
+end
+
 update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
 function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, U) 
     ℂ = ifelse(stage == 2, ts.γ³, ts.γ³ * ts.γ²) 
+    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, Val(stage), ℂ, U)
+end
+
+function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::RungeKutta3TimeStepper, stage, U) 
+    ℂ = ifelse(stage == 2, ts.γ³, 
+        ifelse(stage == 1, ts.ζ³ + ts.γ²,
+                           ts.ζ² + ts.γ¹)) 
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, Val(stage), ℂ, U)
 end
 
