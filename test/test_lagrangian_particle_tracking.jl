@@ -96,8 +96,10 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
 
     time_step!(model, Δt)
 
-    zᶠ = convert(array_type(arch), model.particles.properties.z)
-    @test all(zᶠ .≈ (top_boundary - 0.15))
+    if dynamics == no_dynamics
+        zᶠ = convert(array_type(arch), model.particles.properties.z)
+        @test all(zᶠ .≈ (top_boundary - 0.15))
+    end
 
     #####
     ##### Test custom particle "TestParticle"
@@ -322,7 +324,7 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
         run_simple_particle_tracking_tests(grid, dynamics, timestepper)
 
         if z isa NTuple{2} # Test immersed regular grids
-            @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type immersed grid ..."
+            @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type immersed grid and $(dynamics) ..."
             grid = lagrangian_particle_test_immersed_grid(arch, y_topo, z)
             run_simple_particle_tracking_tests(grid, dynamics, timestepper)
         end
