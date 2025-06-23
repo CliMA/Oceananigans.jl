@@ -6,7 +6,7 @@ export
     HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles,
+    LagrangianParticles, DroguedBuoyDynamics,
     BoundaryConditionOperation, ForcingOperation,
     seawater_density
 
