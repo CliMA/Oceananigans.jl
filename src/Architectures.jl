@@ -62,9 +62,9 @@ device!(::CPU, i) = KA.device!(CPU(), i+1)
 device!(::CPU) = nothing
 device!(a::GPU, i) = KA.device!(a.device, i+1)
 ndevices(a::CPU) = KA.ndevices(KA.CPU())
-ndevices(a::AbstractArchitecture) = KA.ndevices(a.backend)
+ndevices(a::AbstractArchitecture) = KA.ndevices(a.device)
 synchronize(a::CPU) = KA.synchronize(KA.CPU())
-synchronize(a::AbstractArchitecture) = KA.synchronize(a.backend)
+synchronize(a::AbstractArchitecture) = KA.synchronize(a.device)
 
 architecture() = nothing
 architecture(::Number) = nothing
