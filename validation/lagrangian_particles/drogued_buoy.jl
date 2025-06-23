@@ -1,7 +1,5 @@
 using Oceananigans, Oceananigans.Units, StructArrays
 
-using Oceananigans.Models.LagrangianParticleTracking: DroguedBuoyDynamics
-
 grid = RectilinearGrid(size = (32, 32, 16), x = (-100, 100), y = (-100, 100), z = (-25, 0))
 
 struct CTrackingParticle{T}

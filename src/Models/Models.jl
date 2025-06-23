@@ -109,7 +109,7 @@ using .HydrostaticFreeSurfaceModels:
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
-using .LagrangianParticleTracking: LagrangianParticles
+using .LagrangianParticleTracking: LagrangianParticles, DroguedBuoyDynamics
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
