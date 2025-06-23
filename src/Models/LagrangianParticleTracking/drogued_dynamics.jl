@@ -13,6 +13,9 @@ struct DroguedBuoyDynamics{DD}
     drogue_depths :: DD
 end
 
+Adapt.adapt_structure(to, dbd::DroguedBuoyDynamics) = 
+    DroguedBuoyDynamics(adapt(to, dbd.drogue_depths))
+
 @inline (::DroguedBuoyDynamics)(args...) = nothing
 
 const DroguedBuoyParticle = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedBuoyDynamics}
