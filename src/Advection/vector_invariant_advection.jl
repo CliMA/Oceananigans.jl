@@ -132,10 +132,12 @@ Base.summary(a::VectorInvariant)                 = "VectorInvariant"
 Base.summary(a::MultiDimensionalVectorInvariant) = "VectorInvariant, multidimensional reconstruction"
 
 function Base.summary(a::WENOVectorInvariant{N}) where N
+    vorticity_order = weno_order(a.vorticity_scheme)
+    vertical_order = weno_order(a.vertical_advection_scheme)
     order = weno_order(a.vorticity_scheme)
     FT = eltype(a.vorticity_scheme)
     FT2 = eltype2(a.vorticity_scheme)
-    return string("WENOVectorInvariant{$N, $FT, $FT2}(order=$order)")
+    return string("WENOVectorInvariant{$N, $FT, $FT2}(vorticity_order=$vorticity_order, vertical_order=$vertical_order)")
 end
 
 function Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT}
@@ -148,7 +150,9 @@ function Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT}
 
     if a.vertical_advection_scheme isa AbstractUpwindBiasedAdvectionScheme
         print(io, "├── vertical_advection_scheme: ", summary(a.vertical_advection_scheme), '\n')
-        print(io, "└── upwinding: ", summary(a.vorticity_stencil))
+        print(io, "├── kinetic_energy_gradient_scheme: ", summary(a.kinetic_energy_gradient_scheme), '\n')
+        print(io, "├── divergence_scheme: ", summary(a.divergence_scheme), '\n')
+        print(io, "└── upwinding: ", summary(a.upwinding))
     else
         print(io, "└── vertical_advection_scheme: ", summary(a.vertical_advection_scheme))
     end
@@ -188,11 +192,13 @@ Example
 julia> using Oceananigans
 
 julia> WENOVectorInvariant()
-WENOVectorInvariant{5, Float64, Float32}(order=9)
+WENOVectorInvariant{5, Float64, Float32}(vorticity_order=9, vertical_order=5)
 ├── vorticity_scheme: WENO{5, Float64, Float32}(order=9)
 ├── vorticity_stencil: Oceananigans.Advection.VelocityStencil
 ├── vertical_advection_scheme: WENO{3, Float64, Float32}(order=5)
-└── upwinding: Oceananigans.Advection.VelocityStencil
+├── kinetic_energy_gradient_scheme: WENO{3, Float64, Float32}(order=5)
+├── divergence_scheme: WENO{3, Float64, Float32}(order=5)
+└── upwinding: OnlySelfUpwinding
 """
 function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              upwinding = nothing,
@@ -226,11 +232,9 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
 
     schemes = (vorticity_scheme, vertical_advection_scheme, kinetic_energy_gradient_scheme, divergence_scheme)
-
     NX = maximum(required_halo_size_x(s) for s in schemes)
     NY = maximum(required_halo_size_y(s) for s in schemes)
     NZ = maximum(required_halo_size_z(s) for s in schemes)
-
     N = max(NX, NY, NZ)
 
     FT = eltype(vorticity_scheme) # assumption
