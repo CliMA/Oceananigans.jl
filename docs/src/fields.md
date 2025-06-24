@@ -348,8 +348,9 @@ set!(one_d_c, still_pretty_fun)
 ```
 
 !!! note
-        Even on grids with `Flat` directions, `Field`s are always represented with three-dimensional
-        arrays.  As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat` directions indexed with `1`.
+    `Field` data is always stored in three-dimensional arrays --- even when they have `Nothing` locations, 
+    or on grids with `Flat` directions. As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat` 
+    directions indexed with `1`.
 
 ### A bit more about setting with functions
 
