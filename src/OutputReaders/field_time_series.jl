@@ -247,9 +247,9 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            # Try to convert to a range, cuz
+            # Try to convert to a lighter-weight range for efficiency
             time_range = range(first(times), last(times), length=length(times))
-            if all(time_range .≈ times) # good enough for most
+            if isapprox(time_range, times) 
                 times = time_range
             end
 
@@ -742,11 +742,7 @@ function interior(fts::FieldTimeSeries)
 end
 
 # FieldTimeSeries boundary conditions
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC}
-
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
+@inline getbc(condition::Union{FTS, GPUFTS}, i::Int, j::Int, grid::AbstractGrid, clock, args...) = condition[i, j, Time(clock.time)]
 
 #####
 ##### Fill halo regions

@@ -1,20 +1,28 @@
 using MPI
 using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition
+using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: local_size,
-                                            barrier!,
-                                            all_reduce,
-                                            ranks,
-                                            inject_halo_communication_boundary_conditions,
-                                            concatenate_local_sizes
+using Oceananigans.DistributedComputations:
+    local_size,
+    barrier!,
+    all_reduce,
+    ranks,
+    inject_halo_communication_boundary_conditions,
+    concatenate_local_sizes,
+    communication_buffers
 
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
 import Oceananigans.DistributedComputations: reconstruct_global_grid
+import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 
+const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
 
-const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
-const DistributedTripolarGridOfSomeKind = Union{DistributedTripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}}
+const DistributedTripolarGridOfSomeKind = Union{
+    DistributedTripolarGrid,
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
+}
 
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)
@@ -303,7 +311,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, dat
                                             bottom=new_bcs.bottom)
     end
 
-    buffers = FieldBoundaryBuffers(grid, data, new_bcs)
+    buffers = communication_buffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end

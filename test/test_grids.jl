@@ -6,7 +6,7 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
 
-using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -281,6 +281,9 @@ function test_regular_rectilinear_constructor_errors(FT)
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
 
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+    
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
 
     return nothing
 end
@@ -741,7 +744,7 @@ end
 
 function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
 
-    grid = conformal_cubed_sphere_panel(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+    grid = ConformalCubedSpherePanelGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -912,6 +915,13 @@ end
     end
 
     @testset "Latitude-longitude grid" begin
+        @info "  Testing latitude-longitude grid construction errors..."
+
+	for FT in float_types
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+	end
+
         @info "  Testing general latitude-longitude grid..."
 
         for FT in float_types
@@ -974,6 +984,51 @@ end
 
             cpu_grid_again = on_architecture(CPU(), grid)
             @test cpu_grid_again == cpu_grid
+        end
+
+        for arch in archs
+            for FT in float_types
+                @info " Testing construction of LatitudeLongitudeGrid from RectilinearGrid..."
+                Nx = 4
+                Ny = 5
+                Nz = 6
+                Lx = Ly = 2π / 180
+                rectilinear_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-Ly/2, Ly/2), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(0, 0))
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == -1
+                @test λ[Nx+1] == +1
+                @test φ[1]  == -1
+                @test φ[Ny+1] == +1
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(273, 0))
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == 272
+                @test λ[Nx+1] == 274
+                @test φ[1]  == -1
+                @test φ[Ny+1] == +1
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+
+
+                Lx = 2π / 180 * cosd(45)
+                Ly = 2π / 180
+                rectilinear_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-Ly/2, Ly/2), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(0, 45))
+
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == -1
+                @test λ[Nx+1] == +1
+                @test φ[1]  == 44
+                @test φ[Ny+1] == 46
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+            end
         end
     end
 
@@ -1042,7 +1097,7 @@ end
         end
 
         # Testing show function
-        grid = conformal_cubed_sphere_panel(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = ConformalCubedSpherePanelGrid(CPU(), size=(10, 10, 1), z=(0, 1))
 
         @test try
             show(grid); println()
@@ -1075,7 +1130,7 @@ end
                 radius = 234.5e6
 
                 Nx, Ny = 10, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ[1:Nx, 1:Ny]) ≈ 4π * grid.radius^2 / 6
@@ -1085,16 +1140,16 @@ end
 
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
             end
         end

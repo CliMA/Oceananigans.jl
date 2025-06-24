@@ -28,6 +28,7 @@ using DocStringExtensions
 using Base: @propagate_inbounds
 using Adapt
 using OffsetArrays
+using MuladdMacro: @muladd
 
 using Oceananigans
 using Oceananigans.Grids

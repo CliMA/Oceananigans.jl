@@ -14,7 +14,7 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
+                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 end
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ,
@@ -134,6 +134,15 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Wait for setup step to finish
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
 
+    barotropic_timestepper = free_surface.timestepper
+    baroclinic_timestepper = model.timestepper
+
+    stage = model.clock.stage
+
+    # Reset the filtered fields and the barotropic timestepper to zero. 
+    # In case of an RK3 timestepper, reset also the free surface state for the last stage.
+    @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
+
     # Calculate the substepping parameterers
     # barotropic time step as fraction of baroclinic step and averaging weights
     Nsubsteps = calculate_substeps(substepping, Δt)
@@ -168,12 +177,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
-    end
-
-    # Needed for Mutable to compute the barotropic correction.
-    # TODO: Would it be possible to remove it in some way?
-    if model.grid isa MutableGridOfSomeKind
-        fill_halo_regions!(η)
     end
 
     return nothing

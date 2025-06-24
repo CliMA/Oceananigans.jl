@@ -4,7 +4,7 @@ using Oceananigans: fields
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
-Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
+Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [LeMoin1991](@citet).
 """
 struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
@@ -24,12 +24,13 @@ end
                            Gⁿ = map(similar, prognostic_fields),
                            G⁻ = map(similar, prognostic_fields))
 
-Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, typically equal to the prognostic_fields can be modified via an optional `kwargs`.
+Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
+and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
+to the `prognostic_fields` can be modified via the optional `kwargs`.
 
-The scheme described by [LeMoin1991](@citet). In a nutshel, the 3rd-order
-Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
-step is applied after at each substep.
+The scheme is described by [LeMoin1991](@citet). In a nutshell, the 3rd-order
+Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
+A pressure correction step is applied after at each substep.
 
 The state `U` after each substep `m` is
 
@@ -39,11 +40,18 @@ Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
 
 where `Uᵐ` is the state at the ``m``-th substep, `Gᵐ` is the tendency
 at the ``m``-th substep, `Gᵐ⁻¹` is the tendency at the previous substep,
-and constants ``γ¹ = 8/15``, ``γ² = 5/12``, ``γ³ = 3/4``,
-``ζ¹ = 0``, ``ζ² = -17/60``, ``ζ³ = -5/12``.
+and constants `γ¹ = 8/15`, `γ² = 5/12`, `γ³ = 3/4`, `ζ¹ = 0`, `ζ² = -17/60`,
+and `ζ³ = -5/12`.
 
-The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
-`U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U⁴`.
+The state at the first substep is taken to be the one that corresponds to
+the ``n``-th timestep, `U¹ = Uⁿ`, and the state after the third substep is
+then the state at the `Uⁿ⁺¹ = U⁴`.
+
+References
+==========
+Le, H. and Moin, P. (1991). "An improvement of fractional step methods for the incompressible
+    Navier–Stokes equations." Journal of Computational Physics, 92, 369–379.
+
 """
 function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 implicit_solver::TI = nothing,
@@ -103,8 +111,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, first_stage_Δt; stage=true)
     model.clock.last_stage_Δt = first_stage_Δt
 
-    calculate_pressure_correction!(model, first_stage_Δt)
-    pressure_correct_velocities!(model, first_stage_Δt)
+    compute_pressure_correction!(model, first_stage_Δt)
+    make_pressure_correction!(model, first_stage_Δt)
 
     cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -119,8 +127,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, second_stage_Δt; stage=true)
     model.clock.last_stage_Δt = second_stage_Δt
 
-    calculate_pressure_correction!(model, second_stage_Δt)
-    pressure_correct_velocities!(model, second_stage_Δt)
+    compute_pressure_correction!(model, second_stage_Δt)
+    make_pressure_correction!(model, second_stage_Δt)
 
     cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -141,8 +149,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     model.clock.last_stage_Δt = corrected_third_stage_Δt
     model.clock.last_Δt = Δt
 
-    calculate_pressure_correction!(model, third_stage_Δt)
-    pressure_correct_velocities!(model, third_stage_Δt)
+    compute_pressure_correction!(model, third_stage_Δt)
+    make_pressure_correction!(model, third_stage_Δt)
 
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, third_stage_Δt)

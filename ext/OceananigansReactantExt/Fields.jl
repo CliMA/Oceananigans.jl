@@ -24,7 +24,7 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       field.indices,
                       field.operand,
                       field.status,
-                      field.boundary_buffers)
+                      field.communication_buffers)
 
 function set!(u::ShardedDistributedField, V::ShardedDistributedField)
     @jit _set_to_field!(u, V)
@@ -50,7 +50,7 @@ function set_to_function!(u::ReactantField, f)
     cpu_u = Field(Oceananigans.Fields.location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
     f_field = Oceananigans.Fields.field(Oceananigans.Fields.location(u), f, cpu_grid)
     set!(cpu_u, f_field)
-    copyto!(parent(u), parent(cpu_u))
+    copyto!(interior(u), interior(cpu_u))
     return nothing
 end
 

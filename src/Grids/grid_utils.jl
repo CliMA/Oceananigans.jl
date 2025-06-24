@@ -296,12 +296,6 @@ function domain_summary(topo, name, (left, right))
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
-    prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1)
-    return string(prefix, padding, coordinate_summary(topo, z, name))
-end
-
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1)
@@ -349,6 +343,7 @@ It has been known since the time of Euler and Lagrange that
 
 References
 ==========
+
 * Euler, L. (1778) De mensura angulorum solidorum, Opera omnia, 26, 204-233 (Orig. in Acta adac. sc. Petrop. 1778)
 * Lagrange,  J.-L. (1798) Solutions de quilquies problèmes relatifs au triangles sphéruques, Oeuvres, 7, 331-359.
 """
@@ -380,6 +375,7 @@ that ``P`` above is the same as the volume defined by the vectors `a`, `b`, and 
 
 References
 ==========
+
 * Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
 """
 function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)

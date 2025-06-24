@@ -7,23 +7,38 @@ using Oceananigans.Architectures: cpu_architecture
 
 iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 
-find_time_index(time::Number, file_times)       = findfirst(t -> t ≈ time, file_times)
-find_time_index(time::AbstractTime, file_times) = findfirst(t -> t == time, file_times)
+function find_time_index(time::Number, file_times, Δt)
+    # We introduce an additional absolute tolerance to accomodate
+    # time values very close to zero, for which a relative tolerance will not work
+    # (see https://github.com/CliMA/Oceananigans.jl/pull/4505)
+    ϵa = 100 * eps(Δt)
+    ϵr = sqrt(eps(eltype(file_times))) # The default relative tolerance used by `isapprox` when atol == 0
+    return findfirst(t -> isapprox(t, time; atol=ϵa, rtol=ϵr), file_times)
+end
+
+find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)
 
 function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; warn_missing_data=true)
     file = jldopen(path; fts.reader_kw...)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
-
+    
+    # Compute a timescale for comparisons
+    Δt = mean(diff(file_times))
+    
     arch = architecture(fts)
 
     # TODO: a potential optimization here might be to load
     # all of the data into a single array, and then transfer that
     # to parent(fts).
+
+    # Index times on the CPU
+    cpu_times = on_architecture(CPU(), fts.times)
+    
     for n in time_indices(fts)
-        t = fts.times[n]
-        file_index = find_time_index(t, file_times)
+        t = cpu_times[n]
+        file_index = find_time_index(t, file_times, Δt)
 
         if isnothing(file_index) # the time does not exist in the file
             if warn_missing_data

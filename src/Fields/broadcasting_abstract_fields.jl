@@ -15,7 +15,8 @@ Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) whe
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
-Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
+Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType})       where {ElType} = similar(Array{ElType}, axes(bc))
+Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}, dims) where {ElType} = similar(Array{ElType,length(dims)}, dims)
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
 const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
