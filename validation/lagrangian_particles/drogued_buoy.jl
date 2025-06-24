@@ -20,7 +20,7 @@ particle_properties = StructArray{CTrackingParticle}((zeros(n_particles),
                                                       zeros(n_particles), 
                                                       zeros(n_particles)))
 
-particles = LagrangianParticles(particle_properties; dynamics = DroguedBuoyDynamics(drogue_depths), tracked_fields = (; c))
+particles = LagrangianParticles(particle_properties; dynamics = DroguedDynamics(drogue_depths), tracked_fields = (; c))
 
 ρₒ = 1024
 u₁₀ = 10    # m s⁻¹, average wind velocity 10 meters above the ocean
@@ -100,11 +100,12 @@ x_plt = @lift file["timeseries/particles/$(iterations[$n])"].x
 y_plt = @lift file["timeseries/particles/$(iterations[$n])"].y
 particle_c_plt = @lift file["timeseries/particles/$(iterations[$n])"].c
 
-heatmap!(ax, xnodes(c), ynodes(c), c_plt, colorrange = (0, 1), alpha = 0.5)
+heatmap!(ax, xnodes(c), ynodes(c), c_plt, colorrange = (0, 1))
 
 scatter!(ax, x_plt, y_plt, color = particle_c_plt, colorrange = (0, 1))
+scatter!(ax, )
 
-heatmap!(ax2, xnodes(c), znodes(c), c_slice_plt, alpha = 0.5, colorrange = (0, 1))
+heatmap!(ax2, xnodes(c), znodes(c), c_slice_plt, colorrange = (0, 1))
 
 scatter!(ax2, x_plt, drogue_depths, color = particle_c_plt, colorrange = (0, 1))
 

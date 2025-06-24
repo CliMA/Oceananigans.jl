@@ -6,7 +6,7 @@ export
     HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles, DroguedBuoyDynamics,
+    LagrangianParticles, DroguedDynamics,
     BoundaryConditionOperation, ForcingOperation,
     seawater_density
 
@@ -109,7 +109,7 @@ using .HydrostaticFreeSurfaceModels:
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
-using .LagrangianParticleTracking: LagrangianParticles, DroguedBuoyDynamics
+using .LagrangianParticleTracking: LagrangianParticles, DroguedDynamics
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,

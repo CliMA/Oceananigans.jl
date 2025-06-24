@@ -1,24 +1,24 @@
 """
-    DroguedBuoyDynamics(drogue_depths)
+    DroguedDynamics(depths)
 
-`DroguedBuoyDynamics` goes in the `dynamics` slot of `LagrangianParticles` 
+`DroguedDynamics` goes in the `dynamics` slot of `LagrangianParticles` 
 and modifies their behaviour to mimic the behaviour of bouys which are 
-drogued at `drogue_depths`. The particles remain at the their `z` position
+drogued at `depths`. The particles remain at the their `z` position
 so the "measurment depth can be set", and then are advected in the `x` and `y`
-directions according to the velocity field at `drogue_depths`.
+directions according to the velocity field at `depths`.
 
-`drogue_depths` should be an array of length `length(particles)`.
+`depths` should be an array of length `length(particles)`.
 """
-struct DroguedBuoyDynamics{DD}
-    drogue_depths :: DD
+struct DroguedDynamics{DD}
+    depths :: DD
 end
 
-Adapt.adapt_structure(to, dbd::DroguedBuoyDynamics) = 
-    DroguedBuoyDynamics(adapt(to, dbd.drogue_depths))
+Adapt.adapt_structure(to, dbd::DroguedDynamics) = 
+    DroguedDynamics(adapt(to, dbd.depths))
 
-@inline (::DroguedBuoyDynamics)(args...) = nothing
+@inline (::DroguedDynamics)(args...) = nothing
 
-const DroguedBuoyParticle = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedBuoyDynamics}
+const DroguedBuoyParticle = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedDynamics}
 
 function advect_lagrangian_particles!(particles::DroguedBuoyParticle, model, Δt)
     grid = model.grid
@@ -27,18 +27,18 @@ function advect_lagrangian_particles!(particles::DroguedBuoyParticle, model, Δt
 
     launch!(arch, grid, parameters,
             _advect_drogued_particles!,
-            particles.properties, particles.restitution, model.grid, Δt, total_velocities(model), particles.dynamics.drogue_depths)
+            particles.properties, particles.restitution, model.grid, Δt, total_velocities(model), particles.dynamics.depths)
 
     return nothing
 end
 
-@kernel function _advect_drogued_particles!(properties, restitution, grid, Δt, velocities, drogue_depths)
+@kernel function _advect_drogued_particles!(properties, restitution, grid, Δt, velocities, depths)
     p = @index(Global)
 
     @inbounds begin
         x = properties.x[p]
         y = properties.y[p]
-        z = drogue_depths[p]
+        z = depths[p]
     end
 
     x⁺, y⁺, _ = advect_particle((x, y, z), properties, p, restitution, grid, Δt, velocities)

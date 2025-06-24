@@ -75,7 +75,7 @@ export
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles, DroguedBuoyDynamics,
+    LagrangianParticles, DroguedDynamics,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
