@@ -1,7 +1,7 @@
 # Fields basics
 
 `Field`s and its relatives are core Oceananigans data structures.
-`Field`s are more or less arrays of _three dimensional_ `data` located on a `grid`, whose entries
+`Field`s are arrays of `data` located on a `grid`, whose entries
 correspond to the average value of some quantity over some finite-sized volume.
 `Field`s also may contain `boundary_conditions`, may be computed from an `operand`
 or expression involving other fields, and may cover only a portion of the total
