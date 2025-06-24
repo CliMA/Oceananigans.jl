@@ -100,12 +100,8 @@ x_plt = @lift file["timeseries/particles/$(iterations[$n])"].x
 y_plt = @lift file["timeseries/particles/$(iterations[$n])"].y
 particle_c_plt = @lift file["timeseries/particles/$(iterations[$n])"].c
 
-heatmap!(ax, xnodes(c), ynodes(c), c_plt, colorrange = (0, 1))
-
+heatmap!(ax, xnodes(c), ynodes(c), c_plt, colorrange = (0, 1), alpha = 0.5)
 scatter!(ax, x_plt, y_plt, color = particle_c_plt, colorrange = (0, 1))
-scatter!(ax, )
-
-heatmap!(ax2, xnodes(c), znodes(c), c_slice_plt, colorrange = (0, 1))
-
+heatmap!(ax2, xnodes(c), znodes(c), c_slice_plt, colorrange = (0, 1), alpha = 0.5)
 scatter!(ax2, x_plt, drogue_depths, color = particle_c_plt, colorrange = (0, 1))
 
