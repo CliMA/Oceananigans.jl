@@ -1,6 +1,5 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.Models: AbstractModel
 using Oceananigans.Utils: AbstractSchedule, prettytime
 using Oceananigans.TimeSteppers: Clock
 
@@ -68,9 +67,9 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename= "averaged_velocity_data.jld2",
-                                                          schedule = AveragedTimeInterval(4days, window=2days, stride=2))
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
+                                                    filename= "averaged_velocity_data.jld2",
+                                                    schedule = AveragedTimeInterval(4days, window=2days, stride=2))
 ```
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)
@@ -82,7 +81,7 @@ function next_actuation_time(sch::AveragedTimeInterval)
     t₀ = sch.first_actuation_time
     N = sch.actuations
     interval = sch.interval
-    return t₀ + (N + 1) * interval 
+    return t₀ + (N + 1) * interval
     # the next actuation time is the end of the time averaging window
 end
 
@@ -92,7 +91,7 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <=  next_actuation_time(sch) - sch.window  
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <=  next_actuation_time(sch) - sch.window
 end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch)
 
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
@@ -186,7 +185,7 @@ function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=tru
         result = similar(operand)
         result .= operand
     end
-        
+
     return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule, fetch_operand)
 end
 
@@ -209,7 +208,7 @@ function (wta::WindowedTimeAverage)(model)
     return wta.result
 end
 
-function accumulate_result!(wta, model::AbstractModel)
+function accumulate_result!(wta, model)
     integrand = wta.fetch_operand ? fetch_output(wta.operand, model) : wta.operand
     return accumulate_result!(wta, model.clock, integrand)
 end
@@ -248,7 +247,7 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
 
         if end_of_window(wta.schedule, model.clock)
             accumulate_result!(wta, model)
-            # Save averaging start time and the initial data collection time            
+            # Save averaging start time and the initial data collection time
             wta.schedule.collecting = false
             wta.schedule.actuations += 1
 
@@ -280,7 +279,7 @@ output_averaging_schedule(output::WindowedTimeAverage) = output.schedule
 #####
 ##### Utils for OutputWriters
 #####
- 
+
 time_average_outputs(schedule, outputs, model) = schedule, outputs # fallback
 
 """

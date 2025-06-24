@@ -135,7 +135,7 @@ end
 
 function compute_at!(Π::MultiaryOperation, time)
     for a in Π.args
-        compute_at!(a, time) 
+        compute_at!(a, time)
     end
     return Π
 end
@@ -156,4 +156,3 @@ on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} 
                                   on_architecture(to, multiary.args),
                                   on_architecture(to, multiary.▶),
                                   on_architecture(to, multiary.grid))
-                                  

@@ -63,17 +63,17 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     v = wrap_prescribed_field(Center, Face, Center, velocities.v, grid; clock, parameters)
     w = wrap_prescribed_field(Center, Center, Face, velocities.w, grid; clock, parameters)
 
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
+    fill_halo_regions!((u, v))
     fill_halo_regions!(w)
-    prescribed_velocities = (; u, v, w)
-    @apply_regionally replace_horizontal_vector_halos!(prescribed_velocities, grid)
 
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) = 
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) = 
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+
+free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
+free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
@@ -91,7 +91,7 @@ hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, trac
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
-step_free_surface!(::Nothing, model, timestepper, Δt) = nothing 
+step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
@@ -100,7 +100,7 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing, velocities, grid) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing

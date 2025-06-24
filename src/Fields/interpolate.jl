@@ -70,7 +70,7 @@ end
     x₀ = xnode(1, 1, 1, grid, locs...)
     dx = Δx(1, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (x - x₀) / dx) + 1 # 1 - based indexing 
+    return convert(FT, (x - x₀) / dx) + 1 # 1 - based indexing
 end
 
 @inline function fractional_x_index(x, locs, grid::RectilinearGrid)
@@ -82,9 +82,9 @@ end
     return convert(FT, fractional_index(x, xn, Nx))
 end
 
-# Because of precision errors with numbers close to 0, 
+# Because of precision errors with numbers close to 0,
 # we need to make sure we approach the correct limit also from the left.
-@inline function convert_to_0_360(x::FT) where FT 
+@inline function convert_to_0_360(x::FT) where FT
     x₀ = ((x % 360) + 360) % 360
     x⁻ = - eps(convert(FT, 360))
     return ifelse(x⁻ ≤ x < 0, 360 + x, x₀)
@@ -97,7 +97,7 @@ end
 @inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
 
 # Convert x to lie in the λ₀ : λ₀ + 360 range by accounting for the cyclic
-# nature of the longitude coordinate. 
+# nature of the longitude coordinate.
 @inline function convert_to_λ₀_λ₀_plus360(x, λ₀)
     x  = convert_to_0_360(x)
     n  = find_λ_range(λ₀)
@@ -106,7 +106,7 @@ end
     return x + 360 * n
 end
 
-# When interpolating longitude values, we convert the longitude to 
+# When interpolating longitude values, we convert the longitude to
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
 # of the interpolating grid.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
@@ -115,10 +115,10 @@ end
     Δλ = λ₁ - λ₀
     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2) # Making sure we have the right range
     FT = eltype(grid)
-    return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
+    return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing
 end
 
-# When interpolating longitude values, we convert the longitude to 
+# When interpolating longitude values, we convert the longitude to
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
 # of the interpolating grid.
 @inline function fractional_x_index(λ, locs, grid::LatitudeLongitudeGrid)
@@ -126,8 +126,8 @@ end
      Tλ = topology(grid, 1)()
      Nλ = length(loc, Tλ, grid.Nx)
      λn = λnodes(grid, locs...)
-     λ₀ = @inbounds λn[1]     
-     λ₁ = @inbounds λn[2]     
+     λ₀ = @inbounds λn[1]
+     λ₁ = @inbounds λn[2]
      Δλ = λ₁ - λ₀
      λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2)
      FT = eltype(grid)
@@ -140,14 +140,14 @@ end
     y₀ = ynode(1, 1, 1, grid, locs...)
     dy = Δy(1, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (y - y₀) / dy) + 1 # 1 - based indexing 
+    return convert(FT, (y - y₀) / dy) + 1 # 1 - based indexing
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
-    φ₀ = φnode(1, 1, 1, grid, locs...)    
+    φ₀ = φnode(1, 1, 1, grid, locs...)
     φ₁ = φnode(1, 2, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing 
+    return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
@@ -175,7 +175,7 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
     dz = Δz(1, 1, 1, grid, locs...)
-    return convert(FT, (z - z₀) / dz) + 1 # 1 - based indexing 
+    return convert(FT, (z - z₀) / dz) + 1 # 1 - based indexing
 end
 
 @inline function fractional_z_index(z, locs, grid)
@@ -411,3 +411,4 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     return to_field
 end
+

@@ -6,14 +6,14 @@ using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Grids: get_active_column_map, get_active_cells_map
 
-# REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
+# REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU,
 # The following types cannot be used to dispatch in kernels!!!
 
 # An IBG with a single interior active cells map that includes the whole :xyz domain
 const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
 # An IBG with an interior active cells map subdivided in 5 different sub-maps.
-# Only used (for the moment) in the case of distributed architectures where the boundary adjacent region 
+# Only used (for the moment) in the case of distributed architectures where the boundary adjacent region
 # has to be computed separately, these maps hold the active region in the "halo-independent" part of the domain
 # (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
 const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
@@ -94,7 +94,7 @@ function compute_active_z_columns(grid, ib)
     return active_z_columns
 end
 
-# Maximum integer represented by the 
+# Maximum integer represented by the
 # `UInt8`, `UInt16` and `UInt32` types
 const MAXUInt8  = 2^8  - 1
 const MAXUInt16 = 2^16 - 1
@@ -116,14 +116,14 @@ An array of tuples representing the indices of the active interior cells.
 """
 function serially_build_active_cells_map(grid, ib; parameters = :xyz)
     active_cells_field = compute_active_cells(grid, ib; parameters)
-    
+
     N = maximum(size(grid))
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
-   
+
     IndicesType = Tuple{IntType, IntType, IntType}
 
     # Cannot findall on the entire field because we could incur on OOM errors
-    # For this reason, we split the computation in vertical levels and `findall` the active indices in 
+    # For this reason, we split the computation in vertical levels and `findall` the active indices in
     # subsequent xy planes, then stitch them back together
     active_indices = IndicesType[]
     active_indices = findall_active_indices!(active_indices, active_cells_field, grid, IndicesType)
@@ -136,11 +136,11 @@ end
 # This makes the computation a little heavier but avoids OOM errors (this computation
 # is performed only once on setup)
 function findall_active_indices!(active_indices, active_cells_field, grid, IndicesType)
-    
+
     for k in 1:size(grid, 3)
         interior_indices = findall(on_architecture(CPU(), interior(active_cells_field, :, :, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
-        active_indices = vcat(active_indices, interior_indices)
+        active_indices   = vcat(active_indices, interior_indices)
         GC.gc()
     end
 
@@ -148,24 +148,24 @@ function findall_active_indices!(active_indices, active_cells_field, grid, Indic
 end
 
 function convert_interior_indices(interior_indices, k, IndicesType)
-    interior_indices =   getproperty.(interior_indices, :I) 
+    interior_indices =   getproperty.(interior_indices, :I)
     interior_indices = add_3rd_index.(interior_indices, k) |> Array{IndicesType}
     return interior_indices
 end
 
-@inline add_3rd_index(ij::Tuple, k) = (ij[1], ij[2], k) 
+@inline add_3rd_index(ij::Tuple, k) = (ij[1], ij[2], k)
 
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
-# domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
+# domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in
 # the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
 build_active_cells_map(grid, ib) = serially_build_active_cells_map(grid, ib; parameters = :xyz)
 
-# If we eventually want to perform also barotropic step, `w` computation and `p` 
+# If we eventually want to perform also barotropic step, `w` computation and `p`
 # computation only on active `columns`
 function build_active_z_columns(grid, ib)
     field = compute_active_z_columns(grid, ib)
     field_interior = on_architecture(CPU(), interior(field, :, :, 1))
-  
+
     full_indices = findall(field_interior)
 
     Nx, Ny, _ = size(grid)

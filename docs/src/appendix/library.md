@@ -86,6 +86,13 @@ Modules = [Oceananigans.Grids]
 Private = false
 ```
 
+## OrthogonalSphericalShellGrids
+
+```@autodocs
+Modules = [Oceananigans.OrthogonalSphericalShellGrids]
+Private = false
+```
+
 ## Immersed boundaries
 
 ```@autodocs
@@ -140,6 +147,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Models.LagrangianParticleTracking]
+Private = false
+```
+
+### VarianceDissipationComputations
+
+```@autodocs
+Modules = [Oceananigans.Models.VarianceDissipationComputations]
 Private = false
 ```
 
@@ -203,6 +217,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.TurbulenceClosures]
+Private = false
+```
+
+### TKEBasedVerticalDiffusivities
+
+```@autodocs
+Modules = [Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities]
 Private = false
 ```
 

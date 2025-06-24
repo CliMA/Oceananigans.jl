@@ -25,7 +25,7 @@ The difference of a face-centered quantity `u` at face `i` returns the differenc
 and is thus denoted `δxᶜᵃᵃ` when applied along the x-dimension.
 
 The three characters at the end of the function name, `faa` for example, indicates that the
-output lies on the cell faces in the x-dimension but remains at their original positions in 
+output lies on the cell faces in the x-dimension but remains at their original positions in
 the y- and z-dimensions. Thus we further identify this operator by the superscript `ᶠᵃᵃ`, where
 the `a` stands for "any" as the location is unchanged by the operator and is determined by
 the input.

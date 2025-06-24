@@ -82,10 +82,10 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
     return wxz^2 + wyz^2
 end
 
-@kernel function _compute_leith_viscosity!(νₑ, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT 
+@kernel function _compute_leith_viscosity!(νₑ, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT
     i, j, k = @index(Global, NTuple)
     u, v, w = velocities
-    prefactor = (closure.C * Δᶠ(i, j, k, grid, closure))^3 
+    prefactor = (closure.C * Δᶠ(i, j, k, grid, closure))^3
     dynamic_ν = sqrt(abs²_∇h_ζ(i, j, k, grid, u, v) + abs²_∇h_wz(i, j, k, grid, w))
 
     @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
@@ -105,16 +105,16 @@ function compute_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith
 end
 
 "Return the filter width for a Leith Diffusivity on a general grid."
-@inline Δᶠ(i, j, k, grid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid)) 
+@inline Δᶠ(i, j, k, grid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid))
 
-function DiffusivityFields(grid, tracer_names, bcs, ::TwoDimensionalLeith)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::TwoDimensionalLeith)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     return (; νₑ=CenterField(grid, boundary_conditions=bcs.νₑ))
 end
 
 @inline viscosity(::TwoDimensionalLeith, K) = K.νₑ
-@inline diffusivity(::TwoDimensionalLeith, K, ::Val{id}) where id = K.νₑ   
+@inline diffusivity(::TwoDimensionalLeith, K, ::Val{id}) where id = K.νₑ
 
 #####
 ##### Abstract Smagorinsky functionality
@@ -122,7 +122,7 @@ end
 
 # Diffusive fluxes for Leith diffusivities
 
-@inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
+@inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
                                   ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
@@ -159,7 +159,7 @@ end
                              + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
 
-@inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
+@inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
                                   ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
