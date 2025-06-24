@@ -17,14 +17,8 @@ struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
         new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
 end
 
-function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
-
-    if !(grid isa Nothing)
-        FT = eltype(grid)
-    end
-
+function UpwindBiased(FT::DataType = Float64; order = 3)
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
-
     N  = Int((order + 1) ÷ 2)
 
     if N > 1
@@ -33,10 +27,10 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
         # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
         # Some tests are needed to verify why this is the case (and if it is expected)
         # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme  = UpwindBiased(FT; grid, order = order - 2)
+        advecting_velocity_scheme = Centered(FT; order = order - 1)
+        buffer_scheme  = UpwindBiased(FT; order = order - 2)
     else
-        advecting_velocity_scheme = Centered(FT; grid, order = 2)
+        advecting_velocity_scheme = Centered(FT; order = 2)
         buffer_scheme  = nothing
     end
 
@@ -47,10 +41,8 @@ Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, "
 
 Base.show(io::IO, a::UpwindBiased{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
-              " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme) , "\n",
-              " Symmetric scheme: ", "\n",
-              "    └── ", summary(a.advecting_velocity_scheme))
+              "└── buffer_scheme: ", summary(a.buffer_scheme), '\n',
+              "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 
 Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(Adapt.adapt(to, scheme.buffer_scheme),
@@ -59,9 +51,6 @@ Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
 on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(on_architecture(to, scheme.buffer_scheme),
                         on_architecture(to, scheme.advecting_velocity_scheme))
-
-# Useful aliases
-UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
 
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 
