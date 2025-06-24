@@ -348,9 +348,8 @@ set!(one_d_c, still_pretty_fun)
 ```
 
 !!! note
-    Despite we `set` a `Field` with reduced arguments in the `Flat` directions, a `Field` remains 
-    intrinsically a three-dimensional object as it maps to a three-dimensional data structure. 
-    For this reason a `Field` must be always indexed by providing all three indices `i, j, k`.
+        Even on grids with `Flat` directions, `Field`s are always represented with three-dimensional
+        arrays.  As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat` directions indexed with `1`.
 
 ### A bit more about setting with functions
 
