@@ -2,24 +2,18 @@
 ##### Upwind-biased 3rd-order advection scheme
 #####
 
-"""
-    struct UpwindBiased <: AbstractUpwindBiasedAdvectionScheme{3}
-
-Upwind-biased reconstruction scheme.
-"""
 struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
-    "Reconstruction scheme used near boundaries"
     buffer_scheme :: CA
-    "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
     UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, CA, SI} =
         new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
 end
 
-function UpwindBiased(FT::DataType = Float64; order = 3)
+function UpwindBiased(FT::DataType = Float64; order=3)
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
-    N  = Int((order + 1) ÷ 2)
+
+    N = Int((order + 1) ÷ 2)
 
     if N > 1
         coefficients = Tuple(nothing for i in 1:6)

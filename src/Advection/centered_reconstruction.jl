@@ -2,13 +2,7 @@
 ##### Centered advection scheme
 #####
 
-"""
-    struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
-
-Centered reconstruction scheme.
-"""
 struct Centered{N, FT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
-    "advection scheme used near boundaries"
     buffer_scheme :: CA
 
     Centered{N, FT}(buffer_scheme::CA) where {N, FT, CA} = new{N, FT, CA}(buffer_scheme)
@@ -19,7 +13,7 @@ function Centered(FT::DataType=Oceananigans.defaults.FloatType; order = 2)
 
     N  = Int(order ÷ 2)
     if N > 1
-        buffer_scheme = Centered(FT; order = order - 2)
+        buffer_scheme = Centered(FT; order=order-2)
     else
         buffer_scheme = nothing
     end
