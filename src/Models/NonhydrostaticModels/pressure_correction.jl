@@ -1,5 +1,7 @@
 import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
 
+using Oceananigans.AbstractOperations: ∂x, ∂y, ∂z
+
 """
     compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
@@ -35,6 +37,14 @@ end
 
 "Update the solution variables (velocities and tracers)."
 function make_pressure_correction!(model::NonhydrostaticModel, Δt)
+
+    r = model.auxiliary_fields.residual
+    p = model.pressures.pNHS
+    u, v, w = model.velocities
+    ∇²p = ∂x(∂x(p)) + ∂y(∂y(p)) + ∂z(∂z(p))
+    δ = ∂x(u) + ∂y(v) + ∂z(w)
+    r .= ∇²p - δ
+    @show r
 
     launch!(model.architecture, model.grid, :xyz,
             _make_pressure_correction!,
