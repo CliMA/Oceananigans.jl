@@ -76,12 +76,7 @@ WENO(order=7)
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
-              grid = nothing,
               bounds = nothing)
-
-    if !(grid isa Nothing)
-        FT = eltype(grid)
-    end
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
@@ -94,27 +89,28 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
         return UpwindBiased(FT; order=1)
     else
         N = Int((order + 1) ÷ 2)
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme = WENO(FT; grid, order=order-2, bounds)
+        advecting_velocity_scheme = Centered(FT; order=order-1)
+        buffer_scheme = WENO(FT, FT2; order=order-2, bounds)
     end
 
     return WENO{N, FT, FT2}(bounds, buffer_scheme, advecting_velocity_scheme)
 end
 
-WENO(grid, FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32; kwargs...) = WENO(FT, FT2; grid, kwargs...)
-
 # Flavours of WENO
 const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
 
-Base.summary(a::WENO{N}) where N = string("WENO(order=", N*2-1, ")")
+Base.summary(a::WENO{N}) where N = string("WENO(order=", 2N-1, ")")
 
-Base.show(io::IO, a::WENO{N, FT, FT2, PP}) where {N, FT, FT2, PP} =
-    print(io, summary(a), " \n",
-              a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
-              " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme) , "\n",
-              " Symmetric scheme: ", "\n",
-              "    └── ", summary(a.advecting_velocity_scheme))
+function Base.show(io::IO, a::WENO)
+    print(io, summary(a), '\n')
+    
+    if !isnothing(a.bounds)
+        print(io, "├── bounds: ", string(a.bounds), '\n')
+    end
+    
+    print(io, "├── buffer_scheme: ", summary(a.buffer_scheme) , '\n',
+              "└── advection_velocity_scheme: ", summary(a.advecting_velocity_scheme))
+end
 
 Adapt.adapt_structure(to, scheme::WENO{N, FT, FT2}) where {N, FT, FT2} =
      WENO{N, FT, FT2}(Adapt.adapt(to, scheme.bounds),
