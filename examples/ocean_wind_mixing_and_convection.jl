@@ -4,7 +4,7 @@
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
 #
 #   * How to set-up a grid with varying spacing in the vertical direction
-#   * How to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state.
+#   * How to use the `SeawaterBuoyancy` model for buoyancy with `TEOS10EquationOfState`.
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
 #
@@ -14,32 +14,33 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie"
+# pkg"add Oceananigans, CairoMakie, SeawaterPolynomials"
 # ```
 
 # We start by importing all of the packages and functions that we'll need for this
 # example.
 
-using Random
-using Printf
-using CairoMakie
-
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hour
 
+using Random
+using Printf
+using CairoMakie
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+
 # ## The grid
 #
-# We use 32²×24 grid points with 2 m grid spacing in the horizontal and
+# We use 128²×64 grid points with 1 m grid spacing in the horizontal and
 # varying spacing in the vertical, with higher resolution closer to the
 # surface. Here we use a stretching function for the vertical nodes that
 # maintains relatively constant vertical spacing in the mixed layer, which
 # is desirable from a numerical standpoint:
 
-Nx = Ny = 32     # number of points in each of horizontal directions
-Nz = 24          # number of points in the vertical direction
+Nx = Ny = 128    # number of points in each of horizontal directions
+Nz = 64          # number of points in the vertical direction
 
-Lx = Ly = 64     # (m) domain horizontal extents
-Lz = 32          # (m) domain depth
+Lx = Ly = 128    # (m) domain horizontal extents
+Lz = 64          # (m) domain depth
 
 refinement = 1.2 # controls spacing near surface (higher means finer spaced)
 stretching = 12  # controls rate of stretching at bottom
@@ -54,17 +55,18 @@ h(k) = (k - 1) / Nz
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
 ## Generating function
-z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
+z_interfaces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = RectilinearGrid(size = (Nx, Nx, Nz),
-                          x = (0, Lx),
-                          y = (0, Ly),
-                          z = z_faces)
+grid = RectilinearGrid(GPU(),
+                       size = (Nx, Nx, Nz),
+                       x = (0, Lx),
+                       y = (0, Ly),
+                       z = z_interfaces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
 fig = Figure(size=(1200, 800))
-ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
+ax = Axis(fig[1, 1], ylabel = "z (m)", xlabel = "Vertical spacing (m)")
 
 lines!(ax, zspacings(grid, Center()))
 scatter!(ax, zspacings(grid, Center()))
@@ -76,17 +78,17 @@ fig
 #
 # We use the `SeawaterBuoyancy` model with a linear equation of state,
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
-                                                                    haline_contraction = 8e-4))
+ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
+equation_of_state = TEOS10EquationOfState(reference_density=ρₒ)
+buoyancy = SeawaterBuoyancy(; equation_of_state)
 
 # ## Boundary conditions
 #
 # We calculate the surface temperature flux associated with surface cooling of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
-Q = 200.0  # W m⁻², surface _heat_ flux
-ρₒ = 1026.0 # kg m⁻³, average density at the surface of the world ocean
-cᴾ = 3991.0 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
+Q = 200  # W m⁻², surface _heat_ flux
+cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
 Jᵀ = Q / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
@@ -107,10 +109,9 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵀ),
 # to estimate the kinematic stress (that is, stress divided by density) exerted
 # by the wind on the ocean:
 
-u₁₀ = 10    # m s⁻¹, average wind velocity 10 meters above the ocean
-cᴰ = 2.5e-3 # dimensionless drag coefficient
-ρₐ = 1.225  # kg m⁻³, average density of air at sea-level
-
+u₁₀ = 10  # m s⁻¹, average wind velocity 10 meters above the ocean
+cᴰ = 2e-3 # dimensionless drag coefficient
+ρₐ = 1.2  # kg m⁻³, approximate average density of air at sea-level
 τx = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
 # The boundary conditions on `u` are thus
@@ -145,19 +146,13 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
 model = NonhydrostaticModel(; grid, buoyancy,
-                            advection = UpwindBiased(order=5),
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
                             closure = AnisotropicMinimumDissipation(),
                             boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
-# Notes:
-#
-# * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
-#   `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
-#
-# * To change the architecture to `GPU`, replace `CPU()` with `GPU()` inside the
-#   `grid` constructor.
+# Note: To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
+# `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
 
 # ## Initial conditions
 #
