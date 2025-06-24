@@ -1,7 +1,7 @@
 # # Barotropic gyre
 
 using Oceananigans.Grids
-using Oceananigans.Utils: prettytime, hours, day, days, years
+using Oceananigans.Utils: prettytime, hours, day, days
 
 using Statistics
 using JLD2
@@ -12,7 +12,7 @@ function geographic2cartesian(λ, φ, r=1)
     Nλ = length(λ)
     Nφ = length(φ)
 
-    λ = repeat(reshape(λ, Nλ, 1), 1, Nφ) 
+    λ = repeat(reshape(λ, Nλ, 1), 1, Nφ)
     φ = repeat(reshape(φ, 1, Nφ), Nλ, 1)
 
     λ_azimuthal = λ .+ 180  # Convert to λ ∈ [0°, 360°]
@@ -26,7 +26,6 @@ function geographic2cartesian(λ, φ, r=1)
 end
 
 function visualize_barotropic_gyre(filepath)
-
     file = jldopen(filepath)
 
     Nx = file["grid/Nx"]
@@ -40,9 +39,9 @@ function visualize_barotropic_gyre(filepath)
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 
-    xu, yu, zu = geographic2cartesian(xnodes(Face,   grid), ynodes(Center, grid))
-    xv, yv, zv = geographic2cartesian(xnodes(Center, grid), ynodes(Face,   grid))
-    xc, yc, zc = geographic2cartesian(xnodes(Center, grid), ynodes(Center, grid))
+    xu, yu, zu = geographic2cartesian(λnodes(grid, Face()), φnodes(grid, Center()))
+    xv, yv, zv = geographic2cartesian(λnodes(grid, Center()), φnodes(grid, Face()))
+    xc, yc, zc = geographic2cartesian(λnodes(grid, Center()), φnodes(grid, Center()))
 
     iter = Observable(0)
 
@@ -60,8 +59,8 @@ function visualize_barotropic_gyre(filepath)
 
     statenames = ["u", "v", "η"]
     for (n, var) in enumerate([u, v, η])
-        ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
-        wireframe!(ax, Sphere(Point3f(0), 0.99f0), show_axis=false)
+        ax = fig[3:7, 3n-2:3n] = LScene(fig, show_axis=false) # make plot area wider
+        wireframe!(ax, Sphere(Point3f(0), 0.99f0))
         surface!(ax, x[n], y[n], z[n], color=var, colormap=:balance) #, colorrange=clims[n])
         rotate_cam!(ax.scene, (0, 3π/4, 0))
         fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], fontsize = 50) # put names in center
@@ -69,7 +68,7 @@ function visualize_barotropic_gyre(filepath)
 
     supertitle = fig[0, :] = Label(fig, plot_title, fontsize=50)
 
-    record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
+    record(fig, output_prefix * ".mp4", iterations, framerate=18) do i
         @info "Animating iteration $i/$(iterations[end])..."
         iter[] = i
     end

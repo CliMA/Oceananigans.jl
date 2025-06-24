@@ -46,6 +46,8 @@ function set!(u::Field, v)
     return u
 end
 
+set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
+
 #####
 ##### Setting to specific things
 #####
@@ -60,7 +62,7 @@ function set_to_function!(u, f)
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
         cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
-    
+
     elseif child_arch isa CPU
         cpu_grid = u.grid
         cpu_u = u
@@ -122,12 +124,12 @@ end
 function set_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
-    
+
     if child_architecture(u) === child_architecture(v)
         # Note: we could try to copy first halo point even when halo
         # regions are a different size. That's a bit more complicated than
         # the below so we leave it for the future.
-        
+
         try # to copy halo regions along with interior data
             parent(u) .= parent(v)
         catch # this could fail if the halo regions are different sizes?
@@ -136,7 +138,7 @@ function set_to_field!(u, v)
         end
     else
         v_data = on_architecture(child_architecture(u), v.data)
-        
+
         # As above, we permit ourselves a little ambition and try to copy halo data:
         try
             parent(u) .= parent(v_data)

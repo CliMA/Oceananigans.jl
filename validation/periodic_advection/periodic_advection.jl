@@ -53,7 +53,7 @@ end
 
 function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.0, T=2.0)
     model = setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
-    
+
     v, c = model.velocities.v, model.tracers.c
     x = xnodes(c)
     Δt = CFL * model.grid.Δxᶜᵃᵃ / abs(U)

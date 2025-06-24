@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Grids: OrthogonalSphericalShellGrid, topology
 using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using Makie: Observable
@@ -56,7 +56,7 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
     converted_args = convert_field_argument(f)
 
     if !(:axis ∈ keys(attributes)) # Let's try to automatically add labels and ticks
-        d1, d2, D = deduce_dimensionality(f) 
+        d1, d2, D = deduce_dimensionality(f)
         grid = f.grid
 
         if D === 1 # 1D plot
@@ -137,6 +137,12 @@ function make_plottable_array(f)
 
     fi = interior(f, ii, jj, kk)
     fi_cpu = on_architecture(CPU(), fi)
+
+    if architecture(f) isa CPU
+        fi_cpu = deepcopy(fi_cpu) # so we can re-zero peripheral nodes
+    end
+
+    mask_immersed_field!(f)
 
     return fi_cpu
 end

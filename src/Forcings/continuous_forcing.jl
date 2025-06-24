@@ -168,4 +168,3 @@ on_architecture(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
                                   on_architecture(to, forcing.field_dependencies),
                                   on_architecture(to, forcing.field_dependencies_indices),
                                   on_architecture(to, forcing.field_dependencies_interp))
-

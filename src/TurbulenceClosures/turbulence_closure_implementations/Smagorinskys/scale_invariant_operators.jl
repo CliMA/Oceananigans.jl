@@ -1,5 +1,5 @@
-using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃         
-using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²         
+using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃
+using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
 using Oceananigans.Operators: volume
 
 #####
@@ -15,7 +15,7 @@ using Oceananigans.Operators: volume
 "Return the double dot product of strain at `ffc`."
 @inline ΣᵢⱼΣᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w) =     ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ², u, v, w) +
                                             2 *   Σ₁₂²(i, j, k, grid, u, v, w) +
-                                            2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w) + 
+                                            2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w) +
                                             2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ₂₃², u, v, w)
 
 "Return the double dot product of strain at `fcf`."
@@ -134,7 +134,7 @@ const AG = AbstractGrid
 @inline var"⟨ΣΣ₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = filter(i, j, k, grid, ΣΣ₁₁ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
 @inline var"⟨ΣΣ₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = filter(i, j, k, grid, ΣΣ₂₂ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
 @inline var"⟨ΣΣ₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = filter(i, j, k, grid, ΣΣ₃₃ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
-                                                           
+
 @inline var"⟨ΣΣ₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = filter(i, j, k, grid, ΣΣ₁₂ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
 @inline var"⟨ΣΣ₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = filter(i, j, k, grid, ΣΣ₁₃ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
 @inline var"⟨ΣΣ₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = filter(i, j, k, grid, ΣΣ₂₃ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
@@ -182,7 +182,7 @@ const β  = 1
 @inline L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₁u₁ᶜᶜᶜ, u, v, w) - ū₁ū₁ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₂u₂ᶜᶜᶜ, u, v, w) - ū₂ū₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₃u₃ᶜᶜᶜ, u, v, w) - ū₃ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
-                                             
+
 @inline L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₁u₂ᶜᶜᶜ, u, v, w) - ū₁ū₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₁u₃ᶜᶜᶜ, u, v, w) - ū₁ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)

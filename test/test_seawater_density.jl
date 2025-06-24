@@ -119,7 +119,7 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
     return all(interior(d_field) .≈ SWP_ρ)
 end
 
-@testset "Density models" begin
+@testset "Seawater density diagnostic" begin
     @info "Testing `seawater_density`..."
 
     @testset "Error for non-`BoussinesqEquationOfState`" begin

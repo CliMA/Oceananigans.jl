@@ -253,7 +253,7 @@ const c = Center()
         T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / ∜(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
         τ = Δt / T⁻
         ϵ = τ / (1 + τ)
-                        
+
         # Compute interpolation
         x = xnode(i, j, k, grid, c, c, c)
         y = ynode(i, j, k, grid, c, c, c)

@@ -11,7 +11,7 @@ boundary_conditions = (b = FieldBoundaryConditions(top = FluxBoundaryCondition(1
 
 model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis, boundary_conditions,
                                     tracers = (:b, :e), buoyancy = BuoyancyTracer())
-                                    
+
 bᵢ(z) = 1e-6 * z
 set!(model, b=bᵢ, e=1e-6)
 

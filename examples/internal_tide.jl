@@ -63,7 +63,7 @@ band!(ax, x/1e3, bottom_boundary, top_boundary, color = :mediumblue)
 
 fig
 
-# Now we want to add a barotropic tide forcing. For example, to add the lunar semi-diurnal ``M_2`` tide 
+# Now we want to add a barotropic tide forcing. For example, to add the lunar semi-diurnal ``M_2`` tide
 # we need to add forcing in the ``u``-momentum equation of the form:
 # ```math
 # F_0 \sin(\omega_2 t)
@@ -76,7 +76,7 @@ fig
 # ```math
 # \epsilon = \frac{U_{\mathrm{tidal}} / \omega_2}{\sigma}
 # ```
-# 
+#
 # We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_{\mathrm{tidal}}``
 # which then allows us to determing the tidal forcing amplitude ``F_0``. For the last step, we
 # use Fourier decomposition on the inviscid, linearized momentum equations to determine the
