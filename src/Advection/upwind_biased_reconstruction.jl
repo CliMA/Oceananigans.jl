@@ -41,7 +41,7 @@ Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, "
 
 Base.show(io::IO, a::UpwindBiased{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
-              "└── buffer_scheme: ", summary(a.buffer_scheme), '\n',
+              "├── buffer_scheme: ", summary(a.buffer_scheme), '\n',
               "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 
 Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
