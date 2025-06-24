@@ -18,9 +18,9 @@ Adapt.adapt_structure(to, dbd::DroguedDynamics) =
 
 @inline (::DroguedDynamics)(args...) = nothing
 
-const DroguedBuoyParticle = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedDynamics}
+const DroguedParticles = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedDynamics}
 
-function advect_lagrangian_particles!(particles::DroguedBuoyParticle, model, Δt)
+function advect_lagrangian_particles!(particles::DroguedParticles, model, Δt)
     grid = model.grid
     arch = architecture(grid)
     parameters = KernelParameters(1:length(particles))
