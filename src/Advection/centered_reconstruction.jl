@@ -32,7 +32,7 @@ Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
 Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
               " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme))
+              " └── ", summary(a.buffer_scheme))
 
 
 Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} = Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme))
