@@ -32,9 +32,9 @@ end
 
 function partition_topology(p::YPartition, grid)
     TX, TY, TZ = topology(grid)
-    
-    return Tuple((TX, (TY == Periodic ? 
-                       FullyConnected : 
+
+    return Tuple((TX, (TY == Periodic ?
+                       FullyConnected :
                        i == 1 ?
                        RightConnected :
                        i == length(p) ?
@@ -42,23 +42,23 @@ function partition_topology(p::YPartition, grid)
                        FullyConnected), TZ) for i in 1:length(p))
 end
 
-divide_direction(x::Tuple, p::EqualYPartition) = 
+divide_direction(x::Tuple, p::EqualYPartition) =
     Tuple((x[1] + (i-1)*(x[2] - x[1])/length(p), x[1] + i*(x[2] - x[1])/length(p)) for i in 1:length(p))
 
-function divide_direction(x::AbstractArray, p::EqualYPartition) 
+function divide_direction(x::AbstractArray, p::EqualYPartition)
     nelem = (length(x)-1)÷length(p)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
 partition(a::Field, p::EqualYPartition, args...) = partition(a.data, p, args...)
 
-function partition(a::AbstractArray, ::EqualYPartition, local_size, region, arch) 
+function partition(a::AbstractArray, ::EqualYPartition, local_size, region, arch)
     idxs = default_indices(length(size(a)))
     offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
     return on_architecture(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
-function partition(a::OffsetArray, ::EqualYPartition, local_size, region, arch) 
+function partition(a::OffsetArray, ::EqualYPartition, local_size, region, arch)
     idxs    = default_indices(length(size(a)))
     offsets = (0, a.offsets[2], Tuple(0 for i in 1:length(idxs)-2)...)
     return on_architecture(arch, OffsetArray(a[idxs[1], local_size[2]*(region-1)+1+offsets[2]:local_size[2]*region-offsets[2], idxs[3:end]...], offsets...))
@@ -70,7 +70,7 @@ end
 
 function reconstruct_size(mrg, p::YPartition)
     Nx = mrg.region_grids[1].Nx
-    Ny = sum([grid.Ny for grid in mrg.region_grids.regional_objects]) 
+    Ny = sum([grid.Ny for grid in mrg.region_grids.regional_objects])
     Nz = mrg.region_grids[1].Nz
     return (Nx, Ny, Nz)
 end
@@ -136,7 +136,7 @@ const YPartitionConnectivity = Union{RegionalConnectivity{North, South}, Regiona
 ####
 
 @inline function displaced_xy_index(i, j, grid, region, p::YPartition)
-    j′ = j + grid.Ny * (region - 1) 
+    j′ = j + grid.Ny * (region - 1)
     t  = i + (j′ - 1) * grid.Nx
     return t
 end

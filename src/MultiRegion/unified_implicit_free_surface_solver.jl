@@ -24,7 +24,7 @@ architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
 function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravitational_acceleration::Number; multiple_devices = false)
-    
+
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
 
@@ -33,10 +33,13 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravi
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
-    
-    arch = architecture(mrg) 
+    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+
+    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
+    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
+    fill_halo_regions!((Ax, Ay); signed=false)
+
+    arch = architecture(mrg)
     right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
     storage = deepcopy(right_hand_side)
 
@@ -60,12 +63,14 @@ end
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::MultiRegionGrids, settings, gravitational_acceleration) =
     UnifiedImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
 build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrids, settings, gravitational_acceleration) =
-    UnifiedImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)   
+    UnifiedImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrids, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
-build_implicit_step_solver(::Val{:Default}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
+build_implicit_step_solver(::Val{:Default}, grid::ConformalCubedSphereGridOfSomeKind, settings, gravitational_acceleration) =
     PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
-build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::ConformalCubedSphereGridOfSomeKind, settings, gravitational_acceleration) =
+    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::ConformalCubedSphereGridOfSomeKind, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use Matrix solvers with ConformalCubedSphereGrid!! Select :Default or :PreconditionedConjugateGradient as solver_method"))
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver, g, Δt, ∫ᶻQ, η)
@@ -75,7 +80,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::Un
     return nothing
 end
 
-compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition) = 
+compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition) =
     launch!(architecture(grid), grid, :xy,
             implicit_linearized_unified_free_surface_right_hand_side!,
             rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
@@ -109,7 +114,7 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
     return nothing
 end
 
-redistribute_lhs!(η, sol, arch, grid, region, partition) = 
+redistribute_lhs!(η, sol, arch, grid, region, partition) =
     launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition)
 
 # linearized right hand side

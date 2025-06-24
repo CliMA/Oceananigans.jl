@@ -11,13 +11,29 @@ using Oceananigans.Fields
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
-const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distributed}
+const DistributedGrid{FT, TX, TY, TZ} = Union{
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:GPU}},
+}
 
 const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
-    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY}
+    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed}
 
-const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY} = 
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY}
+const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
+                                       DXF, DXC, XF, XC,
+                                       DYF, DYC, YF, YC,
+                                       DXCC, DXFC, DXCF,
+                                       DXFF, DYFC, DYCF} =
+    LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
+                          DXF, DXC, XF, XC,
+                          DYF, DYC, YF, YC,
+                          DXCC, DXFC, DXCF,
+                          DXFF, DYFC, DYCF,
+                          <:Distributed} where {FT, TX, TY, TZ, Z,
+                                                DXF, DXC, XF, XC,
+                                                DYF, DYC, YF, YC,
+                                                DXCC, DXFC, DXCF,
+                                                DXFF, DYFC, DYCF}
 
 # Local size from global size and architecture
 local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
@@ -41,8 +57,8 @@ end
 @inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
 @inline function local_sizes(N, R::Sizes)
     if N != sum(R.sizes)
-        @warn "The Sizes specified in the architecture $(R.sizes) is inconsistent  
-               with the grid size: (N = $N != sum(Sizes) = $(sum(R.sizes))). 
+        @warn "The Sizes specified in the architecture $(R.sizes) is inconsistent
+               with the grid size: (N = $N != sum(Sizes) = $(sum(R.sizes))).
                Using $(R.sizes)..."
     end
     return R.sizes
@@ -56,8 +72,8 @@ global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arc
 
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
-function RectilinearGrid(arch::Distributed, 
-                         FT::DataType = Float64;
+function RectilinearGrid(arch::Distributed,
+                         FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
                          y = nothing,
@@ -66,7 +82,7 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    topology, global_sz, halo, x, y, z = 
+    topology, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
     local_sz = local_size(arch, global_sz)
@@ -80,7 +96,7 @@ function RectilinearGrid(arch::Distributed,
     TX = insert_connected_topology(topology[1], Rx, ri)
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
-    
+
     local_topo = (TX, TY, TZ)
 
     xl = Rx == 1 ? x : partition_coordinate(x, nx, arch, 1)
@@ -106,19 +122,19 @@ end
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
 function LatitudeLongitudeGrid(arch::Distributed,
-                               FT::DataType = Float64; 
+                               FT::DataType = Oceananigans.defaults.FloatType;
                                precompute_metrics = true,
                                size,
                                latitude,
                                longitude,
-                               z,           
-                               topology = nothing,           
+                               z,
+                               topology = nothing,
                                radius = R_Earth,
                                halo = (1, 1, 1))
-    
+
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
-                validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
-                       
+        validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+
     local_sz = local_size(arch, global_sz)
 
     nλ, nφ, nz = local_sz
@@ -137,21 +153,21 @@ function LatitudeLongitudeGrid(arch::Distributed,
     zl = Rz == 1 ? z         : partition_coordinate(z,         nz, arch, 3)
 
     # Calculate all direction (which might be stretched)
-    # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
+    # A direction is regular if the domain passed is a Tuple{<:Real, <:Real},
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, local_topo, local_sz, halo, λl, :longitude, 1, child_architecture(arch))
     Lz, z                        = generate_coordinate(FT, local_topo, local_sz, halo, zl, :z,         3, child_architecture(arch))
 
     # The Latitudinal direction is _special_:
-    # precompute_metrics assumes that `length(φᵃᶠᵃ) = length(φᵃᶜᵃ) + 1`, which is always the case in a 
+    # precompute_metrics assumes that `length(φᵃᶠᵃ) = length(φᵃᶜᵃ) + 1`, which is always the case in a
     # serial grid because `LatitudeLongitudeGrid` should be always `Bounded`, but it is not true for a
     # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `RightConnected` topology)
     # An extra point is to precompute the Y-direction metrics in case of only one halo, hence
-    # we disregard the topology when constructing the metrics and add a halo point! 
+    # we disregard the topology when constructing the metrics and add a halo point!
     # Furthermore, the `LatitudeLongitudeGrid` requires an extra halo on it's latitudinal coordinate to allow calculating
     # the z-area on halo cells. (see: Az =  R^2 * Δλ * (sin(φ[j]) - sin(φ[j-1]))
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, child_architecture(arch))
-    
+
 
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(arch,
                                                          nλ, nφ, nz,
@@ -186,9 +202,9 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch.communicator)
-    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch.communicator)
+    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch)
+    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch)
+    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch)
 
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
@@ -229,9 +245,9 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch.communicator)
-    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch.communicator)
+    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch)
+    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch)
+    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch)
 
     λ = cpu_face_constructor_x(grid)
     φ = cpu_face_constructor_y(grid)
@@ -247,7 +263,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     FT = eltype(grid)
 
     # Calculate all direction (which might be stretched)
-    # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
+    # A direction is regular if the domain passed is a Tuple{<:Real, <:Real},
     # it is stretched if being passed is a function or vector
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX(), Nλ, Hλ, λG, :longitude, child_arch)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY(), Nφ, Hφ, φG, :latitude,  child_arch)
@@ -269,14 +285,14 @@ end
 
 # We _HAVE_ to dispatch individually for all grid types because
 # `RectilinearGrid`, `LatitudeLongitudeGrid` and `ImmersedBoundaryGrid`
-# take precedence on `DistributedGrid` 
-function with_halo(new_halo, grid::DistributedRectilinearGrid) 
-    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
+# take precedence on `DistributedGrid`
+function with_halo(new_halo, grid::DistributedRectilinearGrid)
+    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))
     return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
 
-function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid) 
-    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
+function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid)
+    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))
     return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
 
@@ -284,10 +300,10 @@ end
 child_architecture(grid::AbstractGrid) = architecture(grid)
 child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
-""" 
+"""
     scatter_grid_properties(global_grid)
 
-returns individual `extent`, `topology`, `size` and `halo` of a `global_grid` 
+returns individual `extent`, `topology`, `size` and `halo` of a `global_grid`
 """
 function scatter_grid_properties(global_grid)
     # Pull out face grid constructors
@@ -310,15 +326,15 @@ end
 function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
-    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, 
+    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x,
                                  latitude=y, z=z, halo=halo, topology=topo, radius=global_grid.radius)
 end
 
-""" 
+"""
     insert_connected_topology(T, R, r)
 
-returns the local topology associated with the global topology `T`, the amount of ranks 
-in `T` direction (`R`) and the local rank index `r` 
+returns the local topology associated with the global topology `T`, the amount of ranks
+in `T` direction (`R`) and the local rank index `r`
 """
 insert_connected_topology(T, R, r) = T
 
@@ -329,24 +345,24 @@ insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
 
 insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
 
-""" 
-    reconstruct_global_topology(T, R, r, comm)
+"""
+    reconstruct_global_topology(T, R, r, r1, r2, arch)
 
-reconstructs the global topology associated with the local topologies `T`, the amount of ranks 
+reconstructs the global topology associated with the local topologies `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`. If all ranks hold a `FullyConnected` topology,
 the global topology is `Periodic`, otherwise it is `Bounded`
 """
-function reconstruct_global_topology(T, R, r, r1, r2, comm)
+function reconstruct_global_topology(T, R, r, r1, r2, arch)
     if R == 1
         return T
     end
-    
+
     topologies = zeros(Int, R)
     if T == FullyConnected && r1 == 1 && r2 == 1
         topologies[r] = 1
     end
 
-    MPI.Allreduce!(topologies, +, comm)
+    topologies = all_reduce(+, topologies, arch)
 
     if sum(topologies) == R
         return Periodic

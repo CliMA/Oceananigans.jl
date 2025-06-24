@@ -7,16 +7,23 @@ using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: HeptadiagonalIterativeSolver, build_preconditioner, update_diag!
 import Oceananigans.Solvers: solve!
 
+struct MatrixImplicitFreeSurfaceSolver{S, R, T}
+    "The matrix iterative solver"
+    matrix_iterative_solver :: S
+    "The right hand side of the free surface evolution equation"
+    right_hand_side :: R
+    storage :: T
+end
+
 """
-    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration)
-    
-Return a framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
-with a sparse matrix formulation.
-        
+    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
+
+Return a solver based on sparse matrices and IterativeSolvers.jl for the implicit free surface equation,
+
 ```math
-[∇ ⋅ H ∇ - 1 / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g Δt) 
+[∇ ⋅ H ∇ - 1 / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g Δt)
 ```
-    
+
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
@@ -31,7 +38,7 @@ struct MatrixImplicitFreeSurfaceSolver{S, R, F, T}
 end
 
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
-    
+
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
     ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
@@ -42,9 +49,9 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
 
     arch = architecture(grid)
     right_hand_side = on_architecture(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
-    
+
     storage = deepcopy(right_hand_side)
-    
+
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
@@ -133,15 +140,15 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
 
     launch!(arch, grid, :xy, _compute_coefficients!,
             diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration)
-  
+
     return (Ax, Ay, Az, C, diag)
 end
 
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-          Ay[i, j, 1] = ∫Ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)  
-          Ax[i, j, 1] = ∫Ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)  
+          Ay[i, j, 1] = ∫Ay[i, j, 1] * Δy⁻¹ᶜᶠᶠ(i, j, grid.Nz+1, grid)
+          Ax[i, j, 1] = ∫Ax[i, j, 1] * Δx⁻¹ᶠᶜᶠ(i, j, grid.Nz+1, grid)
         diag[i, j, 1] = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end

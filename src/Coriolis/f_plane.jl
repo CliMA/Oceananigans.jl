@@ -22,7 +22,7 @@ By default, `rotation_rate` is assumed to be Earth's.
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 a planet's rotation in a planar coordinate system tangent to the planet's surface.
 """
-function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
+function FPlane(FT::DataType=Oceananigans.defaults.FloatType; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
     use_f = !isnothing(f)
     use_planet_parameters = !isnothing(latitude)
@@ -41,13 +41,14 @@ end
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
-@inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
-@inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   zero(grid)
+@inline x_f_cross_U(i, j, k, grid, c::FPlane, U) = - c.f * active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, U[2])
+@inline y_f_cross_U(i, j, k, grid, c::FPlane, U) =   c.f * active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, U[1])
+@inline z_f_cross_U(i, j, k, grid, c::FPlane, U) =   zero(grid)
 
-function Base.summary(fplane::FPlane{FT}) where FT 
+function Base.summary(fplane::FPlane{FT}) where FT
     fstr = prettysummary(fplane.f)
     return "FPlane{$FT}(f=$fstr)"
 end
 
 Base.show(io::IO, fplane::FPlane) = print(io, summary(fplane))
+

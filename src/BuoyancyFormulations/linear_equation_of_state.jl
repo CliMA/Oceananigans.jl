@@ -14,6 +14,9 @@ Base.summary(eos::LinearEquationOfState) =
 
 Base.show(io::IO, eos::LinearEquationOfState) = print(io, summary(eos))
 
+with_float_type(FT::DataType, eos::LinearEquationOfState) = LinearEquationOfState(convert(FT, eos.thermal_expansion),
+                                                                                  convert(FT, eos.haline_contraction))
+
 """
     LinearEquationOfState([FT=Float64;] thermal_expansion=1.67e-4, haline_contraction=7.80e-4)
 
@@ -33,7 +36,7 @@ for `thermal_expansion` and `haline_contraction`, respectively,
 are taken from Table 1.2 (page 33) of Vallis, "Atmospheric and Oceanic Fluid
 Dynamics: Fundamentals and Large-Scale Circulation" (2nd ed, 2017).
 """
-LinearEquationOfState(FT=Float64; thermal_expansion=1.67e-4, haline_contraction=7.80e-4) =
+LinearEquationOfState(FT=Oceananigans.defaults.FloatType; thermal_expansion=1.67e-4, haline_contraction=7.80e-4) =
     LinearEquationOfState{FT}(thermal_expansion, haline_contraction)
 
 #####

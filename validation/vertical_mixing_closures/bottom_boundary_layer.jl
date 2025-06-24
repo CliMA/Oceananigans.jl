@@ -40,7 +40,7 @@ model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
                                     tracers = (:b, :e),
                                     buoyancy = BuoyancyTracer(),
                                     boundary_conditions = (; u=u_bcs, v=v_bcs))
-                                    
+
 bᵢ(z) = N² * z
 set!(model, b=bᵢ, u=u₀, e=1e-6)
 
@@ -51,10 +51,10 @@ diffusivities = (κᵘ = model.diffusivity_fields.κᵘ,
 
 outputs = merge(model.velocities, model.tracers, diffusivities)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(20minutes),
-                                                      filename = "bottom_boundary_layer.jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                schedule = TimeInterval(20minutes),
+                                                filename = "bottom_boundary_layer.jld2",
+                                                overwrite_existing = true)
 
 function progress(sim)
     msg = @sprintf("Iter: %d, time: %s, max(u): %.2f",

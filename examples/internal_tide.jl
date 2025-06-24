@@ -1,4 +1,4 @@
-# # Internal tide by a seamount
+# # Internal tide over a seamount
 #
 # In this example, we show how internal tide is generated from a barotropic tidal flow
 # sloshing back and forth over a sea mount.
@@ -20,14 +20,11 @@ using Oceananigans.Units
 # We create an `ImmersedBoundaryGrid` wrapped around an underlying two-dimensional `RectilinearGrid`
 # that is periodic in ``x`` and bounded in ``z``.
 
-Nx, Nz = 250, 125
+Nx, Nz = 256, 128
+H, L = 2kilometers, 1000kilometers
 
-H = 2kilometers
-
-underlying_grid = RectilinearGrid(size = (Nx, Nz),
-                                  x = (-1000kilometers, 1000kilometers),
-                                  z = (-H, 0),
-                                  halo = (4, 4),
+underlying_grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4),
+                                  x = (-L, L), z = (-H, 0),
                                   topology = (Periodic, Flat, Bounded))
 
 # Now we can create the non-trivial bathymetry. We use `GridFittedBottom` that gets as input either
@@ -66,7 +63,7 @@ band!(ax, x/1e3, bottom_boundary, top_boundary, color = :mediumblue)
 
 fig
 
-# Now we want to add a barotropic tide forcing. For example, to add the lunar semi-diurnal ``M_2`` tide 
+# Now we want to add a barotropic tide forcing. For example, to add the lunar semi-diurnal ``M_2`` tide
 # we need to add forcing in the ``u``-momentum equation of the form:
 # ```math
 # F_0 \sin(\omega_2 t)
@@ -79,7 +76,7 @@ fig
 # ```math
 # \epsilon = \frac{U_{\mathrm{tidal}} / \omega_2}{\sigma}
 # ```
-# 
+#
 # We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_{\mathrm{tidal}}``
 # which then allows us to determing the tidal forcing amplitude ``F_0``. For the last step, we
 # use Fourier decomposition on the inviscid, linearized momentum equations to determine the
@@ -101,16 +98,12 @@ coriolis = FPlane(latitude = -45)
 
 T₂ = 12.421hours
 ω₂ = 2π / T₂ # radians/sec
-
 ϵ = 0.1 # excursion parameter
+U₂ = ϵ * ω₂ * width
+A₂ = U₂ * (ω₂^2 - coriolis.f^2) / ω₂
 
-U_tidal = ϵ * ω₂ * width
-
-tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
-
-@inline tidal_forcing(x, z, t, p) = p.tidal_forcing_amplitude * sin(p.ω₂ * t)
-
-u_forcing = Forcing(tidal_forcing, parameters=(; tidal_forcing_amplitude, ω₂))
+@inline tidal_forcing(x, z, t, p) = p.A₂ * sin(p.ω₂ * t)
+u_forcing = Forcing(tidal_forcing, parameters=(; A₂, ω₂))
 
 # ## Model
 
@@ -125,18 +118,14 @@ model = HydrostaticFreeSurfaceModel(; grid, coriolis,
 
 # We initialize the model with the tidal flow and a linear stratification.
 
-uᵢ(x, z) = U_tidal
-
 Nᵢ² = 1e-4  # [s⁻²] initial buoyancy frequency / stratification
 bᵢ(x, z) = Nᵢ² * z
-
-set!(model, u=uᵢ, b=bᵢ)
+set!(model, u=U₂, b=bᵢ)
 
 # Now let's build a `Simulation`.
 
 Δt = 5minutes
 stop_time = 4days
-
 simulation = Simulation(model; Δt, stop_time)
 
 # We add a callback to print a message about how the simulation is going,
@@ -148,7 +137,7 @@ wall_clock = Ref(time_ns())
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
 
-    msg = @sprintf("iteration: %d, time: %s, wall time: %s, max|w|: %6.3e, m s⁻¹\n",
+    msg = @sprintf("Iter: %d, time: %s, wall time: %s, max|w|: %6.3e, m s⁻¹\n",
                    iteration(sim), prettytime(sim), prettytime(elapsed),
                    maximum(abs, sim.model.velocities.w))
 
@@ -170,20 +159,16 @@ nothing #hide
 
 b = model.tracers.b
 u, v, w = model.velocities
-
 U = Field(Average(u))
-
 u′ = u - U
-
 N² = ∂z(b)
 
 filename = "internal_tide"
 save_fields_interval = 30minutes
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, u′, w, b, N²);
-                                                      filename,
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, u′, w, b, N²); filename,
+                                                schedule = TimeInterval(save_fields_interval),
+                                                overwrite_existing = true)
 
 # We are ready -- let's run!
 

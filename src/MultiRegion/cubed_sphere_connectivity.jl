@@ -79,7 +79,7 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     ```
 
     A connectivity that implies that the boundary condition for the
-    north side of region 1 comes from the east side of region 3 is 
+    north side of region 1 comes from the east side of region 3 is
 
     ```jldoctest cubedsphereconnectivity
     julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())

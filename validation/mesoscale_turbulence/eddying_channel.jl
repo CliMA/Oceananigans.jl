@@ -72,21 +72,21 @@ grid = RectilinearGrid(architecture = architecture,
                        y = (0, Ly),
                        z = (-Lz, 0))
 
-                       
+
 @info "Built a grid: $grid."
 
 #####
 ##### Boundary conditions
 #####
 
-α  = 2e-4     # [K⁻¹] thermal expansion coefficient 
+α  = 2e-4     # [K⁻¹] thermal expansion coefficient
 g  = 9.8061   # [m s⁻²] gravitational constant
 cᵖ = 3994.0   # [J K⁻¹] heat capacity
 ρ  = 1024.0   # [kg m⁻³] reference density
 
-parameters = (Ly = Ly,  
-              Lz = Lz,    
-              Qᵇ = 10 / (ρ * cᵖ) * α * g,          # buoyancy flux magnitude [m² s⁻³]    
+parameters = (Ly = Ly,
+              Lz = Lz,
+              Qᵇ = 10 / (ρ * cᵖ) * α * g,          # buoyancy flux magnitude [m² s⁻³]
               y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
               τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
               μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
@@ -113,7 +113,7 @@ end
 
 u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
 
-@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
+@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1]
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
 
 u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form=true, parameters=parameters)
@@ -158,7 +158,7 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 νz = 3e-4   # [m²/s] vertical viscocity
 
 
-vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)                 
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
@@ -224,7 +224,7 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 
@@ -280,24 +280,24 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, outputs;
-                                                       schedule = TimeInterval(save_fields_interval),
-                                                       field_slicer = field_slicer,
-                                                       filename = filename * "_$(side)_slice",
-                                                       overwrite_existing = true,
-                                                       indices)
+    simulation.output_writers[side] = JLD2Writer(model, outputs;
+                                                 schedule = TimeInterval(save_fields_interval),
+                                                 field_slicer = field_slicer,
+                                                 filename = filename * "_$(side)_slice",
+                                                 overwrite_existing = true,
+                                                 indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U);#, v=V, w=W, vb=v′b′, wb=w′b′),
-                                                     schedule = TimeInterval(save_fields_interval),
-                                                     filename = filename * "_zonal_average",
-                                                     overwrite_existing = true)
+simulation.output_writers[:zonal] = JLD2Writer(model, (b=B, u=U);#, v=V, w=W, vb=v′b′, wb=w′b′),
+                                               schedule = TimeInterval(save_fields_interval),
+                                               filename = filename * "_zonal_average",
+                                               overwrite_existing = true)
 #=
-simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
-                                                        schedule = AveragedTimeInterval(1days, window=1days, stride=1),
-                                                        filename = filename * "_averages",
-                                                        verbose = true,
-                                                        overwrite_existing = true)
+simulation.output_writers[:averages] = JLD2Writer(model, averaged_outputs,
+                                                  schedule = AveragedTimeInterval(1days, window=1days, stride=1),
+                                                  filename = filename * "_averages",
+                                                  verbose = true,
+                                                  overwrite_existing = true)
 =#
 
 @info "Running the simulation..."

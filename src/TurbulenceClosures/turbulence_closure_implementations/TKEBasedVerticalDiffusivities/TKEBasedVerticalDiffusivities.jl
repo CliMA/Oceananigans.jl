@@ -1,9 +1,13 @@
 module TKEBasedVerticalDiffusivities
 
+export CATKEVerticalDiffusivity,
+       TKEDissipationVerticalDiffusivity
+
 using Adapt
 using CUDA
 using KernelAbstractions: @kernel, @index
 
+using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Utils
@@ -17,8 +21,9 @@ using Oceananigans.Fields: ZeroField
 using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
+using Oceananigans.BuoyancyFormulations: BuoyancyTracer, SeawaterBuoyancy
+using Oceananigans.BuoyancyFormulations: TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy
 using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
-using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
@@ -26,8 +31,8 @@ using Oceananigans.TurbulenceClosures:
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
-    
-import Oceananigans.BoundaryConditions: getbc
+
+import Oceananigans.BoundaryConditions: getbc, fill_halo_regions!
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
     validate_closure,
@@ -36,7 +41,7 @@ import Oceananigans.TurbulenceClosures:
     dissipation,
     add_closure_specific_boundary_conditions,
     compute_diffusivities!,
-    DiffusivityFields,
+    build_diffusivity_fields,
     implicit_linear_coefficient,
     viscosity,
     diffusivity,
@@ -104,33 +109,33 @@ end
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κc * N²
 end
- 
+
 @inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
     ℑbzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
 
 # Note special attention paid to averaging the vertical grid spacing correctly
-@inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) * 
+@inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) *
                                                   Δzᶠᶜᶠ(i, j, k, grid)     * ∂zᶠᶜᶠ(i, j, k, grid, b)
 
-@inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) * 
+@inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) *
                                                   Δzᶜᶠᶠ(i, j, k, grid)     * ∂zᶜᶠᶠ(i, j, k, grid, b)
 
 @inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, uⁿ, u⁺)
     Δz_Pxⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, uⁿ, u⁺)
     Δz_Px⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, u⁺, u⁺)
-    return (Δz_Pxⁿ + Δz_Px⁺) / (2 * Δzᶠᶜᶜ(i, j, k, grid))
+    return (Δz_Pxⁿ + Δz_Px⁺) / 2 * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
 @inline function shear_production_yᶜᶠᶜ(i, j, k, grid, νₑ, vⁿ, v⁺)
     Δz_Pyⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, vⁿ, v⁺)
     Δz_Py⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, v⁺, v⁺)
-    return (Δz_Pyⁿ + Δz_Py⁺) / (2 * Δzᶜᶠᶜ(i, j, k, grid))
+    return (Δz_Pyⁿ + Δz_Py⁺) / 2 * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
 @inline function shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
     # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
-    # loss of mean kinetic energy due to shear production --- but _not_ respecting the 
+    # loss of mean kinetic energy due to shear production --- but _not_ respecting the
     # the temporal discretization. Note that also respecting the temporal discretization, would
     # require storing the velocity field at n and n+1):
 
@@ -159,8 +164,14 @@ function get_time_step(closure_array::AbstractArray)
     return get_time_step(closure)
 end
 
-include("tke_top_boundary_condition.jl")
+get_top_tracer_bcs(::Nothing, tracers) = NamedTuple()
+get_top_tracer_bcs(::BuoyancyTracer, tracers) = (; b=tracers.b.boundary_conditions.top)
+get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_conditions.top,
+                                                   S = tracers.S.boundary_conditions.top)
+get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
+get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
 
+include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")
 include("catke_equation.jl")
@@ -183,4 +194,3 @@ for S in (:CATKEMixingLength,
 end
 
 end # module
-

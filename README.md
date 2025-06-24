@@ -76,7 +76,7 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 - [Installation instructions](#installation-instructions)
 - [Running your first model](#running-your-first-model)
 - [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
-- [Citing](#citing)
+- [Citing and otherwise spreading the word](#citing-and-otherwise-spreading-the-word)
 - [Contributing](#contributing)
 - [Movies](#movies)
   - [Deep convection](#deep-convection)
@@ -138,32 +138,68 @@ It's _deep_ and includes:
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
-  
+
     If you've got a question or something, anything! to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?).
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Accessing-GPUs-and-using-Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
 * The `#oceananigans` channel on the [Julia Slack](https://julialang.org/slack/), which accesses "institutional knowledge" stored in the minds of the amazing Oceananigans community.
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
 
-## Citing
+## Citing and otherwise spreading the word
 
-If you use Oceananigans.jl as part of your research, teaching, or other activities, we would be grateful if you could cite our work and mention Oceananigans.jl by name.
+If you use Oceananigans for your research, teaching, or fun 🤩, everyone in our community will be grateful
+if you credit Oceananigans by name.
 
-```bibtex
-@article{OceananigansJOSS,
-  doi = {10.21105/joss.02018},
-  url = {https://doi.org/10.21105/joss.02018},
-  year = {2020},
-  publisher = {The Open Journal},
-  volume = {5},
-  number = {53},
-  pages = {2018},
-  author = {Ali Ramadhan and Gregory LeClaire Wagner and Chris Hill and Jean-Michel Campin and Valentin Churavy and Tim Besard and Andre Souza and Alan Edelman and Raffaele Ferrari and John Marshall},
-  title = {{Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs}},
-  journal = {Journal of Open Source Software}
-}
-```
+The community has published a number of articles describing the development of Oceananigans,
+including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://arxiv.org/abs/2502.14148) that presents an overview of all the things that make Oceananigans unique:
 
-We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
+> "High-level, high-resolution ocean modeling at all scales with Oceananigans"
+>
+> by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
+> Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
+> John Marshall, Raffaele Ferrari
+>
+> submitted to the Journal of Advances in Modeling Earth Systems, arXiv:2502.14148
+
+<details><summary>bibtex</summary>
+  <pre><code>@article{Oceananigans-overview-paper-2025,
+  title = {{High-level, high-resolution ocean modeling at all scales with Oceananigans}},
+  author = {G. L. Wagner and S. Silvestri and N. C. Constantinou and A. Ramadhan and J.-M. Campin and C. Hill and T. Chor and J. Strong-Wright and X. K. Lee and F. Poulin and A. Souza and K. J. Burns and J. Marshall and R. Ferrari},
+  journal = {arXiv preprint},
+  year = {2025},
+  archivePrefix = {arXiv},
+  eprint = {2502.14148},
+  doi = {10.48550/arXiv.2502.14148},
+  notes = {submitted to the Journal of Advances in Modeling Earth Systems},
+}</code></pre>
+</details>
+
+Please cite this 👆 overview paper if you use Oceananigans in published work.
+
+We've also published/submitted several model development papers. Please cite these below 👇 if you use
+the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
+
+* **Silvestri et al., ["A new WENO-Based momentum advection scheme for simulations of ocean mesoscale turbulence"](https://doi.org/10.1029/2023MS004130).**
+
+  *This paper describes the development of `WENOVectorInvariant()` advection scheme, which can be used as the
+  `momentum_advection` scheme for `HydrostaticFreeSurfaceModel`.*
+
+* **Silvestri et al., ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://doi.org/10.1029/2024MS004465).**
+
+  *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm, including the implementation
+  of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
+  global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
+
+* **Wagner et al., ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://doi.org/10.1029/2024MS004522).**
+
+  *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was automatically calibrated to
+  a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
+
+* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://doi.org/10.21105/joss.02018).**
+
+  *This article in the Journal of Open Source Software describes an early version of Oceananigans' `NonhydrostaticModel`.*
+
+We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans).
+If you have work using Oceananigans that you would like to have listed there, please open a pull request to add it or let us know!
 
 ## Contributing
 
@@ -194,9 +230,7 @@ For more information check out our [contributor's guide](https://clima.github.io
 
 ## Performance benchmarks
 
-We've performed some preliminary performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
-
-This is not really a fair comparison as we haven't parallelized across all the CPU's cores so we will revisit these benchmarks once Oceananigans.jl can run on multiple CPUs and GPUs.
+We perform some performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
 
 To make full use of or fully saturate the computing power of a GPU such as an Nvidia Tesla V100 or
 a Titan V, the model should have around ~10 million grid points or more.

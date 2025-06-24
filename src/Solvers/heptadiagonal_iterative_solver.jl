@@ -31,9 +31,9 @@ end
                                  iterative_solver = cg!,
                                  maximum_iterations = prod(size(grid)),
                                  tolerance = 1e-13,
-                                 reduced_dim = (false, false, false), 
-                                 placeholder_timestep = -1.0, 
-                                 preconditioner_method = :Default, 
+                                 reduced_dim = (false, false, false),
+                                 placeholder_timestep = -1.0,
+                                 preconditioner_method = :Default,
                                  preconditioner_settings = nothing,
                                  template = on_architecture(architecture(grid), zeros(prod(size(grid)))),
                                  verbose = false)
@@ -72,8 +72,8 @@ To allow for variable time step, the diagonal term `- Az / (g * Δt²)` is only 
 and it is updated only when the previous time step changes (`last_Δt != Δt`).
 
 Preconditioning is done through the various methods implemented in `Solvers/sparse_preconditioners.jl`.
-    
-The `iterative_solver` used can is to be chosen from the IterativeSolvers.jl package. 
+
+The `iterative_solver` used can is to be chosen from the IterativeSolvers.jl package.
 The default solver is a Conjugate Gradient (`cg`):
 
 ```julia
@@ -93,7 +93,7 @@ function HeptadiagonalIterativeSolver(coeffs;
 
     arch = architecture(grid)
 
-    matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
+    matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
 
     # Placeholder preconditioner and matrix are calculated using a "placeholder" timestep of -1.0
     # They are then recalculated before the first time step of the simulation.
@@ -103,7 +103,7 @@ function HeptadiagonalIterativeSolver(coeffs;
     update_diag!(placeholder_constructors, arch, M, M, diagonal, 1.0, 0)
 
     placeholder_matrix = arch_sparse_matrix(arch, placeholder_constructors)
-    
+
     settings       = validate_settings(Val(preconditioner_method), arch, preconditioner_settings)
     reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
@@ -111,14 +111,14 @@ function HeptadiagonalIterativeSolver(coeffs;
     state_vars = CGStateVariables(zero(template), deepcopy(template), deepcopy(template))
 
     return HeptadiagonalIterativeSolver(grid,
-                                        problem_size, 
+                                        problem_size,
                                         matrix_constructors,
                                         diagonal,
                                         placeholder_matrix,
                                         preconditioner,
                                         preconditioner_method,
                                         settings,
-                                        iterative_solver, 
+                                        iterative_solver,
                                         state_vars,
                                         tolerance,
                                         maximum_iterations,
@@ -156,7 +156,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     #  - coeff_y are the coefficients in the y-direction (coefficents of ηᵢⱼ₋₁ₖ and ηᵢⱼ₊₁ₖ)
     #  - coeff_z are the coefficients in the z-direction (coefficents of ηᵢⱼₖ₋₁ and ηᵢⱼₖ₊₁)
     #  - periodic boundaries are stored in coeff_bound_
-    
+
     # Position of diagonals for coefficients pos[1] and their boundary pos[2]
     posx = (1, Nx-1)
     posy = (1, Ny-1) .* Nx
@@ -173,7 +173,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     # Initialize elements which vary during the simulation (as a function of Δt)
     loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N...), N)
     loop!(diag, D, N)
-    
+
     # Fill matrix elements that stay constant in time
     fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
 
@@ -197,7 +197,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     return matrix_constructors, diag, N
 end
 
-@kernel function _initialize_variable_diagonal!(diag, D, N)  
+@kernel function _initialize_variable_diagonal!(diag, D, N)
     i, j, k = @index(Global, NTuple)
     # Calculate sparse index?
     t  = i + N[1] * (j - 1 + N[2] * (k - 1))
@@ -213,7 +213,7 @@ function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N,
     if dims[1]
         for k = 1:Nz, j = 1:Ny, i = 1:Nx-1
             t             = i +  Nx * (j - 1 + Ny * (k - 1))
-            coeff_x[t]    = Ax[i+1, j, k] 
+            coeff_x[t]    = Ax[i+1, j, k]
             coeff_d[t]   -= coeff_x[t]
             coeff_d[t+1] -= coeff_x[t]
         end
@@ -221,15 +221,15 @@ function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N,
     if dims[2]
         for k = 1:Nz, j = 1:Ny-1, i = 1:Nx
             t              = i +  Nx * (j - 1 + Ny * (k - 1))
-            coeff_y[t]     = Ay[i, j+1, k] 
-            coeff_d[t]    -= coeff_y[t] 
+            coeff_y[t]     = Ay[i, j+1, k]
+            coeff_d[t]    -= coeff_y[t]
             coeff_d[t+Nx] -= coeff_y[t]
         end
     end
     if dims[3]
         for k = 1:Nz-1, j = 1:Ny, i = 1:Nx
             t                 = i +  Nx * (j - 1 + Ny * (k - 1))
-            coeff_z[t]        = Az[i, j, k+1] 
+            coeff_z[t]        = Az[i, j, k+1]
             coeff_d[t]       -= coeff_z[t]
             coeff_d[t+Nx*Ny] -= coeff_z[t]
         end
@@ -275,8 +275,8 @@ function fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Periodic})
         coeff_d[tₚ]      -= coeff_bound_y[tₘ]
     end
 end
-    
- @inline fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Bounded}) = nothing 
+
+ @inline fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Bounded}) = nothing
  @inline fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Flat})    = nothing
 function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
     Nx, Ny, Nz = N
@@ -293,9 +293,9 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b)
 
     solver.iterative_solver(x, solver.matrix, b, 
                             statevars = solver.state_vars,
-                            maxiter = solver.maximum_iterations, 
-                            reltol = solver.tolerance, 
-                            Pl = solver.preconditioner, 
+                            maxiter = solver.maximum_iterations,
+                            reltol = solver.tolerance,
+                            Pl = solver.preconditioner,
                             verbose = solver.verbose)
 
     return nothing
@@ -307,6 +307,6 @@ function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "├── Grid: "  , solver.grid, "\n")
     print(io, "├── Solution method: ", solver.iterative_solver, "\n")
     print(io, "└── Preconditioner: ", solver.preconditioner_method)
-    
+
     return nothing
 end

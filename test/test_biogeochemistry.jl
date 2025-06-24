@@ -5,6 +5,7 @@ using CUDA
 
 using Oceananigans.Fields: ConstantField, ZeroField
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, AbstractContinuousFormBiogeochemistry
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 
 import Oceananigans.Biogeochemistry:
        required_biogeochemical_tracers,
@@ -69,7 +70,7 @@ const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistr
 
 @inline          required_biogeochemical_tracers(::MB) = tuple(:P)
 @inline required_biogeochemical_auxiliary_fields(::MB) = tuple(:Iᴾᴬᴿ)
-@inline      biogeochemical_auxiliary_fields(bgc::MB) = (; Iᴾᴬᴿ = bgc.photosynthetic_active_radiation)
+@inline       biogeochemical_auxiliary_fields(bgc::MB) = (; Iᴾᴬᴿ = bgc.photosynthetic_active_radiation)
 @inline   biogeochemical_drift_velocity(bgc::MB, ::Val{:P}) = bgc.sinking_velocity
 
 # Update state test (won't actually change between calls but here to check it gets called)
@@ -101,9 +102,9 @@ function test_biogeochemistry(grid, MinimalBiogeochemistryType, ModelType)
     growth_rate = 1/day
     mortality_rate = 0.3/day
 
-    biogeochemistry = MinimalBiogeochemistryType(growth_rate, 
-                                                 mortality_rate, 
-                                                 Iᴾᴬᴿ, 
+    biogeochemistry = MinimalBiogeochemistryType(growth_rate,
+                                                 mortality_rate,
+                                                 Iᴾᴬᴿ,
                                                  drift_velocities)
 
     if ModelType == HydrostaticFreeSurfaceModel && grid isa OrthogonalSphericalShellGrid
@@ -129,12 +130,12 @@ end
 
 @testset "Biogeochemistry" begin
     @info "Testing biogeochemistry setup..."
-    for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry), 
+    for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry),
         model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel),
         arch in archs,
-        grid in (RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2)), 
+        grid in (RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2)),
                  LatitudeLongitudeGrid(arch; size = (5, 5, 5), longitude = (-180, 180), latitude = (-85, 85), z = (-2, 0)),
-                 conformal_cubed_sphere_panel(arch; size = (3, 3, 3), z = (-2, 0)))
+                 ConformalCubedSpherePanelGrid(arch; size = (3, 3, 3), z = (-2, 0)))
 
         if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
             @info "Testing $bgc in $model on $grid..."

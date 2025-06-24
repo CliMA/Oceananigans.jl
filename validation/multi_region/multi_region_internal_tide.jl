@@ -8,7 +8,7 @@ using LinearAlgebra
 using Adapt
 
 function boundary_clustered(N, L, ini)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
 
     z_faces = zeros(N+1)
     for k = 2:N+1
@@ -20,7 +20,7 @@ function boundary_clustered(N, L, ini)
 end
 
 function center_clustered(N, L, ini)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
 
     z_faces = zeros(N+1)
     for k = 2:N+1

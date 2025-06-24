@@ -20,24 +20,22 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnde
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
     z     :: CZ
+end
 
-    RectilinearGrid{TX, TY, TZ}(arch::Arch,
-                                Nx, Ny, Nz,
-                                Hx, Hy, Hz,
-                                Lx :: FT, Ly :: FT, Lz :: FT,
-                                Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
-                                 xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
-                                Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
-                                 yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                 z    :: CZ) where {Arch, FT,
-                                                    TX, TY, TZ,
-                                                    FX, VX, FY,
-                                                    VY, CZ} =
-        new{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
-                                                      Hx, Hy, Hz, Lx, Ly, Lz,
-                                                      Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                      Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                                      z)
+function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
+                                     Lx :: FT, Ly :: FT, Lz :: FT,
+                                     Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
+                                      xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
+                                     Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
+                                      yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
+                                      z    :: CZ) where {Arch, FT, TX, TY, TZ,
+                                                         FX, VX, FY, VY, CZ}
+
+    return RectilinearGrid{FT, TX, TY, TZ,
+                           CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
+                                                     Hx, Hy, Hz, Lx, Ly, Lz,
+                                                     Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                     Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
 
 const RG = RectilinearGrid
@@ -248,7 +246,7 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
 ```
 """
 function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
-                         FT::DataType = Float64;
+                         FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
                          y = nothing,
@@ -256,10 +254,6 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                          halo = nothing,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
-
-    if architecture == GPU() && !has_cuda()
-        throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
-    end
 
     topology, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
@@ -279,8 +273,6 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                                        Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                        z)
 end
-
-
 
 """ Validate user input arguments to the `RectilinearGrid` constructor. """
 function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
@@ -434,7 +426,7 @@ function with_halo(halo, grid::RectilinearGrid)
     halo = pop_flat_elements(halo, topology(grid))
     kwargs[:halo] = halo
     arch = args[:architecture]
-    FT = args[:number_type]    
+    FT = args[:number_type]
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
@@ -476,7 +468,7 @@ rname(::RG) = :z
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
     y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos) 
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
