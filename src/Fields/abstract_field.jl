@@ -36,6 +36,7 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
+Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = architecture(f.grid)
@@ -62,6 +63,7 @@ const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
 # when topo=Bounded, and loc=Face
 @inline axis(::Colon, N) = Base.OneTo(N)
 @inline axis(index::UnitRange, N) = index
+@inline axis(index::Base.OneTo, N) = index
 
 @inline function Base.axes(f::Abstract3DField)
     Nx, Ny, Nz = size(f)
@@ -85,8 +87,6 @@ end
 
     return (ax, ay, az, at)
 end
-
-
 
 """
     total_size(field::AbstractField)
@@ -124,3 +124,21 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
 
+const XReducedAF = AbstractField{Nothing}
+const YReducedAF = AbstractField{<:Any, Nothing}
+const ZReducedAF = AbstractField{<:Any, <:Any, Nothing}
+
+const YZReducedAF = AbstractField{<:Any, Nothing, Nothing}
+const XZReducedAF = AbstractField{Nothing, <:Any, Nothing}
+const XYReducedAF = AbstractField{Nothing, Nothing, <:Any}
+
+const XYZReducedAF = AbstractField{Nothing, Nothing, Nothing}
+
+reduced_dimensions(field::AbstractField) = ()
+reduced_dimensions(field::XReducedAF)    = tuple(1)
+reduced_dimensions(field::YReducedAF)    = tuple(2)
+reduced_dimensions(field::ZReducedAF)    = tuple(3)
+reduced_dimensions(field::YZReducedAF)   = (2, 3)
+reduced_dimensions(field::XZReducedAF)   = (1, 3)
+reduced_dimensions(field::XYReducedAF)   = (1, 2)
+reduced_dimensions(field::XYZReducedAF)  = (1, 2, 3)

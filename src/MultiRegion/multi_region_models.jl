@@ -15,7 +15,7 @@ import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
 
-function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids) 
+function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids)
     @apply_regionally new_advection = adapt_advection_order(advection, grid)
     return new_advection
 end
@@ -67,7 +67,7 @@ implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretizat
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
-@inline  getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} = 
+@inline  getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} =
                 VectorInvariant{N, FT, M}(_getregion(t.vorticity_scheme, r),
                                           _getregion(t.vorticity_stencil, r),
                                           _getregion(t.vertical_scheme, r),
@@ -75,7 +75,7 @@ WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg,
                                           _getregion(t.divergence_scheme, r),
                                           _getregion(t.upwinding, r))
 
-@inline _getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} = 
+@inline _getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} =
                 VectorInvariant{N, FT, M}(getregion(t.vorticity_scheme, r),
                                           getregion(t.vorticity_stencil, r),
                                           getregion(t.vertical_scheme, r),

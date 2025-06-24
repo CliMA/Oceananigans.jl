@@ -49,7 +49,7 @@ zC = znodes(grid, Center())
 Ri, h = B.parameters
 
 fig = Figure(size = (850, 450))
- 
+
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
 lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
 
@@ -145,7 +145,7 @@ model = NonhydrostaticModel(; grid,
                             buoyancy = BuoyancyTracer(),
                             tracers = :b)
 
-# We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow furtherdown:
+# We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow further down:
 # viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point
 # it becomes nonlinear.
 
@@ -251,7 +251,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
     σ = []
     power_method_data = []
     compute!(ω)
-    push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=deepcopy(ω), b=deepcopy(b), σ=deepcopy(σ)))
 
     while convergence(σ) > convergence_criterion
         compute!(energy)
@@ -265,7 +265,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
         compute!(ω)
         rescale!(simulation.model, energy)
-        push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=deepcopy(ω), b=deepcopy(b), σ=deepcopy(σ)))
     end
 
     return σ, power_method_data
@@ -280,9 +280,6 @@ u, v, w = model.velocities
 b = model.tracers.b
 
 perturbation_vorticity = Field(∂z(u) - ∂x(w))
-
-xω, yω, zω = nodes(perturbation_vorticity)
-xb, yb, zb = nodes(b)
 
 # # Rev your engines...
 #
@@ -307,7 +304,7 @@ n = Observable(1)
 
 fig = Figure(size=(800, 600))
 
-kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+kwargs = (xlabel="x", ylabel="z", limits = ((-5, 5), (-5, 5)), aspect=1)
 
 ω_title(t) = t === nothing ? @sprintf("vorticity") : @sprintf("vorticity at t = %.2f", t)
 b_title(t) = t === nothing ? @sprintf("buoyancy")  : @sprintf("buoyancy at t = %.2f", t)
@@ -321,13 +318,13 @@ bₙ = @lift power_method_data[$n].b
 
 σₙ = @lift [(i-1, i==1 ? NaN : growth_rates[i-1]) for i in 1:$n]
 
-ω_lims = @lift (-maximum(abs, power_method_data[$n].ω) - 1e-16, maximum(abs, power_method_data[$n].ω) + 1e-16)
-b_lims = @lift (-maximum(abs, power_method_data[$n].b) - 1e-16, maximum(abs, power_method_data[$n].b) + 1e-16)
+ω_lims = @lift (-maximum(abs, power_method_data[$n].ω), maximum(abs, power_method_data[$n].ω))
+b_lims = @lift (-maximum(abs, power_method_data[$n].b), maximum(abs, power_method_data[$n].b))
 
-hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+hm_ω = heatmap!(ax_ω, ωₙ; colorrange = ω_lims, colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+hm_b = heatmap!(ax_b, bₙ; colorrange = b_lims, colormap = :balance)
 Colorbar(fig[2, 4], hm_b)
 
 eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
@@ -345,7 +342,7 @@ scatter!(ax_σ, σₙ; color = :blue)
 frames = 1:length(power_method_data)
 
 record(fig, "powermethod.mp4", frames, framerate=1) do i
-       n[] = i
+    n[] = i
 end
 
 nothing #hide
@@ -379,10 +376,10 @@ total_vorticity = Field(∂z(u) + ∂z(model.background_fields.velocities.u) - �
 total_b = Field(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
-    JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
-                     schedule = TimeInterval(0.10 / estimated_growth_rate),
-                     filename = "kelvin_helmholtz_instability.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
+               schedule = TimeInterval(0.10 / estimated_growth_rate),
+               filename = "kelvin_helmholtz_instability.jld2",
+               overwrite_existing = true)
 
 # And now we...
 
@@ -410,12 +407,12 @@ t_final = times[end]
 
 n = Observable(1)
 
-ωₙ = @lift interior(ω_timeseries, :, 1, :, $n)
-bₙ = @lift interior(b_timeseries, :, 1, :, $n)
+ωₙ = @lift ω_timeseries[$n]
+bₙ = @lift b_timeseries[$n]
 
 fig = Figure(size=(800, 600))
 
-kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+kwargs = (xlabel="x", ylabel="z", limits = ((-5, 5), (-5, 5)), aspect=1)
 
 title = @lift @sprintf("t = %.2f", times[$n])
 
@@ -430,13 +427,13 @@ ax_KE = Axis(fig[3, :];
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-ω_lims = @lift (-maximum(abs, interior(ω_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(ω_timeseries, :, 1, :, $n)) + 1e-16)
-b_lims = @lift (-maximum(abs, interior(b_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(b_timeseries, :, 1, :, $n)) + 1e-16)
+ω_lims = @lift (-maximum(abs, ω_timeseries[$n]), maximum(abs, ω_timeseries[$n]))
+b_lims = @lift (-maximum(abs, b_timeseries[$n]), maximum(abs, b_timeseries[$n]))
 
-hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+hm_ω = heatmap!(ax_ω, ωₙ; colorrange = ω_lims, colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+hm_b = heatmap!(ax_b, bₙ; colorrange = b_lims, colormap = :balance)
 Colorbar(fig[2, 4], hm_b)
 
 tₙ = @lift times[1:$n]
@@ -469,12 +466,12 @@ nothing #hide
 # And then the same for total vorticity & buoyancy of the fluid.
 n = Observable(1)
 
-Ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
-Bₙ = @lift interior(B_timeseries, :, 1, :, $n)
+Ωₙ = @lift Ω_timeseries[$n]
+Bₙ = @lift B_timeseries[$n]
 
 fig = Figure(size=(800, 600))
 
-kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+kwargs = (xlabel="x", ylabel="z", limits = ((-5, 5), (-5, 5)), aspect=1)
 
 title = @lift @sprintf("t = %.2f", times[$n])
 
@@ -489,10 +486,10 @@ ax_KE = Axis(fig[3, :];
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-hm_Ω = heatmap!(ax_Ω, xω, zω, Ωₙ; colorrange = (-1, 1), colormap = :balance)
+hm_Ω = heatmap!(ax_Ω, Ωₙ; colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_Ω)
 
-hm_B = heatmap!(ax_B, xb, zb, Bₙ; colorrange = (-0.05, 0.05), colormap = :balance)
+hm_B = heatmap!(ax_B, Bₙ; colorrange = (-0.05, 0.05), colormap = :balance)
 Colorbar(fig[2, 4], hm_B)
 
 tₙ = @lift times[1:$n]

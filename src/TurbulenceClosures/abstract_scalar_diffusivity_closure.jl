@@ -23,9 +23,16 @@ struct ThreeDimensionalFormulation <: AbstractDiffusivityFormulation end
 """
     struct HorizontalFormulation end
 
-Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
+Specifies a horizontally-isotropic `ScalarDiffusivity`.
 """
 struct HorizontalFormulation <: AbstractDiffusivityFormulation end
+
+"""
+    struct HorizontalVectorInvariantFormulation end
+
+Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
+"""
+struct HorizontalVectorInvariantFormulation <: AbstractDiffusivityFormulation end
 
 """
     struct HorizontalDivergenceFormulation end
@@ -99,6 +106,8 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶠᶜ(i, j, k, grid, closure, K, args...)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶜᶠ(i, j, k, grid, closure, K, args...)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶜᶠᶠ(i, j, k, grid, closure, K, args...)
+@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶜᶜᶜ(i, j, k, grid, closure, K, args...)
+@inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶠᶠᶜ(i, j, k, grid, closure, K, args...)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, args...)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, args...)
 
@@ -286,7 +295,6 @@ end
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
-
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}

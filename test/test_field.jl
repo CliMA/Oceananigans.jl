@@ -5,7 +5,7 @@ using Statistics
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
-using Oceananigans.Fields: fractional_indices, interpolator
+using Oceananigans.Fields: FractionalIndices, interpolator
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
@@ -91,6 +91,9 @@ function run_field_reduction_tests(FT, arch)
         @test minimum(∛, ϕ) ≈ minimum(∛, ϕ_vals) atol=ε
         @test maximum(abs, ϕ) ≈ maximum(abs, ϕ_vals) atol=ε
         @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
+
+        @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
+        @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
 
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
@@ -208,7 +211,7 @@ function run_field_interpolation_tests(grid)
     wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
     If = Field{Center, Center, Nothing}(grid)
     set!(If, (x, y)-> x * y)
-    interpolate!(wf, If)   
+    interpolate!(wf, If)
 
     CUDA.@allowscalar begin
         @test all(interior(wf) .≈ interior(If))
@@ -219,7 +222,7 @@ function run_field_interpolation_tests(grid)
     grid2 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=( -180,       180), latitude=(-90, 90), z=(0, 1))
     grid3 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-1080, -1080+360), latitude=(-90, 90), z=(0, 1))
     grid4 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(  180,       540), latitude=(-90, 90), z=(0, 1))
-    
+
     f1 = CenterField(grid1)
     f2 = CenterField(grid2)
     f3 = CenterField(grid3)
@@ -239,7 +242,7 @@ function run_field_interpolation_tests(grid)
     fill_halo_regions!(f2)
     fill_halo_regions!(f3)
     fill_halo_regions!(f4)
-    
+
     interpolate!(f1, f2)
     @test all(interior(f1) .≈ λnodes(grid1, Center()))
 
@@ -308,7 +311,7 @@ end
 
                 test_indices = [(:, :, :), (1:2, 3:4, 5:6), (1, 1:6, :)]
                 test_field_sizes  = [size(f), (2, 2, 2), (1, 6, size(f, 3))]
-                test_parent_sizes = [size(parent(f)), (2, 2, 2), (1, 6, size(parent(f), 3))] 
+                test_parent_sizes = [size(parent(f)), (2, 2, 2), (1, 6, size(parent(f), 3))]
 
                 for (t, indices) in enumerate(test_indices)
                     field_sz = test_field_sizes[t]
@@ -319,10 +322,10 @@ end
                     @test size(parent(f_view)) == parent_sz
                 end
             end
-        
+
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             for side in (:east, :west, :north, :south, :top, :bottom)
-                for wrong_bc in (ValueBoundaryCondition(0), 
+                for wrong_bc in (ValueBoundaryCondition(0),
                                  FluxBoundaryCondition(0),
                                  GradientBoundaryCondition(0))
 
@@ -334,7 +337,7 @@ end
 
             grid = RectilinearGrid(arch, FT, size=N[2:3], extent=L[2:3], halo=H[2:3], topology=(Flat, Periodic, Periodic))
             for side in (:east, :west)
-                for wrong_bc in (ValueBoundaryCondition(0), 
+                for wrong_bc in (ValueBoundaryCondition(0),
                                  FluxBoundaryCondition(0),
                                  GradientBoundaryCondition(0))
 
@@ -346,7 +349,7 @@ end
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
             for side in (:east, :west, :north, :south)
-                for wrong_bc in (ValueBoundaryCondition(0), 
+                for wrong_bc in (ValueBoundaryCondition(0),
                                  FluxBoundaryCondition(0),
                                  GradientBoundaryCondition(0))
 
@@ -472,7 +475,26 @@ end
         for arch in archs, FT in float_types
             run_field_reduction_tests(FT, arch)
         end
-    end
+
+        for arch in archs, FT in float_types
+            @info "    Test reductions on WindowedFields [$(typeof(arch)), $FT]..."
+
+            grid = RectilinearGrid(arch, FT, size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1))
+            c = CenterField(grid)
+            Random.seed!(42)
+            set!(c, rand(size(c)...))
+
+            windowed_c = view(c, :, 2:3, 1:2)
+
+            for fun in (sum, maximum, minimum)
+                @test fun(c) ≈ fun(interior(c))
+                @test fun(windowed_c) ≈ fun(interior(windowed_c))
+            end
+
+            @test mean(c) ≈ CUDA.@allowscalar mean(interior(c))
+            @test mean(windowed_c) ≈ CUDA.@allowscalar mean(interior(windowed_c))
+        end
+end
 
     @testset "Unit interpolation" begin
         for arch in archs
@@ -484,19 +506,19 @@ end
             for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs), loc in (Center(), Face())
                 @info "    Testing interpolation for $(latitude) latitude and longitude, $(z) z on $(typeof(loc))s..."
                 grid = LatitudeLongitudeGrid(arch; size = (20, 20, 32), longitude, latitude, z, halo = (5, 5, 5))
-            
-                # Test random positions, 
+
+                # Test random positions,
                 # set seed for reproducibility
                 Random.seed!(1234)
                 Xs = [(2rand()-1, 2rand()-1, -100rand()) for p in 1:20]
 
                 for X in Xs
-                    (x, y, z)  = X 
-                    fi, fj, fk = @allowscalar fractional_indices(X, grid, loc, loc, loc)
+                    (x, y, z)  = X
+                    fi = @allowscalar FractionalIndices(X, grid, loc, loc, loc)
 
-                    i⁻, i⁺, _ = interpolator(fi)
-                    j⁻, j⁺, _ = interpolator(fj)
-                    k⁻, k⁺, _ = interpolator(fk)
+                    i⁻, i⁺, _ = interpolator(fi.i)
+                    j⁻, j⁺, _ = interpolator(fi.j)
+                    k⁻, k⁺, _ = interpolator(fi.k)
 
                     x⁻ = @allowscalar ξnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
                     y⁻ = @allowscalar ηnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
@@ -509,7 +531,7 @@ end
                     @test x⁻ ≤ x ≤ x⁺
                     @test y⁻ ≤ y ≤ y⁺
                     @test z⁻ ≤ z ≤ z⁺
-                end 
+                end
             end
         end
     end

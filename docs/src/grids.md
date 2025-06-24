@@ -65,9 +65,8 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
-!!! note "GPU architecture requires a CUDA- or Metal-enabled device"
-    To run the above example and create a grid on the GPU, either an Nvidia or Metal GPU has to be available.
-    For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
+!!! note "GPU architecture requires a CUDA-, ROC- or Metal-enabled device"
+    Running this example and creating a grid on the GPU requires a device that supports CUDA, ROC, or Metal. In other words, you must have an Nvidia, AMD, or Apple-compatible GPU available. For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
@@ -255,22 +254,17 @@ true
 
 To use more than one CPU, we use the `Distributed` architecture,
 
-```jldoctest grids
+```@example grids
+using Oceananigans
+
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
-
-# output
-[ Info: MPI has not been initialized, so we are calling MPI.Init().
-Distributed{CPU} across 1 rank:
-├── local_rank: 0 of 0-0
-└── local_index: [1, 1, 1]
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.
-In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
-so we're only "distributed" across 1 node.
-<!-- For more, see [Distributed grids](@ref). -->
-More details on Distributed grids in a separate section.
+In this case, we didn't launch `julia` on multiple processes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
+so we're only "distributed" across 1 process.
+For more, see [Distributed grids](@ref).
 
 ### Specifying the topology for each dimension
 
@@ -578,3 +572,320 @@ grid = RectilinearGrid(architecture, float_type,
 
 For more examples see [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid)
 and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
+
+## Distributed grids
+
+!!! note
+    For the following examples, make sure to have both
+    `Oceananigans` and `MPI` in your
+    [environment](https://pkgdocs.julialang.org/v1/environments/).
+
+Next we turn to the distribution of grids across disparate nodes.
+This is useful for running simulations that cannot fit on one node.
+It can also be used to speed up a simulation -- provided that the simulation
+is large enough such that the added cost of communicating information between
+nodes does not exceed the benefit of dividing up the computation among different nodes.
+
+```julia
+# Make a simple program that can be written to file
+make_distributed_arch = """
+
+using Oceananigans
+using Oceananigans.DistributedComputations
+using MPI; MPI.Init()
+architecture = Distributed()
+@onrank 0 @show architecture
+@onrank 1 @show architecture
+"""
+
+write("distributed_arch_example.jl", make_distributed_arch)
+
+# Run the program from inside julia.
+# The program can also be run by exiting julia and running
+#
+# $ mpiexec -n 2 julia --project distributed_architecture_example.jl
+#
+# from the terminal.
+using MPI
+run(`$(mpiexec()) -n 2 julia --project distributed_arch_example.jl`)
+rm("distributed_architecture_example.jl")
+```
+
+gives
+
+```julia
+architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
+├── local_rank: 0 of 0-1
+├── local_index: [1, 1, 1]
+└── connectivity: east=1 west=1
+architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
+├── local_rank: 1 of 0-1
+├── local_index: [2, 1, 1]
+└── connectivity: east=0 west=0
+```
+
+That's what it looks like to build a [`Distributed`](@ref) architecture.
+Notice we chose to display only if we're on rank 0 -- because otherwise, all the ranks print
+to the terminal at once, talking over each other, and things get messy. Also, we used the
+"default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
+because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
+changed only with great intention). See the [`Distributed`](@ref) docstring for more information.
+
+Next, let's try to build a distributed grid:
+
+```julia
+make_distributed_grid = """
+
+using Oceananigans
+using Oceananigans.DistributedComputations
+using MPI; MPI.Init()
+
+child_architecture = CPU()
+architecture = Distributed(child_architecture)
+
+grid = RectilinearGrid(architecture,
+                       size = (48, 48, 16),
+                       x = (0, 64),
+                       y = (0, 64),
+                       z = (0, 16),
+                       topology = (Periodic, Periodic, Bounded))
+
+@handshake @info grid
+"""
+
+write("distributed_grid_example.jl", make_distributed_grid)
+
+run(`$(mpiexec()) -n 2 julia --project distributed_grid_example.jl`)
+```
+
+gives
+
+```
+grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ (32.0, 64.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+```
+
+Now we're getting somewhere. Let's note a few things:
+
+* For the second example, we explicitly specified `child_architecture = CPU()` to distribute
+  the grid across CPUs. Changing this to `child_architecture = GPU()` distributes the grid across GPUs.
+
+* We built the grid with `size = (48, 48, 16)`, but ended up with a `24×48×16` grid. Why's that?
+  Well, `(48, 48, 16)` is the size of the _global_ grid, or in other words, the grid that we would get
+  if we stitched together all the grids from each rank. Here we have two ranks. By default, the _local_
+  grids are distributed equally in `x`, which means that each of the two local grids have half
+  of the grids points of the global grid -- yielding local sizes of `(24, 48, 16)`.
+
+* The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
+  topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents
+  half of the global grid and is partitioned in `x`, is not `Periodic` in `x`. Instead, the west
+  and east sides of each local grid (left and right in the `x`-direction) are "connected" to another rank.
+
+To drive these points home, let's run the same script, but using 3 processors instead of 2:
+
+```julia
+run(`$(mpiexec()) -n 3 julia --project distributed_grid_example.jl`)
+```
+gives
+
+```
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [0.0, 21.3333) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)          regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]          regularly spaced with Δz=1.0
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [21.3333, 42.6667) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)              regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]              regularly spaced with Δz=1.0
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [42.6667, 64.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)           regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]           regularly spaced with Δz=1.0
+```
+
+Now we have three local grids, each with size `(16, 48, 16)`.
+
+### Custom partitions grids in both ``x`` and ``y``
+
+To distribute a grid in different ways -- for example, in both ``x`` and ``y`` --
+we use a custom [`Partition`](@ref).
+
+The default `Partition` is equally distributed in `x`. To equally distribute in `y`, we write
+
+```@setup grids
+rm("partition_example.jl", force=true)
+```
+
+```julia
+make_y_partition = """
+
+using Oceananigans
+using Oceananigans.DistributedComputations: Equal
+using MPI
+MPI.Init()
+
+partition = Partition(y=Equal())
+
+if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    @show partition
+end
+"""
+
+write("partition_example.jl", make_y_partition)
+
+run(`$(mpiexec()) -n 2 julia --project partition_example.jl`)
+```
+
+gives
+
+```julia
+partition = Partition across 2 = 1×2×1 ranks:
+└── y: 2
+```
+
+#### Manually specifying ranks in ``x, y``
+
+It's easy to manually configure `Partition(x=Rx, y=Ry)`, where `Rx * Ry` is the total number
+of MPI ranks.
+For example, `Partition(x=3, y=2)` is compatible with `a_program.jl` launched via
+
+```bash
+mpiexec -n 6 julia --project a_program.jl
+```
+
+#### Programmatically specifying ranks in ``x, y``
+
+Programatic specification of ranks is often better for applications that need to scale.
+For this the specification `Equal` is useful: if the number of ranks in one dimension is specified,
+and the other is `Equal`, then the `Equal` dimension is allocated
+the remaining workers. For example,
+
+```@setup grids
+rm("programmatic_partition_example.jl", force=true)
+```
+
+```julia
+make_xy_partition = """
+
+using Oceananigans
+using Oceananigans.DistributedComputations: Equal
+using MPI
+MPI.Init()
+
+partition = Partition(x=Equal(), y=2)
+
+if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    @show partition
+end
+"""
+
+write("programmatic_partition_example.jl", make_xy_partition)
+
+run(`$(mpiexec()) -n 6 julia --project programmatic_partition_example.jl`)
+```
+
+gives
+
+```
+partition = Partition across 2 = 3×2×1 ranks:
+├── x: 3
+└── y: 2
+```
+
+Finally, we can use `Equal` to partition a grid evenly in ``x, y``:
+
+```@setup grids
+rm("equally_partitioned_grids.jl", force=true)
+```
+
+```julia
+partitioned_grid_example = """
+
+using Oceananigans
+using Oceananigans.DistributedComputations: Equal, barrier!
+using MPI
+MPI.Init()
+
+# Total number of ranks
+Nr = MPI.Comm_size(MPI.COMM_WORLD)
+
+# Allocate half the ranks to y, and the rest to x
+Rx = Nr ÷ 2
+partition = Partition(x=Rx, y=Equal())
+arch = Distributed(CPU(); partition)
+
+grid = RectilinearGrid(arch,
+                       size = (48, 48, 16),
+                       x = (0, 64),
+                       y = (0, 64),
+                       z = (0, 16),
+                       topology = (Periodic, Periodic, Bounded))
+
+# Let's see all the grids this time.
+for r in 0:Nr-1
+    if r == arch.local_rank
+        msg = string("On rank ", r, ":", '\n', '\n',
+                     arch, '\n',
+                     grid)
+        @info msg
+    end
+
+    barrier!(arch)
+end
+"""
+
+write("equally_partitioned_grids.jl", partitioned_grid_example)
+
+run(`$(mpiexec()) -n 4 julia --project equally_partitioned_grids.jl`)
+```
+
+gives
+
+```
+┌ Info: On rank 0:
+│
+│ Distributed{CPU} across 4 = 2×2×1 ranks:
+│ ├── local_rank: 0 of 0-3
+│ ├── local_index: [1, 1, 1]
+│ └── connectivity: east=2 west=2 north=1 south=1 southwest=3 southeast=3 northwest=3 northeast=3
+│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
+│ ├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
+│ ├── FullyConnected y ∈ [0.0, 32.0) regularly spaced with Δy=1.33333
+└ └── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+┌ Info: On rank 1:
+│
+│ Distributed{CPU} across 4 = 2×2×1 ranks:
+│ ├── local_rank: 1 of 0-3
+│ ├── local_index: [1, 2, 1]
+│ └── connectivity: east=3 west=3 north=0 south=0 southwest=2 southeast=2 northwest=2 northeast=2
+│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
+│ ├── FullyConnected x ∈ [0.0, 32.0)  regularly spaced with Δx=1.33333
+│ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
+└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
+┌ Info: On rank 2:
+│
+│ Distributed{CPU} across 4 = 2×2×1 ranks:
+│ ├── local_rank: 2 of 0-3
+│ ├── local_index: [2, 1, 1]
+│ └── connectivity: east=0 west=0 north=3 south=3 southwest=1 southeast=1 northwest=1 northeast=1
+│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
+│ ├── FullyConnected x ∈ [32.0, 64.0) regularly spaced with Δx=1.33333
+│ ├── FullyConnected y ∈ [0.0, 32.0)  regularly spaced with Δy=1.33333
+└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
+┌ Info: On rank 3:
+│
+│ Distributed{CPU} across 4 = 2×2×1 ranks:
+│ ├── local_rank: 3 of 0-3
+│ ├── local_index: [2, 2, 1]
+│ └── connectivity: east=1 west=1 north=2 south=2 southwest=0 southeast=0 northwest=0 northeast=0
+│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
+│ ├── FullyConnected x ∈ [32.0, 64.0) regularly spaced with Δx=1.33333
+│ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
+└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
+```

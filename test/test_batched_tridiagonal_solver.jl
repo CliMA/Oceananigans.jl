@@ -51,7 +51,7 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; trid
         elseif tridiagonal_direction isa ZDirection
             Nz
         end
-    
+
     a = rand(N-1)
     b = 3 .+ rand(N) # +3 to ensure diagonal dominance.
     c = rand(N-1)

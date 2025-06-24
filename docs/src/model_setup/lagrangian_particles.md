@@ -110,6 +110,7 @@ When writing to JLD2 you can pass `model.particles` as part of the named tuple o
 
 ```@setup particles
 using Oceananigans
+using NCDatasets
 grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1))
 Nparticles = 3
 x₀ = zeros(Nparticles)
@@ -120,14 +121,14 @@ model = NonhydrostaticModel(; grid, particles=lagrangian_particles)
 ```
 
 ```@example particles
-JLD2OutputWriter(model, (; particles=model.particles), filename="particles", schedule=TimeInterval(15))
+JLD2Writer(model, (; model.particles), filename="particles", schedule=TimeInterval(15))
 ```
 
 When writing to NetCDF you should write particles to a separate file as the NetCDF dimensions differ for
-particle trajectories. You can just pass `model.particles` straight to `NetCDFOutputWriter`:
+particle trajectories. You can just pass `model.particles` straight to `NetCDFWriter`:
 
 ```@example particles
-NetCDFOutputWriter(model, model.particles, filename="particles.nc", schedule=TimeInterval(15))
+NetCDFWriter(model, (; model.particles), filename="particles.nc", schedule=TimeInterval(15))
 ```
 
 !!! warn "Outputting custom particle properties to NetCDF"

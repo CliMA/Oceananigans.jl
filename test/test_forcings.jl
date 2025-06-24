@@ -140,14 +140,14 @@ function time_step_with_field_time_series_forcing(arch)
     return true
 end
 
-function relaxed_time_stepping(arch)
-    x_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:x}(center=0.5, width=0.1),
+function relaxed_time_stepping(arch, mask_type)
+    x_relax = Relaxation(rate = 1/60,   mask = mask_type{:x}(center=0.5, width=0.1),
                                       target = LinearTarget{:x}(intercept=π, gradient=ℯ))
 
-    y_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:y}(center=0.5, width=0.1),
+    y_relax = Relaxation(rate = 1/60,   mask = mask_type{:y}(center=0.5, width=0.1),
                                       target = LinearTarget{:y}(intercept=π, gradient=ℯ))
 
-    z_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:z}(center=0.5, width=0.1),
+    z_relax = Relaxation(rate = 1/60,   mask = mask_type{:z}(center=0.5, width=0.1),
                                       target = π)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -273,7 +273,8 @@ end
 
             @testset "Relaxation forcing functions [$A]" begin
                 @info "      Testing relaxation forcing functions [$A]..."
-                @test relaxed_time_stepping(arch)
+                @test relaxed_time_stepping(arch, GaussianMask)
+                @test relaxed_time_stepping(arch, PiecewiseLinearMask)
             end
 
             @testset "Advective and multiple forcing [$A]" begin

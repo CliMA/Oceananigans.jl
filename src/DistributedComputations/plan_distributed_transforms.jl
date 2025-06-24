@@ -19,11 +19,11 @@ function plan_distributed_transforms(global_grid, storage::TransposableField, pl
     backward_plan_z = plan_backward_transform(parent(storage.zfield), topo[3](), [3], planner_flag)
 
     if arch isa GPU
-        forward_plan_y  =  plan_forward_transform(rs_storage, topo[2](), [1], planner_flag) 
-        backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag) 
+        forward_plan_y  =  plan_forward_transform(rs_storage, topo[2](), [1], planner_flag)
+        backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag)
     else
-        forward_plan_y  =  plan_forward_transform(parent(storage.yfield), topo[2](), [2], planner_flag) 
-        backward_plan_y = plan_backward_transform(parent(storage.yfield), topo[2](), [2], planner_flag) 
+        forward_plan_y  =  plan_forward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
+        backward_plan_y = plan_backward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
     end
 
     forward_operations = (

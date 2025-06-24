@@ -9,13 +9,13 @@ using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceFi
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: validate_model_halo, NaNChecker, validate_tracer_advection
+using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_diffusivity_fields
 using Oceananigans.Utils: tupleit
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: default_nan_checker, timestepper
+import Oceananigans.Simulations: timestepper
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
@@ -163,7 +163,7 @@ function ShallowWaterModel(;
     end
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
-    
+
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)
         set!(bathymetry_field, bathymetry)
@@ -212,7 +212,7 @@ end
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
-    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
+    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"*
                         "Use `momentum_advection = VectorInvariant()`."))
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 
