@@ -53,7 +53,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
     solver = HeptadiagonalIterativeSolver(coeffs; template = right_hand_side, reduced_dim = (false, false, true), grid, settings...)
 
-    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, -1.0, storage)
+    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, -one(grid), storage)
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings, gravitational_acceleration) =
