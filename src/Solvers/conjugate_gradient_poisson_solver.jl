@@ -12,7 +12,7 @@ struct ConjugateGradientPoissonSolver{G, R, S}
     conjugate_gradient_solver :: S
 end
 
-architecture(solver::ConjugateGradientPoissonSolver) = architecture(cgps.grid)
+architecture(solver::ConjugateGradientPoissonSolver) = architecture(solver.grid)
 iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
 Base.summary(ips::ConjugateGradientPoissonSolver) =
@@ -43,6 +43,23 @@ function compute_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
+@kernel function subtract_and_mask!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    a[i, j, k] = (a[i, j, k] - b) * active
+end
+
+function enforce_zero_mean_gauge!(x, r)
+    grid = r.grid
+    arch = architecture(grid)
+
+    mean_x = mean(x)
+    mean_r = mean(r)
+
+    launch!(arch, grid, :xyz, subtract_and_mask!, x, grid, mean_x)
+    launch!(arch, grid, :xyz, subtract_and_mask!, r, grid, mean_r)
+end
+
 struct DefaultPreconditioner end
 
 """
@@ -50,17 +67,23 @@ struct DefaultPreconditioner end
                                    preconditioner = DefaultPreconditioner(),
                                    reltol = sqrt(eps(grid)),
                                    abstol = sqrt(eps(grid)),
+                                   enforce_gauge_condition! = enforce_zero_mean_gauge!,
                                    kw...)
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
 pressure solution is smaller than `reltol` and the absolute error is smaller than `abstol`. Other
 keyword arguments are passed to `ConjugateGradientSolver`.
+The Poisson solver has a zero mean gauge condition enforced with `enforce_gauge_condition! = enforce_zero_mean_gauge!`, which pins the pressure field to have a mean of zero.
+This is because the pressure field is defined only up to an arbitrary constant, and the zero mean gauge condition
+is a common choice to remove this degree of freedom.
+
 """
 function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
+                                        enforce_gauge_condition! = enforce_zero_mean_gauge!,
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
@@ -78,6 +101,7 @@ function ConjugateGradientPoissonSolver(grid;
                                                         abstol,
                                                         preconditioner,
                                                         template_field = rhs,
+                                                        enforce_gauge_condition!,
                                                         kw...)
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
@@ -127,16 +151,8 @@ const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPo
 
 function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
-    shift = - sqrt(eps(eltype(r))) # to make the operator strictly negative definite
-    solve!(p, preconditioner, preconditioner.storage, shift)
-    p .*= -1
+    solve!(p, preconditioner, preconditioner.storage)
     return p
-end
-
-@kernel function subtract_and_mask!(a, grid, b)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    a[i, j, k] = (a[i, j, k] - b) * active
 end
 
 #####
@@ -151,9 +167,6 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
     arch = architecture(p)
     fill_halo_regions!(r)
     launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
-
-    mean_p = mean(p)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
 
     return p
 end

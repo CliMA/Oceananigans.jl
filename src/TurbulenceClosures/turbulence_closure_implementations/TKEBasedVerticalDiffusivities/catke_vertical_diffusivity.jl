@@ -58,9 +58,9 @@ Turbulent Kinetic Energy (TKE).
 !!! note "CATKE vertical diffusivity"
     `CATKEVerticalDiffusivity` is a new turbulence closure diffusivity. The default
     values for its free parameters are obtained from calibration against large eddy
-    simulations. For more details please refer to [Wagner25catke](@cite).
+    simulations. For more details please refer to [Wagner25catke](@citet).
 
-    Use with caution and report any issues with the physics at https://github.com/CliMA/Oceananigans.jl/issues.
+    Use with caution and report any issues with the physics at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).
 
 Arguments
 =========
@@ -77,18 +77,19 @@ Keyword arguments
 
 - `turbulent_kinetic_energy_equation`: The TKE equation; default: `CATKEEquation()`.
 
-- `maximum_tracer_diffusivity`: Maximum value for tracer diffusivity. CATKE-predicted tracer diffusivities that are larger
-                                than `maximum_tracer_diffusivity` are clipped. Default: `Inf`.
+- `maximum_tracer_diffusivity`: Maximum value for tracer diffusivity. CATKE-predicted tracer
+                                diffusivities that are larger than `maximum_tracer_diffusivity`
+                                are clipped. Default: `Inf`.
 
-- `maximum_tke_diffusivity`: Maximum value for TKE diffusivity. CATKE-predicted diffusivities for TKE that are larger
-                             than `maximum_tke_diffusivity` are clipped. Default: `Inf`.
+- `maximum_tke_diffusivity`: Maximum value for TKE diffusivity. CATKE-predicted diffusivities
+                             for TKE that are larger than `maximum_tke_diffusivity` are clipped.
+                             Default: `Inf`.
 
-- `maximum_viscosity`: Maximum value for momentum diffusivity. CATKE-predicted momentum diffusivities that are larger
-                       than `maximum_viscosity` are clipped. Default: `Inf`.
+- `maximum_viscosity`: Maximum value for momentum diffusivity. CATKE-predicted momentum diffusivities
+                       that are larger than `maximum_viscosity` are clipped. Default: `Inf`.
 
-- `minimum_tke`: Minimum value for the turbulent kinetic energy.
-                 Can be used to model the presence "background" TKE
-                 levels due to, for example, mixing by breaking internal waves.
+- `minimum_tke`: Minimum value for the turbulent kinetic energy. Can be used to model the presence
+                 "background" TKE levels due to, for example, mixing by breaking internal waves.
                  Default: 1e-9.
 
 - `minimum_convective_buoyancy_flux` Minimum value for the convective buoyancy flux. Default: 1e-11.
@@ -99,6 +100,7 @@ Keyword arguments
 
 References
 ==========
+
 Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill,
     C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). "Formulation and calibration of CATKE,
     a one-equation parameterization for microscale ocean mixing." J. Adv. Model. Earth Sy., 17, e2024MS004522.
@@ -311,7 +313,7 @@ end
     κu_max = closure.maximum_viscosity
     κu★ = min(κu, κu_max)
     FT = eltype(grid)
-    return κu★::FT
+    return FT(κu★)
 end
 
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -321,7 +323,7 @@ end
     κc_max = closure.maximum_tracer_diffusivity
     κc★ = min(κc, κc_max)
     FT = eltype(grid)
-    return κc★::FT
+    return FT(κc★)
 end
 
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -331,7 +333,7 @@ end
     κe_max = closure.maximum_tke_diffusivity
     κe★ = min(κe, κe_max)
     FT = eltype(grid)
-    return κe★::FT
+    return FT(κe)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu

@@ -7,11 +7,11 @@ using Oceananigans.Advection: Centered, adapt_advection_order
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, CenterField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_conditions
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, time_discretization, implicit_diffusion_solver
@@ -20,10 +20,11 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
+import Oceananigans.Models: total_velocities, timestepper
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 
 # TODO: this concept may be more generally useful,
 # but for now we use it only for hydrostatic pressure anomalies for now.
@@ -122,7 +123,7 @@ function NonhydrostaticModel(; grid,
                              boundary_conditions::NamedTuple = NamedTuple(),
                              tracers = (),
                              timestepper = :RungeKutta3,
-                             background_fields::NamedTuple = NamedTuple(),
+                             background_fields::BFOrNamedTuple = NamedTuple(),
                              particles::ParticlesOrNothing = nothing,
                              biogeochemistry::AbstractBGCOrNothing = nothing,
                              velocities = nothing,
@@ -220,7 +221,6 @@ function NonhydrostaticModel(; grid,
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
-
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)

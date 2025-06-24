@@ -46,6 +46,8 @@ function set!(u::Field, v)
     return u
 end
 
+set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
+
 #####
 ##### Setting to specific things
 #####

@@ -23,9 +23,16 @@ struct ThreeDimensionalFormulation <: AbstractDiffusivityFormulation end
 """
     struct HorizontalFormulation end
 
-Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
+Specifies a horizontally-isotropic `ScalarDiffusivity`.
 """
 struct HorizontalFormulation <: AbstractDiffusivityFormulation end
+
+"""
+    struct HorizontalVectorInvariantFormulation end
+
+Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
+"""
+struct HorizontalVectorInvariantFormulation <: AbstractDiffusivityFormulation end
 
 """
     struct HorizontalDivergenceFormulation end
@@ -288,7 +295,6 @@ end
 @inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
-
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}

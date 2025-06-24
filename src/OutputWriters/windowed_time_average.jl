@@ -1,6 +1,5 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.Models: AbstractModel
 using Oceananigans.Utils: AbstractSchedule, prettytime
 using Oceananigans.TimeSteppers: Clock
 
@@ -209,7 +208,7 @@ function (wta::WindowedTimeAverage)(model)
     return wta.result
 end
 
-function accumulate_result!(wta, model::AbstractModel)
+function accumulate_result!(wta, model)
     integrand = wta.fetch_operand ? fetch_output(wta.operand, model) : wta.operand
     return accumulate_result!(wta, model.clock, integrand)
 end

@@ -12,17 +12,16 @@ using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
-    calculate_pressure_correction!,
+    compute_pressure_correction!,
     correct_velocities_and_cache_previous_tendencies!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
-    local_ab2_step!,
     compute_free_surface_tendency!
 
-import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
+import Oceananigans.TimeSteppers: Clock, unit_time, first_time_step!, time_step!, ab2_step!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -104,7 +103,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
         model.clock.last_stage_Δt = Δt
     end
 
-    calculate_pressure_correction!(model, Δt)
+    compute_pressure_correction!(model, Δt)
     correct_velocities_and_cache_previous_tendencies!(model, Δt)
 
     update_state!(model, callbacks; compute_tendencies=true)
@@ -113,6 +112,22 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
 
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt, euler=true)
     return nothing
 end
 

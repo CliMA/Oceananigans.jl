@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: prettysummary, ConsecutiveIterations
 using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 
@@ -36,7 +36,6 @@ which in turn does nothing by default.
 
 `finalize!` can be specialized on `callback.parameters`,
 or specialized for `callback.func`.
-`
 """
 finalize!(callback::Callback, sim) = finalize!(callback.func, sim)
 
@@ -55,7 +54,7 @@ If `isnothing(parameters)`, `func(sim::Simulation)` is called.
 Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
 
 The `callsite` determines where `Callback` is executed. The possible values for
-`callsite` are
+`callsite` are:
 
 * `TimeStepCallsite()`: after a time-step.
 
@@ -142,3 +141,5 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
     callback = Callback(func, schedule; callback_kw...)
     return add_callback!(simulation, callback; name)
 end
+
+validate_schedule(func, schedule) = schedule
