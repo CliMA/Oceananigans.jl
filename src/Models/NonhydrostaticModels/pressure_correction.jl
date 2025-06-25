@@ -2,6 +2,7 @@ import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_co
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: Field
 using Oceananigans.BoundaryConditions: PerturbationAdvection, PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.ImmersedBoundaries: immersed_inactive_node
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
@@ -53,18 +54,26 @@ function correct_boundary_mass_flux!(model::NonhydrostaticModel)
     return nothing
 end
 
+yzaverage(ϕ) = Field(Average(ϕ, dims=(2, 3)))[]
+const c = Center()
+const f = Face()
+
 @inline function _correct_west_boundary_mass_flux!(grid, u, bc)
     i = 1
     current_flux = zero(eltype(u))
     target_flux = bc.classification.matching_scheme.average_mass_flux
 
     # Calculate current mass flux and total area
-    current_flux = Field(Average(view(u, i, :, :)))[]
+    current_flux = yzaverage(view(u, i, :, :))
 
     # Calculate and apply correction
     flux_correction = (target_flux - current_flux)
     for j in 1:grid.Ny, k in 1:grid.Nz
-        @inbounds u[i, j, k] += flux_correction
+        if !immersed_inactive_node(i, j, k, grid, f, c, c)
+            @inbounds u[i, j, k] += flux_correction
+        else
+            @inbounds u[i, j, k] = 0
+        end
     end
 
     return nothing
@@ -74,16 +83,20 @@ end
     i = grid.Nx + 1
     current_flux = zero(eltype(u))
     target_flux = bc.classification.matching_scheme.average_mass_flux
-    
+
     # Calculate current mass flux and total area
-    current_flux = Field(Average(view(u, i, :, :)))[]
-    
+    current_flux = yzaverage(view(u, i, :, :))
+
     # Calculate and apply correction
     flux_correction = (target_flux - current_flux)
     for j in 1:grid.Ny, k in 1:grid.Nz
-        @inbounds u[i, j, k] += flux_correction
+        if !immersed_inactive_node(i, j, k, grid, f, c, c)
+            @inbounds u[i, j, k] += flux_correction
+        else
+            @inbounds u[i, j, k] = 0
+        end
     end
-    
+
     return nothing
 end
 
