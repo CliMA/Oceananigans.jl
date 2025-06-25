@@ -30,7 +30,7 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                       yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
                                       z    :: CZ) where {Arch, FT, TX, TY, TZ,
                                                          FX, VX, FY, VY, CZ}
-                                                    
+
     return RectilinearGrid{FT, TX, TY, TZ,
                            CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
                                                      Hx, Hy, Hz, Lx, Ly, Lz,
@@ -274,8 +274,6 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                                        z)
 end
 
-
-
 """ Validate user input arguments to the `RectilinearGrid` constructor. """
 function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
     TX, TY, TZ = topology = validate_topology(topology)
@@ -428,7 +426,7 @@ function with_halo(halo, grid::RectilinearGrid)
     halo = pop_flat_elements(halo, topology(grid))
     kwargs[:halo] = halo
     arch = args[:architecture]
-    FT = args[:number_type]    
+    FT = args[:number_type]
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
@@ -470,7 +468,7 @@ rname(::RG) = :z
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
     y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos) 
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have

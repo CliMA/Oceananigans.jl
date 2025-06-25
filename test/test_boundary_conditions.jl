@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -14,9 +14,52 @@ function can_instantiate_boundary_condition(bc, C, FT=Float64, ArrayType=Array)
     end
     return success
 end
-        
+
 @testset "Boundary conditions" begin
     @info "Testing boundary conditions..."
+
+    @testset "Default serial boundary conditions" begin
+        @info "  Testing default boundary conditions..."
+        loc  = (Center, Center, Center)
+        grid = RectilinearGrid(size=(10, 10), x=(0, 1), y=(0, 1), topology=(Periodic, Bounded, Flat))
+        default_bcs = FieldBoundaryConditions(grid, loc)
+
+        @test default_bcs.east  isa PBC
+        @test default_bcs.west  isa PBC
+        @test default_bcs.north isa ZFBC
+        @test default_bcs.south isa ZFBC
+        @test default_bcs.top    isa Nothing
+        @test default_bcs.bottom isa Nothing
+
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(-10, 10), z = (0, 1))
+        locC  = (Center, Center,  Center)
+        locF  = (Center, Face,    Center)
+        locN  = (Center, Nothing, Center)
+
+        default_bcs_C = FieldBoundaryConditions(grid, locC)
+        default_bcs_F = FieldBoundaryConditions(grid, locF)
+        default_bcs_N = FieldBoundaryConditions(grid, locN)
+
+        @test default_bcs_C.north isa VBC
+        @test default_bcs_C.south isa VBC
+
+        @test default_bcs_C.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_C.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+
+        @test default_bcs_F.north isa OBC
+        @test default_bcs_F.south isa OBC
+
+        @test default_bcs_F.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_F.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+
+        @test default_bcs_N.north isa Nothing
+        @test default_bcs_N.south isa Nothing
+
+        grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
+        default_bcs = FieldBoundaryConditions(grid, loc)
+        @test default_bcs.north.classification isa Zipper
+        @test default_bcs.south isa ZFBC        
+    end
 
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
@@ -212,17 +255,17 @@ end
         @test T_bcs.top isa ZFBC
 
         grid = bbb_grid
-        
+
         T_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
-                                                   east = ValueBoundaryCondition(simple_bc),
-                                                   west = ValueBoundaryCondition(simple_bc),
-                                                 bottom = ValueBoundaryCondition(simple_bc),
-                                                    top = ValueBoundaryCondition(simple_bc),
-                                                  north = ValueBoundaryCondition(simple_bc),
-                                                  south = ValueBoundaryCondition(simple_bc))
+                                        east = ValueBoundaryCondition(simple_bc),
+                                        west = ValueBoundaryCondition(simple_bc),
+                                        bottom = ValueBoundaryCondition(simple_bc),
+                                        top = ValueBoundaryCondition(simple_bc),
+                                        north = ValueBoundaryCondition(simple_bc),
+                                        south = ValueBoundaryCondition(simple_bc))
 
         @test T_bcs.east.condition isa ContinuousBoundaryFunction
-        @test T_bcs.west.condition isa ContinuousBoundaryFunction 
+        @test T_bcs.west.condition isa ContinuousBoundaryFunction
         @test T_bcs.north.condition isa ContinuousBoundaryFunction
         @test T_bcs.south.condition isa ContinuousBoundaryFunction
         @test T_bcs.top.condition isa ContinuousBoundaryFunction
@@ -237,12 +280,12 @@ end
 
         one_bc = BoundaryCondition(Value(), 1.0)
 
-        T_bcs = FieldBoundaryConditions(   east = one_bc,
-                                           west = one_bc,
-                                         bottom = one_bc,
-                                            top = one_bc,
-                                          north = one_bc,
-                                          south = one_bc)
+        T_bcs = FieldBoundaryConditions(east = one_bc,
+                                        west = one_bc,
+                                        bottom = one_bc,
+                                        top = one_bc,
+                                        north = one_bc,
+                                        south = one_bc)
 
         T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
 
@@ -253,16 +296,28 @@ end
         @test T_bcs.top    === one_bc
         @test T_bcs.bottom === one_bc
 
-        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
         f = CenterField(grid)
 
-        @test f.boundary_conditions.north isa VBC
-        @test f.boundary_conditions.south isa VBC
+        @test f.boundary_conditions.north isa ZFBC
+        @test f.boundary_conditions.south isa ZFBC
 
         set!(f, (x, y, z) -> x)
         fill_halo_regions!(f)
 
-        @test all(f.data[1:10, 0,  1:10] .== 2 * mean(f.data[1:10, 1,  1:10]) .- f.data[1:10, 1,  1:10])
-        @test all(f.data[1:10, 11, 1:10] .== 2 * mean(f.data[1:10, 10, 1:10]) .- f.data[1:10, 10, 1:10])
+        @test all(f.data[1:10, 0,  1:10] .== f.data[1:10, 1, 1:10])
+        @test all(f.data[1:10, 11, 1:10] .== f.data[1:10, 10, 1:10])
+
+        # Minimal test for PolarValueBoundaryCondition
+        polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
+        c = CenterField(polar_grid)
+        @test c.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarValueBoundaryCondition
+        @test c.boundary_conditions.south isa Oceananigans.BoundaryConditions.PolarValueBoundaryCondition
+
+        set!(c, (x, y, z) -> x)
+        fill_halo_regions!(c)
+
+        @test all(c.data[1:10, 0,  1:10] .== 2 * mean(c.data[1:10, 1,  1:10]) .- c.data[1:10, 1,  1:10])
+        @test all(c.data[1:10, 11, 1:10] .== 2 * mean(c.data[1:10, 10, 1:10]) .- c.data[1:10, 10, 1:10])
     end
 end

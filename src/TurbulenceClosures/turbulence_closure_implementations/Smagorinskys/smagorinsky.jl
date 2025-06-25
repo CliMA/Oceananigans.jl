@@ -8,6 +8,7 @@ using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
     ThreeDimensionalFormulation,
     ExplicitTimeDiscretization,
+    closure_constant,
     convert_diffusivity
 
 import Oceananigans.Utils: with_tracers
@@ -41,6 +42,9 @@ end
 
 @inline viscosity(::Smagorinsky, K) = K.νₑ
 @inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
+
+Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
+    Smagorinsky{TD}(adapt(to, smag.coefficient), adapt(to, smag.Pr))
 
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
@@ -102,6 +106,7 @@ end
 end
 
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, args...) = c.coefficient^2
+@inline square_smagorinsky_coefficient(i, j, k, grid, c, args...) = closure_constant(i, j, k, grid, c)^2
 
 compute_coefficient_fields!(diffusivity_fields, closure, model; parameters) = nothing
 

@@ -45,8 +45,8 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
                                             λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
                                            Δφᵃᶠᵃ :: DYF, Δφᵃᶜᵃ :: DYC,
                                             φᵃᶠᵃ :: YF,   φᵃᶜᵃ :: YC, z :: Z,
-                                           Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC, 
-                                           Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF, 
+                                           Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC,
+                                           Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF,
                                            Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
                                            Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
                                            Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
@@ -415,7 +415,9 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid{TX, TY, TZ}(nothing,
                                              grid.Nx, grid.Ny, grid.Nz,
                                              grid.Hx, grid.Hy, grid.Hz,
-                                             grid.Lx, grid.Ly, grid.Lz,
+					     Adapt.adapt(to, grid.Lx),
+					     Adapt.adapt(to, grid.Ly),
+					     Adapt.adapt(to, grid.Lz),
                                              Adapt.adapt(to, grid.Δλᶠᵃᵃ),
                                              Adapt.adapt(to, grid.Δλᶜᵃᵃ),
                                              Adapt.adapt(to, grid.λᶠᵃᵃ),
@@ -435,7 +437,7 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                              Adapt.adapt(to, grid.Azᶠᶜᵃ),
                                              Adapt.adapt(to, grid.Azᶜᶠᵃ),
                                              Adapt.adapt(to, grid.Azᶠᶠᵃ),
-                                             grid.radius)
+					     Adapt.adapt(to, grid.radius))
 end
 
 #####
@@ -668,3 +670,57 @@ end
 
 @inline λspacings(grid::LLG, ℓx) = λspacings(grid, ℓx, nothing, nothing)
 @inline φspacings(grid::LLG, ℓy) = φspacings(grid, nothing, ℓy, nothing)
+
+"""
+    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+
+Construct a `LatitudeLongitudeGrid` from a `RectilinearGrid`. The horizontal coordinates of the
+rectilinear grid are transformed to longitude-latitude coordinates in degrees, accounting for
+spherical Earth geometry. The longitudes are computed approximately using the latitudinal origin.
+
+The vertical coordinate and architecture are inherited from the input grid.
+
+Keyword Arguments
+================ 
+- `radius`: The radius of the sphere, defaults to Earth's mean radius (≈ 6371 km)
+- `origin`: Tuple of (longitude, latitude) in degrees specifying the origin of the rectilinear grid
+"""
+function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+    arch = architecture(rectilinear_grid)
+    Hx, Hy, Hz = halo_size(rectilinear_grid)
+    Nx, Ny, Nz = size(rectilinear_grid)
+	
+    λ₀, φ₀ = origin
+
+    TX, TY, TZ = topology(rectilinear_grid)
+    tx, ty, tz = TX(), TY(), TZ()
+    triply_bounded = tx isa Bounded && ty isa Bounded && tz isa Bounded
+    if !triply_bounded
+        msg = string("The source RectilinearGrid for constructing LatitudeLongitudeGrid ",
+                     "must be triply-bounded, but has topology=($tx, $ty, $tz)!")
+        throw(ArgumentError(msg))
+    end
+
+    # Get face coordinates from rectilinear grid
+    xᶠ = xnodes(rectilinear_grid, Face())
+    yᶠ = ynodes(rectilinear_grid, Face())
+
+    xᶠ = on_architecture(CPU(), xᶠ)
+    yᶠ = on_architecture(CPU(), yᶠ)
+    
+    # Convert y coordinates to latitudes
+    R = radius
+    φᶠ = @. φ₀ + 180 / π * yᶠ / R
+    
+    # Convert x to longitude, using the origin as a reference
+    λᶠ = @. λ₀ + 180 / π * xᶠ / (R * cosd(φ₀))
+
+    z = cpu_face_constructor_z(rectilinear_grid)
+
+    return LatitudeLongitudeGrid(arch, eltype(rectilinear_grid); z, radius,
+                                 topology = (Bounded, Bounded, Bounded),
+                                 size = (Nx, Ny, Nz),
+                                 halo = (Hx, Hy, Hz),
+                                 longitude = λᶠ,
+                                 latitude = φᶠ)
+end

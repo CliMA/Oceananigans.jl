@@ -3,6 +3,26 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
+using Random
+
+function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
+    grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
+    model = NonhydrostaticModel(; grid, tracers = (:T, :S), advection = nothing)
+
+    set!(model, T=30, S=35)
+
+    simulation = Simulation(model; Δt, stop_iteration=100)
+
+    simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers,
+                                                             filename = "constant_fields",
+                                                             schedule = IterationInterval(10),
+                                                             array_type = Array{FT},
+                                                             overwrite_existing = true)
+
+    run!(simulation)
+
+    return simulation.output_writers[:constant_fields].filepath
+end
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -81,6 +101,37 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     return filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath
 end
 
+function test_pickup_with_inaccurate_times()
+
+    # Testing pickup using example that was failing in https://github.com/CliMA/Oceananigans.jl/issues/4077
+    grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+    times = collect(0:0.1:3)
+    filename = "fts_inaccurate_times_test.jld2"
+    f_tmp = Field{Center,Center,Center}(grid) 
+    f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
+
+    for (it, time) in enumerate(f.times)
+        set!(f_tmp,   30)
+        set!(f,f_tmp, it)
+    end
+
+    # Create another time array that is slightly different at t=0
+    times_mod = copy(times)
+    times_mod[1] = 1e-16
+
+    # Now we load the FTS partly in memory
+    f_fts = FieldTimeSeries(filename, "f"; backend = InMemory(5), times = times_mod)
+    Nt = length(f_fts.times)
+
+    for t in eachindex(times)
+        @test all(interior(f_fts[t]) .== 30)
+    end
+
+    rm(filename, force=true)
+
+    return nothing
+end
+
 @testset "OutputReaders" begin
     @info "Testing output readers..."
 
@@ -139,7 +190,7 @@ end
             u3i = FieldTimeSeries{Face, Center, Center}(u3.grid, u3.times)
             @test !isnothing(u3i.boundary_conditions)
             @test u3i.boundary_conditions isa FieldBoundaryConditions
-            
+
             interpolate!(u3i, u3)
             @test all(interior(u3i) .≈ interior(u3))
 
@@ -250,12 +301,37 @@ end
             bu = FieldTimeSeries(unsplit_filepath, "b", architecture=arch)
             ζu = FieldTimeSeries(unsplit_filepath, "ζ", architecture=arch)
 
-            split = (us, vs, ws, Ts, bs, ζs)                
-            unsplit = (uu, vu, wu, Tu, bu, ζu)                
-            for pair in zip(split, unsplit)    
+            split = (us, vs, ws, Ts, bs, ζs)
+            unsplit = (uu, vu, wu, Tu, bu, ζu)
+            for pair in zip(split, unsplit)
                 s, u = pair
                 @test s.times == u.times
                 @test parent(s) == parent(u)
+            end
+        end
+
+        if arch isa CPU
+            @testset "FieldTimeSeries pickup" begin
+                @info "  Testing FieldTimeSeries pickup..."
+                Random.seed!(1234)
+                for n in -4:4
+                    Δt = (1.1 + rand()) * 10.0^n 
+                    Lx = 10 * Δt
+                    for FT in (Float32, Float64)
+                        filename = generate_nonzero_simulation_data(Lx, Δt, FT)
+                        Tfts = FieldTimeSeries(filename, "T")
+                        Sfts = FieldTimeSeries(filename, "S")
+
+                        for t in eachindex(Tfts.times)
+                            @test all(interior(Tfts[t]) .== 30)
+                            @test all(interior(Sfts[t]) .== 35)
+                        end
+                    end
+                end
+
+
+                @info "  Testing FieldTimeSeries pickup with slightly inaccurate times..."
+                test_pickup_with_inaccurate_times()
             end
         end
 
@@ -265,21 +341,21 @@ end
 
                 x = y = z = (0, 1)
                 grid = RectilinearGrid(GPU(); size=(1, 1, 1), x, y, z)
-                
+
                 τx = CuArray(zeros(size(grid)...))
                 τy = Field{Center, Face, Nothing}(grid)
                 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
                 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
                 model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
                 simulation = Simulation(model; Δt=1, stop_iteration=1)
-                
+
                 simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
                                                               filename = "test_cuarray_bc.jld2",
                                                               schedule=IterationInterval(1),
                                                               overwrite_existing = true)
-                
+
                 run!(simulation)
-                
+
                 ut = FieldTimeSeries("test_cuarray_bc.jld2", "u")
                 vt = FieldTimeSeries("test_cuarray_bc.jld2", "v")
                 @test ut.boundary_conditions.top.classification isa Flux
@@ -482,19 +558,19 @@ end
 
         fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
 
-        f = CenterField(grid) 
+        f = CenterField(grid)
         for (i, time) in enumerate(fts.times)
             set!(f, (x, y, z) -> sinf(time))
             set!(fts, f, i)
         end
-        
+
         # Now we load the FTS partly in memory
         # using different time indexing strategies
         M = 5
         fts_lin = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Linear())
         fts_cyc = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Cyclical())
         fts_clp = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
-        
+
         # Test that linear interpolation is correct within the time domain
         for time in 0:0.01:last(fts.times)
             tidx = findfirst(fts.times .> time)
@@ -503,23 +579,23 @@ end
                 t⁺ = fts.times[tidx]
 
                 Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
-            
-                @test fts_lin[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
-                @test fts_cyc[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
-                @test fts_clp[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+
+                @test fts_lin[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺)
+                @test fts_cyc[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺)
+                @test fts_clp[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺)
             end
         end
 
         # Test that the time interpolation is correct outside the time domain
-        Δt = fts.times[end] - fts.times[end-1]        
+        Δt = fts.times[end] - fts.times[end-1]
         Tf = last(fts.times)
         from = Tf+1
         to = 2Tf
-        
+
         for t in from:0.01:to
             dfdt = (fts_lin[end][1, 1, 1] - fts_lin[end-1][1, 1, 1]) / Δt
             extrapolated = (t - Tf) * dfdt
-            @test fts_lin[Time(t)][1, 1, 1] ≈ extrapolated 
+            @test fts_lin[Time(t)][1, 1, 1] ≈ extrapolated
             @test fts_clp[Time(t)][1, 1, 1] ≈ fts_clp[end][1, 1, 1]
         end
     end
@@ -529,4 +605,3 @@ end
     rm(filepath3d)
     rm(filepath_sine)
 end
-

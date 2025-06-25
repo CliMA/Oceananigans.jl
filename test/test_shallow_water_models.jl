@@ -50,7 +50,7 @@ function shallow_water_model_tracers_and_forcings_work(arch)
     return nothing
 end
 
-function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ) 
+function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     ν, m = 1, 2 # viscosity and cosine wavenumber
 
     closure = ShallowWaterScalarDiffusivity(; ν)
@@ -58,8 +58,8 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     tracer_advection = nothing
     mass_advection = nothing
 
-    model = ShallowWaterModel(; grid, closure, 
-                                gravitational_acceleration=1.0, 
+    model = ShallowWaterModel(; grid, closure,
+                                gravitational_acceleration=1.0,
                                 momentum_advection, tracer_advection, mass_advection,
                                 formulation)
 
@@ -99,12 +99,12 @@ end
     end
 
     topo = (Flat, Flat, Flat)
-   
+
     @testset "$topo model construction" begin
     @info "  Testing $topo model construction..."
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch, FT, topology=topo, size=(), extent=())
-            model = ShallowWaterModel(grid=grid, gravitational_acceleration=1) 
+            model = ShallowWaterModel(grid=grid, gravitational_acceleration=1)
 
             @test model isa ShallowWaterModel
         end
@@ -120,10 +120,10 @@ end
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
                 #arch isa GPU && topo == (Flat, Bounded, Flat) && continue
-        
+
                 grid = RectilinearGrid(arch, FT, topology=topo, size=3, extent=1, halo=3)
-                model = ShallowWaterModel(grid=grid, gravitational_acceleration=1) 
-                
+                model = ShallowWaterModel(grid=grid, gravitational_acceleration=1)
+
                 @test model isa ShallowWaterModel
             end
         end
@@ -221,7 +221,7 @@ end
             grid_x = RectilinearGrid(arch, size = Nx, x = (0, 1), topology = (Bounded, Flat, Flat))
             grid_y = RectilinearGrid(arch, size = Ny, y = (0, 1), topology = (Flat, Bounded, Flat))
             coords = (reshape(xnodes(grid_x, Face()), (Nx+1, 1)), reshape(ynodes(grid_y, Face()), (1, Ny+1)))
-            
+
             for (fieldname, grid, coord) in zip([:u, :v], [grid_x, grid_y], coords)
                 for formulation in (ConservativeFormulation(), VectorInvariantFormulation())
                     @info "  Testing ShallowWaterModel cosine viscous diffusion [$fieldname, $formulation]"

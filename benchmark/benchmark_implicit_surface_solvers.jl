@@ -25,7 +25,7 @@ for N in 10:10:250
 
     if using_rectilinear_grid == true
         underlying_grid = RectilinearGrid(arch,
-                                          topology = (Periodic, Bounded, Bounded), 
+                                          topology = (Periodic, Bounded, Bounded),
                                           size = (N, N, 24),
                                           x = (-500kilometers, 500kilometers),
                                           y = (-500kilometers, 500kilometers),
@@ -37,7 +37,7 @@ for N in 10:10:250
         bump(x, y) = - Lz_u * (1 - 2 * exp(-(x^2 + y^2) / 2width^2))
     else
         underlying_grid = LatitudeLongitudeGrid(arch,
-                                                topology = (Periodic, Bounded, Bounded), 
+                                                topology = (Periodic, Bounded, Bounded),
                                                 size = (N, N, 24),
                                                 longitude = (-10, 10),
                                                 latitude = (-55, -35),
@@ -149,7 +149,7 @@ for N in 10:10:250
         =#
 
         simulation.stop_iteration = 200
-        
+
         run!(simulation)
 
         simulation.stop_iteration = 1200
