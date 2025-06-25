@@ -199,7 +199,7 @@ function test_constant_fields_checkpointer(arch)
     @test vel["v"] == ConstantField(2)
     @test vel["w"] == ConstantField(3)
 
-    rm("checkpoint_iteration0.jld2", force=true)
+    rm("constant_fields_test_iteration0.jld2", force=true)
 
     return nothing
 end
