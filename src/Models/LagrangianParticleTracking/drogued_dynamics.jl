@@ -7,7 +7,21 @@ drogued at `depths`. The particles remain at the their `z` position
 so the "measurment depth can be set", and then are advected in the `x` and `y`
 directions according to the velocity field at `depths`.
 
-`depths` should be an array of length `length(particles)`.
+`depths` should be an (abstract) array of length `length(particles)`.
+
+
+Example
+=======
+
+```jldoctest
+using Oceananigans
+
+n = 10
+
+dynamics = DroguedParticleDynamics(-10:10/(n-1):0)
+
+particles = LagrangianParticles(; x = zeros(n), y = zeros(n), z = zeros(n), dynamics)
+```
 """
 struct DroguedParticleDynamics{DD}
     depths :: DD
