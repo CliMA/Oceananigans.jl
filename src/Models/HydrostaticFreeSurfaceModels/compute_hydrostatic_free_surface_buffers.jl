@@ -1,12 +1,16 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.DistributedComputations: DistributedActiveCellsIBG
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
-                                                buffer_p_kernel_parameters, 
+                                                buffer_p_kernel_parameters,
                                                 buffer_κ_kernel_parameters,
                                                 buffer_parameters
+
+const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
+                                                          <:DistributedGrid, I, <:CellMaps, S,
+                                                          <:Distributed} where {FT, TX, TY, TZ, I, S}
 
 # We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
@@ -26,23 +30,23 @@ function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-function compute_buffer_tendency_contributions!(grid, arch, model) 
+function compute_buffer_tendency_contributions!(grid, arch, model)
     kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
     return nothing
 end
 
-function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
+function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
     maps = grid.interior_active_cells
-    
-    for name in (:west_halo_dependent_cells, 
-                 :east_halo_dependent_cells, 
-                 :south_halo_dependent_cells, 
+
+    for name in (:west_halo_dependent_cells,
+                 :east_halo_dependent_cells,
+                 :south_halo_dependent_cells,
                  :north_halo_dependent_cells)
 
         active_cells_map = @inbounds maps[name]
 
-        # If the map == nothing, we don't need to compute the buffer because 
+        # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
         !isnothing(map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
     end

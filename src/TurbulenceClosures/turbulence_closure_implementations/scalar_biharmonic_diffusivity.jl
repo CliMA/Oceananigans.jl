@@ -2,24 +2,25 @@ import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_
 using Oceananigans.Utils: prettysummary
 
 """
-    struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivity{F}
+    struct ScalarBiharmonicDiffusivity{F, N, V, K} <: AbstractScalarBiharmonicDiffusivity{F}
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
 struct ScalarBiharmonicDiffusivity{F, N, V, K} <: AbstractScalarBiharmonicDiffusivity{F, N}
     ν :: V
     κ :: K
-    ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N} = new{F, N, V, K}(ν, κ)
+    ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, N, V, K} = new{F, N, V, K}(ν, κ)
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
-ScalarBiharmonicDiffusivity(FT::DataType; kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
-VerticalScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
-HorizontalScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
-HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), FT; kwargs...)
+                         ScalarBiharmonicDiffusivity(FT::DataType;                                 kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
+                 VerticalScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
+               HorizontalScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
+     HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), FT; kwargs...)
+HorizontalVectorInvariantScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalVectorInvariantFormulation(), FT; kwargs...)
 
 """
-    ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Float64;
+    ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Oceananigans.defaults.FloatType;
                                 ν = 0,
                                 κ = 0,
                                 discrete_form = false,
@@ -37,6 +38,8 @@ Arguments
   - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
   - `VerticalFormulation()` for diffusivity applied in the vertical direction,
   - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+  - `HorizontalDivergenceFormulation()` for horizontal viscosity with "divergence damping" and no effect on tracers
+  - `HorizontalVectorInvariantFormulation()` for horizontally isotropic vector invariant diffusivity
 
 * `FT`: the float datatype (default: `Float64`)
 
@@ -72,18 +75,17 @@ value of keyword argument `discrete_form`, the constructor expects:
 
 For examples see [`ScalarDiffusivity`](@ref).
 """
-function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(),
-                                     FT = Oceananigans.defaults.FloatType;
+function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Oceananigans.defaults.FloatType;
                                      ν = 0,
                                      κ = 0,
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
-                                     required_halo_size::Int = 2) 
+                                     required_halo_size::Int = 2)
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
-    
+
     # Force a type-stable constructor if ν and κ are numbers
     # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
     # estimation of the diffusivity coefficients using autodiff.
@@ -94,7 +96,7 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
     return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, V, K}) where {F, N, V, K}
+function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(closure.ν, κ)
 end
@@ -118,13 +120,13 @@ end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
 
-function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:Any, N}) where {F, N}
+function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, N, <:Any, <:Any}) where {F, N}
     ν = Adapt.adapt(to, closure.ν)
     κ = Adapt.adapt(to, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:Any, N}) where {F, N}
+function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)

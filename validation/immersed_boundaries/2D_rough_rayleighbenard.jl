@@ -19,14 +19,14 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
     ν = 1
     κ = ν / Pr
     S = Ra * ν * κ / Lz ^ 4
-    
+
     grid = RectilinearGrid(GPU(), Float64,
-                           size = (Nx, Nz), 
+                           size = (Nx, Nz),
                            halo = (4, 4),
                            x = (0, Lx),
                            z = (0, Lz),
                            topology = (Bounded, Flat, Bounded))
-    
+
     @inline function local_roughness_bottom(x, x₀, h)
         if x > x₀ - h && x <= x₀
             return x + h - x₀
@@ -59,7 +59,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
         above_centerline = z > Lz / 2
         return ifelse(above_centerline, -S/2, S/2)
     end
-    
+
     u_bcs = FieldBoundaryConditions(top=ValueBoundaryCondition(0), bottom=ValueBoundaryCondition(0), immersed=ValueBoundaryCondition(0))
 
     v_bcs = FieldBoundaryConditions(top=ValueBoundaryCondition(0), bottom=ValueBoundaryCondition(0),
@@ -74,7 +74,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
 
     Δt = 1e-10
     max_Δt = 1e-5
-    
+
     if solver == "FFT"
         model = NonhydrostaticModel(; grid,
                                     # advection = Centered(),
@@ -102,24 +102,24 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
 
     # b_initial(x, y, z) = -S*z + S/2 - rand() * Ra / 100000
     b_initial(x, y, z) = - rand() * Ra / 100000
-    
+
     set!(model, b=b_initial)
-    
+
     #####
     ##### Simulation
     #####
-    
+
     simulation = Simulation(model, Δt=Δt, stop_iteration=1500000)
 
     # wizard = TimeStepWizard(max_change=1.05, max_Δt=max_Δt, cfl=0.6)
     # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
 
     wall_time = Ref(time_ns())
-    
+
     b = model.tracers.b
     u, v, w = model.velocities
     WB = Average(w * b, dims=(1, 2))
-    
+
     δ = Field(∂x(u) + ∂y(v) + ∂z(w))
     compute!(δ)
 
@@ -139,22 +139,22 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
 
         pressure_solver = sim.model.pressure_solver
         if sim.model.pressure_solver isa ImmersedPoissonSolver
-            solver_iterations = pressure_solver.pcg_solver.iteration 
+            solver_iterations = pressure_solver.pcg_solver.iteration
             msg *= string(", solver iterations: ", solver_iterations)
         end
-    
+
         @info msg
-    
+
         wall_time[] = time_ns()
-    
+
         return nothing
     end
-                       
+
     simulation.callbacks[:p] = Callback(print_progress, IterationInterval(1000))
-    
+
     solver_type = model.pressure_solver isa ImmersedPoissonSolver ? "ImmersedPoissonSolver_reltol_$(IPS_reltol)" : "FFTBasedPoissonSolver"
     prefix = "2D_rough_rayleighbenard_" * solver_type
-    
+
     outputs = merge(model.velocities, model.tracers, (; δ))
 
     function init_save_some_metadata!(file, model)
@@ -164,21 +164,21 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
         file["metadata/parameters/prandtl_number"] = Pr
         return nothing
     end
-    
-    simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs;
-                                                        filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_fields",
-                                                        # schedule = TimeInterval(5e-4),
+
+    simulation.output_writers[:jld2] = JLD2Writer(model, outputs;
+                                                  filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_fields",
+                                                  # schedule = TimeInterval(5e-4),
+                                                  schedule = IterationInterval(10000),
+                                                  overwrite_existing = true,
+                                                  init = init_save_some_metadata!)
+
+    simulation.output_writers[:timeseries] = JLD2Writer(model, (; WB);
+                                                        filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_time_series",
+                                                        #   schedule = TimeInterval(5e-4),
                                                         schedule = IterationInterval(10000),
                                                         overwrite_existing = true,
                                                         init = init_save_some_metadata!)
-    
-    simulation.output_writers[:timeseries] = JLD2OutputWriter(model, (; WB);
-                                                              filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_time_series",
-                                                            #   schedule = TimeInterval(5e-4),
-                                                        schedule = IterationInterval(10000),
-                                                              overwrite_existing = true,
-                                                          init = init_save_some_metadata!)
-    
+
     run!(simulation)
 end
 

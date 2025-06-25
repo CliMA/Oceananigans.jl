@@ -23,9 +23,16 @@ struct ThreeDimensionalFormulation <: AbstractDiffusivityFormulation end
 """
     struct HorizontalFormulation end
 
-Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
+Specifies a horizontally-isotropic `ScalarDiffusivity`.
 """
 struct HorizontalFormulation <: AbstractDiffusivityFormulation end
+
+"""
+    struct HorizontalVectorInvariantFormulation end
+
+Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
+"""
+struct HorizontalVectorInvariantFormulation <: AbstractDiffusivityFormulation end
 
 """
     struct HorizontalDivergenceFormulation end
@@ -65,6 +72,9 @@ const c = Center()
 viscosity(closure::Tuple, K) = Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure))
 diffusivity(closure::Tuple, K, id) = Tuple(diffusivity(closure[n], K[n], id) for n = 1:length(closure))
 
+viscosity(model) = viscosity(model.closure, model.diffusivity_fields)
+diffusivity(model, id) = diffusivity(model.closure, model.diffusivity_fields, id)
+
 @inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
 
 Base.summary(::VerticalFormulation) = "VerticalFormulation"
@@ -96,6 +106,8 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶠᶜ(i, j, k, grid, closure, K, args...)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶜᶠ(i, j, k, grid, closure, K, args...)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶜᶠᶠ(i, j, k, grid, closure, K, args...)
+@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶜᶜᶜ(i, j, k, grid, closure, K, args...)
+@inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶠᶠᶜ(i, j, k, grid, closure, K, args...)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, args...)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, args...)
 
@@ -272,7 +284,6 @@ end
 #####
 
 # Number
-
 @inline νᶜᶜᶜ(i, j, k, grid, loc, ν::Number, args...) = ν
 @inline νᶠᶜᶠ(i, j, k, grid, loc, ν::Number, args...) = ν
 @inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Number, args...) = ν
@@ -281,9 +292,9 @@ end
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
+@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
-
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
@@ -295,6 +306,7 @@ const Lᶜᶜᶜ = Tuple{Center, Center, Center}
 @inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+@inline κᶜᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = @inbounds κ[i, j, k]
 @inline κᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
 @inline κᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
 
@@ -338,5 +350,6 @@ const f = Face()
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, c), clock, fields)
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, c), clock, fields)
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (c, c, f), clock, fields)
+@inline κᶠᶠᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (f, f, f), clock, fields)
 @inline κᶠᶜᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, f), clock, fields)
 @inline κᶜᶠᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, f), clock, fields)
