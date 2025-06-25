@@ -254,21 +254,16 @@ true
 
 To use more than one CPU, we use the `Distributed` architecture,
 
-```jldoctest grids
+```@example grids
+using Oceananigans
+
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
-
-# output
-[ Info: MPI has not been initialized, so we are calling MPI.Init().
-Distributed{CPU} across 1 rank:
-├── local_rank: 0 of 0-0
-├── local_index: [1, 1, 1]
-└── connectivity:
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.
-In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
-so we're only "distributed" across 1 node.
+In this case, we didn't launch `julia` on multiple processes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
+so we're only "distributed" across 1 process.
 For more, see [Distributed grids](@ref).
 
 ### Specifying the topology for each dimension
@@ -587,7 +582,7 @@ and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
 
 Next we turn to the distribution of grids across disparate nodes.
 This is useful for running simulations that cannot fit on one node.
-It can also be used to speed up a simulation -- provided that the simulation 
+It can also be used to speed up a simulation -- provided that the simulation
 is large enough such that the added cost of communicating information between
 nodes does not exceed the benefit of dividing up the computation among different nodes.
 
@@ -596,12 +591,11 @@ nodes does not exceed the benefit of dividing up the computation among different
 make_distributed_arch = """
 
 using Oceananigans
+using Oceananigans.DistributedComputations
+using MPI; MPI.Init()
 architecture = Distributed()
-on_rank_0 = architecture.local_rank == 0
-        
-if on_rank_0
-    @show architecture
-end
+@onrank 0 @show architecture
+@onrank 1 @show architecture
 """
 
 write("distributed_arch_example.jl", make_distributed_arch)
@@ -613,7 +607,7 @@ write("distributed_arch_example.jl", make_distributed_arch)
 #
 # from the terminal.
 using MPI
-mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_arch_example.jl`))
+run(`$(mpiexec()) -n 2 julia --project distributed_arch_example.jl`)
 rm("distributed_architecture_example.jl")
 ```
 
@@ -624,6 +618,10 @@ architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
 ├── local_rank: 0 of 0-1
 ├── local_index: [1, 1, 1]
 └── connectivity: east=1 west=1
+architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
+├── local_rank: 1 of 0-1
+├── local_index: [2, 1, 1]
+└── connectivity: east=0 west=0
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
@@ -639,12 +637,11 @@ Next, let's try to build a distributed grid:
 make_distributed_grid = """
 
 using Oceananigans
-using MPI
-MPI.Init()
+using Oceananigans.DistributedComputations
+using MPI; MPI.Init()
 
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
-on_rank_0 = architecture.local_rank == 0
 
 grid = RectilinearGrid(architecture,
                        size = (48, 48, 16),
@@ -653,14 +650,12 @@ grid = RectilinearGrid(architecture,
                        z = (0, 16),
                        topology = (Periodic, Periodic, Bounded))
 
-if on_rank_0
-    @show grid
-end
+@handshake @info grid
 """
 
 write("distributed_grid_example.jl", make_distributed_grid)
 
-mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_grid_example.jl`))
+run(`$(mpiexec()) -n 2 julia --project distributed_grid_example.jl`)
 ```
 
 gives
@@ -668,6 +663,10 @@ gives
 ```
 grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ (32.0, 64.0) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
 └── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
 ```
@@ -691,15 +690,23 @@ Now we're getting somewhere. Let's note a few things:
 To drive these points home, let's run the same script, but using 3 processors instead of 2:
 
 ```julia
-mpiexec(cmd -> run(`$cmd -n 3 julia --project distributed_grid_example.jl`))
+run(`$(mpiexec()) -n 3 julia --project distributed_grid_example.jl`)
 ```
 gives
 
 ```
-grid = 16×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 21.3333) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)          regularly spaced with Δy=1.33333
 └── Bounded  z ∈ [0.0, 16.0]          regularly spaced with Δz=1.0
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [21.3333, 42.6667) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)              regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]              regularly spaced with Δz=1.0
+grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [42.6667, 64.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)           regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]           regularly spaced with Δz=1.0
 ```
 
 Now we have three local grids, each with size `(16, 48, 16)`.
@@ -732,7 +739,7 @@ end
 
 write("partition_example.jl", make_y_partition)
 
-mpiexec(cmd -> run(`$cmd -n 2 julia --project partition_example.jl`))
+run(`$(mpiexec()) -n 2 julia --project partition_example.jl`)
 ```
 
 gives
@@ -780,7 +787,7 @@ end
 
 write("programmatic_partition_example.jl", make_xy_partition)
 
-mpiexec(cmd -> run(`$cmd -n 6 julia --project programmatic_partition_example.jl`))
+run(`$(mpiexec()) -n 6 julia --project programmatic_partition_example.jl`)
 ```
 
 gives
@@ -835,7 +842,7 @@ end
 
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
-mpiexec(cmd -> run(`$cmd -n 4 julia --project equally_partitioned_grids.jl`))
+run(`$(mpiexec()) -n 4 julia --project equally_partitioned_grids.jl`)
 ```
 
 gives

@@ -544,20 +544,15 @@ const ReducedField = Union{XReducedField,
 @propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
 
-const XFieldBC = BoundaryCondition{<:Any, XReducedField}
-const YFieldBC = BoundaryCondition{<:Any, YReducedField}
-const ZFieldBC = BoundaryCondition{<:Any, ZReducedField}
-
 # Boundary conditions reduced in one direction --- drop boundary-normal index
-@inline getbc(bc::XFieldBC, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[1, j, k]
-@inline getbc(bc::YFieldBC, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, 1, k]
-@inline getbc(bc::ZFieldBC, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j, 1]
+@inline getbc(condition::XReducedField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, j, k]
+@inline getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
+@inline getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
 # Boundary conditions reduced in two directions are ambiguous, so that's hard...
 
 # 0D boundary conditions --- easy case
-const XYZFieldBC = BoundaryCondition{<:Any, XYZReducedField}
-@inline getbc(bc::XYZFieldBC, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds bc.condition[1, 1, 1]
+@inline getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
@@ -594,7 +589,17 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYZReducedAbstractField}
 
 # TODO: needs test
-LinearAlgebra.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing) 
+    ca = condition_operand(a, condition, 0)
+    cb = condition_operand(b, condition, 0)
+    
+    B = ca * cb # Binary operation
+    r = zeros(a.grid, 1)
+    
+    Base.mapreducedim!(identity, +, r, B)
+    return CUDA.@allowscalar r[1]
+end
+
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
@@ -721,6 +726,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         Base.$(reduction)(c::AbstractField; kwargs...) = Base.$(reduction)(identity, c; kwargs...)
     end
 end
+
+# Improve me! We can should both the extrema in one single reduction instead of two
+Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
+Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     operator = condition_operand(f, c, condition, mask)
