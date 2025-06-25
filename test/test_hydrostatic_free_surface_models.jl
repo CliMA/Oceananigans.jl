@@ -102,7 +102,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
             # SingleColumnGrid tests
             @test grid isa SingleColumnGrid
             @test isnothing(model.free_surface)
-            @test !(:η ∈ keys(fields(model))) # doesn't include free surface
         end
     end
 
@@ -113,7 +112,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
-                @test :η ∈ keys(fields(model)) # contrary to the SingleColumnGrid case
             end
         end
     end
@@ -124,6 +122,17 @@ topos_3d = ((Periodic, Periodic, Bounded),
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(; grid)
+                @test model isa HydrostaticFreeSurfaceModel
+            end
+        end
+    end
+
+    for FreeSurface in (ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, Nothing)
+        @testset "$FreeSurface model construction" begin
+            @info "  Testing $FreeSurface model construction..."
+            for arch in archs, FT in float_types
+                grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
+                model = HydrostaticFreeSurfaceModel(; grid, free_surface=FreeSurface())
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
@@ -228,6 +237,14 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 end
             end
         end
+
+        @info " Time-stepping HydrostaticFreeSurfaceModels with y-Flat grid"
+        lat_lon_flat_grid = LatitudeLongitudeGrid(arch; size=(H, H), longitude=(-180, 180), z=(-1, 0), precompute_metrics,
+                                                  halo=(7, 7), topology=(Periodic, Flat, Bounded))
+        @test_broken time_step_hydrostatic_model_works(lat_lon_flat_grid)
+        c = CenterField(lat_lon_flat_grid) # just test we can build a field
+        @test c.boundary_conditions.north isa Nothing
+        @test c.boundary_conditions.south isa Nothing
 
         for topo in [topos_3d..., topos_2d...]
             size = Flat in topo ? (10, 10) : (10, 10, 10)

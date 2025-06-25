@@ -10,7 +10,7 @@ end
 const RotatedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z,
                                  <:LatitudeLongitudeRotation} where {FT, TX, TY, TZ, Z}
-                                                                                     
+
 # Helper function (TODO: define Operators before grids...)
 @inline lat_lon_metric(m, i, j) = @inbounds m[i, j]
 @inline lat_lon_metric(m::AbstractVector, i, j) = @inbounds m[j]
@@ -151,7 +151,7 @@ end
         grid.φᶠᶠᵃ[i, j] = φ
 
         # Directly copiable metrics:
-        grid.Δxᶜᶜᵃ[i, j] = lat_lon_metric(source_grid.Δxᶜᶜᵃ, i, j)   
+        grid.Δxᶜᶜᵃ[i, j] = lat_lon_metric(source_grid.Δxᶜᶜᵃ, i, j)
         grid.Δxᶠᶜᵃ[i, j] = lat_lon_metric(source_grid.Δxᶠᶜᵃ, i, j)
         grid.Δxᶜᶠᵃ[i, j] = lat_lon_metric(source_grid.Δxᶜᶠᵃ, i, j)
         grid.Δxᶠᶠᵃ[i, j] = lat_lon_metric(source_grid.Δxᶠᶠᵃ, i, j)

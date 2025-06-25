@@ -16,7 +16,7 @@ Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
 
 A vertically-implicit time-discretization of a `TurbulenceClosure`.
 
-This implies that a flux divergence such as ``𝛁 ⋅ 𝐪`` at the ``n``-th timestep is 
+This implies that a flux divergence such as ``𝛁 ⋅ 𝐪`` at the ``n``-th timestep is
 time-discretized as
 
 ```julia
@@ -38,7 +38,7 @@ const ATD = AbstractTimeDiscretization
 
 @inline diffusive_flux_x(i, j, k, grid, ::ATD, args...) = diffusive_flux_x(i, j, k, grid, args...)
 @inline diffusive_flux_y(i, j, k, grid, ::ATD, args...) = diffusive_flux_y(i, j, k, grid, args...)
-@inline diffusive_flux_z(i, j, k, grid, ::ATD, args...) = diffusive_flux_z(i, j, k, grid, args...) 
+@inline diffusive_flux_z(i, j, k, grid, ::ATD, args...) = diffusive_flux_z(i, j, k, grid, args...)
 
 @inline viscous_flux_ux(i, j, k, grid, ::ATD, args...) = viscous_flux_ux(i, j, k, grid, args...)
 @inline viscous_flux_uy(i, j, k, grid, ::ATD, args...) = viscous_flux_uy(i, j, k, grid, args...)

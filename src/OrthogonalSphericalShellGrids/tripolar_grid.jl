@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
 using Oceananigans.Grids: architecture, cpu_face_constructor_z
 
-import Oceananigans.Grids: with_halo
+import Oceananigans.Grids: with_halo, validate_dimension_specification
 
 """
     struct Tripolar{N, F, S}
@@ -14,7 +14,7 @@ struct Tripolar{N, F, S}
     southernmost_latitude :: S
 end
 
-Adapt.adapt_structure(to, t::Tripolar) = 
+Adapt.adapt_structure(to, t::Tripolar) =
     Tripolar(Adapt.adapt(to, t.north_poles_latitude),
              Adapt.adapt(to, t.first_pole_longitude),
              Adapt.adapt(to, t.southernmost_latitude))
@@ -62,22 +62,21 @@ Keyword Arguments
 !!! info "North pole singularities"
     The north singularities are located at: `i = 1`, `j = Nφ` and `i = Nλ ÷ 2 + 1`, `j = Nφ`.
 """
-function TripolarGrid(arch = CPU(), FT::DataType = Float64; 
-                      size, 
+function TripolarGrid(arch = CPU(), FT::DataType = Float64;
+                      size,
                       southernmost_latitude = -80,
-                      halo = (4, 4, 4), 
-                      radius = R_Earth, 
+                      halo = (4, 4, 4),
+                      radius = R_Earth,
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70)  # second pole is at longitude `first_pole_longitude + 180ᵒ`
 
-    # TODO: Change a couple of allocations here and there to be able 
+    # TODO: Change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
     # grid generation is quite fast, but it might become slow for
     # sub-kilometer resolution grids.
-
     latitude  = (southernmost_latitude, 90)
-    longitude = (-180, 180) 
+    longitude = (-180, 180)
 
     focal_distance = tand((90 - north_poles_latitude) / 2)
 
@@ -91,7 +90,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # the λ and z coordinate is the same as for the other grids,
     # but for the φ coordinate we need to remove one point at the north
     # because the the north pole is a `Center`point, not on `Face` point...
-    topology  = (Periodic, RightConnected, Bounded) 
+    topology  = (Periodic, RightConnected, Bounded)
+    TZ = topology[3]
+    z = validate_dimension_specification(TZ, z, :z, Nz, FT)
 
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
@@ -117,8 +118,8 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     loop! = _compute_tripolar_coordinates!(device(CPU()), (16, 16), (Nλ, Nφ))
 
-    loop!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC, 
-          λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ, 
+    loop!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
+          λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
           first_pole_longitude,
           focal_distance, Nλ)
 
@@ -139,14 +140,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Ny = Nφ
 
     # return λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC
-    # Helper grid to fill halo 
+    # Helper grid to fill halo
     grid = RectilinearGrid(; size = (Nx, Ny),
                              halo = (Hλ, Hφ),
                              x = (0, 1), y = (0, 1),
                              topology = (Periodic, RightConnected, Flat))
 
     # Boundary conditions to fill halos of the coordinate and metric terms
-    # We need to define them manually because of the convention in the 
+    # We need to define them manually because of the convention in the
     # ZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
     # want for coordinates and metrics)
     default_boundary_conditions = FieldBoundaryConditions(north  = ZipperBoundaryCondition(),
@@ -238,10 +239,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     CC = Field((Center, Center, Center), grid; boundary_conditions = default_boundary_conditions)
 
     # Fill all periodic halos
-    set!(FF, Δxᶠᶠᵃ) 
-    set!(CF, Δxᶜᶠᵃ) 
-    set!(FC, Δxᶠᶜᵃ) 
-    set!(CC, Δxᶜᶜᵃ) 
+    set!(FF, Δxᶠᶠᵃ)
+    set!(CF, Δxᶜᶠᵃ)
+    set!(FC, Δxᶠᶜᵃ)
+    set!(CC, Δxᶜᶜᵃ)
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
     fill_halo_regions!(FC)
@@ -253,7 +254,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     set!(FF, Δyᶠᶠᵃ)
     set!(CF, Δyᶜᶠᵃ)
-    set!(FC, Δyᶠᶜᵃ) 
+    set!(FC, Δyᶠᶜᵃ)
     set!(CC, Δyᶜᶜᵃ)
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
@@ -264,7 +265,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Δyᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
     Δyᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
 
-    set!(FF, Azᶠᶠᵃ) 
+    set!(FF, Azᶠᶠᵃ)
     set!(CF, Azᶜᶠᵃ)
     set!(FC, Azᶠᶜᵃ)
     set!(CC, Azᶜᶜᵃ)

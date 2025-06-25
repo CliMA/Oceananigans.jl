@@ -4,7 +4,7 @@ import Oceananigans.Architectures: architecture, unified_array
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
 
-using LinearAlgebra, SparseArrays, IncompleteLU
+using LinearAlgebra, SparseArrays
 using SparseArrays: fkeep!
 
 # Utils for sparse matrix manipulation
@@ -30,11 +30,11 @@ using SparseArrays: fkeep!
 @inline arch_sparse_matrix(::GPU, A::CuSparseMatrixCSC) = A
 
 # We need to update the diagonal element each time the time step changes!!
-function update_diag!(constr, arch, M, N, diag, Δt, disp)   
+function update_diag!(constr, arch, M, N, diag, Δt, disp)
     colptr, rowval, nzval = unpack_constructors(arch, constr)
     loop! = _update_diag!(device(arch), min(256, M), M)
     loop!(nzval, colptr, rowval, diag, Δt, disp)
-    
+
     constr = constructors(arch, M, N, (colptr, rowval, nzval))
 end
 
@@ -43,12 +43,12 @@ end
     col = col + disp
     map = 1
     for idx in colptr[col]:colptr[col+1] - 1
-       if rowval[idx] + disp == col 
-           map = idx 
+       if rowval[idx] + disp == col
+           map = idx
             break
         end
     end
-    nzval[map] += diag[col - disp] / Δt^2 
+    nzval[map] += diag[col - disp] / Δt^2
 end
 
 @kernel function _get_inv_diag!(invdiag, colptr, rowval, nzval)
@@ -56,12 +56,12 @@ end
     map = 1
     for idx in colptr[col]:colptr[col+1] - 1
         if rowval[idx] == col
-            map = idx 
+            map = idx
             break
         end
     end
     if nzval[map] == 0
-        invdiag[col] = 0 
+        invdiag[col] = 0
     else
         invdiag[col] = 1 / nzval[map]
     end
@@ -72,7 +72,7 @@ end
     map = 1
     for idx in colptr[col]:colptr[col+1] - 1
         if rowval[idx] == col
-            map = idx 
+            map = idx
             break
         end
     end
@@ -82,7 +82,7 @@ end
 #unfortunately this cannot run on a GPU so we have to resort to that ugly loop in _update_diag!
 @inline map_row_to_diag_element(i, rowval, colptr) =  colptr[i] - 1 + findfirst(rowval[colptr[i]:colptr[i+1]-1] .== i)
 
-@inline function validate_laplacian_direction(N, topo, reduced_dim)  
+@inline function validate_laplacian_direction(N, topo, reduced_dim)
     dim = N > 1 && reduced_dim == false
     if N < 3 && topo == Bounded && dim == true
         throw(ArgumentError("Cannot calculate Laplacian in bounded domain with N < 3!"))
@@ -92,7 +92,7 @@ end
 end
 
 @inline validate_laplacian_size(N, dim) = dim == true ? N : 1
-  
+
 @inline ensure_diagonal_elements_are_present!(A) = fkeep!((i, j, x) -> (i == j || !iszero(x)), A)
 
 """
