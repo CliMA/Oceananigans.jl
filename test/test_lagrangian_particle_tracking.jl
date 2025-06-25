@@ -312,11 +312,11 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
     timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     y_topologies = (Periodic(), Flat())
     vertical_grids = (uniform=(-1, 1), stretched=[-1, -0.5, 0.0, 0.4, 0.7, 1])
-    particle_dynamics = (no_dynamics, DroguedDynamics)
+    particle_dynamics = (no_dynamics, DroguedParticleDynamics)
 
     for arch in archs, timestepper in timesteppers, y_topo in y_topologies, (z_grid_type, z) in pairs(vertical_grids), dynamics in particle_dynamics
         @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type grid and $(dynamics) ..."
-        if dynamics == DroguedDynamics
+        if dynamics == DroguedParticleDynamics
             dynamics = dynamics(on_architecture(arch, [-1:0.1:0;]))
         end
 
@@ -332,7 +332,7 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
 
     for arch in archs, (z_grid_type, z) in pairs(vertical_grids), dynamics in particle_dynamics
         @info "  Testing Lagrangian particle tracking [$(typeof(arch))] with a LatitudeLongitudeGrid with vertically $z_grid_type z coordinate ..."
-        if dynamics == DroguedDynamics
+        if dynamics == DroguedParticleDynamics
             dynamics = dynamics(on_architecture(arch, [-1:0.1:0;]))
         end
 

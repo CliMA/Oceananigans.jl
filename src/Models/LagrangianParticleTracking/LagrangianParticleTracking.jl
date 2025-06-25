@@ -1,6 +1,6 @@
 module LagrangianParticleTracking
 
-export LagrangianParticles, DroguedDynamics
+export LagrangianParticles, DroguedParticleDynamics
 
 using Printf
 using Adapt

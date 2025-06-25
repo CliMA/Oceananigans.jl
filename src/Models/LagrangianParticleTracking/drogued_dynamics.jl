@@ -1,7 +1,7 @@
 """
-    DroguedDynamics(depths)
+    DroguedParticleDynamics(depths)
 
-`DroguedDynamics` goes in the `dynamics` slot of `LagrangianParticles` 
+`DroguedParticleDynamics` goes in the `dynamics` slot of `LagrangianParticles` 
 and modifies their behaviour to mimic the behaviour of bouys which are 
 drogued at `depths`. The particles remain at the their `z` position
 so the "measurment depth can be set", and then are advected in the `x` and `y`
@@ -9,16 +9,16 @@ directions according to the velocity field at `depths`.
 
 `depths` should be an array of length `length(particles)`.
 """
-struct DroguedDynamics{DD}
+struct DroguedParticleDynamics{DD}
     depths :: DD
 end
 
-Adapt.adapt_structure(to, dbd::DroguedDynamics) = 
-    DroguedDynamics(adapt(to, dbd.depths))
+Adapt.adapt_structure(to, dbd::DroguedParticleDynamics) = 
+    DroguedParticleDynamics(adapt(to, dbd.depths))
 
-@inline (::DroguedDynamics)(args...) = nothing
+@inline (::DroguedParticleDynamics)(args...) = nothing
 
-const DroguedParticles = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedDynamics}
+const DroguedParticles = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedParticleDynamics}
 
 function advect_lagrangian_particles!(particles::DroguedParticles, model, Δt)
     grid = model.grid
