@@ -186,7 +186,7 @@ function test_constant_fields_checkpointer(arch)
     model = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(; u, v, w))
 
     simulation = Simulation(model, Δt=0.1, stop_iteration=1)
-    simulation.output_writers[:checkpointer] = Checkpointer(model, 
+    simulation.output_writers[:checkpointer] = Checkpointer(model, prefix="constant_fields_test",
                                                             schedule=IterationInterval(1), 
                                                             properties = [:grid, :velocities])
 
