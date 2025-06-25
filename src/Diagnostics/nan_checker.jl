@@ -41,8 +41,6 @@ function hasnan(field, checker)
     return @allowscalar first(checker.hasnan)
 end
     
-hasnan(model::AbstractModel, checker) = hasnan(first(fields(model)), checker)
-
 function (nc::NaNChecker)(simulation)
     found_nan = false
     for (name, field) in pairs(nc.fields)
