@@ -14,13 +14,21 @@ Example
 =======
 
 ```jldoctest
-using Oceananigans
+julia> using Oceananigans
 
-n = 10
+julia> n = 10
+10
 
-dynamics = DroguedParticleDynamics(-10:10/(n-1):0)
+julia> dynamics = DroguedParticleDynamics(-10:10/n:0)
+DroguedParticleDynamics{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}}(-10.0:1.0:0.0)
 
-particles = LagrangianParticles(; x = zeros(n), y = zeros(n), z = zeros(n), dynamics)
+julia> particles = LagrangianParticles(; x = zeros(n), y = zeros(n), z = zeros(n), dynamics)
+10 LagrangianParticles with eltype Particle:
+├── 3 properties: (:x, :y, :z)
+├── particle-wall restitution coefficient: 1.0
+├── 0 tracked fields: ()
+└── dynamics: DroguedParticleDynamics{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}}
+
 ```
 """
 struct DroguedParticleDynamics{DD}
