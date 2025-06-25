@@ -75,7 +75,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # to construct the grid on the GPU. This is not a huge problem as
     # grid generation is quite fast, but it might become slow for
     # sub-kilometer resolution grids.
-
     latitude  = (southernmost_latitude, 90)
     longitude = (-180, 180)
 

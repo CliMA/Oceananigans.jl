@@ -159,6 +159,7 @@ faces involved in the isopycnal slope tensor calculation. The minimum value of t
 
 References
 ==========
+
 R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
 """
