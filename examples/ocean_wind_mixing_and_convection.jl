@@ -76,7 +76,7 @@ fig
 
 # ## Buoyancy that depends on temperature and salinity
 #
-# We use the `SeawaterBuoyancy` model with a linear equation of state,
+# We use the `SeawaterBuoyancy` model with the TEOS10 equation of state,
 
 ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
 equation_of_state = TEOS10EquationOfState(reference_density=ρₒ)
@@ -92,8 +92,9 @@ cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
 Jᵀ = Q / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
-# Finally, we impose a temperature gradient `dTdz` both initially and at the
-# bottom of the domain, culminating in the boundary conditions on temperature,
+# Finally, we impose a temperature gradient `dTdz` both initially (see "Initial conditions"
+# section below) and at the bottom of the domain, culminating in the boundary conditions on
+# temperature,
 
 dTdz = 0.01 # K m⁻¹
 
@@ -139,11 +140,10 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
 # ## Model instantiation
 #
-# We fill in the final details of the model here: upwind-biased 5th-order
-# advection for momentum and tracers, 3rd-order Runge-Kutta time-stepping,
-# Coriolis forces, and the `AnisotropicMinimumDissipation` closure
-# for large eddy simulation to model the effect of turbulent motions at
-# scales smaller than the grid scale that we cannot explicitly resolve.
+# We fill in the final details of the model here, i.e., Coriolis forces,
+# and the `AnisotropicMinimumDissipation` closure for large eddy simulation
+# to model the effect of turbulent motions at scales smaller than the grid scale
+# that are not explicitly resolved.
 
 model = NonhydrostaticModel(; grid, buoyancy,
                             tracers = (:T, :S),
