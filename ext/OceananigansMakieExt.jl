@@ -7,6 +7,8 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
+using CUDA: @allowscalar
+
 using Makie: Observable
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
@@ -100,19 +102,19 @@ convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
 function convert_arguments(pl::Type{<:AbstractPlot}, op::AbstractOperation)
     f = Field(op)
     compute!(f)
-    return convert_arguments(pl, f)
+    return @allowscalar convert_arguments(pl, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, op::AbstractOperation)
     f = Field(op)
     compute!(f)
-    return convert_arguments(pl, ξ1, f)
+    return @allowscalar convert_arguments(pl, ξ1, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, op::AbstractOperation)
     f = Field(op)
     compute!(f)
-    return convert_arguments(pl, ξ1, ξ2, f)
+    return @allowscalar convert_arguments(pl, ξ1, ξ2, f)
 end
 
 """
