@@ -234,12 +234,8 @@ end
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
-<<<<<<< ncc/checkopointer-shenanigans-2
 function set!(model::AbstractModel, filepath::AbstractString)
-=======
-function set!(model, filepath::AbstractString)
 
->>>>>>> main
     addr = checkpointer_address(model)
 
     jldopen(filepath, "r") do file
