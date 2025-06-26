@@ -52,7 +52,11 @@ function test_conjugate_gradient_basic_functionality(grid, preconditioner)
     # Test the preconditioner constructor
     solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner)
     pressure = CenterField(grid)
-    solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
+    @test_nowarn solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
+
+    # Should converge
+    @test iteration(solver.conjugate_gradient_solver) > 0
+    @test iteration(solver.conjugate_gradient_solver) <= solver.conjugate_gradient_solver.maxiter
 end
 
 function test_conjugate_gradient_default_constructor(arch)
