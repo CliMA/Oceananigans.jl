@@ -10,7 +10,7 @@ using Oceananigans.Fields
 using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, 
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper, 
                                  SplitRungeKutta3TimeStepper
 
@@ -80,7 +80,7 @@ Keyword Arguments
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref) 
+    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref)
     and a [`SplitRungeKutta3TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
@@ -141,5 +141,45 @@ include("advective_dissipation.jl")
 include("diffusive_dissipation.jl")
 include("compute_dissipation.jl")
 include("flatten_dissipation_fields.jl")
+
+import Oceananigans.Simulations: Callback, validate_schedule
+
+# Specific `Callback` for `VarianceDissipation` computations.
+# A VarianceDissipation object requires a `ConsecutiveIteration` schedule to make sure
+# that the computed fluxes are correctly used in the next time step.
+# Also, the `VarianceDissipation` object needs to be called on `UpdateStateStepCallsite` to be correct.
+function Callback(func::VarianceDissipation, schedule=IterationInterval(1);
+                  parameters = nothing,
+                  callsite = UpdateStateCallsite())
+
+    if !(callsite isa UpdateStateCallsite)
+        @warn "VarianceDissipation callback must be called on UpdateStateCallsite. Changing `callsite` to `UpdateStateCallsite()`."
+        callsite = UpdateStateCallsite()
+    end
+
+    schedule = validate_schedule(func, schedule)
+
+    return Callback(func, schedule, callsite, parameters)
+end
+
+validate_schedule(::VarianceDissipation, schedule) = throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
+                                                                         "Use an `IterationInterval` schedule instead."))
+
+function validate_schedule(::VarianceDissipation, schedule::IterationInterval)
+    if !(schedule == IterationInterval(1))
+        @warn "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" *
+              "Changing `schedule` to `ConsecutiveIterations(schedule)`."
+        schedule = ConsecutiveIterations(schedule)
+    end
+    return schedule
+end
+
+function validate_schedule(::VarianceDissipation, schedule::ConsecutiveIterations)
+    if !(schedule.parent isa IterationInterval)
+       throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *
+                                                                         "Use an `IterationInterval` schedule instead."))
+    end
+    return schedule
+end
 
 end
