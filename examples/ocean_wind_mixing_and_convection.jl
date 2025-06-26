@@ -21,7 +21,7 @@
 # example.
 
 using Oceananigans
-using Oceananigans.Units: minute, minutes, hour
+using Oceananigans.Units
 
 using Random
 using Printf
