@@ -1,4 +1,3 @@
-<<<<<<< ncc/checkopointer-shenanigans-2
 using Adapt
 using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
