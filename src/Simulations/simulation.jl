@@ -28,23 +28,14 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
 end
 
 """
-<<<<<<< ncc/checkopointer-shenanigans-2
-    Simulation(model; Δt,
-                      verbose = true,
-                      stop_iteration = Inf,
-                      stop_time = Inf,
-                      wall_time_limit = Inf,
-                      align_time_step = true,
-                      minimum_relative_step = 0)
-=======
     Simulation(model;
                Δt,
                verbose = true,
                stop_iteration = Inf,
                stop_time = Inf,
                wall_time_limit = Inf,
+               align_time_step = true,
                minimum_relative_step = 0)
->>>>>>> main
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
