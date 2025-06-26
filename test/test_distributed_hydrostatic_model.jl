@@ -57,7 +57,7 @@ end
 function rotation_with_shear_test(grid, closure=nothing)
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = 1)
-    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+    coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
     tracers = if closure isa CATKEVerticalDiffusivity
         (:c, :b, :e)
@@ -65,12 +65,9 @@ function rotation_with_shear_test(grid, closure=nothing)
         (:c, :b)
     end
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(; grid, closure, tracers, free_surface,
                                         momentum_advection = WENOVectorInvariant(order=3),
-                                        free_surface = free_surface,
                                         coriolis = coriolis,
-                                        closure,
-                                        tracers,
                                         tracer_advection = WENO(order=3),
                                         buoyancy = BuoyancyTracer())
 
@@ -213,8 +210,9 @@ for arch in archs
         Lx, Ly, Lz = 1, 1, 1
 
         grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
-        closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
-        true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
+        free_surface = SplitExplicitFreeSurface(grid; substeps=8, gravitational_acceleration=1)
+        closure = ScalarDiffusivity(ν=1e-2)
+        true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure)
         test_model = deepcopy(true_model)
 
         ηᵢ(x, y, z) = 1e-1 * exp(-x^2 - y^2)
