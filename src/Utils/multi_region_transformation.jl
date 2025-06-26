@@ -166,8 +166,7 @@ end
         devs = devices(multi_region_args)
     end
 
-    # Evaluate regional_func on the device of that region and collect
-    # return values
+    # Dig out the backend since we don't have access to arch.
     backend = nothing
     for arg in args
         if arg isa MultiRegionObject
@@ -178,9 +177,11 @@ end
     if backend isa Nothing
         backend = devs[1]
     end
+    # Evaluate regional_func on the device of that region and collect
+    # return values
     regional_return_values = Vector(undef, length(devs))
     for (r, dev) in enumerate(devs)
-        # switch_device!(dev)
+        switch_device!(dev)
         regional_return_values[r] = regional_func((getregion(arg, r) for arg in args)...;
                                                   (getregion(kwarg, r) for kwarg in kwargs)...)
     end
