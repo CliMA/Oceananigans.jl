@@ -7,8 +7,6 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-using CUDA: @allowscalar
-
 using Makie: Observable
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
