@@ -31,6 +31,29 @@ function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
 end
 
 """
+    set_clock!(clock1::Clock, clock2::Clock)
+
+Set `clock1` to the `clock2`.
+"""
+function set_clock!(clock1::Clock, clock2::Clock)
+    clock1.time = clock2.time
+    clock1.iteration = clock2.iteration
+    clock1.last_Δt = clock2.last_Δt
+    clock1.last_stage_Δt = clock2.last_stage_Δt
+    clock1.stage = clock2.stage
+
+    return nothing
+end
+
+function Base.:(==)(clock1::Clock, clock2::Clock)
+    return clock1.time == clock2.time &&
+           clock1.iteration == clock2.iteration &&
+           clock1.last_Δt == clock2.last_Δt &&
+           clock1.last_stage_Δt == clock2.last_stage_Δt &&
+           clock1.stage == clock2.stage
+end
+
+"""
     Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
 
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
@@ -107,9 +130,11 @@ function tick!(clock, Δt; stage=false)
 
     if stage # tick a stage update
         clock.stage += 1
+        clock.last_stage_Δt = Δt
     else # tick an iteration and reset stage
         clock.iteration += 1
         clock.stage = 1
+        clock.last_Δt = Δt
     end
 
     return nothing
