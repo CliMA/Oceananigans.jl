@@ -45,25 +45,14 @@ function compute_pressure_solution(grid)
     return ϕ, ∇²ϕ, R
 end
 
-function test_conjugate_gradient_basic_functionality(arch, grid, preconditioner)
+function test_conjugate_gradient_basic_functionality(grid, preconditioner)
     preconditioner_name = typeof(preconditioner).name.wrapper
-    @info "  Unit testing ConjugateGradientPoissonSolver with $preconditioner_name on [$(typeof(arch))]..."
+    @info "  Unit testing ConjugateGradientPoissonSolver with $preconditioner_name..."
 
     # Test the preconditioner constructor
-    x = y = (0, 1)
-    z = (0, 1)
-    grid = RectilinearGrid(arch, size=(2, 2, 2); x, y, z)
     solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner)
     pressure = CenterField(grid)
     solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
-    @test solver isa ConjugateGradientPoissonSolver
-
-    z = [0, 0.2, 1]
-    grid = RectilinearGrid(arch, size=(2, 2, 2); x, y, z)
-    solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner)
-    pressure = CenterField(grid)
-    solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
-    @test solver isa ConjugateGradientPoissonSolver
 end
 
 function test_conjugate_gradient_default_constructor(arch)
@@ -99,13 +88,10 @@ function test_conjugate_gradient_default_constructor(arch)
     end
 end
 
-function test_conjugate_gradient_with_nonhydrostatic_model(arch, grid, preconditioner)
+function test_conjugate_gradient_with_nonhydrostatic_model(grid, preconditioner)
     preconditioner_name = typeof(preconditioner).name.wrapper
     @info "  Testing CG solver integration with NonhydrostaticModel using $preconditioner_name..."
     seed!(198)  # For reproducible results
-
-    # Create a small model for testing
-    grid = RectilinearGrid(arch, size=(8, 8, 8), extent=(1, 1, 1))
 
     # Create model with CG pressure solver using specified preconditioner
     model = NonhydrostaticModel(
@@ -161,7 +147,7 @@ function test_conjugate_gradient_with_nonhydrostatic_model(arch, grid, precondit
     @info "    $preconditioner_name convergence: first solve = $iterations_first iterations, second solve = $iterations_second iterations"
 end
 
-function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(arch, underlying_grid, preconditioner)
+function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(underlying_grid, preconditioner)
     # See https://github.com/CliMA/Oceananigans.jl/issues/4603
     preconditioner_name = typeof(preconditioner).name.wrapper
     @info "  Testing CGSolver with ImmersedBoundaryGrid with a flux boundary condition using $preconditioner_name..."
@@ -178,7 +164,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_c
     return nothing
 end
 
-function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, underlying_grid, preconditioner)
+function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, preconditioner)
     preconditioner_name = typeof(preconditioner).name.wrapper
     @info "  Testing CGSolver with ImmersedBoundaryGrid and open boundary conditions using $preconditioner_name..."
     seed!(198)  # For reproducible results
@@ -286,33 +272,33 @@ end
                                                                     x = (0, 1), y = (0, 1), z = -1:0.25:0))
 
         for (underlying_grid_name, underlying_grid) in underlying_grids
-            @testset "Conjugate gradient Poisson solver unit tests on a $underlying_grid_name [$arch]" begin
-                test_conjugate_gradient_basic_functionality(arch, underlying_grid, DiagonallyDominantPreconditioner())
-                test_conjugate_gradient_basic_functionality(arch, underlying_grid, fft_poisson_solver(underlying_grid))
+            @testset "Conjugate gradient Poisson solver unit tests on a $underlying_grid_name [$(typeof(arch))]" begin
+                test_conjugate_gradient_basic_functionality(underlying_grid, DiagonallyDominantPreconditioner())
+                test_conjugate_gradient_basic_functionality(underlying_grid, fft_poisson_solver(underlying_grid))
             end
 
             @testset "Conjugate gradient solver with NonhydrostaticModel on a $underlying_grid_name [$(typeof(arch))]" begin
-                test_conjugate_gradient_with_nonhydrostatic_model(arch, underlying_grid, DiagonallyDominantPreconditioner())
-                test_conjugate_gradient_with_nonhydrostatic_model(arch, underlying_grid, fft_poisson_solver(underlying_grid))
+                test_conjugate_gradient_with_nonhydrostatic_model(underlying_grid, DiagonallyDominantPreconditioner())
+                test_conjugate_gradient_with_nonhydrostatic_model(underlying_grid, fft_poisson_solver(underlying_grid))
             end
 
             @testset "Conjugate gradient solver with ImmersedBoundaryGrid on a $underlying_grid_name and flux boundary condition [$(typeof(arch))]" begin
-                test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(arch, underlying_grid, DiagonallyDominantPreconditioner())
-                test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(arch, underlying_grid, fft_poisson_solver(underlying_grid))
+                test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(underlying_grid, DiagonallyDominantPreconditioner())
+                test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(underlying_grid, fft_poisson_solver(underlying_grid))
             end
         end
 
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid on a regular grid and open boundary conditions [$(typeof(arch))]" begin
             underlying_grid = underlying_grids["regular grid"]
-            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, underlying_grid, DiagonallyDominantPreconditioner())
-            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, underlying_grid, FFTBasedPoissonSolver(underlying_grid))
-            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, underlying_grid, FourierTridiagonalPoissonSolver(underlying_grid))
+            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner())
+            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, FFTBasedPoissonSolver(underlying_grid))
+            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, FourierTridiagonalPoissonSolver(underlying_grid))
         end
 
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid on a stretched grid and open boundary conditions [$(typeof(arch))]" begin
             underlying_grid = underlying_grids["stretched grid"]
-            @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, underlying_grid, DiagonallyDominantPreconditioner())
-            @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(arch, underlying_grid, FourierTridiagonalPoissonSolver(underlying_grid))
+            @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner())
+            @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, FourierTridiagonalPoissonSolver(underlying_grid))
         end
     end
 end
