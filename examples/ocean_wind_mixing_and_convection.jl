@@ -177,12 +177,12 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 # We set-up a simulation with an initial time-step of 10 seconds
 # that stops at 40 minutes, with adaptive time-stepping and progress printing.
 
-simulation = Simulation(model, Δt=10.0, stop_time=40minutes)
+simulation = Simulation(model, Δt=10, stop_time=2hours)
 
 # The `TimeStepWizard` helps ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
+wizard = TimeStepWizard(cfl=1, max_change=1.1, max_Δt=1minute)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # Nice progress messaging is helpful:
@@ -192,7 +192,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-add_callback!(simulation, progress_message, IterationInterval(20))
+add_callback!(simulation, progress_message, IterationInterval(40))
 
 # We then set up the simulation:
 
