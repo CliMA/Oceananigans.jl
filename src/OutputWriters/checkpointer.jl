@@ -26,7 +26,7 @@ end
 
 # Certain properties are required for `set!` to pickup from a checkpoint.
 function required_checkpointed_properties(model)
-    properties = [:grid, :particles, :clock]
+    properties = [:grid, :clock]
 
     if has_ab2_timestepper(model)
         push!(properties, :timestepper)
