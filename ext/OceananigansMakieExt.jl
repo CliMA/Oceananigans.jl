@@ -87,7 +87,6 @@ end
 
 function _create_plot(F::Function, attributes::Dict, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return _create_plot(F, attributes, f)
 end
 
@@ -99,19 +98,16 @@ convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
 
 function convert_arguments(pl::Type{<:AbstractPlot}, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, ξ1, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, ξ1, ξ2, f)
 end
 
