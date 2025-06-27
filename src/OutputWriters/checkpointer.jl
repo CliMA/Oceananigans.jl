@@ -1,7 +1,7 @@
 using Glob
 
 using Oceananigans
-using Oceananigans: fields, prognostic_fields
+using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
@@ -227,7 +227,7 @@ end
 ##### set! for checkpointer filepaths
 #####
 
-# Should this go in Models? 
+# Should this go in Models?
 """
     set!(model::AbstractModel, filepath::AbstractString)
 
@@ -278,7 +278,7 @@ end
 
 function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     for name in propertynames(model_fields)
-        tendency_in_model = hasproperty(timestepper.Gⁿ, name) 
+        tendency_in_model = hasproperty(timestepper.Gⁿ, name)
         tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
         if tendency_in_model && tendency_in_checkpoint
             # Tendency "n"
