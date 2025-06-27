@@ -475,6 +475,15 @@ FieldStatus() = FieldStatus(0.0)
 Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
 
 """
+    FixedTime(time)
+
+Represents a fixed compute time.
+"""
+struct FixedTime{T}
+    time :: T
+end
+
+"""
     compute_at!(field, time)
 
 Computes `field.data` at `time`. Falls back to compute!(field).
@@ -487,7 +496,7 @@ compute_at!(field, time) = compute!(field)
 Computes `field.data` if `time != field.status.time`.
 """
 function compute_at!(field::Field, time)
-    if isnothing(field.status) # then always compute:
+    if !(field.status isa FieldStatus) # then always compute:
         compute!(field, time)
 
     # Otherwise, compute only on initialization or if field.status.time is not current,
