@@ -6,9 +6,7 @@ import Oceananigans.Architectures: on_architecture
 
 # Disambiguation for methods defined in `src/Architectures.jl`
 DisambiguationTypes = Union{Array,
-                            CuArray,
                             BitArray,
-                            SubArray{<:Any, <:Any, <:CuArray},
                             SubArray{<:Any, <:Any, <:Array},
                             OffsetArray,
                             Tuple,

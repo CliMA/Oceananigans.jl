@@ -1,6 +1,6 @@
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Grids: YFlatGrid
-using CUDA: @allowscalar
+using GPUArraysCore
 
 #####
 ##### Default boundary conditions
@@ -125,10 +125,10 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
     FieldBoundaryConditions(grid, location, indices=(:, :, :);
                             west     = default_auxiliary_bc(grid, boundary, loc),
                             east     = default_auxiliary_bc(grid, boundary, loc),
-                            south    = default_auxiliary_bc(grid, boundary, loc), 
-                            north    = default_auxiliary_bc(grid, boundary, loc), 
-                            bottom   = default_auxiliary_bc(grid, boundary, loc), 
-                            top      = default_auxiliary_bc(grid, boundary, loc), 
+                            south    = default_auxiliary_bc(grid, boundary, loc),
+                            north    = default_auxiliary_bc(grid, boundary, loc),
+                            bottom   = default_auxiliary_bc(grid, boundary, loc),
+                            top      = default_auxiliary_bc(grid, boundary, loc),
                             immersed = NoFluxBoundaryCondition())
 
 Return boundary conditions for auxiliary fields (fields whose values are
@@ -271,32 +271,32 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 
 # TODO: these may be incorrect because we have not defined behavior for prognostic fields (which are
 # treated by `regularize`).
-regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
+regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:north), loc, bc), grid, loc, args...)
 
-regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
+regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, LY, LZ), default)
-    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
+    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
     default_bc = default_prognostic_bc(topology(grid, 2)(), LY(), default)
     return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY, LZ) : default_bc
 end
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ), default)    
-    φsouth = @allowscalar φnode(1, grid, Face()) 
+function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ), default)
+    φsouth = @allowscalar φnode(1, grid, Face())
     default_bc = default_prognostic_bc(topology(grid, 2)(), LY(), default)
     return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, LY, LZ) : default_bc
 end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, LY, LZ))
-    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
+    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
     default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY())
     return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY, LZ) : default_bc
 end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ))
-    φsouth = @allowscalar φnode(1, grid, Face()) 
+    φsouth = @allowscalar φnode(1, grid, Face())
     default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY())
     return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, LY, LZ) : default_bc
 end
