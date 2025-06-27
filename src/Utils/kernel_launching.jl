@@ -109,28 +109,18 @@ end
 heuristic_workgroup(Wx) = min(Wx, 256)
 
 # This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
-function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
-
-    workgroup = Wx == 1 && Wy == 1 ?
-
-                    # One-dimensional column models:
-                    (1, 1) :
-
-                Wx == 1 ?
-
-                    # Two-dimensional y-z slice models:
-                    (1, min(256, Wy)) :
-
-                Wy == 1 ?
-
-                    # Two-dimensional x-z slice models:
-                    (min(256, Wx), 1) :
-
-                    # Three-dimensional models
-                    (16, 16)
-
-    return workgroup
+function heuristic_workgroup(Wx, Wy, Wz = nothing, Wt = nothing)
+    if Wx == 1 && Wy == 1            # One-dimensional column models
+        return (1, 1) 
+    elseif Wx == 1                   # Two-dimensional y-z slice models
+        return (1, min(256, Wy))
+    elseif Wy == 1                   # Two-dimensional x-z slice models
+        return (min(256, Wx), 1)
+    else                             # Three-dimensional models
+        return (16, 16)
+    end
 end
+
 
 periphery_offset(loc, topo, N) = 0
 periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
