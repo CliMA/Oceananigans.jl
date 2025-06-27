@@ -1,4 +1,4 @@
-using Oceananigans.Grids: xspacing, yspacing, zspacing
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
     FlatExtrapolation
@@ -12,7 +12,7 @@ f′(xᵢ) ≈ f′(xᵢ₋₁) + f′′(xᵢ₋₁)(xᵢ₋₁ - xᵢ) + O(Δx
 ```
 where ``Δx=xᵢ₋₁ - xᵢ`` (for simplicity, we will also assume the spacing is constant at
 all ``i`` for now).
-We can substitute the gradient at some point ``j`` (``f′(xⱼ)``) with the central 
+We can substitute the gradient at some point ``j`` (``f′(xⱼ)``) with the central
 difference approximation:
 ```math
 f′(xⱼ) ≈ (f(xⱼ₊₁) - f(xⱼ₋₁)) / 2Δx,
@@ -21,13 +21,13 @@ and the second derivative at some point ``j`` (``f′′(xⱼ)``) can be approxi
 ```math
 f′′(xⱼ) ≈ (f′(xⱼ₊₁) - f′(xⱼ₋₁)) / 2Δx = ((f(xⱼ₊₂) - f(xⱼ)) - (f(xⱼ) - f(xⱼ₋₂))) / (2Δx)².
 ```
-When we then substitute for the boundary adjacent point ``f′′(xᵢ₋₁)`` we know that 
+When we then substitute for the boundary adjacent point ``f′′(xᵢ₋₁)`` we know that
 ``f′(xⱼ₊₁)=f′(xᵢ)=0`` so the Taylor expansion becomes:
 ```math
 f(xᵢ) ≈ f(xᵢ₋₂) - (f(xᵢ₋₁) - f(xᵢ₋₃))/2 + O(Δx²).
 ```
 
-When the grid spacing is not constant the above can be repeated resulting in the factor 
+When the grid spacing is not constant the above can be repeated resulting in the factor
 of 1/2 changes to ``Δx₋₁/(Δx₋₂ + Δx₋₃)`` instead, i.e.:
 ```math
 f(xᵢ) ≈ f(xᵢ₋₂) - (f(xᵢ₋₁) - f(xᵢ₋₃))Δxᵢ₋₁/(Δxᵢ₋₂ + Δxᵢ₋₃) + O(Δx²)
@@ -41,12 +41,12 @@ const FEOBC = BoundaryCondition{<:Open{<:FlatExtrapolation}}
 
 function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timescale = Inf, kwargs...)
     classification = Open(FlatExtrapolation(relaxation_timescale))
-    
+
     return BoundaryCondition(classification, val; kwargs...)
 end
 
 @inline function relax(l, m, grid, ϕ, bc, clock, model_fields)
-    Δt = clock.last_stage_Δt 
+    Δt = clock.last_stage_Δt
     τ = bc.classification.matching_scheme.relaxation_timescale
 
     Δt̄ = min(1, Δt / τ)
@@ -59,12 +59,10 @@ end
     return ϕ + Δϕ
 end
 
-const c = Center()
-
-@inline function _fill_west_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
-    Δx₁ = xspacing(1, j, k, grid, c, c, c)
-    Δx₂ = xspacing(2, j, k, grid, c, c, c)
-    Δx₃ = xspacing(3, j, k, grid, c, c, c)
+@inline function _fill_west_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+    Δx₁ = Δxᶜᶜᶜ(1, j, k, grid)
+    Δx₂ = Δxᶜᶜᶜ(2, j, k, grid)
+    Δx₃ = Δxᶜᶜᶜ(3, j, k, grid)
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
@@ -75,12 +73,12 @@ const c = Center()
     return nothing
 end
 
-@inline function _fill_east_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     i = grid.Nx + 1
 
-    Δx₁ = xspacing(i-1, j, k, grid, c, c, c)
-    Δx₂ = xspacing(i-2, j, k, grid, c, c, c)
-    Δx₃ = xspacing(i-3, j, k, grid, c, c, c)
+    Δx₁ = Δxᶜᶜᶜ(i-1, j, k, grid)
+    Δx₂ = Δxᶜᶜᶜ(i-2, j, k, grid)
+    Δx₃ = Δxᶜᶜᶜ(i-3, j, k, grid)
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
@@ -91,26 +89,26 @@ end
     return nothing
 end
 
-@inline function _fill_south_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
-    Δy₁ = yspacing(i, 1, k, grid, c, c, c)
-    Δy₂ = yspacing(i, 2, k, grid, c, c, c)
-    Δy₃ = yspacing(i, 3, k, grid, c, c, c)
+@inline function _fill_south_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+    Δy₁ = Δyᶜᶜᶜ(i, 1, k, grid)
+    Δy₂ = Δyᶜᶜᶜ(i, 2, k, grid)
+    Δy₃ = Δyᶜᶜᶜ(i, 3, k, grid)
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
     gradient_free_ϕ = ϕ[i, 3, k] - (ϕ[i, 2, k] - ϕ[i, 4, k]) * spacing_factor
 
     @inbounds ϕ[i, 1, k] = relax(i, k, grid, gradient_free_ϕ, bc, clock, model_fields)
-    
+
     return nothing
 end
 
-@inline function _fill_north_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     j = grid.Ny + 1
 
-    Δy₁ = yspacing(i, j-1, k, grid, c, c, c)
-    Δy₂ = yspacing(i, j-2, k, grid, c, c, c)
-    Δy₃ = yspacing(i, j-3, k, grid, c, c, c)
+    Δy₁ = Δyᶜᶜᶜ(i, j-1, k, grid)
+    Δy₂ = Δyᶜᶜᶜ(i, j-2, k, grid)
+    Δy₃ = Δyᶜᶜᶜ(i, j-3, k, grid)
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
@@ -121,10 +119,10 @@ end
     return nothing
 end
 
-@inline function _fill_bottom_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
-    Δz₁ = zspacing(i, j, 1, grid, c, c, c)
-    Δz₂ = zspacing(i, j, 2, grid, c, c, c)
-    Δz₃ = zspacing(i, j, 3, grid, c, c, c)
+@inline function _fill_bottom_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+    Δz₁ = Δzᶜᶜᶜ(i, j, 1, grid)
+    Δz₂ = Δzᶜᶜᶜ(i, j, 2, grid)
+    Δz₃ = Δzᶜᶜᶜ(i, j, 3, grid)
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
@@ -135,12 +133,12 @@ end
     return nothing
 end
 
-@inline function _fill_top_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_top_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     k = grid.Nz + 1
 
-    Δz₁ = zspacing(i, j, k-1, grid, c, c, c)
-    Δz₂ = zspacing(i, j, k-2, grid, c, c, c)
-    Δz₃ = zspacing(i, j, k-3, grid, c, c, c)
+    Δz₁ = Δzᶜᶜᶜ(i, j, k-1, grid)
+    Δz₂ = Δzᶜᶜᶜ(i, j, k-2, grid)
+    Δz₃ = Δzᶜᶜᶜ(i, j, k-3, grid)
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 

@@ -15,7 +15,8 @@ Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) whe
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
-Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
+Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType})       where {ElType} = similar(Array{ElType}, axes(bc))
+Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}, dims) where {ElType} = similar(Array{ElType,length(dims)}, dims)
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
 const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
@@ -42,9 +43,11 @@ end
 
 @inline offset_compute_index(::Colon, i) = i
 @inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
+@inline offset_compute_index(range::Base.OneTo, i) = offset_compute_index(UnitRange(range), i)
 
 @inline offset_index(::Colon) = 0
 @inline offset_index(range::UnitRange) = range[1] - 1
+@inline offset_index(range::Base.OneTo) = offset_index(UnitRange(range))
 
 @kernel function _broadcast_kernel!(dest, bc)
     i, j, k = @index(Global, NTuple)

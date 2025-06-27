@@ -1,16 +1,17 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: retrieve_interior_active_cells_map
+using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
-using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
 
 Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
     Cᴾϵ :: FT = 1.44
-    Cᵇϵ :: FT = -0.65
+    Cᵇϵ⁺ :: FT = -0.65
+    Cᵇϵ⁻ :: FT = -0.65
     Cᵂu★ :: FT = 0.0
     CᵂwΔ :: FT = 0.0
     Cᵂα  :: FT = 0.11 # Charnock parameter
@@ -64,11 +65,17 @@ function time_step_tke_dissipation_equations!(model)
             χ = model.timestepper.χ
         end
 
+        launch!(arch, grid, :xyz,
+                compute_tke_dissipation_diffusivities!,
+                κe, κϵ,
+                grid, closure,
+                model.velocities, model.tracers, model.buoyancy)
+
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
         launch!(arch, grid, :xyz,
                 substep_tke_dissipation!,
-                κe, κϵ, Le, Lϵ,
+                Le, Lϵ,
                 grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
@@ -86,7 +93,20 @@ function time_step_tke_dissipation_equations!(model)
     return nothing
 end
 
-@kernel function substep_tke_dissipation!(κe, κϵ, Le, Lϵ,
+# Compute TKE and dissipation diffusivities
+@kernel function compute_tke_dissipation_diffusivities!(κe, κϵ, grid, closure,
+                                                        velocities, tracers, buoyancy)
+    i, j, k = @index(Global, NTuple)
+    closure_ij = getclosure(i, j, closure)
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)
+    κϵ★ = κϵᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)
+    κe★ = mask_diffusivity(i, j, k, grid, κe★)
+    κϵ★ = mask_diffusivity(i, j, k, grid, κϵ★)
+    @inbounds κe[i, j, k] = κe★
+    @inbounds κϵ[i, j, k] = κϵ★
+end
+
+@kernel function substep_tke_dissipation!(Le, Lϵ,
                                           grid, closure,
                                           next_velocities, previous_velocities,
                                           tracers, buoyancy, diffusivities,
@@ -96,18 +116,7 @@ end
 
     e = tracers.e
     ϵ = tracers.ϵ
-
     closure_ij = getclosure(i, j, closure)
-
-    # Compute TKE and dissipation diffusivities
-    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy)
-    κϵ★ = κϵᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy)
-
-    κe★ = mask_diffusivity(i, j, k, grid, κe★)
-    κϵ★ = mask_diffusivity(i, j, k, grid, κϵ★)
-
-    @inbounds κe[i, j, k] = κe★
-    @inbounds κϵ[i, j, k] = κϵ★
 
     # Compute TKE and dissipation tendencies
     ϵ★ = dissipationᶜᶜᶜ(i, j, k, grid, closure_ij, tracers, buoyancy)
@@ -133,7 +142,11 @@ end
 
     # Patankar trick for ϵ-equation
     Cᵋϵ = closure_ij.tke_dissipation_equations.Cᵋϵ
-    Cᵇϵ = closure_ij.tke_dissipation_equations.Cᵇϵ
+    Cᵇϵ⁺ = closure_ij.tke_dissipation_equations.Cᵇϵ⁺
+    Cᵇϵ⁻ = closure_ij.tke_dissipation_equations.Cᵇϵ⁻
+
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    Cᵇϵ = ifelse(N² ≥ 0, Cᵇϵ⁺, Cᵇϵ⁻)
 
     Cᵇϵ_wb⁻ = min(Cᵇϵ * wb, zero(grid))
     Cᵇϵ_wb⁺ = max(Cᵇϵ * wb, zero(grid))
@@ -156,7 +169,7 @@ end
 
     @inbounds begin
         fast_Gⁿe = P + wb⁺                  # - ϵ (no implicit time stepping for now)
-        fast_Gⁿϵ = ωϵ * (Cᴾϵ * P + Cᵇϵ_wb⁺) 
+        fast_Gⁿϵ = ωϵ * (Cᴾϵ * P + Cᵇϵ_wb⁺)
     end
 
     # Advance TKE and store tendency
@@ -263,10 +276,10 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     top_dissipation_bc = FluxBoundaryCondition(top_dissipation_flux, discrete_form=true, parameters=parameters)
 
-    
+
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
-        
+
         tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,
@@ -280,7 +293,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     if :ϵ ∈ keys(user_bcs)
         ϵ_bcs = user_bcs[:ϵ]
-        
+
         dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                                   top = top_dissipation_bc,
                                                   bottom = e_bcs.bottom,

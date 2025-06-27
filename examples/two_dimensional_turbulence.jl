@@ -26,8 +26,7 @@ using Oceananigans
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
 model = NonhydrostaticModel(; grid,
-                            timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 
 # ## Random initial conditions
@@ -107,10 +106,10 @@ s = sqrt(u^2 + v^2)
 # We pass these operations to an output writer below to calculate and output them during the simulation.
 filename = "two_dimensional_turbulence"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(0.6),
-                                                      filename = filename * ".jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; ω, s),
+                                                schedule = TimeInterval(0.6),
+                                                filename = filename * ".jld2",
+                                                overwrite_existing = true)
 
 # ## Running the simulation
 #

@@ -18,7 +18,7 @@ defined in terms of ``\rho'`` as
 where ``g`` is gravitational acceleration.
 
 The Boussinesq approximation is valid when ``\rho_* + \rho' \ll \rho_0``, which implies the
-fluid is _approximately_ incompressible, and thus does not support acoustic waves. In this case, 
+fluid is _approximately_ incompressible, and thus does not support acoustic waves. In this case,
 the mass conservation equation reduces to the continuity equation
 ```math
     \begin{equation}

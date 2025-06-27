@@ -5,7 +5,7 @@ using ..TurbulenceClosures:
     height_above_bottomᶜᶜᶠ,
     depthᶜᶜᶜ,
     height_above_bottomᶜᶜᶜ,
-    total_depthᶜᶜᵃ
+    static_column_depthᶜᶜᵃ
 
 """
     struct CATKEMixingLength{FT}
@@ -14,7 +14,7 @@ Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
-    Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
+    Cᵇ   :: FT = 0.28   # Bottom distance coefficient for shear length scale
     Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
     CRiᵟ :: FT = 1.02   # Stability function width
     CRi⁰ :: FT = 0.254  # Stability function lower Ri
@@ -232,7 +232,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓu = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓu)
 end
 
@@ -252,7 +252,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓc = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓc)
 end
 
@@ -272,7 +272,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓe = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓe)
 end
 

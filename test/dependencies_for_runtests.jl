@@ -5,7 +5,6 @@ using Random
 using Statistics
 using LinearAlgebra
 using Logging
-using Enzyme
 using SparseArrays
 using JLD2
 using FFTW
@@ -14,14 +13,12 @@ using SeawaterPolynomials
 using CUDA
 using MPI
 
+MPI.Initialized() || MPI.Init()
+
 using Dates: DateTime, Nanosecond
 using Statistics: mean, mean!, norm
 using LinearAlgebra: norm
-using NCDatasets: Dataset
 using KernelAbstractions: @kernel, @index
-
-MPI.versioninfo()
-MPI.Initialized() || MPI.Init()
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -31,7 +28,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.AbstractOperations
 using Oceananigans.Coriolis
-using Oceananigans.BuoyancyModels
+using Oceananigans.BuoyancyFormulations
 using Oceananigans.Forcings
 using Oceananigans.Solvers
 using Oceananigans.Models
@@ -45,12 +42,12 @@ using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
 
-using Oceananigans: Clock
+using Oceananigans: Clock, location
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.BuoyancyModels: BuoyancyField
+using Oceananigans.BuoyancyFormulations: BuoyancyField
 using Oceananigans.Grids: architecture
 using Oceananigans.Fields: ZeroField, ConstantField, FunctionField, compute_at!, indices
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
@@ -71,7 +68,10 @@ closures = (
     :ScalarDiffusivity,
     :ScalarBiharmonicDiffusivity,
     :TwoDimensionalLeith,
+    :ConstantSmagorinsky,
     :SmagorinskyLilly,
+    :LagrangianAveragedDynamicSmagorinsky,
+    :DirectionallyAveragedDynamicSmagorinsky,
     :AnisotropicMinimumDissipation,
     :ConvectiveAdjustmentVerticalDiffusivity,
 )
@@ -88,4 +88,3 @@ already_included[] = true
 
 float_types = (Float32, Float64)
 archs = test_architectures()
-

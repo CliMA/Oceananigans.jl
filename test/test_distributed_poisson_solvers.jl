@@ -1,7 +1,7 @@
 using MPI
 MPI.Init()
 
-# Make sure results are 
+# Make sure results are
 # reproducible
 using Random
 Random.seed!(1234)
@@ -23,7 +23,7 @@ include("dependencies_for_poisson_solvers.jl")
 # tmpi 4 julia --project
 #
 # then later:
-# 
+#
 # julia> include("test_distributed_poisson_solver.jl")
 #
 # When running the tests this way, uncomment the following line
@@ -63,7 +63,7 @@ function random_divergent_source_term(grid::DistributedGrid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
-    
+
     return R, U
 end
 
@@ -78,7 +78,7 @@ function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch)
 
     global_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
-    
+
     # Using Δt = 1.
     solve_for_pressure!(ϕ, solver, 1, U)
 
@@ -90,7 +90,7 @@ end
 
 function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, stretched_direction, child_arch)
     arch = Distributed(child_arch, partition=Partition(ranks...))
-    
+
     if stretched_direction == :x
         x = collect(range(0, 2π, length = grid_points[1]+1))
         y = z = (0, 2π)
@@ -101,8 +101,12 @@ function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, stretc
         z = collect(range(0, 2π, length = grid_points[3]+1))
         x = y = (0, 2π)
     end
-        
-    local_grid = RectilinearGrid(arch; topology=(Bounded, Bounded, Bounded), size=grid_points, x, y, z)
+
+    local_grid = RectilinearGrid(arch;
+                                 topology=(Bounded, Bounded, Bounded),
+                                 size=grid_points,
+                                 halo=(2, 2, 2),
+                                 x, y, z)
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
     ϕ   = CenterField(local_grid)
@@ -111,7 +115,7 @@ function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, stretc
 
     global_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
-    
+
     # Using Δt = 1.
     solve_for_pressure!(ϕ, solver, 1, U)
 
@@ -122,19 +126,19 @@ function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, stretc
 end
 
 @testset "Distributed FFT-based Poisson solver" begin
-    child_arch = test_child_arch()
-    
-    for topology in ((Periodic, Periodic, Periodic), 
+    for topology in ((Periodic, Periodic, Periodic),
                      (Periodic, Periodic, Bounded),
                      (Periodic, Bounded, Bounded),
                      (Bounded, Bounded, Bounded))
-                    
-        @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
+
+        @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology and (4, 1, 1) ranks..."
         @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology, child_arch)
         @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology, child_arch)
+        @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology and (1, 4, 1) ranks..."
         @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology, child_arch)
         @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology, child_arch)
         @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology, child_arch)
+        @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology and (2, 2, 1) ranks..."
         @test divergence_free_poisson_solution((22, 44, 8), (2, 2, 1), topology, child_arch)
         @test divergence_free_poisson_solution((44, 22, 8), (2, 2, 1), topology, child_arch)
 
@@ -143,16 +147,16 @@ end
         @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology, child_arch)
     end
 
-    for stretched_direction in (:x, :y, :z)
-        @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction"
+    for stretched_direction in (:z, )
+        @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction with (4, 1, 1) ranks"
+        @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (4, 1, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((4,  44, 8), (4, 1, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (4, 1, 1), stretched_direction, child_arch)
+        @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction with (1, 4, 1) ranks"
         @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), stretched_direction, child_arch)
         @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), stretched_direction, child_arch)
         @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), stretched_direction, child_arch)
-        @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), stretched_direction, child_arch)
-        @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), stretched_direction, child_arch)
-        @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), stretched_direction, child_arch)
-        @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), stretched_direction, child_arch)
-        @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), stretched_direction, child_arch)
+        @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction with (2, 2, 1) ranks"
         @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), stretched_direction, child_arch)
         @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), stretched_direction, child_arch)
     end

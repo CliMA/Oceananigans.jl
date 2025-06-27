@@ -1,6 +1,6 @@
 module NonhydrostaticModels
 
-export NonhydrostaticModel
+export NonhydrostaticModel, BackgroundField, BackgroundFields
 
 using DocStringExtensions
 
@@ -15,8 +15,8 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver
+using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
@@ -65,6 +65,7 @@ nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architectu
 ##### NonhydrostaticModel definition
 #####
 
+include("background_fields.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")

@@ -1,26 +1,26 @@
-import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
+using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector!
+import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
 
-calculate_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
-
-#####
-##### Barotropic pressure correction for models with a free surface
-#####
-
-const HFSM = HydrostaticFreeSurfaceModel
-const ExplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
-const ImplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
-const SplitExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface}
-
-pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = nothing
+compute_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
 
 #####
 ##### Barotropic pressure correction for models with a free surface
 #####
 
-function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
+make_pressure_correction!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) =
+    make_pressure_correction!(model, model.free_surface, Δt; kwargs...)
+
+# Fallback
+make_pressure_correction!(model, free_surface, Δt; kwargs...) = nothing
+
+#####
+##### Barotropic pressure correction for models with an Implicit free surface
+#####
+
+function make_pressure_correction!(model, ::ImplicitFreeSurface, Δt)
 
     launch!(model.architecture, model.grid, :xyz,
-            _barotropic_pressure_correction,
+            _barotropic_pressure_correction!,
             model.velocities,
             model.grid,
             Δt,
@@ -30,18 +30,15 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
     return nothing
 end
 
-calculate_free_surface_tendency!(grid, ::ImplicitFreeSurfaceHFSM     , args...) = nothing
-calculate_free_surface_tendency!(grid, ::SplitExplicitFreeSurfaceHFSM, args...) = nothing
-
-function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt)
+function make_pressure_correction!(model, ::SplitExplicitFreeSurface, Δt)
     u, v, _ = model.velocities
-    grid = model.grid 
+    grid = model.grid
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
 
     return nothing
 end
 
-@kernel function _barotropic_pressure_correction(U, grid, Δt, g, η)
+@kernel function _barotropic_pressure_correction!(U, grid, Δt, g, η)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
