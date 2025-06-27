@@ -32,8 +32,7 @@ end
 
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, OffsetArray}) = _set!(u, a)
-_set!(u::Field, a::VT) where {VT} = set_to_array!(u, a)
+set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
 set!(u::Field, v::Field) = set_to_field!(u, v)
 
 function set!(u::Field, a::Number)
