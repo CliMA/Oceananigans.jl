@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
 using Oceananigans.Grids: topology, XRegularLLG, YRegularLLG, ZRegularLLG
+using Oceananigans.Fields: CenterField
 
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
@@ -46,28 +47,32 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
 @testset "Nonhydrostatic Regression" begin
     @info "Running nonhydrostatic regression tests..."
 
+    archs = nonhydrostatic_regression_test_architectures()
+
     for arch in archs
         A = typeof(arch)
 
         for grid_type in [:regular, :vertically_unstretched]
-            @testset "Thermal bubble [$A, $grid_type grid]" begin
-                @info "  Testing thermal bubble regression [$A, $grid_type grid]"
-                run_thermal_bubble_regression_test(arch, grid_type)
-            end
-
             @testset "Rayleigh–Bénard tracer [$A, $grid_type grid]]" begin
                 @info "  Testing Rayleigh–Bénard tracer regression [$A, $grid_type grid]"
                 run_rayleigh_benard_regression_test(arch, grid_type)
             end
 
-            amd_closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
-            smag_closure = (SmagorinskyLilly(C=0.23, Cb=1, Pr=1), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
+            if !(arch isa Distributed)
+                @testset "Thermal bubble [$A, $grid_type grid]" begin
+                    @info "  Testing thermal bubble regression [$A, $grid_type grid]"
+                    run_thermal_bubble_regression_test(arch, grid_type)
+                end
 
-            for closure in (amd_closure, smag_closure)
-                closurename = string(typeof(first(closure)).name.wrapper)
-                @testset "Ocean large eddy simulation [$A, $closurename, $grid_type grid]" begin
-                    @info "  Testing oceanic large eddy simulation regression [$A, $closurename, $grid_type grid]"
-                    run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
+                amd_closure = (AnisotropicMinimumDissipation(C=1/12), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
+                smag_closure = (SmagorinskyLilly(C=0.23, Cb=1, Pr=1), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
+
+                for closure in (amd_closure, smag_closure)
+                    closurename = string(typeof(first(closure)).name.wrapper)
+                    @testset "Ocean large eddy simulation [$A, $closurename, $grid_type grid]" begin
+                        @info "  Testing oceanic large eddy simulation regression [$A, $closurename, $grid_type grid]"
+                        run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
+                    end
                 end
             end
         end

@@ -1,8 +1,9 @@
 module Architectures
 
-export AbstractArchitecture
-export CPU, GPU, MultiGPU
-export device, architecture, array_type, arch_array, unified_array, device_copy_to!
+export AbstractArchitecture, AbstractSerialArchitecture
+export CPU, GPU, ReactantState
+export device, architecture, unified_array, device_copy_to!
+export array_type, on_architecture, arch_array
 
 using CUDA
 using KernelAbstractions
@@ -17,31 +18,62 @@ Abstract supertype for architectures supported by Oceananigans.
 abstract type AbstractArchitecture end
 
 """
+    AbstractSerialArchitecture
+
+Abstract supertype for serial architectures supported by Oceananigans.
+"""
+abstract type AbstractSerialArchitecture <: AbstractArchitecture end
+
+"""
     CPU <: AbstractArchitecture
 
 Run Oceananigans on one CPU node. Uses multiple threads if the environment
 variable `JULIA_NUM_THREADS` is set.
 """
-struct CPU <: AbstractArchitecture end
+struct CPU <: AbstractSerialArchitecture end
 
 """
-    GPU <: AbstractArchitecture
+    GPU(device)
 
-Run Oceananigans on a single NVIDIA CUDA GPU.
+Return a GPU architecture using `device`.
+`device` defauls to CUDA.CUDABackend(always_inline=true)
 """
-struct GPU <: AbstractArchitecture end
+struct GPU{D} <: AbstractSerialArchitecture
+    device :: D
+end
+
+const CUDAGPU = GPU{<:CUDA.CUDABackend}
+CUDAGPU() = GPU(CUDA.CUDABackend(always_inline=true))
+Base.summary(::CUDAGPU) = "CUDAGPU"
+
+function GPU()
+    if CUDA.has_cuda_gpu()
+        return CUDAGPU()
+    else
+        msg = """We cannot make a GPU with the CUDA backend:
+                 a CUDA GPU was not found!"""
+        throw(ArgumentError(msg))
+    end
+end
+
+"""
+    ReactantState <: AbstractArchitecture
+
+Run Oceananigans on Reactant.
+"""
+struct ReactantState <: AbstractSerialArchitecture end
 
 #####
 ##### These methods are extended in DistributedComputations.jl
 #####
 
-device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDA.CUDABackend(; always_inline=true)
+device(a::CPU) = KernelAbstractions.CPU()
+device(a::GPU) = a.device
 
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
-architecture(::CuArray) = GPU()
+architecture(::CuArray) = CUDAGPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
@@ -51,53 +83,48 @@ architecture(a::OffsetArray) = architecture(parent(a))
 Return `arch`itecture of child processes.
 On single-process, non-distributed systems, return `arch`.
 """
-child_architecture(arch) = arch
+child_architecture(arch::AbstractSerialArchitecture) = arch
 
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::CPU, a::Array)   = a
-arch_array(::CPU, a::CuArray) = Array(a)
-arch_array(::GPU, a::Array)   = CuArray(a)
-arch_array(::GPU, a::CuArray) = a
+# Fallback
+on_architecture(arch, a) = a
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+# Tupled implementation
+on_architecture(arch::AbstractSerialArchitecture, t::Tuple) = Tuple(on_architecture(arch, elem) for elem in t)
+on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{keys(nt)}(on_architecture(arch, Tuple(nt)))
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+# On architecture for array types
+on_architecture(::CPU, a::Array) = a
+on_architecture(::CPU, a::BitArray) = a
+on_architecture(::CPU, a::CuArray) = Array(a)
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+on_architecture(::CPU, a::StepRangeLen) = a
 
-arch_array(::CPU, a::AbstractRange) = a
-arch_array(::CPU, ::Nothing)   = nothing
-arch_array(::CPU, a::Number)   = a
-arch_array(::CPU, a::Function) = a
+on_architecture(::CUDAGPU, a::Array) = CuArray(a)
+on_architecture(::CUDAGPU, a::CuArray) = a
+on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
+on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+on_architecture(::CUDAGPU, a::StepRangeLen) = a
 
-arch_array(::GPU, a::AbstractRange) = a
-arch_array(::GPU, ::Nothing)   = nothing
-arch_array(::GPU, a::Number)   = a
-arch_array(::GPU, a::Function) = a
-
-arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
+    OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
+cpu_architecture(::ReactantState) = CPU()
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
 
-function unified_array(::GPU, arr::AbstractArray) 
-    buf = Mem.alloc(Mem.Unified, sizeof(arr))
-    vec = unsafe_wrap(CuArray{eltype(arr),length(size(arr))}, convert(CuPtr{eltype(arr)}, buf), size(arr))
-    finalizer(vec) do _
-        Mem.free(buf)
-    end
-    copyto!(vec, arr)
-    return vec
-end
+# cu alters the type of `a`, so we convert it back to the correct type
+unified_array(::GPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))
 
 ## GPU to GPU copy of contiguous data
-@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
+@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false)
     n = length(src)
     context!(context(src)) do
         GC.@preserve src dst begin
@@ -106,10 +133,23 @@ end
     end
     return dst
 end
- 
+
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a)          = nothing
 
+# Convert arguments to GPU-compatible types
+@inline convert_to_device(arch, args)  = args
+@inline convert_to_device(::CPU, args) = args
+@inline convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
+@inline convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
+
+# Deprecated functions
+function arch_array(arch, arr)
+    @warn "`arch_array` is deprecated. Use `on_architecture` instead."
+    return on_architecture(arch, arr)
+end
+
 end # module
+

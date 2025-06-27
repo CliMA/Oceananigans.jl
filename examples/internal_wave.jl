@@ -53,8 +53,7 @@ B = BackgroundField(B_func, parameters=N)
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = CenteredFourthOrder(),
-                            timestepper = :RungeKutta3,
+                            advection = Centered(order=4),
                             closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
@@ -122,9 +121,9 @@ simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 # and add an output writer that saves the vertical velocity field every two iterations:
 
 filename = "internal_wave.jld2"
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities; filename,
-                                                          schedule = IterationInterval(1),
-                                                          overwrite_existing = true)
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities; filename,
+                                                    schedule = IterationInterval(1),
+                                                    overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
@@ -138,7 +137,7 @@ run!(simulation)
 using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 
 ax = Axis(fig[2, 1]; xlabel = "x", ylabel = "z",
           limits = ((-π, π), (-π, π)), aspect = AxisAspect(1))
@@ -153,15 +152,12 @@ nothing #hide
 n = Observable(1)
 
 w_timeseries = FieldTimeSeries(filename, "w")
-x, y, z = nodes(w_timeseries)
-
-w = @lift interior(w_timeseries[$n], :, 1, :)
+w = @lift w_timeseries[$n]
 w_lim = 1e-8
 
-contourf!(ax, x, z, w;
+contourf!(ax, w;
           levels = range(-w_lim, stop=w_lim, length=10),
           colormap = :balance,
-          colorrange = (-w_lim, w_lim),
           extendlow = :auto,
           extendhigh = :auto)
 

@@ -8,7 +8,7 @@ using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: extract_boundary_conditions
-import Oceananigans.Utils: datatuple
+import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
 
 using Adapt
@@ -54,53 +54,56 @@ function PrescribedVelocityFields(; u = ZeroField(),
 end
 
 wrap_prescribed_field(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
-wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = f
+wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
-function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, grid, clock, bcs)
+function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
     parameters = velocities.parameters
     u = wrap_prescribed_field(Face, Center, Center, velocities.u, grid; clock, parameters)
     v = wrap_prescribed_field(Center, Face, Center, velocities.v, grid; clock, parameters)
     w = wrap_prescribed_field(Center, Center, Face, velocities.w, grid; clock, parameters)
 
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
+    fill_halo_regions!((u, v))
     fill_halo_regions!(w)
-    prescribed_velocities = (; u, v, w)
-    @apply_regionally replace_horizontal_vector_halos!(prescribed_velocities, grid)
 
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, grid, tracer_names)
-    tracer_tendencies = TracerFields(tracer_names, grid)
-    momentum_tendencies = (u = nothing, v = nothing, η = nothing)
-    return merge(momentum_tendencies, tracer_tendencies)
-end
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) = 
+    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
-function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, ::ExplicitFreeSurface, grid, tracer_names)
-    tracers = TracerFields(tracer_names, grid)
-    return merge((u = nothing, v = nothing, η = nothing), tracers)
-end
+free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
+free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
+@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
+
+# Extend sum_of_velocities for `PrescribedVelocityFields`
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2) = sum_of_velocities(velocities(U1), U2)
+@inline sum_of_velocities(U1, U2::PrescribedVelocityFields) = sum_of_velocities(U1, velocities(U2))
+
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2, U3) = sum_of_velocities(velocities(U1), U2, U3)
+@inline sum_of_velocities(U1, U2::PrescribedVelocityFields, U3) = sum_of_velocities(U1, velocities(U2), U3)
+@inline sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
-ab2_step_free_surface!(::Nothing, model, Δt, χ) = nothing 
+rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
+step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
-FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing
+free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-FreeSurface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-FreeSurface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-FreeSurface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
@@ -111,18 +114,24 @@ Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
                              Adapt.adapt(to, velocities.v),
                              Adapt.adapt(to, velocities.w),
-                             nothing)
+                             nothing) # Why are parameters not passed here? They probably should...
+
+on_architecture(to, velocities::PrescribedVelocityFields) =
+    PrescribedVelocityFields(on_architecture(to, velocities.u),
+                             on_architecture(to, velocities.v),
+                             on_architecture(to, velocities.w),
+                             on_architecture(to, velocities.parameters))
 
 # If the model only tracks particles... do nothing but that!!!
 const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, C} where
-                 {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}                 
+                 {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}
 
-function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...) 
-    model.timestepper.previous_Δt = Δt
+function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
+    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks) = 
+update_state!(model::OnlyParticleTrackingModel, callbacks) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]

@@ -1,3 +1,6 @@
+using Oceananigans.DistributedComputations: cpu_architecture, partition
+using NCDatasets: Dataset
+
 function run_thermal_bubble_regression_test(arch, grid_type)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -11,8 +14,14 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     end
 
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(grid=grid, closure=closure, coriolis=FPlane(f=1e-4),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+
+    model = NonhydrostaticModel(; grid, closure,
+                                timestepper = :QuasiAdamsBashforth2,
+                                coriolis = FPlane(f=1e-4),
+                                buoyancy = SeawaterBuoyancy(),
+                                hydrostatic_pressure_anomaly = CenterField(grid),
+                                tracers = (:T, :S))
+
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85
@@ -41,7 +50,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                    "T" => model.tracers.T,
                    "S" => model.tracers.S)
 
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, schedule=IterationInterval(10))
+    nc_writer = NetCDFWriter(model, outputs, filename=regression_data_filepath, schedule=IterationInterval(10))
     push!(simulation.output_writers, nc_writer)
     =#
 
@@ -65,19 +74,27 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     copyto!(test_fields.T, interior(model.tracers.T))
     copyto!(test_fields.S, interior(model.tracers.S))
 
-    correct_fields = (u = ds["u"][:, :, :, end],
-                      v = ds["v"][:, :, :, end],
-                      w = ds["w"][:, :, :, end],
-                      T = ds["T"][:, :, :, end],
-                      S = ds["S"][:, :, :, end])
+    reference_fields = (u = ds["u"][:, :, :, end],
+                        v = ds["v"][:, :, :, end],
+                        w = ds["w"][:, :, :, end],
+                        T = ds["T"][:, :, :, end],
+                        S = ds["S"][:, :, :, end])
 
-    summarize_regression_test(test_fields, correct_fields)
-    
-    @test all(test_fields.u .≈ correct_fields.u)
-    @test all(test_fields.v .≈ correct_fields.v)
-    @test all(test_fields.w .≈ correct_fields.w)
-    @test all(test_fields.T .≈ correct_fields.T)
-    @test all(test_fields.S .≈ correct_fields.S)
-    
+    cpu_arch = cpu_architecture(architecture(grid))
+
+    reference_fields = (u = partition(reference_fields.u, cpu_arch, size(reference_fields.u)),
+                        v = partition(reference_fields.v, cpu_arch, size(reference_fields.v)),
+                        w = partition(reference_fields.w, cpu_arch, size(reference_fields.w)),
+                        T = partition(reference_fields.T, cpu_arch, size(reference_fields.T)),
+                        S = partition(reference_fields.S, cpu_arch, size(reference_fields.S)))
+
+    summarize_regression_test(test_fields, reference_fields)
+
+    @test all(test_fields.u .≈ reference_fields.u)
+    @test all(test_fields.v .≈ reference_fields.v)
+    @test all(test_fields.w .≈ reference_fields.w)
+    @test all(test_fields.T .≈ reference_fields.T)
+    @test all(test_fields.S .≈ reference_fields.S)
+
     return nothing
 end

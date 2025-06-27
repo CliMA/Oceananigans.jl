@@ -59,15 +59,15 @@ simulation = Simulation(model,
                         stop_time = 1000cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
-                                                         
+
 output_fields = model.tracers
 
 output_prefix = "spot_tracer_diffusion_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(10cell_diffusion_time_scale),
-                                                      filename = output_prefix,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                schedule = TimeInterval(10cell_diffusion_time_scale),
+                                                filename = output_prefix,
+                                                overwrite_existing = true)
 
 run!(simulation)
 
@@ -89,7 +89,7 @@ c = @lift file["timeseries/c/" * string($iter)][:, :, 1]
 
 set_theme!(Theme(fontsize = 30))
 
-fig = Figure(resolution = (1920, 1080))
+fig = Figure(size=(1920, 1080))
 
 title = @lift "Tracer spot on a sphere, t = $(file["timeseries/t/" * string($iter)])"
 

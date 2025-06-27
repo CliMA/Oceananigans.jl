@@ -1,9 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices
-using Oceananigans.BuoyancyModels: BuoyancyField
-
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
@@ -23,7 +19,7 @@ function x_derivative(a)
     dx_a = ∂x(a)
 
     arch = architecture(a)
-    one_two_three = arch_array(arch, [1, 2, 3])
+    one_two_three = on_architecture(arch, [1, 2, 3])
 
     for k in 1:3
         interior(a)[:, 1, k] .= one_two_three
@@ -38,7 +34,7 @@ function y_derivative(a)
     dy_a = ∂y(a)
 
     arch = architecture(a)
-    one_three_five = arch_array(arch, [1, 3, 5])
+    one_three_five = on_architecture(arch, [1, 3, 5])
 
     for k in 1:3
         interior(a)[1, :, k] .= one_three_five
@@ -53,7 +49,7 @@ function z_derivative(a)
     dz_a = ∂z(a)
 
     arch = architecture(a)
-    one_four_seven = arch_array(arch, [1, 4, 7])
+    one_four_seven = on_architecture(arch, [1, 4, 7])
 
     for k in 1:3
         interior(a)[1, k, :] .= one_four_seven
@@ -69,21 +65,20 @@ function x_derivative_cell(arch)
     a = Field{Center, Center, Center}(grid)
     dx_a = ∂x(a)
 
-    one_four_four = arch_array(arch, [1, 4, 4])
+    one_four_four = on_architecture(arch, [1, 4, 4])
 
     for k in 1:3
-        interior(a)[:, 1, k] .= one_four_four 
-        interior(a)[:, 2, k] .= one_four_four 
-        interior(a)[:, 3, k] .= one_four_four 
+        interior(a)[:, 1, k] .= one_four_four
+        interior(a)[:, 2, k] .= one_four_four
+        interior(a)[:, 3, k] .= one_four_four
     end
 
     return CUDA.@allowscalar dx_a[2, 2, 2] == 3
 end
 
 function times_x_derivative(a, b, location, i, j, k, answer)
-    a∇b = @at location b * ∂x(a)
-    
-    return CUDA.@allowscalar a∇b[i, j, k] == answer
+    b∇a = @at location b * ∂x(a)
+    return CUDA.@allowscalar b∇a[i, j, k] == answer
 end
 
 for arch in archs
@@ -133,6 +128,10 @@ for arch in archs
             @test 1 * ZeroField() == ZeroField()
             @test ZeroField() / 1 == ZeroField()
             @test 1 / ZeroField() == ConstantField(Inf)
+
+            @test ZeroField() + ZeroField() == ZeroField()
+            @test ZeroField() - ZeroField() == ZeroField()
+            @test ZeroField() * ZeroField() == ZeroField()
 
             @test compute!(Field(ConstantField(1) + u)) == compute!(Field(1 + u))
             @test compute!(Field(ConstantField(1) - u)) == compute!(Field(1 - u))
@@ -301,7 +300,7 @@ for arch in archs
                         loc = (LX, LY, LZ)
                         f = Field(loc, rectilinear_grid)
                         f .= 1
-                        
+
                         CUDA.@allowscalar begin
                             # Δx, Δy, Δz = 2, 3, 4
                             # Ax, Ay, Az = 12, 8, 6
@@ -330,7 +329,7 @@ for arch in archs
         end
 
         @testset "Indexing of AbstractOperations [$(typeof(arch))]" begin
-            
+
             grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
             test_indices   = [(2:3, :, :), (:, 2:3, :), (:, :, 2:3)]
@@ -338,13 +337,13 @@ for arch in archs
             center_indices = [(3:3, :, :), (:, 3:3, :), (:, :, 3:3)]
 
             FaceFields = (XFaceField, YFaceField, ZFaceField)
-            
+
             for (ti, fi, ci, FaceField) in zip(test_indices, face_indices, center_indices, FaceFields)
                 a = CenterField(grid)
                 b = CenterField(grid, indices = ti)
                 @test indices(a * b)  == ti
                 @test indices(sin(b)) == ti
-                            
+
                 c = CenterField(grid, indices=ti)
                 d = FaceField(grid, indices=ti)
                 @test indices(c * d) == fi
@@ -367,3 +366,4 @@ for arch in archs
         end
     end
 end
+

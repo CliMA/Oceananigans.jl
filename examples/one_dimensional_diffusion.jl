@@ -1,4 +1,4 @@
-# # [Simple diffusion example]](@id one_dimensional_diffusion_example)
+# # [Simple diffusion example](@id one_dimensional_diffusion_example)
 #
 # This is Oceananigans.jl's simplest example:
 # the diffusion of a one-dimensional Gaussian. This example demonstrates
@@ -73,11 +73,7 @@ set_theme!(Theme(fontsize = 24, linewidth=3))
 fig = Figure()
 axis = (xlabel = "Temperature (ᵒC)", ylabel = "z")
 label = "t = 0"
-
-z = znodes(model.tracers.T)
-T = interior(model.tracers.T, 1, 1, :)
-
-lines(T, z; label, axis)
+lines(model.tracers.T; label, axis)
 current_figure() #hide
 
 # The function `interior` above extracts a `view` of `model.tracers.T` over the
@@ -105,18 +101,18 @@ run!(simulation)
 using Printf
 
 label = @sprintf("t = %.3f", model.clock.time)
-lines!(interior(model.tracers.T, 1, 1, :), z; label)
+lines!(model.tracers.T; label)
 axislegend()
 current_figure() #hide
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
-# For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
+# For this, we use the `JLD2Writer` to write data to disk as the simulation progresses.
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, model.tracers,
-                     filename = "one_dimensional_diffusion.jld2",
-                     schedule=IterationInterval(100),
-                     overwrite_existing = true)
+    JLD2Writer(model, model.tracers,
+               filename = "one_dimensional_diffusion.jld2",
+               schedule=IterationInterval(100),
+               overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,
 
@@ -136,8 +132,8 @@ xlims!(ax, 0, 1)
 
 n = Observable(1)
 
-T = @lift interior(T_timeseries[$n], 1, 1, :)
-lines!(T, z)
+T = @lift T_timeseries[$n]
+lines!(T)
 
 label = @lift "t = " * string(round(times[$n], digits=3))
 Label(fig[1, 1], label, tellwidth=false)

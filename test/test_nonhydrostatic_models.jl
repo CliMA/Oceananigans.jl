@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+
 @testset "Models" begin
     @info "Testing models..."
 
@@ -32,8 +34,8 @@ include("dependencies_for_runtests.jl")
     @testset "Adjustment of halos in NonhydrostaticModel constructor" begin
         @info "  Testing adjustment of halos in NonhydrostaticModel constructor..."
 
-        minimal_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
-          funny_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
+        minimal_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 2, 3), halo=(1, 1, 1))
+          funny_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
         model = NonhydrostaticModel(grid=minimal_grid)
@@ -43,7 +45,7 @@ include("dependencies_for_runtests.jl")
         @test model.grid.Hx == 1 && model.grid.Hy == 3 && model.grid.Hz == 4
 
         # Model ensures that halos are at least of size 2
-        for scheme in (CenteredFourthOrder(), UpwindBiasedThirdOrder())
+        for scheme in (Centered(order=4), UpwindBiased(order=3))
             model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
             @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
 
@@ -52,7 +54,7 @@ include("dependencies_for_runtests.jl")
         end
 
         # Model ensures that halos are at least of size 3
-        for scheme in (WENO(), UpwindBiasedFifthOrder())
+        for scheme in (WENO(), UpwindBiased(order=5))
             model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
 
@@ -66,6 +68,28 @@ include("dependencies_for_runtests.jl")
 
         model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
         @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+
+        @info "  Testing adjustment of advection schemes in NonhydrostaticModel constructor..."
+        small_grid = RectilinearGrid(size=(4, 2, 4), extent=(1, 2, 3), halo=(1, 1, 1))
+
+        # Model ensures that halos are at least of size 1
+        model = NonhydrostaticModel(grid=small_grid, advection=WENO())
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size_x(model.advection) == 3
+        @test required_halo_size_y(model.advection) == 2
+        @test required_halo_size_z(model.advection) == 3
+
+        model = NonhydrostaticModel(grid=small_grid, advection=UpwindBiased(; order = 9))
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size_x(model.advection) == 4
+        @test required_halo_size_y(model.advection) == 2
+        @test required_halo_size_z(model.advection) == 4
+
+        model = NonhydrostaticModel(grid=small_grid, advection=Centered(; order = 10))
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size_x(model.advection) == 4
+        @test required_halo_size_y(model.advection) == 2
+        @test required_halo_size_z(model.advection) == 4
     end
 
     @testset "Model construction with single tracer and nothing tracer" begin
@@ -114,7 +138,7 @@ include("dependencies_for_runtests.jl")
             xF, yF, zF = nodes(model.grid, (Face(),   Face(),   Face()), reshape=true)
 
             # Form solution arrays
-            u_answer = u₀.(xF, yC, zC) |> Array 
+            u_answer = u₀.(xF, yC, zC) |> Array
             v_answer = v₀.(xC, yF, zC) |> Array
             w_answer = w₀.(xC, yC, zF) |> Array
             T_answer = T₀.(xC, yC, zC) |> Array
@@ -148,10 +172,10 @@ include("dependencies_for_runtests.jl")
 
             # Test whether set! copies boundary conditions
             # Note: we need to cleanup broadcasting for this -- see https://github.com/CliMA/Oceananigans.jl/pull/2786/files#r1008955571
-            @test_skip u_cpu[1, 1, 1] == u_cpu[Nx+1, 1, 1]  # x-periodicity
-            @test_skip u_cpu[1, 1, 1] == u_cpu[1, Ny+1, 1]  # y-periodicity
-            @test_skip all(u_cpu[1:Nx, 1:Ny, 1] .== u_cpu[1:Nx, 1:Ny, 0])     # free slip at bottom
-            @test_skip all(u_cpu[1:Nx, 1:Ny, Nz] .== u_cpu[1:Nx, 1:Ny, Nz+1]) # free slip at top
+            @test u_cpu[1, 1, 1] == u_cpu[Nx+1, 1, 1]  # x-periodicity
+            @test u_cpu[1, 1, 1] == u_cpu[1, Ny+1, 1]  # y-periodicity
+            @test all(u_cpu[1:Nx, 1:Ny, 1] .== u_cpu[1:Nx, 1:Ny, 0])     # free slip at bottom
+            @test all(u_cpu[1:Nx, 1:Ny, Nz] .== u_cpu[1:Nx, 1:Ny, Nz+1]) # free slip at top
 
             # Test that enforce_incompressibility works
             set!(model, u=0, v=0, w=1, T=0, S=0)
@@ -166,7 +190,7 @@ include("dependencies_for_runtests.jl")
             @test model.background_fields.velocities.u isa Field
 
             U_field = CenterField(grid)
-            @test_throws ArgumentError NonhydrostaticModel(; grid, background_fields = (u=U_field,))            
+            @test_throws ArgumentError NonhydrostaticModel(; grid, background_fields = (u=U_field,))
         end
     end
 end

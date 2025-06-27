@@ -1,21 +1,19 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
-    FreeSurface,
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
-    MatrixImplicitFreeSurfaceSolver, 
+    MatrixImplicitFreeSurfaceSolver,
     compute_vertically_integrated_lateral_areas!,
-    implicit_free_surface_step!,
+    step_free_surface!,
     implicit_free_surface_linear_operation!
 
 using Oceananigans.Grids: with_halo
-
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -54,7 +52,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
                                         free_surface)
 
     set_simple_divergent_velocity!(model)
-    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     acronym = free_surface.solver_method == :HeptadiagonalIterativeSolver ? "Matrix" : "PCG"
 
@@ -73,8 +71,8 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     g = g_Earth
     η = model.free_surface.η
 
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -103,21 +101,23 @@ end
     for arch in archs
         A = typeof(arch)
 
-        rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
+        rectilinear_grid = RectilinearGrid(arch, size = (128, 2, 5),
                                            x = (-5000kilometers, 5000kilometers),
                                            y = (0, 100kilometers),
                                            z = (-500, 0),
+                                           halo = (3, 2, 3),
                                            topology = (Bounded, Periodic, Bounded))
 
         Lz = rectilinear_grid.Lz
         width = rectilinear_grid.Lx / 20
 
         bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
-        
-        underlying_grid = RectilinearGrid(arch, size = (128, 1, 5),
+
+        underlying_grid = RectilinearGrid(arch, size = (128, 2, 5),
                                           x = (-5000kilometers, 5000kilometers),
                                           y = (0, 100kilometers),
                                           z = [-500, -300, -220, -170, -60, 0],
+                                          halo = (3, 2, 3),
                                           topology = (Bounded, Periodic, Bounded))
 
         bumpy_vertically_stretched_rectilinear_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
@@ -157,25 +157,25 @@ end
         fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
                                                 free_surface = fft_free_surface)
-                                            
+
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
 
         Δt₁ = 900
         Δt₂ = 920.0
-        
+
         for m in (mat_model, pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
-            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5)
-            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5)
-            implicit_free_surface_step!(m.free_surface, m, Δt₂, 1.5)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₂)
         end
 
         mat_η = mat_model.free_surface.η
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
-     
+
         mat_η_cpu = Array(interior(mat_η))
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))

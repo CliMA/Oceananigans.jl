@@ -26,8 +26,7 @@ using Oceananigans
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
 model = NonhydrostaticModel(; grid,
-                            timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 
 # ## Random initial conditions
@@ -47,14 +46,34 @@ vᵢ .-= mean(vᵢ)
 
 set!(model, u=uᵢ, v=vᵢ)
 
+# ## Setting up a simulation
+#
+# We set-up a simulation that stops at 50 time units, with an initial
+# time-step of 0.1, and with adaptive time-stepping and progress printing.
+
 simulation = Simulation(model, Δt=0.2, stop_time=50)
+
+# The `TimeStepWizard` helps ensure stable time-stepping
+# with a Courant-Freidrichs-Lewy (CFL) number of 0.7.
+
+wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # ## Logging simulation progress
 #
 # We set up a callback that logs the simulation iteration and time every 100 iterations.
 
-progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+using Printf
+
+function progress_message(sim)
+    max_abs_u = maximum(abs, sim.model.velocities.u)
+    walltime = prettytime(sim.run_wall_time)
+
+    return @info @sprintf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s\n",
+                          iteration(sim), time(sim), sim.Δt, max_abs_u, walltime)
+end
+
+add_callback!(simulation, progress_message, IterationInterval(100))
 
 # ## Output
 #
@@ -87,10 +106,10 @@ s = sqrt(u^2 + v^2)
 # We pass these operations to an output writer below to calculate and output them during the simulation.
 filename = "two_dimensional_turbulence"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(0.6),
-                                                      filename = filename * ".jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; ω, s),
+                                                schedule = TimeInterval(0.6),
+                                                filename = filename * ".jld2",
+                                                overwrite_existing = true)
 
 # ## Running the simulation
 #
@@ -106,11 +125,6 @@ run!(simulation)
 s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
 
 times = ω_timeseries.times
-
-# Construct the ``x, y, z`` grid for plotting purposes,
-
-xω, yω, zω = nodes(ω_timeseries)
-xs, ys, zs = nodes(s_timeseries)
 nothing #hide
 
 # and animate the vorticity and fluid speed.
@@ -118,9 +132,7 @@ nothing #hide
 using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
-@info "Making a neat movie of vorticity and speed..."
-
-fig = Figure(resolution = (800, 500))
+fig = Figure(size = (800, 500))
 
 axis_kwargs = (xlabel = "x",
                ylabel = "y",
@@ -138,11 +150,11 @@ n = Observable(1)
 
 # Now let's plot the vorticity and speed.
 
-ω = @lift interior(ω_timeseries[$n], :, :, 1)
-s = @lift interior(s_timeseries[$n], :, :, 1)
+ω = @lift ω_timeseries[$n]
+s = @lift s_timeseries[$n]
 
-heatmap!(ax_ω, xω, yω, ω; colormap = :balance, colorrange = (-2, 2))
-heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
+heatmap!(ax_ω, ω; colormap = :balance, colorrange = (-2, 2))
+heatmap!(ax_s, s; colormap = :speed, colorrange = (0, 0.2))
 
 title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)

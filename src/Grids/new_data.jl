@@ -26,8 +26,8 @@ Return a range of indices for a field along a 'reduced' dimension.
 offset_indices(::Nothing, topo, N, H=0) = 1:1
 
 offset_indices(ℓ,         topo, N, H, ::Colon) = offset_indices(ℓ, topo, N, H)
-offset_indices(ℓ,         topo, N, H, r::UnitRange) = r
-offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
+offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
+offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
 instantiate(T::Type) = T()
 instantiate(t) = t
@@ -43,15 +43,15 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         Base.@_inline_meta
         axes(underlying_data, i+length(ii))
     end
+
     return OffsetArray(underlying_data, ii..., extra_ii...)
 end
 
 """
-    offset_data(underlying_data, grid::AbstractGrid, loc)
+    offset_data(underlying_data, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
 
-Returns an `OffsetArray` that maps to `underlying_data` in memory,
-with offset indices appropriate for the `data` of a field on
-a `grid` of `size(grid)` and located at `loc`.
+Return an `OffsetArray` that maps to `underlying_data` in memory, with offset indices
+appropriate for the `data` of a field on a `grid` of `size(grid)` and located at `loc`.
 """
 offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -59,12 +59,12 @@ offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=def
 """
     new_data(FT, arch, loc, topo, sz, halo_sz, indices)
 
-Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
+Return an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
 function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
-    Tx, Ty, Tz = total_size(loc, topo, sz, halo_sz, indices)
-    underlying_data = zeros(FT, arch, Tx, Ty, Tz)
+    Tsz = total_size(loc, topo, sz, halo_sz, indices)
+    underlying_data = zeros(arch, FT, Tsz...)
     indices = validate_indices(indices, loc, topo, sz, halo_sz)
     return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
@@ -73,3 +73,4 @@ new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(l
     new_data(FT, architecture(grid), loc, topology(grid), size(grid), halo_size(grid), indices)
 
 new_data(grid::AbstractGrid, loc, indices=default_indices) = new_data(eltype(grid), grid, loc, indices)
+

@@ -14,7 +14,7 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, L
     and subsequent interpolation by `▶` on `grid`.
     """
     function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
-                                 grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
+                                    grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
         T = eltype(grid)
         return new{LX, LY, LZ, D, A, IN, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
     end
@@ -28,7 +28,7 @@ end
 
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
-function _derivative(L, ∂, arg, L∂, abstract_∂, grid) 
+function _derivative(L, ∂, arg, L∂, abstract_∂, grid)
     ▶ = interpolation_operator(L∂, L)
     return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
 end
@@ -118,10 +118,17 @@ compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 ##### GPU capabilities
 #####
 
-"Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `Derivative` to work on the GPU."
 Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
     Derivative{LX, LY, LZ}(Adapt.adapt(to, deriv.∂),
                            Adapt.adapt(to, deriv.arg),
                            Adapt.adapt(to, deriv.▶),
                            nothing,
                            Adapt.adapt(to, deriv.grid))
+
+on_architecture(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
+    Derivative{LX, LY, LZ}(on_architecture(to, deriv.∂),
+                           on_architecture(to, deriv.arg),
+                           on_architecture(to, deriv.▶),
+                           deriv.abstract_∂,
+                           on_architecture(to, deriv.grid))

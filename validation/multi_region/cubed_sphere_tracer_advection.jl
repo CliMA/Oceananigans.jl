@@ -3,7 +3,6 @@ using Oceananigans, Printf
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: replace_horizontal_vector_halos!
 
 Nx = 30
 Ny = 30
@@ -157,7 +156,7 @@ n = Observable(1)
 
 Θₙ = @lift tracer_fields[$n]
 
-fig = Figure(resolution = (1600, 1200), fontsize=30)
+fig = Figure(size=(1600, 1200), fontsize=30)
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
 

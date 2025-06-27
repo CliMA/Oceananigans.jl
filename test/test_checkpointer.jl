@@ -14,12 +14,36 @@ function test_model_equality(test_model, true_model)
 
         for name in field_names
             @test all(test_model_fields[name].data .≈ true_model_fields[name].data)
-            @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
-            @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
+
+            if test_model.timestepper isa QuasiAdamsBashforth2TimeStepper
+                if name ∈ keys(test_model.timestepper.Gⁿ)
+                    @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
+                    @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
+                end
+            end
         end
     end
 
     return nothing
+end
+
+""" Set up a simple simulation to test picking up from a checkpoint. """
+function initialization_test_simulation(arch, stop_time, Δt=1, δt=2)
+    grid = RectilinearGrid(arch, size=(), topology=(Flat, Flat, Flat))
+    model = NonhydrostaticModel(; grid)
+    simulation = Simulation(model; Δt, stop_time)
+
+    progress_message(sim) = @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim))
+    simulation.callbacks[:progress] = Callback(progress_message, TimeInterval(δt))
+
+    checkpointer = Checkpointer(model,
+                                schedule = TimeInterval(stop_time),
+                                prefix = "initialization_test",
+                                cleanup = false)
+
+    simulation.output_writers[:checkpointer] = checkpointer
+
+    return simulation
 end
 
 """
@@ -34,10 +58,7 @@ Run two coarse rising thermal bubble simulations and make sure
 3. run!(test_model, pickup) works as expected
 """
 function test_thermal_bubble_checkpointer_output(arch)
-    #####
-    ##### Create and run "true model"
-    #####
-
+    # Create and run "true model"
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
@@ -58,10 +79,7 @@ function test_thermal_bubble_checkpointer_output(arch)
 end
 
 function test_hydrostatic_splash_checkpointer(arch, free_surface)
-    #####
-    ##### Create and run "true model"
-    #####
-
+    # Create and run "true model"
     Nx, Ny, Nz = 16, 16, 4
     Lx, Ly, Lz = 1, 1, 1
 
@@ -78,7 +96,6 @@ function test_hydrostatic_splash_checkpointer(arch, free_surface)
 end
 
 function run_checkpointer_tests(true_model, test_model, Δt)
-
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=5)
 
     checkpointer = Checkpointer(true_model, schedule=IterationInterval(5), overwrite_existing=true)
@@ -102,7 +119,7 @@ function run_checkpointer_tests(true_model, test_model, Δt)
     test_model_equality(test_model, checkpointed_model)
 
     # This only applies to QuasiAdamsBashforthTimeStepper:
-    @test test_model.timestepper.previous_Δt == checkpointed_model.timestepper.previous_Δt
+    @test test_model.clock.last_Δt == checkpointed_model.clock.last_Δt
 
     #####
     ##### Test pickup from explicit checkpoint path
@@ -162,10 +179,7 @@ end
 
 function run_checkpointer_cleanup_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
-                                )
-
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)
@@ -183,7 +197,7 @@ for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
         test_thermal_bubble_checkpointer_output(arch)
-    
+
         for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
                              ImplicitFreeSurface(gravitational_acceleration=1)]
 
@@ -191,5 +205,20 @@ for arch in archs
         end
 
         run_checkpointer_cleanup_tests(arch)
+
+        # Run a simulation that saves data to a checkpoint
+        rm("initialization_test_iteration*.jld2", force=true)
+        simulation = initialization_test_simulation(arch, 4)
+        run!(simulation)
+
+        # Now try again, but picking up from the previous checkpoint
+        N = iteration(simulation)
+        checkpoint = "initialization_test_iteration$N.jld2"
+        simulation = initialization_test_simulation(arch, 8)
+        run!(simulation, pickup=checkpoint)
+
+        progress_cb = simulation.callbacks[:progress]
+        progress_cb.schedule.first_actuation_time
+        @test progress_cb.schedule.first_actuation_time == 4
     end
 end

@@ -80,8 +80,8 @@ x, y, z = 1e-3 .* nodes(grid, (Center(), Center(), Center()))
 
 b = model.tracers.b
 
-fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
-                      colormap=:deep,
+fig, ax, hm = heatmap(view(b, 1, :, :),
+                      colormap = :deep,
                       axis = (xlabel = "y [km]",
                               ylabel = "z [km]",
                               title = "b(x=0, y, z, t=0)",
@@ -93,15 +93,14 @@ current_figure() #hide
 fig
 
 # ## Simulation
-# 
+#
 # Now let's build a `Simulation`.
 
 simulation = Simulation(model, Δt=20minutes, stop_time=20days)
 
 # We add a `TimeStepWizard` callback to adapt the simulation's time-step,
 
-wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+conjure_time_step_wizard!(simulation, IterationInterval(20), cfl=0.2, max_Δt=20minutes)
 
 # Also, we add a callback to print a message about how the simulation is going,
 
@@ -119,11 +118,11 @@ function print_progress(sim)
             maximum(abs, u), maximum(abs, v), maximum(abs, w), prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(100))
+add_callback!(simulation, print_progress, IterationInterval(100))
 
 # ## Diagnostics/Output
 #
@@ -147,17 +146,17 @@ slicers = (east = (grid.Nx, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, ζ);
-                                                       filename = filename * "_$(side)_slice",
-                                                       schedule = TimeInterval(save_fields_interval),
-                                                       overwrite_existing = true,
-                                                       indices)
+    simulation.output_writers[side] = JLD2Writer(model, (; b, ζ);
+                                                 filename = filename * "_$(side)_slice",
+                                                 schedule = TimeInterval(save_fields_interval),
+                                                 overwrite_existing = true,
+                                                 indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (; b=B, u=U, v=V);
-                                                     filename = filename * "_zonal_average",
-                                                     schedule = TimeInterval(save_fields_interval),
-                                                     overwrite_existing = true)
+simulation.output_writers[:zonal] = JLD2Writer(model, (; b=B, u=U, v=V);
+                                               filename = filename * "_zonal_average",
+                                               schedule = TimeInterval(save_fields_interval),
+                                               overwrite_existing = true)
 
 # Now we're ready to _run_.
 
@@ -179,7 +178,7 @@ using CairoMakie
 
 # ### Three-dimensional visualization
 #
-# We load the saved buoyancy output on the top, bottom, north, and east surface as `FieldTimeSeries`es.
+# We load the saved buoyancy output on the top, north, and east surface as `FieldTimeSeries`es.
 
 filename = "baroclinic_adjustment"
 
@@ -189,7 +188,6 @@ slice_filenames = NamedTuple(side => filename * "_$(side)_slice.jld2" for side i
 
 b_timeserieses = (east   = FieldTimeSeries(slice_filenames.east, "b"),
                   north  = FieldTimeSeries(slice_filenames.north, "b"),
-                  bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
                   top    = FieldTimeSeries(slice_filenames.top, "b"))
 
 B_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
@@ -205,6 +203,7 @@ xb = xb ./ 1e3 # convert m -> km
 yb = yb ./ 1e3 # convert m -> km
 
 Nx, Ny, Nz = size(grid)
+
 x_xz = repeat(x, 1, Nz)
 y_xz_north = y[end] * ones(Nx, Nz)
 z_xz = repeat(reshape(z, 1, Nz), Nx, 1)
@@ -216,13 +215,12 @@ z_yz = repeat(reshape(z, 1, Nz), grid.Ny, 1)
 x_xy = x
 y_xy = y
 z_xy_top = z[end] * ones(grid.Nx, grid.Ny)
-z_xy_bottom = z[1] * ones(grid.Nx, grid.Ny)
 nothing #hide
 
 # Then we create a 3D axis. We use `zonal_slice_displacement` to control where the plot of the instantaneous
 # zonal average flow is located.
 
-fig = Figure(resolution = (1600, 800))
+fig = Figure(size = (1600, 800))
 
 zonal_slice_displacement = 1.2
 
@@ -233,7 +231,7 @@ ax = Axis3(fig[2, 1],
            zlabel = "z (m)",
            xlabeloffset = 100,
            ylabeloffset = 100,
-           zlabeloffset = 100, 
+           zlabeloffset = 100,
            limits = ((x[1], zonal_slice_displacement * x[end]), (y[1], y[end]), (z[1], z[end])),
            elevation = 0.45,
            azimuth = 6.8,
@@ -254,7 +252,6 @@ n = length(times)
 
 b_slices = (east   = interior(b_timeserieses.east[n], 1, :, :),
             north  = interior(b_timeserieses.north[n], :, 1, :),
-            bottom = interior(b_timeserieses.bottom[n], :, :, 1),
             top    = interior(b_timeserieses.top[n], :, :, 1))
 
 ## Zonally-averaged buoyancy
@@ -262,11 +259,11 @@ B = interior(B_timeseries[n], 1, :, :)
 
 clims = 1.1 .* extrema(b_timeserieses.top[n][:])
 
-kwargs = (colorrange=clims, colormap=:deep)
-surface!(ax, x_yz_east, y_yz, z_yz;    color = b_slices.east, kwargs...)
-surface!(ax, x_xz, y_xz_north, z_xz;   color = b_slices.north, kwargs...)
-surface!(ax, x_xy, y_xy, z_xy_bottom ; color = b_slices.bottom, kwargs...)
-surface!(ax, x_xy, y_xy, z_xy_top;     color = b_slices.top, kwargs...)
+kwargs = (colorrange=clims, colormap=:deep, shading=NoShading)
+
+surface!(ax, x_yz_east, y_yz, z_yz;  color = b_slices.east, kwargs...)
+surface!(ax, x_xz, y_xz_north, z_xz; color = b_slices.north, kwargs...)
+surface!(ax, x_xy, y_xy, z_xy_top;   color = b_slices.top, kwargs...)
 
 sf = surface!(ax, zonal_slice_displacement .* x_yz_east, y_yz, z_yz; color = B, kwargs...)
 
@@ -310,7 +307,7 @@ yv = yv ./ 1e3 # convert m -> km
 
 set_theme!(Theme(fontsize=24))
 
-fig = Figure(resolution=(1800, 1000))
+fig = Figure(size=(1800, 1000))
 
 axb = Axis(fig[1, 2], xlabel="x (km)", ylabel="y (km)", aspect=1)
 axζ = Axis(fig[1, 3], xlabel="x (km)", ylabel="y (km)", aspect=1, yaxisposition=:right)
@@ -357,4 +354,3 @@ end
 nothing #hide
 
 # ![](baroclinic_adjustment.mp4)
-

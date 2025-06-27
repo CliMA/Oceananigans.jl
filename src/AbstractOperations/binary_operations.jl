@@ -1,3 +1,5 @@
+using Oceananigans.Operators
+
 const binary_operators = Set()
 
 struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
@@ -169,7 +171,7 @@ julia> c, d = (CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) fo
 
 julia> plus_or_times(c, d)
 BinaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     plus_or_times at (Center, Center, Center)
     ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -216,3 +218,12 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.▶a),
                                 Adapt.adapt(to, binary.▶b),
                                 Adapt.adapt(to, binary.grid))
+
+
+on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    BinaryOperation{LX, LY, LZ}(on_architecture(to, binary.op),
+                                on_architecture(to, binary.a),
+                                on_architecture(to, binary.b),
+                                on_architecture(to, binary.▶a),
+                                on_architecture(to, binary.▶b),
+                                on_architecture(to, binary.grid))

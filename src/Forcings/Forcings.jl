@@ -1,8 +1,11 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, LinearTarget, AdvectiveForcing
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, LinearTarget, AdvectiveForcing
 
 using Oceananigans.Fields
+using Oceananigans.OutputReaders: FlavorOfFTS
+using Oceananigans.Units: Time
+import Oceananigans.Architectures: on_architecture
 
 include("multiple_forcings.jl")
 include("continuous_forcing.jl")

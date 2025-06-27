@@ -11,6 +11,7 @@
 using MPI
 using Oceananigans
 using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: Sizes
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
 using Printf
@@ -18,9 +19,9 @@ using JLD2
 
 topo = (Bounded, Periodic, Bounded)
 
-partition = Partition([10, 13, 18, 39])
+partition = Partition(x = Sizes(10, 13, 18, 39))
 
-arch = Distributed(CPU(); topology = topo, partition)
+arch = Distributed(CPU())
 
 # Distribute problem irregularly
 Nx = 80
@@ -30,7 +31,7 @@ Lh = 100kilometers
 Lz = 400meters
 
 grid = RectilinearGrid(arch,
-                       size = (Nx, 3, 1),
+                       size = (Nx, 3, 2),
                        x = (0, Lh),
                        y = (0, Lh),
                        z = (-Lz, 0),
@@ -39,11 +40,14 @@ grid = RectilinearGrid(arch,
 @show rank, grid
 
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 100 : -500meters
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom), true)
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
+
+coriolis = FPlane(f=1e-4)
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    coriolis = FPlane(f=1e-4),
-                                    free_surface = SplitExplicitFreeSurface(; substeps=10))
+                                      coriolis,
+                                      timestepper = :SplitRungeKutta3,
+                                      free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -70,11 +74,11 @@ ut = []
 vt = []
 ηt = []
 
-save_u(sim) = push!(ut, deepcopy(sim.model.velocities.u))  
+save_u(sim) = push!(ut, deepcopy(sim.model.velocities.u))
 save_v(sim) = push!(vt, deepcopy(sim.model.velocities.v))
 save_η(sim) = push!(ηt, deepcopy(sim.model.free_surface.η))
 
-function progress_message(sim) 
+function progress_message(sim)
     @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
     100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
     sim.model.clock.time, maximum(abs, sim.model.velocities.u))

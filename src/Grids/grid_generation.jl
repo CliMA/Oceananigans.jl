@@ -1,18 +1,16 @@
 # Utilities to generate a grid with the following inputs
-
-@inline adapt_if_vector(to, var) = var
-@inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
-
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
+get_domain_extent(coord::Number, N)         = (coord, coord)
 
 get_face_node(coord::Nothing, i) = 1
 get_face_node(coord::Function, i) = coord(i)
 get_face_node(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 const AT = AbstractTopology
+
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
 lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
@@ -27,6 +25,10 @@ total_interior_length(::BoundedTopology, N) = N + 1
 
 bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must increase as the index increases!"
 bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
+
+# General generate_coordinate
+generate_coordinate(FT, topology, size, halo, nodes, coordinate_name, dim::Int, arch) =
+    generate_coordinate(FT, topology[dim](), size[dim], halo[dim], nodes, coordinate_name, arch)
 
 # generate a variably-spaced coordinate passing the explicit coord faces as vector or function
 function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name, arch)
@@ -75,17 +77,21 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(arch_array(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(arch_array(arch, Δᶠ), -H-1)
+    Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
+    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(arch_array(arch, F.parent), F.offsets...)
-    C = OffsetArray(arch_array(arch, C.parent), C.offsets...)
+    F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
+    C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
-    return L, F, C, Δᶠ, Δᶜ
+    if coordinate_name == :z
+        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
+    else
+        return L, F, C, Δᶠ, Δᶜ
+    end
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
@@ -115,12 +121,35 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = range(FT(F₋), FT(F₊), length = TF)
     C = range(FT(C₋), FT(C₊), length = TC)
 
+    F = on_architecture(arch, F)
+    C = on_architecture(arch, C)
+
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
-    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    if coordinate_name == :z
+        return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))
+    else
+        return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    end
 end
 
 # Flat domains
-generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, coordinate_name, arch) =
-    FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
+function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch)
+    if coordinate_name == :z
+        return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
+    else
+        return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+    end
+end
+
+# What's the use case for this?
+# generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
+#     FT(1), c, c, FT(1), FT(1)
+function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch)
+    if coordinate_name == :z
+        return FT(1), StaticVerticalDiscretization(nothing, nothing, FT(1), FT(1))
+    else
+        return FT(1), nothing, nothing, FT(1), FT(1)
+    end
+end

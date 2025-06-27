@@ -27,12 +27,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface
 
 using Oceananigans.Utils: prettytime, hours
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using Statistics
 using JLD2
 using Printf
-using GLMakie 
+using GLMakie
 
 # # The geostrophic flow
 #
@@ -123,11 +122,11 @@ function run_solid_body_rotation(; architecture = CPU(),
 
     output_prefix = "solid_body_rotation_Nx$(grid.Nx)_" * prefix
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                          schedule = TimeInterval(super_rotation_period / 1000),
-                                                          filename = output_prefix,
-                                                          field_slicer = nothing,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                    schedule = TimeInterval(super_rotation_period / 1000),
+                                                    filename = output_prefix,
+                                                    field_slicer = nothing,
+                                                    overwrite_existing = true)
 
     run!(simulation)
 
@@ -162,7 +161,7 @@ function plot_zonal_average_solid_body_rotation(filepath)
 
     zonal_average_u = @lift dropdims(mean(file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1], dims=1), dims=1)
 
-    fig = Figure(resolution = (1080, 1080))
+    fig = Figure(size=(1080, 1080))
 
     ax = fig[1, 1] = Axis(fig, xlabel = "U(φ)", ylabel = "φ")
 

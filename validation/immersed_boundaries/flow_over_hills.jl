@@ -104,11 +104,11 @@ function hilly_simulation(; Nx = 64,
     KE = Average(ke, dims=(1, 2, 3))
 
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U, KE));
-                         schedule = TimeInterval(save_interval),
-                         with_halos = true,
-                         filename,
-                         overwrite_existing = true)
+        JLD2Writer(model, merge(model.velocities, model.tracers, (; ξ, U, KE));
+                   schedule = TimeInterval(save_interval),
+                   with_halos = true,
+                   filename,
+                   overwrite_existing = true)
 
     @info "Made a simulation of"
     @show model
@@ -162,7 +162,7 @@ t = ξ["reference"].times[1:Nt]
 δU = Dict(exp => δU_series(u) for (exp, u) in U)
 δKE = Dict(exp => δK_series(k) for (exp, k) in KE)
 
-fig = Figure(resolution=(1800, 1200))
+fig = Figure(size=(1800, 1200))
 ax = Dict(exp => Axis(fig[i+1, 2:4], aspect=2π, xlabel="x", ylabel="z", title=exp)
           for (i, exp) in enumerate(experiments))
 

@@ -50,24 +50,24 @@ h(k) = (k - 1) / Nz
 ## Linear near-surface generator
 ζ₀(k) = 1 + (h(k) - 1) / refinement
 
-## Bottom-intensified stretching function 
+## Bottom-intensified stretching function
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
 ## Generating function
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = RectilinearGrid(size = (Nx, Nx, Nz), 
+grid = RectilinearGrid(size = (Nx, Nx, Nz),
                           x = (0, Lx),
                           y = (0, Ly),
                           z = z_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
-fig = Figure(resolution=(1200, 800))
+fig = Figure(size=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
 
-lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
-scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
+lines!(ax, zspacings(grid, Center()))
+scatter!(ax, zspacings(grid, Center()))
 
 current_figure() #hide
 fig
@@ -84,18 +84,18 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 # We calculate the surface temperature flux associated with surface cooling of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
-Qʰ = 200.0  # W m⁻², surface _heat_ flux
+Q = 200.0  # W m⁻², surface _heat_ flux
 ρₒ = 1026.0 # kg m⁻³, average density at the surface of the world ocean
 cᴾ = 3991.0 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
-Qᵀ = Qʰ / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
+Jᵀ = Q / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
 # Finally, we impose a temperature gradient `dTdz` both initially and at the
 # bottom of the domain, culminating in the boundary conditions on temperature,
 
 dTdz = 0.01 # K m⁻¹
 
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵀ),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵀ),
                                 bottom = GradientBoundaryCondition(dTdz))
 
 # Note that a positive temperature flux at the surface of the ocean
@@ -111,26 +111,26 @@ u₁₀ = 10    # m s⁻¹, average wind velocity 10 meters above the ocean
 cᴰ = 2.5e-3 # dimensionless drag coefficient
 ρₐ = 1.225  # kg m⁻³, average density of air at sea-level
 
-Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
+τx = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
 # The boundary conditions on `u` are thus
 
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # For salinity, `S`, we impose an evaporative flux of the form
 
-@inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
+@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 nothing #hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
 evaporation_rate = 1e-3 / hour # m s⁻¹
 
-# We build the `Flux` evaporation `BoundaryCondition` with the function `Qˢ`,
-# indicating that `Qˢ` depends on salinity `S` and passing
+# We build the `Flux` evaporation `BoundaryCondition` with the function `Jˢ`,
+# indicating that `Jˢ` depends on salinity `S` and passing
 # the parameter `evaporation_rate`,
 
-evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=evaporation_rate)
+evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=evaporation_rate)
 
 # The full salinity boundary conditions are
 
@@ -145,8 +145,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
 model = NonhydrostaticModel(; grid, buoyancy,
-                            advection = UpwindBiasedFifthOrder(),
-                            timestepper = :RungeKutta3,
+                            advection = UpwindBiased(order=5),
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
                             closure = AnisotropicMinimumDissipation(),
@@ -173,7 +172,7 @@ model = NonhydrostaticModel(; grid, buoyancy,
 Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
-uᵢ(x, y, z) = sqrt(abs(Qᵘ)) * 1e-3 * Ξ(z)
+uᵢ(x, y, z) = sqrt(abs(τx)) * 1e-3 * Ξ(z)
 
 ## `set!` the `model` fields using functions or constants:
 set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
@@ -198,15 +197,15 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
+add_callback!(simulation, progress_message, IterationInterval(20))
 
 # We then set up the simulation:
 
 # ## Output
 #
-# We use the `JLD2OutputWriter` to save ``x, z`` slices of the velocity fields,
+# We use the `JLD2Writer` to save ``x, z`` slices of the velocity fields,
 # tracer fields, and eddy diffusivities. The `prefix` keyword argument
-# to `JLD2OutputWriter` indicates that output will be saved in
+# to `JLD2Writer` indicates that output will be saved in
 # `ocean_wind_mixing_and_convection.jld2`.
 
 ## Create a NamedTuple with eddy viscosity
@@ -215,11 +214,11 @@ eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
 filename = "ocean_wind_mixing_and_convection"
 
 simulation.output_writers[:slices] =
-    JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
-                     filename = filename * ".jld2",
-                     indices = (:, grid.Ny/2, :),
-                     schedule = TimeInterval(1minute),
-                     overwrite_existing = true)
+    JLD2Writer(model, merge(model.velocities, model.tracers, eddy_viscosity),
+               filename = filename * ".jld2",
+               indices = (:, grid.Ny/2, :),
+               schedule = TimeInterval(1minute),
+               overwrite_existing = true)
 
 # We're ready:
 
@@ -258,7 +257,7 @@ n = Observable(intro)
  Sₙ = @lift interior(time_series.S[$n],  :, 1, :)
 νₑₙ = @lift interior(time_series.νₑ[$n], :, 1, :)
 
-fig = Figure(resolution = (1000, 500))
+fig = Figure(size = (1000, 500))
 
 axis_kwargs = (xlabel="x (m)",
                ylabel="z (m)",

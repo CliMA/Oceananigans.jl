@@ -18,17 +18,17 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
     A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
     `grid` when indexed at `i, j, k`.
     """
-    function FunctionField{LX, LY, LZ}(func::F, grid::G; clock::C=nothing, parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
-        T = eltype(grid)
-        return new{LX, LY, LZ, C, P, F, G, T}(func, grid, clock, parameters)
+    @inline function FunctionField{LX, LY, LZ}(func::F,
+                                               grid::G;
+                                               clock::C=nothing,
+                                               parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
+        FT = eltype(grid)
+        return new{LX, LY, LZ, C, P, F, G, FT}(func, grid, clock, parameters)
     end
 
-    @doc """
-        FunctionField{LX, LY, LZ}(func::FunctionField, grid; clock) where {LX, LY, LZ}
-
-    Adds `clock` to an existing `FunctionField` and relocates it to `(LX, LY, LZ)` on `grid`.
-    """
-    function FunctionField{LX, LY, LZ}(f::FunctionField, grid::G; clock::C=nothing) where {LX, LY, LZ, G, C}
+    @inline function FunctionField{LX, LY, LZ}(f::FunctionField,
+                                               grid::G;
+                                               clock::C=nothing) where {LX, LY, LZ, G, C}
         P = typeof(f.parameters)
         T = eltype(grid)
         F = typeof(f.func)
@@ -36,19 +36,16 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
     end
 end
 
+Adapt.parent_type(T::Type{<:FunctionField}) = T
+
 """Return `a`, or convert `a` to `FunctionField` if `a::Function`"""
 fieldify_function(L, a, grid) = a
 fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 
-"""
-    FunctionField(L::Tuple, func, grid)
+# This is a convenience form with `L` as positional argument.
+@inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
-Returns a stationary `FunctionField` on `grid` and at location `L = (LX, LY, LZ)`,
-where `func` is callable with signature `func(x, y, z)`.
-"""
-FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
-
-indices(::FunctionField) = (:, :, :)
+@inline indices(::FunctionField) = (:, :, :)
 
 # Various possibilities for calling FunctionField.func:
 @inline call_func(clock,     parameters, func, x...) = func(x..., clock.time, parameters)
@@ -66,6 +63,13 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
                            Adapt.adapt(to, f.grid),
                            clock = Adapt.adapt(to, f.clock),
                            parameters = Adapt.adapt(to, f.parameters))
+
+
+on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
+    FunctionField{LX, LY, LZ}(on_architecture(to, f.func),
+                              on_architecture(to, f.grid),
+                              clock = on_architecture(to, f.clock),
+                              parameters = on_architecture(to, f.parameters))
 
 Base.show(io::IO, field::FunctionField) =
     print(io, "FunctionField located at ", show_location(field), "\n",

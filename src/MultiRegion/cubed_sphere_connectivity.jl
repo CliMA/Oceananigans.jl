@@ -73,19 +73,19 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
 
     julia> CubedSphereRegionalConnectivity(1, 2, East(), West())
     CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.MultiRegion.West side, region 2 
-    ├── to:   Oceananigans.MultiRegion.East side, region 1 
+    ├── from: Oceananigans.MultiRegion.West side, region 2
+    ├── to:   Oceananigans.MultiRegion.East side, region 1
     └── no rotation
     ```
 
     A connectivity that implies that the boundary condition for the
-    north side of region 1 comes from the east side of region 3 is 
+    north side of region 1 comes from the east side of region 3 is
 
     ```jldoctest cubedsphereconnectivity
     julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())
     CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.MultiRegion.East side, region 3 
-    ├── to:   Oceananigans.MultiRegion.North side, region 1 
+    ├── from: Oceananigans.MultiRegion.East side, region 3
+    ├── to:   Oceananigans.MultiRegion.North side, region 1
     └── counter-clockwise rotation ↺
     ```
     """

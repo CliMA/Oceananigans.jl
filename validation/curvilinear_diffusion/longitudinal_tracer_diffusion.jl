@@ -55,15 +55,15 @@ simulation = Simulation(model,
                         stop_time = 100cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
-                                                         
+
 output_fields = model.tracers
 
 output_prefix = "longitudinal_tracer_diffusion_Nx$(grid.Nx)"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(cell_diffusion_time_scale),
-                                                      filename = output_prefix,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                schedule = TimeInterval(cell_diffusion_time_scale),
+                                                filename = output_prefix,
+                                                overwrite_existing = true)
 
 run!(simulation)
 
@@ -84,7 +84,7 @@ title = @lift "Tracer diffusion on a parallel, t = $(file["timeseries/t/" * stri
 
 c = @lift file["timeseries/c/" * string($iter)][:, 1, 1]
 
-fig = Figure(resolution = (1080, 540))
+fig = Figure(size=(1080, 540))
 
 ax = fig[1, 1] = Axis(fig, ylabel = "c(λ)", xlabel = "λ")
 

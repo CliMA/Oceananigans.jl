@@ -27,7 +27,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields
 
 using Oceananigans.Utils: prettytime, hours
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using JLD2
 using Printf
@@ -106,15 +105,15 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
                             stop_time = super_rotations * super_rotation_period,
                             iteration_interval = 100,
                             progress = s -> @info "Time = $(s.model.clock.time) / $(s.stop_time)")
-                                                             
+
     output_fields = model.tracers
 
     output_prefix = "solid_body_tracer_advection_Nx$(grid.Nx)"
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                          schedule = TimeInterval(super_rotation_period / 20),
-                                                          filename = output_prefix,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                    schedule = TimeInterval(super_rotation_period / 20),
+                                                    filename = output_prefix,
+                                                    overwrite_existing = true)
 
     run!(simulation)
 
@@ -142,7 +141,7 @@ function visualize_solid_body_tracer_advection(filepath)
 
     λ = xnodes(Face, grid)
     ϕ = ynodes(Center, grid)
-    
+
     λ = repeat(reshape(λ, Nx, 1), 1, Ny)
     ϕ = repeat(reshape(ϕ, 1, Ny), Nx, 1)
 
@@ -163,7 +162,7 @@ function visualize_solid_body_tracer_advection(filepath)
     y = @. sind(λ_azimuthal) * sind(ϕ_azimuthal)
     z = @. cosd(ϕ_azimuthal)
 
-    fig = Figure(resolution = (1080, 1080))
+    fig = Figure(size=(1080, 1080))
 
     titles = ["c", "d", "e"]
 

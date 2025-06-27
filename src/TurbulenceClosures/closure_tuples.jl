@@ -44,19 +44,19 @@ for (outer_f, inner_f) in zip(outer_funcs, inner_funcs)
 
         @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, Ks, args...) = (
                     $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...)
                   + $inner_f(i, j, k, grid, closures[3], Ks[3], args...))
 
         @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
                     $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...) 
-                  + $inner_f(i, j, k, grid, closures[3], Ks[3], args...) 
+                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...)
+                  + $inner_f(i, j, k, grid, closures[3], Ks[3], args...)
                   + $inner_f(i, j, k, grid, closures[4], Ks[4], args...))
 
         @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
                     $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...) 
-                  + $inner_f(i, j, k, grid, closures[3], Ks[3], args...) 
+                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...)
+                  + $inner_f(i, j, k, grid, closures[3], Ks[3], args...)
                   + $inner_f(i, j, k, grid, closures[4], Ks[4], args...)
                   + $inner_f(i, j, k, grid, closures[5], Ks[5], args...))
 
@@ -89,7 +89,9 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     return bcs
 end
 
-required_halo_size(closure_tuple::Tuple) = maximum(map(required_halo_size, closure_tuple))
+required_halo_size_x(closure_tuple::Tuple) = maximum(map(required_halo_size_x, closure_tuple))
+required_halo_size_y(closure_tuple::Tuple) = maximum(map(required_halo_size_y, closure_tuple))
+required_halo_size_z(closure_tuple::Tuple) = maximum(map(required_halo_size_z, closure_tuple))
 
 #####
 ##### Compiler-inferrable time_discretization for tuples

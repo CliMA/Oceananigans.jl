@@ -35,7 +35,7 @@ import Oceananigans.Utils:
                 _getregion,
                 sync_all_devices!
 
-abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
+abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
 
@@ -63,7 +63,7 @@ end
 struct YPartition{N} <: AbstractPartition
     div :: N
 
-    function YPartition(sizes) 
+    function YPartition(sizes)
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
         end
@@ -79,8 +79,9 @@ include("y_partitions.jl")
 include("cubed_sphere_partitions.jl")
 include("cubed_sphere_connectivity.jl")
 include("multi_region_grid.jl")
-include("multi_region_cubed_sphere_grid.jl")
+include("cubed_sphere_grid.jl")
 include("cubed_sphere_field.jl")
+include("cubed_sphere_boundary_conditions.jl")
 include("multi_region_field.jl")
 include("multi_region_abstract_operations.jl")
 include("multi_region_boundary_conditions.jl")

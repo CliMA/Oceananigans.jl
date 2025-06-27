@@ -1,62 +1,51 @@
 # [Pressure decomposition](@id pressure_decomposition)
 
-In the numerical implementation of the momentum equations, the kinematic pressure ``p``
-is split into "hydrostatic" and "non-hydrostatic" parts via
+In the numerical implementation of the momentum equations in the `NonhydrostaticModel`, the kinematic pressure ``p``
+is split into "background" and "dynamic" parts via
 ```math
     \begin{equation}
     \label{eq:pressure}
-    p(\boldsymbol{x}, t) = p_{\text{total hydrostatic}}(\boldsymbol{x}, t) + p_{\rm{non}}(\boldsymbol{x}, t) \, .
+    p(\boldsymbol{x}, t) = p_{\text{background}}(\boldsymbol{x}, t) + p'(\boldsymbol{x}, t) \, .
     \end{equation}
 ```
 
-The hydrostatic pressure component in \eqref{eq:pressure} is defined so that the vertical
-component of its gradient balances gravity:
+The background pressure component in \eqref{eq:pressure} is defined so that the vertical
+component of its gradient balances the background density field:
 
 ```math
     \begin{align}
-    \partial_z p_{\text{total hydrostatic}} & = - g \left ( 1 + \frac{\rho_*}{\rho_0} + \frac{\rho'}{\rho_0} \right ) \, ,
+    \partial_z p_{\text{total hydrostatic}} & = - g \left ( 1 + \frac{\rho_*}{\rho_0} \right ) \, ,
     \end{align}
 ```
 
 Above, we use the notation introduced in the [Boussinesq approximation](@ref boussinesq_approximation)
 section.
 
-We can further split the hydrostatic pressure component into
+Optionally, we may further decompose the dynamic pressure perturbation ``p'`` into
+a "hydrostatic anomaly" and "nonhydrostatic" part:
 ```math
     \begin{align}
-    p_{\text{total hydrostatic}}(\boldsymbol{x}, t) = p_{*}(z) + p_{\rm{hyd}}(\boldsymbol{x}, t) \, ,
+    p'(\boldsymbol{x}, t) = p_{\rm{hyd}}(\boldsymbol(x), t) + p_{\rm{non}}(\boldsymbol{x}, t) \, ,
     \end{align}
 ```
 
-i.e., a component that only varies in ``z`` (``p_*``) and a "hydrostatic anomaly" (``p_{\rm{hyd}}``) defined
-so that
+where
 
 ```math
     \begin{align}
-    \partial_z p_{*} & = - g \left ( 1 + \frac{\rho_*}{\rho_0} \right ) \, ,\\
-    \partial_z p_{\rm{hyd}} & = \underbrace{- g \frac{\rho'}{\rho_0}}_{= b} \, .
+    \partial_z p_{\rm{hyd}} \equiv \underbrace{- g \frac{\rho'}{\rho_0}}_{= b} \, .
     \end{align}
 ```
 
-Doing so, the gradient of the kinematic pressure becomes:
+With this pressure decomposition, the kinematic pressure gradient that appears in the momentum equations
+(after we've employed the the [Boussinesq approximation](@ref boussinesq_approximation)) becomes
 
 ```math
     \begin{align}
-    \boldsymbol{\nabla} p & = \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}} + ( \partial_z p_{*} + \partial_z p_{\rm{hyd}} ) \boldsymbol{\hat z}\, ,
+    \boldsymbol{\nabla} p &= - g \frac{\rho}{\rho_0} \hat {\boldsymbol{z}} + \boldsymbol{\nabla} p'
+                          &= - g \frac{\rho}{\rho_0} \hat {\boldsymbol{z}} + \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}} \, .
     \end{align}
 ```
 
-where ``\boldsymbol{\nabla}_h \equiv \boldsymbol{\hat x} \partial_x +  \boldsymbol{\hat y} \partial_y``
-is the horizontal gradient.
+where ``\boldsymbol{\nabla}_h \equiv \boldsymbol{\hat x} \partial_x +  \boldsymbol{\hat y} \partial_y``.
 
-Under this pressure decomposition, the kinematic pressure gradient that appears in the momentum equations
-(after we've employed the the [Boussinesq approximation](@ref boussinesq_approximation)) combines with
-the gravity force to give:
-
-```math
-    \begin{align}
-    \boldsymbol{\nabla} p + g \frac{\rho}{\rho_0} \hat {\boldsymbol{z}} = \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}} \, .
-    \end{align}
-```
-
-Mathematically, the non-hydrostatic pressure ``p_{\rm{non}}`` enforces the incompressibility constraint.

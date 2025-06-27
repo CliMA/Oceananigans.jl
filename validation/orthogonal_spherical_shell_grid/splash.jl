@@ -1,16 +1,16 @@
 using Oceananigans
-using.Oceananigans.Grids: conformal_cubed_sphere_panel
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Units
 
 using Printf, Rotations
 
 Nx, Ny, Nz = 64, 64, 2
 
-grid = conformal_cubed_sphere_panel(size = (Nx, Ny, Nz),
-                                    z = (-1000, 0),
-                                    topology=(Bounded, Bounded, Bounded),
-                                    rotation = RotY(π/2))
-                   
+grid = ConformalCubedSpherePanelGrid(size = (Nx, Ny, Nz),
+                                     z = (-1000, 0),
+                                     topology=(Bounded, Bounded, Bounded),
+                                     rotation = RotY(π/2))
+
 closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
 
 model = HydrostaticFreeSurfaceModel(; grid,
@@ -44,11 +44,11 @@ save_fields_interval = 18minutes
 
 s = @at (Center, Center, Center) sqrt(u^2 + v^2)
 
-simulation.output_writers[:splash] = JLD2OutputWriter(model, (; u, v, s, η),
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      filename = "ossg_splash",
-                                                      with_halos = true,
-                                                      overwrite_existing = true)
+simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
+                                                schedule = TimeInterval(save_fields_interval),
+                                                filename = "ossg_splash",
+                                                with_halos = true,
+                                                overwrite_existing = true)
 
 @info "Run simulation..."
 
@@ -80,7 +80,7 @@ sₙ = @lift interior(s_timeseries[$n], :, :, grid.Nz)
 
 s_lim = maximum(abs, interior(s_timeseries))
 
-fig = Figure(resolution = (800, 800))
+fig = Figure(size=(800, 800))
 
 ax_u = Axis(fig[1, 1])
 ax_v = Axis(fig[1, 3])

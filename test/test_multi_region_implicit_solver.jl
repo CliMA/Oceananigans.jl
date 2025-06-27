@@ -1,15 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans
-using Oceananigans.Units
-using Statistics
-using Printf
-using Oceananigans.MultiRegion
-using LinearAlgebra, SparseArrays
-using Oceananigans.Solvers: constructors, unpack_constructors
-using Oceananigans.Grids: architecture
-using Oceananigans.Utils
-
 function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     if architecture(grid) isa GPU
@@ -51,7 +41,7 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     simulation = Simulation(model; Δt, stop_iteration = 10)
     run!(simulation)
-    
+
     return η
 end
 

@@ -60,15 +60,15 @@ simulation = Simulation(model,
                         stop_time = 100cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
-                                                         
+
 output_fields = merge(model.velocities, model.tracers)
 
 output_prefix = "meridional_diffusion_Ny$(grid.Ny)"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(cell_diffusion_time_scale),
-                                                      filename = output_prefix,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                schedule = TimeInterval(cell_diffusion_time_scale),
+                                                filename = output_prefix,
+                                                overwrite_existing = true)
 
 run!(simulation)
 
@@ -87,7 +87,7 @@ c = @lift file["timeseries/c/" * string($iter)][1, :, 1]
 
 set_theme!(Theme(fontsize = 30))
 
-fig = Figure(resolution = (1920, 1080))
+fig = Figure(size=(1920, 1080))
 
 c_title = @lift @sprintf("Tracer diffusion on a meridian, t = %.2e", file["timeseries/t/" * string($iter)])
 u_title = @lift @sprintf("Momentum diffusion on a meridian, t = %.2e", file["timeseries/t/" * string($iter)])

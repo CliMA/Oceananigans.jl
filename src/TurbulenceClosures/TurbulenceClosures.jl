@@ -12,16 +12,21 @@ export
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
+    Smagorinsky,
+    LillyCoefficient,
+    DynamicCoefficient,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     FluxTapering,
 
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
 
-    DiffusivityFields,
+    build_diffusivity_fields,
     compute_diffusivities!,
 
     viscosity, diffusivity,
@@ -35,7 +40,7 @@ export
 
 using CUDA
 using KernelAbstractions
-using Adapt 
+using Adapt
 
 import Oceananigans.Utils: with_tracers, prettysummary
 
@@ -45,12 +50,16 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
-using Oceananigans.BuoyancyModels
+using Oceananigans.BuoyancyFormulations
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
-import Oceananigans.Advection: required_halo_size
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
+
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+import Oceananigans.Architectures: on_architecture
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -70,13 +79,15 @@ validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
 compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
- 
+
 # The required halo size to calculate diffusivities. Take care that if the diffusivity can
 # be calculated from local information, still `B = 1`, because we need at least one additional
-# point at each side to calculate viscous fluxes at the edge of the domain. 
+# point at each side to calculate viscous fluxes at the edge of the domain.
 # If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
-# or `AnisotropicMinimumDissipation` and `SmagorinskyLilly`) then B = 2
-@inline required_halo_size(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
+# or `AnisotropicMinimumDissipation` and `Smagorinsky`) then B = 2
+@inline required_halo_size_x(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline required_halo_size_y(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline required_halo_size_z(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
@@ -115,15 +126,21 @@ end
 
 @inline clip(x) = max(zero(x), x)
 
+#####
+##### Height, Depth and Bottom interfaces
+#####
+
 const c = Center()
 const f = Face()
 
-@inline z_top(i, j, grid)    = znode(i, j, grid.Nz+1, grid, c, c, f)
-@inline z_bottom(i, j, grid) = znode(i, j, 1,         grid, c, c, f)
+const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline depthᶜᶜᶠ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
-@inline depthᶜᶜᶜ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
-@inline total_depthᶜᶜᵃ(i, j, grid) = clip(z_top(i, j, grid) - z_bottom(i, j, grid))
+@inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
+@inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
+@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+
+@inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
+@inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
 
 @inline function height_above_bottomᶜᶜᶠ(i, j, k, grid)
     h = znode(i, j, k, grid, c, c, f) - z_bottom(i, j, grid)
@@ -151,6 +168,7 @@ include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
+include("immersed_diffusive_fluxes.jl")
 
 # Implicit closure terms (diffusion + linear terms)
 include("vertically_implicit_diffusion_solver.jl")
@@ -161,18 +179,28 @@ include("turbulence_closure_implementations/nothing_closure.jl")
 # AbstractScalarDiffusivity closures:
 include("turbulence_closure_implementations/scalar_diffusivity.jl")
 include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
-include("turbulence_closure_implementations/smagorinsky_lilly.jl")
+
+# Dispatch on the type of the user-provided AMD model constant.
+# Only numbers, arrays, and functions supported now.
+@inline closure_constant(i, j, k, grid, C::Number) = C
+@inline closure_constant(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
+include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
-include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
+include("turbulence_closure_implementations/TKEBasedVerticalDiffusivities/TKEBasedVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
+include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity_with_triads.jl")
+include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
-using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
+using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly
+using .Smagorinskys: LillyCoefficient, DynamicCoefficient, LagrangianAveraging
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
@@ -183,3 +211,4 @@ include("turbulence_closure_diagnostics.jl")
 #####
 
 end # module
+

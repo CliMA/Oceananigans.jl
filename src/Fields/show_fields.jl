@@ -27,9 +27,9 @@ function Base.summary(field::Field)
     return string(prefix, suffix)
 end
 
-data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
-                             "min=", prettysummary(minimum(field)), ", ",
-                             "mean=", prettysummary(mean(field)))
+data_summary(data) = string("max=", prettysummary(maximum(data)), ", ",
+                            "min=", prettysummary(minimum(data)), ", ",
+                            "mean=", prettysummary(mean(data)))
 
 indices_summary(field) = replace(string(field.indices), "Colon()"=> ":")
 
@@ -40,7 +40,7 @@ function Base.show(io::IO, field::Field)
     prefix = string("$(summary(field))\n",
                     "├── grid: ", summary(field.grid), "\n")
 
-    bcs_str = isnothing(bcs) ? "├── boundary conditions: Nothing \n" :
+    bcs_str = (isnothing(bcs) | ismissing(bcs)) ? "├── boundary conditions: Nothing \n" :
         string("├── boundary conditions: ", summary(bcs), "\n",
         "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
                ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),

@@ -1,7 +1,6 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils
 using Oceananigans.Grids: architecture
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Base
 
@@ -21,12 +20,14 @@ conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
+retrieve_bc(bc) = bc
+
 # Returns the boundary conditions a specific side for `FieldBoundaryConditions` inputs and
 # a tuple of boundary conditions for `NTuple{N, <:FieldBoundaryConditions}` inputs
 for dir in (:west, :east, :south, :north, :bottom, :top)
     extract_side_bc = Symbol(:extract_, dir, :_bc)
     @eval begin
-        @inline $extract_side_bc(bc) = bc.$dir
+        @inline $extract_side_bc(bc) = retrieve_bc(bc.$dir)
         @inline $extract_side_bc(bc::Tuple) = map($extract_side_bc, bc)
     end
 end
@@ -43,15 +44,19 @@ end
 @inline extract_bc(bc, ::Val{:bottom_and_top})  = (extract_bottom_bc(bc), extract_top_bc(bc))
 
 # Finally, the true fill_halo!
-const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
+const MaybeTupledData = Union{OffsetArray, Tuple{Vararg{OffsetArray}}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
-
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...;
+                            fill_boundary_normal_velocities = true, kwargs...)
     arch = architecture(grid)
 
-    fill_halos!, bcs  = permute_boundary_conditions(boundary_conditions)
-    number_of_tasks = length(fill_halos!)
+    if fill_boundary_normal_velocities
+        fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
+    end
+
+    fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
+    number_of_tasks  = length(fill_halos!)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
@@ -61,10 +66,12 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     return nothing
 end
 
-function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...; kwargs...)
+function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...;
+                          async = false, # This kwargs is specific to DistributedGrids, here is does nothing
+                          kwargs...)
 
     # Calculate size and offset of the fill_halo kernel
-    # We assume that the kernel size is the same for west and east boundaries, 
+    # We assume that the kernel size is the same for west and east boundaries,
     # south and north boundaries, and bottom and top boundaries
     size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halos!, indices)
@@ -74,84 +81,79 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...
     return nothing
 end
 
-# In case of a DistributedCommunication paired with a 
+# In case of a DistributedCommunication paired with a
 # Flux, Value or Gradient boundary condition, we split the direction in two single-sided
 # fill_halo! events (see issue #3342)
-# `permute_boundary_conditions` returns a 2-tuple containing the ordered operations to execute in 
+# `permute_boundary_conditions` returns a 2-tuple containing the ordered operations to execute in
 # position [1] and the associated boundary conditions in position [2]
 function permute_boundary_conditions(boundary_conditions)
 
-    split_x_boundaries = split_boundary(extract_west_bc(boundary_conditions),  extract_east_bc(boundary_conditions))
-    split_y_boundaries = split_boundary(extract_south_bc(boundary_conditions), extract_north_bc(boundary_conditions))
-
-    fill_x_side_halo! = split_x_boundaries ? (fill_west_halo!,  fill_east_halo!)  : tuple(fill_west_and_east_halo!)
-    fill_y_side_halo! = split_y_boundaries ? (fill_south_halo!, fill_north_halo!) : tuple(fill_south_and_north_halo!)
+    split_x_halo_filling = split_halo_filling(extract_west_bc(boundary_conditions),  extract_east_bc(boundary_conditions))
+    split_y_halo_filling = split_halo_filling(extract_south_bc(boundary_conditions), extract_north_bc(boundary_conditions))
 
     west_bc  = extract_west_bc(boundary_conditions)
     east_bc  = extract_east_bc(boundary_conditions)
     south_bc = extract_south_bc(boundary_conditions)
     north_bc = extract_north_bc(boundary_conditions)
 
-    x_side_bcs = split_x_boundaries ? (west_bc, east_bc)   : tuple(west_bc)
-    y_side_bcs = split_y_boundaries ? (south_bc, north_bc) : tuple(south_bc)
-
-    x_sides = split_x_boundaries ? (:west, :east)   : tuple(:west_and_east)
-    y_sides = split_y_boundaries ? (:south, :north) : tuple(:south_and_north)
-
-    fill_halos! = [
-        fill_x_side_halo!...,
-        fill_y_side_halo!...,
-        fill_bottom_and_top_halo! # bottom and top cannot be Distributed so never split them
-    ]
-    
-    sides = [
-        x_sides...,
-        y_sides...,
-        :bottom_and_top
-    ]
-
-    bcs_array = [
-        x_side_bcs...,
-        y_side_bcs...,
-        extract_bottom_bc(boundary_conditions)
-    ]
+    if split_x_halo_filling
+        if split_y_halo_filling
+            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west, :east, :south, :north, :bottom_and_top]
+            bcs_array   = [west_bc, east_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
+        else
+            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west, :east, :south_and_north, :bottom_and_top]
+            bcs_array   = [west_bc, east_bc, south_bc, extract_bottom_bc(boundary_conditions)]
+        end
+    else
+        if split_y_halo_filling
+            fill_halos! = [fill_west_and_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west_and_east, :south, :north, :bottom_and_top]
+            bcs_array   = [west_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
+        else
+            fill_halos! = [fill_west_and_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west_and_east, :south_and_north, :bottom_and_top]
+            bcs_array   = [west_bc, south_bc, extract_bottom_bc(boundary_conditions)]
+        end
+    end
 
     perm = sortperm(bcs_array, lt=fill_first)
     fill_halos! = fill_halos![perm]
     sides = sides[perm]
-    
+
     boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
     return fill_halos!, boundary_conditions
 end
 
-# Split direction in two distinct fill_halo! events in case of a communication boundary condition 
+# Split direction in two distinct fill_halo! events in case of a communication boundary condition
 # (distributed DCBC), paired with a Flux, Value or Gradient boundary condition
-split_boundary(bcs1, bcs2)     = false
-split_boundary(::DCBC, ::DCBC) = false
-split_boundary(bcs1, ::DCBC)   = true
-split_boundary(::DCBC, bcs2)   = true
+split_halo_filling(bcs1, bcs2)     = false
+split_halo_filling(::DCBC, ::DCBC) = false
+split_halo_filling(bcs1, ::DCBC)   = true
+split_halo_filling(::DCBC, bcs2)   = true
 
 # TODO: support heterogeneous distributed-shared communication
-# split_boundary(::MCBC, ::DCBC) = false
-# split_boundary(::DCBC, ::MCBC) = false
-# split_boundary(::MCBC, ::MCBC) = false
-# split_boundary(bcs1, ::MCBC)   = true
-# split_boundary(::MCBC, bcs2)   = true
+# split_halo_filling(::MCBC, ::DCBC) = false
+# split_halo_filling(::DCBC, ::MCBC) = false
+# split_halo_filling(::MCBC, ::MCBC) = false
+# split_halo_filling(bcs1, ::MCBC)   = true
+# split_halo_filling(::MCBC, bcs2)   = true
 
 #####
 ##### Halo filling order
 #####
 
-const PBCT  = Union{PBC,  NTuple{<:Any, <:PBC}}
-const MCBCT = Union{MCBC, NTuple{<:Any, <:MCBC}}
-const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
+const PBCT  = Union{PBC,  Tuple{Vararg{PBC}}}
+const MCBCT = Union{MCBC, Tuple{Vararg{MCBC}}}
+const DCBCT = Union{DCBC, Tuple{Vararg{DCBC}}}
 
-# Distributed halos have to be filled last to allow the 
-# possibility of asynchronous communication: 
-# If other halos are filled after we initiate the distributed communication, 
-# (but before communication is completed) the halos will be overwritten. 
-# For this reason we always want to perform local halo filling first and then 
+# Distributed halos have to be filled last to allow the
+# possibility of asynchronous communication:
+# If other halos are filled after we initiate the distributed communication,
+# (but before communication is completed) the halos will be overwritten.
+# For this reason we always want to perform local halo filling first and then
 # initiate communication
 
 # Periodic is handled after Flux, Value, Gradient because
@@ -197,7 +199,7 @@ fill_first(bc1, bc2)               = true
 ##### Double-sided fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args) 
+@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args)
     j, k = @index(Global, NTuple)
     _fill_west_halo!(j, k, grid, c, west_bc, loc, args...)
     _fill_east_halo!(j, k, grid, c, east_bc, loc, args...)
@@ -253,11 +255,11 @@ end
 ##### Tupled double-sided fill_halo! kernels
 #####
 
-# Note, we do not need tupled single-sided fill_halo! kernels since `DCBC` do not 
+# Note, we do not need tupled single-sided fill_halo! kernels since `DCBC` do not
 # support tupled halo filling
 import Oceananigans.Utils: @constprop
 
-@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, loc, grid, args)
+@kernel function _fill_west_and_east_halo!(c::Tuple, west_bc, east_bc, loc, grid, args)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
@@ -269,7 +271,7 @@ import Oceananigans.Utils: @constprop
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, loc, grid, args) 
+@kernel function _fill_south_and_north_halo!(c::Tuple, south_bc, north_bc, loc, grid, args)
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
@@ -281,7 +283,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, args) 
+@kernel function _fill_bottom_and_top_halo!(c::Tuple, bottom_bc, top_bc, loc, grid, args)
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
@@ -297,31 +299,48 @@ end
 ##### Kernel launchers for single-sided fill_halos
 #####
 
-fill_west_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_west_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
-fill_east_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_east_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
-fill_south_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
-fill_north_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
-fill_bottom_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_bottom_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
-fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_top_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+fill_west_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) =
+    launch!(arch, grid, KernelParameters(size, offset),
+            _fill_only_west_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+
+fill_east_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) =
+    launch!(arch, grid, KernelParameters(size, offset),
+            _fill_only_east_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+
+fill_south_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) =
+    launch!(arch, grid, KernelParameters(size, offset),
+            _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+
+fill_north_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) =
+    launch!(arch, grid, KernelParameters(size, offset),
+            _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+
+fill_bottom_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) =
+    launch!(arch, grid, KernelParameters(size, offset),
+            _fill_only_bottom_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+
+fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) =
+    launch!(arch, grid, KernelParameters(size, offset),
+            _fill_only_top_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
 #####
 ##### Kernel launchers for double-sided fill_halos
 #####
 
-fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; kwargs...) =
-    launch!(arch, grid, KernelParameters(size, offset), _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, Tuple(args); kwargs...)
+function fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
+    return launch!(arch, grid, KernelParameters(size, offset),
+                   _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, Tuple(args); kwargs...)
+end
 
-fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; kwargs...) =
-    launch!(arch, grid, KernelParameters(size, offset), _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
+function fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
+    return launch!(arch, grid, KernelParameters(size, offset),
+                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
+end
 
-fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; kwargs...) =
-    launch!(arch, grid, KernelParameters(size, offset), _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, Tuple(args); kwargs...)
+function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
+    return launch!(arch, grid, KernelParameters(size, offset),
+                   _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, Tuple(args); kwargs...)
+end
 
 #####
 ##### Calculate kernel size and offset for Windowed and Sliced Fields
@@ -336,37 +355,91 @@ const TBB = Union{typeof(fill_bottom_and_top_halo!), typeof(fill_bottom_halo!), 
 @inline fill_halo_size(::Tuple, ::SNB, args...) = :xz
 @inline fill_halo_size(::Tuple, ::TBB, args...) = :xy
 
-# If indices are colon, fill the whole boundary plane!
+# If indices are colon, and locations are _not_ Nothing, fill the whole boundary plane!
+# If locations are _Nothing_, then the kwarg `reduced_dimensions` will allow the size `:xz`
+# to be correctly interpreted inside `launch!`.
 @inline fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...) = :yz
 @inline fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...) = :xz
 @inline fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...) = :xy
 
-# If the index is a Colon and the location is _NOT_ a `Nothing` (i.e. not a `ReducedField`), 
+# If the index is a Colon and the location is _NOT_ a `Nothing` (i.e. not a `ReducedField`),
 # then fill the whole boundary, otherwise fill the size of the corresponding array
 @inline whole_halo(idx, loc)           = false
 @inline whole_halo(idx,     ::Nothing) = false
 @inline whole_halo(::Colon, ::Nothing) = false
 @inline whole_halo(::Colon,       loc) = true
 
-# Calculate kernel size
-@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) =
-    @inbounds (ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
-@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) =
-    @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
-@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) =
-    @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)))
+# Calculate kernel size for windowed fields. This code is only called when
+# one or more of the elements of `idx` is not Colon in the two direction perpendicular
+# to the halo region and `bc` is not `PeriodicBoundaryCondition`.
+@inline function fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid)
+    @inbounds begin
+        whole_y_halo = whole_halo(idx[2], loc[2])
+        whole_z_halo = whole_halo(idx[3], loc[3])
+    end
+
+    _, Ny, Nz = size(grid)
+    _, Cy, Cz = size(c)
+
+    Sy = ifelse(whole_y_halo, Ny, Cy)
+    Sz = ifelse(whole_z_halo, Nz, Cz)
+
+    return (Sy, Sz)
+end
+
+@inline function fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid)
+    @inbounds begin
+        whole_x_halo = whole_halo(idx[1], loc[1])
+        whole_z_halo = whole_halo(idx[3], loc[3])
+    end
+
+    Nx, _, Nz = size(grid)
+    Cx, _, Cz = size(c)
+
+    Sx = ifelse(whole_x_halo, Nx, Cx)
+    Sz = ifelse(whole_z_halo, Nz, Cz)
+
+    return (Sx, Sz)
+end
+
+@inline function fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid)
+    @inbounds begin
+        whole_x_halo = whole_halo(idx[1], loc[1])
+        whole_y_halo = whole_halo(idx[2], loc[2])
+    end
+
+    Nx, Ny, _ = size(grid)
+    Cx, Cy, _ = size(c)
+
+    Sx = ifelse(whole_x_halo, Nx, Cx)
+    Sy = ifelse(whole_y_halo, Ny, Cy)
+
+    return (Sx, Sy)
+end
 
 # Remember that Periodic BCs also fill halo points!
-@inline fill_halo_size(c::OffsetArray, ::WEB, idx, ::PBC, args...) = @inbounds size(c)[[2, 3]]
-@inline fill_halo_size(c::OffsetArray, ::SNB, idx, ::PBC, args...) = @inbounds size(c)[[1, 3]]
-@inline fill_halo_size(c::OffsetArray, ::TBB, idx, ::PBC, args...) = @inbounds size(c)[[1, 2]]
-@inline fill_halo_size(c::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, ::PBC, args...) = @inbounds size(c)[[2, 3]]
-@inline fill_halo_size(c::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, ::PBC, args...) = @inbounds size(c)[[1, 3]]
-@inline fill_halo_size(c::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, ::PBC, args...) = @inbounds size(c)[[1, 2]]
+@inline fill_halo_size(c::OffsetArray, ::WEB, idx, ::PBC, args...) = tuple(size(c, 2), size(c, 3))
+@inline fill_halo_size(c::OffsetArray, ::SNB, idx, ::PBC, args...) = tuple(size(c, 1), size(c, 3))
+@inline fill_halo_size(c::OffsetArray, ::TBB, idx, ::PBC, args...) = tuple(size(c, 1), size(c, 2))
+
+@inline function fill_halo_size(c::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, ::PBC, args...)
+    _, Cy, Cz = size(c)
+    return (Cy, Cz)
+end
+
+@inline function fill_halo_size(c::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, ::PBC, args...)
+    Cx, _, Cz = size(c)
+    return (Cx, Cz)
+end
+
+@inline function fill_halo_size(c::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, ::PBC, args...)
+    Cx, Cy, _ = size(c)
+    return (Cx, Cy)
+end
 
 # The offsets are non-zero only if the indices are not Colon
-@inline fill_halo_offset(::Symbol, args...)    = (0, 0)
-@inline fill_halo_offset(::Tuple, ::WEB, idx)  = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-@inline fill_halo_offset(::Tuple, ::SNB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-@inline fill_halo_offset(::Tuple, ::TBB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
+@inline fill_halo_offset(::Symbol, args...)   = (0, 0)
+@inline fill_halo_offset(::Tuple, ::WEB, idx) = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::SNB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::TBB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
 

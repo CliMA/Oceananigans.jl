@@ -88,15 +88,15 @@ end
 
 function benchmarks_pretty_table(df; title="")
     header = propertynames(df) .|> String
-    pretty_table(df, header, nosubheader=true, title=title, title_alignment=:c,
+    pretty_table(String, df; header, title=title, title_alignment=:c,
                  title_autowrap = true, title_same_width_as_table = true)
 
     html_filename = replace(title, ' ' => '_') * ".html"
     @info "Writing $html_filename..."
     open(html_filename, "w") do io
-        html_table = pretty_table(String, df, header, nosubheader=true,
+        html_table = pretty_table(String, df; header,
                                   title=title, title_alignment=:c,
-                                  backend=:html, tf=tf_html_simple)
+                                  backend=Val(:html), tf=tf_html_simple)
         write(io, html_table)
     end
 

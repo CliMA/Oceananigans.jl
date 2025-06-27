@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
-using Oceananigans.BuoyancyModels: SeawaterBuoyancy, Zᶜᶜᶜ
+using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
 using SeawaterPolynomials: BoussinesqEquationOfState
@@ -30,14 +30,17 @@ model_temperature(b::ConstantTemperatureSB, model) = b.constant_temperature
 model_salinity(b::ConstantSalinitySB, model)       = b.constant_salinity
 
 """
-    seawater_density(model; temperature, salinity, geopotential_height)
+    seawater_density(model;
+                     temperature = model_temperature(model.buoyancy.formulation, model),
+                     salinity = model_salinity(model.buoyancy.formulation, model),
+                     geopotential_height = model_geopotential_height(model)
 
 Return a `KernelFunctionOperation` that computes the in-situ density of seawater
 with (gridded) `temperature`, `salinity`, and at `geopotential_height`. To compute the
-in-situ density, the 55 term polynomial approximation to the equation of state from
+in-situ density, the 55-term polynomial approximation to the equation of state from
 [Roquet et al. (2015)](https://www.sciencedirect.com/science/article/pii/S1463500315000566?ref=pdf_download&fr=RR-2&rr=813416acba58557b) is used.
-By default the `seawater_density` extracts the geopotential height from the model to compute
-the in-situ density. To compute a potential density at some user chosen reference geopotential height,
+By default, the `seawater_density` extracts the geopotential height from the `model` to compute
+the in-situ density. To compute a potential density at some user-chosen reference geopotential height,
 set `geopotential_height` to a constant for the density computation,
 
 ```julia
@@ -63,15 +66,15 @@ julia> grid = RectilinearGrid(size=100, z=(-1000, 0), topology=(Flat, Flat, Boun
 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
-└── Bounded  z ∈ [-1000.0, 0.0]   regularly spaced with Δz=10.0
+└── Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=10.0
 
 julia> tracers = (:T, :S)
 (:T, :S)
 
 julia> eos = TEOS10EquationOfState()
 BoussinesqEquationOfState{Float64}:
-    ├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
-    └── reference_density: 1020.0
+├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
+└── reference_density: 1020.0
 
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=eos)
 SeawaterBuoyancy{Float64}:
@@ -81,7 +84,8 @@ SeawaterBuoyancy{Float64}:
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and BoussinesqEquationOfState{Float64} with ĝ = NegativeZDirection()
@@ -92,20 +96,10 @@ julia> set!(model, S = 34.7, T = 0.5)
 julia> density_operation = seawater_density(model)
 KernelFunctionOperation at (Center, Center, Center)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── kernel_function: ρ (generic function with 2 methods)
-└── arguments: ("BoussinesqEquationOfState{Float64}", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "KernelFunctionOperation at (Center, Center, Center)")
+├── kernel_function: ρ (generic function with 3 methods)
+└── arguments: ("SeawaterPolynomials.BoussinesqEquationOfState", "Field", "Field", "KernelFunctionOperation")
 
 julia> density_field = Field(density_operation)
-1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-├── operand: KernelFunctionOperation at (Center, Center, Center)
-├── status: time=0.0
-└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> compute!(density_field)
 1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
@@ -120,11 +114,11 @@ Values for `temperature`, `salinity` and `geopotential_height` can be passed to
 `seawater_density` to override the defaults that are obtained from the `model`.
 """
 function seawater_density(model::ModelsWithBuoyancy;
-                         temperature = model_temperature(model.buoyancy.model, model),
-                         salinity = model_salinity(model.buoyancy.model, model),
-                         geopotential_height = model_geopotential_height(model))
+                          temperature = model_temperature(model.buoyancy.formulation, model),
+                          salinity = model_salinity(model.buoyancy.formulation, model),
+                          geopotential_height = model_geopotential_height(model))
 
-    eos = model.buoyancy.model.equation_of_state
+    eos = model.buoyancy.formulation.equation_of_state
     validate_model_eos(eos)
     # Convert function or constant user input to AbstractField
     grid = model.grid

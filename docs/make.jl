@@ -2,16 +2,6 @@ using Distributed
 Distributed.addprocs(2)
 
 @everywhere begin
-    pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
-
-    using Pkg
-    Pkg.activate(joinpath(@__DIR__, ".."))
-    Pkg.instantiate()
-    Pkg.activate(@__DIR__)
-    Pkg.instantiate()
-end
-
-@everywhere begin
     using Documenter
     using DocumenterCitations
     using Literate
@@ -38,26 +28,27 @@ end
     #####
 
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
-    const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
+    const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
-    # The examples that take longer to run should be first. This ensures thats
-    # docs built using extra workers is as efficient as possible.
+    # The examples that take longer to run should be first. This ensures that the
+    # docs built which extra workers is as efficient as possible.
     example_scripts = [
+        "internal_tide.jl",
         "shallow_water_Bickley_jet.jl",
-        "baroclinic_adjustment.jl",
         "kelvin_helmholtz_instability.jl",
-        "langmuir_turbulence.jl",
-        "ocean_wind_mixing_and_convection.jl",
         "horizontal_convection.jl",
-        "convecting_plankton.jl",
+        "langmuir_turbulence.jl",
+        "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
+        "convecting_plankton.jl",
+        "ocean_wind_mixing_and_convection.jl",
         "two_dimensional_turbulence.jl",
-        "internal_wave.jl",
         "one_dimensional_diffusion.jl",
+        "internal_wave.jl",
     ]
-
-    @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 end
+
+@info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
@@ -78,24 +69,26 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "generated/internal_wave.md",
-    "Convecting plankton"              => "generated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Baroclinic adjustment"            => "generated/baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"        => "generated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"            => "generated/horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "generated/tilted_bottom_boundary_layer.md"
+    "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
+    "Internal wave"                    => "literated/internal_wave.md",
+    "Internal tide by a seamount"      => "literated/internal_tide.md",
+    "Convecting plankton"              => "literated/convecting_plankton.md",
+    "Ocean wind mixing and convection" => "literated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
+    "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
+    "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"            => "literated/horizontal_convection.md",
+    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
 ]
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
+    "Setting initial conditions" => "model_setup/setting_initial_conditions.md",
     "Architecture" => "model_setup/architecture.md",
     "Number type" => "model_setup/number_type.md",
-    "Grid" => "model_setup/grids.md",
+    "Grid" => "model_setup/legacy_grids.md",
     "Clock" => "model_setup/clock.md",
     "Coriolis (rotation)" => "model_setup/coriolis.md",
     "Tracers" => "model_setup/tracers.md",
@@ -106,9 +99,9 @@ model_setup_pages = [
     "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
     "Lagrangian particles" => "model_setup/lagrangian_particles.md",
     "Diagnostics" => "model_setup/diagnostics.md",
+    "Callbacks" => "model_setup/callbacks.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
 ]
 
 physics_pages = [
@@ -153,9 +146,18 @@ pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
     "Examples" => example_pages,
+    "Grids" => "grids.md",
+    "Fields" => "fields.md",
+    "Operations" => "operations.md",
+    # TODO:
+    #   - Develop the following three tutorials on reductions, simulations, and post-processing
+    #   - Refactor the model setup pages and make them more tutorial-like.
+    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
+    # "Simulations" => simulations.md,
+    # "FieldTimeSeries and post-processing" => field_time_series.md,
+    "Model setup (legacy)" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
-    "Model setup" => model_setup_pages,
     "Simulation tips" => "simulation_tips.md",
     "Contributor's guide" => "contributing.md",
     "Gallery" => "gallery.md",
@@ -168,11 +170,12 @@ pages = [
 #####
 
 format = Documenter.HTML(collapselevel = 1,
-                         prettyurls = get(ENV, "CI", nothing) == "true",
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
-                         size_threshold = 819200,
+                         size_threshold = 2^20,
                          assets = String["assets/citations.css"])
+
+DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
 makedocs(sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
@@ -182,32 +185,34 @@ makedocs(sitename = "Oceananigans.jl",
          modules = [Oceananigans],
          warnonly = [:cross_references],
          doctest = true, # set to false to speed things up
+         draft = false,  # set to true to speed things up
          clean = true,
          checkdocs = :exports) # set to :none to speed things up
-
-@info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
 """
     recursive_find(directory, pattern)
 
 Return list of filepaths within `directory` that contains the `pattern::Regex`.
 """
-recursive_find(directory, pattern) =
-    mapreduce(vcat, walkdir(directory)) do (root, dirs, files)
-        joinpath.(root, filter(contains(pattern), files))
+function recursive_find(directory, pattern)
+    mapreduce(vcat, walkdir(directory)) do (root, dirs, filenames)
+        matched_filenames = filter(contains(pattern), filenames)
+        map(filename -> joinpath(root, filename), matched_filenames)
     end
-
-files = []
-for pattern in [r"\.jld2", r"\.nc"]
-    global files = vcat(files, recursive_find(@__DIR__, pattern))
 end
 
-for file in files
-    rm(file)
+@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
+
+for pattern in [r"\.jld2", r"\.nc"]
+    filenames = recursive_find(@__DIR__, pattern)
+
+    for filename in filenames
+        rm(filename)
+    end
 end
 
 deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
            forcepush = true,
-           push_preview = false,
+           push_preview = true,
            devbranch = "main")

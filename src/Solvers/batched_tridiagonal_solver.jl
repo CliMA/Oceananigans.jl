@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
 import Oceananigans.Architectures: architecture
@@ -18,15 +18,29 @@ struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
     tridiagonal_direction :: D
 end
 
-architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
+function Base.summary(solver::BatchedTridiagonalSolver)
+    dirstr = prettysummary(solver.tridiagonal_direction)
+    return "BatchedTridiagonalSolver in $dirstr"
+end
 
+function Base.show(io::IO, solver::BatchedTridiagonalSolver)
+    print(io, summary(solver), '\n')
+    print(io, "└── grid: ", prettysummary(solver.grid))
+end
+
+# Some aliases...
+const XTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:XDirection} where {A, B, C, T, G, P}
+const YTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:YDirection} where {A, B, C, T, G, P}
+const ZTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:ZDirection} where {A, B, C, T, G, P}
+
+architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 """
     BatchedTridiagonalSolver(grid;
                              lower_diagonal,
                              diagonal,
                              upper_diagonal,
-                             scratch = arch_array(architecture(grid), zeros(eltype(grid), size(grid)...)),
+                             scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
                              tridiagonal_direction = ZDirection()
                              parameters = nothing)
 
@@ -49,7 +63,7 @@ or in matrix form
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
 
-Note the convention used here for indexing the upper and lower diagonals; this can be different from 
+Note the convention used here for indexing the upper and lower diagonals; this can be different from
 other implementations where, e.g., `aⁱʲ²` may appear at the second row, instead of `aⁱʲ¹` as above.
 
 `ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`.
@@ -66,7 +80,7 @@ function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = arch_array(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
+                                  scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection())
 
@@ -84,9 +98,14 @@ TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
-Reference implementation per Numerical Recipes, Press et al. 1992 (§ 2.4). Note that
-a slightly different notation from Press et al. is used for indexing the off-diagonal
-elements; see [`BatchedTridiagonalSolver`](@ref).
+Implementation follows [Press1992](@citet); §2.4. Note that a slightly different notation from
+Press et al. is used for indexing the off-diagonal elements; see [`BatchedTridiagonalSolver`](@ref).
+
+Reference
+=========
+
+Press William, H., Teukolsky Saul, A., Vetterling William, T., & Flannery Brian, P. (1992).
+    Numerical recipes: the art of scientific computing. Cambridge University Press
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
@@ -124,13 +143,16 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::XDirection)
     Nx = size(grid, 1)
     j, k = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[1, j, k] = f₁ / β
 
-        @unroll for i = 2:Nx
+        for i = 2:Nx
             cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args...)
@@ -143,11 +165,11 @@ end
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
+            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
-        @unroll for i = Nx-1:-1:1
+        for i = Nx-1:-1:1
             ϕ[i, j, k] -= t[i+1, j, k] * ϕ[i+1, j, k]
         end
     end
@@ -156,13 +178,16 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::YDirection)
     Ny = size(grid, 2)
     i, k = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(i, 1, k, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(i, 1, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, 1, k] = f₁ / β
 
-        @unroll for j = 2:Ny
+        for j = 2:Ny
             cᵏ⁻¹ = get_coefficient(i, j-1, k, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j,   k, grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j-1, k, grid, a, p, tridiagonal_direction, args...)
@@ -175,11 +200,11 @@ end
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
+            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
-        @unroll for j = Ny-1:-1:1
+        for j = Ny-1:-1:1
             ϕ[i, j, k] -= t[i, j+1, k] * ϕ[i, j+1, k]
         end
     end
@@ -188,13 +213,16 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::ZDirection)
     Nz = size(grid, 3)
     i, j = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, j, 1] = f₁ / β
 
-        @unroll for k = 2:Nz
+        for k = 2:Nz
             cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
@@ -206,11 +234,11 @@ end
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
-        @unroll for k = Nz-1:-1:1
+        for k = Nz-1:-1:1
             ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end

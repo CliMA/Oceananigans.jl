@@ -42,19 +42,19 @@ Return an implicit free-surface solver. The implicit free-surface equation is
 
 where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is depth, ``g`` is
 the gravitational acceleration, ``Δt`` is the time step, ``𝛁_h`` is the horizontal gradient operator,
-and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e., 
+and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e.,
 
 ```math
 𝐐_⋆ = \\int_{-H}^0 𝐮_⋆ \\, 𝖽 z ,
 ```
 
-where 
+where
 
 ```math
 𝐮_⋆ = 𝐮^n + \\int_{t_n}^{t_{n+1}} 𝐆ᵤ \\, 𝖽t .
 ```
 
-This equation can be solved, in general, using the [`PreconditionedConjugateGradientSolver`](@ref) but 
+This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but
 other solvers can be invoked in special cases.
 
 If ``H`` is constant, we divide through out to obtain
@@ -69,7 +69,7 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 `solver_method` can be either of:
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
 * `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
-* `:PreconditionedConjugateGradient` for [`PreconditionedConjugateGradientSolver`](@ref)
+* `:PreconditionedConjugateGradient` for [`ConjugateGradientSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:HeptadiagonalIterativeSolver`.
@@ -81,9 +81,17 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
                         nothing, nothing, nothing, nothing)
 
+on_architecture(to, free_surface::ImplicitFreeSurface) =
+    ImplicitFreeSurface(on_architecture(to, free_surface.η),
+                        on_architecture(to, free_surface.gravitational_acceleration),
+                        on_architecture(to, free_surface.barotropic_volume_flux),
+                        on_architecture(to, free_surface.implicit_step_solver),
+                        on_architecture(to, free_surface.solver_methods),
+                        on_architecture(to, free_surface.solver_settings))
+
 # Internal function for HydrostaticFreeSurfaceModel
-function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
@@ -103,13 +111,11 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, gri
                                free_surface.solver_settings)
 end
 
-is_horizontally_regular(grid) = false
-is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
+build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravitational_acceleration) =
+    build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
-function build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration)
-    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :HeptadiagonalIterativeSolver
-    return build_implicit_step_solver(Val(default_method), grid, settings, gravitational_acceleration)
-end
+build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
+    build_implicit_step_solver(Val(:HeptadiagonalIterativeSolver), grid, settings, gravitational_acceleration)
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
@@ -117,10 +123,7 @@ end
 """
 Implicitly step forward η.
 """
-ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
-
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt)
     η      = free_surface.η
     g      = free_surface.gravitational_acceleration
     rhs    = free_surface.implicit_step_solver.right_hand_side
@@ -128,12 +131,12 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     solver = free_surface.implicit_step_solver
     arch   = model.architecture
 
-    fill_halo_regions!(model.velocities)
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     # Compute right hand side of implicit free surface equation
     @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
     fill_halo_regions!(∫ᶻQ)
-    
+
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
 
     # Solve for the free surface at tⁿ⁺¹
@@ -149,7 +152,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
-    
+
     foreach(mask_immersed_field!, velocities)
 
     # Compute barotropic volume flux. Blocking.

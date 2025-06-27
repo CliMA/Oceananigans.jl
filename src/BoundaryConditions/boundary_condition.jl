@@ -1,4 +1,4 @@
-import Adapt
+import Oceananigans.Architectures: on_architecture
 
 """
     struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
@@ -11,21 +11,12 @@ struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 end
 
 """
-    BoundaryCondition(Classification::DataType, condition)
-
-Construct a boundary condition of type `BC` with a number or array as a `condition`.
-
-Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `Open`.
-"""
-BoundaryCondition(Classification::DataType, condition) = BoundaryCondition(Classification(), condition)
-
-"""
-    BoundaryCondition(Classification::DataType, condition::Function;
+    BoundaryCondition(classification::AbstractBoundaryConditionClassification, condition::Function;
                       parameters = nothing,
                       discrete_form = false,
                       field_dependencies=())
 
-Construct a boundary condition of type `Classification` with a function boundary `condition`.
+Construct a boundary condition of type `classification` with a function boundary `condition`.
 
 By default, the function boudnary `condition` is assumed to have the 'continuous form'
 `condition(ξ, η, t)`, where `t` is time and `ξ` and `η` vary along the boundary.
@@ -49,7 +40,7 @@ where `i`, and `j` are indices that vary along the boundary. If `discrete_form =
 condition(i, j, grid, clock, model_fields, parameters)
 ```
 """
-function BoundaryCondition(Classification::DataType, condition::Function;
+function BoundaryCondition(classification::AbstractBoundaryConditionClassification, condition::Function;
                            parameters = nothing,
                            discrete_form = false,
                            field_dependencies=())
@@ -62,12 +53,20 @@ function BoundaryCondition(Classification::DataType, condition::Function;
         condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end
 
-    return BoundaryCondition(Classification(), condition)
+    return BoundaryCondition(classification, condition)
 end
 
+# Convenience constructors for buondary condition passing classification types
+BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
+BoundaryCondition(::Type{Open}, args...; kwargs...)             = BoundaryCondition(Open(nothing),    args...; kwargs...)
+
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-Adapt.adapt_structure(to, b::BoundaryCondition{Classification}) where Classification =
-    BoundaryCondition(Classification(), Adapt.adapt(to, b.condition))
+Adapt.adapt_structure(to, b::BoundaryCondition) =
+    BoundaryCondition(Adapt.adapt(to, b.classification), Adapt.adapt(to, b.condition))
+
+# Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
+on_architecture(to, b::BoundaryCondition) =
+    BoundaryCondition(on_architecture(to, b.classification), on_architecture(to, b.condition))
 
 #####
 ##### Some abbreviations to make life easier.
@@ -83,21 +82,25 @@ const GBC  = BoundaryCondition{<:Gradient}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
+const ZBC  = BoundaryCondition{<:Zipper}
+
+const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:DistributedCommunication}
 
 # More readable BC constructors for the public API.
-                PeriodicBoundaryCondition() = BoundaryCondition(Periodic,                 nothing)
-                  NoFluxBoundaryCondition() = BoundaryCondition(Flux,                     nothing)
-            ImpenetrableBoundaryCondition() = BoundaryCondition(Open,                     nothing)
-MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication, nothing)
-DistributedCommunicationBoundaryCondition() = BoundaryCondition(DistributedCommunication, nothing)
+                PeriodicBoundaryCondition() = BoundaryCondition(Periodic(),                 nothing)
+                  NoFluxBoundaryCondition() = BoundaryCondition(Flux(),                     nothing)
+            ImpenetrableBoundaryCondition() = BoundaryCondition(Open(), nothing)
+MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
+                  ZipperBoundaryCondition() = BoundaryCondition(Zipper(), 1) # 1 means that the sign will not be switched
 
-                    FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
-                   ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
-                GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
-                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open, val; kwargs...)
-MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication, val; kwargs...)
-DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication, val; kwargs...)
-
+                    FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
+                   ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
+                GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient(), val; kwargs...)
+                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open(nothing), val; kwargs...)
+MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
+                  ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
+DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
+    
 # Support for various types of boundary conditions.
 #
 # Notes:
@@ -106,17 +109,15 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 #     * additional arguments to `fill_halo_regions` enter `getbc` after the `grid` argument:
 #           so `fill_halo_regions!(c, clock, fields)` translates to `getbc(bc, i, j, grid, clock, fields)`, etc.
 
-@inline getbc(bc, args...) = bc.condition(args...) # fallback!
+@inline getbc(bc::BoundaryCondition, args...) = getbc(bc.condition, args...) # unwrap
+@inline getbc(condition, args...) = condition(args...) # fallback!
 
-@inline getbc(bc::BC{<:Open, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(bc::BC{<:Flux, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(bc::Nothing,             i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(::Nothing, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
 
-@inline getbc(bc::BC{C, <:Number}, args...) where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) where C = @inbounds bc.condition[i, j]
-
-Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
-                                                                     Adapt.adapt(to, bc.condition))
+const NumberRef = Base.RefValue{<:Number}
+@inline getbc(condition::NumberRef, args...) = condition[]
+@inline getbc(condition::Number, args...) = condition
+@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j]
 
 #####
 ##### Validation with topology
@@ -150,3 +151,4 @@ validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
 
 validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
+

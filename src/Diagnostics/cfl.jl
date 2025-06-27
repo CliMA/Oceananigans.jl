@@ -1,5 +1,4 @@
 using Oceananigans.Advection: cell_advection_timescale
-using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 
 """
     struct CFL{D, S}
@@ -78,4 +77,3 @@ julia> dcfl(model)
 ```
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
-

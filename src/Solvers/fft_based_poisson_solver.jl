@@ -21,14 +21,16 @@ function transform_list_str(transform_list)
     return list
 end
 
+Base.summary(solver::FFTBasedPoissonSolver) = "FFTBasedPoissonSolver"
+
 Base.show(io::IO, solver::FFTBasedPoissonSolver) =
-print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
-          "├── grid: $(summary(solver.grid))\n",
-          "├── storage: $(typeof(solver.storage))\n",
-          "├── buffer: $(typeof(solver.buffer))\n",
-          "└── transforms:\n",
-          "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
-          "    └── backward: ", transform_list_str(solver.transforms.backward))
+    print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
+              "├── grid: $(summary(solver.grid))\n",
+              "├── storage: $(typeof(solver.storage))\n",
+              "├── buffer: $(typeof(solver.buffer))\n",
+              "└── transforms:\n",
+              "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
+              "    └── backward: ", transform_list_str(solver.transforms.backward))
 
 """
     FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
@@ -56,11 +58,11 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     arch = architecture(grid)
 
-    eigenvalues = (λx = arch_array(arch, λx),
-                   λy = arch_array(arch, λy),
-                   λz = arch_array(arch, λz))
+    eigenvalues = (λx = on_architecture(arch, λx),
+                   λy = on_architecture(arch, λy),
+                   λz = on_architecture(arch, λz))
 
-    storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    storage = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
 
     transforms = plan_transforms(grid, storage, planner_flag)
 
@@ -74,7 +76,7 @@ end
 """
     solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
 
-Solves the "generalized" Poisson equation,
+Solve the "generalized" Poisson equation,
 
 ```math
 (∇² + m) ϕ = b,
@@ -90,7 +92,7 @@ elements (typically the same type as `solver.storage`).
     Equation ``(∇² + m) ϕ = b`` is sometimes referred to as the "screened Poisson" equation
     when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
-function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     arch = architecture(solver)
     topo = TX, TY, TZ = topology(solver.grid)
     Nx, Ny, Nz = size(solver.grid)
@@ -100,7 +102,9 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     ϕc = solver.storage
 
     # Transform b *in-place* to eigenfunction space
-    [transform!(b, solver.buffer) for transform! in solver.transforms.forward]
+    for transform! in solver.transforms.forward
+        transform!(b, solver.buffer)
+    end
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
     @. ϕc = - b / (λx + λy + λz - m)
@@ -111,10 +115,12 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     m === 0 && CUDA.@allowscalar ϕc[1, 1, 1] = 0
 
     # Apply backward transforms in order
-    [transform!(ϕc, solver.buffer) for transform! in solver.transforms.backward]
+    for transform! in solver.transforms.backward
+        transform!(ϕc, solver.buffer)
+    end
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
-    
+
     return ϕ
 end
 

@@ -53,7 +53,7 @@ end
 
 function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.0, T=2.0)
     model = setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
-    
+
     v, c = model.velocities.v, model.tracers.c
     x = xnodes(c)
     Δt = CFL * model.grid.Δxᶜᵃᵃ / abs(U)
@@ -99,7 +99,7 @@ end
 L = 1
 ϕs = (ϕ_Gaussian, ϕ_Square)
 time_steppers = (:RungeKutta3,)
-advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), UpwindBiasedFifthOrder(), WENO())
+advection_schemes = (Centered(order=2), Centered(order=4), UpwindBiased(order=3), UpwindBiased(order=5), WENO())
 Ns = [16, 64]
 CFLs = (0.5, 1.7)
 Us = [+1, -1]

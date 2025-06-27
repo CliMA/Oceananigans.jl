@@ -2,15 +2,13 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export Δx, Δy, Δz, Ax, Ay, Az, volume
-export Average, Integral, KernelFunctionOperation
+export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
+
+using CUDA
 using Base: @propagate_inbounds
 
-import Adapt
-using CUDA
-
-using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Operators
@@ -18,11 +16,13 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Utils
 
+using Oceananigans: location, AbstractModel
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
-using Oceananigans: AbstractModel
 
-import Oceananigans.Architectures: architecture
+import Adapt
+
+import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 
@@ -33,15 +33,6 @@ import Oceananigans.Fields: compute_at!, indices
 abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
-
-function Base.axes(f::AbstractOperation)
-    idx = indices(f)
-    if idx === (:, : ,:)
-        return Base.OneTo.(size(f))
-    else
-        return Tuple(idx[i] isa Colon ? Base.OneTo(size(f, i)) : idx[i] for i = 1:3)
-    end
-end
 
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
@@ -76,10 +67,11 @@ include("show_abstract_operations.jl")
 # Make some operators!
 
 # Some operators:
-import Base: sqrt, sin, cos, exp, tanh, abs, -, +, /, ^, *
-import Base: abs
+import Base: -, +, /, ^, *
+import Base: sqrt, sin, cos, exp, tanh, abs
+import Base: log10, log, tan, sinh, cosh
 
-@unary sqrt sin cos exp tanh abs
+@unary sqrt sin cos exp tanh abs log10 log tan sinh cosh
 @unary -
 @unary +
 

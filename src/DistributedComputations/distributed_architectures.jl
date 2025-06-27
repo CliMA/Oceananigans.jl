@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
+import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
@@ -24,22 +24,22 @@ end
 Return `Partition` representing the division of a domain in
 the `x` (first), `y` (second) and `z` (third) dimension
 
-Keyword arguments: 
+Keyword arguments:
 ==================
 
-- `x`: partitioning of the first dimension 
+- `x`: partitioning of the first dimension
 - `y`: partitioning of the second dimension
 - `z`: partitioning of the third dimension
 
-if supplied as positional arguments `x` will be the first argument, 
+if supplied as positional arguments `x` will be the first argument,
 `y` the second and `z` the third
 
 `x`, `y` and `z` can be:
 - `x::Int`: allocate `x` processors to the first dimension
 - `Equal()`: divide the domain in `x` equally among the remaining processes (not supported for multiple directions)
-- `Fractional(ϵ₁, ϵ₂, ..., ϵₙ):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵᵢ)`, 
+- `Fractional(ϵ₁, ϵ₂, ..., ϵₙ):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵᵢ)`,
                                  and each process is then allocated `ϵᵢ / W` of the domain.
-- `Sizes(n₁, n₂, ..., nₙ)`: divide the domain unequally. The total work is `W = sum(nᵢ)`, 
+- `Sizes(n₁, n₂, ..., nₙ)`: divide the domain unequally. The total work is `W = sum(nᵢ)`,
                             and each process is then allocated `nᵢ`.
 
 Examples:
@@ -49,12 +49,12 @@ Examples:
 julia> using Oceananigans; using Oceananigans.DistributedComputations
 
 julia> Partition(1, 4)
-Domain partitioning with (1, 4, 1) ranks
-└── y-partitioning: 4
+Partition across 4 = 1×4×1 ranks:
+└── y: 4
 
 julia> Partition(x = Fractional(1, 2, 3, 4))
-Domain partitioning with (4, 1, 1) ranks
-└── x-partitioning: domain fractions: (0.1, 0.2, 0.3, 0.4)
+Partition across 4 = 4×1×1 ranks:
+└── x: Fractional(0.1, 0.2, 0.3, 0.4)
 
 ```
 """
@@ -63,16 +63,40 @@ Partition(x, y) = Partition(validate_partition(x, y, nothing)...)
 
 Partition(; x = nothing, y = nothing, z = nothing) = Partition(validate_partition(x, y, z)...)
 
-Base.show(io::IO, p::Partition) =
-    print(io, 
-    "Domain partitioning with $(ranks(p)) ranks", "\n",
-    "$(ranks(p.x) > 1 ? spine_x(p) * " x-partitioning: $(p.x)\n" : "")", 
-    "$(ranks(p.y) > 1 ? spine_y(p) * " y-partitioning: $(p.y)\n" : "")", 
-    "$(ranks(p.z) > 1 ? "└── z-partitioning: $(p.z)\n" : "")")
+function Base.show(io::IO, p::Partition)
+    r = Rx, Ry, Rz = ranks(p)
+    Nr = prod(r)
+    last_rank = Nr - 1
 
-spine_x(p) = ifelse(ranks(p.y) > 1 || ranks(p.z) > 1, "├──", "└──")
-spine_y(p) = ifelse(ranks(p.z) > 1, "├──", "└──")
- 
+    rank_info = if Nr == 1
+        "1 rank"
+    else
+        "$Nr = $Rx×$Ry×$Rz ranks:"
+    end
+
+    print(io, "Partition across ", rank_info)
+
+    if Rx > 1
+        s = spine(Ry, Rz)
+        print(io, '\n')
+        print(io, s, " x: ", p.x)
+    end
+
+    if Ry > 1
+        s = spine(Rz)
+        print(io, '\n')
+        print(io, s, " y: ", p.y)
+    end
+
+    if Rz > 1
+        s = "└── "
+        print(io, '\n')
+        print(io, s, " z: ", p.z)
+    end
+end
+
+spine(ξ, η=1) = ξ > 1 || η > 1 ? "├──" : "└──"
+
 """
     Equal()
 
@@ -83,18 +107,18 @@ specifically defined by `Int`, `Fractional`, or `Sizes`.
 """
 struct Equal end
 
-struct Fractional{S} 
+struct Fractional{S}
     sizes :: S
 end
 
-struct Sizes{S} 
+struct Sizes{S}
     sizes :: S
 end
 
 """
     Fractional(ϵ₁, ϵ₂, ..., ϵₙ)
 
-Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`, 
+Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`,
 and each process is then allocated `ϵᵢ / W` of the domain.
 """
 Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
@@ -102,7 +126,7 @@ Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make
 """
     Sizes(n₁, n₂, ..., nₙ)
 
-Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`, 
+Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`,
 and each process is then allocated `nᵢ`.
 """
 Sizes(args...) = Sizes(tuple(args...))
@@ -111,11 +135,14 @@ Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y, z::Equal) = Partition(validate_partition(x, y, z)...)
 
-Base.show(io::IO, s::Sizes)      = print(io, "domain sizes:     $(s.sizes)")
-Base.show(io::IO, s::Fractional) = print(io, "domain fractions: $(s.sizes)")
+Base.summary(s::Sizes)      = string("Sizes", s.sizes)
+Base.summary(f::Fractional) = string("Fractional", f.sizes)
+
+Base.show(io::IO, s::Sizes)      = print(io, summary(s))
+Base.show(io::IO, f::Fractional) = print(io, summary(f))
 
 ranks(p::Partition)  = (ranks(p.x), ranks(p.y), ranks(p.z))
-ranks(r::Nothing)    = 1 # a direction not partitioned fits in 1 rank
+ranks(::Nothing)     = 1 # a direction not partitioned fits in 1 rank
 ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
@@ -132,11 +159,12 @@ validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
 validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
 function remaining_workers(r1, r2)
-    MPI.Initialized() || MPI.Init()    
-    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1) * ranks(r2))
+    MPI.Initialized() || MPI.Init()
+    r12 = ranks(r1) * ranks(r2)
+    return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
 
-struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
+struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
     child_architecture :: A
     partition :: Δ
     ranks :: R
@@ -146,6 +174,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     communicator :: γ
     mpi_requests :: M
     mpi_tag :: T
+    devices :: D
 
     Distributed{S}(child_architecture :: A,
                    partition :: Δ,
@@ -155,16 +184,18 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                    connectivity :: C,
                    communicator :: γ,
                    mpi_requests :: M,
-                   mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
-                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
-                                                     partition,
-                                                     ranks,
-                                                     local_rank,
-                                                     local_index,
-                                                     connectivity,
-                                                     communicator,
-                                                     mpi_requests,
-                                                     mpi_tag)
+                   mpi_tag :: T,
+                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} =
+                   new{A, S, Δ, R, ρ, I, C, γ, M, T, D}(child_architecture,
+                                                        partition,
+                                                        ranks,
+                                                        local_rank,
+                                                        local_index,
+                                                        connectivity,
+                                                        communicator,
+                                                        mpi_requests,
+                                                        mpi_tag,
+                                                        devices)
 end
 
 #####
@@ -172,68 +203,89 @@ end
 #####
 
 """
-    Distributed(child_architecture = CPU(); 
-                topology, 
-                partition,
-                devices = nothing, 
-                communicator = MPI.COMM_WORLD)
+    Distributed(child_architecture = CPU();
+                partition = Partition(MPI.Comm_size(communicator)),
+                devices = nothing,
+                communicator = MPI.COMM_WORLD,
+                synchronized_communication = false)
 
-Constructor for a distributed architecture that uses MPI for communications
+Return a distributed architecture that uses MPI for communications.
 
 Positional arguments
-=================
+====================
 
-- `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs. 
-                        Default: `child_architecture = CPU()`.
+- `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs.
+                        Default: `CPU()`.
 
 Keyword arguments
 =================
-                        
-- `synchronized_communication`: if true, always use synchronized communication through ranks
 
-- `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
-                      `y` and `z` direction. NOTE: support for distributed z direction is 
-                      limited, so `Rz = 1` is strongly suggested.
+- `partition`: A [`Partition`](@ref) specifying the total processors in the `x`, `y`, and `z` direction.
+               Note that support for distributed `z` direction is  limited; we strongly suggest
+               using partition with `z = 1` kwarg.
 
-- `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
+- `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
-             If `nothing`, the devices will be assigned automatically based on the available resources
+             If `nothing`, the devices will be assigned automatically based on the available resources.
+             This argument is irrelevant if `child_architecture = CPU()`.
 
-- `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
-                  if not for testing or developing. Change at your own risk!
+- `communicator`: the MPI communicator that orchestrates data transfer between nodes.
+                  Default: `MPI.COMM_WORLD`.
+
+- `synchronized_communication`: This keyword argument can be used to control downstream code behavior.
+                                If `true`, then downstream code may use this tag to toggle between an algorithm
+                                that permits communication between nodes "asynchronously" with other computations,
+                                and an alternative serial algorithm in which communication and computation are
+                                "synchronous" (that is, performed one after the other).
+                                Default: `false`, specifying the use of asynchronous algorithms where supported,
+                                which may result in faster time-to-solution.
 """
-function Distributed(child_architecture = CPU(); 
-                     communicator = MPI.COMM_WORLD,
-                     devices = nothing, 
-                     synchronized_communication = false,
-                     partition = Partition(MPI.Comm_size(communicator)))
+function Distributed(child_architecture = CPU();
+                     partition = nothing,
+                     devices = nothing,
+                     communicator = nothing,
+                     synchronized_communication = false)
 
     if !(MPI.Initialized())
-        @info "MPI has not been initialized, so we are calling MPI.Init()".
+        @info "MPI has not been initialized, so we are calling MPI.Init()."
         MPI.Init()
     end
 
-    ranks = size(partition)
-    Rx, Ry, Rz = ranks
-    total_ranks = Rx * Ry * Rz
-    mpi_ranks  = MPI.Comm_size(communicator)
+    if isnothing(communicator) # default communicator
+        communicator = MPI.COMM_WORLD
+    end
+
+    mpi_ranks = MPI.Comm_size(communicator)
+
+    if isnothing(partition) # default partition
+        partition = Partition(mpi_ranks)
+    end
+
+    ranks = Rx, Ry, Rz = size(partition)
+    partition_ranks = Rx * Ry * Rz
+
+    if partition_ranks == 1
+        @warn "We are building a Distributed architecture on a single MPI rank. \n" *
+              "This can occur when MPI is incorrectly configured. \n" *
+              "See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details."
+    end
 
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
-    if total_ranks != mpi_ranks
-        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks total ranks] inconsistent " *
-                            "with number of MPI ranks: $mpi_ranks."))
+    if partition_ranks != mpi_ranks
+        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
+                            "with $mpi_ranks MPI ranks"))
     end
-    
+
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
-    local_connectivity = RankConnectivity(local_index, ranks) 
+    local_connectivity = NeighboringRanks(local_index, ranks)
 
     # Assign CUDA device if on GPUs
     if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
-        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
+        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1])
     end
 
     mpi_requests = MPI.Request[]
@@ -246,36 +298,55 @@ function Distributed(child_architecture = CPU();
                                                    local_connectivity,
                                                    communicator,
                                                    mpi_requests,
-                                                   Ref(0))
+                                                   Ref(0),
+                                                   devices)
 end
 
 const DistributedCPU = Distributed{CPU}
 const DistributedGPU = Distributed{GPU}
 
 const SynchronizedDistributed = Distributed{<:Any, true}
+const AsynchronousDistributed = Distributed{<:Any, false}
 
 #####
 ##### All the architectures
 #####
 
+ranks(arch::Distributed) = ranks(arch.partition)
+
 child_architecture(arch::Distributed) = arch.child_architecture
 device(arch::Distributed)             = device(child_architecture(arch))
-arch_array(arch::Distributed, A)      = arch_array(child_architecture(arch), A)
-zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
-array_type(arch::Distributed)         = array_type(child_architecture(arch))
-sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
+
+zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT, N...)
+array_type(arch::Distributed)              = array_type(child_architecture(arch))
+sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
+convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
+
+# Switch to a synchronized architecture
+synchronized(arch) = arch
+synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
+                                                    arch.partition,
+                                                    arch.ranks,
+                                                    arch.local_rank,
+                                                    arch.local_index,
+                                                    arch.connectivity,
+                                                    arch.communicator,
+                                                    arch.mpi_requests,
+                                                    arch.mpi_tag,
+                                                    arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
+cpu_architecture(arch::Distributed{A, S}) where {A, S} =
     Distributed{S}(CPU(),
-                   arch.partition, 
-                   arch.ranks, 
+                   arch.partition,
+                   arch.ranks,
                    arch.local_rank,
                    arch.local_index,
                    arch.connectivity,
                    arch.communicator,
                    arch.mpi_requests,
-                   arch.mpi_tag)
+                   arch.mpi_tag,
+                   nothing) # No devices on the CPU
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -295,7 +366,7 @@ end
 ##### Rank connectivity graph
 #####
 
-struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
+mutable struct NeighboringRanks{E, W, N, S, SW, SE, NW, NE}
          east :: E
          west :: W
         north :: N
@@ -306,13 +377,15 @@ struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
     northeast :: NE
 end
 
-"""
-    RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
+const NoConnectivity = NeighboringRanks{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
 
-generate a `RankConnectivity` object that holds the MPI ranks of the neighboring processors.
 """
-RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast) =
-    RankConnectivity(east, west, north, south, southwest, southeast, northwest, northeast)
+    NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast)
+
+Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring processors.
+"""
+NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast) =
+    NeighboringRanks(east, west, north, south, southwest, southeast, northwest, northeast)
 
 # The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
 # The "Bounded" topologies are `Bounded` and `LeftConnected`
@@ -334,7 +407,7 @@ function decrement_index(i, R)
     end
 end
 
-function RankConnectivity(local_index, ranks)
+function NeighboringRanks(local_index, ranks)
     i, j, k = local_index
     Rx, Ry, Rz = ranks
 
@@ -353,7 +426,7 @@ function RankConnectivity(local_index, ranks)
     southeast_rank = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
     southwest_rank = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
 
-    return RankConnectivity(west=west_rank, east=east_rank, 
+    return NeighboringRanks(west=west_rank, east=east_rank,
                             south=south_rank, north=north_rank,
                             southwest=southwest_rank,
                             southeast=southeast_rank,
@@ -365,18 +438,49 @@ end
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::Distributed)
-    c = arch.connectivity
-    print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
-              "└── child architecture: $(typeof(child_architecture(arch))) \n",
-              "└── connectivity:",
-              isnothing(c.east) ? "" : " east=$(c.east)",
-              isnothing(c.west) ? "" : " west=$(c.west)",
-              isnothing(c.north) ? "" : " north=$(c.north)",
-              isnothing(c.south) ? "" : " south=$(c.south)",
-              isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
-              isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
-              isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
-              isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
+function Base.summary(arch::Distributed)
+    child_arch = child_architecture(arch)
+    A = typeof(child_arch)
+    return string("Distributed{$A}")
 end
-              
+
+function Base.show(io::IO, arch::Distributed)
+
+    Rx, Ry, Rz = arch.ranks
+    local_rank = arch.local_rank
+    Nr = prod(arch.ranks)
+    last_rank = Nr - 1
+
+    rank_info = if last_rank == 0
+        "1 rank:"
+    else
+        "$Nr = $Rx×$Ry×$Rz ranks:"
+    end
+
+    print(io, summary(arch), " across ", rank_info, '\n')
+    print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
+
+    ix, iy, iz = arch.local_index
+    index_info = string("index [$ix, $iy, $iz]")
+
+    c = arch.connectivity
+    connectivity_info = if c isa NeighboringRanks
+        string("└── connectivity:",
+               isnothing(c.east)      ? "" : " east=$(c.east)",
+               isnothing(c.west)      ? "" : " west=$(c.west)",
+               isnothing(c.north)     ? "" : " north=$(c.north)",
+               isnothing(c.south)     ? "" : " south=$(c.south)",
+               isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
+               isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
+               isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
+               isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
+    end
+
+    if isnothing(connectivity_info)
+        print(io, "└── local_index: [$ix, $iy, $iz]")
+    else
+        print(io, "├── local_index: [$ix, $iy, $iz]", '\n')
+        print(io, connectivity_info)
+    end
+end
+

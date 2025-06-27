@@ -9,7 +9,8 @@
         x = particles.x[p]
         y = particles.y[p]
         z = particles.z[p]
-        particle_property[p] = interpolate(field, ℓx, ℓy, ℓz, grid, x, y, z)
+        X = flattened_node((x, y, z), grid)
+        particle_property[p] = interpolate(X, field, (ℓx, ℓy, ℓz), grid)
     end
 end
 

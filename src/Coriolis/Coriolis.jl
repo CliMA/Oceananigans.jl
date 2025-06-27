@@ -7,12 +7,16 @@ export
 
 using Printf
 using Adapt
+using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 # Physical constants for constructors.
 using Oceananigans.Grids: R_Earth
-const Ω_Earth = 7.292115e-5 # [s⁻¹] https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+
+"Earth's rotation rate [s⁻¹]; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed"
+const Ω_Earth = 7.292115e-5
 
 """
     AbstractRotation
@@ -20,6 +24,9 @@ const Ω_Earth = 7.292115e-5 # [s⁻¹] https://en.wikipedia.org/wiki/Earth%27s_
 Abstract supertype for parameters related to background rotation rates.
 """
 abstract type AbstractRotation end
+
+const face = Face()
+const center = Center()
 
 include("no_rotation.jl")
 include("f_plane.jl")

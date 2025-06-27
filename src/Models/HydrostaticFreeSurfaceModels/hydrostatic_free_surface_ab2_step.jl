@@ -1,6 +1,7 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -8,25 +9,25 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
-setup_free_surface!(model, free_surface, χ) = nothing
+function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
-function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
+    grid = model.grid
+    compute_free_surface_tendency!(grid, model, model.free_surface)
 
-    setup_free_surface!(model, model.free_surface, χ)
+    FT = eltype(grid)
+    χ  = convert(FT, model.timestepper.χ)
+    Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
-    @apply_regionally local_ab2_step!(model, Δt, χ)
+    @apply_regionally begin
+        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+        ab2_step_velocities!(model.velocities, model, Δt, χ)
+        ab2_step_tracers!(model.tracers, model, Δt, χ)
+    end
 
-    # blocking step for implicit free surface, non blocking for explicit
-    ab2_step_free_surface!(model.free_surface, model, Δt, χ)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     return nothing
-end
-
-function local_ab2_step!(model, Δt, χ)
-    ab2_step_velocities!(model.velocities, model, Δt, χ)
-    ab2_step_tracers!(model.tracers, model, Δt, χ)
-    return nothing    
 end
 
 #####
@@ -43,46 +44,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         launch!(model.architecture, model.grid, :xyz,
                 ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
 
-        # TODO: let next implicit solve depend on previous solve + explicit velocity step
-        # Need to distinguish between solver events and tendency calculation events.
-        # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.diffusivity_fields,
                        nothing,
-                       model.clock, 
-                       Δt)
-    end
-
-    return nothing
-end
-
-#####
-##### Step velocities
-#####
-
-const EmptyNamedTuple = NamedTuple{(),Tuple{}}
-
-ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
-
-function ab2_step_tracers!(tracers, model, Δt, χ)
-
-    # Tracer update kernels
-    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        G⁻ = model.timestepper.G⁻[tracer_name]
-        tracer_field = tracers[tracer_name]
-        closure = model.closure
-
-        launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
-
-        implicit_step!(tracer_field,
-                       model.timestepper.implicit_solver,
-                       closure,
-                       model.diffusivity_fields,
-                       Val(tracer_index),
                        model.clock,
                        Δt)
     end
@@ -90,3 +56,72 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     return nothing
 end
 
+#####
+##### Step Tracers
+#####
+
+const EmptyNamedTuple = NamedTuple{(),Tuple{}}
+
+hasclosure(closure, ClosureType) = closure isa ClosureType
+hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) for c in closure_tuple)
+
+ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
+
+function ab2_step_tracers!(tracers, model, Δt, χ)
+
+    closure = model.closure
+    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    td_in_closures    = hasclosure(closure, FlavorOfTD)
+
+    # Tracer update kernels
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+
+        if catke_in_closures && tracer_name == :e
+            @debug "Skipping AB2 step for e"
+        elseif td_in_closures && tracer_name == :ϵ
+            @debug "Skipping AB2 step for ϵ"
+        elseif td_in_closures && tracer_name == :e
+            @debug "Skipping AB2 step for e"
+        else
+            Gⁿ = model.timestepper.Gⁿ[tracer_name]
+            G⁻ = model.timestepper.G⁻[tracer_name]
+            tracer_field = tracers[tracer_name]
+            closure = model.closure
+            grid = model.grid
+
+            FT = eltype(grid)
+            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
+
+            implicit_step!(tracer_field,
+                           model.timestepper.implicit_solver,
+                           closure,
+                           model.diffusivity_fields,
+                           Val(tracer_index),
+                           model.clock,
+                           Δt)
+        end
+    end
+
+    return nothing
+end
+
+#####
+##### Tracer update in mutable vertical coordinates
+#####
+
+# σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
+@kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
+    i, j, k = @index(Global, NTuple)
+
+    FT = eltype(χ)
+    α = convert(FT, 1.5) + χ
+    β = convert(FT, 0.5) + χ
+
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+
+    @inbounds begin
+        ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
+        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
+    end
+end

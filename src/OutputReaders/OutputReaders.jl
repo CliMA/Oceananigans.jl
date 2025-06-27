@@ -1,28 +1,32 @@
 module OutputReaders
 
+export FieldDataset
+export FieldTimeSeries
 export InMemory, OnDisk
-export FieldTimeSeries, FieldDataset
+export Cyclical, Linear, Clamp
 
-abstract type AbstractDataBackend end
+"""
+    auto_extension(filename, ext)
 
-struct InMemory{I} <: AbstractDataBackend 
-    index_range :: I
+If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
+"""
+function auto_extension(filename, ext)
+    if endswith(filename, ext)
+        return filename
+    else
+        return filename * ext
+    end
 end
 
-InMemory(; chunk_size = Colon()) = chunk_size isa Colon ? 
-                                          InMemory(chunk_size) :
-                                          InMemory(1:chunk_size)
-
-struct OnDisk <: AbstractDataBackend end
-
-regularize_backend(::InMemory, data) = InMemory(collect(1:size(data, 4)))
-regularize_backend(::OnDisk,   data) = OnDisk()
-
 include("field_time_series.jl")
-include("memory_allocated_field_time_series.jl")
-include("on_disk_field_time_series.jl")
-include("adapted_field_time_series.jl")
-include("update_field_time_series.jl")
+include("field_time_series_indexing.jl")
+include("set_field_time_series.jl")
+include("field_time_series_reductions.jl")
+include("show_field_time_series.jl")
+include("extract_field_time_series.jl")
+
+# Experimental
 include("field_dataset.jl")
 
 end # module
+

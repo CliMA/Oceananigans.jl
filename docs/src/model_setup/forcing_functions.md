@@ -12,8 +12,8 @@ DocTestSetup = quote
 end
 ```
 
-Forcings are added to `Oceananigans` models by passing a `NamedTuple` of functions
-or forcing objects to the `forcing` keyword argument in `NonhydrostaticModel`'s constructor.
+Forcings are added to models by passing a `NamedTuple` of functions or forcing objects
+to the `forcing` keyword argument in `NonhydrostaticModel`'s constructor.
 By default, momentum and tracer forcing functions are assumed to be functions of
 `x, y, z, t`. A basic example is
 
@@ -34,12 +34,13 @@ ContinuousForcing{Nothing} at (Face, Center, Center)
 
 More general forcing functions are built via the `Forcing` constructor
 described below. `Oceananigans` also provides two convenience types:
-    * `Relaxation` for damping terms that restore a field to a
-      target distribution outside of a masked region of space. `Relaxation` can be
-      used to implement sponge layers near the boundaries of a domain.
-    * `AdvectiveForcing` for advecting individual quantities by a separate or
-      "slip" velocity relative to both the prognostic model velocity field and any
-      `BackgroundField` velocity field.
+
+ * `Relaxation` for damping terms that restore a field to a
+   target distribution outside of a masked region of space. `Relaxation` can be
+   used to implement sponge layers near the boundaries of a domain.
+ * `AdvectiveForcing` for advecting individual quantities by a separate or
+   "slip" velocity relative to both the prognostic model velocity field and any
+   `BackgroundField` velocity field.
 
 ## The `Forcing` constructor
 
@@ -52,7 +53,7 @@ The `Forcing` constructor provides an interface for specifying forcing functions
 ### Forcing functions with external parameters
 
 Most forcings involve external, changeable parameters.
-Here are two examples of `forcing_func`tions that depend on 
+Here are two examples of `forcing_func`tions that depend on
 _(i)_ a single scalar parameter `s`, and _(ii)_ a `NamedTuple` of parameters, `p`:
 
 ```jldoctest parameterized_forcing
@@ -72,7 +73,7 @@ model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing), buoya
 model.forcing.T
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω), Tuple{Int64, Float64, Float64, Float64}}} at (Center, Center, Center)
+ContinuousForcing{@NamedTuple{μ::Int64, λ::Float64, k::Float64, ω::Float64}} at (Center, Center, Center)
 ├── func: T_forcing_func (generic function with 1 method)
 ├── parameters: (μ = 1, λ = 0.5, k = 6.283185307179586, ω = 12.566370614359172)
 └── field dependencies: ()
@@ -89,8 +90,8 @@ ContinuousForcing{Float64} at (Face, Center, Center)
 ```
 
 In this example, the objects passed to the `parameters` keyword in the construction of
-`u_forcing` and `T_forcing` --- a floating point number for `u_forcing`, and a `NamedTuple`
-of parameters for `T_forcing` --- are passed on to `u_forcing_func` and `T_forcing_func` when
+`u_forcing` and `T_forcing` -- a floating point number for `u_forcing`, and a `NamedTuple`
+of parameters for `T_forcing` -- are passed on to `u_forcing_func` and `T_forcing_func` when
 they are called during time-stepping. The object passed to `parameters` is in principle arbitrary.
 However, if using the GPU, then `typeof(parameters)` may be restricted by the requirements
 of GPU-compiliability.
@@ -225,7 +226,7 @@ of the velocity field are damped to zero everywhere on a time-scale of 1000 seco
 ```jldoctest
 damping = Relaxation(rate = 1/1000)
 
-grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
 
 model.forcing.w

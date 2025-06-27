@@ -5,11 +5,11 @@ using Printf
 using GLMakie
 
 arch = CPU()
-tracer_advection = CenteredSecondOrder()
-momentum_advection = CenteredSecondOrder()
+tracer_advection = Centered()
+momentum_advection = Centered()
 
 underlying_grid = RectilinearGrid(arch,
-                                  size=(128, 64), halo=(3, 3), 
+                                  size=(128, 64), halo=(3, 3),
                                   y = (-1, 1),
                                   z = (-1, 0),
                                   topology=(Flat, Periodic, Bounded))
@@ -72,7 +72,7 @@ v_partial = v[1]
 v_full    = v[2]
 Δv = v_full .- v_partial
 
-fig = Figure(resolution=(1200, 1800))
+fig = Figure(size=(1200, 1800))
 
 partial_cell_title = @sprintf("PartialCellBottom with ϵ = %.1f", minimum_fractional_Δz)
 ax_bp = Axis(fig[1, 2], title=partial_cell_title)

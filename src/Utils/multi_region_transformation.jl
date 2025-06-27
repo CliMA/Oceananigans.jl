@@ -1,12 +1,13 @@
 using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
+import Oceananigans.Architectures: on_architecture
 
 import Base: length
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
-##### 
+#####
 ##### Multi Region Object
 #####
 
@@ -37,7 +38,7 @@ MultiRegionObject(regional_objects::Tuple; devices=Tuple(CPU() for _ in regional
 
 
 #####
-##### Convenience structs 
+##### Convenience structs
 #####
 
 struct Reference{R}
@@ -114,17 +115,24 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
+on_architecture(::CPU, mo::MultiRegionObject) = MultiRegionObject(on_architecture(CPU(), mo.regional_objects))
+
+# TODO: Properly define on_architecture(::GPU, mo::MultiRegionObject) to handle cases where MultiRegionObject can be
+# distributed across different devices. Currently, the implementation assumes that all regional objects reside on a
+# single GPU.
+on_architecture(::GPU, mo::MultiRegionObject) =
+    MultiRegionObject(on_architecture(GPU(), mo.regional_objects);
+                      devices = Tuple(CUDA.device() for i in 1:length(mo.regional_objects)))
+
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
-    if isnothing(multi_region_args) 
-        devs = devices(multi_region_kwargs)
-    else
-        devs = devices(multi_region_args)
-    end
+    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
+    devs = devices(devs)
+
 
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
@@ -134,7 +142,7 @@ Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
     sync_all_devices!(devs)
 
     return nothing
-end 
+end
 
 @inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =
     construct_regionally(1, regional_func, args...; kwargs...)
@@ -147,11 +155,9 @@ end
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
-    if isnothing(multi_region_args) 
-        devs = devices(multi_region_kwargs)
-    else
-        devs = devices(multi_region_args)
-    end
+    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
+    devs = devices(devs)
+
 
     # Evaluate regional_func on the device of that region and collect
     # return values
@@ -177,7 +183,7 @@ end
     for dev in devices
         switch_device!(dev)
         sync_device!(dev)
-    end 
+    end
 end
 
 @inline sync_device!(::Nothing)  = nothing
@@ -186,22 +192,24 @@ end
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
 
 
-# TODO: The macro errors when there is a return and the function has (args...) in the 
-# signature (example using a macro on `multi_region_buodary_conditions:L74)
+# TODO: The macro errors when there is a return and the function has (args...) in the
+# signature (example using a macro on `multi_region_boundary_conditions:L74)
 
 """
     @apply_regionally expr
-    
-Use `@apply_regionally` to distribute locally the function calls.
-Call `compute_regionally` in case of a returning value and `apply_regionally!` 
-in case of no return.
+
+Distributes locally the function calls in `expr`ession
+
+It calls [`apply_regionally!`](@ref) when the functions do not return anything.
+
+In case the function in `expr` returns something, `@apply_regionally` calls [`construct_regionally`](@ref).
 """
 macro apply_regionally(expr)
     if expr.head == :call
         func = expr.args[1]
         args = expr.args[2:end]
         multi_region = quote
-            apply_regionally!($func, $(args...))
+            $(apply_regionally!)($func, $(args...))
         end
         return quote
             $(esc(multi_region))
@@ -209,14 +217,19 @@ macro apply_regionally(expr)
     elseif expr.head == :(=)
         ret = expr.args[1]
         Nret = 1
-        if expr.args[1] isa Expr 
+        if expr.args[1] isa Expr
             Nret = length(expr.args[1].args)
         end
         exp = expr.args[2]
+        if exp isa Symbol # It is not a function call! Just a variable assignment
+            return quote
+                $ret = $(esc(exp))
+            end
+        end
         func = exp.args[1]
         args = exp.args[2:end]
         multi_region = quote
-            $ret = construct_regionally($Nret, $func, $(args...))
+            $ret = $(construct_regionally)($Nret, $func, $(args...))
         end
         return quote
             $(esc(multi_region))
@@ -228,19 +241,19 @@ macro apply_regionally(expr)
                 func = arg.args[1]
                 args = arg.args[2:end]
                 new_expr.args[idx] = quote
-                    apply_regionally!($func, $(args...))
+                    $(apply_regionally!)($func, $(args...))
                 end
             elseif arg isa Expr && arg.head == :(=)
                 ret = arg.args[1]
                 Nret = 1
-                if arg.args[1] isa Expr 
+                if arg.args[1] isa Expr
                     Nret = length(arg.args[1].args)
-                end        
+                end
                 exp = arg.args[2]
                 func = exp.args[1]
                 args = exp.args[2:end]
                 new_expr.args[idx] = quote
-                    $ret = construct_regionally($Nret, $func, $(args...))
+                    $ret = $(construct_regionally)($Nret, $func, $(args...))
                 end
             end
         end

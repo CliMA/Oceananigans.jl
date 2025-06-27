@@ -5,13 +5,14 @@ function Base.summary(model::HydrostaticFreeSurfaceModel)
     A = nameof(typeof(architecture(model.grid)))
     G = nameof(typeof(model.grid))
     return string("HydrostaticFreeSurfaceModel{$A, $G}",
-                  "(time = ", prettytime(model.clock.time), ", iteration = ", model.clock.iteration, ")")
+                  "(time = ", prettytime(model.clock.time),
+                  ", iteration = ", prettysummary(model.clock.iteration), ")")
 end
 
 function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
     TS = nameof(typeof(model.timestepper))
     tracernames = prettykeys(model.tracers)
-    
+
     print(io, summary(model), "\n",
         "├── grid: ", summary(model.grid), "\n",
         "├── timestepper: ", TS, "\n",
@@ -27,8 +28,18 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         end
 
         if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
-            print(io, "│   └── substepping: $(model.free_surface.settings.substepping)", "\n")
+            print(io, "│   └── substepping: $(summary(model.free_surface.substepping))", "\n")
         end
+    end
+
+    if model.advection !== nothing
+        print(io, "├── advection scheme: ", "\n")
+        names = keys(model.advection)
+        for name in names[1:end-1]
+            print(io, "│   ├── " * string(name) * ": " * summary(model.advection[name]), "\n")
+        end
+        name = names[end]
+        print(io, "│   └── " * string(name) * ": " * summary(model.advection[name]), "\n")
     end
 
     if isnothing(model.particles)
@@ -40,4 +51,3 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
     end
 end
-
