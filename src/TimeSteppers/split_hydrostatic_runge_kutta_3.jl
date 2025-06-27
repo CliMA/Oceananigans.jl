@@ -125,7 +125,6 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     step_lagrangian_particles!(model, Δt)
 
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
 
     return nothing
 end
