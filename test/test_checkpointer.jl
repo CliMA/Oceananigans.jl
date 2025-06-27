@@ -195,9 +195,9 @@ function test_constant_fields_checkpointer(arch)
     file = jldopen("constant_fields_test_iteration0.jld2")
 
     vel = file["HydrostaticFreeSurfaceModel/velocities"]
-    @test vel["u"] == ConstantField(1)
-    @test vel["v"] == ConstantField(2)
-    @test vel["w"] == ConstantField(3)
+    @test vel.u == ConstantField(1)
+    @test vel.v == ConstantField(2)
+    @test vel.w == ConstantField(3)
 
     rm("constant_fields_test_iteration0.jld2", force=true)
 
