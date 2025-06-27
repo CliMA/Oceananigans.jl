@@ -15,7 +15,7 @@ function validate_devices(partition, arch::GPU, devices)
     return devices
 end
 
-function validate_devices(partition, arch::GPU, devices::Number)
+function validate_devices(partition, ::GPU, devices::Number)
     @assert devices ≤ length(devices)
     @assert devices ≤ length(partition)
     return devices
