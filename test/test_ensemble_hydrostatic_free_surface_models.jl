@@ -20,14 +20,14 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
     Δt = 0.01
 
-    model_kwargs = (; tracers=:c, buoyancy=nothing, closure, coriolis)
+    model_kwargs = (tracers=:c, momentum_advection=nothing, tracer_advection=nothing; closure, coriolis)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    sic_model = HydrostaticFreeSurfaceModel(; grid = single_column_grid, model_kwargs...)
-    per_model = HydrostaticFreeSurfaceModel(; grid = periodic_grid,      model_kwargs...)
+    sic_model = HydrostaticFreeSurfaceModel(; grid=single_column_grid, model_kwargs...)
+    per_model = HydrostaticFreeSurfaceModel(; grid=periodic_grid,      model_kwargs...)
 
-    set!(sic_model, c = z         -> exp(-z^2), u = 1, v = 1)
-    set!(per_model, c = (x, y, z) -> exp(-z^2), u = 1, v = 1)
+    set!(sic_model, c = z         -> exp(-z^2), u=1, v=1)
+    set!(per_model, c = (x, y, z) -> exp(-z^2), u=1, v=1)
 
     sic_simulation = Simulation(sic_model; simulation_kwargs...)
     per_simulation = Simulation(per_model; simulation_kwargs...)
@@ -71,7 +71,6 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     @test all(sic_model.velocities.u[1, 1, :] .≈ per_model.velocities.u[1, 1, :])
     @test all(sic_model.velocities.v[1, 1, :] .≈ per_model.velocities.v[1, 1, :])
     @test all(sic_model.tracers.c[1, 1, :]    .≈ per_model.tracers.c[1, 1, :])
-
 
     @info "Testing a single column grid model on an ImmersedBoundaryGrid..."
 
