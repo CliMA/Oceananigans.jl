@@ -77,7 +77,6 @@ end
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
 
-
 BC.validate_boundary_condition_architecture(::ROCArray, ::AC.GPU, bc, side) = nothing
 
 BC.validate_boundary_condition_architecture(::ROCArray, ::AC.CPU, bc, side) =
@@ -105,10 +104,10 @@ AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompiler
     end
 end
 
-@inline UT.getdevice(roc::GPUVar, i)     = device(roc)
-@inline UT.getdevice(roc::GPUVar)        = device(roc)
-@inline UT.switch_device!(dev::Int64)            = device!(dev)
-@inline UT.sync_device!(::ROCGPU)      = AMDGPU.synchronize()
-@inline UT.sync_device!(::ROCBackend)      = AMDGPU.synchronize()
+@inline UT.getdevice(roc::GPUVar, i)  = device(roc)
+@inline UT.getdevice(roc::GPUVar)     = device(roc)
+@inline UT.switch_device!(dev::Int64) = device!(dev)
+@inline UT.sync_device!(::ROCGPU)     = AMDGPU.synchronize()
+@inline UT.sync_device!(::ROCBackend) = AMDGPU.synchronize()
 
 end # module
