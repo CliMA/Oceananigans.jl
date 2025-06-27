@@ -63,7 +63,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFS
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; compute_tendencies = true)
 
-    # Mask possibly immersed fields?
+    # Paranoid masking of single column immersed regions
     mask_immersed_model_fields!(model, grid)
 
     # update FieldTimeSeries that might be part of the forcing or BC
