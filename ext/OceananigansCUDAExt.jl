@@ -107,8 +107,8 @@ function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic},
     return CUDA.CUFFT.plan_fft!(A, dims)
 end
 
-FD.set!(v::Field, a::CuArray) = FD._set!(v, a)
-DC.set!(v::DC.DistributedField, a::CuArray) = DC._set!(v, a)
+FD.set!(v::Field, a::CuArray) = FD.set_to_array!(v, a)
+DC.set!(v::DC.DistributedField, a::CuArray) = DC.set_to_array!(v, a)
 
 function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
