@@ -144,7 +144,7 @@ ax_s = Axis(fig[2, 2]; title = "Speed", axis_kwargs...)
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
-# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# refer to [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 

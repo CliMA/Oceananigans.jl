@@ -243,7 +243,7 @@ ax = Axis3(fig[2, 1],
 # We use data from the final savepoint for the 3D plot.
 # Note that this plot can easily be animated by using Makie's `Observable`.
 # To dive into `Observable`s, check out
-# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = length(times)
 
