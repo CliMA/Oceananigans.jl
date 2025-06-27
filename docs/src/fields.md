@@ -94,7 +94,7 @@ Finally, note that the nodes of the staggered mesh coincide with the cell interf
 znodes(grid, Center())
 
 # output
-4-element view(OffsetArray(::Vector{Float64}, 0:5), 1:4) with eltype Float64:
+4-element view(::Vector{Float64}, 2:5) with eltype Float64:
  0.05
  0.2
  0.44999999999999996
@@ -155,8 +155,8 @@ the `x`-component of the velocity field is stored at `Face, Center, Center` loca
 The centers of the `u` cells are shifted to the left relative to the `c` cells:
 
 ```jldoctest fields
-@show xnodes(c)
-@show xnodes(u)
+@show collect(xnodes(c))
+@show collect(xnodes(u))
 nothing
 
 # output
@@ -174,8 +174,8 @@ vertical cells than `CenterField`s:
 ```jldoctest fields
 w = Field{Center, Center, Face}(grid)
 
-@show znodes(c)
-@show znodes(w)
+@show collect(znodes(c))
+@show collect(znodes(w))
 nothing
 
 # output
@@ -359,7 +359,7 @@ The `xnodes` of `c` -- the coordinates of the center of `c`'s finite volumes -- 
 
 ```jldoctest fields
 xc = xnodes(c)
-@show xc
+@show collect(xc)
 nothing # hide
 
 # output
