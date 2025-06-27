@@ -87,7 +87,7 @@ buoyancy = SeawaterBuoyancy(; equation_of_state)
 # We calculate the surface temperature flux associated with surface cooling of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
-Q = 200  # W m⁻², surface _heat_ flux
+Q = 200   # W m⁻², surface _heat_ flux
 cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
 Jᵀ = Q / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
@@ -124,7 +124,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 @inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 nothing #hide
 
-# where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
+# where `S` is salinity. We use an evaporation rate of 1 millimeter per hour,
 
 evaporation_rate = 1e-3 / hour # m s⁻¹
 
@@ -175,7 +175,7 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 # ## Setting up a simulation
 #
 # We set-up a simulation with an initial time-step of 10 seconds
-# that stops at 40 minutes, with adaptive time-stepping and progress printing.
+# that stops at 2 hours, with adaptive time-stepping and progress printing.
 
 simulation = Simulation(model, Δt=10, stop_time=2hours)
 
@@ -223,7 +223,7 @@ run!(simulation)
 #
 # We animate the data saved in `ocean_wind_mixing_and_convection.jld2`.
 # We prepare for animating the flow by loading the data into
-# FieldTimeSeries and defining functions for computing colorbar limits.
+# `FieldTimeSeries` and defining functions for computing colorbar limits.
 
 filepath = filename * ".jld2"
 
@@ -231,10 +231,6 @@ time_series = (w = FieldTimeSeries(filepath, "w"),
                T = FieldTimeSeries(filepath, "T"),
                S = FieldTimeSeries(filepath, "S"),
                νₑ = FieldTimeSeries(filepath, "νₑ"))
-
-## Coordinate arrays
-xw, yw, zw = nodes(time_series.w)
-xT, yT, zT = nodes(time_series.T)
 
 # We start the animation at ``t = 10`` minutes since things are pretty boring till then:
 
@@ -247,10 +243,10 @@ intro = searchsortedfirst(times, 10minutes)
 
 n = Observable(intro)
 
- wₙ = @lift interior(time_series.w[$n],  :, 1, :)
- Tₙ = @lift interior(time_series.T[$n],  :, 1, :)
- Sₙ = @lift interior(time_series.S[$n],  :, 1, :)
-νₑₙ = @lift interior(time_series.νₑ[$n], :, 1, :)
+ wₙ = @lift time_series.w[$n]
+ Tₙ = @lift time_series.T[$n]
+ Sₙ = @lift time_series.S[$n]
+νₑₙ = @lift time_series.νₑ[$n]
 
 fig = Figure(size = (1800, 900))
 
@@ -266,21 +262,21 @@ ax_νₑ = Axis(fig[3, 3]; title = "Eddy viscocity", axis_kwargs...)
 
 title = @lift @sprintf("t = %s", prettytime(times[$n]))
 
-wlims = (-0.05, 0.05)
-Tlims = (19.7, 19.99)
-Slims = (35, 35.005)
+ wlims = (-0.05, 0.05)
+ Tlims = (19.7, 19.99)
+ Slims = (35, 35.005)
 νₑlims = (1e-6, 5e-3)
 
-hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = wlims)
+hm_w = heatmap!(ax_w, wₙ; colormap = :balance, colorrange = wlims)
 Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
 
-hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
+hm_T = heatmap!(ax_T, Tₙ; colormap = :thermal, colorrange = Tlims)
 Colorbar(fig[2, 4], hm_T; label = "ᵒC")
 
-hm_S = heatmap!(ax_S, xT, zT, Sₙ; colormap = :haline, colorrange = Slims)
+hm_S = heatmap!(ax_S, Sₙ; colormap = :haline, colorrange = Slims)
 Colorbar(fig[3, 2], hm_S; label = "g / kg")
 
-hm_νₑ = heatmap!(ax_νₑ, xT, zT, νₑₙ; colormap = :thermal, colorrange = νₑlims)
+hm_νₑ = heatmap!(ax_νₑ, νₑₙ; colormap = :thermal, colorrange = νₑlims)
 Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
 
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
