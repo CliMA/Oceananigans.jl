@@ -51,7 +51,6 @@ function UT.versioninfo_with_gpu(::CUDAGPU)
     return "CUDA GPU: $gpu_name"
 end
 
-
 Base.summary(::CUDAGPU) = "CUDAGPU"
 
 AC.architecture(::CuArray) = CUDAGPU()
@@ -98,7 +97,6 @@ end
 @inline AC.convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
-
 BC.validate_boundary_condition_architecture(::CuArray, ::AC.GPU, bc, side) = nothing
 
 BC.validate_boundary_condition_architecture(::CuArray, ::AC.CPU, bc, side) =
@@ -128,11 +126,11 @@ CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     end
 end
 
-@inline UT.sync_device!(::CuDevice)  = CUDA.synchronize()
-@inline UT.getdevice(cu::GPUVar, i)     = device(cu)
-@inline UT.getdevice(cu::GPUVar)        = device(cu)
-@inline UT.switch_device!(dev::CuDevice)            = device!(dev)
-@inline UT.sync_device!(::CUDAGPU)      = CUDA.synchronize()
-@inline UT.sync_device!(::CUDABackend)      = CUDA.synchronize()
+@inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()
+@inline UT.getdevice(cu::GPUVar, i)      = device(cu)
+@inline UT.getdevice(cu::GPUVar)         = device(cu)
+@inline UT.switch_device!(dev::CuDevice) = device!(dev)
+@inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
+@inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
 
 end # module OceananigansCUDAExt
