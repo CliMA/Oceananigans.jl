@@ -90,10 +90,10 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-     ξᶠᵃᵃ = copy(xnodes(ξη_grid, Face()))
-     ξᶜᵃᵃ = copy(xnodes(ξη_grid, Center()))
-     ηᵃᶠᵃ = copy(ynodes(ξη_grid, Face()))
-     ηᵃᶜᵃ = copy(ynodes(ξη_grid, Center()))
+     ξᶠᵃᵃ = deepcopy(xnodes(ξη_grid, Face()))
+     ξᶜᵃᵃ = deepcopy(xnodes(ξη_grid, Center()))
+     ηᵃᶠᵃ = deepcopy(ynodes(ξη_grid, Face()))
+     ηᵃᶜᵃ = deepcopy(ynodes(ξη_grid, Center()))
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
      λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topology, N, H)
@@ -306,10 +306,10 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
             ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
             ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
         else
-            ξᶠᵃᵃ = copy(xnodes(ξη_grid, Face()))
-            ξᶜᵃᵃ = copy(xnodes(ξη_grid, Center()))
-            ηᵃᶠᵃ = copy(ynodes(ξη_grid, Face()))
-            ηᵃᶜᵃ = copy(ynodes(ξη_grid, Center()))
+            ξᶠᵃᵃ = deepcopy(xnodes(ξη_grid, Face()))
+            ξᶜᵃᵃ = deepcopy(xnodes(ξη_grid, Center()))
+            ηᵃᶠᵃ = deepcopy(ynodes(ξη_grid, Face()))
+            ηᵃᶜᵃ = deepcopy(ynodes(ξη_grid, Center()))
         end
     end
 
