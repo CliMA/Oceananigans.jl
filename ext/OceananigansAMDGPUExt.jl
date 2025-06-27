@@ -87,7 +87,7 @@ function SO.plan_forward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}
     return AMDGPU.rocFFT.plan_fft!(A, dims)
 end
 
-FD.set!(v::Field, a::ROCArray) = FD._set!(v, a)
+FD.set!(v::Field, a::ROCArray) = FD.set_to_array!(v, a)
 DC.set!(v::DC.DistributedField, a::ROCArray) = DC.set_to_array!(v, a)
 
 function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
