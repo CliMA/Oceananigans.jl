@@ -171,7 +171,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
 using Oceananigans
 grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
 
-#output
+# output
 
 32×32×16 RectilinearGrid{Float32, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 8.0)          regularly spaced with Δx=0.25
@@ -185,7 +185,7 @@ grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π
 using Oceananigans
 grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
 
-#output
+# output
 
 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
 ├── Periodic x ∈ [3.60072e-17, 6.28319) regularly spaced with Δx=0.19635
@@ -199,7 +199,7 @@ grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Per
 using Oceananigans
 grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
-#output
+# output
 
 1×1×256 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
@@ -222,7 +222,7 @@ grid = RectilinearGrid(size = (32, 32, Nz),
                        x = (0, 64), y = (0, 64),
                        z = hyperbolically_spaced_faces)
 
-#output
+# output
 
 32×32×24 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 64.0)   regularly spaced with Δx=2.0
