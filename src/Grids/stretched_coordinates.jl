@@ -7,22 +7,25 @@ struct ExponentialCoordinate <: Function
 end
 
 """
-    ExponentialCoordinate(N::Int, left, right; scale=(right-left)/5, bias=:right)
+    ExponentialCoordinate(N::Int, left, right;
+                          scale=(right-left)/5, bias=:right)
 
-Return a type that describes a one-dimensional coordinate with `N` cells that
-are exponentially spaced (or, equivalently, with spacings that grow linearly).
+Return a one-dimensional coordinate with `N` cells that are exponentially spaced
+(or, equivalently, with spacings that grow linearly along the coordinate).
 
 The coordinate spans the range [`left`, `right`]. The exponential e-folding is controlled by `scale`.
 The coordinate interfaces are stacked on the `bias`-side of the domain.
 
 Arguments
 =========
+
 - `N`: The number of cells in the coordinate.
 - `left`: The left-most interface of the coordinate.
 - `right`: The right-most interface of the coordinate.
 
 Keyword Arguments
 =================
+
 - `scale`: The length scale of the exponential e-folding. Default: `(right - left) / 5`
 - `bias :: Symbol`: Determine whether left or right biased. Default: `:right`.
 
@@ -95,7 +98,7 @@ function (coord::ExponentialCoordinate)(i)
     if coord.bias === :right
        xᵢ = rightbiased_exponential_mapping(ξᵢ, left, right, scale)
     elseif coord.bias === :left
-       xᵢ = leftbiased_exponential_mapping(ξᵢ, left, right, scale)
+       xᵢ =  leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
     if abs(xᵢ - left) < 10eps(Float32)
