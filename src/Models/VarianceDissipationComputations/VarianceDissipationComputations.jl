@@ -11,7 +11,7 @@ using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
-                                 RungeKutta3TimeStepper, 
+                                 RungeKutta3TimeStepper,
                                  SplitRungeKutta3TimeStepper
 
 using Oceananigans.TurbulenceClosures: viscosity,
@@ -57,13 +57,13 @@ end
                         Uⁿ⁻¹ = VelocityFields(grid),
                         Uⁿ   = VelocityFields(grid))
 
-Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on a `grid`.
+Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on `grid`.
 This function computes the variance dissipation diagnostics for the specified tracer in the model.
 These include the numerical dissipation implicit to the advection scheme and the explicit
 dissipation associated to closures.
 
 This diagnostic is especially useful for models that use a dissipative advection scheme
-like [`WENO`](@ref Oceananigans.Advection.WENO) or [`UpwindBiased`](@ref Oceananigans.Advection.UpwindBiased).
+like [`WENO`](@ref) or [`UpwindBiased`](@ref).
 
 Arguments
 =========
@@ -182,4 +182,4 @@ function validate_schedule(::VarianceDissipation, schedule::ConsecutiveIteration
     return schedule
 end
 
-end
+end # module

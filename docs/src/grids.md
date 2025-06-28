@@ -44,7 +44,7 @@ This simple grid
 * Has cells that are all the same size, dividing the box in 512 that each has dimension ``4 \times 4 \times 2``.
   Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
-In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref)` or [`GPU`](@ref).
+In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
 
@@ -85,12 +85,12 @@ The shape of the physical domain determines what grid type should be used:
 2. [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid) represents sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude.
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
-!!! note "OrthogonalSphericalShellGrids.jl"
-    See the auxiliary module [`OrthogonalSphericalShellGrids.jl`](@ref Oceananigans.OrthogonalSphericalShellGrids)
-    for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
+!!! note "OrthogonalSphericalShellGrids"
+    See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
+    for recipes that implement some useful `OrthogonalSphericalShellGrid`s, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
-For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and also has 5 vertical levels down to 1000 meters, we write
+For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and has 5 vertical levels down to 1000 meters, we write
 
 ```jldoctest grids
 architecture = CPU()
@@ -112,15 +112,17 @@ The main difference between the syntax for `LatitudeLongitudeGrid` versus that f
 `LatitudeLongitudeGrid` has `longitude` and `latitude` where `RectilinearGrid` has `x` and `y`.
 
 !!! note "Extrinsic and intrinsic coordinate systems"
-    Every grid is associated with an "extrinsic" coordinate system: `RectilinearGrid` uses a Cartesian coordinate system,
-    while `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid` use the geographic coordinates
+    Every grid is associated with an "extrinsic" coordinate system: `RectilinearGrid` uses a Cartesian coordinate
+    system `(x, y, z)`, while `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid` use the geographic coordinates
     `(λ, φ, z)`, where `λ` is longitude, `φ` is latitude, and `z` is height.
     Additionally, `OrthogonalSphericalShellGrid` has an "intrinsic" coordinate system associated with the orientation
     of its finite volumes (which, in general, are not aligned with geographic coordinates).
+
     To type `λ` or `φ` at the REPL, write either `\lambda` (for `λ`) or `\varphi` (for `φ`) and then press `<TAB>`.
 
-If `topology` is not provided for `LatitudeLongitudeGrid`, then we try to infer it: if the `longitude` spans 360 degrees,
+If `topology` is not provided for `LatitudeLongitudeGrid`, then Oceananigans tries infer it: if the `longitude` spans 360 degrees,
 the default `x`-topology is `Periodic`; if `longitude` spans less than 360 degrees `x`-topology is `Bounded`.
+
 For example,
 
 ```jldoctest grids
@@ -139,20 +141,22 @@ grid = LatitudeLongitudeGrid(size = (60, 10, 5),
 is `Bounded` by default, because `longitude = (0, 60)`.
 
 !!! note "LatitudeLongitudeGrid topologies"
-    It's still possible to use `topology = (Periodic, Bounded, Bounded)` if `longitude` doesn't have 360 degrees.
+    It's still possible to use `topology = (Periodic, Bounded, Bounded)` even if `longitude` doesn't span 360 degrees.
     But neither `latitude` nor `z` may be `Periodic` with `LatitudeLongitudeGrid`.
 
 ### Bathymetry, topography, and other irregularities
 
 Irregular or "complex" domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the
-above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
+above underlying grids with a type of immersed boundary. The immersed boundaries currently supported are:
 
-1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part of the domain is above the bottom height.
-2. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
+1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part
+   of the domain is above the bottom height.
+1. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref),
+   except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
 3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
-
-To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary into that underlying grid.
+To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary
+into that underlying grid.
 
 ```jldoctest grids
 using Oceananigans.Units
@@ -207,12 +211,12 @@ using CairoMakie
 
 h = mountain_grid.immersed_boundary.bottom_height
 
-fig = Figure(size=(600, 600))
+fig = Figure()
 ax = Axis(fig[2, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
 hm = heatmap!(ax, h)
 Colorbar(fig[1, 1], hm, vertical=false, label="Bottom height (m)")
 
-current_figure()
+fig
 ```
 
 ## Once more with feeling
@@ -286,7 +290,7 @@ topology = (Flat, Flat, Bounded)          # one-dimensional and bounded in z (a 
 
 ### Specifying the size of the grid
 
-The `size` is a `Tuple` that specifes the number of grid points in each direction.
+The `size` is a `Tuple` that specifies the number of grid points in each direction.
 The number of tuple elements corresponds to the number of dimensions that are not `Flat`.
 
 #### The halo size
@@ -395,11 +399,11 @@ zf = znodes(grid, Face())
 
 using CairoMakie
 
-fig = Figure(size=(1200, 1200))
+fig = Figure(size=(1000, 1000))
 
 axy = Axis(fig[1, 1], title="y-grid")
 lines!(axy, [0, Ly], [0, 0], color=:gray)
-scatter!(axy, yf, 0 * yf, marker=:vline, color=:gray, markersize=20)
+scatter!(axy, yf, 0 * yf, marker=:vline, color=:gray, markersize=25)
 scatter!(axy, yc, 0 * yc)
 hidedecorations!(axy)
 hidespines!(axy)
@@ -410,7 +414,7 @@ hidespines!(axΔy, :t, :r)
 
 axz = Axis(fig[3, 1], title="z-grid")
 lines!(axz, [-Lz, 0], [0, 0], color=:gray)
-scatter!(axz, zf, 0 * zf, marker=:vline, color=:gray, markersize=20)
+scatter!(axz, zf, 0 * zf, marker=:vline, color=:gray, markersize=25)
 scatter!(axz, zc, 0 * zc)
 hidedecorations!(axz)
 hidespines!(axz)
@@ -422,7 +426,7 @@ hidespines!(axΔz, :t, :r)
 rowsize!(fig.layout, 1, Relative(0.1))
 rowsize!(fig.layout, 3, Relative(0.1))
 
-current_figure()
+fig
 ```
 
 ## Inspecting `LatitudeLongitudeGrid` cell spacings
@@ -441,11 +445,10 @@ grid = LatitudeLongitudeGrid(size = (1, 44),
 
 using CairoMakie
 
-fig = Figure(size=(600, 400))
+fig = Figure()
 ax = Axis(fig[1, 1], xlabel="Zonal spacing on 2 degree grid (km)", ylabel="Latitude (degrees)")
 scatter!(ax, Δx / 1e3)
-
-current_figure()
+fig
 ```
 
 ![](plot_lat_lon_spacings.svg)
@@ -538,7 +541,152 @@ hidespines!(axx, :t, :r)
 hidespines!(axy, :t, :l, :r)
 hideydecorations!(axy, grid=false)
 
-current_figure()
+fig
+```
+
+## Streched coordinates
+
+### Exponential spacing
+
+[`ExponentialCoordinate`](@ref) returns a coordinate with interfaces that lie on an exponential profile.
+By that, we mean that a uniformly discretized domain in the range ``[l, r]`` is mapped back onto itself via either
+
+```math
+ξ \mapsto w(ξ) = r - (r - l) \frac{\exp{[(r - ξ) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(right biased)}
+```
+
+or
+
+```math
+ξ \mapsto w(ξ) = l + (r - l) \frac{\exp{[(ξ - l) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(left biased)}
+```
+
+The exponential mappings above have an e-folding controlled by scale ``h``.
+It worths noting that the exponential maps imply that the cell widths (distances between interfaces) grow linearly at a rate inversely proportional to ``h / (r - l)``.
+
+The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases the interfaces towards ``l``.
+
+At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the grid becomes uniformly spaced.
+
+```@example exponentialcoord
+using Oceananigans.Grids: rightbiased_exponential_mapping, leftbiased_exponential_mapping
+
+using CairoMakie
+
+l, r = 0, 1
+
+ξ  = range(l, stop=r, length=501)
+ξp = range(l, stop=r, length=6)   # coarser for plotting
+
+fig = Figure(size=(1200, 550))
+
+axis_labels = (xlabel="uniform coordinate ξ / (r-l)",
+               ylabel="mapped coordinate w / (r-l)")
+
+axl = Axis(fig[1, 1]; title="left-biased map", axis_labels...)
+axr = Axis(fig[1, 2]; title="right-biased map", axis_labels...)
+
+for scale in (1/20, 1/5, 1/2, 1e12)
+    label = "h / (r-l) = $scale"
+
+    lines!(axl, ξ, leftbiased_exponential_mapping.(ξ, l, r, scale); label)
+    scatter!(axl, ξp, leftbiased_exponential_mapping.(ξp, l, r, scale), markersize=20)
+
+    lines!(axr, ξ, rightbiased_exponential_mapping.(ξ, l, r, scale); label)
+    scatter!(axr, ξp, rightbiased_exponential_mapping.(ξp, l, r, scale), markersize=20)
+end
+
+Legend(fig[2, :], axl, orientation = :horizontal)
+
+fig
+```
+
+Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points towards the left or right side of the domain.
+
+Let's see how we use [`ExponentialCoordinate`](@ref). Below we construct a coordinate with 10 cells that spans the range [-700, 300]. By default, the `ExponentialCoordinate` is right-biased.
+
+```@example exponentialcoord
+using Oceananigans
+
+N = 10
+l = -700
+r = 300
+
+x = ExponentialCoordinate(N, l, r)
+```
+
+Note that above, the default e-folding scale (`scale = (r - l) / 5`) was used.
+
+We can inspect the interfaces of the coordinate via
+
+```@example exponentialcoord
+[x(i) for i in 1:N+1]
+```
+
+Being right-biased, note above how the interfaces are closer together near ``r``.
+
+To demonstrate how the scale ``h`` affects the coordinate, we construct below two such exponential
+coordinates: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
+
+```@example exponentialcoord
+using Oceananigans
+
+N = 10
+l = -700
+r = 300
+extent = r - l
+
+using CairoMakie
+
+fig = Figure(size=(1000, 1000))
+
+scale = extent / 5
+x = ExponentialCoordinate(N, l, r; scale)
+grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
+xc = xnodes(grid, Center())
+xf = xnodes(grid, Face())
+Δx = xspacings(grid, Center())
+
+axx1 = Axis(fig[1, 1],  title = "scale = extent / 5")
+lines!(axx1, [l, r], [0, 0], color=:gray)
+scatter!(axx1, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
+scatter!(axx1, xc, 0 * xc)
+axΔx1 = Axis(fig[2, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
+lΔx = lines!(axΔx1, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
+scatter!(axΔx1, xc, Δx)
+
+
+scale = extent / 2
+x = ExponentialCoordinate(N, l, r; scale)
+grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
+xc = xnodes(grid, Center())
+xf = xnodes(grid, Face())
+Δx = xspacings(grid, Center())
+
+axx2 = Axis(fig[3, 1], title = "scale = extent / 2")
+lines!(axx2, [l, r], [0, 0], color=:gray)
+scatter!(axx2, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
+scatter!(axx2, xc, 0 * xc)
+axΔx2 = Axis(fig[4, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
+lΔx = lines!(axΔx2, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
+scatter!(axΔx2, xc, Δx)
+
+
+legend = Legend(fig[5, :], [lΔx], ["slope = (extent / scale) / Nz"], orientation = :horizontal)
+
+for ax in (axx1, axx2)
+    hidedecorations!(ax)
+    hidespines!(ax)
+end
+
+for ax in (axΔx1, axΔx2)
+    ylims!(ax, -10, 450)
+    hidespines!(ax, :t, :r)
+end
+
+rowsize!(fig.layout, 1, Relative(0.1))
+rowsize!(fig.layout, 3, Relative(0.1))
+fig
 ```
 
 ## Single-precision `RectilinearGrid`
