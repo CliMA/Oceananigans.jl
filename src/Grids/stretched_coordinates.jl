@@ -1,6 +1,3 @@
-@inline rightbiased_exponential_mapping(z, l, r, h) = @. r - (r - l) * expm1((r - z) / h) / expm1((r - l) / h)
-@inline leftbiased_exponential_mapping(z, l, r, h)  = @. l + (r - l) * expm1((z - l) / h) / expm1((r - l) / h)
-
 struct ExponentialCoordinate <: Function
     size :: Int
     left :: Float64
@@ -84,6 +81,9 @@ x = ExponentialCoordinate(N, l, r, bias=:left)
 """
 ExponentialCoordinate(size::Int, left, right; scale=(right-left)/5, bias=:right) =
     ExponentialCoordinate(size, left, right, scale, bias)
+
+@inline rightbiased_exponential_mapping(x, l, r, h) = @. r - (r - l) * expm1((r - x) / h) / expm1((r - l) / h)
+@inline  leftbiased_exponential_mapping(x, l, r, h) = @. l + (r - l) * expm1((x - l) / h) / expm1((r - l) / h)
 
 function (coord::ExponentialCoordinate)(i)
     N, left, right, scale = coord.size, coord.left, coord.right, coord.scale
