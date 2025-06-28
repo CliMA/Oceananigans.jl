@@ -74,6 +74,7 @@ set!(model, b=bᵢ)
 # Let's visualize the initial buoyancy distribution.
 
 using CairoMakie
+set_theme!(Theme(fontsize = 20))
 
 ## Build coordinates with units of kilometers
 x, y, z = 1e-3 .* nodes(grid, (Center(), Center(), Center()))
@@ -304,8 +305,6 @@ yv = yv ./ 1e3 # convert m -> km
 
 # Next, we set up a plot with 4 panels. The top panels are large and square, while
 # the bottom panels get a reduced aspect ratio through `rowsize!`.
-
-set_theme!(Theme(fontsize=24))
 
 fig = Figure(size=(1800, 1000))
 

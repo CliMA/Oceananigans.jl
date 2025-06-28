@@ -190,7 +190,7 @@ Let's visualize the situation:
 ```@setup fields
 using Oceananigans
 using CairoMakie
-set_theme!(Theme(fontsize=24))
+set_theme!(Theme(fontsize=20))
 CairoMakie.activate!(type="svg")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),

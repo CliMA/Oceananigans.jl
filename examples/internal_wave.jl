@@ -135,7 +135,7 @@ run!(simulation)
 # and make a Figure and an Axis for the animation,
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24))
+set_theme!(Theme(fontsize = 20))
 
 fig = Figure(size = (600, 600))
 

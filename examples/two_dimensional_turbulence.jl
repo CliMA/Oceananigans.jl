@@ -130,7 +130,7 @@ nothing #hide
 # and animate the vorticity and fluid speed.
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24))
+set_theme!(Theme(fontsize = 20))
 
 fig = Figure(size = (800, 500))
 
