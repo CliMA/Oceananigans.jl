@@ -580,8 +580,8 @@ fig = Figure(size=(1200, 550))
 axis_labels = (xlabel="uniform coordinate ξ / (r-l)",
                ylabel="mapped coordinate w / (r-l)")
 
-axl = Axis(fig[1, 1]; title="right-biased map", axis_labels...)
-axr = Axis(fig[1, 2]; title="left-biased map", axis_labels...)
+axl = Axis(fig[1, 1]; title="left-biased map", axis_labels...)
+axr = Axis(fig[1, 2]; title="right-biased map", axis_labels...)
 
 for scale in (1/20, 1/5, 1/2, 1e12)
     label = "h / (r-l) = $scale"
