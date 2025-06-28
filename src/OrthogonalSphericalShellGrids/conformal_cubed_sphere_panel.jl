@@ -144,23 +144,16 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     conformal_mapping)
 end
 
-@inline cpu_face_constructor_ξ(grid::ConformalCubedSpherePanelGrid) = (grid.conformal_mapping.ξᶠᵃᵃ[1],
-                                                                       grid.conformal_mapping.ξᶠᵃᵃ[size(grid, 1)+1])
-@inline cpu_face_constructor_η(grid::ConformalCubedSpherePanelGrid) = (grid.conformal_mapping.ηᵃᶠᵃ[1],
-                                                                       grid.conformal_mapping.ηᵃᶠᵃ[size(grid, 2)+1])
-
 function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-    ξ = cpu_face_constructor_ξ(old_grid)
-    η = cpu_face_constructor_η(old_grid)
     z = cpu_face_constructor_z(old_grid)
 
     provided_conformal_mapping = old_grid.conformal_mapping
 
     new_grid = ConformalCubedSpherePanelGrid(arch, eltype(old_grid);
-                                             size, z, ξ, η,
+                                             size, z,
                                              topology = topo,
                                              radius = old_grid.radius,
                                              halo = new_halo,
