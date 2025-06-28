@@ -10,9 +10,9 @@ struct ExponentialCoordinate <: Function
 end
 
 """
-    ExponentialCoordinate(size::Int, left, right=0; scale=(right-left)/5, bias=:right)
+    ExponentialCoordinate(N::Int, left, right; scale=(right-left)/5, bias=:right)
 
-Return a type that describes a one-dimensional coordinate with `size` cells that
+Return a type that describes a one-dimensional coordinate with `N` cells that
 are exponentially spaced (or, equivalently, with spacings that grow linearly).
 
 The coordinate spans the range [`left`, `right`]. The exponential e-folding is controlled by `scale`.
@@ -20,7 +20,7 @@ The coordinate interfaces are stacked on the `bias`-side of the domain.
 
 Arguments
 =========
-- `size`: The number of cells in the coordinate.
+- `N`: The number of cells in the coordinate.
 - `left`: The left-most interface of the coordinate.
 - `right`: The right-most interface of the coordinate.
 
@@ -33,15 +33,15 @@ Examples
 ========
 
 ```jldoctest ExponentialCoordinate
-using ClimaOcean
+using Oceananigans
 
-Nz = 10
-left = -1000
-right = 100
+N = 10
+l = -1000
+r = 100
 
-z = ExponentialCoordinate(Nz, left, right)
+x = ExponentialCoordinate(N, l, r)
 
-[z(k) for k in 1:Nz+1]
+[x(i) for i in 1:N+1]
 
 # output
 
@@ -62,9 +62,9 @@ z = ExponentialCoordinate(Nz, left, right)
 Above, the default `bias` is `:right`. We can get a left-biased grid via:
 
 ```jldoctest ExponentialCoordinate
-z = ExponentialCoordinate(Nz, left, right, bias=:left)
+x = ExponentialCoordinate(N, l, r, bias=:left)
 
-[z(k) for k in 1:Nz+1]
+[x(i) for i in 1:N+1]
 
 # output
 
@@ -85,24 +85,24 @@ z = ExponentialCoordinate(Nz, left, right, bias=:left)
 ExponentialCoordinate(size::Int, left, right; scale=(right-left)/5, bias=:right) =
     ExponentialCoordinate(size, left, right, scale, bias)
 
-function (g::ExponentialCoordinate)(k)
-    Nz, left, right, scale = g.size, g.left, g.right, g.scale
+function (coord::ExponentialCoordinate)(i)
+    N, left, right, scale = coord.size, coord.left, coord.right, coord.scale
 
     # uniform coordinate
-    ξₖ = left + (k-1) * (right - left) / Nz
+    ξₖ = left + (i-1) * (right - left) / N
 
     # mapped coordinate
-    if g.bias === :right
-       zₖ = rightbiased_exponential_mapping(ξₖ, left, right, scale)
-    elseif g.bias === :left
-       zₖ = leftbiased_exponential_mapping(ξₖ, left, right, scale)
+    if coord.bias === :right
+       xₖ = rightbiased_exponential_mapping(ξₖ, left, right, scale)
+    elseif coord.bias === :left
+       xₖ = leftbiased_exponential_mapping(ξₖ, left, right, scale)
     end
 
-    if abs(zₖ - left) < 10eps(Float32)
-        zₖ = left
-    elseif abs(zₖ - right) < 10eps(Float32)
-        zₖ = right
+    if abs(xₖ - left) < 10eps(Float32)
+        xₖ = left
+    elseif abs(xₖ - right) < 10eps(Float32)
+        xₖ = right
     end
 
-    return zₖ
+    return xₖ
 end
