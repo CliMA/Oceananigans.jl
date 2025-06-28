@@ -43,7 +43,7 @@ This simple grid
 * Has cells that are all the same size, dividing the box in 512 that each has dimension ``4 \times 4 \times 2``.
   Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
-In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref)` or [`GPU`](@ref).
+In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
 
