@@ -190,7 +190,6 @@ Let's visualize the situation:
 ```@setup fields
 using Oceananigans
 using CairoMakie
-set_theme!(Theme(fontsize=24))
 CairoMakie.activate!(type="svg")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
@@ -326,7 +325,7 @@ heatmap(view(c, :, :, 1))
 For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for
 `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
 But for `Field`s on one- and two-dimensional grids, only the arguments that correspond to the
-non-`Flat` directions must be included. 
+non-`Flat` directions must be included.
 For example, to `set!` on a one-dimensional grid we write
 
 ```jldoctest fields
@@ -348,8 +347,8 @@ set!(one_d_c, still_pretty_fun)
 ```
 
 !!! note
-    `Field` data is always stored in three-dimensional arrays --- even when they have `Nothing` locations, 
-    or on grids with `Flat` directions. As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat` 
+    `Field` data is always stored in three-dimensional arrays --- even when they have `Nothing` locations,
+    or on grids with `Flat` directions. As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat`
     directions indexed with `1`.
 
 ### A bit more about setting with functions
