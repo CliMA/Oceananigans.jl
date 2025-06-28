@@ -583,13 +583,14 @@ axis_labels = (xlabel="uniform coordinate ξ / (r-l)",
 axl = Axis(fig[1, 1]; title="right-biased map", axis_labels...)
 axr = Axis(fig[1, 2]; title="left-biased map", axis_labels...)
 
-for scale in [1/20, 1/5, 1/2, 1e12]
+for scale in (1/20, 1/5, 1/2, 1e12)
     label = "h / (r-l) = $scale"
+
     lines!(axl, ξ, leftbiased_exponential_mapping.(ξ, l, r, scale); label)
-    scatter!(axl, ξp, leftbiased_exponential_mapping.(ξp, l, r, scale))
+    scatter!(axl, ξp, leftbiased_exponential_mapping.(ξp, l, r, scale), markersize=20)
 
     lines!(axr, ξ, rightbiased_exponential_mapping.(ξ, l, r, scale); label)
-    scatter!(axr, ξp, rightbiased_exponential_mapping.(ξp, l, r, scale))
+    scatter!(axr, ξp, rightbiased_exponential_mapping.(ξp, l, r, scale), markersize=20)
 end
 
 Legend(fig[2, :], axl, orientation = :horizontal)
