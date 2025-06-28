@@ -5,7 +5,6 @@ DocTestSetup = quote
     using Oceananigans
     using CairoMakie
     CairoMakie.activate!(type = "svg")
-    set_theme!(Theme(fontsize=24))
 end
 ```
 
@@ -85,8 +84,8 @@ The shape of the physical domain determines what grid type should be used:
 2. [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid) represents sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude.
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
-!!! note "OrthogonalSphericalShellGrids.jl"
-    See the auxiliary module [`OrthogonalSphericalShellGrids.jl`](@ref Oceananigans.OrthogonalSphericalShellGrids)
+!!! note "OrthogonalSphericalShellGrids"
+    See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
@@ -187,7 +186,6 @@ using Oceananigans.Units
 
 using CairoMakie
 CairoMakie.activate!(type = "svg")
-set_theme!(Theme(fontsize=24))
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
                        size = (20, 20, 20),
@@ -207,12 +205,12 @@ using CairoMakie
 
 h = mountain_grid.immersed_boundary.bottom_height
 
-fig = Figure(size=(600, 600))
+fig = Figure()
 ax = Axis(fig[2, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
 hm = heatmap!(ax, h)
 Colorbar(fig[1, 1], hm, vertical=false, label="Bottom height (m)")
 
-current_figure()
+fig
 ```
 
 ## Once more with feeling
@@ -286,7 +284,7 @@ topology = (Flat, Flat, Bounded)          # one-dimensional and bounded in z (a 
 
 ### Specifying the size of the grid
 
-The `size` is a `Tuple` that specifes the number of grid points in each direction.
+The `size` is a `Tuple` that specifies the number of grid points in each direction.
 The number of tuple elements corresponds to the number of dimensions that are not `Flat`.
 
 #### The halo size
@@ -364,7 +362,6 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 using Oceananigans
 using CairoMakie
 CairoMakie.activate!(type = "svg")
-set_theme!(Theme(fontsize=24))
 
 Nx, Ny, Nz = 64, 64, 32
 Lx, Ly, Lz = 1e4, 1e4, 1e3
@@ -395,11 +392,11 @@ zf = znodes(grid, Face())
 
 using CairoMakie
 
-fig = Figure(size=(1200, 1200))
+fig = Figure(size=(1000, 1000))
 
 axy = Axis(fig[1, 1], title="y-grid")
 lines!(axy, [0, Ly], [0, 0], color=:gray)
-scatter!(axy, yf, 0 * yf, marker=:vline, color=:gray, markersize=20)
+scatter!(axy, yf, 0 * yf, marker=:vline, color=:gray, markersize=25)
 scatter!(axy, yc, 0 * yc)
 hidedecorations!(axy)
 hidespines!(axy)
@@ -410,7 +407,7 @@ hidespines!(axΔy, :t, :r)
 
 axz = Axis(fig[3, 1], title="z-grid")
 lines!(axz, [-Lz, 0], [0, 0], color=:gray)
-scatter!(axz, zf, 0 * zf, marker=:vline, color=:gray, markersize=20)
+scatter!(axz, zf, 0 * zf, marker=:vline, color=:gray, markersize=25)
 scatter!(axz, zc, 0 * zc)
 hidedecorations!(axz)
 hidespines!(axz)
@@ -422,7 +419,155 @@ hidespines!(axΔz, :t, :r)
 rowsize!(fig.layout, 1, Relative(0.1))
 rowsize!(fig.layout, 3, Relative(0.1))
 
-current_figure()
+fig
+```
+
+## Streched coordinates
+
+### Exponential spacing
+
+[`ExponentialCoordinate`](@ref) has interfaces that lie on an exponential profile.
+By that, we mean that a uniformly discretized domain in the range ``[l, r]`` is mapped back onto itself via either
+
+```math
+ξ \mapsto w(ξ) = r - (r - l) \frac{\exp{[(r - ξ) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(right biased)}
+```
+
+or
+
+```math
+ξ \mapsto w(ξ) = l + (r - l) \frac{\exp{[(ξ - l) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(left biased)}
+```
+
+The exponential mappings above have an e-folding controlled by scale ``h``.
+It worths noting that the exponential maps imply that the cell widths (distances between interfaces) grow linearly at a rate inversely proportional to ``h / (r - l)``.
+
+The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases the interfaces towards ``l``.
+
+At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the grid becomes uniformly spaced.
+
+```@example exponentialcoord
+using Oceananigans.Grids: rightbiased_exponential_mapping, leftbiased_exponential_mapping
+
+using CairoMakie
+
+l, r = 0, 1
+
+ξ  = range(l, stop=r, length=501)
+ξp = range(l, stop=r, length=6)   # coarser for plotting
+
+fig = Figure(size=(1200, 550))
+
+axis_labels = (xlabel="uniform coordinate ξ / (r-l)",
+               ylabel="mapped coordinate w / (r-l)")
+
+axl = Axis(fig[1, 1]; title="right-biased map", axis_labels...)
+axr = Axis(fig[1, 2]; title="left-biased map", axis_labels...)
+
+for scale in [1/20, 1/5, 1/2, 1e12]
+    label = "h / (r-l) = $scale"
+    lines!(axl, ξ, leftbiased_exponential_mapping.(ξ, l, r, scale); label)
+    scatter!(axl, ξp, leftbiased_exponential_mapping.(ξp, l, r, scale))
+
+    lines!(axr, ξ, rightbiased_exponential_mapping.(ξ, l, r, scale); label)
+    scatter!(axr, ξp, rightbiased_exponential_mapping.(ξp, l, r, scale))
+end
+
+Legend(fig[2, :], axl, orientation = :horizontal)
+
+fig
+```
+
+Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points towards the left or right side of the domain.
+
+
+Let's see to use [`ExponentialCoordinate`](@ref) works.
+
+```@example exponentialcoord
+using Oceananigans
+
+N = 10
+l = -700
+r = 300
+
+x = ExponentialCoordinate(N, l, r)
+```
+
+Note that above, the default e-folding scale (`scale = (r - l) / 5`) was used.
+
+We can inspect the interfaces of the coordinate via
+
+```@example exponentialcoord
+[x(i) for i in 1:N+1]
+```
+
+To demonstrate how the scale ``h`` affects the coordinate, we construct below two such exponential
+coordinates: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
+
+```@example exponentialcoord
+using Oceananigans
+
+N = 10
+l = -700
+r = 300
+extent = r - l
+
+using CairoMakie
+
+fig = Figure(size=(1000, 1000))
+
+scale = extent / 5
+x = ExponentialCoordinate(N, l, r; scale)
+grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
+
+xc = xnodes(grid, Center())
+xf = xnodes(grid, Face())
+Δx = xspacings(grid, Center())
+
+axx1 = Axis(fig[1, 1],  title = "scale = extent / 5")
+lines!(axx1, [l, r], [0, 0], color=:gray)
+scatter!(axx1, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
+scatter!(axx1, xc, 0 * xc)
+hidedecorations!(axx1)
+hidespines!(axx1)
+
+axΔx1 = Axis(fig[2, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
+lΔx = lines!(axΔx1, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
+scatter!(axΔx1, xc, Δx)
+hidespines!(axΔx1, :t, :r)
+
+
+scale = extent / 2
+x = ExponentialCoordinate(N, l, r; scale)
+grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
+
+xc = xnodes(grid, Center())
+xf = xnodes(grid, Face())
+Δx = xspacings(grid, Center())
+
+axx2 = Axis(fig[3, 1], title = "scale = extent / 2")
+lines!(axx2, [l, r], [0, 0], color=:gray)
+scatter!(axx2, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
+scatter!(axx2, xc, 0 * xc)
+hidedecorations!(axx2)
+hidespines!(axx2)
+
+axΔx2 = Axis(fig[4, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
+lΔx = lines!(axΔx2, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
+scatter!(axΔx2, xc, Δx)
+hidespines!(axΔx2, :t, :r)
+
+ylims!(axΔx1, -10, 450)
+ylims!(axΔx2, -10, 450)
+
+linkaxes!(axΔx1, axx1, axΔx2, axx2)
+
+rowsize!(fig.layout, 1, Relative(0.1))
+rowsize!(fig.layout, 3, Relative(0.1))
+
+legend = Legend(fig[5, :], [lΔx], ["slope = (extent / scale) / Nz"], orientation = :horizontal)
+
+fig
 ```
 
 ## Inspecting `LatitudeLongitudeGrid` cell spacings
@@ -441,11 +586,10 @@ grid = LatitudeLongitudeGrid(size = (1, 44),
 
 using CairoMakie
 
-fig = Figure(size=(600, 400))
+fig = Figure()
 ax = Axis(fig[1, 1], xlabel="Zonal spacing on 2 degree grid (km)", ylabel="Latitude (degrees)")
 scatter!(ax, Δx / 1e3)
-
-current_figure()
+fig
 ```
 
 ![](plot_lat_lon_spacings.svg)
@@ -538,7 +682,155 @@ hidespines!(axx, :t, :r)
 hidespines!(axy, :t, :l, :r)
 hideydecorations!(axy, grid=false)
 
-current_figure()
+fig
+```
+
+## Streched coordinates
+
+### Exponential spacing
+
+[`ExponentialCoordinate`](@ref) returns a coordinate with interfaces that lie on an exponential profile.
+By that, we mean that a uniformly discretized domain in the range ``[l, r]`` is mapped back onto itself via either
+
+```math
+ξ \mapsto w(ξ) = r - (r - l) \frac{\exp{[(r - ξ) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(right biased)}
+```
+
+or
+
+```math
+ξ \mapsto w(ξ) = l + (r - l) \frac{\exp{[(ξ - l) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(left biased)}
+```
+
+The exponential mappings above have an e-folding controlled by scale ``h``.
+It worths noting that the exponential maps imply that the cell widths (distances between interfaces) grow linearly at a rate inversely proportional to ``h / (r - l)``.
+
+The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases the interfaces towards ``l``.
+
+At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the grid becomes uniformly spaced.
+
+```@example exponentialcoord
+using Oceananigans.Grids: rightbiased_exponential_mapping, leftbiased_exponential_mapping
+
+using CairoMakie
+
+l, r = 0, 1
+
+ξ  = range(l, stop=r, length=501)
+ξp = range(l, stop=r, length=6)   # coarser for plotting
+
+fig = Figure(size=(1200, 550))
+
+axis_labels = (xlabel="uniform coordinate ξ / (r-l)",
+               ylabel="mapped coordinate w / (r-l)")
+
+axl = Axis(fig[1, 1]; title="right-biased map", axis_labels...)
+axr = Axis(fig[1, 2]; title="left-biased map", axis_labels...)
+
+for scale in [1/20, 1/5, 1/2, 1e12]
+    label = "h / (r-l) = $scale"
+    lines!(axl, ξ, leftbiased_exponential_mapping.(ξ, l, r, scale); label)
+    scatter!(axl, ξp, leftbiased_exponential_mapping.(ξp, l, r, scale))
+
+    lines!(axr, ξ, rightbiased_exponential_mapping.(ξ, l, r, scale); label)
+    scatter!(axr, ξp, rightbiased_exponential_mapping.(ξp, l, r, scale))
+end
+
+Legend(fig[2, :], axl, orientation = :horizontal)
+
+fig
+```
+
+Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points towards the left or right side of the domain.
+
+
+Let's see to use [`ExponentialCoordinate`](@ref) works.
+
+```@example exponentialcoord
+using Oceananigans
+
+N = 10
+l = -700
+r = 300
+
+x = ExponentialCoordinate(N, l, r)
+```
+
+Note that above, the default e-folding scale (`scale = (r - l) / 5`) was used.
+
+We can inspect the interfaces of the coordinate via
+
+```@example exponentialcoord
+[x(i) for i in 1:N+1]
+```
+
+To demonstrate how the scale ``h`` affects the coordinate, we construct below two such exponential
+coordinates: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
+
+```@example exponentialcoord
+using Oceananigans
+
+N = 10
+l = -700
+r = 300
+extent = r - l
+
+using CairoMakie
+
+fig = Figure(size=(1000, 1000))
+
+scale = extent / 5
+x = ExponentialCoordinate(N, l, r; scale)
+grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
+
+xc = xnodes(grid, Center())
+xf = xnodes(grid, Face())
+Δx = xspacings(grid, Center())
+
+axx1 = Axis(fig[1, 1],  title = "scale = extent / 5")
+lines!(axx1, [l, r], [0, 0], color=:gray)
+scatter!(axx1, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
+scatter!(axx1, xc, 0 * xc)
+hidedecorations!(axx1)
+hidespines!(axx1)
+
+axΔx1 = Axis(fig[2, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
+lΔx = lines!(axΔx1, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
+scatter!(axΔx1, xc, Δx)
+hidespines!(axΔx1, :t, :r)
+
+
+scale = extent / 2
+x = ExponentialCoordinate(N, l, r; scale)
+grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
+
+xc = xnodes(grid, Center())
+xf = xnodes(grid, Face())
+Δx = xspacings(grid, Center())
+
+axx2 = Axis(fig[3, 1], title = "scale = extent / 2")
+lines!(axx2, [l, r], [0, 0], color=:gray)
+scatter!(axx2, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
+scatter!(axx2, xc, 0 * xc)
+hidedecorations!(axx2)
+hidespines!(axx2)
+
+axΔx2 = Axis(fig[4, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
+lΔx = lines!(axΔx2, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
+scatter!(axΔx2, xc, Δx)
+hidespines!(axΔx2, :t, :r)
+
+ylims!(axΔx1, -10, 450)
+ylims!(axΔx2, -10, 450)
+
+linkaxes!(axΔx1, axx1, axΔx2, axx2)
+
+rowsize!(fig.layout, 1, Relative(0.1))
+rowsize!(fig.layout, 3, Relative(0.1))
+
+legend = Legend(fig[5, :], [lΔx], ["slope = (extent / scale) / Nz"], orientation = :horizontal)
+
+fig
 ```
 
 ## Single-precision `RectilinearGrid`
