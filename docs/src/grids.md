@@ -86,10 +86,10 @@ The shape of the physical domain determines what grid type should be used:
 
 !!! note "OrthogonalSphericalShellGrids"
     See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
-    for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
+    for recipes that implement some useful `OrthogonalSphericalShellGrid`s, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
-For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and also has 5 vertical levels down to 1000 meters, we write
+For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and has 5 vertical levels down to 1000 meters, we write
 
 ```jldoctest grids
 architecture = CPU()
@@ -111,15 +111,17 @@ The main difference between the syntax for `LatitudeLongitudeGrid` versus that f
 `LatitudeLongitudeGrid` has `longitude` and `latitude` where `RectilinearGrid` has `x` and `y`.
 
 !!! note "Extrinsic and intrinsic coordinate systems"
-    Every grid is associated with an "extrinsic" coordinate system: `RectilinearGrid` uses a Cartesian coordinate system,
-    while `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid` use the geographic coordinates
+    Every grid is associated with an "extrinsic" coordinate system: `RectilinearGrid` uses a Cartesian coordinate
+    system `(x, y, z)`, while `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid` use the geographic coordinates
     `(λ, φ, z)`, where `λ` is longitude, `φ` is latitude, and `z` is height.
     Additionally, `OrthogonalSphericalShellGrid` has an "intrinsic" coordinate system associated with the orientation
     of its finite volumes (which, in general, are not aligned with geographic coordinates).
+
     To type `λ` or `φ` at the REPL, write either `\lambda` (for `λ`) or `\varphi` (for `φ`) and then press `<TAB>`.
 
-If `topology` is not provided for `LatitudeLongitudeGrid`, then we try to infer it: if the `longitude` spans 360 degrees,
+If `topology` is not provided for `LatitudeLongitudeGrid`, then Oceananigans tries infer it: if the `longitude` spans 360 degrees,
 the default `x`-topology is `Periodic`; if `longitude` spans less than 360 degrees `x`-topology is `Bounded`.
+
 For example,
 
 ```jldoctest grids
@@ -138,20 +140,22 @@ grid = LatitudeLongitudeGrid(size = (60, 10, 5),
 is `Bounded` by default, because `longitude = (0, 60)`.
 
 !!! note "LatitudeLongitudeGrid topologies"
-    It's still possible to use `topology = (Periodic, Bounded, Bounded)` if `longitude` doesn't have 360 degrees.
+    It's still possible to use `topology = (Periodic, Bounded, Bounded)` even if `longitude` doesn't span 360 degrees.
     But neither `latitude` nor `z` may be `Periodic` with `LatitudeLongitudeGrid`.
 
 ### Bathymetry, topography, and other irregularities
 
 Irregular or "complex" domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the
-above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
+above underlying grids with a type of immersed boundary. The immersed boundaries currently supported are:
 
-1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part of the domain is above the bottom height.
-2. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
+1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part
+   of the domain is above the bottom height.
+1. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref),
+   except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
 3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
-
-To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary into that underlying grid.
+To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary
+into that underlying grid.
 
 ```jldoctest grids
 using Oceananigans.Units
