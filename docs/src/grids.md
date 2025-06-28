@@ -600,8 +600,7 @@ fig
 
 Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points towards the left or right side of the domain.
 
-
-Let's see to use [`ExponentialCoordinate`](@ref) works.
+Let's see how we use [`ExponentialCoordinate`](@ref). Below we construct a coordinate with 10 cells that spans the range [-700, 300]. By default, the `ExponentialCoordinate` is right-biased.
 
 ```@example exponentialcoord
 using Oceananigans
@@ -620,6 +619,8 @@ We can inspect the interfaces of the coordinate via
 ```@example exponentialcoord
 [x(i) for i in 1:N+1]
 ```
+
+Being right-biased, note above how the interfaces are closer together near ``r``.
 
 To demonstrate how the scale ``h`` affects the coordinate, we construct below two such exponential
 coordinates: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
