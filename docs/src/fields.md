@@ -160,8 +160,8 @@ The centers of the `u` cells are shifted to the left relative to the `c` cells:
 nothing
 
 # output
-xnodes(c) = [0.125, 0.375, 0.625, 0.875]
-xnodes(u) = [0.0, 0.25, 0.5, 0.75]
+collect(xnodes(c)) = [0.125, 0.375, 0.625, 0.875]
+collect(xnodes(u)) = [0.0, 0.25, 0.5, 0.75]
 ```
 
 Notice that the first `u`-node is at `x=0`, the left end of the grid, but the last `u`-node is at `x=0.75`.
@@ -179,8 +179,8 @@ w = Field{Center, Center, Face}(grid)
 nothing
 
 # output
-znodes(c) = [0.05, 0.2, 0.44999999999999996, 0.8]
-znodes(w) = [0.0, 0.1, 0.3, 0.6, 1.0]
+collect(znodes(c)) = [0.05, 0.2, 0.44999999999999996, 0.8]
+collect(znodes(w)) = [0.0, 0.1, 0.3, 0.6, 1.0]
 ```
 
 `Field`s at `Center, Center, Face` are also called `ZFaceField`,
@@ -326,7 +326,7 @@ heatmap(view(c, :, :, 1))
 For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for
 `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
 But for `Field`s on one- and two-dimensional grids, only the arguments that correspond to the
-non-`Flat` directions must be included. 
+non-`Flat` directions must be included.
 For example, to `set!` on a one-dimensional grid we write
 
 ```jldoctest fields
@@ -348,8 +348,8 @@ set!(one_d_c, still_pretty_fun)
 ```
 
 !!! note
-    `Field` data is always stored in three-dimensional arrays --- even when they have `Nothing` locations, 
-    or on grids with `Flat` directions. As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat` 
+    `Field` data is always stored in three-dimensional arrays --- even when they have `Nothing` locations,
+    or on grids with `Flat` directions. As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat`
     directions indexed with `1`.
 
 ### A bit more about setting with functions
@@ -363,7 +363,7 @@ xc = xnodes(c)
 nothing # hide
 
 # output
-xc = [0.125, 0.375, 0.625, 0.875]
+collect(xc) = [0.125, 0.375, 0.625, 0.875]
 ```
 
 To `set!` the values of `c` we evaluate `fun_stuff` at `c`'s nodes, producing
