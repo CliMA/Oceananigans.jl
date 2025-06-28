@@ -638,7 +638,6 @@ fig = Figure(size=(1000, 1000))
 scale = extent / 5
 x = ExponentialCoordinate(N, l, r; scale)
 grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
-
 xc = xnodes(grid, Center())
 xf = xnodes(grid, Face())
 Δx = xspacings(grid, Center())
@@ -647,19 +646,14 @@ axx1 = Axis(fig[1, 1],  title = "scale = extent / 5")
 lines!(axx1, [l, r], [0, 0], color=:gray)
 scatter!(axx1, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
 scatter!(axx1, xc, 0 * xc)
-hidedecorations!(axx1)
-hidespines!(axx1)
-
 axΔx1 = Axis(fig[2, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
 lΔx = lines!(axΔx1, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
 scatter!(axΔx1, xc, Δx)
-hidespines!(axΔx1, :t, :r)
 
 
 scale = extent / 2
 x = ExponentialCoordinate(N, l, r; scale)
 grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
-
 xc = xnodes(grid, Center())
 xf = xnodes(grid, Face())
 Δx = xspacings(grid, Center())
@@ -668,24 +662,25 @@ axx2 = Axis(fig[3, 1], title = "scale = extent / 2")
 lines!(axx2, [l, r], [0, 0], color=:gray)
 scatter!(axx2, xf, 0 * xf, marker=:vline, color=:gray, markersize=25)
 scatter!(axx2, xc, 0 * xc)
-hidedecorations!(axx2)
-hidespines!(axx2)
-
 axΔx2 = Axis(fig[4, 1]; xlabel = "x (m)", ylabel = "x-spacing (m)")
 lΔx = lines!(axΔx2, xf, Δx[1] .+ (xc[1] .- xf) * (extent / scale) / N, color=(:purple, 0.3), linewidth=4)
 scatter!(axΔx2, xc, Δx)
-hidespines!(axΔx2, :t, :r)
 
-ylims!(axΔx1, -10, 450)
-ylims!(axΔx2, -10, 450)
-
-linkaxes!(axΔx1, axx1, axΔx2, axx2)
-
-rowsize!(fig.layout, 1, Relative(0.1))
-rowsize!(fig.layout, 3, Relative(0.1))
 
 legend = Legend(fig[5, :], [lΔx], ["slope = (extent / scale) / Nz"], orientation = :horizontal)
 
+for ax in (axx1, axx2)
+    hidedecorations!(ax)
+    hidespines!(ax)
+end
+
+for ax in (axΔx1, axΔx2)
+    ylims!(ax, -10, 450)
+    hidespines!(ax, :t, :r)
+end
+
+rowsize!(fig.layout, 1, Relative(0.1))
+rowsize!(fig.layout, 3, Relative(0.1))
 fig
 ```
 
