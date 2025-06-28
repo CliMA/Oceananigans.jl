@@ -299,6 +299,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
     coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
     grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
+    conformal_mapping = on_architecture(arch, grid.conformal_mapping)
 
     TX, TY, TZ = topology(grid)
 
@@ -310,7 +311,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                                                         grid_spacing_data...,
                                                         horizontal_area_data...,
                                                         grid.radius,
-                                                        grid.conformal_mapping)
+                                                        conformal_mapping)
 
     return new_grid
 end
