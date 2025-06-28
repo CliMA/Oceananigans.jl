@@ -100,11 +100,6 @@ const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
-@inline cpu_face_constructor_ξ(grid::OrthogonalSphericalShellGrid) = (grid.conformal_mapping.ξᶠᵃᵃ[1],
-                                                                      grid.conformal_mapping.ξᶠᵃᵃ[size(grid, 1)+1])
-@inline cpu_face_constructor_η(grid::OrthogonalSphericalShellGrid) = (grid.conformal_mapping.ηᵃᶠᵃ[1],
-                                                                      grid.conformal_mapping.ηᵃᶠᵃ[size(grid, 2)+1])
-
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                               λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
@@ -304,6 +299,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
     coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
     grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
+    conformal_mapping = on_architecture(arch, grid.conformal_mapping)
 
     TX, TY, TZ = topology(grid)
 
@@ -315,7 +311,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                                                         grid_spacing_data...,
                                                         horizontal_area_data...,
                                                         grid.radius,
-                                                        grid.conformal_mapping)
+                                                        conformal_mapping)
 
     return new_grid
 end
@@ -545,26 +541,34 @@ function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     return (λ, φ, z)
 end
 
-@inline λnodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
-    view(grid.λᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline λnodes(grid::OSSG, ℓx::Face,   ℓy::Center; with_halos=false) = with_halos ? grid.λᶠᶜᵃ :
-    view(grid.λᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline λnodes(grid::OSSG, ℓx::Center, ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶜᶠᵃ :
-    view(grid.λᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline λnodes(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.λᶜᶜᵃ :
-    view(grid.λᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline λnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false) =
+    _property(grid.λᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
 
-@inline φnodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.φᶠᶠᵃ :
-    view(grid.φᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline φnodes(grid::OSSG, ℓx::Face,   ℓy::Center; with_halos=false) = with_halos ? grid.φᶠᶜᵃ :
-    view(grid.φᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline φnodes(grid::OSSG, ℓx::Center, ℓy::Face, ; with_halos=false) = with_halos ? grid.φᶜᶠᵃ :
-    view(grid.φᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline φnodes(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.φᶜᶜᵃ :
-    view(grid.φᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline λnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false) =
+    _property(grid.λᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
 
-@inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos=with_halos)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos=with_halos))
-@inline ynodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos=with_halos))
+@inline λnodes(grid::OSSG, ℓx::C, ℓy::F; with_halos=false) =
+    _property(grid.λᶜᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+
+@inline λnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false) =
+    _property(grid.λᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+
+@inline φnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false) =
+    _property(grid.φᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+
+@inline φnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false) =
+    _property(grid.φᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+
+@inline φnodes(grid::OSSG, ℓx::C, ℓy::F, ; with_halos=false) =
+    _property(grid.φᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+
+@inline φnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false) =
+    _property(grid.φᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+
+@inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false) =
+    grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos))
+
+@inline ynodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos))
 
 # convenience
 @inline λnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx, ℓy; with_halos)
