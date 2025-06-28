@@ -1,6 +1,6 @@
 module LagrangianParticleTracking
 
-export LagrangianParticles
+export LagrangianParticles, DroguedParticleDynamics
 
 using Printf
 using Adapt
@@ -129,6 +129,7 @@ end
 
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
+include("drogued_dynamics.jl")
 
 step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
