@@ -1,8 +1,10 @@
 using Oceananigans.Fields: compute_at!
+using Oceananigans.OutputWriters: _saveproperty!
 
 import Oceananigans.OutputWriters: fetch_output,
                                    convert_output,
                                    construct_output,
+                                   saveproperty!,
                                    serializeproperty!
 
 # This is working just fine at the moment?
@@ -23,6 +25,8 @@ function construct_output(mrf::MultiRegionField, grid, user_indices, with_halos)
 
     return construct_output(mrf, indices)
 end
+
+saveproperty!(file, address, p::Union{MultiRegionObject, MultiRegionField}) = _saveproperty!(file, address, p)
 
 function serializeproperty!(file, location, mrf::MultiRegionField{LX, LY, LZ}) where {LX, LY, LZ}
     p = reconstruct_global_field(mrf)
