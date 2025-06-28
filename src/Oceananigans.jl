@@ -12,7 +12,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
-    ExponentialInterfaces,
+    ExponentialCoordinate,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
