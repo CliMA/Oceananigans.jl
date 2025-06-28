@@ -89,20 +89,20 @@ function (coord::ExponentialCoordinate)(i)
     N, left, right, scale = coord.size, coord.left, coord.right, coord.scale
 
     # uniform coordinate
-    ξₖ = left + (i-1) * (right - left) / N
+    ξᵢ = left + (i-1) * (right - left) / N
 
     # mapped coordinate
     if coord.bias === :right
-       xₖ = rightbiased_exponential_mapping(ξₖ, left, right, scale)
+       xᵢ = rightbiased_exponential_mapping(ξᵢ, left, right, scale)
     elseif coord.bias === :left
-       xₖ = leftbiased_exponential_mapping(ξₖ, left, right, scale)
+       xᵢ = leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
-    if abs(xₖ - left) < 10eps(Float32)
-        xₖ = left
-    elseif abs(xₖ - right) < 10eps(Float32)
-        xₖ = right
+    if abs(xᵢ - left) < 10eps(Float32)
+        xᵢ = left
+    elseif abs(xᵢ - right) < 10eps(Float32)
+        xᵢ = right
     end
 
-    return xₖ
+    return xᵢ
 end
