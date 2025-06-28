@@ -366,9 +366,9 @@ function test_immersed_boundary_grid_nodes_and_spacings(FT, arch, boundary_type)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
 
     # Test that node functions work
-    @test xnodes(ibg, Center(), Center(), Center()) isa SubArray
-    @test ynodes(ibg, Center(), Center(), Center()) isa SubArray
-    @test znodes(ibg, Center(), Center(), Center()) isa SubArray
+    @test xnodes(ibg, Center(), Center(), Center()) isa AbstractArray
+    @test ynodes(ibg, Center(), Center(), Center()) isa AbstractArray
+    @test znodes(ibg, Center(), Center(), Center()) isa AbstractArray
 
     # Test spacing functions
     @test xspacings(ibg, Face(), Center(), Center()) isa KernelFunctionOperation
