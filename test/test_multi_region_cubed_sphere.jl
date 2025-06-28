@@ -819,6 +819,13 @@ end
                 
                 @test iteration(simulation) == 3
                 @test time(simulation) == 3minutes
+
+                run!(simulation, pickup = true)
+
+                u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
+                v_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "v"; architecture = CPU())
+                η_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "η"; architecture = CPU())
+                b_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "b"; architecture = CPU())
             end
         end
     end
