@@ -1,5 +1,5 @@
 using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node
+using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node, FixedTime
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
 using Adapt
@@ -133,6 +133,7 @@ function getindex(fts::OnDiskFTS, n::Int)
     return Field(loc, fts.grid;
                  indices = fts.indices,
                  boundary_conditions = fts.boundary_conditions,
+                 status = FixedTime(fts.times[n]),
                  data = field_data)
 end
 
@@ -191,9 +192,14 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
     update_field_time_series!(fts, n₁, n₂)
 
+    t₂ = fts.times[n₂]
+    t₁ = fts.times[n₁]
+    t = t₂ * ñ + t₁ * (1 - ñ)
+    status = FixedTime(t)
+    
     ψ₂ = fts[n₂]
     ψ₁ = fts[n₁]
-    ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
+    ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ); status)
 
     # Compute the field and return it
     return compute!(ψ̃)
@@ -360,6 +366,7 @@ function getindex(fts::InMemoryFTS, n::Int)
     m = memory_index(fts, n)
     @apply_regionally underlying_data = view(parent(fts), :, :, :, m)
     @apply_regionally data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+    status = FixedTime(fts.times[n])
 
-    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
+    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices, status)
 end
