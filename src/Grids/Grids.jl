@@ -11,6 +11,7 @@ export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
 export MutableVerticalDiscretization
+export ExponentialInterfaces
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
@@ -23,9 +24,9 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
+using Adapt
 using CUDA
 using CUDA: has_cuda
-using Adapt
 using OffsetArrays
 using Printf
 
@@ -128,6 +129,7 @@ include("inactive_node.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
+include("stretched_coordinates.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
