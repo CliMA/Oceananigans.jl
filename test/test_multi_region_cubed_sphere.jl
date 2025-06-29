@@ -779,6 +779,11 @@ end
 end
 
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
+    for f in readdir(".")
+        if occursin(r"^cubed_sphere_(output|checkpointer)_.*\.jld2$", f)
+            rm(f; force=true)
+        end
+    end
     for FT in float_types
         for arch in archs
             Nx, Ny, Nz = 18, 18, 9
@@ -793,8 +798,10 @@ end
             for grid in grids
                 if grid == underlying_grid
                     @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    suffix = "UG"
                 else
                     @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    suffix = "IG"
                 end
 
                 model = HydrostaticFreeSurfaceModel(; grid,
@@ -810,14 +817,14 @@ end
                 save_fields_interval = 2minute
                 checkpointer_interval = 4minutes
 
-                filename_checkpointer = "cubed_sphere_checkpointer"
+                filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
                 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                                         schedule = TimeInterval(checkpointer_interval),
                                                                         prefix = filename_checkpointer,
                                                                         overwrite_existing = true)
 
                 outputs = fields(model)
-                filename_output_writer = "cubed_sphere_output"
+                filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                 schedule = TimeInterval(save_fields_interval),
                                                                 filename = filename_output_writer,
@@ -852,8 +859,8 @@ end
 
                 run!(simulation, pickup = true)
 
-                @test iteration(simulation) == 21
-                @test time(simulation) == 21minutes
+                @test iteration(simulation) == 20
+                @test time(simulation) == 20minutes
 
                 u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
             end
