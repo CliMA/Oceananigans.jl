@@ -805,9 +805,16 @@ end
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer())
                 
-                simulation = Simulation(model, Δt=1minute, stop_iteration=3)
+                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
-                save_fields_interval = 1minute
+                save_fields_interval = 2minute
+                checkpointer_interval = 4minutes
+
+                filename_checkpointer = "cubed_sphere_checkpointer"
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
                 outputs = fields(model)
                 filename_output_writer = "cubed_sphere_output"
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
@@ -820,12 +827,11 @@ end
                 @test iteration(simulation) == 3
                 @test time(simulation) == 3minutes
 
+                u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
+
                 run!(simulation, pickup = true)
 
                 u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
-                v_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "v"; architecture = CPU())
-                η_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "η"; architecture = CPU())
-                b_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "b"; architecture = CPU())
             end
         end
     end
