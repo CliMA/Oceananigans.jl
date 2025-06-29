@@ -815,6 +815,7 @@ end
                                                                         schedule = TimeInterval(checkpointer_interval),
                                                                         prefix = filename_checkpointer,
                                                                         overwrite_existing = true)
+
                 outputs = fields(model)
                 filename_output_writer = "cubed_sphere_output"
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
@@ -822,14 +823,31 @@ end
                                                                 filename = filename_output_writer,
                                                                 verbose = false,
                                                                 overwrite_existing = true)
+
                 run!(simulation)
-                
-                @test iteration(simulation) == 3
-                @test time(simulation) == 3minutes
+
+                @test iteration(simulation) == 10
+                @test time(simulation) == 10minutes
 
                 u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
 
+                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
+
                 run!(simulation, pickup = true)
+
+                @test iteration(simulation) == 20
+                @test time(simulation) == 20minutes
 
                 u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
             end
