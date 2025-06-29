@@ -831,7 +831,7 @@ end
                 @test iteration(simulation) == 10
                 @test time(simulation) == 10minutes
 
-                u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
 
                 if grid == underlying_grid
                     @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
@@ -857,7 +857,7 @@ end
                 @test iteration(simulation) == 20
                 @test time(simulation) == 20minutes
 
-                u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
 
                 rm(filename_checkpointer * ".jld2")
                 rm(filename_output_writer * ".jld2")
