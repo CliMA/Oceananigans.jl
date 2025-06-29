@@ -831,6 +831,12 @@ end
 
                 u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
 
+                if grid == underlying_grid
+                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                else
+                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                end
+
                 simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
 
                 simulation.output_writers[:checkpointer] = Checkpointer(model,
