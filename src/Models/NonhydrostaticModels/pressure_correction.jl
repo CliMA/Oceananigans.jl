@@ -98,11 +98,11 @@ function correct_boundary_mass_flux!(model::NonhydrostaticModel)
     # Add extra flux to right boundaries to increase outflow
     for bc in right_bcs
         if bc == :east
-            velocities.u[size(grid, 1) + 1, :, :] = velocities.u[size(grid, 1) + 1, :, :] .+ extra_flux_per_boundary
+            velocities.u[grid.Nx + 1, :, :] = velocities.u[grid.Nx + 1, :, :] .+ extra_flux_per_boundary
         elseif bc == :north
-            velocities.v[:, size(grid, 2) + 1, :] = velocities.v[:, size(grid, 2) + 1, :] .+ extra_flux_per_boundary
+            velocities.v[:, grid.Ny + 1, :] = velocities.v[:, grid.Ny + 1, :] .+ extra_flux_per_boundary
         elseif bc == :top
-            velocities.w[:, :, size(grid, 3) + 1] = velocities.w[:, :, size(grid, 3) + 1] .+ extra_flux_per_boundary
+            velocities.w[:, :, grid.Nz + 1] = velocities.w[:, :, grid.Nz + 1] .+ extra_flux_per_boundary
         end
     end
 end
