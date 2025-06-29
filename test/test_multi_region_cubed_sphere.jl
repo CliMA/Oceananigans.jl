@@ -852,8 +852,8 @@ end
 
                 run!(simulation, pickup = true)
 
-                @test iteration(simulation) == 20
-                @test time(simulation) == 20minutes
+                @test iteration(simulation) == 21
+                @test time(simulation) == 21minutes
 
                 u_timeseries = FieldTimeSeries("cubed_sphere_output.jld2", "u"; architecture = CPU())
             end
