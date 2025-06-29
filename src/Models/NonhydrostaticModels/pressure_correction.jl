@@ -5,8 +5,6 @@ using Oceananigans.BoundaryConditions: PerturbationAdvection, PerturbationAdvect
 using Oceananigans.ImmersedBoundaries: immersed_inactive_node
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
-const c = Center()
-const f = Face()
 
 # Left boundary averages for normal velocity components
 west_average(u)   = Field(Average(view(u, 1, :, :), dims=(2, 3)))[]
@@ -69,8 +67,6 @@ function gather_boundary_fluxes(model::NonhydrostaticModel)
 
     return total_flux, left_bcs, right_bcs
 end
-
-
 
 
 """
