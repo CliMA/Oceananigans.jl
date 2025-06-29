@@ -174,7 +174,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries
     model = NonhydrostaticModel(grid = grid,
                                 boundary_conditions = (u = u_boundaries,),
                                 pressure_solver = cg_solver,
-                                advection = WENO(; grid, order=5))
+                                advection = WENO(order=5))
 
     @test model.pressure_solver isa ConjugateGradientPoissonSolver
 
@@ -278,4 +278,3 @@ end
         end
     end
 end
-
