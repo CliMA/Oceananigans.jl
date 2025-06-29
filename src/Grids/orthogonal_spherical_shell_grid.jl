@@ -100,9 +100,6 @@ const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
-@inline cpu_face_constructor_ξ(grid::OrthogonalSphericalShellGrid) = Array(grid.conformal_mapping.ξᶠᵃᵃ[1:size(grid, 1)+1])
-@inline cpu_face_constructor_η(grid::OrthogonalSphericalShellGrid) = Array(grid.conformal_mapping.ηᵃᶠᵃ[1:size(grid, 2)+1])
-
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                               λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
@@ -302,6 +299,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
     coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
     grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
+    conformal_mapping = on_architecture(arch, grid.conformal_mapping)
 
     TX, TY, TZ = topology(grid)
 
@@ -313,7 +311,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                                                         grid_spacing_data...,
                                                         horizontal_area_data...,
                                                         grid.radius,
-                                                        grid.conformal_mapping)
+                                                        conformal_mapping)
 
     return new_grid
 end
