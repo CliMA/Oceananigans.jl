@@ -86,28 +86,27 @@ function correct_boundary_mass_flux!(model::NonhydrostaticModel)
     total_flux, left_bcs, right_bcs = gather_boundary_fluxes(model)
 
     # Calculate flux correction per boundary
-    flux_correction_per_boundary = -total_flux / (length(left_bcs) + length(right_bcs))
+    extra_flux_per_boundary = total_flux / (length(left_bcs) + length(right_bcs))
 
-    # Subtract correction from left boundaries to reduce inflow
-
+    # Subtract extra flux from left boundaries to reduce inflow
     for bc in left_bcs
         if bc == :west
-            velocities.u[1, :, :] = velocities.u[1, :, :] .- flux_correction_per_boundary
+            velocities.u[1, :, :] = velocities.u[1, :, :] .- extra_flux_per_boundary
         elseif bc == :south  
-            velocities.v[:, 1, :] = velocities.v[:, 1, :] .- flux_correction_per_boundary
+            velocities.v[:, 1, :] = velocities.v[:, 1, :] .- extra_flux_per_boundary
         elseif bc == :bottom
-            velocities.w[:, :, 1] = velocities.w[:, :, 1] .- flux_correction_per_boundary
+            velocities.w[:, :, 1] = velocities.w[:, :, 1] .- extra_flux_per_boundary
         end
     end
 
-    # Add correction to right boundaries to increase outflow
+    # Add extra flux to right boundaries to increase outflow
     for bc in right_bcs
         if bc == :east
-            velocities.u[size(grid, 1) + 1, :, :] = velocities.u[size(grid, 1) + 1, :, :] .+ flux_correction_per_boundary
+            velocities.u[size(grid, 1) + 1, :, :] = velocities.u[size(grid, 1) + 1, :, :] .+ extra_flux_per_boundary
         elseif bc == :north
-            velocities.v[:, size(grid, 2) + 1, :] = velocities.v[:, size(grid, 2) + 1, :] .+ flux_correction_per_boundary
+            velocities.v[:, size(grid, 2) + 1, :] = velocities.v[:, size(grid, 2) + 1, :] .+ extra_flux_per_boundary
         elseif bc == :top
-            velocities.w[:, :, size(grid, 3) + 1] = velocities.w[:, :, size(grid, 3) + 1] .+ flux_correction_per_boundary
+            velocities.w[:, :, size(grid, 3) + 1] = velocities.w[:, :, size(grid, 3) + 1] .+ extra_flux_per_boundary
         end
     end
 end
