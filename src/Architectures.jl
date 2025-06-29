@@ -76,6 +76,7 @@ architecture(::Array) = CPU()
 architecture(::CuArray) = CUDAGPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
+architecture(a::Base.ReshapedArray) = architecture(parent(a))
 
 """
     child_architecture(arch)
@@ -152,4 +153,3 @@ function arch_array(arch, arr)
 end
 
 end # module
-
