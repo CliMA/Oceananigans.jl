@@ -779,6 +779,11 @@ end
 end
 
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
+    for f in readdir(".")
+        if occursin(r"^cubed_sphere_(output|checkpointer)_.*\.jld2$", f)
+            rm(f; force=true)
+        end
+    end
     for FT in float_types
         for arch in archs
             Nx, Ny, Nz = 18, 18, 9
@@ -858,9 +863,6 @@ end
                 @test time(simulation) == 20minutes
 
                 u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
-
-                rm(filename_checkpointer * ".jld2")
-                rm(filename_output_writer * ".jld2")
             end
         end
     end
