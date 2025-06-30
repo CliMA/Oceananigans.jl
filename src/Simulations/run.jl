@@ -221,7 +221,7 @@ function initialize!(sim::Simulation)
         initialize!(activity.schedule, sim.model)
     end
 
-    for callback in sim.callbacks
+    for callback in values(sim.callbacks)
         initialize!(callback, sim)
     end
 
