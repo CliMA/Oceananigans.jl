@@ -1,10 +1,11 @@
 import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: Field
-using Oceananigans.BoundaryConditions: PerturbationAdvection, PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.BoundaryConditions: PerturbationAdvection, FlatExtrapolation
 using Oceananigans.ImmersedBoundaries: immersed_inactive_node
 
-const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
+const MatchingScheme = Union{FlatExtrapolation, PerturbationAdvection}
+const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundaryCondition
 
 # Left boundary averages for normal velocity components
 west_average(u)   = Field(Average(view(u, 1, :, :), dims=(2, 3)))[]
@@ -26,7 +27,7 @@ function gather_boundary_fluxes(model::NonhydrostaticModel)
     v_bcs = velocities.v.boundary_conditions
     w_bcs = velocities.w.boundary_conditions
 
-    # Collect left and right PAOBC boundary conditions into separate lists
+    # Collect left and right ROBC boundary conditions into separate lists
     left_bcs = Symbol[]
     right_bcs = Symbol[]
 
@@ -35,29 +36,29 @@ function gather_boundary_fluxes(model::NonhydrostaticModel)
     right_flux = zero(grid)
 
     # Calculate flux through left boundaries
-    if u_bcs.west isa PAOBC
+    if u_bcs.west isa ROBC
         left_flux += west_average(velocities.u)
         push!(left_bcs, :west)
     end
-    if v_bcs.south isa PAOBC
+    if v_bcs.south isa ROBC
         left_flux += south_average(velocities.v)
         push!(left_bcs, :south)
     end
-    if w_bcs.bottom isa PAOBC
+    if w_bcs.bottom isa ROBC
         left_flux += bottom_average(velocities.w)
         push!(left_bcs, :bottom)
     end
 
     # Calculate flux through right boundaries
-    if u_bcs.east isa PAOBC
+    if u_bcs.east isa ROBC
         right_flux += east_average(velocities.u)
         push!(right_bcs, :east)
     end
-    if v_bcs.north isa PAOBC
+    if v_bcs.north isa ROBC
         right_flux += north_average(velocities.v)
         push!(right_bcs, :north)
     end
-    if w_bcs.top isa PAOBC
+    if w_bcs.top isa ROBC
         right_flux += top_average(velocities.w)
         push!(right_bcs, :top)
     end
