@@ -90,10 +90,10 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-     ξᶠᵃᵃ = Array(xnodes(ξη_grid, Face()))
-     ξᶜᵃᵃ = Array(xnodes(ξη_grid, Center()))
-     ηᵃᶠᵃ = Array(ynodes(ξη_grid, Face()))
-     ηᵃᶜᵃ = Array(ynodes(ξη_grid, Center()))
+     ξᶠᵃᵃ = xnodes(ξη_grid, Face())
+     ξᶜᵃᵃ = xnodes(ξη_grid, Center())
+     ηᵃᶠᵃ = ynodes(ξη_grid, Face())
+     ηᵃᶜᵃ = ynodes(ξη_grid, Center())
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
      λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topology, N, H)
@@ -299,10 +299,10 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
             ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
             ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
         else
-            ξᶠᵃᵃ = Array(xnodes(ξη_grid, Face()))
-            ξᶜᵃᵃ = Array(xnodes(ξη_grid, Center()))
-            ηᵃᶠᵃ = Array(ynodes(ξη_grid, Face()))
-            ηᵃᶜᵃ = Array(ynodes(ξη_grid, Center()))
+            ξᶠᵃᵃ = xnodes(ξη_grid, Face())
+            ξᶜᵃᵃ = xnodes(ξη_grid, Center())
+            ηᵃᶠᵃ = ynodes(ξη_grid, Face())
+            ηᵃᶜᵃ = ynodes(ξη_grid, Center())
         end
     end
 
