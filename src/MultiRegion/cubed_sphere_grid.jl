@@ -471,8 +471,8 @@ function with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <
                                 active_z_columns)
 end
 
-function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz)
-    @apply_regionally immersed_nodes = nodes(iccsg.underlying_grid, ℓx, ℓy, ℓz)
+function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+    @apply_regionally immersed_nodes = nodes(iccsg.underlying_grid, ℓx, ℓy, ℓz; reshape, with_halos)
     return immersed_nodes
 end
 
