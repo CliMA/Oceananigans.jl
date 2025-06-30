@@ -117,6 +117,9 @@ struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
+const F = Face
+const C = Center
+
 include("abstract_grid.jl")
 include("vertical_discretization.jl")
 include("grid_utils.jl")
