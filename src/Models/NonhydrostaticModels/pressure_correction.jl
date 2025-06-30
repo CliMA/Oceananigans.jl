@@ -5,6 +5,8 @@ using Oceananigans.BoundaryConditions: PerturbationAdvection, FlatExtrapolation
 using Oceananigans.ImmersedBoundaries: immersed_inactive_node
 
 const MatchingScheme = Union{FlatExtrapolation, PerturbationAdvection}
+const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition (with no matching scheme)
+const FOBC = BoundaryCondition{<:Open{<:Nothing}} # "Fixed-velocity" OpenBoundaryCondition (with no matching scheme)
 const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundaryCondition
 
 # Left boundary averages for normal velocity components
@@ -28,45 +30,45 @@ function gather_boundary_fluxes(model::NonhydrostaticModel)
     w_bcs = velocities.w.boundary_conditions
 
     # Collect left and right ROBC boundary conditions into separate lists
-    left_bcs = Symbol[]
-    right_bcs = Symbol[]
+    left_ROBCs = Symbol[]
+    right_ROBCs = Symbol[]
 
     # Initialize fluxes to zero
     left_flux = zero(grid)
     right_flux = zero(grid)
 
     # Calculate flux through left boundaries
-    if u_bcs.west isa ROBC
+    if u_bcs.west isa OBC
         left_flux += west_average(velocities.u)
-        push!(left_bcs, :west)
+        u_bcs.west isa ROBC && push!(left_ROBCs, :west)
     end
-    if v_bcs.south isa ROBC
+    if v_bcs.south isa OBC
         left_flux += south_average(velocities.v)
-        push!(left_bcs, :south)
+        v_bcs.south isa ROBC && push!(left_ROBCs, :south)
     end
-    if w_bcs.bottom isa ROBC
+    if w_bcs.bottom isa OBC
         left_flux += bottom_average(velocities.w)
-        push!(left_bcs, :bottom)
+        w_bcs.bottom isa ROBC && push!(left_ROBCs, :bottom)
     end
 
     # Calculate flux through right boundaries
-    if u_bcs.east isa ROBC
+    if u_bcs.east isa OBC
         right_flux += east_average(velocities.u)
-        push!(right_bcs, :east)
+        u_bcs.east isa ROBC && push!(right_ROBCs, :east)
     end
-    if v_bcs.north isa ROBC
+    if v_bcs.north isa OBC
         right_flux += north_average(velocities.v)
-        push!(right_bcs, :north)
+        v_bcs.north isa ROBC && push!(right_ROBCs, :north)
     end
-    if w_bcs.top isa ROBC
+    if w_bcs.top isa OBC
         right_flux += top_average(velocities.w)
-        push!(right_bcs, :top)
+        w_bcs.top isa ROBC && push!(right_ROBCs, :top)
     end
 
     # Calculate total flux (positive means net inflow)
     total_flux = left_flux - right_flux
 
-    return total_flux, left_bcs, right_bcs
+    return total_flux, left_ROBCs, right_ROBCs
 end
 
 
@@ -80,13 +82,13 @@ function correct_boundary_mass_flux!(model::NonhydrostaticModel)
     velocities = model.velocities
     grid = model.grid
 
-    total_flux, left_bcs, right_bcs = gather_boundary_fluxes(model)
+    total_flux, left_ROBCs, right_ROBCs = gather_boundary_fluxes(model)
 
     # Calculate flux correction per boundary
-    extra_flux_per_boundary = total_flux / (length(left_bcs) + length(right_bcs))
+    extra_flux_per_boundary = total_flux / (length(left_ROBCs) + length(right_ROBCs))
 
     # Subtract extra flux from left boundaries to reduce inflow
-    for bc in left_bcs
+    for bc in left_ROBCs
         if bc == :west
             velocities.u[1, :, :] = velocities.u[1, :, :] .- extra_flux_per_boundary
         elseif bc == :south  
@@ -97,7 +99,7 @@ function correct_boundary_mass_flux!(model::NonhydrostaticModel)
     end
 
     # Add extra flux to right boundaries to increase outflow
-    for bc in right_bcs
+    for bc in right_ROBCs
         if bc == :east
             velocities.u[grid.Nx + 1, :, :] = velocities.u[grid.Nx + 1, :, :] .+ extra_flux_per_boundary
         elseif bc == :north

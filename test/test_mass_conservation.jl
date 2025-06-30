@@ -13,7 +13,7 @@ grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), extent = (1, 1),
 U₀ = 1.0
 inflow_timescale = 1e-1
 outflow_timescale = Inf
-u_boundary_conditions = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
+u_boundary_conditions = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀),
                                                 east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
 v_boundary_conditions = FieldBoundaryConditions(south = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale),
                                                 north = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale))
@@ -34,7 +34,7 @@ function progress(sim)
     u, v, w = model.velocities
     cfl_value = cfl_calculator(model)
     net_mass_flux2 = ∫∇u = Field(Integral(∂x(u) + ∂z(w)))[]
-    @info @sprintf("time: %.3f, max|u|: %.3f, CFL: %.2f, Net2: %.4e",
+    @info @sprintf("time: %.3f, max|u|: %.3f, CFL: %.2f, Net flux: %.4e",
                    time(sim), maximum(abs, u), cfl_value, net_mass_flux2)
 end
 add_callback!(simulation, progress, IterationInterval(20))
