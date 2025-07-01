@@ -15,7 +15,7 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
     foreach(mask_immersed_field!, model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
-    #correct_boundary_mass_flux!(model)
+    correct_boundary_mass_flux!(model)
 
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
     fill_halo_regions!(model.pressures.pNHS)
