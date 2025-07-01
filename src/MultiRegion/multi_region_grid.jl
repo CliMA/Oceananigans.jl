@@ -255,7 +255,7 @@ Base.show(io::IO, mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} 
               "├── connectivity: $(summary(mrg.connectivity)) \n",
               "└── devices: $(devices(mrg))")
 
-function Base.:(==)(mrg₁::MultiRegionGrid, mrg₂::MultiRegionGrid)
+function Base.:(==)(mrg₁::MultiRegionGrids, mrg₂::MultiRegionGrids)
     #check if grids are of the same type
     vals = construct_regionally(Base.:(==), mrg₁, mrg₂)
     return all(vals.regional_objects)
