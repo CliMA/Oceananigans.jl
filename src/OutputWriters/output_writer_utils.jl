@@ -2,7 +2,7 @@ using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
-using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
+using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Utils: AbstractSchedule
@@ -75,8 +75,11 @@ saveproperty!(file, address, obj) = _saveproperty!(file, address, obj)
 # Generic implementation: recursively unwrap an object.
 _saveproperty!(file, address, obj) = [saveproperty!(file, address * "/$prop", getproperty(obj, prop)) for prop in propertynames(obj)]
 
+const ConstantFields = Union{ConstantField, ZeroField, OneField}
+
 # Some specific things
 saveproperty!(file, address, p::Union{Number, Array}) = file[address] = p
+saveproperty!(file, address, p::ConstantFields)       = file[address] = p
 saveproperty!(file, address, p::AbstractRange)        = file[address] = collect(p)
 saveproperty!(file, address, p::AbstractArray)        = file[address] = Array(parent(p))
 saveproperty!(file, address, p::Function)             = nothing
