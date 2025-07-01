@@ -3,7 +3,6 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, compute_laplacian!
 using Oceananigans.DistributedComputations: reconstruct_global_field, @handshake, Equal
-# using Oceananigans.Solvers: KrylovSolver
 using Statistics
 using Random
 using LinearAlgebra: norm
@@ -11,15 +10,17 @@ Random.seed!(123)
 
 # arch = Distributed(CPU(), partition = Partition(x=2, y=Equal()))
 # arch = Distributed(CPU(), partition = Partition(x=1, y=Equal()))
-arch = Distributed(CPU())
+arch = Distributed(GPU())
+local_arch = GPU()
+
 @show arch
-Nx = Ny = Nz = 64
+Nx = Ny = Nz = 32
 topology = (Periodic, Periodic, Periodic)
 
 x = y = z = (0, 2π)
 
 local_grid  = RectilinearGrid(arch; x, y, z, topology, size=(Nx, Ny, Nz))
-global_grid = RectilinearGrid(;     x, y, z, topology, size=(Nx, Ny, Nz))
+global_grid = RectilinearGrid(local_arch; x, y, z, topology, size=(Nx, Ny, Nz))
 
 @inline bottom_height(x, y) = 0.5
 
@@ -96,11 +97,3 @@ solve!(xpcg_local, pcg_local.conjugate_gradient_solver, b_local)
 fill!(xpcg_local, 0)
 t_pcg = @timed solve!(xpcg_local, pcg_local.conjugate_gradient_solver, b_local)
 @info "PCG iteration $(pcg_local.conjugate_gradient_solver.iteration), time $(t_pcg.time), residual $(norm(pcg_local.conjugate_gradient_solver.residual))"
-
-# xpcg_reconstruct = reconstruct_global_field(xpcg_local)
-
-# @info arch.local_rank maximum(abs, interior(xpcg_reconstruct))
-# @info arch.local_rank maximum(abs, interior(xpcg_global))
-# @info arch.local_rank maximum(abs, interior(xpcg_reconstruct) .- interior(xpcg_global))
-
-

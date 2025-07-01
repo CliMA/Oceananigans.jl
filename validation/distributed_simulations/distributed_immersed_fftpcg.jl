@@ -52,7 +52,7 @@ end
 function setup_simulation(model)
     Δt = 2e-2
     stop_iteration = 100
-    simulation = Simulation(model; Δt = Δt, stop_iteration = stop_iteration)
+    simulation = Simulation(model; Δt = Δt, stop_iteration = stop_iteration, minimum_relative_step = 1e-10)
     
     wall_time = Ref(time_ns())
 
@@ -110,25 +110,22 @@ function setup_simulation(model)
         prefix *= "_nondistributed"
     end
 
-    outputs = (; u, v, w, b, d, p)
+    # outputs = (; u, v, w, b, d, p)
 
-    OUTPUT_PATH = "./"
-    simulation.output_writers[:jld2] = JLD2Writer(model, outputs,
-                                                        schedule = IterationInterval(10),
-                                                        filename = "$(OUTPUT_PATH)/$(prefix)_fields",
-                                                        overwrite_existing = true,
-                                                        with_halos = true)
+    # OUTPUT_PATH = "./"
+    # simulation.output_writers[:jld2] = JLD2Writer(model, outputs,
+    #                                                     schedule = TimeInterval(0.1),
+    #                                                     filename = "$(OUTPUT_PATH)/$(prefix)_fields",
+    #                                                     overwrite_existing = true,
+    #                                                     with_halos = true)
 
     return simulation
 end
 
 const N = 32
 
-# arch = Distributed(CPU(); synchronized_communication=true)
 # arch = Distributed(CPU())
-# arch = Distributed(GPU())
-arch = CPU()
-# arch = GPU()
+arch = Distributed(GPU())
 
 grid = setup_grid(N, arch)
 
