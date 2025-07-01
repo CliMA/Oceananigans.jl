@@ -779,6 +779,11 @@ end
 end
 
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
+    for f in readdir(".")
+        if occursin(r"^cubed_sphere_(output|checkpointer)_.*\.jld2$", f)
+            rm(f; force=true)
+        end
+    end
     for FT in float_types
         for arch in archs
             Nx, Ny, Nz = 18, 18, 9
@@ -793,8 +798,10 @@ end
             for grid in grids
                 if grid == underlying_grid
                     @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    suffix = "UG"
                 else
                     @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    suffix = "IG"
                 end
 
                 model = HydrostaticFreeSurfaceModel(; grid,
@@ -805,20 +812,57 @@ end
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer())
                 
-                simulation = Simulation(model, Δt=1minute, stop_iteration=3)
+                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
-                save_fields_interval = 1minute
+                save_fields_interval = 2minute
+                checkpointer_interval = 4minutes
+
+                filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
                 outputs = fields(model)
-                filename_output_writer = "cubed_sphere_output"
+                filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                 schedule = TimeInterval(save_fields_interval),
                                                                 filename = filename_output_writer,
                                                                 verbose = false,
                                                                 overwrite_existing = true)
+
                 run!(simulation)
-                
-                @test iteration(simulation) == 3
-                @test time(simulation) == 3minutes
+
+                @test iteration(simulation) == 10
+                @test time(simulation) == 10minutes
+
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+
+                if grid == underlying_grid
+                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                else
+                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                end
+
+                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
+
+                run!(simulation, pickup = true)
+
+                @test iteration(simulation) == 20
+                @test time(simulation) == 20minutes
+
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
             end
         end
     end
