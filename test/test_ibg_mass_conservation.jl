@@ -35,15 +35,16 @@ set!(model, u=u₀)
 # Test pressure correction with immersed boundaries
 Δt = 0.1 * minimum_zspacing(grid) / abs(U)
 simulation = Simulation(model; Δt, stop_time=50, verbose=false)
-conjure_time_step_wizard!(simulation, IterationInterval(1), cfl = 0.1)
-cfl_calculator = AdvectiveCFL(simulation.Δt)
 
+u, v, w = model.velocities
+∫∇u = Field(Integral(∂x(u) + ∂z(w)))
+cfl_calculator = AdvectiveCFL(simulation.Δt)
 function progress(sim)
     u, v, w = model.velocities
     cfl_value = cfl_calculator(model)
-    net_mass_flux2 = ∫∇u = Field(Integral(∂x(u) + ∂z(w)))[]
+    compute!(∫∇u)
     @info @sprintf("time: %.3f, max|u|: %.3f, CFL: %.2f, Net flux: %.4e",
-                   time(sim), maximum(abs, u), cfl_value, net_mass_flux2)
+                   time(sim), maximum(abs, u), cfl_value, ∫∇u[])
 end
 add_callback!(simulation, progress, IterationInterval(20))
 run!(simulation)
