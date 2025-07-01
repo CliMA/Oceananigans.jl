@@ -1,6 +1,7 @@
 using Oceananigans.Fields: validate_indices, Reduction
 using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
+using Oceananigans.Utils: getregion, @apply_regionally
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
@@ -44,10 +45,10 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
     if !with_halos # Maybe chop those indices
         loc = map(instantiate, location(output))
         topo = map(instantiate, topology(grid))
-        indices = map(restrict_to_interior, indices, loc, topo, size(grid))
+        @apply_regionally indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
-    intersected = intersect_indices(output, indices)
+    @apply_regionally intersected = intersect_indices(output, indices)
 
     return intersected
 end
