@@ -5,19 +5,8 @@ using Oceananigans.BoundaryConditions: PerturbationAdvection, FlatExtrapolation
 using Oceananigans.ImmersedBoundaries: immersed_inactive_node
 
 const MatchingScheme = Union{FlatExtrapolation, PerturbationAdvection}
-const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition (with no matching scheme)
 const FOBC = BoundaryCondition{<:Open{<:Nothing}} # "Fixed-velocity" OpenBoundaryCondition (with no matching scheme)
 const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundaryCondition
-
-# Left boundary averages for normal velocity components
-west_average(u)   = Field(Average(view(u, 1, :, :), dims=(2, 3)))[]
-south_average(v)  = Field(Average(view(v, :, 1, :), dims=(1, 3)))[]
-bottom_average(w) = Field(Average(view(w, :, :, 1), dims=(1, 2)))[]
-
-# Right boundary averages for normal velocity components
-east_average(u)   = Field(Average(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))[]
-north_average(v)  = Field(Average(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))[]
-top_average(w)    = Field(Average(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))[]
 
 function gather_boundary_fluxes(model::NonhydrostaticModel)
 

@@ -66,6 +66,7 @@ nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architectu
 #####
 
 include("background_fields.jl")
+include("boundary_mass_fluxes.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")

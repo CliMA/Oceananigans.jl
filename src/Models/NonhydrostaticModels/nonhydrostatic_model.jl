@@ -231,7 +231,7 @@ function NonhydrostaticModel(; grid,
     forcing = model_forcing(model_fields; forcing...)
 
     # Initialize boundary mass fluxes container
-    boundary_mass_fluxes = NamedTuple()
+    boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
