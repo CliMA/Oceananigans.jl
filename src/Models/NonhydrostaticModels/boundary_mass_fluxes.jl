@@ -8,14 +8,14 @@ const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundar
 const FOBC = BoundaryCondition{<:Open{<:Nothing}} # "Fixed-velocity" OpenBoundaryCondition (with no matching scheme)
 
 # Left boundary averages for normal velocity components
-west_average(u)   = Average(view(u, 1, :, :), dims=(2, 3)) |> Field
-south_average(v)  = Average(view(v, :, 1, :), dims=(1, 3)) |> Field
-bottom_average(w) = Average(view(w, :, :, 1), dims=(1, 2)) |> Field
+@inline west_average(u)   = Average(view(u, 1, :, :), dims=(2, 3)) |> Field
+@inline south_average(v)  = Average(view(v, :, 1, :), dims=(1, 3)) |> Field
+@inline bottom_average(w) = Average(view(w, :, :, 1), dims=(1, 2)) |> Field
 
 # Right boundary averages for normal velocity components
-east_average(u)   = Average(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)) |> Field
-north_average(v)  = Average(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)) |> Field
-top_average(w)    = Average(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)) |> Field
+@inline east_average(u)   = Average(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)) |> Field
+@inline north_average(v)  = Average(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)) |> Field
+@inline top_average(w)    = Average(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)) |> Field
 
 """
     initialize_boundary_mass_fluxes(velocities::NamedTuple)
@@ -70,45 +70,27 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     return boundary_fluxes
 end
 
-function update_boundary_mass_fluxes!(model)
-
-    velocities = model.velocities
-    grid = model.grid
-
-    # Get the boundary conditions for the velocities
-    u_bcs = velocities.u.boundary_conditions
-    v_bcs = velocities.v.boundary_conditions
-    w_bcs = velocities.w.boundary_conditions
-
-    # Compute fluxes through left boundaries
-    u_bcs.west isa OBC && compute!(model.boundary_mass_fluxes.west)
-    v_bcs.south isa OBC && compute!(model.boundary_mass_fluxes.south)
-    w_bcs.bottom isa OBC && compute!(model.boundary_mass_fluxes.bottom)
-
-    # Compute fluxes through right boundaries
-    u_bcs.east isa OBC && compute!(model.boundary_mass_fluxes.east)
-    v_bcs.north isa OBC && compute!(model.boundary_mass_fluxes.north)
-    w_bcs.top isa OBC && compute!(model.boundary_mass_fluxes.top)
-
+@inline function update_boundary_mass_fluxes!(model)
+    for flux in model.boundary_mass_fluxes
+        compute!(flux)
+    end
 end
 
-function gather_boundary_fluxes(model)
+@inline function gather_boundary_fluxes(model)
 
-    velocities = model.velocities
-    grid = model.grid
+    update_boundary_mass_fluxes!(model)
 
-    # Get the boundary conditions for the velocities
-    u_bcs = velocities.u.boundary_conditions
-    v_bcs = velocities.v.boundary_conditions
-    w_bcs = velocities.w.boundary_conditions
+    u_bcs = model.velocities.u.boundary_conditions
+    v_bcs = model.velocities.v.boundary_conditions
+    w_bcs = model.velocities.w.boundary_conditions
 
     # Collect left and right ROBC boundary conditions into separate lists
     left_ROBCs = Symbol[]
     right_ROBCs = Symbol[]
 
     # Initialize fluxes to zero
-    left_flux = zero(grid)
-    right_flux = zero(grid)
+    left_flux = zero(model.grid)
+    right_flux = zero(model.grid)
 
     # Calculate flux through left boundaries
     if u_bcs.west isa OBC
@@ -153,8 +135,6 @@ zero net mass flux through each boundary.
 function correct_boundary_mass_flux!(model)
     velocities = model.velocities
     grid = model.grid
-
-    update_boundary_mass_fluxes!(model)
 
     total_flux, left_ROBCs, right_ROBCs = gather_boundary_fluxes(model)
 
