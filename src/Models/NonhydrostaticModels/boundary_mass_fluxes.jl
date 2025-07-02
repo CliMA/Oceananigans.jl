@@ -17,6 +17,20 @@ const FOBC = BoundaryCondition{<:Open{<:Nothing}} # "Fixed-velocity" OpenBoundar
 @inline north_average(v)  = Average(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)) |> Field
 @inline top_average(w)    = Average(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)) |> Field
 
+@inline function get_boundary_flux(bc, boundary_flux_field)
+    if bc isa FOBC
+        if bc.condition isa Number # If the BC is a fixed velocity, the flux is the fixed velocity
+            return bc.condition
+        elseif bc.condition isa Nothing # If the BC is no-inflow, the flux is zero
+            return 0
+        else
+            return boundary_flux_field
+        end
+    else
+        return boundary_flux_field
+    end
+end
+
 """
     initialize_boundary_mass_fluxes(velocities::NamedTuple)
 
@@ -33,37 +47,37 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
 
     # Check west boundary (u velocity)
     if u_bcs.west isa OBC
-        west_flux = west_average(velocities.u)
+        west_flux = get_boundary_flux(u_bcs.west, west_average(velocities.u))
         boundary_fluxes = merge(boundary_fluxes, (west = west_flux,))
     end
 
     # Check east boundary (u velocity)
     if u_bcs.east isa OBC
-        east_flux = east_average(velocities.u)
+        east_flux = get_boundary_flux(u_bcs.east, east_average(velocities.u))
         boundary_fluxes = merge(boundary_fluxes, (east = east_flux,))
     end
 
     # Check south boundary (v velocity)
     if v_bcs.south isa OBC
-        south_flux = south_average(velocities.v)
+        south_flux = get_boundary_flux(v_bcs.south, south_average(velocities.v))
         boundary_fluxes = merge(boundary_fluxes, (south = south_flux,))
     end
 
     # Check north boundary (v velocity)
     if v_bcs.north isa OBC
-        north_flux = north_average(velocities.v)
+        north_flux = get_boundary_flux(v_bcs.north, north_average(velocities.v))
         boundary_fluxes = merge(boundary_fluxes, (north = north_flux,))
     end
 
     # Check bottom boundary (w velocity)
     if w_bcs.bottom isa OBC
-        bottom_flux = bottom_average(velocities.w)
+        bottom_flux = get_boundary_flux(w_bcs.bottom, bottom_average(velocities.w))
         boundary_fluxes = merge(boundary_fluxes, (bottom = bottom_flux,))
     end
 
     # Check top boundary (w velocity)
     if w_bcs.top isa OBC
-        top_flux = top_average(velocities.w)
+        top_flux = get_boundary_flux(w_bcs.top, top_average(velocities.w))
         boundary_fluxes = merge(boundary_fluxes, (top = top_flux,))
     end
 
