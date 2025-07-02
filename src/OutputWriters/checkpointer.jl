@@ -17,7 +17,7 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     cleanup :: Bool
 end
 
-required_checkpointed_properties(model) = [:grid, :clock]
+required_checkpoint_properties(model) = [:grid, :clock]
 
 """
     Checkpointer(model;
@@ -69,9 +69,9 @@ function Checkpointer(model; schedule,
                       overwrite_existing = false,
                       verbose = false,
                       cleanup = false,
-                      properties = required_checkpointed_properties(model))
+                      properties = required_checkpoint_properties(model))
 
-    required_properties = required_checkpointed_properties(model)
+    required_properties = required_checkpoint_properties(model)
 
     # Certain properties are required for `set!` to pickup from a checkpoint.
     for rp in required_properties
@@ -195,7 +195,7 @@ end
 ##### set! for checkpointer filepaths
 #####
 
-# Should this go in Models? 
+# Should this go in Models?
 """
     set!(model, filepath::AbstractString)
 
@@ -244,7 +244,7 @@ end
 
 function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, addr)
     for name in propertynames(model_fields)
-        tendency_in_model = hasproperty(timestepper.Gⁿ, name) 
+        tendency_in_model = hasproperty(timestepper.Gⁿ, name)
         tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
         if tendency_in_model && tendency_in_checkpoint
             # Tendency "n"

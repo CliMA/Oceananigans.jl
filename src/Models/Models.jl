@@ -189,7 +189,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to Ocenanaigans' models
-import Oceananigans.OutputWriters: default_included_properties, checkpointer_address, required_checkpointed_properties
+import Oceananigans.OutputWriters: default_included_properties, checkpointer_address, required_checkpoint_properties
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
@@ -199,7 +199,7 @@ checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-function required_checkpointed_properties(model::OceananigansModels)
+function required_checkpoint_properties(model::OceananigansModels)
     properties = [:grid, :clock, :particles]
     if has_ab2_timestepper(model)
        push!(properties, :timestepper)
