@@ -101,4 +101,3 @@ halo_size(grid, d) = halo_size(grid)[d]
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
 grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
-
