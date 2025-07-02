@@ -15,10 +15,8 @@ inflow_timescale = 1e-1
 outflow_timescale = Inf
 u_boundary_conditions = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀),
                                                 east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
-v_boundary_conditions = FieldBoundaryConditions(south = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale),
-                                                north = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale))
-w_boundary_conditions = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale),
-                                                top = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale))
+#w_boundary_conditions = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale),
+#                                                top = PerturbationAdvectionOpenBoundaryCondition(0; inflow_timescale, outflow_timescale))
 boundary_conditions = (; u = u_boundary_conditions)
 
 model = NonhydrostaticModel(; grid, boundary_conditions,
