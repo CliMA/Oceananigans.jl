@@ -398,10 +398,21 @@ end
 
 function field_dimensions(field::AbstractField, grid::RectilinearGrid, dim_name_generator)
     LX, LY, LZ = location(field)
+    TX, TY, TZ = topology(grid)
 
-    x_dim_name = dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
-    y_dim_name = dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
+    reduced_dims = reduced_dimensions(field)
+
+    indices = field.indices
+    is_free_surface = (
+        length(indices) >= 3 &&
+        indices[3] isa UnitRange &&
+        length(indices[3]) == 1 &&
+        first(indices[3]) > grid.Nz
+    )
+
+    x_dim_name = (1 ∈ reduced_dims || TX == Flat) ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
+    y_dim_name = (2 ∈ reduced_dims || TY == Flat) ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
+    z_dim_name = (3 ∈ reduced_dims || TZ == Flat || is_free_surface) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     x_dim_name = isempty(x_dim_name) ? tuple() : tuple(x_dim_name)
     y_dim_name = isempty(y_dim_name) ? tuple() : tuple(y_dim_name)
@@ -412,10 +423,21 @@ end
 
 function field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
     LΛ, LΦ, LZ = location(field)
+    TΛ, TΦ, TZ = topology(grid)
 
-    λ_dim_name = dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    φ_dim_name = dim_name_generator("φ",  grid, nothing, LΦ(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z",         grid, nothing, nothing, LZ(), Val(:z))
+    reduced_dims = reduced_dimensions(field)
+
+    indices = field.indices
+    is_free_surface = (
+        length(indices) >= 3 &&
+        indices[3] isa UnitRange &&
+        length(indices[3]) == 1 &&
+        first(indices[3]) > grid.Nz
+    )
+
+    λ_dim_name = (1 ∈ reduced_dims || TΛ == Flat) ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
+    φ_dim_name = (2 ∈ reduced_dims || TΦ == Flat) ? "" : dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
+    z_dim_name = (3 ∈ reduced_dims || TZ == Flat || is_free_surface) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     λ_dim_name = isempty(λ_dim_name) ? tuple() : tuple(λ_dim_name)
     φ_dim_name = isempty(φ_dim_name) ? tuple() : tuple(φ_dim_name)
@@ -592,8 +614,8 @@ default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
     "u" => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
     "v" => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
     "w" => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
-    "η" => Dict("long_name" => "Sea surface height", "units" => "m/s"),
-    "eta" => Dict("long_name" => "Sea surface height", "units" => "m/s")) # non-unicode default
+    "η" => Dict("long_name" => "Sea surface height", "units" => "m"),
+    "eta" => Dict("long_name" => "Sea surface height", "units" => "m")) # non-unicode default
 
 default_velocity_attributes(ibg::ImmersedBoundaryGrid) = default_velocity_attributes(ibg.underlying_grid)
 
@@ -1300,7 +1322,12 @@ end
 function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
-    colons = Tuple(Colon() for _ in 1:ndims(data))
+
+    # Get the number of spatial dimensions of the NetCDF variable (excluding time)
+    nc_var = ds[name]
+    nc_spatial_dims = ndims(nc_var) - 1  # subtract 1 for time dimension
+
+    colons = Tuple(Colon() for _ in 1:nc_spatial_dims)
     ds[name][colons..., time_index:time_index] = data
     return nothing
 end
@@ -1376,7 +1403,15 @@ function drop_output_dims(field::Field, data)
     flat_dims = Tuple(i for (i, T) in enumerate(topology(field.grid)) if T == Flat)
     dims = (reduced_dims..., flat_dims...)
     dims = Tuple(Set(dims)) # ensure dims are unique
-    return dropdims(data; dims)
+
+    # Only drop dimensions that actually exist in the data AND are size 1
+    dims = filter(d -> d <= ndims(data) && size(data, d) == 1, dims)
+
+    if isempty(dims)
+        return data
+    else
+        return dropdims(data; dims=tuple(dims...))
+    end
 end
 
 #####
