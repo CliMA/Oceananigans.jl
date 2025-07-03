@@ -48,37 +48,37 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check west boundary (u velocity)
     if u_bcs.west isa OBC
         west_flux = get_boundary_mass_flux(u_bcs.west, west_average(velocities.u))
-        boundary_fluxes = merge(boundary_fluxes, (west = west_flux,))
+        boundary_fluxes = merge(boundary_fluxes, (; west = west_flux))
     end
 
     # Check east boundary (u velocity)
     if u_bcs.east isa OBC
         east_flux = get_boundary_mass_flux(u_bcs.east, east_average(velocities.u))
-        boundary_fluxes = merge(boundary_fluxes, (east = east_flux,))
+        boundary_fluxes = merge(boundary_fluxes, (; east = east_flux))
     end
 
     # Check south boundary (v velocity)
     if v_bcs.south isa OBC
         south_flux = get_boundary_mass_flux(v_bcs.south, south_average(velocities.v))
-        boundary_fluxes = merge(boundary_fluxes, (south = south_flux,))
+        boundary_fluxes = merge(boundary_fluxes, (; south = south_flux))
     end
 
     # Check north boundary (v velocity)
     if v_bcs.north isa OBC
         north_flux = get_boundary_mass_flux(v_bcs.north, north_average(velocities.v))
-        boundary_fluxes = merge(boundary_fluxes, (north = north_flux,))
+        boundary_fluxes = merge(boundary_fluxes, (; north = north_flux))
     end
 
     # Check bottom boundary (w velocity)
     if w_bcs.bottom isa OBC
         bottom_flux = get_boundary_mass_flux(w_bcs.bottom, bottom_average(velocities.w))
-        boundary_fluxes = merge(boundary_fluxes, (bottom = bottom_flux,))
+        boundary_fluxes = merge(boundary_fluxes, (; bottom = bottom_flux))
     end
 
     # Check top boundary (w velocity)
     if w_bcs.top isa OBC
         top_flux = get_boundary_mass_flux(w_bcs.top, top_average(velocities.w))
-        boundary_fluxes = merge(boundary_fluxes, (top = top_flux,))
+        boundary_fluxes = merge(boundary_fluxes, (; top = top_flux))
     end
 
     return boundary_fluxes
