@@ -27,7 +27,7 @@ required_checkpoint_properties(model) = [:grid, :clock]
                  overwrite_existing = false,
                  verbose = false,
                  cleanup = false,
-                 properties = default_checkpointed_properties(model))
+                 properties = required_checkpoint_properties(model))
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -59,7 +59,7 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
+                `:grid` and `:clock`, and if using AB2 timestepping then also
                 `:timestepper`. Default: calls [`required_checkpoint_properties`](@ref) on
                 `model` to get these properties.
 """

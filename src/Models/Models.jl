@@ -201,7 +201,7 @@ checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceMod
 
 function required_checkpoint_properties(model::OceananigansModels)
     properties = [:grid, :clock, :particles]
-    if has_ab2_timestepper(model)
+    if has_ab2_timestepper(model) || (:particles ∈ propertynames(model))
        push!(properties, :timestepper)
     end
     return properties
