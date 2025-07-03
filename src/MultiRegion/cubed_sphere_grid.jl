@@ -11,14 +11,14 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_ma
 
 using Distances
 
-import Oceananigans.Grids: grid_name
+import Oceananigans.Grids: grid_name, nodes
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
+const ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} =
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} = 
-    Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ},
-          ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}}
-
+    Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 
 """
     ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
@@ -469,6 +469,11 @@ function with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <
     return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
                                 active_cells_map,
                                 active_z_columns)
+end
+
+function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+    @apply_regionally immersed_nodes = nodes(iccsg.underlying_grid, ℓx, ℓy, ℓz, reshape, with_halos)
+    return immersed_nodes
 end
 
 function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
