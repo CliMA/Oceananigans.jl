@@ -132,7 +132,7 @@ end
 @inline function square_smagorinsky_coefficient(i, j, k, grid, closure::SmagorinskyLilly,
                                                 diffusivity_fields, Σ², buoyancy, tracers)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    c₀ = closure_constant(i, j, k, grid, closure.coefficient.smagorinsky)
+    c₀ = closure_coefficient(i, j, k, grid, closure.coefficient.smagorinsky)
     cᵇ = closure.coefficient.reduction_factor
     ς  = stability(N², Σ², cᵇ) # Use unity Prandtl number.
     return ς * c₀^2
