@@ -189,7 +189,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to Ocenanaigans' models
-import Oceananigans.OutputWriters: default_included_properties, checkpointer_address
+import Oceananigans.OutputWriters: default_included_properties, checkpointer_address, required_checkpoint_properties
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
@@ -198,6 +198,20 @@ default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, 
 checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+
+function required_checkpoint_properties(model::OceananigansModels)
+    properties = [:grid, :clock, :particles]
+    if has_ab2_timestepper(model) || !isnothing(model.particles)
+       push!(properties, :timestepper)
+    end
+    return properties
+end
+
+has_ab2_timestepper(model) = try
+    model.timestepper isa QuasiAdamsBashforth2TimeStepper
+catch
+    false
+end
 
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
