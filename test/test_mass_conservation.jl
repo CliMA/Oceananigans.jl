@@ -5,10 +5,12 @@ using Printf
 using Random: seed!
 seed!(156)
 
-Δx = Δz = 0.05
+Δx = Δz = 0.5
 Nx = Nz = round(Int, 2 / Δx)
 grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), extent = (1, 1),
                        topology = (Bounded, Flat, Bounded))
+GFB = GridFittedBottom(-1/2)
+grid = ImmersedBoundaryGrid(grid, GFB)
 
 U₀ = 1.0
 inflow_timescale = 1e-1
