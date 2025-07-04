@@ -19,7 +19,8 @@ struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <
 end
 
 function Connectivity(devices, partition::Union{XPartition, YPartition}, global_grid::AbstractGrid)
-    regions = MultiRegionObject(Tuple(1:length(devices)), devices)
+    arch = architecture(global_grid)
+    regions = MultiRegionObject(arch, Tuple(1:length(devices)), devices)
     @apply_regionally connectivity = find_regional_connectivities(regions, partition, global_grid)
     return connectivity
 end

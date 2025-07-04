@@ -18,11 +18,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie"
+# pkg"add Oceananigans, CairoMakie, CUDA"
 # ```
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
+using CUDA
 
 # ## Model set-up
 #

@@ -23,8 +23,7 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
-using CUDA
-using CUDA: has_cuda
+using GPUArraysCore
 using Adapt
 using OffsetArrays
 using Printf
