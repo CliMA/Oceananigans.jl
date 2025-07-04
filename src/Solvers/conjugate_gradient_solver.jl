@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Utils: prettysummary
-using Statistics: norm, dot
+using Statistics: norm, dot, mean
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 
@@ -102,7 +102,7 @@ function ConjugateGradientSolver(linear_operation;
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
-            residual = similar(template_field) # rᵢ
+    residual = similar(template_field) # rᵢ
 
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)

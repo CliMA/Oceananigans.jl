@@ -138,7 +138,7 @@ end
 # solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::DistributedFFTBasedPoissonSolver)
+function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     storage = solver.storage
     buffer  = solver.buffer
     arch    = architecture(storage.xfield.grid)
@@ -155,11 +155,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
 
-    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson_in_spectral_space!, x̂, b̂, λ[1], λ[2], λ[3])
+    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson_in_spectral_space!, x̂, b̂, λ[1], λ[2], λ[3], m)
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
-    if arch.local_rank == 0
+    if arch.local_rank == 0 && m === 0
         @allowscalar x̂[1, 1, 1] = 0
     end
 
@@ -177,9 +177,9 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     return x
 end
 
-@kernel function _solve_poisson_in_spectral_space!(x̂, b̂, λx, λy, λz)
+@kernel function _solve_poisson_in_spectral_space!(x̂, b̂, λx, λy, λz, m)
     i, j, k = @index(Global, NTuple)
-    @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k])
+    @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k] - m)
 end
 
 @kernel function _copy_real_component!(ϕ, ϕc)
