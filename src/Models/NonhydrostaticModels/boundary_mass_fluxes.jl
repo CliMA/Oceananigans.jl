@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection, FlatExtrapolation
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: Field
+using CUDA: @allowscalar
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
 const MatchingScheme = Union{FlatExtrapolation, PerturbationAdvection}
@@ -108,7 +109,7 @@ function open_boundary_mass_fluxes(model)
 
     # Calculate flux through left boundaries
     if u_bcs.west isa OBC
-        left_flux += model.boundary_mass_fluxes.west[]
+        left_flux += @allowscalar model.boundary_mass_fluxes.west[]
         u_bcs.west isa ROBC && push!(left_ROBCs, :west)
     end
     if v_bcs.south isa OBC
@@ -116,13 +117,13 @@ function open_boundary_mass_fluxes(model)
         v_bcs.south isa ROBC && push!(left_ROBCs, :south)
     end
     if w_bcs.bottom isa OBC
-        left_flux += model.boundary_mass_fluxes.bottom[]
+        left_flux += @allowscalar model.boundary_mass_fluxes.bottom[]
         w_bcs.bottom isa ROBC && push!(left_ROBCs, :bottom)
     end
 
     # Calculate flux through right boundaries
     if u_bcs.east isa OBC
-        right_flux += model.boundary_mass_fluxes.east[]
+        right_flux += @allowscalar model.boundary_mass_fluxes.east[]
         u_bcs.east isa ROBC && push!(right_ROBCs, :east)
     end
     if v_bcs.north isa OBC
@@ -130,7 +131,7 @@ function open_boundary_mass_fluxes(model)
         v_bcs.north isa ROBC && push!(right_ROBCs, :north)
     end
     if w_bcs.top isa OBC
-        right_flux += model.boundary_mass_fluxes.top[]
+        right_flux += @allowscalar model.boundary_mass_fluxes.top[]
         w_bcs.top isa ROBC && push!(right_ROBCs, :top)
     end
 
