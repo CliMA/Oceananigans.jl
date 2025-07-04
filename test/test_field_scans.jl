@@ -175,24 +175,24 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
 
                 # T(x, y, z) = x + y + z
                 # T(0.5, 0.5, z) = [1.5, 2.5]
-                @test interior_array(Tcx, :, 1, 1) ≈ [1.5, 4]
-                @test interior_array(Tcy, 1, :, 1) ≈ [1.5, 4]
-                @test interior_array(Tcz, 1, 1, :) ≈ [1.5, 4]
+                @test interior_array(Tcx, :, 1, 1) ≈ [0, 1.5, 4]
+                @test interior_array(Tcy, 1, :, 1) ≈ [0, 1.5, 4]
+                @test interior_array(Tcz, 1, 1, :) ≈ [0, 1.5, 4]
 
-                @test interior_array(Trx, :, 1, 1) ≈ [4, 2.5]
-                @test interior_array(Try, 1, :, 1) ≈ [4, 2.5]
-                @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5]
+                @test interior_array(Trx, :, 1, 1) ≈ [4, 2.5, 0]
+                @test interior_array(Try, 1, :, 1) ≈ [4, 2.5, 0]
+                @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5, 0]
 
                 # w(x, y, z) = x + y + z
                 # w(0.5, 0.5, z) = [1, 2, 3]
                 # w(x, 0.5, 0) = w(0.5, y, 0) = [1, 2]
-                @test interior_array(wcx, :, 1, 1) ≈ [1, 3]
-                @test interior_array(wcy, 1, :, 1) ≈ [1, 3]
-                @test interior_array(wcz, 1, 1, :) ≈ [1, 3, 6]
+                @test interior_array(wcx, :, 1, 1) ≈ [0, 1, 3]
+                @test interior_array(wcy, 1, :, 1) ≈ [0, 1, 3]
+                @test interior_array(wcz, 1, 1, :) ≈ [0, 1, 3, 6]
 
-                @test interior_array(wrx, :, 1, 1) ≈ [3, 2]
-                @test interior_array(wry, 1, :, 1) ≈ [3, 2]
-                @test interior_array(wrz, 1, 1, :) ≈ [6, 5, 3]
+                @test interior_array(wrx, :, 1, 1) ≈ [3, 2, 0]
+                @test interior_array(wry, 1, :, 1) ≈ [3, 2, 0]
+                @test interior_array(wrz, 1, 1, :) ≈ [6, 5, 3, 0]
 
                 @compute Txyz = CUDA.@allowscalar Field(Average(T, condition=T.>3))
                 @compute Txy = CUDA.@allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
@@ -221,13 +221,13 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
 
                 # T(x, y, z) = x + y + z
                 # 2 * T(0.5, 0.5, z) = [3, 5]
-                @test interior_array(T2cx, :, 1, 1) ≈ [3, 8]
-                @test interior_array(T2cy, 1, :, 1) ≈ [3, 8]
-                @test interior_array(T2cz, 1, 1, :) ≈ [3, 8]
+                @test interior_array(T2cx, :, 1, 1) ≈ [0, 3, 8]
+                @test interior_array(T2cy, 1, :, 1) ≈ [0, 3, 8]
+                @test interior_array(T2cz, 1, 1, :) ≈ [0, 3, 8]
 
-                @test interior_array(T2rx, :, 1, 1) ≈ [8, 5]
-                @test interior_array(T2ry, 1, :, 1) ≈ [8, 5]
-                @test interior_array(T2rz, 1, 1, :) ≈ [8, 5]
+                @test interior_array(T2rx, :, 1, 1) ≈ [8, 5, 0]
+                @test interior_array(T2ry, 1, :, 1) ≈ [8, 5, 0]
+                @test interior_array(T2rz, 1, 1, :) ≈ [8, 5, 0]
             end
 
             # Test whether a race condition gets hit for averages over large fields
