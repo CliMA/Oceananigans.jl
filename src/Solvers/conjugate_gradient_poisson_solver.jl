@@ -156,7 +156,7 @@ end
 
 const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
 
-function precondition!(p, preconditioner::FFTBasedPoissonSolver, r, args...)
+function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner, preconditioner.storage)
     return p
