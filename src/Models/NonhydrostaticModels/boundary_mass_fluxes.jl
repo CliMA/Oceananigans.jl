@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection, FlatExtrapolation
 using Oceananigans.AbstractOperations: Average
-using Oceananigans.Fields: Field
+using Oceananigans.Fields: Field, interior
+using Statistics: mean
 using CUDA: @allowscalar
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
@@ -9,14 +10,14 @@ const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundar
 const FOBC = BoundaryCondition{<:Open{<:Nothing}} # "Fixed-velocity" OpenBoundaryCondition (with no matching scheme)
 
 # Left boundary averages for normal velocity components
-@inline west_average(u)   = Average(view(u, 1, :, :), dims=(2, 3)) |> Field
-@inline south_average(v)  = Average(view(v, :, 1, :), dims=(1, 3)) |> Field
-@inline bottom_average(w) = Average(view(w, :, :, 1), dims=(1, 2)) |> Field
+@inline west_average(u)   = interior(u, 1, :, :)
+@inline south_average(v)  = interior(v, :, 1, :)
+@inline bottom_average(w) = interior(w, :, :, 1)
 
 # Right boundary averages for normal velocity components
-@inline east_average(u)   = Average(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)) |> Field
-@inline north_average(v)  = Average(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)) |> Field
-@inline top_average(w)    = Average(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)) |> Field
+@inline east_average(u)   = interior(u, u.grid.Nx + 1, :, :)
+@inline north_average(v)  = interior(v, :, v.grid.Ny + 1, :)
+@inline top_average(w)    = interior(w, :, :, w.grid.Nz + 1)
 
 function get_boundary_mass_flux(bc, boundary_flux_field)
     if bc isa FOBC
@@ -109,29 +110,29 @@ function open_boundary_mass_fluxes(model)
 
     # Calculate flux through left boundaries
     if u_bcs.west isa OBC
-        left_flux += @allowscalar model.boundary_mass_fluxes.west[]
+        left_flux += mean(model.boundary_mass_fluxes.west)
         u_bcs.west isa ROBC && push!(left_ROBCs, :west)
     end
     if v_bcs.south isa OBC
-        left_flux += model.boundary_mass_fluxes.south[]
+        left_flux += mean(model.boundary_mass_fluxes.south)
         v_bcs.south isa ROBC && push!(left_ROBCs, :south)
     end
     if w_bcs.bottom isa OBC
-        left_flux += @allowscalar model.boundary_mass_fluxes.bottom[]
+        left_flux += mean(model.boundary_mass_fluxes.bottom)
         w_bcs.bottom isa ROBC && push!(left_ROBCs, :bottom)
     end
 
     # Calculate flux through right boundaries
     if u_bcs.east isa OBC
-        right_flux += @allowscalar model.boundary_mass_fluxes.east[]
+        right_flux += mean(model.boundary_mass_fluxes.east)
         u_bcs.east isa ROBC && push!(right_ROBCs, :east)
     end
     if v_bcs.north isa OBC
-        right_flux += model.boundary_mass_fluxes.north[]
+        right_flux += mean(model.boundary_mass_fluxes.north)
         v_bcs.north isa ROBC && push!(right_ROBCs, :north)
     end
     if w_bcs.top isa OBC
-        right_flux += @allowscalar model.boundary_mass_fluxes.top[]
+        right_flux += mean(model.boundary_mass_fluxes.top)
         w_bcs.top isa ROBC && push!(right_ROBCs, :top)
     end
 
