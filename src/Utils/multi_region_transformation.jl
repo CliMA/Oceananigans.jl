@@ -1,6 +1,7 @@
 using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
+import Oceananigans.Architectures: on_architecture
 
 import Base: length
 
@@ -114,17 +115,24 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
+on_architecture(::CPU, mo::MultiRegionObject) = MultiRegionObject(on_architecture(CPU(), mo.regional_objects))
+
+# TODO: Properly define on_architecture(::GPU, mo::MultiRegionObject) to handle cases where MultiRegionObject can be
+# distributed across different devices. Currently, the implementation assumes that all regional objects reside on a
+# single GPU.
+on_architecture(::GPU, mo::MultiRegionObject) =
+    MultiRegionObject(on_architecture(GPU(), mo.regional_objects);
+                      devices = Tuple(CUDA.device() for i in 1:length(mo.regional_objects)))
+
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
-    if isnothing(multi_region_args)
-        devs = devices(multi_region_kwargs)
-    else
-        devs = devices(multi_region_args)
-    end
+    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
+    devs = devices(devs)
+
 
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
@@ -147,11 +155,9 @@ end
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
-    if isnothing(multi_region_args)
-        devs = devices(multi_region_kwargs)
-    else
-        devs = devices(multi_region_args)
-    end
+    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
+    devs = devices(devs)
+
 
     # Evaluate regional_func on the device of that region and collect
     # return values

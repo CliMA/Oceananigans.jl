@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear, halo_size
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!
+import Oceananigans.Solvers: solve!, precondition!, perform_linear_operation!
 import Oceananigans.Architectures: architecture
 
 """
@@ -50,7 +50,10 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
+
+    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
+    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
+    fill_halo_regions!((Ax, Ay); signed=false)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
@@ -66,8 +69,8 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
 
     solver = ConjugateGradientSolver(implicit_free_surface_linear_operation!;
-                                                   template_field = right_hand_side,
-                                                   settings...)
+                                     template_field = right_hand_side,
+                                     settings...)
 
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
@@ -134,14 +137,17 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
 
-    # Note: because of `fill_halo_regions!` below, we cannot use `PCGImplicitFreeSurface` on a
-    # multi-region grid; `fill_halo_regions!` cannot be used within `@apply_regionally`
-    fill_halo_regions!(ηⁿ⁺¹)
-
     launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
             L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
+end
+
+ImplicitFreeSurfaceOperation = typeof(implicit_free_surface_linear_operation!)
+
+@inline function perform_linear_operation!(linear_operation!::ImplicitFreeSurfaceOperation, q, p, args...)
+    fill_halo_regions!(p)
+    @apply_regionally linear_operation!(q, p, args...)
 end
 
 # Kernels that act on vertically integrated / surface quantities
