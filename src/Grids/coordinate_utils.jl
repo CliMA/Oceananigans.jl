@@ -43,6 +43,19 @@ r = 100
 
 x = ExponentialCoordinate(N, l, r)
 
+# output
+ExponentialCoordinate
+├─ size: 10
+├─ left: -1000.0
+├─ right: 100.0
+├─ scale: 220.0
+└─ bias: :right
+
+```
+
+To inspect the interfaces of the coordinate we can call:
+
+```jldoctest ExponentialCoordinate
 [x(i) for i in 1:N+1]
 
 # output
@@ -113,6 +126,17 @@ function (coord::ExponentialCoordinate)(i)
 end
 
 Base.length(coord::ExponentialCoordinate) = coord.size
+
+Base.summary(::ExponentialCoordinate) = "ExponentialCoordinate"
+
+function Base.show(io::IO, coord::ExponentialCoordinate)
+    return print(io, summary(coord), '\n',
+                 "├─ size: ", coord.size, '\n',
+                 "├─ left: ", coord.left, '\n',
+                 "├─ right: ", coord.right, '\n',
+                 "├─ scale: ", coord.scale, '\n',
+                 "└─ bias: :$(coord.bias)")
+end
 
 
 struct PowerLawStretching{T}
@@ -229,9 +253,9 @@ Return a one-dimensional coordinate with `constant_spacing` over a
 `constant_spacing_extent` on the `bias`-side of the domain.
 Beyond the `constant_spacing_extent`, the interface spacings stretch according
 to the `stretching`.
-The coordinate spacing is limited to be less than `maximum_spacing`.
-The coordinate transitions to uniformly-spaced for distances `maximum_stretching_extent`
-and beyond the `bias_edge` (or, equivalently, `constant_spacing_extent` away from `bias`-side
+The coordinate spacing is limited to be less than `maximum_spacing` (default: Inf).
+The coordinate transitions to uniformly-spaced for distances `maximum_stretching_extent`  (default: Inf)
+and beyond the `bias_edge` (or, equivalently, `maximum_stretching_extent` away from `bias`-side
 of the coordinate range).
 
 `rounding_digits` controls the accuracy with which the grid interfaces are saved.
@@ -248,7 +272,31 @@ Examples
    z = ConstantToStretchedCoordinate(extent = 200,
                                      constant_spacing = 25,
                                      constant_spacing_extent = 90)
+   # output
+   ConstantToStretchedCoordinate
+   ├─ extent: 200.0
+   ├─ bias: :right
+   ├─ bias_edge: 0.0
+   ├─ constant_spacing: 25.0
+   ├─ constant_spacing_extent: 90.0
+   ├─ maximum_stretching_extent: Inf
+   ├─ maximum_spacing: Inf
+   ├─ stretching: PowerLawStretching{Float64}(1.02)
+   └─ faces: : 9-element Vector{Float64}
+   ```
 
+   The `z` coordinate above has
+
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+   N = length(z)
+
+   # output
+   8
+   ```
+
+   cells. To inspect the interfaces of the coordinate we can call:
+
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
    [z(k) for k in 1:length(z)+1]
 
    # output
@@ -265,15 +313,8 @@ Examples
        0.0
    ```
 
-   The `z` coordinate above has
-
-   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
-   N = length(z)
-
-   # output
-   8
-   ```
-   cells and has an extent that is longer from what prescribed via the `extent` keyword argument by:
+   Thus, we can see that the coordinate has an extent that is longer from what prescribed via the `extent`
+   keyword argument by:
 
    ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
    z(N+1) - z(1) - z.extent
@@ -354,3 +395,18 @@ end
 (coord::ConstantToStretchedCoordinate)(i) = coord.faces[i]
 
 Base.length(coord::ConstantToStretchedCoordinate) = length(coord.faces)-1
+
+Base.summary(::ConstantToStretchedCoordinate) = "ConstantToStretchedCoordinate"
+
+function Base.show(io::IO, coord::ConstantToStretchedCoordinate)
+    return print(io, summary(coord), '\n',
+                 "├─ extent: ", coord.extent, '\n',
+                 "├─ bias: :$(coord.bias)", '\n',
+                 "├─ bias_edge: ", coord.bias_edge, '\n',
+                 "├─ constant_spacing: ", coord.constant_spacing, '\n',
+                 "├─ constant_spacing_extent: ", coord.constant_spacing_extent, '\n',
+                 "├─ maximum_stretching_extent: ", coord.maximum_stretching_extent, '\n',
+                 "├─ maximum_spacing: ", coord.maximum_spacing, '\n',
+                 "├─ stretching: ", coord.stretching, '\n',
+                 "└─ faces: : ", summary(coord.faces))
+end

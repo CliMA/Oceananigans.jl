@@ -48,7 +48,8 @@ In building our first grid, we did not specify whether it should be constructed 
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
 
-```jldoctest grids_gpu
+```julia
+#jldoctest grids_gpu
 architecture = GPU()
 z_faces = [0, 1, 3, 6, 10]
 
