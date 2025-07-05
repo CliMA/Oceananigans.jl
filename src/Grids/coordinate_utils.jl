@@ -109,3 +109,177 @@ function (coord::ExponentialCoordinate)(i)
 
     return xᵢ
 end
+
+struct PowerLawStretching{T}
+    power :: T
+end
+
+function (stretching::PowerLawStretching)(Δ)
+    γ = stretching.power
+    return Δ^γ
+end
+
+struct LinearStretching{T}
+    coefficient :: T
+end
+
+function (stretching::LinearStretching)(Δ)
+    c = stretching.coefficient
+    return (1 + c) * Δ
+end
+
+struct ConstantToStretchedCoordinate{S, A} <: Function
+    extent :: Float64
+    bias :: Symbol
+    bias_edge :: Float64
+    constant_spacing :: Float64
+    constant_spacing_extent :: Float64
+    maximum_stretching_extent :: Float64
+    maximum_spacing :: Float64
+    stretching :: S
+    faces :: A
+
+    function ConstantToStretchedCoordinate(extent,
+                                           bias,
+                                           bias_edge,
+                                           constant_spacing,
+                                           constant_spacing_extent,
+                                           maximum_stretching_extent,
+                                           maximum_spacing,
+                                           stretching;
+                                           rounding_digits=2)
+
+        interfaces = compute_stretched_interfaces(; extent,
+                                                  bias,
+                                                  bias_edge,
+                                                  constant_spacing,
+                                                  constant_spacing_extent,
+                                                  maximum_stretching_extent,
+                                                  maximum_spacing,
+                                                  stretching,
+                                                  rounding_digits)
+        S = typeof(stretching)
+        A = typeof(interfaces)
+        return new{S, A}(extent, bias, bias_edge, constant_spacing,
+                         constant_spacing_extent, maximum_stretching_extent,
+                         maximum_spacing, stretching, interfaces)
+    end
+end
+
+function compute_stretched_interfaces(; extent,
+                                      bias,
+                                      bias_edge,
+                                      constant_spacing,
+                                      constant_spacing_extent,
+                                      maximum_stretching_extent,
+                                      maximum_spacing,
+                                      stretching = PowerLawStretching(1.02),
+                                      rounding_digits)
+
+    Δ₀ = constant_spacing
+    h₀ = constant_spacing_extent
+
+    dir = bias === :left ? 1 :
+          bias === :right ? -1 :
+          throw(ArgumentError("bias must be :left or :right"))
+
+    # Generate surface layer grid
+    faces = [bias_edge + dir * Δ₀ * (i-1) for i = 1:ceil(h₀ / Δ₀)]
+
+    # Generate stretched interior grid
+    L₀ = extent
+
+    while abs(faces[end] - bias_edge) < L₀
+        Δ_previous = abs(faces[end] - faces[end-1])
+
+        if abs(bias_edge - faces[end]) ≤ maximum_stretching_extent
+            Δ = stretching(Δ_previous)
+            Δ = min(maximum_spacing, Δ)
+        else
+            Δ = Δ_previous
+        end
+
+        push!(faces, round(faces[end] + dir * Δ, digits=rounding_digits))
+    end
+
+    if dir == -1
+        faces = reverse(faces)
+    end
+
+    return faces
+end
+
+"""
+    ConstantToStretchedCoordinate(; extent = 1000,
+                                  bias = :right,
+                                  bias_edge = 0,
+                                  constant_spacing = extent / 20,
+                                  constant_spacing_extent = 5 * constant_spacing,
+                                  maximum_stretching_extent = Inf,
+                                  maximum_spacing = Inf,
+                                  stretching = PowerLawStretching(1.02),
+                                  rounding_digits = 2)
+
+Return a one-dimensional coordinate with `constant_spacing` over a
+`constant_spacing_extent` on the `bias`-side of the domain.
+Beyond the `constant_spacing_extent`, the interface spacings stretch according
+to the `stretching`.
+The coordinate spacing is limited to be less than `maximum_spacing`.
+The coordinate transitions to uniformly-spaced for distances `maximum_stretching_extent`
+and beyond the `bias_edge` (or, equivalently, `constant_spacing_extent` away from `bias`-side
+of the coordinate range).
+
+`rounding_digits` controls the accuracy with which the grid interfaces are saved.
+
+Examples
+========
+
+A vertical coordinate with constant 20-meter spacing at the top 110 meters.
+
+```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+using Oceananigans
+
+x = ConstantToStretchedCoordinate(extent = 200,
+                                  constant_spacing = 25,
+                                  constant_spacing_extent = 90)
+
+[x(i) for i in 1:length(x)+1]
+
+# output
+
+9-element Vector{Float64}:
+ -228.1
+ -193.16
+ -160.57
+ -130.13
+ -101.66
+  -75.0
+  -50.0
+  -25.0
+    0.0
+```
+"""
+function ConstantToStretchedCoordinate(; extent = 1000,
+                                       bias = :right,
+                                       bias_edge = 0,
+                                       constant_spacing = extent / 20,
+                                       constant_spacing_extent = 5 * constant_spacing,
+                                       maximum_stretching_extent = Inf,
+                                       maximum_spacing = Inf,
+                                       stretching = PowerLawStretching(1.02),
+                                       rounding_digits = 2)
+
+    return ConstantToStretchedCoordinate(extent,
+                                         bias,
+                                         bias_edge,
+                                         constant_spacing,
+                                         constant_spacing_extent,
+                                         maximum_stretching_extent,
+                                         maximum_spacing,
+                                         stretching;
+                                         rounding_digits)
+end
+
+(coord::ConstantToStretchedCoordinate)(i) = coord.faces[i]
+
+Base.length(coord::ConstantToStretchedCoordinate) = length(coord.faces)-1
