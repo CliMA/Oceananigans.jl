@@ -367,7 +367,8 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 ```@setup plot
 using Oceananigans
 using CairoMakie
-CairoMakie.activate!(type = "svg")
+set_theme!(Theme(Lines = (linewidth = 3,)))
+CairoMakie.activate!(type="svg")
 set_theme!(Theme(fontsize=20))
 
 Nx, Ny, Nz = 64, 64, 32
@@ -568,6 +569,9 @@ The right-biased map biases the interfaces being closer towards ``r``; the left-
 
 At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the grid becomes uniformly spaced.
 
+!!! note "Oceanography-related bias"
+    For vertical coordinates fit for oceanographic purposes, the right-biased mapping is usually more relevant as it implies finer vertical resolution closer to the ocean's surface.
+
 ```@example exponentialcoord
 using Oceananigans.Grids: rightbiased_exponential_mapping, leftbiased_exponential_mapping
 
@@ -688,6 +692,137 @@ rowsize!(fig.layout, 1, Relative(0.1))
 rowsize!(fig.layout, 3, Relative(0.1))
 fig
 ```
+
+A downside of [`ExponentialCoordinate`](@ref) coordinate is that we don't have tight control on the minimum spacing at the biased edge.
+To obtain a cordinate with a certain minimum spacing we need to play around with the scale ``h`` and the number of cells.
+
+
+### Constant-To-Stretched spacing
+
+[`ConstantToStretchedCoordinate`](@ref) returns a coordinate with constant spacing over some extent and beyond
+which the spacing increases with a prescribed stretching law; this allows a tighter control on the spacing at the biased edge.
+That is, we can prescribe a constant spacing over the top `surface_layer_height`  below which the grid spacing
+increases following a prescribed stretching law.
+The downside here is that neither the final coordinate extent nor the total number of cells can be prescribed.
+The coordinates extent is greater or equal from what we prescribe via the keyword argument `extent`.
+Also, the total number of cells we end up with depends on the stretching law.
+
+As an example, we build three single-column vertical grids.
+We use right-biased coordinate (i.e., `bias = :right`) since this way we can have tight control of the spacing at the ocean's surface (`bias_edge = 0`).
+The three grids below have constant 20-meter spacing for the top 120 meters.
+We prescribe to all three a `extent = 750` meters and we apply power-law stretching for depths below 120 meters.
+The bigger the power-law stretching factor is, the further the last interface goes beyond the prescribed depth and/or with less total number of cells.
+
+```@setup ConstantToStretchedCoordinate
+using Oceananigans
+using CairoMakie
+set_theme!(Theme(fontsize=16))
+```
+
+```@example ConstantToStretchedCoordinate
+bias = :right
+bias_edge = 0
+extent = 750
+constant_spacing = 20
+constant_spacing_extent = 120
+
+z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
+                                  constant_spacing, constant_spacing_extent,
+                                  stretching = PowerLawStretching(1.08))
+grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
+zf = znodes(grid, Face())
+zc = znodes(grid, Center())
+Δz = zspacings(grid, Center())
+Δz = view(Δz, 1, 1, :)  # for plotting
+
+fig = Figure(size=(800, 550))
+
+axΔz1 = Axis(fig[1, 1];
+             xlabel = "z-spacing (m)",
+             ylabel = "z (m)",
+             title = "PowerLawStretching(1.08)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n ")
+
+axz1 = Axis(fig[1, 2])
+
+ldepth = hlines!(axΔz1, bias_edge - extent, color = :salmon, linestyle=:dash)
+lzbottom = hlines!(axΔz1, zf[1], color = :grey)
+scatter!(axΔz1, Δz, zc)
+hidespines!(axΔz1, :t, :r)
+
+lines!(axz1, [0, 0], [zf[1], 0], color=:gray)
+scatter!(axz1, 0 * zf, zf, marker=:hline, color=:gray, markersize=20)
+scatter!(axz1, 0 * zc, zc)
+hidedecorations!(axz1)
+hidespines!(axz1)
+
+
+z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
+                                  constant_spacing, constant_spacing_extent,
+                                  stretching = PowerLawStretching(1.04))
+grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
+zf = znodes(grid, Face())
+zc = znodes(grid, Center())
+Δz = zspacings(grid, Center())
+Δz = view(Δz, 1, 1, :)  # for plotting
+
+axΔz2 = Axis(fig[1, 3];
+             xlabel = "z-spacing (m)",
+             ylabel = "z (m)",
+             title = "PowerLawStretching(1.04)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n ")
+axz2 = Axis(fig[1, 4])
+
+ldepth = hlines!(axΔz2, bias_edge - extent, color = :salmon, linestyle=:dash)
+lzbottom = hlines!(axΔz2, zf[1], color = :grey)
+scatter!(axΔz2, Δz, zc)
+hidespines!(axΔz2, :t, :r)
+
+lines!(axz2, [0, 0], [zf[1], 0], color=:gray)
+scatter!(axz2, 0 * zf, zf, marker=:hline, color=:gray, markersize=20)
+scatter!(axz2, 0 * zc, zc)
+hidedecorations!(axz2)
+hidespines!(axz2)
+
+z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
+                                  constant_spacing, constant_spacing_extent,
+                                  stretching = PowerLawStretching(1.04),
+                                  maximum_stretching_extent = 500)
+
+grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
+zf = znodes(grid, Face())
+zc = znodes(grid, Center())
+Δz = zspacings(grid, Center())
+Δz = view(Δz, 1, 1, :)  # for plotting
+
+axΔz3 = Axis(fig[1, 5];
+             xlabel = "z-spacing (m)",
+             ylabel = "z (m)",
+             title = "PowerLawStretching(1.04)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n maximum_stretching_extent = 500 m")
+axz3 = Axis(fig[1, 6])
+
+ldepth = hlines!(axΔz3, bias_edge - extent, color = :salmon, linestyle=:dash)
+lzbottom = hlines!(axΔz3, zf[1], color = :grey)
+scatter!(axΔz3, Δz, zc)
+
+hidespines!(axΔz3, :t, :r)
+
+lines!(axz3, [0, 0], [zf[1], 0], color=:gray)
+scatter!(axz3, 0 * zf, zf, marker=:hline, color=:gray, markersize=20)
+scatter!(axz3, 0 * zc, zc)
+hidedecorations!(axz3)
+hidespines!(axz3)
+
+
+linkaxes!(axΔz1, axz1, axΔz2, axz2, axΔz3, axz3)
+
+Legend(fig[2, :], [ldepth, lzbottom], ["prescribed depth", "bottom-most z interface"], orientation = :horizontal)
+
+colsize!(fig.layout, 2, Relative(0.1))
+colsize!(fig.layout, 4, Relative(0.1))
+colsize!(fig.layout, 6, Relative(0.1))
+
+fig
+```
+
 
 ## Single-precision `RectilinearGrid`
 
