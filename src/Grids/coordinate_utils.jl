@@ -1,4 +1,6 @@
-struct ExponentialCoordinate <: Function
+abstract type CallableCoordinate end
+
+struct ExponentialCoordinate <: CallableCoordinate
     size :: Int
     left :: Float64
     right :: Float64
@@ -110,6 +112,9 @@ function (coord::ExponentialCoordinate)(i)
     return xᵢ
 end
 
+Base.length(coord::ExponentialCoordinate) = coord.size
+
+
 struct PowerLawStretching{T}
     power :: T
 end
@@ -128,7 +133,7 @@ function (stretching::LinearStretching)(Δ)
     return (1 + c) * Δ
 end
 
-struct ConstantToStretchedCoordinate{S, A} <: Function
+struct ConstantToStretchedCoordinate{S, A} <: CallableCoordinate
     extent :: Float64
     bias :: Symbol
     bias_edge :: Float64
