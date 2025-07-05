@@ -234,30 +234,96 @@ of the coordinate range).
 Examples
 ========
 
-A vertical coordinate with constant 20-meter spacing at the top 110 meters.
+1. A vertical coordinate with constant 20-meter spacing at the top 110 meters.
+   For that, we use the defaults `bias = :right` and `bias_edge = 0`.
 
-```jldoctest PrescribedSpacingStretchedVerticalCoordinate
-using Oceananigans
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+   using Oceananigans
 
-x = ConstantToStretchedCoordinate(extent = 200,
-                                  constant_spacing = 25,
-                                  constant_spacing_extent = 90)
+   z = ConstantToStretchedCoordinate(extent = 200,
+                                     constant_spacing = 25,
+                                     constant_spacing_extent = 90)
 
-[x(i) for i in 1:length(x)+1]
+   [z(k) for k in 1:length(z)+1]
 
-# output
+   # output
 
-9-element Vector{Float64}:
- -228.1
- -193.16
- -160.57
- -130.13
- -101.66
-  -75.0
-  -50.0
-  -25.0
-    0.0
-```
+   9-element Vector{Float64}:
+    -228.1
+    -193.16
+    -160.57
+    -130.13
+    -101.66
+     -75.0
+     -50.0
+     -25.0
+       0.0
+   ```
+
+   The `z` coordinate above has
+
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+   N = length(z)
+
+   # output
+   8
+   ```
+   cells and has an extent that is longer from what prescribed via the `extent` keyword argument by:
+
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+   z(N+1) - z(1) - z.extent
+
+   # output
+
+   28.099999999999994
+   ```
+
+2. A coordinate that that has a 20-meter spacing for 50 meters at the left side of the domain.
+   The left-most interface of the domain is at -50 meters and the coordinate extends for at least 250 meters.
+
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+   using Oceananigans
+
+   x = ConstantToStretchedCoordinate(extent = 250,
+                                     bias = :left,
+                                     bias_edge = -50,
+                                     constant_spacing = 20,
+                                     constant_spacing_extent = 50)
+
+   [x(i) for i in 1:length(x)+1]
+
+   # output
+   11-element Vector{Float64}:
+    -50.0
+    -30.0
+    -10.0
+     11.23
+     33.8
+     57.82
+     83.42
+    110.74
+    139.93
+    171.16
+    204.62
+   ```
+
+   that ends up with
+
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+   length(x)
+
+   # output
+   10
+   ```
+
+   cells that span a range of:
+
+   ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+   x(length(x)+1) - x(1)
+
+   # output
+   254.62
+   ```
 """
 function ConstantToStretchedCoordinate(; extent = 1000,
                                        bias = :right,
