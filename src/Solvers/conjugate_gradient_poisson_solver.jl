@@ -30,9 +30,15 @@ function Base.show(io::IO, ips::ConjugateGradientPoissonSolver)
               "    └── iteration: ", prettysummary(ips.conjugate_gradient_solver.iteration))
 end
 
+@inline function V∇²ᶜᶜᶜ(i, j, k, grid, c)
+    return δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶜᶜ, c) +
+           δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c) +
+           δzᵃᵃᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c)
+end
+
 @kernel function laplacian!(∇²ϕ, grid, ϕ)
     i, j, k = @index(Global, NTuple)
-    @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
+    @inbounds ∇²ϕ[i, j, k] = V∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
 end
 
 function compute_laplacian!(∇²ϕ, ϕ)
@@ -111,30 +117,31 @@ end
 ##### A preconditioner based on the FFT solver
 #####
 
-@kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs)
+@kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
 end
 
 function compute_preconditioner_rhs!(solver::FFTBasedPoissonSolver, rhs)
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs)
+
+    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs, grid)
     return nothing
 end
 
