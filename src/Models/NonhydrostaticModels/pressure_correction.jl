@@ -1,4 +1,6 @@
 import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
+using Oceananigans.AbstractOperations: Average
+using Oceananigans.Fields: Field
 
 """
     compute_pressure_correction!(model::NonhydrostaticModel, Δt)
@@ -10,6 +12,9 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
+
+    enforce_open_boundary_mass_conservation!(model)
+
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
     fill_halo_regions!(model.pressures.pNHS)
 

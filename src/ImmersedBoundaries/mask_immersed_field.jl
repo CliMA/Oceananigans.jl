@@ -21,45 +21,56 @@ mask_immersed_field_xy!(::ConstantField, args...; kw...) = nothing
 mask_immersed_field_xy!(::Number, args...; kw...) = nothing
 mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 
-mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
-    mask_immersed_field!(field, field.grid, location(field), value)
+mask_immersed_field!(field::Field, value=zero(eltype(field.grid)); exclude_peripheral_nodes=true) =
+    mask_immersed_field!(field, field.grid, location(field), value; exclude_peripheral_nodes)
 
-function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
+function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)); exclude_peripheral_nodes=true)
     a_value = ifelse(bop.b isa Number, -bop.b, value)
-    mask_immersed_field!(bop.a, a_value)
+    mask_immersed_field!(bop.a, a_value; exclude_peripheral_nodes)
 
     b_value = ifelse(bop.a isa Number, -bop.a, value)
-    mask_immersed_field!(bop.b, b_value)
+    mask_immersed_field!(bop.b, b_value; exclude_peripheral_nodes)
     return nothing
 end
 
-function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)))
+function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)); exclude_peripheral_nodes=true)
     a_value = ifelse(bop.b isa Number, bop.b, value)
-    mask_immersed_field!(bop.a, a_value)
+    mask_immersed_field!(bop.a, a_value; exclude_peripheral_nodes)
 
     b_value = ifelse(bop.a isa Number, bop.a, value)
-    mask_immersed_field!(bop.b, b_value)
+    mask_immersed_field!(bop.b, b_value; exclude_peripheral_nodes)
     return nothing
 end
 
 # Fallback
-mask_immersed_field!(field, grid, loc, value) = nothing
+mask_immersed_field!(field, grid, loc, value; kwargs...) = nothing
 
 """
-    mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
+    mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value; exclude_peripheral_nodes=true)
 
 masks `field` defined on `grid` with a value `val` at locations where `peripheral_node` evaluates to `true`
 """
-function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
+function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value; exclude_peripheral_nodes=true)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
+
+    if exclude_peripheral_nodes
+        launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
+    else
+        launch!(arch, grid, size(field), _mask_only_immersed_field!, field, loc, grid, value)
+    end
+
     return nothing
 end
-
 @kernel function _mask_immersed_field!(field, (ℓx, ℓy, ℓz), grid, value)
     i, j, k = @index(Global, NTuple)
     masked  = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
+end
+
+@kernel function _mask_only_immersed_field!(field, (ℓx, ℓy, ℓz), grid, value)
+    i, j, k = @index(Global, NTuple)
+    masked  = immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
 
