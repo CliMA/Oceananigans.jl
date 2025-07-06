@@ -354,7 +354,7 @@ fig
 
 frames = 1:length(times)
 
-record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
+CairoMakie.record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide
