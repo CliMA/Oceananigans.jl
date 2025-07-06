@@ -163,7 +163,7 @@ end
 
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
 
-        νˢᵍˢ = - closure_constant(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
+        νˢᵍˢ = - closure_coefficient(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
 
     @inbounds νₑ[i, j, k] = max(zero(FT), νˢᵍˢ)
@@ -184,7 +184,7 @@ end
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, tracer)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - closure_constant(i, j, k, grid, Cκ) * δ² * ϑ / σ
+        κˢᵍˢ = - closure_coefficient(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)

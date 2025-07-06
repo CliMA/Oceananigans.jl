@@ -6,7 +6,7 @@ export
     HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles,
+    LagrangianParticles, DroguedParticleDynamics,
     BoundaryConditionOperation, ForcingOperation,
     seawater_density
 
@@ -109,7 +109,7 @@ using .HydrostaticFreeSurfaceModels:
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
-using .LagrangianParticleTracking: LagrangianParticles
+using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
@@ -190,16 +190,29 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 # have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
-# Extend output writer functionality to Ocenanaigans' models
-import Oceananigans.OutputWriters: default_included_properties, checkpointer_address
+# Extend output writer functionality to custom Oceananigans.Models
+import Oceananigans.OutputWriters: default_included_properties,
+                                   checkpointer_address,
+                                   required_checkpoint_properties
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 
 checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+
+function required_checkpoint_properties(model::OceananigansModels)
+    properties = [:grid, :clock]
+    if !isnothing(timestepper(model))
+       push!(properties, :timestepper)
+    end
+    if !isnothing(model.particles)
+       push!(properties, :particles)
+    end
+    return properties
+end
 
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`

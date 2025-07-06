@@ -16,13 +16,7 @@ mutable struct Checkpointer{T} <: AbstractOutputWriter
     cleanup :: Bool
 end
 
-default_checkpointed_properties(model) = [:grid, :particles, :clock, :timestepper]
-
-has_ab2_timestepper(model) = try
-    model.timestepper isa QuasiAdamsBashforth2TimeStepper
-catch
-    false
-end
+required_checkpoint_properties(model) = [:grid, :clock]
 
 # Certain properties are required for `set!` to pickup from a checkpoint.
 function required_checkpointed_properties(model)
@@ -35,30 +29,6 @@ function required_checkpointed_properties(model)
     return properties
 end
 
-function validate_checkpointed_properties(model, properties)
-    required_properties = required_checkpointed_properties(model)
-
-    for rp in required_properties
-        if rp ∉ properties
-            @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
-            push!(properties, rp)
-        end
-    end
-
-    for p in properties
-        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
-        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
-
-        if (p ∉ required_properties) && has_reference(Function, getproperty(model, p))
-            @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
-            filter!(e -> e != p, properties)
-        end
-    end
-
-    return properties
-end
-
-
 """
     Checkpointer(model;
                  schedule,
@@ -67,7 +37,7 @@ end
                  overwrite_existing = false,
                  verbose = false,
                  cleanup = false,
-                 properties = default_checkpointed_properties(model))
+                 properties = required_checkpoint_properties(model))
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple
@@ -97,12 +67,12 @@ Keyword arguments
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
 
-- `cleanup`: Previous checkpoint files will be deleted once a new checkpoint file is written.
+- `cleanup`: Previous checkpoint files are deleted once a new checkpoint file is written.
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
+                `:grid` and `:clock`, and if there is a timestepper then also
+                `:timestepper`. Default: calls [`required_checkpoint_properties`](@ref) on
                 `model` to get these properties.
 """
 function Checkpointer(model; schedule,
@@ -110,7 +80,28 @@ function Checkpointer(model; schedule,
                       prefix = "checkpoint",
                       overwrite_existing = false,
                       verbose = false,
-                      cleanup = false)
+                      cleanup = false,
+                      properties = required_checkpoint_properties(model))
+
+    required_properties = required_checkpoint_properties(model)
+
+    # Certain properties are required for `set!` to pickup from a checkpoint.
+    for rp in required_properties
+        if rp ∉ properties
+            @warn "$rp is required for checkpointing. It is added to checkpointed properties."
+            push!(properties, rp)
+        end
+    end
+
+    for p in properties
+        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
+        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
+
+        if (p ∉ required_properties) && has_reference(Function, getproperty(model, p))
+            @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
+            filter!(e -> e != p, properties)
+        end
+    end
 
     mkpath(dir)
 
@@ -148,7 +139,7 @@ function checkpoint_path(pickup, output_writers)
 end
 
 """
-    checkpoint_path(pickup::Bool, checkpointer)
+    checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
 `checkpointer.prefix` and return the path to the file whose name contains
@@ -251,8 +242,8 @@ function set!(model::AbstractModel, filepath::AbstractString)
         for name in keys(model_fields)
             if string(name) ∈ keys(file[addr]) # Test if variable exists in checkpoint.
                 model_field = model_fields[name]
-                parent_data = file["$addr/$name/data"]
-                copyto!(parent(model_field), parent_data)
+                parent_data = on_architecture(model.architecture, file["$addr/$name/data"])
+                @apply_regionally copyto!(parent(model_field), parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
@@ -276,25 +267,26 @@ function set!(model::AbstractModel, filepath::AbstractString)
     return nothing
 end
 
-function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
+function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, addr)
     for name in propertynames(model_fields)
         tendency_in_model = hasproperty(timestepper.Gⁿ, name)
         tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
         if tendency_in_model && tendency_in_checkpoint
             # Tendency "n"
-            parent_data = file["$addr/timestepper/Gⁿ/$name/data"]
+            parent_data = on_architecture(arch, file["$addr/timestepper/Gⁿ/$name/data"])
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
-            copyto!(tendencyⁿ_field.data.parent, parent_data)
+
+            @apply_regionally copyto!(parent(tendencyⁿ_field), parent_data)
             if name==:u
                 @show tendencyⁿ_field
             end
 
             # Tendency "n-1"
-            parent_data = file["$addr/timestepper/G⁻/$name/data"]
+            parent_data = on_architecture(arch, file["$addr/timestepper/G⁻/$name/data"])
 
             tendency⁻_field = timestepper.G⁻[name]
-            copyto!(tendency⁻_field.data.parent, parent_data)
+            @apply_regionally copyto!(parent(tendency⁻_field), parent_data)
         elseif tendency_in_model && !tendency_in_checkpoint
             @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
         end
