@@ -546,7 +546,14 @@ hideydecorations!(axy, grid=false)
 fig
 ```
 
-## Streched coordinates
+## Coordinate helper utilities
+
+As described in the sessions above we can have create grids with stretched coordinates if we
+provide as input to the grid constructor either a function the returns the coordinate's interfaces
+or an array with the interfaces.
+
+In this section we further showcase some helper utilities that can be used to define coordinates
+with variable spacings.
 
 ### Exponential spacing
 
@@ -608,7 +615,7 @@ fig
 
 Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points towards the left or right side of the domain.
 
-Let's see how we use [`ExponentialCoordinate`](@ref). Below we construct a coordinate with 10 cells that spans the range [-700, 300]. By default, the `ExponentialCoordinate` is right-biased.
+Let's see how we use [`ExponentialCoordinate`](@ref). Below we construct a coordinate with 10 cells that spans the range ``[-700, 300]``. By default, the `ExponentialCoordinate` is right-biased.
 
 ```@example exponentialcoord
 using Oceananigans
@@ -710,8 +717,8 @@ Also, the total number of cells we end up with depends on the stretching law.
 
 As an example, we build three single-column vertical grids.
 We use right-biased coordinate (i.e., `bias = :right`) since this way we can have tight control of the spacing at the ocean's surface (`bias_edge = 0`).
-The three grids below have constant 20-meter spacing for the top 120 meters.
-We prescribe to all three a `extent = 750` meters and we apply power-law stretching for depths below 120 meters.
+The three grids below have constant 30-meter spacing for the top 180 meters.
+We prescribe to all three a `extent = 800` meters and we apply power-law stretching for depths below 120 meters.
 The bigger the power-law stretching factor is, the further the last interface goes beyond the prescribed depth and/or with less total number of cells.
 
 ```@setup ConstantToStretchedCoordinate
@@ -723,9 +730,9 @@ set_theme!(Theme(fontsize=16))
 ```@example ConstantToStretchedCoordinate
 bias = :right
 bias_edge = 0
-extent = 750
-constant_spacing = 20
-constant_spacing_extent = 120
+extent = 800
+constant_spacing = 30
+constant_spacing_extent = 180
 
 z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
                                   constant_spacing, constant_spacing_extent,
@@ -797,7 +804,7 @@ zc = znodes(grid, Center())
 axΔz3 = Axis(fig[1, 5];
              xlabel = "z-spacing (m)",
              ylabel = "z (m)",
-             title = "PowerLawStretching(1.04)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n maximum_stretching_extent = 500 m")
+             title = "PowerLawStretching(1.04)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n maximum_stretching_extent = 500")
 axz3 = Axis(fig[1, 6])
 
 ldepth = hlines!(axΔz3, bias_edge - extent, color = :salmon, linestyle=:dash)
@@ -815,7 +822,7 @@ hidespines!(axz3)
 
 linkaxes!(axΔz1, axz1, axΔz2, axz2, axΔz3, axz3)
 
-Legend(fig[2, :], [ldepth, lzbottom], ["prescribed depth", "bottom-most z interface"], orientation = :horizontal)
+Legend(fig[2, :], [ldepth, lzbottom], ["prescribed extent", "bottom z interface"], orientation = :horizontal)
 
 colsize!(fig.layout, 2, Relative(0.1))
 colsize!(fig.layout, 4, Relative(0.1))
