@@ -548,12 +548,11 @@ fig
 
 ## Coordinate helper utilities
 
-As described in the sessions above we can have create grids with stretched coordinates if we
-provide as input to the grid constructor either a function the returns the coordinate's interfaces
-or an array with the interfaces.
+As described above, to construct grids with stretched coordinates we need to provide as input
+either a function the returns the coordinate's interfaces or an array with the interfaces.
 
-In this section we further showcase some helper utilities that can be used to define coordinates
-with variable spacings.
+Here we further showcase some helper utilities that can be used to define few special types of
+coordinates with variable spacings.
 
 ### Exponential coordinate
 
