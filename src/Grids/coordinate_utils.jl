@@ -14,9 +14,8 @@ end
 
 Return a one-dimensional coordinate with `N` cells that are exponentially spaced
 (or, equivalently, with spacings that grow linearly along the coordinate).
-
 The coordinate spans the range [`left`, `right`]. The exponential e-folding is controlled by `scale`.
-The coordinate interfaces are stacked on the `bias`-side of the domain.
+The coordinate interfaces are closely stacked on the `bias`-side of the domain.
 
 Arguments
 =========
@@ -74,7 +73,8 @@ To inspect the interfaces of the coordinate we can call:
    100.0
 ```
 
-Above, the default `bias` is `:right`. We can get a left-biased grid via:
+Above, the default `bias` is `:right` and thus the interfaces are closer on the `right = 100` side of the domain.
+We can get a left-biased grid via:
 
 ```jldoctest ExponentialCoordinate
 x = ExponentialCoordinate(N, l, r, bias=:left)
@@ -249,15 +249,13 @@ end
                                   stretching = PowerLawStretching(1.02),
                                   rounding_digits = 2)
 
-Return a one-dimensional coordinate with `constant_spacing` over a
-`constant_spacing_extent` on the `bias`-side of the domain.
+Return a one-dimensional coordinate that has `constant_spacing` over a `constant_spacing_extent`
+on the `bias`-side of the domain.
 Beyond the `constant_spacing_extent`, the interface spacings stretch according
-to the `stretching`.
+to the `stretching` law (default: `PowerLawStretching(1.02)`).
 The coordinate spacing is limited to be less than `maximum_spacing` (default: Inf).
-The coordinate transitions to uniformly-spaced for distances `maximum_stretching_extent`  (default: Inf)
-and beyond the `bias_edge` (or, equivalently, `maximum_stretching_extent` away from `bias`-side
-of the coordinate range).
-
+For distances `maximum_stretching_extent` away from the `bias_edge`, the coordinate transitions
+to a uniformly-spaced coordinate.
 `rounding_digits` controls the accuracy with which the grid interfaces are saved.
 
 Examples
