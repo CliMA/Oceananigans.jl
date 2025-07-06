@@ -555,7 +555,7 @@ or an array with the interfaces.
 In this section we further showcase some helper utilities that can be used to define coordinates
 with variable spacings.
 
-### Exponential spacing
+### Exponential coordinate
 
 [`ExponentialCoordinate`](@ref) returns a coordinate with interfaces that lie on an exponential profile.
 By that, we mean that a uniformly discretized domain in the range ``[l, r]`` is mapped back onto itself via either
@@ -705,7 +705,7 @@ A downside of [`ExponentialCoordinate`](@ref) coordinate is that we don't have t
 To obtain a cordinate with a certain minimum spacing we need to play around with the scale ``h`` and the number of cells.
 
 
-### Constant-To-Stretched spacing
+### Constant-to-stretched-spacing coordinate
 
 [`ConstantToStretchedCoordinate`](@ref) returns a coordinate with constant spacing over some extent and beyond
 which the spacing increases with a prescribed stretching law; this allows a tighter control on the spacing at the biased edge.
