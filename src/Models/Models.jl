@@ -201,9 +201,12 @@ checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
 function required_checkpoint_properties(model::OceananigansModels)
-    properties = [:grid, :clock, :particles]
-    if !isnothing(timestepper(model)) || !isnothing(model.particles)
+    properties = [:grid, :clock]
+    if !isnothing(timestepper(model))
        push!(properties, :timestepper)
+    end
+    if !isnothing(model.particles)
+       push!(properties, :particles)
     end
     return properties
 end
