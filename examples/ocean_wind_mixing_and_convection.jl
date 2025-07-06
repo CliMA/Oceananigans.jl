@@ -14,7 +14,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie, SeawaterPolynomials"
+# pkg"add Oceananigans, CairoMakie, SeawaterPolynomials, CUDA"
 # ```
 
 # We start by importing all of the packages and functions that we'll need for this
