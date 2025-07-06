@@ -188,7 +188,6 @@ Example
 =======
 
 ```jldoctest weno_vector_invariant
-
 julia> using Oceananigans
 
 julia> WENOVectorInvariant()
