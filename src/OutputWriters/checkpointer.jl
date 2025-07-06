@@ -55,11 +55,11 @@ Keyword arguments
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
 
-- `cleanup`: Previous checkpoint files will be deleted once a new checkpoint file is written.
+- `cleanup`: Previous checkpoint files are deleted once a new checkpoint file is written.
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid` and `:clock`, and if using AB2 timestepping then also
+                `:grid` and `:clock`, and if there is a timestepper then also
                 `:timestepper`. Default: calls [`required_checkpoint_properties`](@ref) on
                 `model` to get these properties.
 """
@@ -76,7 +76,7 @@ function Checkpointer(model; schedule,
     # Certain properties are required for `set!` to pickup from a checkpoint.
     for rp in required_properties
         if rp ∉ properties
-            @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
+            @warn "$rp is required for checkpointing. It is added to checkpointed properties."
             push!(properties, rp)
         end
     end
@@ -127,7 +127,7 @@ function checkpoint_path(pickup, output_writers)
 end
 
 """
-    checkpoint_path(pickup::Bool, checkpointer)
+    checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
 `checkpointer.prefix` and return the path to the file whose name contains
