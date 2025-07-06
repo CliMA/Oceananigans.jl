@@ -141,24 +141,41 @@ function Base.show(io::IO, coord::ExponentialCoordinate)
                  "└─ bias: :$(coord.bias)")
 end
 
+"""
+    PowerLawStretching{T}
 
+Α power-law stretching of the form `x ↦ x^power`.
+"""
 struct PowerLawStretching{T}
     power :: T
 end
 
-function (stretching::PowerLawStretching)(Δ)
-    γ = stretching.power
-    return Δ^γ
-end
+"""
+    (stretching::PowerLawStretching)(x)
 
+Apply power-law stretching to `x` via
+
+    x^stretching.power
+"""
+(stretching::PowerLawStretching)(x) = x^stretching.power
+
+"""
+    LinearStretching{T}
+
+Α linear stretching of the form `x ↦ (1 + coefficient) * x`.
+"""
 struct LinearStretching{T}
     coefficient :: T
 end
 
-function (stretching::LinearStretching)(Δ)
-    c = stretching.coefficient
-    return (1 + c) * Δ
-end
+"""
+    (stretching::LinearStretching)(x)
+
+Apply linear stretching to `x` via
+
+    (1 + stretching.coefficient) * x
+"""
+(stretching::LinearStretching)(x) = (1 + stretching.coefficient) * x
 
 struct ConstantToStretchedCoordinate{S, A} <: CallableCoordinate
     extent :: Float64
@@ -242,7 +259,7 @@ function compute_stretched_interfaces(; extent,
 end
 
 """
-    ConstantToStretchedCoordinate(; extent = 1000,
+    ConstantToStretchedCoordinate(; extent,
                                   bias = :right,
                                   bias_edge = 0,
                                   constant_spacing = extent / 20,
@@ -255,11 +272,24 @@ end
 Return a one-dimensional coordinate that has `constant_spacing` over a `constant_spacing_extent`
 on the `bias`-side of the domain.
 Beyond the `constant_spacing_extent`, the interface spacings stretch according
-to the `stretching` law (default: `PowerLawStretching(1.02)`).
-The coordinate spacing is limited to be less than `maximum_spacing` (default: Inf).
-For distances `maximum_stretching_extent` away from the `bias_edge`, the coordinate transitions
-to a uniformly-spaced coordinate.
-`rounding_digits` controls the accuracy with which the grid interfaces are saved.
+a provided `stretching` law.
+
+Keyword arguments
+=================
+
+* `extent`: The desired extent of the coordinate.
+* `bias :: Symbol`: Whether the `constant_spacing` interfaces are on the left (`:left`) or right (`:right`)
+  part of the domain. Default: `:right`.
+* `bias_edge`: The first interface on the `bias`-side of the domain. Default: 0.
+* `constant_spacing`: The constant spacing on the `bias`-side of the domain. Default: `extent / 20`.
+* `constant_spacing_extent`: The extent of the domain away from the `bias_edge` for which we have
+  `constant_spacing`. Default: `5 * constant_spacing`.
+* `maximum_stretching_extent`: The distance away from the `bias_edge` beyond which there is no more stretching
+  and instead we transition to a uniformly-spaced coordinate. Default: Inf.
+* `maximum_spacing`: The maximum spacing between two interfaces. Default: Inf.
+* `stretching`: The stretching law. Available options are [`PowerLawStretching`](@ref) and [`LinearStretching`](@ref).
+   Default: `PowerLawStretching(1.02)`.
+* `rounding_digits`: the accuracy with which the grid interfaces are saved. Default: 2.
 
 Examples
 ========
@@ -267,12 +297,12 @@ Examples
 * A vertical coordinate with constant 20-meter spacing at the top 110 meters.
   For that, we use the defaults `bias = :right` and `bias_edge = 0`.
 
-  ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+  ```jldoctest ConstantToStretchedCoordinate
   using Oceananigans
 
   z = ConstantToStretchedCoordinate(extent = 200,
-                                     constant_spacing = 25,
-                                     constant_spacing_extent = 90)
+                                    constant_spacing = 25,
+                                    constant_spacing_extent = 90)
   # output
   ConstantToStretchedCoordinate
   ├─ extent: 200.0
@@ -288,7 +318,7 @@ Examples
 
   The `z` coordinate above has
 
-  ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+  ```jldoctest ConstantToStretchedCoordinate
   N = length(z)
 
   # output
@@ -297,8 +327,8 @@ Examples
 
   cells. To inspect the coordinate's interfaces we can call:
 
-  ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
-  [z(k) for k in 1:length(z)+1]
+  ```jldoctest ConstantToStretchedCoordinate
+  z.faces
 
   # output
 
@@ -317,8 +347,8 @@ Examples
   The coordinate has an extent that is longer from what prescribed via the `extent`
   keyword argument by:
 
-  ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
-  z(N+1) - z(1) - z.extent
+  ```jldoctest ConstantToStretchedCoordinate
+  (z.faces[end] - z.faces[1]) - z.extent
 
   # output
 
@@ -328,7 +358,7 @@ Examples
 * A coordinate that that has a 20-meter spacing for 50 meters at the left side of the domain.
   The left-most interface of the domain is at -50 meters and the coordinate extends for at least 250 meters.
 
-  ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+  ```jldoctest ConstantToStretchedCoordinate
   using Oceananigans
 
   x = ConstantToStretchedCoordinate(extent = 250,
@@ -337,9 +367,10 @@ Examples
                                     constant_spacing = 20,
                                     constant_spacing_extent = 50)
 
-  [x(i) for i in 1:length(x)+1]
+  x.faces
 
   # output
+
   11-element Vector{Float64}:
    -50.0
    -30.0
@@ -356,21 +387,22 @@ Examples
 
   that ends up with
 
-  ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
+  ```jldoctest ConstantToStretchedCoordinate
   length(x)
 
   # output
   10
   ```
 
-  cells that span a range of:
+  cells that span a domain of:
 
-  ```jldoctest PrescribedSpacingStretchedVerticalCoordinate
-  x(length(x)+1) - x(1)
+  ```jldoctest ConstantToStretchedCoordinate
+  x.faces[end] - x.faces[1]
 
   # output
   254.62
   ```
+  which is bigger than the desired `extent`.
 """
 function ConstantToStretchedCoordinate(; extent = 1000,
                                        bias = :right,
