@@ -17,19 +17,7 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     cleanup :: Bool
 end
 
-function default_checkpointed_properties(model)
-    properties = [:grid, :particles, :clock, :timestepper]
-    #if has_ab2_timestepper(model)
-    #    push!(properties, :timestepper)
-    #end
-    return properties
-end
-
-has_ab2_timestepper(model) = try
-    model.timestepper isa QuasiAdamsBashforth2TimeStepper
-catch
-    false
-end
+required_checkpoint_properties(model) = [:grid, :clock]
 
 """
     Checkpointer(model;
@@ -39,7 +27,7 @@ end
                  overwrite_existing = false,
                  verbose = false,
                  cleanup = false,
-                 properties = default_checkpointed_properties(model))
+                 properties = required_checkpoint_properties(model))
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -67,12 +55,12 @@ Keyword arguments
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
 
-- `cleanup`: Previous checkpoint files will be deleted once a new checkpoint file is written.
+- `cleanup`: Previous checkpoint files are deleted once a new checkpoint file is written.
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
+                `:grid` and `:clock`, and if there is a timestepper then also
+                `:timestepper`. Default: calls [`required_checkpoint_properties`](@ref) on
                 `model` to get these properties.
 """
 function Checkpointer(model; schedule,
@@ -81,18 +69,14 @@ function Checkpointer(model; schedule,
                       overwrite_existing = false,
                       verbose = false,
                       cleanup = false,
-                      properties = default_checkpointed_properties(model))
+                      properties = required_checkpoint_properties(model))
+
+    required_properties = required_checkpoint_properties(model)
 
     # Certain properties are required for `set!` to pickup from a checkpoint.
-    required_properties = [:grid, :particles, :clock]
-
-    if has_ab2_timestepper(model)
-        push!(required_properties, :timestepper)
-    end
-
     for rp in required_properties
         if rp ∉ properties
-            @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
+            @warn "$rp is required for checkpointing. It is added to checkpointed properties."
             push!(properties, rp)
         end
     end
@@ -143,7 +127,7 @@ function checkpoint_path(pickup, output_writers)
 end
 
 """
-    checkpoint_path(pickup::Bool, checkpointer)
+    checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
 `checkpointer.prefix` and return the path to the file whose name contains
@@ -211,7 +195,7 @@ end
 ##### set! for checkpointer filepaths
 #####
 
-# Should this go in Models? 
+# Should this go in Models?
 """
     set!(model, filepath::AbstractString)
 
@@ -260,7 +244,7 @@ end
 
 function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, addr)
     for name in propertynames(model_fields)
-        tendency_in_model = hasproperty(timestepper.Gⁿ, name) 
+        tendency_in_model = hasproperty(timestepper.Gⁿ, name)
         tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
         if tendency_in_model && tendency_in_checkpoint
             # Tendency "n"

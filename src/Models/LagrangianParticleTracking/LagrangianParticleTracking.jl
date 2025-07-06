@@ -51,7 +51,7 @@ end
 """
     LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing)
 
-Construct some `LagrangianParticles` that can be passed to a model. The particles will have initial locations
+Construct some `LagrangianParticles` that can be passed to a model. The particles have initial locations
 `x`, `y`, and `z`. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
 
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
@@ -70,7 +70,11 @@ function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, p
 end
 
 """
-    LagrangianParticles(particles::StructArray; restitution=1.0, tracked_fields::NamedTuple=NamedTuple(), dynamics=no_dynamics)
+    LagrangianParticles(particles::StructArray;
+                        restitution = 1.0,
+                        tracked_fields::NamedTuple=NamedTuple(),
+                        dynamics = no_dynamics,
+                        parameters = nothing)
 
 Construct some `LagrangianParticles` that can be passed to a model. The `particles` should be a `StructArray`
 and can contain custom fields. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
