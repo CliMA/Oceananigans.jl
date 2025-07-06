@@ -247,9 +247,9 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            # Try to convert to a range, cuz
+            # Try to convert to a lighter-weight range for efficiency
             time_range = range(first(times), last(times), length=length(times))
-            if all(time_range .≈ times) # good enough for most
+            if isapprox(time_range, times) 
                 times = time_range
             end
 
@@ -379,7 +379,7 @@ function FieldTimeSeries(loc, grid, times=();
     LX, LY, LZ = loc
 
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
         isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
@@ -616,7 +616,7 @@ function FieldTimeSeries(path::String, name::String;
             throw(err)
         end
     end
-        
+
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)
@@ -654,7 +654,7 @@ function FieldTimeSeries(path::String, name::String;
     end
 
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
@@ -706,9 +706,9 @@ function Field(location, path::String, name::String, iter;
     close(file)
 
     # Change grid to specified architecture?
-    grid     = on_architecture(architecture, grid)
+    grid = on_architecture(architecture, grid)
     raw_data = on_architecture(architecture, raw_data)
-    data     = offset_data(raw_data, grid, location, indices)
+    @apply_regionally data = offset_data(raw_data, grid, location, indices)
 
     return Field(location, grid; boundary_conditions, indices, data)
 end
@@ -742,11 +742,7 @@ function interior(fts::FieldTimeSeries)
 end
 
 # FieldTimeSeries boundary conditions
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC}
-
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
+@inline getbc(condition::Union{FTS, GPUFTS}, i::Int, j::Int, grid::AbstractGrid, clock, args...) = condition[i, j, Time(clock.time)]
 
 #####
 ##### Fill halo regions

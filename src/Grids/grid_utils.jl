@@ -8,22 +8,22 @@ using OffsetArrays: IdOffsetRange
 Return the grid property `ξ`, either `with_halos` or without,
 for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
 """
-@inline function _property(ξ, ℓ, T, N, with_halos)
+@inline function _property(ξ, ℓ, T, N, H, with_halos)
     if with_halos
         return ξ
     else
-        i = interior_indices(ℓ, T(), N)
-        return view(ξ, i)
+        i = interior_parent_indices(ℓ, T(), N, H)
+        return view(parent(ξ), i)
     end
 end
 
-@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, with_halos)
+@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, with_halos)
     if with_halos
         return ξ
     else
-        i = interior_indices(ℓx, Tx(), Nx)
-        j = interior_indices(ℓy, Ty(), Ny)
-        return view(ξ, i, j)
+        i = interior_parent_indices(ℓx, Tx(), Nx, Hx)
+        j = interior_parent_indices(ℓy, Ty(), Ny, Hy)
+        return view(parent(ξ), i, j)
     end
 end
 
@@ -215,7 +215,7 @@ end
 # intersect_index_range(::Colon, ::Colon) = Colon()
 index_range_contains(range, subset::AbstractUnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
 index_range_contains(::Colon, ::AbstractUnitRange)     = true
-index_range_contains(::Colon, ::Colon)          = true
+index_range_contains(::Colon, ::Colon)                 = true
 index_range_contains(::AbstractUnitRange, ::Colon)     = true
 
 # Return the index range of "full" parent arrays that span an entire dimension
@@ -296,12 +296,6 @@ function domain_summary(topo, name, (left, right))
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
-    prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(topo, z, name))
-end
-
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1)
@@ -326,10 +320,10 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
 @inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
 
 # Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
-@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
-@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
-@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
-@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid)
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid)
 
 #####
 ##### Spherical geometry
@@ -349,6 +343,7 @@ It has been known since the time of Euler and Lagrange that
 
 References
 ==========
+
 * Euler, L. (1778) De mensura angulorum solidorum, Opera omnia, 26, 204-233 (Orig. in Acta adac. sc. Petrop. 1778)
 * Lagrange,  J.-L. (1798) Solutions de quilquies problèmes relatifs au triangles sphéruques, Oeuvres, 7, 331-359.
 """
@@ -380,6 +375,7 @@ that ``P`` above is the same as the volume defined by the vectors `a`, `b`, and 
 
 References
 ==========
+
 * Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
 """
 function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)

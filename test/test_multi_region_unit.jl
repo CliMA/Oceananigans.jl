@@ -3,6 +3,21 @@ include("dependencies_for_runtests.jl")
 devices(::CPU, num) = nothing
 devices(::GPU, num) = Tuple(0 for i in 1:num)
 
+# To be extended as we find new use cases
+@testset "Test @apply_regionally macro" begin
+    a = 1
+    b = 2
+    @apply_regionally a = b + 1
+
+    @test a == 3
+    
+    a = MultiRegionObject((1, 2, 3))
+    b = MultiRegionObject((4, 5, 6))
+
+    @apply_regionally a = b + 1
+    @test a == MultiRegionObject((5, 6, 7))
+end
+
 @testset "Testing multi region grids" begin
     for arch in archs
 
@@ -20,12 +35,12 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                                            x = (0, 1),
                                            y = collect(range(0, 1, length=21)),
                                            z = (0, 1))
-                 
+
         grids = [lat_lon_grid, rectilinear_grid]
 
         immersed_boundaries = [GridFittedBottom((x, y) -> 0.5),
                                GridFittedBoundary((x, y, z) -> z>0.5)]
-        
+
         for grid in grids, Partition in partition_types, region in regions
             @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
             mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))

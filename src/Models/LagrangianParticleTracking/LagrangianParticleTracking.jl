@@ -1,6 +1,6 @@
 module LagrangianParticleTracking
 
-export LagrangianParticles
+export LagrangianParticles, DroguedParticleDynamics
 
 using Printf
 using Adapt
@@ -21,6 +21,7 @@ using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: prettysummary, launch!
 
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.OutputWriters: serializeproperty!, fetch_output
 
 import Base: size, length, show
 
@@ -128,6 +129,7 @@ end
 
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
+include("drogued_dynamics.jl")
 
 step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
@@ -140,6 +142,18 @@ function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
 
     # Advect particles
     advect_lagrangian_particles!(particles, model, Δt)
+end
+
+####
+#### Extend output writers to support LagrangianParticles
+####
+
+serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
+
+function fetch_output(lagrangian_particles::LagrangianParticles, model)
+    particle_properties = lagrangian_particles.properties
+    names = propertynames(particle_properties)
+    return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
 
 end # module

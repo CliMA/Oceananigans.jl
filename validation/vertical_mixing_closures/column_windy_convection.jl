@@ -53,7 +53,7 @@ for closure in closures_to_run
                                         tracers = (:b, :e, :ϵ),
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
-                                        
+
     bᵢ(z) = N² * z
     set!(model, b=bᵢ, e=1e-6)
 
@@ -73,7 +73,7 @@ for closure in closures_to_run
 
     simulation.output_writers[:fields] = output_writer
 
-    
+
     add_callback!(simulation, progress, IterationInterval(10))
 
     @info "Running a simulation of "
@@ -144,7 +144,7 @@ for (i, closure) in enumerate(closures_to_run)
     en  = @lift interior(e_ts[i][$n], 1, 1, :)
     κcn = @lift interior(κc_ts[i][$n], 1, 1, :)
     κun = @lift interior(κu_ts[i][$n], 1, 1, :)
-    
+
     closurename = string(nameof(typeof(closure)))
 
     lines!(axb, bn,  zc, label=closurename, color=colors[i])

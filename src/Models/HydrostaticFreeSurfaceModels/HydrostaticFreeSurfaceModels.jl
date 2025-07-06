@@ -2,7 +2,7 @@ module HydrostaticFreeSurfaceModels
 
 export
     HydrostaticFreeSurfaceModel,
-    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, ZStar, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
@@ -54,17 +54,16 @@ include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-
 using .SplitExplicitFreeSurfaces
 
 # ZStar implementation
 include("z_star_vertical_spacing.jl")
 
 # Hydrostatic model implementation
-include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
@@ -81,8 +80,8 @@ cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_ti
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) = 
-    merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), 
+@inline fields(model::HydrostaticFreeSurfaceModel) =
+    merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
           model.auxiliary_fields,
           biogeochemical_auxiliary_fields(model.biogeochemistry))
 
@@ -92,7 +91,7 @@ constructor_field_names(user_velocities, user_tracers, user_free_surface, auxili
     tuple(velocity_names(user_velocities)...,
           tracernames(user_tracers)...,
           free_surface_names(user_free_surface, user_velocities, grid)...,
-          keys(auxiliary_fields)..., 
+          keys(auxiliary_fields)...,
           keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """

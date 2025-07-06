@@ -31,9 +31,9 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     per_simulation = Simulation(per_model; simulation_kwargs...)
     run!(sic_simulation)
     run!(per_simulation)
-    
+
     @info "Testing Single column grid results..."
-    
+
     @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
     @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
     @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
@@ -53,7 +53,7 @@ end
     ensemble_size = size(closures)
 
     @test size(closures) == (3, 2)
-    @test closures[2, 1].background_κz == 1.2 
+    @test closures[2, 1].background_κz == 1.2
 
     Δt = 0.01 * grid.z.Δᵃᵃᶜ^2
 
@@ -63,13 +63,13 @@ end
     models = [HydrostaticFreeSurfaceModel(; grid, closure=closures[i, j], model_kwargs...)
               for i=1:ensemble_size[1], j=1:ensemble_size[2]]
 
-    set_ic!(model) = set!(model, c = z -> exp(-z^2)) 
+    set_ic!(model) = set!(model, c = z -> exp(-z^2))
 
     for model in models
         set_ic!(model)
         simulation = Simulation(model; simulation_kwargs...)
         run!(simulation)
-    end 
+    end
 
     ensemble_grid = RectilinearGrid(; size=ColumnEnsembleSize(; Nz, ensemble=ensemble_size, Hz),
                                       z=(-10, 10), topology, halo=Hz)
@@ -121,7 +121,7 @@ end
         set_ic!(model)
         simulation = Simulation(model; simulation_kwargs...)
         run!(simulation)
-    end 
+    end
 
     ensemble_grid = RectilinearGrid(size=ColumnEnsembleSize(Nz=Nz, ensemble=ensemble_size, Hz=Hz);
                                     z=(-1, 0), topology, halo=Hz)
@@ -173,7 +173,7 @@ end
         set_ic!(model)
         simulation = Simulation(model; simulation_kwargs...)
         run!(simulation)
-    end 
+    end
 
     ensemble_grid = RectilinearGrid(; size=SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size[1]),
                                       y = (-10, 10), z=(-1, 0), topology, halo=(Hy, Hz))

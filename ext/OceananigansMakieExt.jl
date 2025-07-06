@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Grids: OrthogonalSphericalShellGrid, topology
 using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using Makie: Observable
@@ -47,6 +47,7 @@ end
 
 axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
 axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
+axis_str(::OrthogonalSphericalShellGrid, dim) = ""
 axis_str(grid::ImmersedBoundaryGrid, dim) = axis_str(grid.underlying_grid, dim)
 
 const LLGOrIBLLG = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
@@ -55,7 +56,7 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
     converted_args = convert_field_argument(f)
 
     if !(:axis ∈ keys(attributes)) # Let's try to automatically add labels and ticks
-        d1, d2, D = deduce_dimensionality(f) 
+        d1, d2, D = deduce_dimensionality(f)
         grid = f.grid
 
         if D === 1 # 1D plot
@@ -75,7 +76,7 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
 
         # if longitude wraps around the globe then adjust the longitude ticks
         if grid isa LLGOrIBLLG && grid.Lx == 360 && topology(grid, 1) == Periodic
-            axis = merge(axis, (xticks = -360:60:360,))
+            axis = merge(axis, (; xticks = -360:60:360))
         end
 
         attributes[:axis] = axis
@@ -86,8 +87,7 @@ end
 
 function _create_plot(F::Function, attributes::Dict, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
-    return _create_plot(F::Function, attributes::Dict, f)
+    return _create_plot(F, attributes, f)
 end
 
 _create_plot(F::Function, attributes::Dict, f::Observable{<:Field}) =
@@ -98,19 +98,16 @@ convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
 
 function convert_arguments(pl::Type{<:AbstractPlot}, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, ξ1, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, ξ1, ξ2, f)
 end
 
@@ -136,6 +133,12 @@ function make_plottable_array(f)
 
     fi = interior(f, ii, jj, kk)
     fi_cpu = on_architecture(CPU(), fi)
+
+    if architecture(f) isa CPU
+        fi_cpu = deepcopy(fi_cpu) # so we can re-zero peripheral nodes
+    end
+
+    mask_immersed_field!(f)
 
     return fi_cpu
 end

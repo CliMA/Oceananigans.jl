@@ -5,7 +5,7 @@ using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.Fields: set! 
+import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     schedule :: T
@@ -71,8 +71,9 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and :clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: default_checkpointed_properties(model)
+                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
+                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
+                `model` to get these properties.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -115,8 +116,7 @@ end
 ##### Checkpointer utils
 #####
 
-checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
-checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+checkpointer_address(model) = ""
 
 """ Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
@@ -211,14 +211,14 @@ end
 ##### set! for checkpointer filepaths
 #####
 
+# Should this go in Models? 
 """
     set!(model, filepath::AbstractString)
 
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
-function set!(model::AbstractModel, filepath::AbstractString)
-
+function set!(model, filepath::AbstractString)
     addr = checkpointer_address(model)
 
     jldopen(filepath, "r") do file
@@ -234,14 +234,14 @@ function set!(model::AbstractModel, filepath::AbstractString)
         for name in keys(model_fields)
             if string(name) ∈ keys(file[addr]) # Test if variable exists in checkpoint.
                 model_field = model_fields[name]
-                parent_data = file["$addr/$name/data"]
-                copyto!(parent(model_field), parent_data)
+                parent_data = on_architecture(model.architecture, file["$addr/$name/data"])
+                @apply_regionally copyto!(parent(model_field), parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
         end
 
-        set_time_stepper!(model.timestepper, file, model_fields, addr)
+        set_time_stepper!(model.timestepper, model.architecture, file, model_fields, addr)
 
         if !isnothing(model.particles)
             copyto!(model.particles.properties, file["$addr/particles"])
@@ -258,21 +258,23 @@ function set!(model::AbstractModel, filepath::AbstractString)
     return nothing
 end
 
-function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
+function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, addr)
     for name in propertynames(model_fields)
-        if string(name) ∈ keys(file["$addr/timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
+        tendency_in_model = hasproperty(timestepper.Gⁿ, name) 
+        tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
+        if tendency_in_model && tendency_in_checkpoint
             # Tendency "n"
-            parent_data = file["$addr/timestepper/Gⁿ/$name/data"]
+            parent_data = on_architecture(arch, file["$addr/timestepper/Gⁿ/$name/data"])
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
-            copyto!(tendencyⁿ_field.data.parent, parent_data)
+            @apply_regionally copyto!(parent(tendencyⁿ_field), parent_data)
 
             # Tendency "n-1"
-            parent_data = file["$addr/timestepper/G⁻/$name/data"]
+            parent_data = on_architecture(arch, file["$addr/timestepper/G⁻/$name/data"])
 
             tendency⁻_field = timestepper.G⁻[name]
-            copyto!(tendency⁻_field.data.parent, parent_data)
-        else
+            @apply_regionally copyto!(parent(tendency⁻_field), parent_data)
+        elseif tendency_in_model && !tendency_in_checkpoint
             @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
         end
     end
@@ -280,9 +282,8 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     return nothing
 end
 
-# For self-starting timesteppers like RK3 we do nothing 
+# For self-starting timesteppers like RK3 we do nothing
 set_time_stepper!(timestepper, args...) = nothing
 
 set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
     set_time_stepper_tendencies!(timestepper, args...)
-
