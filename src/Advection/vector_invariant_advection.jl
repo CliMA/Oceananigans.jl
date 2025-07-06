@@ -199,6 +199,7 @@ WENOVectorInvariant{5, Float64, Float32}(vorticity_order=9, vertical_order=5)
 ├── kinetic_energy_gradient_scheme: WENO{3, Float64, Float32}(order=5)
 ├── divergence_scheme: WENO{3, Float64, Float32}(order=5)
 └── upwinding: OnlySelfUpwinding
+```
 """
 function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              upwinding = nothing,
