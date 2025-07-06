@@ -21,7 +21,7 @@ using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
-import Oceananigans.TimeSteppers: reset!
+import Oceananigans.TimeSteppers: reset!, set_clock!
 import Oceananigans.Solvers: iteration
 import Oceananigans.Simulations: timestepper
 
@@ -115,6 +115,8 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
 
+set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
+
 """
     possible_field_time_series(model::HydrostaticFreeSurfaceModel)
 
@@ -145,8 +147,6 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     return nothing
 end
-
-import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)
 

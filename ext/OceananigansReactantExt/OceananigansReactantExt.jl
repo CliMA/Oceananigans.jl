@@ -146,14 +146,14 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, 
+    @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
                                                  DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} 
+) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I}
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -183,7 +183,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 	FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
 
-    res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, 
+    res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
                                                  DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
     return res
 end
@@ -289,6 +289,7 @@ function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{
 
     if stage # tick a stage update
         clock.stage += 1
+        clock.last_stage_Δt = Δt
     else # tick an iteration and reset stage
         clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
         clock.stage = 1

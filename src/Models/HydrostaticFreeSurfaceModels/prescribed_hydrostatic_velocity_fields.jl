@@ -69,7 +69,7 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) = 
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
@@ -128,7 +128,6 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end
