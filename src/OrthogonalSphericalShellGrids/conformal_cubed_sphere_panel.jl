@@ -1,20 +1,20 @@
 using CubedSphere
 using JLD2
 
-struct CubedSphereConformalMapping{Rotation, F, C}
+struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
-    ξᶠᵃᵃ :: F
-    ηᵃᶠᵃ :: F
-    ξᶜᵃᵃ :: C
-    ηᵃᶜᵃ :: C
+    ξᶠᵃᵃ :: Fξ
+    ηᵃᶠᵃ :: Fη
+    ξᶜᵃᵃ :: Cξ
+    ηᵃᶜᵃ :: Cη
 
     CubedSphereConformalMapping(
         rotation::Rotation,
-        ξᶠᵃᵃ::F,
-        ηᵃᶠᵃ::F,
-        ξᶜᵃᵃ::C,
-        ηᵃᶜᵃ::C
-    ) where {Rotation, F, C} = new{Rotation, F, C}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+        ξᶠᵃᵃ::Fξ,
+        ηᵃᶠᵃ::Fη,
+        ξᶜᵃᵃ::Cξ,
+        ηᵃᶜᵃ::Cη
+    ) where {Rotation, Fξ, Fη, Cξ, Cη} = new{Rotation, Fξ, Fη, Cξ, Cη}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
 end
 
 function on_architecture(architecture, conformal_mapping::CubedSphereConformalMapping)
@@ -144,20 +144,16 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     conformal_mapping)
 end
 
-using Oceananigans.Grids: cpu_face_constructor_ξ, cpu_face_constructor_η
-
-function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=architecture(old_grid), rotation=nothing)
+function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-    ξ = cpu_face_constructor_ξ(old_grid)
-    η = cpu_face_constructor_η(old_grid)
     z = cpu_face_constructor_z(old_grid)
 
     provided_conformal_mapping = old_grid.conformal_mapping
 
     new_grid = ConformalCubedSpherePanelGrid(arch, eltype(old_grid);
-                                             size, z, ξ, η,
+                                             size, z,
                                              topology = topo,
                                              radius = old_grid.radius,
                                              halo = new_halo,
@@ -298,8 +294,10 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
         if non_uniform_conformal_mapping
             ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
             optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing_type))
-            ξᶜᵃᵃ = [0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1]) for i in 1:Nξ]
-            ηᵃᶜᵃ = [0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1]) for j in 1:Nη]
+            ξᶠᵃᵃ = map(FT, ξᶠᵃᵃ)
+            ηᵃᶠᵃ = map(FT, ηᵃᶠᵃ)
+            ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
+            ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
         else
             ξᶠᵃᵃ = xnodes(ξη_grid, Face())
             ξᶜᵃᵃ = xnodes(ξη_grid, Center())

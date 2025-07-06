@@ -321,30 +321,31 @@ function Base.view(f::Field, i, j, k)
     loc = location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
-    view_indices = i, j, k = validate_indices((i, j, k), loc, f.grid)
+    view_indices = validate_indices((i, j, k), loc, f.grid)
 
     if view_indices == f.indices # nothing to "view" here
         return f # we want the whole field after all.
     end
 
     # Check that the indices actually work here
-    valid_view_indices = map(index_range_contains, f.indices, view_indices)
-
-    all(valid_view_indices) ||
+    @apply_regionally valid_view_indices = map(index_range_contains, f.indices, view_indices)
+    
+    all(getregion(valid_view_indices, 1)) ||
         throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
+    
+    @apply_regionally begin
+        view_indices = map(convert_colon_indices, view_indices, f.indices)
 
-    view_indices = map(convert_colon_indices, view_indices, f.indices)
+        # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
+        #     -> the first retains a reference to the original f.data (an OffsetArray)
+        #     -> the second loses it, so we'd have to "re-offset" the underlying data to access.
+        #     -> we choose the second here, opting to "reduce indirection" at the cost of "index recomputation".
+        #
+        # OffsetArray around a view of parent with appropriate indices:
+        windowed_data = offset_windowed_data(f.data, f.indices, loc, grid, view_indices)
 
-    # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
-    #     -> the first retains a reference to the original f.data (an OffsetArray)
-    #     -> the second loses it, so we'd have to "re-offset" the underlying data to access.
-    #     -> we choose the second here, opting to "reduce indirection" at the cost of "index recomputation".
-    #
-    # OffsetArray around a view of parent with appropriate indices:
-    windowed_data = offset_windowed_data(f.data, f.indices, loc, grid, view_indices)
-
-    boundary_conditions = FieldBoundaryConditions(view_indices, f.boundary_conditions)
-
+        boundary_conditions = FieldBoundaryConditions(view_indices, f.boundary_conditions)
+    end
     # "Sliced" Fields created here share data with their parent.
     # Therefore we set status=nothing so we don't conflate computation
     # of the sliced field with computation of the parent field.
@@ -475,6 +476,15 @@ FieldStatus() = FieldStatus(0.0)
 Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
 
 """
+    FixedTime(time)
+
+Represents a fixed compute time.
+"""
+struct FixedTime{T}
+    time :: T
+end
+
+"""
     compute_at!(field, time)
 
 Computes `field.data` at `time`. Falls back to compute!(field).
@@ -487,7 +497,7 @@ compute_at!(field, time) = compute!(field)
 Computes `field.data` if `time != field.status.time`.
 """
 function compute_at!(field::Field, time)
-    if isnothing(field.status) # then always compute:
+    if !(field.status isa FieldStatus) # then always compute:
         compute!(field, time)
 
     # Otherwise, compute only on initialization or if field.status.time is not current,
