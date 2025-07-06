@@ -325,7 +325,7 @@ Examples
   8
   ```
 
-  cells. To inspect the coordinate's interfaces we can call:
+  cells. The coordinate's interfaces are:
 
   ```jldoctest ConstantToStretchedCoordinate
   z.faces
@@ -345,7 +345,7 @@ Examples
   ```
 
   The coordinate has an extent that is longer from what prescribed via the `extent`
-  keyword argument by:
+  keyword argument, namely by:
 
   ```jldoctest ConstantToStretchedCoordinate
   (z.faces[end] - z.faces[1]) - z.extent
