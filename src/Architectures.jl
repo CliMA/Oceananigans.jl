@@ -3,7 +3,7 @@ module Architectures
 export AbstractArchitecture, AbstractSerialArchitecture
 export CPU, GPU, ReactantState
 export device, device!, ndevices, synchronize, architecture, unified_array, device_copy_to!
-export array_type, on_architecture, arch_array
+export array_type, on_architecture
 export constructors, unpack_constructors, copy_unpack_constructors
 export arch_sparse_matrix, child_architecture
 using SparseArrays
@@ -109,7 +109,7 @@ unified_array(::GPU, a) = a
 
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
-@inline unsafe_free!(a)          = nothing
+@inline unsafe_free!(a) = nothing
 
 # Convert arguments to GPU-compatible types
 @inline convert_to_device(arch, args)  = args
@@ -127,13 +127,6 @@ unified_array(::GPU, a) = a
 @inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
 
 @inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
-
-# Deprecated functions
-function arch_array(arch, arr)
-    @warn "`arch_array` is deprecated. Use `on_architecture` instead."
-    return on_architecture(arch, arr)
-end
+@inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC) = A
 
 end # module
-
