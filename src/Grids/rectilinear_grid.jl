@@ -493,13 +493,10 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     return (x, y, z)
 end
 
-const F = Face
-const C = Center
-
-@inline xnodes(grid::RG, ℓx::F; with_halos=false) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
-@inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline xnodes(grid::RG, ℓx::F; with_halos=false) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # convenience
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)

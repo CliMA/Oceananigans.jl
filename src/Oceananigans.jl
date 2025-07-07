@@ -75,7 +75,7 @@ export
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles,
+    LagrangianParticles, DroguedParticleDynamics,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
@@ -167,7 +167,7 @@ const defaults = Defaults()
 #####
 
 """
-    AbstractModel
+    AbstractModel{TS, A}
 
 Abstract supertype for models.
 """
