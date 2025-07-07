@@ -21,15 +21,6 @@ mutable struct Clock{TT, DT, IT, S}
     stage :: S
 end
 
-function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
-    clock.time = zero(TT)
-    clock.iteration = zero(IT)
-    clock.stage = zero(S)
-    clock.last_Δt = Inf
-    clock.last_stage_Δt = Inf
-    return nothing
-end
-
 """
     Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
 
@@ -60,6 +51,7 @@ end
 
 """
     set_clock!(clock1::Clock, clock2::Clock)
+
 Set `clock1` to the `clock2`.
 """
 function set_clock!(clock1::Clock, clock2::Clock)
