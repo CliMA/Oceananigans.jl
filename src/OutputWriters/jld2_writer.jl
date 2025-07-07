@@ -90,7 +90,7 @@ Keyword arguments
           Default: `noinit(args...) = nothing`.
 
 - `including`: List of model properties to save with every file.
-               Default: `[:grid, :coriolis, :buoyancy, :closure]`
+               Default depends of the type of model: `default_included_properties(model)`
 
 ## Miscellaneous keywords
 
@@ -100,12 +100,12 @@ Keyword arguments
 - `part`: The starting part number used when file splitting.
           Default: 1.
 
-- `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
+- `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
 
 Example
 =======
 
-Write out 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
+Output 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
 
 ```@example
 using Oceananigans
@@ -121,7 +121,7 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
+c_avg = Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
@@ -277,10 +277,10 @@ end
 """
     jld2output!(path, iter, time, data, kwargs)
 
-Write the (name, value) pairs in `data`, including the simulation
+Write the `(name, value)` pairs in `data`, including the simulation
 `time`, to the JLD2 file at `path` in the `timeseries` group,
-stamping them with `iter` and using `kwargs` when opening
-the JLD2 file.
+stamping them with `iter`. Provided `kwargs` are used when opening
+the JLD2 file (i.e., provided to `JLD2.jldopen`).
 """
 function jld2output!(path, iter, time, data, kwargs)
     jldopen(path, "r+"; kwargs...) do file
@@ -328,7 +328,7 @@ function Base.show(io::IO, ow::JLD2Writer)
     print(io, "JLD2Writer scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "├── array type: ", show_array_type(ow.array_type), "\n",
+              "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))
