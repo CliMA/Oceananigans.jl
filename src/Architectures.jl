@@ -6,11 +6,12 @@ export device, device!, ndevices, synchronize, architecture, unified_array, devi
 export array_type, on_architecture
 export constructors, unpack_constructors, copy_unpack_constructors
 export arch_sparse_matrix, child_architecture
+
+using Adapt
+using OffsetArrays
 using SparseArrays
 
 import KernelAbstractions as KA
-using Adapt
-using OffsetArrays
 
 """
     AbstractArchitecture
