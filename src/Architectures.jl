@@ -70,10 +70,11 @@ synchronize(a::AbstractArchitecture) = KA.synchronize(a.device)
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
-architecture_from_type(type::Type{<:AbstractArray}) = architecture(type())
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 architecture(::SparseMatrixCSC) = CPU()
+architecture(::Type{T}) where {T<:AbstractArray} = architecture(Base.typename(T).wrapper)
+architecture(::Type{Array}) = CPU()
 
 """
     child_architecture(arch)

@@ -6,6 +6,7 @@ using AMDGPU, AMDGPU.rocSPARSE, AMDGPU.rocFFT
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
+
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
 import Oceananigans.DistributedComputations as DC
@@ -35,6 +36,7 @@ ROCGPU() = AC.GPU(AMDGPU.ROCBackend())
 Base.summary(::ROCGPU) = "ROCGPU"
 
 AC.architecture(::ROCArray) = ROCGPU()
+AC.architecture(::Type{ROCArray}) = ROCGPU()
 AC.architecture(::ROCSparseMatrixCSC) = ROCGPU()
 AC.array_type(::AC.GPU{ROCBackend}) = ROCArray
 

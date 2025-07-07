@@ -6,6 +6,7 @@ using CUDA, CUDA.CUSPARSE, CUDA.CUFFT
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
+
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
 import Oceananigans.DistributedComputations as DC
@@ -54,6 +55,7 @@ end
 Base.summary(::CUDAGPU) = "CUDAGPU"
 
 AC.architecture(::CuArray) = CUDAGPU()
+AC.architecture(::Type{CuArray}) = CUDAGPU()
 AC.architecture(::CuSparseMatrixCSC) = CUDAGPU()
 AC.array_type(::AC.GPU{CUDABackend}) = CuArray
 
