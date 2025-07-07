@@ -130,6 +130,7 @@ function tick!(clock, Δt; stage=false)
 
     if stage # tick a stage update
         clock.stage += 1
+        clock.last_Δt = Δt
         clock.last_stage_Δt = Δt
     else # tick an iteration and reset stage
         clock.iteration += 1
