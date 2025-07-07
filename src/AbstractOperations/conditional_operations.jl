@@ -151,6 +151,11 @@ end
     return ifelse(conditioned, value, co.mask)
 end
 
+# Fallbacks for reductions
+for reduction! in (:sum!, :maximum!, :minimum!, :all!, :any!, :prod!)
+    @eval Base.$(reduction!)(id, int_r, co::NoConditionCO, kwargs...) = Base.$(reduction!)(id, int_r, co.operand; kwargs...)
+end
+
 # Conditions: general, nothing, array
 @inline evaluate_condition(condition, i, j, k, grid, args...) = condition(i, j, k, grid, args...)
 @inline evaluate_condition(::Nothing, i, j, k, grid, args...) = true
