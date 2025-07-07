@@ -198,6 +198,7 @@ end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::NoConditionCO, args...) = conditional_length(c.operand, args...)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)
