@@ -69,7 +69,7 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) = 
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
