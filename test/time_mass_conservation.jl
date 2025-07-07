@@ -41,7 +41,7 @@ function create_mass_conservation_simulation(; use_open_boundary_condition,
 end
 
 # Example usage with default settings
-simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true)
+simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true);
 
 # Benchmark the time stepping
 @btime time_step!(simulation)

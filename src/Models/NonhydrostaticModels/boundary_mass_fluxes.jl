@@ -1,26 +1,59 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection, FlatExtrapolation
-using Oceananigans.AbstractOperations: Average
-using Oceananigans.Fields: Field, interior
+using Oceananigans.AbstractOperations: Integral
+using Oceananigans.Fields: Field, interior, XFaceField, YFaceField, ZFaceField
 using Statistics: mean, filter
 using CUDA: @allowscalar
-
-@inline nanmean(arr) = mean(filter(!isnan, arr))
-@inline nanmean(num::Number) = num
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
 const MatchingScheme = Union{FlatExtrapolation, PerturbationAdvection}
 const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundaryCondition
 const FOBC = BoundaryCondition{<:Open{<:Nothing}} # "Fixed-velocity" OpenBoundaryCondition (with no matching scheme)
 
-# Left boundary averages for normal velocity components
-@inline west_average(u)   = interior(u, 1, :, :)
-@inline south_average(v)  = interior(v, :, 1, :)
-@inline bottom_average(w) = interior(w, :, :, 1)
+# Left boundary integrals for normal velocity components
+@inline west_integral(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+@inline south_integral(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
+@inline bottom_integral(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
 
-# Right boundary averages for normal velocity components
-@inline east_average(u)   = interior(u, u.grid.Nx + 1, :, :)
-@inline north_average(v)  = interior(v, :, v.grid.Ny + 1, :)
-@inline top_average(w)    = interior(w, :, :, w.grid.Nz + 1)
+# Right boundary integrals for normal velocity components
+@inline east_integral(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+@inline north_integral(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
+@inline top_integral(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
+
+function get_west_area(grid)
+    f = XFaceField(grid); set!(f, 1) # Create an XFaceField with all ones
+    ∫f = Field(Integral(f, dims=(2, 3))) # Integrate over y and z dimensions
+    @allowscalar return ∫f[1, 1, 1]
+end
+
+function get_east_area(grid)
+    f = XFaceField(grid); set!(f, 1) # Create an XFaceField with all ones
+    ∫f = Field(Integral(f, dims=(2, 3))) # Integrate over y and z dimensions
+    @allowscalar return ∫f[grid.Nx+1, 1, 1]
+end
+
+function get_south_area(grid)
+    f = YFaceField(grid); set!(f, 1) # Create a YFaceField with all ones
+    ∫f = Field(Integral(f, dims=(1, 3))) # Integrate over x and z dimensions
+    @allowscalar return ∫f[1, 1, 1]
+end
+
+function get_north_area(grid)
+    f = YFaceField(grid); set!(f, 1) # Create a YFaceField with all ones
+    ∫f = Field(Integral(f, dims=(1, 3))) # Integrate over x and z dimensions
+    @allowscalar return ∫f[1, grid.Ny+1, 1]
+end
+
+function get_bottom_area(grid)
+    f = ZFaceField(grid); set!(f, 1) # Create a ZFaceField with all ones
+    ∫f = Field(Integral(f, dims=(1, 2))) # Integrate over x and y dimensions
+    @allowscalar return ∫f[1, 1, 1]
+end
+
+function get_top_area(grid)
+    f = ZFaceField(grid); set!(f, 1) # Create a ZFaceField with all ones
+    ∫f = Field(Integral(f, dims=(1, 2))) # Integrate over x and y dimensions
+    @allowscalar return ∫f[1, 1, grid.Nz+1]
+end
 
 function get_boundary_mass_flux(bc, boundary_flux_field)
     if bc isa FOBC
@@ -52,56 +85,54 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
 
     # Check west boundary (u velocity)
     if u_bcs.west isa OBC
-        west_flux = get_boundary_mass_flux(u_bcs.west, west_average(velocities.u))
+        west_area = get_west_area(velocities.u.grid)
+        west_flux = get_boundary_mass_flux(u_bcs.west, Field(west_integral(velocities.u) / west_area))
         boundary_fluxes = merge(boundary_fluxes, (; west = west_flux))
     end
 
     # Check east boundary (u velocity)
     if u_bcs.east isa OBC
-        east_flux = get_boundary_mass_flux(u_bcs.east, east_average(velocities.u))
+        east_area = get_east_area(velocities.u.grid)
+        east_flux = get_boundary_mass_flux(u_bcs.east, Field(east_integral(velocities.u) / east_area))
         boundary_fluxes = merge(boundary_fluxes, (; east = east_flux))
     end
 
     # Check south boundary (v velocity)
     if v_bcs.south isa OBC
-        south_flux = get_boundary_mass_flux(v_bcs.south, south_average(velocities.v))
+        south_area = get_south_area(velocities.v.grid)
+        south_flux = get_boundary_mass_flux(v_bcs.south, Field(south_integral(velocities.v) / south_area))
         boundary_fluxes = merge(boundary_fluxes, (; south = south_flux))
     end
 
     # Check north boundary (v velocity)
     if v_bcs.north isa OBC
-        north_flux = get_boundary_mass_flux(v_bcs.north, north_average(velocities.v))
+        north_area = get_north_area(velocities.v.grid)
+        north_flux = get_boundary_mass_flux(v_bcs.north, Field(north_integral(velocities.v) / north_area))
         boundary_fluxes = merge(boundary_fluxes, (; north = north_flux))
     end
 
     # Check bottom boundary (w velocity)
     if w_bcs.bottom isa OBC
-        bottom_flux = get_boundary_mass_flux(w_bcs.bottom, bottom_average(velocities.w))
+        bottom_area = get_bottom_area(velocities.w.grid)
+        bottom_flux = get_boundary_mass_flux(w_bcs.bottom, Field(bottom_integral(velocities.w) / bottom_area))
         boundary_fluxes = merge(boundary_fluxes, (; bottom = bottom_flux))
     end
 
     # Check top boundary (w velocity)
     if w_bcs.top isa OBC
-        top_flux = get_boundary_mass_flux(w_bcs.top, top_average(velocities.w))
+        top_area = get_top_area(velocities.w.grid)
+        top_flux = get_boundary_mass_flux(w_bcs.top, Field(top_integral(velocities.w) / top_area))
         boundary_fluxes = merge(boundary_fluxes, (; top = top_flux))
     end
 
     return boundary_fluxes
 end
 
-function update_open_boundary_mass_fluxes(model)
-    for flux in model.boundary_mass_fluxes
-        compute!(flux)
-    end
-end
+update_open_boundary_mass_fluxes(model) = map(compute!, model.boundary_mass_fluxes)
 
 function open_boundary_mass_fluxes(model)
 
     update_open_boundary_mass_fluxes(model)
-
-    mask_immersed_field!(model.velocities.u, NaN, exclude_peripheral_nodes=false)
-    mask_immersed_field!(model.velocities.v, NaN, exclude_peripheral_nodes=false)
-    mask_immersed_field!(model.velocities.w, NaN, exclude_peripheral_nodes=false)
 
     u_bcs = model.velocities.u.boundary_conditions
     v_bcs = model.velocities.v.boundary_conditions
@@ -117,39 +148,34 @@ function open_boundary_mass_fluxes(model)
 
     # Calculate flux through left boundaries
     if u_bcs.west isa OBC
-        left_flux += nanmean(model.boundary_mass_fluxes.west)
+        left_flux += compute!(model.boundary_mass_fluxes.west)[]
         u_bcs.west isa ROBC && push!(left_ROBCs, :west)
     end
     if v_bcs.south isa OBC
-        left_flux += nanmean(model.boundary_mass_fluxes.south)
+        left_flux += compute!(model.boundary_mass_fluxes.south)[]
         v_bcs.south isa ROBC && push!(left_ROBCs, :south)
     end
     if w_bcs.bottom isa OBC
-        left_flux += nanmean(model.boundary_mass_fluxes.bottom)
+        left_flux += compute!(model.boundary_mass_fluxes.bottom)[]
         w_bcs.bottom isa ROBC && push!(left_ROBCs, :bottom)
     end
 
     # Calculate flux through right boundaries
     if u_bcs.east isa OBC
-        right_flux += nanmean(model.boundary_mass_fluxes.east)
+        right_flux += compute!(model.boundary_mass_fluxes.east)[]
         u_bcs.east isa ROBC && push!(right_ROBCs, :east)
     end
     if v_bcs.north isa OBC
-        right_flux += nanmean(model.boundary_mass_fluxes.north)
+        right_flux += compute!(model.boundary_mass_fluxes.north)[]
         v_bcs.north isa ROBC && push!(right_ROBCs, :north)
     end
     if w_bcs.top isa OBC
-        right_flux += nanmean(model.boundary_mass_fluxes.top)
+        right_flux += compute!(model.boundary_mass_fluxes.top)[]
         w_bcs.top isa ROBC && push!(right_ROBCs, :top)
     end
 
-    mask_immersed_field!(model.velocities.u, exclude_peripheral_nodes=false)
-    mask_immersed_field!(model.velocities.v, exclude_peripheral_nodes=false)
-    mask_immersed_field!(model.velocities.w, exclude_peripheral_nodes=false)
-
     # Calculate total flux (positive means net inflow)
     total_flux = left_flux - right_flux
-
     return total_flux, left_ROBCs, right_ROBCs
 end
 
