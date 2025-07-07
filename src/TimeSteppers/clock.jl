@@ -50,16 +50,16 @@ function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
 end
 
 """
-    set_clock!(clock1::Clock, clock2::Clock)
+    set_clock!(clock::Clock, new_clock::Clock)
 
-Set `clock1` to the `clock2`.
+Set `clock` to the `new_clock`.
 """
-function set_clock!(clock1::Clock, clock2::Clock)
-    clock1.time = clock2.time
-    clock1.iteration = clock2.iteration
-    clock1.last_Δt = clock2.last_Δt
-    clock1.last_stage_Δt = clock2.last_stage_Δt
-    clock1.stage = clock2.stage
+function set_clock!(clock::Clock, new_clock::Clock)
+    clock.time = new_clock.time
+    clock.iteration = new_clock.iteration
+    clock.last_Δt = new_clock.last_Δt
+    clock.last_stage_Δt = new_clock.last_stage_Δt
+    clock.stage = new_clock.stage
 
     return nothing
 end
