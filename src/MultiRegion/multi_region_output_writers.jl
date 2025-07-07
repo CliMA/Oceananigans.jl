@@ -53,7 +53,10 @@ function fetch_output(csf::CubedSphereField, model)
 end
 
 convert_output(mo::MultiRegionObject, writer) =
-    MultiRegionObject(CPU(), Tuple(convert(writer.array_type, obj) for obj in mo.regional_objects))
+    MultiRegionObject(
+        architecture_from_type(writer.array_type),
+        Tuple(convert(writer.array_type, obj) for obj in mo.regional_objects)
+    )
 
 function construct_output(csf::CubedSphereField{LX, LY, LZ}, grid::ConformalCubedSphereGridOfSomeKind, user_indices,
                           with_halos) where {LX, LY, LZ}
