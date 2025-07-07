@@ -1,47 +1,74 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
-using BenchmarkTools
+using Oceananigans.Diagnostics: AdvectiveCFL
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Printf
+using Random: seed!
+seed!(156)
 
-function create_mass_conservation_simulation(; use_open_boundary_condition,
-                                               callback = nothing,
-                                               Δt = 1.0,
-                                               stop_time = 1e3,
-                                               verbose = false)
-    Δx = 0.05
-    Nx = round(Int, 2 / Δx)
-    grid = RectilinearGrid(size = (Nx, Nx), halo = (4, 4), extent = (1, 1),
-                           topology = (Bounded, Flat, Bounded))
-
-    U₀ = 1.0
-    inflow_timescale = 1e-1
-    outflow_timescale = Inf
+function create_mass_conservation_simulation(; 
+    use_open_boundary_condition = true,
+    immersed_bottom = nothing,
+    N = 32,
+    L = 1.0,
+    U₀ = 1.0,
+    stop_time = 5,
+    inflow_timescale = 1e-1,
+    outflow_timescale = Inf,
+    add_progress_messenger = true,
+)
+    # Create underlying grid
+    underlying_grid = RectilinearGrid(topology = (Bounded, Flat, Bounded),
+                                     size = (N, N), 
+                                     extent = (L, L),
+                                     halo = (4, 4))
+    
+    # Choose grid type based on immersed_bottom parameter
+    if immersed_bottom !== nothing
+        grid = ImmersedBoundaryGrid(underlying_grid, immersed_bottom)
+        pressure_solver = ConjugateGradientPoissonSolver(grid)
+    else
+        grid = underlying_grid
+        pressure_solver = nothing
+    end
 
     # Set boundary conditions based on boolean flag
     if use_open_boundary_condition
-        u_boundary_conditions = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀),
-                                                        east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
+        u_boundary_conditions = FieldBoundaryConditions(
+            west = OpenBoundaryCondition(U₀),
+            east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)
+        )
         boundary_conditions = (; u = u_boundary_conditions)
     else
         boundary_conditions = NamedTuple()
     end
 
-    model = NonhydrostaticModel(; grid,
-                                  timestepper=:QuasiAdamsBashforth2,
-                                  boundary_conditions
-                                  )
+    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver)
+    uᵢ(x, z) = U₀ + 1e-2 * rand()
+    fill!(model.velocities.u, U₀)
+    set!(model, u=uᵢ)
 
-    simulation = Simulation(model; Δt=Δt, stop_time=stop_time, verbose=verbose)
+    # Calculate time step
+    Δt = 0.1 * minimum_zspacing(grid) / abs(U₀)
+    simulation = Simulation(model; Δt, stop_time)
 
-    # Add callback if provided
-    if callback !== nothing
-        add_callback!(simulation, callback, IterationInterval(1))
+    if add_progress_messenger
+        # Set up progress monitoring
+        u, v, w = model.velocities
+        ∫∇u = Field(Integral(∂x(u) + ∂z(w)))
+        cfl_calculator = AdvectiveCFL(simulation.Δt)
+
+        function progress(sim)
+            u, v, w = model.velocities
+            cfl_value = cfl_calculator(model)
+            compute!(∫∇u)
+            @info @sprintf("time: %.3f, max|u|: %.3f, CFL: %.2f, Net flux: %.4e",
+                           time(sim), maximum(abs, u), cfl_value, ∫∇u[])
+        end
+        add_callback!(simulation, progress, IterationInterval(50))
     end
-
+    
     return simulation
 end
 
-# Example usage with default settings
-simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true);
-
-# Benchmark the time stepping
-@btime time_step!(simulation)
+simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true, immersed_bottom = nothing)
