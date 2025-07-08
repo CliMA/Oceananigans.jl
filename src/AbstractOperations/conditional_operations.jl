@@ -153,7 +153,7 @@ end
 
 # Fallbacks for reductions
 for reduction! in (:sum!, :maximum!, :minimum!, :all!, :any!, :prod!)
-    @eval Base.$(reduction!)(id, int_r, co::NoConditionCO, kwargs...) = Base.$(reduction!)(id, int_r, co.operand; kwargs...)
+    @eval Base.$(reduction!)(f, int_r, co::NoConditionCO, kwargs...) = Base.$(reduction!)(f, int_r, co.operand; kwargs...)
 end
 
 # Conditions: general, nothing, array
