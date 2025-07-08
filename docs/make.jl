@@ -183,7 +183,8 @@ makedocs(sitename = "Oceananigans.jl",
          format = format,
          pages = pages,
          plugins = [bib],
-         modules = [Oceananigans],
+         modules = [Oceananigans,
+                    isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt,],
          warnonly = [:cross_references],
          doctest = true, # set to false to speed things up
          draft = false,  # set to true to speed things up

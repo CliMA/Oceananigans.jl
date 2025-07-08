@@ -185,6 +185,11 @@ Modules = [Oceananigans.OutputWriters]
 Private = false
 ```
 
+```@autodocs
+Modules = [Oceananigans]
+Pages = ["../ext/OceananigansNCDatasetsExt.jl"]
+```
+
 ## Simulations
 
 ```@autodocs
