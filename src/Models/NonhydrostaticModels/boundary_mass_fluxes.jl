@@ -173,14 +173,14 @@ function open_boundary_mass_inflow(model)
     return total_flux
 end
 
-correct_left_boundary_mass_flux!(u, bc::ROBC, ::Val{:west}, extra_flux_per_boundary) = @views u[1, :, :] .= u[1, :, :] .- extra_flux_per_boundary
-correct_left_boundary_mass_flux!(v, bc::ROBC, ::Val{:south}, extra_flux_per_boundary) = @views v[:, 1, :] .= v[:, 1, :] .- extra_flux_per_boundary 
-correct_left_boundary_mass_flux!(w, bc::ROBC, ::Val{:bottom}, extra_flux_per_boundary) = @views w[:, :, 1] .= w[:, :, 1] .- extra_flux_per_boundary
+correct_left_boundary_mass_flux!(u, bc::ROBC, ::Val{:west},   extra_flux_per_boundary) = interior(u, 1, :, :) .-= extra_flux_per_boundary
+correct_left_boundary_mass_flux!(v, bc::ROBC, ::Val{:south},  extra_flux_per_boundary) = interior(v, :, 1, :) .-= extra_flux_per_boundary
+correct_left_boundary_mass_flux!(w, bc::ROBC, ::Val{:bottom}, extra_flux_per_boundary) = interior(w, :, :, 1) .-= extra_flux_per_boundary
 correct_left_boundary_mass_flux!(velocity, bc, side, extra_flux_per_boundary) = nothing
 
-correct_right_boundary_mass_flux!(u, bc::ROBC, ::Val{:east}, extra_flux_per_boundary) = @views u[u.grid.Nx + 1, :, :] .= u[u.grid.Nx + 1, :, :] .+ extra_flux_per_boundary
-correct_right_boundary_mass_flux!(v, bc::ROBC, ::Val{:north}, extra_flux_per_boundary) = @views v[:, v.grid.Ny + 1, :] .= v[:, v.grid.Ny + 1, :] .+ extra_flux_per_boundary
-correct_right_boundary_mass_flux!(w, bc::ROBC, ::Val{:top}, extra_flux_per_boundary) = @views w[:, :, w.grid.Nz + 1] .= w[:, :, w.grid.Nz + 1] .+ extra_flux_per_boundary
+correct_right_boundary_mass_flux!(u, bc::ROBC, ::Val{:east},  extra_flux_per_boundary) = interior(u, u.grid.Nx + 1, :, :) .+= extra_flux_per_boundary
+correct_right_boundary_mass_flux!(v, bc::ROBC, ::Val{:north}, extra_flux_per_boundary) = interior(v, :, v.grid.Ny + 1, :) .+= extra_flux_per_boundary
+correct_right_boundary_mass_flux!(w, bc::ROBC, ::Val{:top},   extra_flux_per_boundary) = interior(w, :, :, w.grid.Nz + 1) .+= extra_flux_per_boundary
 correct_right_boundary_mass_flux!(velocity, bc, side, extra_flux_per_boundary) = nothing
 
 """
