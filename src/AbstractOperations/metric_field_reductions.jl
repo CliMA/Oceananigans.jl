@@ -1,4 +1,5 @@
 using Statistics: mean!, sum!
+using CUDA: @allowscalar
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
@@ -43,24 +44,17 @@ for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
+    dx = reduction_grid_metric(dims)
 
-    if all(d in regular_dimensions(field.grid) for d in dims)
-        # Dimensions being reduced are regular; just use mean!
-        operand = condition_operand(field, condition, mask)
-        return Scan(Averaging(), mean!, operand, dims)
-    else
-        # Compute "size" (length, area, or volume) of averaging region
-        dx = reduction_grid_metric(dims)
-        metric = GridMetricOperation(location(field), dx, field.grid)
-        L = sum(metric; condition, mask, dims)
+    # Compute "size" (length, area, or volume) of averaging region
+    metric = GridMetricOperation(location(field), dx, field.grid)
+    L = @allowscalar sum(metric; condition, mask, dims)[] # Pluck out L as a Number
 
-        # Construct summand of the Average
-        L⁻¹_field_dx = field * dx / L
+    # Construct summand of the Average
+    L⁻¹_field_dx = field * dx / L
 
-        operand = condition_operand(L⁻¹_field_dx, condition, mask)
-
-        return Scan(Averaging(), sum!, operand, dims)
-    end
+    operand = condition_operand(L⁻¹_field_dx, condition, mask)
+    return Scan(Averaging(), sum!, operand, dims)
 end
 
 struct Integrating <: AbstractReducing end
