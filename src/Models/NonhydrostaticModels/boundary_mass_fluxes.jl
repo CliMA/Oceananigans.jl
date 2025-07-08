@@ -7,7 +7,9 @@ using CUDA: @allowscalar
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
 const MatchingScheme = Union{FlatExtrapolation, PerturbationAdvection}
 const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundaryCondition
-const FOBC = BoundaryCondition{<:Open{<:Nothing}} # "Fixed-velocity" OpenBoundaryCondition (with no matching scheme)
+const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no matching scheme)
+const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
+const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
 
 # Left boundary integrals for normal velocity components
 @inline west_integral(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))

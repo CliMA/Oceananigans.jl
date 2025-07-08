@@ -17,6 +17,7 @@ function create_mass_conservation_simulation(;
     outflow_timescale = Inf,
     add_progress_messenger = false,
     poisson_solver = nothing,
+    timestepper = :QuasiAdamsBashforth2,
 )
     # Create underlying grid
     underlying_grid = RectilinearGrid(topology = (Bounded, Flat, Bounded),
@@ -46,7 +47,7 @@ function create_mass_conservation_simulation(;
         boundary_conditions = NamedTuple()
     end
 
-    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver)
+    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper)
     uᵢ(x, z) = U₀ + 1e-2 * rand()
     fill!(model.velocities.u, U₀)
     set!(model, u=uᵢ)
