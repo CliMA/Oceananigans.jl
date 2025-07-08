@@ -256,6 +256,102 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
     end
 end
 
+function test_open_boundary_condition_mass_conservation(arch, FT)
+    # Test different combinations of open boundary conditions to ensure mass conservation
+    # (i.e., ∫∇u ≈ 0)
+
+    # Test case 1: 2D channel with open boundaries on east/west
+    Δx = Δz = FT(0.05)
+    Nx = Nz = round(Int, 2 / Δx)
+    grid = RectilinearGrid(arch, FT, size=(Nx, Nz), halo=(4, 4), extent=(1, 1),
+                          topology=(Bounded, Flat, Bounded))
+
+    U₀ = FT(1.0)
+    inflow_timescale = FT(1e-1)
+    outflow_timescale = FT(Inf)
+
+    # Combination 1: OpenBoundaryCondition + PerturbationAdvectionOpenBoundaryCondition
+    u_bcs_1 = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀),
+                                     east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
+    boundary_conditions_1 = (; u = u_bcs_1)
+
+    model_1 = NonhydrostaticModel(; grid, boundary_conditions=boundary_conditions_1,
+                                   timestepper = :RungeKutta3)
+
+    # Initialize with small perturbations
+    uᵢ(x, z) = U₀ + FT(1e-2) * rand()
+    fill!(model_1.velocities.u, U₀)
+    set!(model_1, u=uᵢ)
+
+    simulation_1 = Simulation(model_1; Δt=FT(0.1)*Δx/U₀, stop_time=FT(1), verbose=false)
+
+    u, v, w = model_1.velocities
+    ∫∇u_1 = Field(Integral(∂x(u) + ∂z(w)))
+
+    run!(simulation_1)
+    compute!(∫∇u_1)
+
+    # Test that mass flux is approximately zero
+    @test isapprox(∫∇u_1[], FT(0), atol=FT(1e-6))
+
+    # Test case 2: 2D channel with FlatExtrapolationOpenBoundaryCondition on both sides
+    u_bcs_2 = FieldBoundaryConditions(west = FlatExtrapolationOpenBoundaryCondition(),
+                                     east = FlatExtrapolationOpenBoundaryCondition())
+    boundary_conditions_2 = (; u = u_bcs_2)
+
+    model_2 = NonhydrostaticModel(; grid, boundary_conditions=boundary_conditions_2,
+                                   timestepper = :RungeKutta3)
+
+    # Initialize with a simple flow pattern
+    uᵢ_2(x, z) = U₀ * sin(π * x) * cos(π * z)
+    set!(model_2, u=uᵢ_2)
+
+    simulation_2 = Simulation(model_2; Δt=FT(0.1)*Δx/U₀, stop_time=FT(0.5), verbose=false)
+
+    u, v, w = model_2.velocities
+    ∫∇u_2 = Field(Integral(∂x(u) + ∂z(w)))
+
+    run!(simulation_2)
+    compute!(∫∇u_2)
+
+    # Test that mass flux is approximately zero
+    @test isapprox(∫∇u_2[], FT(0), atol=FT(1e-6))
+
+    # Test case 3: 3D box with open boundaries on all sides
+    grid_3d = RectilinearGrid(arch, FT, size=(8, 8, 8), halo=(2, 2, 2), extent=(1, 1, 1),
+                             topology=(Bounded, Bounded, Bounded))
+
+    u_bcs_3 = FieldBoundaryConditions(west = OpenBoundaryCondition(FT(0.5)),
+                                     east = PerturbationAdvectionOpenBoundaryCondition(FT(0.5); inflow_timescale=FT(0.1)))
+    v_bcs_3 = FieldBoundaryConditions(south = FlatExtrapolationOpenBoundaryCondition(),
+                                     north = FlatExtrapolationOpenBoundaryCondition())
+    w_bcs_3 = FieldBoundaryConditions(bottom = OpenBoundaryCondition(FT(0)),
+                                     top = OpenBoundaryCondition(FT(0)))
+
+    boundary_conditions_3 = (; u = u_bcs_3, v = v_bcs_3, w = w_bcs_3)
+
+    model_3 = NonhydrostaticModel(; grid=grid_3d, boundary_conditions=boundary_conditions_3,
+                                   timestepper = :RungeKutta3)
+
+    # Initialize with a 3D flow pattern
+    uᵢ_3(x, y, z) = FT(0.5) * sin(π * x) * cos(π * y) * cos(π * z)
+    vᵢ_3(x, y, z) = FT(0.5) * cos(π * x) * sin(π * y) * cos(π * z)
+    wᵢ_3(x, y, z) = FT(0.5) * cos(π * x) * cos(π * y) * sin(π * z)
+
+    set!(model_3, u=uᵢ_3, v=vᵢ_3, w=wᵢ_3)
+
+    simulation_3 = Simulation(model_3; Δt=FT(0.01), stop_time=FT(0.1), verbose=false)
+
+    u, v, w = model_3.velocities
+    ∫∇u_3 = Field(Integral(∂x(u) + ∂y(v) + ∂z(w)))
+
+    run!(simulation_3)
+    compute!(∫∇u_3)
+
+    # Test that mass flux is approximately zero
+    @test isapprox(∫∇u_3[], FT(0), atol=FT(1e-6))
+end
+
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                               float_bc(C, FT, ArrayType),
                                               irrational_bc(C, FT, ArrayType),
@@ -448,6 +544,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             @info "  Testing open boundary conditions [$A, $FT]..."
             test_flat_extrapolation_open_boundary_conditions(arch, FT)
             test_perturbation_advection_open_boundary_conditions(arch, FT)
+            test_open_boundary_condition_mass_conservation(arch, FT)
         end
     end
 end
