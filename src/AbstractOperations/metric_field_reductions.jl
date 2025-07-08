@@ -49,11 +49,9 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     # Compute "size" (length, area, or volume) of averaging region
     metric = GridMetricOperation(location(field), dx, field.grid)
     L = @allowscalar sum(metric; condition, mask, dims)[] # Pluck out L as a Number
+    L = convert(eltype(field.grid), L)
 
-    # Construct summand of the Average
-    L⁻¹_field_dx = field * dx / L
-
-    operand = condition_operand(L⁻¹_field_dx, condition, mask)
+    operand = condition_operand(field * dx / L, condition, mask)
     return Scan(Averaging(), sum!, operand, dims)
 end
 
