@@ -86,53 +86,53 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check west boundary (u velocity)
     if u_bcs.west isa OBC
         west_area = get_west_area(velocities.u.grid)
-        west_flux = get_boundary_mass_flux(u_bcs.west, Field(west_integral(velocities.u) / west_area))
-        boundary_fluxes = merge(boundary_fluxes, (; west = west_flux))
+        west_flux = get_boundary_mass_flux(u_bcs.west, west_integral(velocities.u))
+        boundary_fluxes = merge(boundary_fluxes, (; west = west_flux, west_area))
     end
 
     # Check east boundary (u velocity)
     if u_bcs.east isa OBC
         east_area = get_east_area(velocities.u.grid)
-        east_flux = get_boundary_mass_flux(u_bcs.east, Field(east_integral(velocities.u) / east_area))
-        boundary_fluxes = merge(boundary_fluxes, (; east = east_flux))
+        east_flux = get_boundary_mass_flux(u_bcs.east, east_integral(velocities.u))
+        boundary_fluxes = merge(boundary_fluxes, (; east = east_flux, east_area))
     end
 
     # Check south boundary (v velocity)
     if v_bcs.south isa OBC
         south_area = get_south_area(velocities.v.grid)
-        south_flux = get_boundary_mass_flux(v_bcs.south, Field(south_integral(velocities.v) / south_area))
-        boundary_fluxes = merge(boundary_fluxes, (; south = south_flux))
+        south_flux = get_boundary_mass_flux(v_bcs.south, south_integral(velocities.v))
+        boundary_fluxes = merge(boundary_fluxes, (; south = south_flux, south_area))
     end
 
     # Check north boundary (v velocity)
     if v_bcs.north isa OBC
         north_area = get_north_area(velocities.v.grid)
-        north_flux = get_boundary_mass_flux(v_bcs.north, Field(north_integral(velocities.v) / north_area))
-        boundary_fluxes = merge(boundary_fluxes, (; north = north_flux))
+        north_flux = get_boundary_mass_flux(v_bcs.north, north_integral(velocities.v))
+        boundary_fluxes = merge(boundary_fluxes, (; north = north_flux, north_area))
     end
 
     # Check bottom boundary (w velocity)
     if w_bcs.bottom isa OBC
         bottom_area = get_bottom_area(velocities.w.grid)
-        bottom_flux = get_boundary_mass_flux(w_bcs.bottom, Field(bottom_integral(velocities.w) / bottom_area))
-        boundary_fluxes = merge(boundary_fluxes, (; bottom = bottom_flux))
+        bottom_flux = get_boundary_mass_flux(w_bcs.bottom, bottom_integral(velocities.w))
+        boundary_fluxes = merge(boundary_fluxes, (; bottom = bottom_flux, bottom_area))
     end
 
     # Check top boundary (w velocity)
     if w_bcs.top isa OBC
         top_area = get_top_area(velocities.w.grid)
-        top_flux = get_boundary_mass_flux(w_bcs.top, Field(top_integral(velocities.w) / top_area))
-        boundary_fluxes = merge(boundary_fluxes, (; top = top_flux))
+        top_flux = get_boundary_mass_flux(w_bcs.top, top_integral(velocities.w))
+        boundary_fluxes = merge(boundary_fluxes, (; top = top_flux, top_area))
     end
 
     return boundary_fluxes
 end
 
-update_open_boundary_mass_fluxes(model) = map(compute!, model.boundary_mass_fluxes)
+update_open_boundary_mass_fluxes!(model) = map(compute!, model.boundary_mass_fluxes)
 
 function open_boundary_mass_fluxes(model)
 
-    update_open_boundary_mass_fluxes(model)
+    update_open_boundary_mass_fluxes!(model)
 
     u_bcs = model.velocities.u.boundary_conditions
     v_bcs = model.velocities.v.boundary_conditions
@@ -148,29 +148,29 @@ function open_boundary_mass_fluxes(model)
 
     # Calculate flux through left boundaries
     if u_bcs.west isa OBC
-        left_flux += compute!(model.boundary_mass_fluxes.west)[]
+        left_flux += model.boundary_mass_fluxes.west[] / model.boundary_mass_fluxes.west_area
         u_bcs.west isa ROBC && push!(left_ROBCs, :west)
     end
     if v_bcs.south isa OBC
-        left_flux += compute!(model.boundary_mass_fluxes.south)[]
+        left_flux += model.boundary_mass_fluxes.south[] / model.boundary_mass_fluxes.south_area
         v_bcs.south isa ROBC && push!(left_ROBCs, :south)
     end
     if w_bcs.bottom isa OBC
-        left_flux += compute!(model.boundary_mass_fluxes.bottom)[]
+        left_flux += model.boundary_mass_fluxes.bottom[] / model.boundary_mass_fluxes.bottom_area
         w_bcs.bottom isa ROBC && push!(left_ROBCs, :bottom)
     end
 
     # Calculate flux through right boundaries
     if u_bcs.east isa OBC
-        right_flux += compute!(model.boundary_mass_fluxes.east)[]
+        right_flux += model.boundary_mass_fluxes.east[] / model.boundary_mass_fluxes.east_area
         u_bcs.east isa ROBC && push!(right_ROBCs, :east)
     end
     if v_bcs.north isa OBC
-        right_flux += compute!(model.boundary_mass_fluxes.north)[]
+        right_flux += model.boundary_mass_fluxes.north[] / model.boundary_mass_fluxes.north_area
         v_bcs.north isa ROBC && push!(right_ROBCs, :north)
     end
     if w_bcs.top isa OBC
-        right_flux += compute!(model.boundary_mass_fluxes.top)[]
+        right_flux += model.boundary_mass_fluxes.top[] / model.boundary_mass_fluxes.top_area
         w_bcs.top isa ROBC && push!(right_ROBCs, :top)
     end
 

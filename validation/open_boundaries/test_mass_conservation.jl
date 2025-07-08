@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Diagnostics: AdvectiveCFL
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
 using Printf
 using Random: seed!
 seed!(156)
@@ -12,10 +12,11 @@ function create_mass_conservation_simulation(;
     N = 32,
     L = 1.0,
     U₀ = 1.0,
-    stop_time = 5,
+    stop_time = 1,
     inflow_timescale = 1e-1,
     outflow_timescale = Inf,
-    add_progress_messenger = true,
+    add_progress_messenger = false,
+    poisson_solver = nothing,
 )
     # Create underlying grid
     underlying_grid = RectilinearGrid(topology = (Bounded, Flat, Bounded),
@@ -24,12 +25,14 @@ function create_mass_conservation_simulation(;
                                      halo = (4, 4))
     
     # Choose grid type based on immersed_bottom parameter
-    if immersed_bottom !== nothing
-        grid = ImmersedBoundaryGrid(underlying_grid, immersed_bottom)
-        pressure_solver = ConjugateGradientPoissonSolver(grid)
+    grid = immersed_bottom isa Nothing ? underlying_grid : ImmersedBoundaryGrid(underlying_grid, immersed_bottom)
+
+    if poisson_solver isa Nothing
+        pressure_solver = grid isa ImmersedBoundaryGrid ? ConjugateGradientPoissonSolver(grid) : nothing
+    elseif (poisson_solver == FFTBasedPoissonSolver) && (grid isa ImmersedBoundaryGrid)
+        pressure_solver = poisson_solver(grid.underlying_grid)
     else
-        grid = underlying_grid
-        pressure_solver = nothing
+        pressure_solver = poisson_solver(grid)
     end
 
     # Set boundary conditions based on boolean flag
@@ -50,7 +53,7 @@ function create_mass_conservation_simulation(;
 
     # Calculate time step
     Δt = 0.1 * minimum_zspacing(grid) / abs(U₀)
-    simulation = Simulation(model; Δt, stop_time)
+    simulation = Simulation(model; Δt, stop_time, verbose=false)
 
     if add_progress_messenger
         # Set up progress monitoring
@@ -71,4 +74,4 @@ function create_mass_conservation_simulation(;
     return simulation
 end
 
-simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true, immersed_bottom = nothing)
+#simulation = create_mass_conservation_simulation(; immersed_bottom = nothing);
