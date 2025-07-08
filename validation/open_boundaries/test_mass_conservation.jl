@@ -9,6 +9,7 @@ seed!(156)
 function create_mass_conservation_simulation(; 
     use_open_boundary_condition = true,
     immersed_bottom = nothing,
+    arch = CPU(),
     N = 32,
     L = 1.0,
     U₀ = 1.0,
@@ -20,10 +21,10 @@ function create_mass_conservation_simulation(;
     timestepper = :QuasiAdamsBashforth2,
 )
     # Create underlying grid
-    underlying_grid = RectilinearGrid(topology = (Bounded, Flat, Bounded),
-                                     size = (N, N), 
-                                     extent = (L, L),
-                                     halo = (4, 4))
+    underlying_grid = RectilinearGrid(arch, topology = (Bounded, Flat, Bounded),
+                                      size = (N, N),
+                                      extent = (L, L),
+                                      halo = (4, 4))
     
     # Choose grid type based on immersed_bottom parameter
     grid = immersed_bottom isa Nothing ? underlying_grid : ImmersedBoundaryGrid(underlying_grid, immersed_bottom)
@@ -75,3 +76,4 @@ function create_mass_conservation_simulation(;
 end
 
 #simulation = create_mass_conservation_simulation(; immersed_bottom = nothing);
+#run!(simulation)
