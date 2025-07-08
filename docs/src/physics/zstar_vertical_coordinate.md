@@ -1,8 +1,11 @@
 # Generalized vertical coordinate
 
 For [`HydrostaticFreeSurfaceModel()`](@ref), we have the choice between a `ZCoordinate` and a `ZStar` vertical coordinate.
-A `ZStar` vertical coordinate conserves tracers and volume with the grid following the evolution of the free surface in the domain [adcroft2004rescaled](@citep).
-To obtain the (discrete) equations evolved in a general framework where the vertical coordinate is moving, we perform a scaling of the continuous primitive equations to a generalized coordinate ``r(x, y, z, t)``.
+A `ZStar` vertical coordinate conserves tracers and volume with the grid following the evolution of the free surface in the
+domain [adcroft2004rescaled](@citep).
+
+To obtain the (discrete) equations evolved in a general framework where the vertical coordinate is moving, we perform a scaling
+of the continuous primitive equations to a generalized coordinate ``r(x, y, z, t)``.
 
 We have that:
 
@@ -12,29 +15,29 @@ We have that:
 \frac{\partial \phi}{\partial z} & = \frac{1}{\sigma}\frac{\partial \phi}{\partial r}
 \end{align}
 ```
-where ``s = x, y, t`` and
+where ``s = x, y, t``, subscripts next to ``\vert`` denote the quantities that remain constant, and
 ```math
 \sigma = \frac{\partial z}{\partial r} \bigg\rvert_{x, y, t}
 ```
-We can also write the spatial derivatives of the ``r``-coordinate as follows
+The spatial derivatives of the ``r``-coordinate is rewritten
 ```math
-\frac{\partial r}{\partial x}\bigg\rvert_{y, z, t} = - \frac{\partial z}{\partial x}\bigg\rvert_{y, s, t} \frac{1}{\sigma}
+\frac{\partial r}{\partial x} \bigg\rvert_{y, z, t} = - \frac{\partial z}{\partial x} \bigg\rvert_{y, s, t} \frac{1}{\sigma}
 ```
-Such that the chain rule above for horizontal spatial derivatives (``x`` and ``y``) becomes
-
+so that the chain rule above for the horizontal spatial derivatives (``x`` and ``y``) becomes
 ```math
 \begin{align}
-\frac{\partial \phi}{\partial x}\bigg\rvert_{z} & = \frac{\partial \phi}{\partial x}\bigg\rvert_{r} - \frac{1}{\sigma}\frac{\partial \phi}{\partial r} \frac{\partial z}{\partial x} \\
-\frac{\partial \phi}{\partial y}\bigg\rvert_{z} & = \frac{\partial \phi}{\partial y}\bigg\rvert_{r} - \frac{1}{\sigma}\frac{\partial \phi}{\partial r} \frac{\partial z}{\partial y}
+\frac{\partial \phi}{\partial x} \bigg\rvert_{z} & = \frac{\partial \phi}{\partial x}\bigg\rvert_{r} - \frac{1}{\sigma}\frac{\partial \phi}{\partial r} \frac{\partial z}{\partial x} \\
+\frac{\partial \phi}{\partial y} \bigg\rvert_{z} & = \frac{\partial \phi}{\partial y}\bigg\rvert_{r} - \frac{1}{\sigma}\frac{\partial \phi}{\partial r} \frac{\partial z}{\partial y}
 \end{align}
 ```
+
 ## Continuity Equation
-Following the above ruleset, the divergence of the velocity field can be rewritten as
+Following the above ruleset, the divergence of the flow can be rewritten as
 ```math
 \begin{align}
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} & = \frac{\partial u}{\partial x} \bigg\rvert_{z} + \frac{\partial v}{\partial y} \bigg\rvert_{z} + \frac{\partial w}{\partial z} \\
 & = \frac{\partial u}{\partial x} \bigg\rvert_{r} + \frac{\partial v}{\partial y} \bigg\rvert_{r} - \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial w}{\partial r} \right) \\
-& = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y} \bigg\rvert_{r} - u \frac{\partial \sigma}{\partial x} \bigg\rvert_{r} - v \frac{\partial \sigma}{\partial y} \bigg\rvert_{r} \right)- \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial y} \frac{\partial z}{\partial y}  - \frac{\partial w}{\partial r} \right)
+& = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y} \bigg\rvert_{r} - u \frac{\partial \sigma}{\partial x} \bigg\rvert_{r} - v \frac{\partial \sigma}{\partial y} \bigg\rvert_{r} \right)- \frac{1}{\sigma} \left( \frac{\partial u}{\partial r} \frac{\partial z}{\partial x} + \frac{\partial v}{\partial y} \frac{\partial z}{\partial y} - \frac{\partial w}{\partial r} \right)
 \end{align}
 ```
 We can rewrite ``\partial_x \sigma \rvert_r = \partial_r(\partial_x z)`` and the same for the ``y`` direction. Then the above yields
@@ -83,12 +86,12 @@ where ``\mathcal{U} = Axu``, ``\mathcal{V} = Ayv``, ``Ax = \Delta y \Delta z``, 
 ## Tracer equations
 The tracer equation with vertical diffusion reads
 ```math
-\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \cdot (\boldsymbol{u} T) = \frac{\partial}{\partial z} \left( \kappa \frac{\partial T}{\partial z} \right)
+\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} T) = \frac{\partial}{\partial z} \left( \kappa \frac{\partial T}{\partial z} \right)
 ```
-Using the same procedure we followed for the continuity equation, ``\partial_t T\rvert_{z} + \boldsymbol{\nabla} \cdot (\boldsymbol{u} T)`` yields
+Using the same procedure we followed for the continuity equation, ``\partial_t T\rvert_{z} + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} T)`` yields
 ```math
 \begin{align}
-\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \cdot (\boldsymbol{u} T) & = \frac{\partial T}{\partial t}\bigg\rvert_{z} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r}\left( T\omega + T \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \\
+\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} T) & = \frac{\partial T}{\partial t}\bigg\rvert_{z} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r}\left( T\omega + T \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \\
 
 & = \frac{\partial T}{\partial t}\bigg\rvert_{z} + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} T\left( \frac{\partial \omega}{\partial r} + \frac{\partial \sigma}{\partial t}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)\frac{\partial T}{\partial r}\\
 
@@ -100,13 +103,13 @@ We recover the time derivative of the tracer at constant `r` by rewriting the la
 ```math
 \frac{1}{\sigma}  \frac{\partial z}{\partial t}\bigg\rvert_r \frac{\partial T}{\partial r} = \frac{\partial r}{\partial t} \frac{\partial T}{\partial r} = \frac{\partial T}{\partial t}\bigg\rvert_{r} - \frac{\partial T}{\partial t}\bigg\rvert_{z}
 ```
-As such, ``\partial_t T\rvert_{z} + \boldsymbol{\nabla} \cdot (\boldsymbol{u} T)`` can be rewritten in ``r``-coordinates as
+As such, ``\partial_t T\rvert_{z} + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} T)`` can be rewritten in ``r``-coordinates as
 ```math
-\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \cdot (\boldsymbol{u} T) = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t}\bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial \omega T}{\partial r}
+\frac{\partial T}{\partial t}\bigg\rvert_{z} + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} T) = \frac{1}{\sigma}\frac{\partial \sigma T}{\partial t}\bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial \omega T}{\partial r}
 ```
 We add vertical diffusion to the right-hand side to recover the tracer equation
 ```math
-\frac{1}{\sigma}\frac{\partial \sigma T}{\partial t}\bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} = \frac{1}{\sigma}\frac{\partial}{\partial r} \left( \kappa \frac{\partial T}{\partial z} \right)
+\frac{1}{\sigma}\frac{\partial \sigma T}{\partial t} \bigg\rvert_r + \frac{1}{\sigma} \left( \frac{\partial \sigma u T}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial T \omega}{\partial r} = \frac{1}{\sigma}\frac{\partial}{\partial r} \left( \kappa \frac{\partial T}{\partial z} \right)
 ```
 
 ### Finite-volume discretization of the tracer equation
