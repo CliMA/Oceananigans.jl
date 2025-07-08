@@ -184,10 +184,8 @@ Private = false
 Modules = [Oceananigans.OutputWriters]
 Private = false
 ```
-
-```@autodocs
-Modules = [Oceananigans]
-Pages = ["../ext/OceananigansNCDatasetsExt.jl"]
+```@docs
+NetCDFWriter
 ```
 
 ## Simulations
