@@ -105,11 +105,11 @@ Keyword arguments
 Example
 =======
 
-Output 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
+Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 
 ```@example
 using Oceananigans
-using Oceananigans.Utils: hour, minute
+using Oceananigans.Units
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
@@ -126,17 +126,17 @@ c_avg = Field(Average(model.tracers.c, dims=(1, 2)))
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename = "some_data.jld2",
-                                                    schedule = TimeInterval(20minute),
+                                                    schedule = TimeInterval(20minutes),
                                                     init = init_save_some_metadata!)
 ```
 
-and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
-to a file called `some_averaged_data.jld2`
+and also output a both 5-minute-time-average and horizontal-average of the tracer ``c`` every 20 minutes
+of simulation time to a file called `some_averaged_data.jld2`
 
 ```@example
 simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
                                                filename = "some_averaged_data.jld2",
-                                               schedule = AveragedTimeInterval(20minute, window=5minute))
+                                               schedule = AveragedTimeInterval(20minute, window=5minutes))
 ```
 """
 function JLD2Writer(model, outputs; filename, schedule,
