@@ -49,7 +49,6 @@ function create_mass_conservation_simulation(;
 
     model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper)
     uᵢ(x, z) = U₀ + 1e-2 * rand()
-    fill!(model.velocities.u, U₀)
     set!(model, u=uᵢ)
 
     # Calculate time step

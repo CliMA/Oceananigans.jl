@@ -58,14 +58,10 @@ function get_top_area(grid)
 end
 
 function get_boundary_mass_flux(bc, boundary_flux_field)
-    if bc isa FOBC
-        if bc.condition isa Number # If the BC is a fixed velocity, the flux is the fixed velocity
-            return bc.condition
-        elseif bc.condition isa Nothing # If the BC is no-inflow, the flux is zero
-            return 0
-        else
-            return boundary_flux_field
-        end
+    if bc isa FIOBC # If the BC is a fixed imposed velocity, the flux is the fixed velocity
+        return bc.condition
+    elseif bc isa ZIOBC # If the BC is no-inflow, the flux is zero
+        return 0
     else
         return boundary_flux_field
     end
