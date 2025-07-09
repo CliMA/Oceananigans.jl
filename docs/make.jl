@@ -18,6 +18,7 @@ Distributed.addprocs(2)
     using Oceananigans.TurbulenceClosures
     using Oceananigans.TimeSteppers
     using Oceananigans.AbstractOperations
+
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
@@ -186,11 +187,10 @@ makedocs(sitename = "Oceananigans.jl",
          modules = [Oceananigans,
                     Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt)],
          warnonly = [:cross_references],
-         doctest = false, # set to false to speed things up
-         draft = true,  # set to true to speed things up
+         doctest = true, # set to false to speed things up
+         draft = false,  # set to true to speed things up
          clean = true,
-         checkdocs = :none
-         ) # set to :none to speed things up
+         checkdocs = :exports) # set to :none to speed things up
 
 """
     recursive_find(directory, pattern)
