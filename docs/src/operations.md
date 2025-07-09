@@ -26,7 +26,7 @@ set!(c, periodic_but_decaying)
 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 10×1×10 OffsetArray(::Array{Float64, 3}, -2:7, 1:1, -2:7) with eltype Float64 with indices -2:7×1:1×-2:7
     └── max=0.428882, min=-0.428882, mean=1.04083e-17
 ```
