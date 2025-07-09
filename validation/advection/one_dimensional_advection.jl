@@ -29,21 +29,21 @@ a = 0.5
     end
 end
 
-Δt_max = 0.5 * minimum_xspacing(grid)
+Δt_max = 1 * minimum_xspacing(grid)
 c_real = CenterField(grid)
 set!(c_real, c₀)
 
 # Change to test pure advection schemes
-advection = WENO(order=5)
+advection = UpwindBiased(order=1)
 
-model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection, tracers=:c)
-
+model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2, advection, tracers=:c)
+model.timestepper.χ = -0.5
 set!(model, c=c₀, u=1)
 sim = Simulation(model, Δt=Δt_max, stop_time=10)
 
 sim.output_writers[:solution] = JLD2Writer(model, (; c = model.tracers.c);
                                            filename="one_d_simulation.jld2",
-                                           schedule=TimeInterval(0.1),
+                                           schedule=IterationInterval(10),
                                            overwrite_existing=true)
 
 run!(sim)

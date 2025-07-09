@@ -72,7 +72,7 @@ Base.summary(ib::GridFittedBottom{<:Function}) = @sprintf("GridFittedBottom(%s)"
 
 function Base.show(io::IO, ib::GridFittedBottom)
     print(io, summary(ib), '\n')
-    print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
+    print(io, "└── bottom_height: ", prettysummary(ib.bottom_height), '\n')
 end
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)

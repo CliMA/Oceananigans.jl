@@ -27,6 +27,9 @@ using .Fields
 include("TimeSteppers.jl")
 using .TimeSteppers
 
+include("TurbulenceClosures.jl")
+using .TurbulenceClosures
+
 include("Models.jl")
 using .Models
 
@@ -286,6 +289,7 @@ function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{
 
     if stage # tick a stage update
         clock.stage += 1
+        clock.last_stage_Δt = Δt
     else # tick an iteration and reset stage
         clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
         clock.stage = 1

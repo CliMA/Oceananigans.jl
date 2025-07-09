@@ -2,10 +2,9 @@ using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
-using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
+using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
-using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: AbstractSchedule
 using Oceananigans.OutputReaders: auto_extension
 
@@ -76,8 +75,11 @@ saveproperty!(file, address, obj) = _saveproperty!(file, address, obj)
 # Generic implementation: recursively unwrap an object.
 _saveproperty!(file, address, obj) = [saveproperty!(file, address * "/$prop", getproperty(obj, prop)) for prop in propertynames(obj)]
 
+const ConstantFields = Union{ConstantField, ZeroField, OneField}
+
 # Some specific things
 saveproperty!(file, address, p::Union{Number, Array}) = file[address] = p
+saveproperty!(file, address, p::ConstantFields)       = file[address] = p
 saveproperty!(file, address, p::AbstractRange)        = file[address] = collect(p)
 saveproperty!(file, address, p::AbstractArray)        = file[address] = Array(parent(p))
 saveproperty!(file, address, p::Function)             = nothing
@@ -93,10 +95,10 @@ end
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
-        bc = getproperty(bcs, endpoint)
-        file[address * "/$endpoint/type"] = bc_str(bc)
+        bc = getproperty(bcs, boundary)
+        file[address * "/$boundary/type"] = bc_str(bc)
 
-        if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
+        if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
             file[address * "/$boundary/condition"] = missing
         else
             file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
@@ -166,7 +168,6 @@ end
 
 serializeproperty!(file, address, p::NamedTuple) = [serializeproperty!(file, address * "/$subp", getproperty(p, subp)) for subp in keys(p)]
 serializeproperty!(file, address, s::StructArray) = (file[address] = replace_storage(Array, s))
-serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
 
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]

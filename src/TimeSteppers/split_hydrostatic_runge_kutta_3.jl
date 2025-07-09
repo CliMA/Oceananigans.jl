@@ -2,9 +2,9 @@ using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
-    SplitRungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
+    SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
 
-Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
+Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [Lan2022](@citet).
 """
 struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
@@ -28,7 +28,7 @@ end
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified via optional `kwargs`.
 
-The scheme described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge Kutta timestepper
+The scheme is described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge-Kutta timestepper
 steps forward the state `Uⁿ` by `Δt` via 3 substeps. A barotropic velocity correction step is applied
 after at each substep.
 
@@ -38,12 +38,18 @@ The state `U` after each substep `m` is
 Uᵐ⁺¹ = ζᵐ * Uⁿ + γᵐ * (Uᵐ + Δt * Gᵐ)
 ```
 
-where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep, `Gᵐ` is the tendency
-at the ``m``-th substep, and constants ``γ¹ = 1`, ``γ² = 1/4``, ``γ³ = 1/3``,
-``ζ¹ = 0``, ``ζ² = 3/4``, ``ζ³ = 1/3``.
+where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
+`Gᵐ` is the tendency at the ``m``-th substep, and constants `γ¹ = 1`, `γ² = 1/4`, `γ³ = 1/3`,
+`ζ¹ = 0`, `ζ² = 3/4`, and `ζ³ = 1/3`.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
+
+References
+==========
+Lan, R., Ju, L., Wanh, Z., Gunzburger, M., and Jones, P. (2022). "High-order multirate explicit
+    time-stepping schemes for the baroclinic-barotropic split dynamics in primitive equations",
+    Journal of Computational Physics 457, 111050.
 """
 function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
@@ -51,9 +57,8 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      Ψ⁻::PF = map(similar, prognostic_fields),
                                      G⁻::TE = nothing) where {TI, TG, PF, TE}
 
-
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *
-          "Use at own risk, and report any issues encountered.")
+          "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with SplitRungeKutta3TimeStepper is not tested. " *
@@ -69,7 +74,6 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
 
     return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, Ψ⁻, implicit_solver)
 end
-
 
 function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
@@ -92,8 +96,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 1
 
     split_rk3_substep!(model, Δt, nothing, nothing)
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
@@ -103,8 +107,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 2
 
     split_rk3_substep!(model, Δt, γ², ζ²)
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
@@ -114,14 +118,13 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 3
 
     split_rk3_substep!(model, Δt, γ³, ζ³)
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
     step_lagrangian_particles!(model, Δt)
 
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
 
     return nothing
 end
@@ -172,4 +175,3 @@ function cache_previous_fields!(model)
 
     return nothing
 end
-
