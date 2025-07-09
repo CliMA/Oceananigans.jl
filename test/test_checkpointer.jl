@@ -251,3 +251,4 @@ for arch in archs
         test_constant_fields_checkpointer(arch)
     end
 end
+
