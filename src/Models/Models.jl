@@ -24,6 +24,7 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!, set_clock!
 import Oceananigans.Solvers: iteration
 import Oceananigans.Simulations: timestepper
+import Oceananigans.TimeSteppers: reset!, set_clock!
 
 # A prototype interface for AbstractModel.
 #
@@ -118,7 +119,7 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
 set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
 
 """
-    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
+    possible_field_time_series(model::OceananigansModels)
 
 Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
 """
@@ -147,8 +148,6 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     return nothing
 end
-
-import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)
 

@@ -1399,7 +1399,7 @@ function Base.show(io::IO, ow::NetCDFWriter)
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "└── array type: ", show_array_type(ow.array_type), "\n",
+              "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))
 end

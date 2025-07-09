@@ -96,12 +96,13 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     γ² = model.timestepper.γ²
     γ³ = model.timestepper.γ³
 
+    ζ¹ = nothing
     ζ² = model.timestepper.ζ²
     ζ³ = model.timestepper.ζ³
 
-    first_stage_Δt  = γ¹ * Δt
-    second_stage_Δt = (γ² + ζ²) * Δt
-    third_stage_Δt  = (γ³ + ζ³) * Δt
+    first_stage_Δt  = stage_Δt(Δt, γ¹, ζ¹)      # =  γ¹ * Δt
+    second_stage_Δt = stage_Δt(Δt, γ², ζ²)      # = (γ² + ζ²) * Δt
+    third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)      # = (γ³ + ζ³) * Δt
 
     # Compute the next time step a priori to reduce floating point error accumulation
     tⁿ⁺¹ = next_time(model.clock, Δt)
@@ -146,8 +147,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # round-off error when Δt is added to model.clock.time. Note that we still use
     # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
     corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
-
     tick!(model.clock, third_stage_Δt)
+    # now model.clock.last_Δt = clock.last_stage_Δt = third_stage_Δt
+    # we correct those below
     model.clock.last_stage_Δt = corrected_third_stage_Δt
 
     compute_pressure_correction!(model, third_stage_Δt)
@@ -194,9 +196,7 @@ end
 """
 Time step velocity fields via the 3rd-order Runge-Kutta method
 
-```
-Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
-```
+    Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
 
 where `m` denotes the substage.
 """
