@@ -9,7 +9,7 @@ approximation, generalized stresses and tracer fluxes associated with viscous an
 diffusive physics, and arbitrary "forcing functions" -- are determined by the whims of the
 user.
 
-## Mass conservation and free surface evolution equation
+## [Mass conservation and free surface evolution equation](@id hydrostatic_mass_conservation_free_surface)
 
 The mass conservation equation is
 ```math
