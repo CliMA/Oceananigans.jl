@@ -12,6 +12,7 @@ Distributed.addprocs(2)
     CairoMakie.activate!(type = "svg")
 
     using Oceananigans
+    using NCDatasets
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
