@@ -151,6 +151,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # now model.clock.last_Δt = clock.last_stage_Δt = third_stage_Δt
     # we correct those below
     model.clock.last_stage_Δt = corrected_third_stage_Δt
+    model.clock.last_Δt = Δt
 
     compute_pressure_correction!(model, third_stage_Δt)
     make_pressure_correction!(model, third_stage_Δt)
