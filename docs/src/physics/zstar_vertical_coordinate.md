@@ -89,7 +89,7 @@ Using the notation for cell-averages ``\overline{\phi} \equiv V_r^{-1} \int_{V_r
 we can rewrite \eqref{massdiscr1} to:
 ```math
 \begin{equation}
-    \frac{\partial \overline{\sigma}}{\partial t} + \frac{1}{\Delta x\Delta y \Delta r} \left( \Delta y \Delta r \sigma u\rvert_{i-1/2}^{i+1/2} + \Delta x \Delta r \sigma v\rvert_{j-1/2}^{j+1/2} \right ) + \frac{\overline{\omega}_{k+1/2} - \overline{\omega}_{k-1/2}}{\Delta r} = 0 \label{massdiscr2}
+    \frac{\partial \overline{\sigma}}{\partial t} + \frac{1}{\Delta x \Delta y \Delta r} \left( \Delta y \Delta r \, \sigma u \rvert_{i-1/2}^{i+1/2} + \Delta x \Delta r \, \sigma v \rvert_{j-1/2}^{j+1/2} \right ) + \frac{\overline{\omega}_{k+1/2} - \overline{\omega}_{k-1/2}}{\Delta r} = 0 \label{massdiscr2}
 \end{equation}
 ```
 We use \eqref{massdiscr2} diagnose the vertical velocity (in ``r`` space) given the grid velocity and the horizontal velocity divergence:
@@ -138,7 +138,7 @@ leading to
 ```math
 \frac{1}{\sigma}\frac{\partial \sigma \overline{T}}{\partial t} + \frac{\mathcal{U}T\rvert_{i-1/2}^{i+1/2} + \mathcal{V}T\rvert_{j-1/2}^{j+1/2} + \mathcal{W} T\rvert_{k-1/2}^{k+1/2}}{V} = \frac{1}{V} \left(\mathcal{K} \frac{\partial T}{\partial z}\bigg\rvert_{k-1/2}^{k+1/2} \right)
 ```
-where ``V = \sigma V_r = \Delta x \, \Delta y \, \Delta z``, ``\mathcal{U} = Ax \, u``, ``\mathcal{V} = Ay \, v``, ``\mathcal{W} = Az \, \omega``, and ``\mathcal{K} = Az \, \kappa``.
+where ``V = \sigma V_r = \Delta x \, \Delta y \, \Delta z``, ``\mathcal{W} = Az \, \omega``, and ``\mathcal{K} = Az \, \kappa``.
 
 For an explicit formulation of the diffusive fluxes and a time-discretization using forward Euler scheme, imply:
 ```math
@@ -160,18 +160,25 @@ Then the implicit step is done on a `z`-grid as if the grid was static, using th
 
 ## Momentum equations in vector invariant form
 
-The momentum equations solved in Primitive equations models read
+The horizontal momentum equation read
 ```math
-\frac{\mathrm{D} \boldsymbol{u}_h}{\mathrm{D}t} \bigg\rvert_z + f \hat{\boldsymbol{z}} \times \boldsymbol{u}_h = - \boldsymbol{\nabla} p \rvert_z - g \boldsymbol{\nabla} \eta \rvert_z + \frac{\partial}{\partial z} \left(\nu \frac{\partial \boldsymbol{u}_h}{\partial z}\right)
+\begin{equation}
+    \frac{\mathrm{D} \boldsymbol{u}}{\mathrm{D}t} \bigg\rvert_z + f \hat{\boldsymbol{z}} \times \boldsymbol{u} = - \boldsymbol{\nabla} p \rvert_z - g \boldsymbol{\nabla} \eta \rvert_z + \frac{\partial}{\partial z}  \left(\nu \frac{\partial \boldsymbol{u}_h}{\partial z}\right) \label{momentumh}
+\end{equation}
 ```
-complemented by the hydrostatic relation
+where we remind that ``\boldsymbol{u} = u \hat{\boldsymbol{x}} + v \hat{\boldsymbol{y}}`` is the horizontal velocity, ``\boldsymbol{v} = \boldsymbol{u} + w \hat{\boldsymbol{z}}`` is the three-dimensional velocity, and ``\mathrm{D} / \mathrm{D}t \equiv \partial_t + \boldsymbol{v \cdot \nabla}`` is the material derivative.
+
+The above is complemented by the hydrostatic relation
 ```math
-\frac{\partial p}{\partial z} = b
+\begin{equation}
+    \frac{\partial p}{\partial z} = b \label{hydrostatic}
+\end{equation}
 ```
+
 Of the above, the Coriolis term is independent of the vertical frame of reference and the viscous stress is treated similarly to the diffusion of a tracer. In this derivation we focus on:
-1. the hydrostatic relation,
-2. the material derivative in the momentum equation, and
-3. the horizontal pressure gradient terms.
+1. the hydrostatic relation \eqref{hydrostatic},
+2. the material derivative in the momentum equation \eqref{momentumh}, and
+3. the horizontal pressure gradient terms in \eqref{momentumh}.
 
 ### Hydrostatic relation
 This equation is simple to transform by using the definition of a `z`-derivative in `r`-coordinates
@@ -183,9 +190,9 @@ This equation is simple to transform by using the definition of a `z`-derivative
 
 We set out to transform in ``r``-coordinates the material derivative of the horizontal velocity in vector invariant form
 ```math
-\frac{\mathrm{D} \boldsymbol{u}_h}{\mathrm{D} t} \bigg\rvert_z = \frac{\partial \boldsymbol{u}_h}{\partial t} \bigg\rvert_z + \zeta \hat{\boldsymbol{z}} \times \boldsymbol{u}_h + \boldsymbol{\nabla}_h K + w \frac{\partial \boldsymbol{u}_h}{\partial z}
+\frac{\mathrm{D} \boldsymbol{u}}{\mathrm{D} t} \bigg\rvert_z = \frac{\partial \boldsymbol{u}}{\partial t} \bigg\rvert_z + \zeta \hat{\boldsymbol{z}} \times \boldsymbol{u} + \boldsymbol{\nabla}_h K + w \frac{\partial \boldsymbol{u}}{\partial z}
 ```
-where ``\boldsymbol{u}_h = (u, v)`` is the horizontal velocity, ``\zeta = \partial_x v - \partial_y u`` is the vertical vorticity and ``K \equiv (u^2 + v^2)/2`` is the horizontal kinetic energy.
+where ``\zeta = \partial_x v - \partial_y u`` is the vertical vorticity, and ``K \equiv (u^2 + v^2)/2`` is the horizontal kinetic energy.
 In particular we will focus on the ``u`` component of the velocity. The derivation of the ``v`` component follows the same steps. In particular, we are transforming
 ```math
 \begin{align*}
@@ -216,7 +223,7 @@ Using the definition of ``\omega`` in \eqref{def_omega}, we can rewrite \eqref{e
 \end{align}
 ```
 As done above for the tracer, the last term on the right-hand side, using the chain rule for the time derivative yields
-```mathunchanged under vertical
+```math
 \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \frac{\partial u}{\partial r} = \frac{\omega}{\sigma}\frac{\partial u}{\partial r} + \frac{\partial u}{\partial t}\bigg\rvert_r - \frac{\partial u}{\partial t}\bigg\rvert_z
 ```
 Which completes the derivation of the ``u``-momentum equations in ``r``-coordinates
