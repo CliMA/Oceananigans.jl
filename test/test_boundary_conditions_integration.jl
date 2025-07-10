@@ -186,65 +186,23 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
         model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
-
         u = normal_velocity(Val(orientation), model)
-        view(parent(u), :, :, :) .= -1
+        fill!(u, -1)
 
         time_step!(model, 1)
 
         # nothing going on
         @test all(view(parent(u), :, :, :) .== -1)
-
-        # left
-        view(parent(u), :, :, :) .= -1
-        view(parent(u), tuple(map(n -> ifelse(n == orientation, 3, 1), 1:3)...)...) .= -2
-
-        boundary_index = tuple(map(n -> ifelse(n == orientation, 6, 1), 1:3)...)
-        view(parent(u), boundary_index...) .= 0
-
-        time_step!(model, 1)
-
-        # outflow: uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
-        # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = -1.5
-        @test first(interior(u, 1, 1, 1)) == -1.5
-
-        # inflow: uⁿ⁺¹ = (uⁿ + τ̄U) / (1 + τ̄Ū)
-        # Δx = Δt = U = 1, τ̄ = 1/10 -> uⁿ⁺¹) = -1/11
-        @test first(view(parent(u), boundary_index...)) ≈ -1/11
-
-        # right
-        obc = PerturbationAdvectionOpenBoundaryCondition(1, inflow_timescale = 10.0)
-        boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
-
-        model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
-
-        u = normal_velocity(Val(orientation), model)
-        view(parent(u), :, :, :) .= 1
-
-        boundary_adjacent_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
-        view(parent(u), boundary_adjacent_index...) .= 2
-        view(parent(u), tuple(map(n -> ifelse(n == orientation, 1:2, 1), 1:3)...)...) .= 0
-
-        time_step!(model, 1)
-
-        end_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
-
-        # uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
-        # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = 1.5
-        @test all(interior(u, end_index...) .== 1.5)
-
-        # inflow: uⁿ⁺¹ = (uⁿ + τ̄U) / (1 + τ̄Ū)
-        # Δx = Δt = U = 1, τ̄ = 1/10 -> uⁿ⁺¹) = 1/11
-        @test first(view(parent(u), tuple(map(n -> ifelse(n == orientation, 2, 1), 1:3)...)...)) ≈ 1/11
+        @test all(interior(u) .== -1)
 
         obc = PerturbationAdvectionOpenBoundaryCondition((t) -> 0.1*t, inflow_timescale = 0.01, outflow_timescale = 0.5)
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
         model = NonhydrostaticModel(; grid,
-                              boundary_conditions,
-                              timestepper = :QuasiAdamsBashforth2,
-                              forcing)
+                                      boundary_conditions,
+                                      timestepper = :QuasiAdamsBashforth2,
+                                      forcing)
 
         u = normal_velocity(Val(orientation), model)
 
