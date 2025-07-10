@@ -18,8 +18,7 @@ function create_mass_conservation_simulation(;
     outflow_timescale = Inf,
     add_progress_messenger = false,
     poisson_solver = nothing,
-    timestepper = :QuasiAdamsBashforth2,
-)
+    timestepper = :QuasiAdamsBashforth2,)
     # Create underlying grid
     underlying_grid = RectilinearGrid(arch, topology = (Bounded, Flat, Bounded),
                                       size = (N, N),
