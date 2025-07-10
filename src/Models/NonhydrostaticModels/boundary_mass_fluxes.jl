@@ -95,7 +95,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     w_bcs = velocities.w.boundary_conditions
 
     boundary_fluxes = NamedTuple()
-        right_ROBCs = Symbol[]
+    right_ROBCs = Symbol[]
     left_ROBCs = Symbol[]
 
     # Check west boundary (u velocity)
@@ -134,12 +134,12 @@ end
 
 update_open_boundary_mass_fluxes!(model) = map(compute!, model.boundary_mass_fluxes)
 
-open_boundary_mass_flux(model, bc::OBC, ::Val{:west}, u) = model.boundary_mass_fluxes.west[] / model.boundary_mass_fluxes.west_area
-open_boundary_mass_flux(model, bc::OBC, ::Val{:east}, u) = model.boundary_mass_fluxes.east[] / model.boundary_mass_fluxes.east_area
-open_boundary_mass_flux(model, bc::OBC, ::Val{:south}, v) = model.boundary_mass_fluxes.south[] / model.boundary_mass_fluxes.south_area
-open_boundary_mass_flux(model, bc::OBC, ::Val{:north}, v) = model.boundary_mass_fluxes.north[] / model.boundary_mass_fluxes.north_area
-open_boundary_mass_flux(model, bc::OBC, ::Val{:bottom}, w) = model.boundary_mass_fluxes.bottom[] / model.boundary_mass_fluxes.bottom_area
-open_boundary_mass_flux(model, bc::OBC, ::Val{:top}, w) = model.boundary_mass_fluxes.top[] / model.boundary_mass_fluxes.top_area
+open_boundary_mass_flux(model, bc::OBC, ::Val{:west}, u) = @allowscalar model.boundary_mass_fluxes.west[] / model.boundary_mass_fluxes.west_area
+open_boundary_mass_flux(model, bc::OBC, ::Val{:east}, u) = @allowscalar model.boundary_mass_fluxes.east[] / model.boundary_mass_fluxes.east_area
+open_boundary_mass_flux(model, bc::OBC, ::Val{:south}, v) = @allowscalar model.boundary_mass_fluxes.south[] / model.boundary_mass_fluxes.south_area
+open_boundary_mass_flux(model, bc::OBC, ::Val{:north}, v) = @allowscalar model.boundary_mass_fluxes.north[] / model.boundary_mass_fluxes.north_area
+open_boundary_mass_flux(model, bc::OBC, ::Val{:bottom}, w) = @allowscalar model.boundary_mass_fluxes.bottom[] / model.boundary_mass_fluxes.bottom_area
+open_boundary_mass_flux(model, bc::OBC, ::Val{:top}, w) = @allowscalar model.boundary_mass_fluxes.top[] / model.boundary_mass_fluxes.top_area
 
 open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:west}, u) = zero(model.grid)
 open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:east}, u) = zero(model.grid)
@@ -173,14 +173,14 @@ function open_boundary_mass_inflow(model)
     return total_flux
 end
 
-correct_left_boundary_mass_flux!(u, bc::ROBC, ::Val{:west}, extra_flux_per_boundary) = u[1, :, :] = u[1, :, :] .- extra_flux_per_boundary
-correct_left_boundary_mass_flux!(v, bc::ROBC, ::Val{:south}, extra_flux_per_boundary) = v[:, 1, :] = v[:, 1, :] .- extra_flux_per_boundary
-correct_left_boundary_mass_flux!(w, bc::ROBC, ::Val{:bottom}, extra_flux_per_boundary) = w[:, :, 1] = w[:, :, 1] .- extra_flux_per_boundary
+correct_left_boundary_mass_flux!(u, bc::ROBC, ::Val{:west},   extra_flux_per_boundary) = interior(u, 1, :, :) .-= extra_flux_per_boundary
+correct_left_boundary_mass_flux!(v, bc::ROBC, ::Val{:south},  extra_flux_per_boundary) = interior(v, :, 1, :) .-= extra_flux_per_boundary
+correct_left_boundary_mass_flux!(w, bc::ROBC, ::Val{:bottom}, extra_flux_per_boundary) = interior(w, :, :, 1) .-= extra_flux_per_boundary
 correct_left_boundary_mass_flux!(velocity, bc, side, extra_flux_per_boundary) = nothing
 
-correct_right_boundary_mass_flux!(u, bc::ROBC, ::Val{:east}, extra_flux_per_boundary) = u[u.grid.Nx + 1, :, :] = u[u.grid.Nx + 1, :, :] .+ extra_flux_per_boundary
-correct_right_boundary_mass_flux!(v, bc::ROBC, ::Val{:north}, extra_flux_per_boundary) = v[:, v.grid.Ny + 1, :] = v[:, v.grid.Ny + 1, :] .+ extra_flux_per_boundary
-correct_right_boundary_mass_flux!(w, bc::ROBC, ::Val{:top}, extra_flux_per_boundary) = w[:, :, w.grid.Nz + 1] = w[:, :, w.grid.Nz + 1] .+ extra_flux_per_boundary
+correct_right_boundary_mass_flux!(u, bc::ROBC, ::Val{:east},  extra_flux_per_boundary) = interior(u, u.grid.Nx + 1, :, :) .+= extra_flux_per_boundary
+correct_right_boundary_mass_flux!(v, bc::ROBC, ::Val{:north}, extra_flux_per_boundary) = interior(v, :, v.grid.Ny + 1, :) .+= extra_flux_per_boundary
+correct_right_boundary_mass_flux!(w, bc::ROBC, ::Val{:top},   extra_flux_per_boundary) = interior(w, :, :, w.grid.Nz + 1) .+= extra_flux_per_boundary
 correct_right_boundary_mass_flux!(velocity, bc, side, extra_flux_per_boundary) = nothing
 
 """
