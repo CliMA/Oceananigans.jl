@@ -65,6 +65,7 @@ CairoMakie.activate!(type = "png")
 ```@example gpu
 using Oceananigans
 using CairoMakie
+using CUDA
 
 grid = RectilinearGrid(GPU(),
                        size = (1024, 1024),

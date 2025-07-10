@@ -18,11 +18,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie"
+# pkg"add Oceananigans, CairoMakie, CUDA"
 # ```
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
+using CUDA
 
 # ## Model set-up
 #
@@ -353,7 +354,7 @@ fig
 
 frames = 1:length(times)
 
-record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
+CairoMakie.record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide

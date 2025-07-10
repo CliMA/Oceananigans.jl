@@ -8,7 +8,6 @@ export
     Clock,
     tendencies
 
-using CUDA
 using KernelAbstractions
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
 using Oceananigans.Architectures: device

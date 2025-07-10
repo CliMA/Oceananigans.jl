@@ -42,6 +42,8 @@ architecture. By default `architecture = CPU()`. By providing `GPU()` as the `ar
 we can construct the grid on GPU:
 
 ```julia
+julia> using CUDA
+
 julia> grid = RectilinearGrid(GPU(), size = (32, 64, 256), extent = (128, 256, 512))
 32×64×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 128.0)  regularly spaced with Δx=4.0

@@ -94,13 +94,6 @@ U = 1        # velocity scale
 α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
-# Solid body rotation
-R = 1        # sphere's radius
-U = 1        # velocity scale
-φʳ = 0       # Latitude pierced by the axis of rotation
-α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
-ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
-
 """
     create_test_data(grid, region)
 
@@ -123,17 +116,11 @@ create_ψ_test_data(grid, region) = create_test_data(grid, region; trailing_zero
 create_u_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=2)
 create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=3)
 
-@testset "Testing conformal cubed sphere partitions..." begin
-    for n = 1:4
-        @test length(CubedSpherePartition(; R=n)) == 6n^2
-    end
-end
-
 """
     same_longitude_at_poles!(grid_1, grid_2)
 
-Change the longitude values in `grid_1` that correspond to points situated _exactly_ at the poles so that they match the 
-corresponding longitude values of `grid_2`.
+Change the longitude values in `grid_1` that correspond to points situated _exactly_
+at the poles so that they match the corresponding longitude values of `grid_2`.
 """
 function same_longitude_at_poles!(grid_1::ConformalCubedSphereGrid, grid_2::ConformalCubedSphereGrid)
     number_of_regions(grid_1) == number_of_regions(grid_2) || error("grid_1 and grid_2 must have same number of regions")
@@ -149,8 +136,9 @@ end
 """
     zero_out_corner_halos!(array::OffsetArray, N, H)
 
-Zero out the values at the corner halo regions of the two-dimensional `array :: OffsetArray`. It is expected that the
-interior of the offset `array` is `(Nx, Ny) = (N, N)` and the halo region is `H` in both dimensions.
+Zero out the values at the corner halo regions of the two-dimensional `array`.
+It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and
+the halo region is `H` in both dimensions.
 """
 function zero_out_corner_halos!(array::OffsetArray, N, H)
     size(array) == (N+2H, N+2H)
@@ -170,6 +158,12 @@ function compare_grid_vars(var1, var2, N, H)
     zero_out_corner_halos!(var1, N, H)
     zero_out_corner_halos!(var2, N, H)
     return isapprox(var1, var2)
+end
+
+@testset "Testing conformal cubed sphere partitions..." begin
+    for n = 1:4
+        @test length(CubedSpherePartition(; R=n)) == 6n^2
+    end
 end
 
 @testset "Testing conformal cubed sphere grid from file" begin
@@ -291,7 +285,7 @@ end
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 c = CenterField(grid)
 
@@ -363,7 +357,7 @@ end
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 u = XFaceField(grid)
                 v = YFaceField(grid)
@@ -612,13 +606,13 @@ end
             Nx, Ny, Nz = 9, 9, 1
 
             grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
-            
+
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
             @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 ψ = Field{Face, Face, Center}(grid)
 
@@ -794,7 +788,7 @@ end
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 if grid == underlying_grid
                     @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
@@ -811,7 +805,7 @@ end
                                                     coriolis = HydrostaticSphericalCoriolis(FT),
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer())
-                
+
                 simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
                 save_fields_interval = 2minute
