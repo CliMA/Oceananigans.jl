@@ -46,10 +46,8 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dx = reduction_grid_metric(dims)
 
-    # Compute "size" (length, area, or volume) of averaging region
-    metric = GridMetricOperation(location(field), dx, field.grid)
-    ∫dx = @allowscalar sum(metric; condition, mask, dims)[] # Pluck out L as a Number
-    ∫dx = convert(eltype(field.grid), ∫dx)
+    field_ones = Field(location(field), field.grid); set!(field_ones, 1)
+    ∫dx = Integral(field_ones; dims) |> Field
 
     operand = condition_operand(field * dx / ∫dx, condition, mask)
     return Scan(Averaging(), sum!, operand, dims)
