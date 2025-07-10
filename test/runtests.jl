@@ -237,7 +237,6 @@ CUDA.allowscalar() do
         end
     end
 
-    
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -256,6 +255,11 @@ CUDA.allowscalar() do
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
         end
+    end
+
+    # Tests for Makie extension
+    if group == :makie || group == :all
+        include("test_makie.jl")
     end
 
     if group == :sharding || group == :all

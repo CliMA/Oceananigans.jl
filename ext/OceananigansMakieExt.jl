@@ -6,8 +6,11 @@ using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.OutputReaders: auto_extension
+import Oceananigans.Diagnostics: MovieMaker
+import Oceananigans.Simulations: finalize!
 
-using Makie: Observable
+using Makie: Observable, save, recordframe!, VideoStream
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
 import Makie: args_preferred_axis
@@ -196,5 +199,34 @@ function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::Ab
     fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
+
+#####
+##### Diagnostics.MovieMaker methods
+#####
+
+function (maker::MovieMaker)(simulation)
+    maker.func(simulation, maker.figure)
+    recordframe!(maker.io)
+end
+
+"""
+    MovieMaker(figure, func; io, filename="movie.mp4")
+
+Create a `MovieMaker`, which makes a movie.
+"""
+function MovieMaker(figure, func, io::VideoStream; dir = ".", filename="movie.mp4")
+    mkpath(dir)
+    filename = auto_extension(filename, ".mp4")
+    filepath = abspath(joinpath(dir, filename))
+    return MovieMaker(figure, func, io, filepath)
+end
+
+function MovieMaker(figure, func; dir=".", filename="movie.mp4", kwargs...)
+    io = VideoStream(figure; kwargs...)
+    return MovieMaker(figure, func, io; dir, filename)
+end
+
+# Write animation to disk after simulation is complete
+finalize!(maker::MovieMaker, simulation) = save(maker.filepath, maker.io)
 
 end # module
