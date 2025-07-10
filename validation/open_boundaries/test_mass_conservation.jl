@@ -75,5 +75,5 @@ function create_mass_conservation_simulation(;
     return simulation
 end
 
-#simulation = create_mass_conservation_simulation(; immersed_bottom = nothing);
-#run!(simulation)
+simulation = create_mass_conservation_simulation(; immersed_bottom = nothing);
+run!(simulation)

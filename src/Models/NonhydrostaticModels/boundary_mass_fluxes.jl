@@ -80,6 +80,7 @@ initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:bottom}) = (; bottom = bc.con
 initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:top})    = (; top = bc.condition, top_area = one(w.grid))
 
 initialize_boundary_mass_flux(velocity, ::Nothing, side) = NamedTuple()
+initialize_boundary_mass_flux(velocity, bc, side) = NamedTuple()
 
 """
     initialize_boundary_mass_fluxes(velocities::NamedTuple)
