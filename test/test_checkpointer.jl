@@ -230,7 +230,7 @@ for arch in archs
         for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
                              ImplicitFreeSurface(gravitational_acceleration=1),
                              SplitExplicitFreeSurface(gravitational_acceleration=1, substeps=5),
-                             SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration=1)]
+                             SplitExplicitFreeSurface(grid; cfl=0.7, gravitational_acceleration=1)]
 
             test_hydrostatic_splash_checkpointer(grid, free_surface)
         end
