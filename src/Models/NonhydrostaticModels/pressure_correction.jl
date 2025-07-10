@@ -1,6 +1,4 @@
 import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
-using Oceananigans.AbstractOperations: Average
-using Oceananigans.Fields: Field
 
 """
     compute_pressure_correction!(model::NonhydrostaticModel, Δt)
