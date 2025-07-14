@@ -5,15 +5,15 @@ A `ZStar` vertical coordinate conserves tracers and volume with the grid followi
 domain [adcroft2004rescaled](@citep).
 
 We denote a generalized vertical coordinate that evolves with space and time with the letter ``r(x, y, z, t)``.
-for a `ZCoordinate`,
+For a `ZCoordinate`,
 ```math
-r(x, y, z, t) = z \ .
+r(x, y, z, t) = z
 ```
-while for `ZStar`, 
+while for `ZStar`,
 ```math
 r(x, y, z, t) = \frac{z - \eta(x, y, t)}{H(x, y) + \eta(x, y, t)} H(x, y)
 ```
-where ``\eta`` is the free surface and ``H`` is the bottom of the domain.
+where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
 
 To obtain the (discrete) equations evolved in a general framework where the vertical coordinate is moving, we perform a scaling
 of the continuous primitive equations to a generalized coordinate ``r(x, y, z, t)``.
@@ -65,13 +65,13 @@ Following the above ruleset, divergence of the flow can be rewritten as
 We can rewrite ``\partial_x \sigma \rvert_r = \partial_r(\partial_x z)`` and similarly for the ``y`` direction. Then the above after a bit of reordering yields
 ```math
 \begin{equation}
-    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r} \left( u \frac{\partial z}{\partial x} +  v \frac{\partial z}{\partial y} + w \right) \label{div1}
+    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r} \left( u \frac{\partial z}{\partial x} + v \frac{\partial z}{\partial y} + w \right) \label{div1}
 \end{equation}
 ```
 Note that ``w`` above is the vertical velocity referenced to the ``z`` coordinate.
 We can define the vertical velocity ``w_r`` of the ``r`` surface referenced to the ``z`` coordinate as
 ```math
-w_r = \frac{\partial z}{\partial t} \bigg\rvert_r + u \frac{\partial z}{\partial x} +  v \frac{\partial z}{\partial y}
+w_r = \frac{\partial z}{\partial t} \bigg\rvert_r + u \frac{\partial z}{\partial x} + v \frac{\partial z}{\partial y}
 ```
 Then, the vertical velocity across the ``r`` surfaces is the difference between ``w`` and ``w_r``
 ```math
@@ -230,15 +230,15 @@ Gathering all terms that involve ``\sigma`` we obtain
 ```math
 \begin{align}
     \frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z
-    %& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v\frac{\partial u}{\partial r} \frac{\partial z}{\partial y}  + v\frac{\partial v}{\partial r} \frac{\partial z}{\partial x}    - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}- v \frac{\partial v}{\partial r}\frac{\partial z}{\partial x}\right) \\
-    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v \frac{\partial u}{\partial r} \frac{\partial z}{\partial y}  - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}\right) \nonumber \\
-    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w - v \frac{\partial z}{\partial y}  - u \frac{\partial z}{\partial x}\right)  \frac{\partial u}{\partial r} \label{expr1}
+    %& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} + v\frac{\partial v}{\partial r} \frac{\partial z}{\partial x} - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}- v \frac{\partial v}{\partial r}\frac{\partial z}{\partial x}\right) \\
+    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}\right) \nonumber \\
+    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w - v \frac{\partial z}{\partial y} - u \frac{\partial z}{\partial x}\right)  \frac{\partial u}{\partial r} \label{expr1}
 \end{align}
 ```
 Using the definition of ``\omega`` in \eqref{def_omega}, we can rewrite \eqref{expr1} as
 ```math
 \begin{align}
-    \frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z &  =  \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \frac{\partial u}{\partial r}
+    \frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)  \frac{\partial u}{\partial r}
 \end{align}
 ```
 As done above for the tracer, the last term on the right-hand side, using the chain rule for the time derivative yields
@@ -247,7 +247,7 @@ As done above for the tracer, the last term on the right-hand side, using the ch
 ```
 Which completes the derivation of the ``u``-momentum equations in ``r``-coordinates
 ```math
-\frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{\omega}{\sigma}\frac{\partial u}{\partial r}
+\frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z = \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{\omega}{\sigma}\frac{\partial u}{\partial r}
 ```
 We can further split the vertical advection term into a conservative vertical advection and a horizontal divergence term:
 ```math
@@ -255,7 +255,7 @@ We can further split the vertical advection term into a conservative vertical ad
 ```
 and last use the continuity equation \eqref{massconservationr} to obtain
 ```math
-\frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z  =  \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma}\frac{\partial \omega u}{\partial r} + \frac{u}{\sigma} \left( \frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}\right)
+\frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z = \frac{\partial u}{\partial t} \bigg\rvert_r - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma}\frac{\partial \omega u}{\partial r} + \frac{u}{\sigma} \left( \frac{\partial \sigma}{\partial t} + \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r}\right)
 ```
 
 ### Horizontal pressure gradient
@@ -273,10 +273,10 @@ where using the hydrostatic relation we can write
 \end{equation}
 ```
 where the additional term describes the pressure gradient associated with the horizontal tilting of the grid.
-The gradient of surface pressure (the free surface) remains unchanged under vertical coordinate transformation
+The gradient of the free surface remains unchanged under vertical coordinate transformation
 ```math
 \begin{align}
-    g \frac{\partial \eta}{\partial x} \bigg\rvert_z & = g \frac{\partial \eta}{\partial x}\bigg\rvert_r - \frac{g}{\sigma} \frac{\partial \eta}{\partial r}\frac{\partial z}{\partial x} \nonumber \\
-    & = g \frac{\partial \eta}{\partial x} \bigg\rvert_r
+    \frac{\partial \eta}{\partial x} \bigg\rvert_z & = \frac{\partial \eta}{\partial x}\bigg\rvert_r - \frac{1}{\sigma} \frac{\partial \eta}{\partial r}\frac{\partial z}{\partial x} \nonumber \\
+    & = \frac{\partial \eta}{\partial x} \bigg\rvert_r
 \end{align}
 ```

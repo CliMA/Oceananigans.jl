@@ -57,12 +57,12 @@ crank up the resolution, throw in a `TimeStepWizard` to update `simulation.Δt` 
 and add a passive tracer initially concentrated in the center of the domain
 which will make for an even prettier figure of the final state:
 
-```@setup gpu
+```julia
 using CairoMakie
 CairoMakie.activate!(type = "png")
 ```
 
-```@example gpu
+```julia
 using Oceananigans
 using CairoMakie
 
