@@ -184,6 +184,9 @@ Private = false
 Modules = [Oceananigans.OutputWriters]
 Private = false
 ```
+```@docs
+NetCDFWriter
+```
 
 ## Simulations
 
