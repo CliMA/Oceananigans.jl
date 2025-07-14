@@ -22,8 +22,8 @@ We have that:
 
 ```math
 \begin{align}
-    \frac{\partial \phi}{\partial s} \bigg\rvert_{z} & = \frac{\partial \phi}{\partial s}\bigg\rvert_{r} + \frac{\partial \phi}{\partial r} \frac{\partial r}{\partial s} \\
-    \frac{\partial \phi}{\partial z} & = \frac{1}{\sigma}\frac{\partial \phi}{\partial r}
+    \frac{\partial \phi}{\partial s} \bigg\rvert_{z} & = \frac{\partial \phi}{\partial s}\bigg\rvert_{r} + \frac{\partial \phi}{\partial r} \frac{\partial r}{\partial s} \label{dphids} \\
+    \frac{\partial \phi}{\partial z} & = \frac{1}{\sigma}\frac{\partial \phi}{\partial r} \label{dphidz}
 \end{align}
 ```
 where ``s = x, y, t``, subscripts next to ``\vert`` denote the quantities that remain constant, and
@@ -32,15 +32,17 @@ where ``s = x, y, t``, subscripts next to ``\vert`` denote the quantities that r
 ```
 Note that for `ZCoordinate`
 ```math
-\sigma = 1 \ ,
+\sigma = 1
 ```
 while for a `ZStar` vertical coordinate
 ```math
-\sigma = \frac{H + \eta}{H} \ .
+\sigma = \frac{H + \eta}{H}
 ```
 The spatial derivatives of the ``r``-coordinate is rewritten
 ```math
-\frac{\partial r}{\partial x} \bigg\rvert_{y, z, t} = - \frac{\partial z}{\partial x} \bigg\rvert_{y, r, t} \frac{1}{\sigma}
+\begin{equation}
+    \frac{\partial r}{\partial x} \bigg\rvert_{y, z, t} = - \frac{\partial z}{\partial x} \bigg\rvert_{y, r, t} \frac{1}{\sigma} \label{drdx}
+\end{equation}
 ```
 so that the chain rule above for the horizontal spatial derivatives (``x`` and ``y``) becomes
 ```math
@@ -179,7 +181,7 @@ Then the implicit step is done on a `z`-grid as if the grid was static, using th
 
 ## Momentum equations in vector invariant form
 
-The horizontal momentum equation read
+The horizontal momentum equation reads
 ```math
 \begin{equation}
     \frac{\mathrm{D} \boldsymbol{u}}{\mathrm{D}t} \bigg\rvert_z + f \hat{\boldsymbol{z}} \times \boldsymbol{u} = - \boldsymbol{\nabla} p \rvert_z - g \boldsymbol{\nabla} \eta \rvert_z + \frac{\partial}{\partial z}  \left(\nu \frac{\partial \boldsymbol{u}_h}{\partial z}\right) \label{momentumh}
@@ -199,10 +201,14 @@ Of the above, the Coriolis term is independent of the vertical frame of referenc
 2. the material derivative in the momentum equation \eqref{momentumh}, and
 3. the horizontal pressure gradient terms in \eqref{momentumh}.
 
+dp/dz = b
+
 ### Hydrostatic relation
-This equation is simple to transform by using the definition of a `z`-derivative in `r`-coordinates
+Using the definition \eqref{dphidz} of the `z`-derivative in `r`-coordinates
 ```math
-\frac{\partial p}{\partial r} = \sigma b
+\begin{equation}
+    \frac{\partial p}{\partial r} = \sigma b \label{hydrostaticrcoord}
+\end{equation}
 ```
 
 ### Material derivative in vector invariant form
@@ -217,21 +223,22 @@ In particular we will focus on the ``u`` component of the velocity. The derivati
 \begin{align*}
     \frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta \rvert_z v + \frac{\partial K}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
 
-    & = \frac{\partial u}{\partial t} \bigg\rvert_z + \left(\frac{\partial u}{\partial y}\bigg\rvert_z - \frac{\partial v}{\partial x}\bigg\rvert_z \right) v + \frac{\partial K}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \left(\frac{\partial v}{\partial x}\bigg\rvert_z - \frac{\partial u}{\partial y}\bigg\rvert_z \right) v + \frac{\partial K}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
 
-    & = \frac{\partial u}{\partial t} \bigg\rvert_z + \bigg(\underbrace{\frac{\partial u}{\partial y}\bigg\rvert_r - \frac{\partial v}{\partial x}\bigg\rvert_r}_{- \zeta|_r} - \frac{1}{\sigma} \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} + \frac{1}{\sigma} \frac{\partial v}{\partial r} \frac{\partial z}{\partial x} \bigg) v + \frac{\partial K}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \bigg(\underbrace{\frac{\partial v}{\partial x}\bigg\rvert_r - \frac{\partial u}{\partial y}\bigg\rvert_r}_{\zeta|_r} - \frac{1}{\sigma} \frac{\partial v}{\partial r} \frac{\partial z}{\partial x} + \frac{1}{\sigma} \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} \bigg) v + \frac{\partial K}{\partial x}\bigg\rvert_r - \frac{1}{\sigma} \frac{\partial K}{\partial r}\frac{\partial z}{\partial x} + w \frac{\partial u}{\partial z} \\
 
-    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x} \right) v + \frac{\partial K}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
+    % & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x} \right) v + \frac{\partial K}{\partial x}\bigg\rvert_z + w \frac{\partial u}{\partial z} \\
 
-    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x}   \right)  v + \frac{\partial K}{\partial x}\bigg\rvert_r - \frac{1}{\sigma} \frac{\partial K}{\partial r}\frac{\partial z}{\partial x} + w \frac{\partial u}{\partial z}
+    % & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v - \frac{1}{\sigma} \left(\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - \frac{\partial v}{\partial r} \frac{\partial z}{\partial x}   \right)  v + \frac{\partial K}{\partial x}\bigg\rvert_r - \frac{1}{\sigma} \frac{\partial K}{\partial r}\frac{\partial z}{\partial x} + w \frac{\partial u}{\partial z}
 \end{align*}
 ```
-Gathering all terms that involve ``\sigma`` we obtain
+Above, we utilized \eqref{dphids} and \eqref{drdx} repeatedly, e.g., for ``\partial_y u \rvert_z``, ``\partial_x v \rvert_z``, and ``\partial_x K \rvert_z``.
+Further expanding ``\partial_r K = u \partial_r u + v \partial_r v``, a few terms cancel out and we end up with:
 ```math
 \begin{align}
     \frac{\mathrm{D}u}{\mathrm{D}t} \bigg\rvert_z
-    %& = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} + v\frac{\partial v}{\partial r} \frac{\partial z}{\partial x} - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}- v \frac{\partial v}{\partial r}\frac{\partial z}{\partial x}\right) \\
-    & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}\right) \nonumber \\
+    % & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v\frac{\partial u}{\partial r} \frac{\partial z}{\partial y} + v\frac{\partial v}{\partial r} \frac{\partial z}{\partial x} - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}- v \frac{\partial v}{\partial r}\frac{\partial z}{\partial x}\right) \\
+    % & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w \frac{\partial u}{\partial r} - v \frac{\partial u}{\partial r} \frac{\partial z}{\partial y} - u \frac{\partial u}{\partial r}\frac{\partial z}{\partial x}\right) \nonumber \\
     & = \frac{\partial u}{\partial t} \bigg\rvert_z - \zeta\rvert_r v + \frac{\partial K}{\partial x}\bigg\rvert_r + \frac{1}{\sigma} \left( w - v \frac{\partial z}{\partial y} - u \frac{\partial z}{\partial x}\right)  \frac{\partial u}{\partial r} \label{expr1}
 \end{align}
 ```
@@ -266,13 +273,13 @@ The horizontal pressure gradient, e.g., ``\partial_x p``, can be transformed usi
     \frac{\partial p}{\partial x} \bigg\rvert_z = \frac{\partial p}{\partial x}\bigg\rvert_r - \frac{1}{\sigma}\frac{\partial p}{\partial r}\frac{\partial z}{\partial x}
 \end{equation}
 ```
-where using the hydrostatic relation we can write
+and using the hydrostatic relation in ``r`` coordinates \eqref{hydrostaticrcoord}:
 ```math
 \begin{equation}
     \frac{\partial p}{\partial x}\bigg\rvert_z = \frac{\partial p}{\partial x}\bigg\rvert_r - b \frac{\partial z}{\partial x}
 \end{equation}
 ```
-where the additional term describes the pressure gradient associated with the horizontal tilting of the grid.
+The last term on the right hand side above describes the pressure gradient associated with the horizontal tilting of the grid.
 The gradient of the free surface remains unchanged under vertical coordinate transformation
 ```math
 \begin{align}
