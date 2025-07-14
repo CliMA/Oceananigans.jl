@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.10.9"
+  JULIA_VERSION: "1.10.10"
   JULIA_MINOR_VERSION: "1.10"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -29,7 +29,7 @@ steps:
           limit: 1
 
   - wait
-    
+
   - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
     agents:
@@ -47,7 +47,7 @@ steps:
         "bounded_cheap_advection"
         "immersed"
       )
-      
+
       # Profile each benchmark group, save output in txt and remove profiles
       for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
         # Run benchmarks
