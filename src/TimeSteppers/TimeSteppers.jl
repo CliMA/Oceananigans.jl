@@ -56,7 +56,7 @@ TimeStepper(name::Symbol, args...; kwargs...) = TimeStepper(Val(name), args...; 
 # Fallback
 TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
-#individual contructors
+#individual constructors
 TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
     QuasiAdamsBashforth2TimeStepper(args...; kwargs...)
 
@@ -68,7 +68,7 @@ TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)
-    # The first update_state is conditionally gated from within time_step!
+    # The first update_state! is conditionally gated from within time_step!
     # update_state!(model)
     time_step!(model, Δt)
     return nothing
@@ -76,7 +76,7 @@ end
 
 function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
-    # The first update_state is conditionally gated from within time_step!
+    # The first update_state! is conditionally gated from within time_step!
     # update_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing
