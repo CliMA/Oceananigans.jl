@@ -2,17 +2,9 @@
 ##### Centered advection scheme
 #####
 
-"""
-    struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
-
-Centered reconstruction scheme.
-"""
 struct Centered{N, FT} <: AbstractCenteredAdvectionScheme{N, FT} end
 
-function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, order = 2)
-
-    # Enforce the grid type if a grid is provided
-    FT = grid isa Nothing ? FT : eltype(grid) 
+function Centered(FT::DataType=Oceananigans.defaults.FloatType; order = 2)
     
     mod(order, 2) != 0 && throw(ArgumentError("Centered reconstruction scheme is defined only for even orders"))
 
@@ -22,9 +14,6 @@ end
 
 Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
 Base.show(io::IO, a::Centered{N, FT}) where {N, FT} = summary(a)
-
-# Useful aliases
-Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
 
 const ACAS = AbstractCenteredAdvectionScheme
 

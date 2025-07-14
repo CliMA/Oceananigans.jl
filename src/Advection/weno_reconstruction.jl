@@ -22,7 +22,6 @@ end
 """
     WENO([FT=Float64, FT2=Float32;]
          order = 5,
-         grid = nothing,
          bounds = nothing)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
@@ -37,75 +36,68 @@ Keyword arguments
 =================
 
 - `order`: The order of the WENO advection scheme. Default: 5
-- `grid`: (defaults to `nothing`)
+- `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
+                           that attempts to restrict a quantity to lie between a `bounds` tuple.
+                           Default: `nothing`, which does not use a boundary-preserving scheme.
 
 Examples
 ========
-```jldoctest
+
+To build the default 5th-order scheme:
+
+```jldoctest weno
 julia> using Oceananigans
 
 julia> WENO()
-WENO(order=5)
- Symmetric scheme:
-    └── Centered(order=4)
+WENO{3, Float64, Float32}(order=5)
+└── advection_velocity_scheme: Centered(order=4)
 ```
 
-```jldoctest
-julia> using Oceananigans
+To build a 9th-order scheme (often a good choice for a stable
+yet minimally-dissipative advection scheme):
 
-julia> Nx, Nz = 16, 10;
-
-julia> Lx, Lz = 1e4, 1e3;
-
-julia> chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
-
-julia> grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), topology=(Periodic, Flat, Bounded),
-                              x = (0, Lx), z = chebychev_spaced_z_faces);
-
-julia> WENO(grid; order=7)
-WENO(order=7)
- Symmetric scheme:
-    └── Centered(order=6)
+julia> WENO(order=9)
+WENO{5, Float64, Float32}(order=9)
+└── advection_velocity_scheme: Centered(order=8)
 ```
+
+```jldoctest weno
+julia> WENO(order=9, bounds=(0, 1))
+WENO{5, Float64, Float32}(order=9)
+├── bounds: (0, 1)
+└── advection_velocity_scheme: Centered(order=8)
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
-              grid = nothing,
               bounds = nothing)
 
-    # Enforce the grid type if a grid is provided
-    FT = grid isa Nothing ? FT : eltype(grid) 
-    
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
-
-    if !isnothing(bounds)
-        @warn "Bounds preserving WENO is experimental."
-    end
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
         return UpwindBiased(FT; order=1)
     else
-        N = Int((order + 1) ÷ 2)
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-    end
+        advecting_velocity_scheme = Centered(FT; order=order-1)
 
-    return WENO{N, FT, FT2}(bounds, advecting_velocity_scheme)
+        N = Int((order + 1) ÷ 2)
+        return WENO{N, FT, FT2}(bounds, advecting_velocity_scheme)
+    end
 end
 
-WENO(grid, FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32; kwargs...) = WENO(FT, FT2; grid, kwargs...)
+weno_order(::WENO{N}) where N = 2N-1
+Base.eltype(::WENO{N, FT}) where {N, FT} = FT
+eltype2(::WENO{N, FT, FT2}) where {N, FT, FT2} = FT2
+Base.summary(a::WENO{N, FT, FT2}) where {N, FT, FT2} = string("WENO{$N, $FT, $FT2}(order=", 2N-1, ")")
 
-# Flavours of WENO
-const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
-
-Base.summary(a::WENO{N}) where N = string("WENO(order=", N*2-1, ")")
-
-Base.show(io::IO, a::WENO{N, FT, FT2, PP}) where {N, FT, FT2, PP} =
-    print(io, summary(a), " \n",
-              a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
-              " Symmetric scheme: ", "\n",
-              "    └── ", summary(a.advecting_velocity_scheme))
-
+function Base.show(io::IO, a::WENO)
+    print(io, summary(a), '\n')
+    
+    if !isnothing(a.bounds)
+        print(io, "├── bounds: ", string(a.bounds), '\n')
+    end
+    
+    print(io, "└── advection_velocity_scheme: ", summary(a.advecting_velocity_scheme))
+end
 
 Adapt.adapt_structure(to, scheme::WENO{N, FT, FT2}) where {N, FT, FT2} =
      WENO{N, FT, FT2}(Adapt.adapt(to, scheme.bounds),

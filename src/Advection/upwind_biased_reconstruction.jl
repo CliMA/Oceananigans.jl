@@ -2,23 +2,13 @@
 ##### Upwind-biased 3rd-order advection scheme
 #####
 
-"""
-    struct UpwindBiased <: AbstractUpwindBiasedAdvectionScheme{3}
-
-Upwind-biased reconstruction scheme.
-"""
 struct UpwindBiased{N, FT, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
-    "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
-
     UpwindBiased{N, FT}(advecting_velocity_scheme::SI) where {N, FT, SI} = new{N, FT, SI}(advecting_velocity_scheme)
 end
 
-function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
+function UpwindBiased(FT::DataType = Float64; order = 3)
 
-    # Enforce the grid type if a grid is provided
-    FT = grid isa Nothing ? FT : eltype(grid) 
-    
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
     N = Int((order + 1) ÷ 2)
@@ -32,17 +22,13 @@ Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, "
 
 Base.show(io::IO, a::UpwindBiased{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
-              " Symmetric scheme: ", "\n",
-              "    └── ", summary(a.advecting_velocity_scheme))
+              "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 
 Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
 on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(on_architecture(to, scheme.advecting_velocity_scheme))
-
-# Useful aliases
-UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
 
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 

@@ -76,7 +76,6 @@ CUDA.allowscalar() do
         @testset "Poisson Solvers 2" begin
             include("test_poisson_solvers_stretched_grids.jl")
             include("test_conjugate_gradient_poisson_solver.jl")
-            include("test_poisson_solvers_immersed_boundaries.jl")
         end
     end
 

@@ -8,22 +8,22 @@ using OffsetArrays: IdOffsetRange
 Return the grid property `ξ`, either `with_halos` or without,
 for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
 """
-@inline function _property(ξ, ℓ, T, N, with_halos)
+@inline function _property(ξ, ℓ, T, N, H, with_halos)
     if with_halos
         return ξ
     else
-        i = interior_indices(ℓ, T(), N)
-        return view(ξ, i)
+        i = interior_parent_indices(ℓ, T(), N, H)
+        return view(parent(ξ), i)
     end
 end
 
-@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, with_halos)
+@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, with_halos)
     if with_halos
         return ξ
     else
-        i = interior_indices(ℓx, Tx(), Nx)
-        j = interior_indices(ℓy, Ty(), Ny)
-        return view(ξ, i, j)
+        i = interior_parent_indices(ℓx, Tx(), Nx, Hx)
+        j = interior_parent_indices(ℓy, Ty(), Ny, Hy)
+        return view(parent(ξ), i, j)
     end
 end
 
