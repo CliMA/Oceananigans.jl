@@ -16,7 +16,6 @@ using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
 using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.OutputWriters: has_ab2_timestepper
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
 using Oceananigans.Utils: Time
 
