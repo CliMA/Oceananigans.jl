@@ -158,10 +158,10 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
     test_fields =  @allowscalar (u = Array(interior(model.velocities.u)),
-                                      v = Array(interior(model.velocities.v)),
-                                      w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
-                                      b = Array(interior(model.tracers.b)),
-                                      c = Array(interior(model.tracers.c)))
+                                 v = Array(interior(model.velocities.v)),
+                                 w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                 b = Array(interior(model.tracers.b)),
+                                 c = Array(interior(model.tracers.c)))
 
     global_grid = reconstruct_global_grid(model.grid)
 
