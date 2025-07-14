@@ -478,19 +478,22 @@ end
             @test sum(c) == 1*N + 2*N + 3*N + 4*N
 
             sum!(c_reduced, c)
+            @show @allowscalar c_reduced[1, 1, 1]
+            @show 1*N + 2*N + 3*N + 4*N
+            @show c_reduced[1, 1, 1]
             @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
-            bool_val = arch.local_rank == 0 ? true : false        
-            set!(cbool, bool_val)            
+            bool_val = arch.local_rank == 0 ? true : false
+            set!(cbool, bool_val)
 
             @test any(cbool) == true
             @test all(cbool) == false
 
             any!(cbool_reduced, cbool)
             @test @allowscalar cbool_reduced[1, 1, 1] == true
-            
+
             all!(cbool_reduced, cbool)
             @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
