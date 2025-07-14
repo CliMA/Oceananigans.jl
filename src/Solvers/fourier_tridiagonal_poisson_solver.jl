@@ -111,7 +111,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     main_diagonal = zeros(grid, size(grid)...)
 
     Nd = size(grid, tridiagonal_dim) - 1
-    lower_diagonal = zeros(grid, Nd) 
+    lower_diagonal = zeros(grid, Nd)
     upper_diagonal = lower_diagonal
 
     compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)
