@@ -40,7 +40,7 @@ while for a `ZStar` vertical coordinate
 ```
 The spatial derivatives of the ``r``-coordinate is rewritten
 ```math
-\frac{\partial r}{\partial x} \bigg\rvert_{y, z, t} = - \frac{\partial z}{\partial x} \bigg\rvert_{y, s, t} \frac{1}{\sigma}
+\frac{\partial r}{\partial x} \bigg\rvert_{y, z, t} = - \frac{\partial z}{\partial x} \bigg\rvert_{y, r, t} \frac{1}{\sigma}
 ```
 so that the chain rule above for the horizontal spatial derivatives (``x`` and ``y``) becomes
 ```math
