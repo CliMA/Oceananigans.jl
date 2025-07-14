@@ -116,7 +116,6 @@ export
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
-using CUDA
 using DocStringExtensions
 using FFTW
 
@@ -135,15 +134,6 @@ function __init__()
 
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
         FFTW.set_num_threads(4threads)
-    end
-
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
     end
 end
 

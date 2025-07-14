@@ -25,8 +25,7 @@ export offset_data, new_data
 export on_architecture
 
 using Adapt
-using CUDA
-using CUDA: has_cuda
+using GPUArraysCore
 using OffsetArrays
 using Printf
 
