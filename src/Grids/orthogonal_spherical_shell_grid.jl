@@ -8,6 +8,7 @@ using Adapt: adapt_structure
 
 using Oceananigans
 using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
+using GPUArraysCore
 
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
@@ -91,7 +92,7 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                                          λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                          φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
                                                         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, 
+                                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                                                         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                         radius, conformal_mapping)
 end
@@ -451,20 +452,20 @@ function get_center_and_extents_of_shell(grid::OSSG)
     end
 
     # latitude and longitudes of the shell's center
-    λ_center = CUDA.@allowscalar λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
-    φ_center = CUDA.@allowscalar φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    λ_center = @allowscalar λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    φ_center = @allowscalar φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
-        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = @allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
     elseif mod(Ny, 2) == 1
-        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = @allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
     end
 
     if mod(Nx, 2) == 0
-        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = @allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     elseif mod(Nx, 2) == 1
-        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = @allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     end
 
     return (λ_center, φ_center), (extent_λ, extent_φ)

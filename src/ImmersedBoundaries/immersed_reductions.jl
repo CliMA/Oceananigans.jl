@@ -36,7 +36,7 @@ validate_condition(cond::NotImmersed{<:AbstractArray}, ::OneField) = cond
 validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) =
     validate_condition(cond.condition, operand)
 
-"Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `NotImmersed` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, ni::NotImmersed) = NotImmersed(Adapt.adapt(to, ni.condition))
 
 # ImmersedField
@@ -108,7 +108,7 @@ Base.show(io::IO, nic::NotImmersedColumn) = print(io, Base.summary(nic))
 
 NotImmersedColumn(immersed_column) = NotImmersedColumn(immersed_column, nothing)
 
-"Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `NotImmersed` to work on the GPU via KernelAbstractions."
 function Adapt.adapt_structure(to, nic::NotImmersedColumn)
     return NotImmersedColumn(Adapt.adapt(to, nic.immersed_column),
                              Adapt.adapt(to, nic.condition))
