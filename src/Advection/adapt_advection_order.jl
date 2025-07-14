@@ -72,26 +72,26 @@ adapt_advection_order(advection, N, grid) = advection
 ##### Directional adapt advection order
 #####
 
-function adapt_advection_order(advection::Centered{B}, N::Int, grid::AbstractGrid) where B
+function adapt_advection_order(advection::Centered{B, FT}, N::Int, grid::AbstractGrid) where {B, FT}
     if N >= B
         return advection
     else
-        return Centered(order=2N)
+        return Centered(FT; order=2N)
     end
 end
 
-function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::AbstractGrid) where B
+function adapt_advection_order(advection::UpwindBiased{B, FT}, N::Int, grid::AbstractGrid) where {B, FT}
     if N >= B
         return advection
     else
-        return UpwindBiased(order=2N-1)
+        return UpwindBiased(FT; order=2N-1)
     end
 end
 
-function adapt_advection_order(advection::WENO{B}, N::Int, grid::AbstractGrid) where B
+function adapt_advection_order(advection::WENO{B, FT}, N::Int, grid::AbstractGrid) where {B, FT}
     if N >= B
         return advection
     else
-        return WENO(order=2N-1)
+        return WENO(FT; order=2N-1)
     end
 end
