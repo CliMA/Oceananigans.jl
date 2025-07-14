@@ -478,7 +478,7 @@ end
             @test sum(c) == 1*N + 2*N + 3*N + 4*N
 
             sum!(c_reduced, c)
-            @test CUDA.@allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
+            @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
@@ -489,10 +489,10 @@ end
             @test all(cbool) == false
 
             any!(cbool_reduced, cbool)
-            @test CUDA.@allowscalar cbool_reduced[1, 1, 1] == true
+            @test @allowscalar cbool_reduced[1, 1, 1] == true
             
             all!(cbool_reduced, cbool)
-            @test CUDA.@allowscalar cbool_reduced[1, 1, 1] == false
+            @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
     end
 
