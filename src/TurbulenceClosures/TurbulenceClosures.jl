@@ -38,7 +38,6 @@ export
 
     cell_diffusion_timescale
 
-using CUDA
 using KernelAbstractions
 using Adapt
 
@@ -182,8 +181,8 @@ include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
 
 # Dispatch on the type of the user-provided AMD model constant.
 # Only numbers, arrays, and functions supported now.
-@inline closure_constant(i, j, k, grid, C::Number) = C
-@inline closure_constant(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+@inline closure_coefficient(i, j, k, grid, C::Number) = C
+@inline closure_coefficient(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")

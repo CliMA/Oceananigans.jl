@@ -8,9 +8,11 @@ Distributed.addprocs(2)
     using Printf
 
     using CairoMakie # to avoid capturing precompilation output by Literate
+    set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "svg")
 
     using Oceananigans
+    using NCDatasets
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
@@ -182,7 +184,8 @@ makedocs(sitename = "Oceananigans.jl",
          format = format,
          pages = pages,
          plugins = [bib],
-         modules = [Oceananigans],
+         modules = [Oceananigans,
+                    isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
          doctest = true, # set to false to speed things up
          draft = false,  # set to true to speed things up

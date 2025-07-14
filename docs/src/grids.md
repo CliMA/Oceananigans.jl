@@ -5,7 +5,7 @@ DocTestSetup = quote
     using Oceananigans
     using CairoMakie
     CairoMakie.activate!(type = "svg")
-    set_theme!(Theme(fontsize=24))
+    set_theme!(Theme(fontsize=20))
 end
 ```
 
@@ -49,6 +49,7 @@ As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
 
 ```jldoctest grids_gpu
+using CUDA
 architecture = GPU()
 z_faces = [0, 1, 3, 6, 10]
 
@@ -187,7 +188,7 @@ using Oceananigans.Units
 
 using CairoMakie
 CairoMakie.activate!(type = "svg")
-set_theme!(Theme(fontsize=24))
+set_theme!(Theme(fontsize=20))
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
                        size = (20, 20, 20),
@@ -364,7 +365,7 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 using Oceananigans
 using CairoMakie
 CairoMakie.activate!(type = "svg")
-set_theme!(Theme(fontsize=24))
+set_theme!(Theme(fontsize=20))
 
 Nx, Ny, Nz = 64, 64, 32
 Lx, Ly, Lz = 1e4, 1e4, 1e3

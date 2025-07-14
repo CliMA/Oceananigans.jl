@@ -94,13 +94,6 @@ U = 1        # velocity scale
 α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
-# Solid body rotation
-R = 1        # sphere's radius
-U = 1        # velocity scale
-φʳ = 0       # Latitude pierced by the axis of rotation
-α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
-ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
-
 """
     create_test_data(grid, region)
 
@@ -123,17 +116,11 @@ create_ψ_test_data(grid, region) = create_test_data(grid, region; trailing_zero
 create_u_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=2)
 create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=3)
 
-@testset "Testing conformal cubed sphere partitions..." begin
-    for n = 1:4
-        @test length(CubedSpherePartition(; R=n)) == 6n^2
-    end
-end
-
 """
     same_longitude_at_poles!(grid_1, grid_2)
 
-Change the longitude values in `grid_1` that correspond to points situated _exactly_ at the poles so that they match the 
-corresponding longitude values of `grid_2`.
+Change the longitude values in `grid_1` that correspond to points situated _exactly_
+at the poles so that they match the corresponding longitude values of `grid_2`.
 """
 function same_longitude_at_poles!(grid_1::ConformalCubedSphereGrid, grid_2::ConformalCubedSphereGrid)
     number_of_regions(grid_1) == number_of_regions(grid_2) || error("grid_1 and grid_2 must have same number of regions")
@@ -149,8 +136,9 @@ end
 """
     zero_out_corner_halos!(array::OffsetArray, N, H)
 
-Zero out the values at the corner halo regions of the two-dimensional `array :: OffsetArray`. It is expected that the
-interior of the offset `array` is `(Nx, Ny) = (N, N)` and the halo region is `H` in both dimensions.
+Zero out the values at the corner halo regions of the two-dimensional `array`.
+It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and
+the halo region is `H` in both dimensions.
 """
 function zero_out_corner_halos!(array::OffsetArray, N, H)
     size(array) == (N+2H, N+2H)
@@ -170,6 +158,12 @@ function compare_grid_vars(var1, var2, N, H)
     zero_out_corner_halos!(var1, N, H)
     zero_out_corner_halos!(var2, N, H)
     return isapprox(var1, var2)
+end
+
+@testset "Testing conformal cubed sphere partitions..." begin
+    for n = 1:4
+        @test length(CubedSpherePartition(; R=n)) == 6n^2
+    end
 end
 
 @testset "Testing conformal cubed sphere grid from file" begin
@@ -291,7 +285,7 @@ end
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 c = CenterField(grid)
 
@@ -363,7 +357,7 @@ end
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 u = XFaceField(grid)
                 v = YFaceField(grid)
@@ -612,13 +606,13 @@ end
             Nx, Ny, Nz = 9, 9, 1
 
             grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
-            
+
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
             @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 ψ = Field{Face, Face, Center}(grid)
 
@@ -779,6 +773,11 @@ end
 end
 
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
+    for f in readdir(".")
+        if occursin(r"^cubed_sphere_(output|checkpointer)_.*\.jld2$", f)
+            rm(f; force=true)
+        end
+    end
     for FT in float_types
         for arch in archs
             Nx, Ny, Nz = 18, 18, 9
@@ -789,12 +788,14 @@ end
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
-            
+
             for grid in grids
                 if grid == underlying_grid
                     @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    suffix = "UG"
                 else
                     @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    suffix = "IG"
                 end
 
                 model = HydrostaticFreeSurfaceModel(; grid,
@@ -804,12 +805,58 @@ end
                                                     coriolis = HydrostaticSphericalCoriolis(FT),
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer())
-                
-                simulation = Simulation(model, Δt=1minute, stop_iteration=3)
+
+                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
+
+                save_fields_interval = 2minute
+                checkpointer_interval = 4minutes
+
+                filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
+                outputs = fields(model)
+                filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
+
                 run!(simulation)
-                
-                @test iteration(simulation) == 3
-                @test time(simulation) == 3minutes
+
+                @test iteration(simulation) == 10
+                @test time(simulation) == 10minutes
+
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+
+                if grid == underlying_grid
+                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                else
+                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                end
+
+                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
+
+                run!(simulation, pickup = true)
+
+                @test iteration(simulation) == 20
+                @test time(simulation) == 20minutes
+
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
             end
         end
     end
