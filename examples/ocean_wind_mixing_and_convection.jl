@@ -14,7 +14,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie, SeawaterPolynomials"
+# pkg"add Oceananigans, CairoMakie, SeawaterPolynomials, CUDA"
 # ```
 
 # We start by importing all of the packages and functions that we'll need for this
@@ -23,6 +23,7 @@
 using Oceananigans
 using Oceananigans.Units
 
+using CUDA
 using Random
 using Printf
 using CairoMakie
@@ -290,7 +291,7 @@ frames = intro:length(times)
 
 @info "Making a motion picture of ocean wind mixing and convection..."
 
-record(fig, filename * ".mp4", frames, framerate=8) do i
+CairoMakie.record(fig, filename * ".mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide
