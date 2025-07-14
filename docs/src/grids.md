@@ -700,7 +700,7 @@ fig
 ```
 
 A downside of [`ExponentialCoordinate`](@ref) coordinate is that we don't have tight control on the minimum spacing at the biased edge.
-To obtain a cordinate with a certain minimum spacing we need to play around with the scale ``h`` and the number of cells.
+To obtain a coordinate with a certain minimum spacing we need to play around with the scale ``h`` and the number of cells.
 
 
 ### Constant-to-stretched-spacing coordinate
