@@ -5,20 +5,19 @@ using NCDatasets
 using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
 
-using Oceananigans.Fields
-
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization
-using Oceananigans.Grids: topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
-using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
-using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+using Oceananigans.Fields
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location
+using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
+                          topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
+                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
+using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+using Oceananigans.TimeSteppers: float_or_date_time
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval,
+                          versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using SeawaterPolynomials: BoussinesqEquationOfState
 
 using Oceananigans.OutputWriters:
@@ -1438,4 +1437,5 @@ end
 #####
 
 ext(::Type{NetCDFWriter}) = ".nc"
+
 end # module
