@@ -4,6 +4,17 @@ For [`HydrostaticFreeSurfaceModel()`](@ref), we have the choice between a `ZCoor
 A `ZStar` vertical coordinate conserves tracers and volume with the grid following the evolution of the free surface in the
 domain [adcroft2004rescaled](@citep).
 
+We denote a generalized vertical coordinate that evolves with space and time with the letter ``r(x, y, z, t)``.
+for a `ZCoordinate`,
+```math
+r(x, y, z, t) = z \ .
+```
+while for `ZStar`, 
+```math
+r(x, y, z, t) = \frac{z - \eta(x, y, t)}{H(x, y) + \eta(x, y, t)} H(x, y)
+```
+where ``\eta`` is the free surface and ``H`` is the bottom of the domain.
+
 To obtain the (discrete) equations evolved in a general framework where the vertical coordinate is moving, we perform a scaling
 of the continuous primitive equations to a generalized coordinate ``r(x, y, z, t)``.
 
