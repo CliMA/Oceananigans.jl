@@ -10,9 +10,14 @@ using Oceananigans.Fields: ReducedAbstractField,
                            filltype,
                            reduced_dimensions,
                            reduced_location
+using Oceananigans.Fields: condition_operand, conditional_length
+using LinearAlgebra: dot, norm
+using Statistics: mean
 
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import LinearAlgebra: norm, dot
+import Statistics: mean
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
     indices = validate_indices(indices, (LX, LY, LZ), grid)
@@ -197,3 +202,57 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
         end
     end
 end
+
+# Distributed norm
+@inline function norm(u::DistributedField; condition=nothing)
+    n² = dot(u, u; condition)
+    return sqrt(n²)
+end
+
+# Distributed dot product
+@inline function dot(u::DistributedField, v::DistributedField; condition=nothing)
+    cu = condition_operand(u, condition, 0) 
+    cv = condition_operand(v, condition, 0) 
+     
+    B = cu * cv # Binary operation 
+    r = zeros(u.grid, 1) 
+     
+    Base.mapreducedim!(identity, +, r, B) 
+    dot_local = @allowscalar r[1] 
+    arch = architecture(u)
+    return all_reduce(+, dot_local, arch)
+end
+
+@inline function _mean(f, c::DistributedField, ::Colon; condition=nothing, mask=0)
+    arch = architecture(c)
+    operand = condition_operand(f, c, condition, mask)
+    
+    local_sum = sum(operand)
+    local_length = conditional_length(operand)
+    
+    global_sum = all_reduce(+, local_sum, arch)
+    global_length = all_reduce(+, local_length, arch)
+    
+    return global_sum / global_length
+end
+
+@inline function _mean(f, c::DistributedField, dims; condition=nothing, mask=0)
+    arch = architecture(c)
+    operand = condition_operand(f, c, condition, mask)
+
+    local_sum = sum(operand; dims)
+    local_length = conditional_length(operand, dims)
+
+    global_sum = all_reduce(+, local_sum, arch)
+    global_length = all_reduce(+, local_length, arch)
+
+    return global_sum ./ global_length
+end
+
+@inline mean(f::Function, c::DistributedField; condition=nothing, dims=:) = 
+    _mean(f, c, dims; condition)
+
+@inline mean(f::Function, c::DistributedField, dims; condition=nothing, mask=0) =
+    _mean(f, c, dims; condition, mask)
+
+@inline mean(c::DistributedField; condition=nothing, dims=:) = _mean(identity, c, dims; condition)
