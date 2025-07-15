@@ -1,5 +1,4 @@
-using Statistics: mean!, sum!
-using CUDA: @allowscalar
+using Statistics: sum!
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
