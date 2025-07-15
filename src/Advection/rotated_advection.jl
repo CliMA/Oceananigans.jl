@@ -182,7 +182,7 @@ end
           (Sy⁻⁺(i, j, k-1, grid, buoyancy, tracers))^2 +
           (Sy⁺⁺(i, j, k-1, grid, buoyancy, tracers))^2 / 4 
 
-    return 𝒞z + R₃₁_∂z_c + R₃₂_∂z_c + (Sx² + Sy²) * 𝒟z # 𝒜z #
+    return 𝒜z # 𝒞z + R₃₁_∂z_c + R₃₂_∂z_c + (Sx² + Sy²) * 𝒟z # 
 end
 
 # @inline function rotated_div_Uc(i, j, k, grid, scheme::RotatedAdvection, U, c, buoyancy, tracers)

@@ -183,6 +183,11 @@ struct TimeStepCallsite end
 struct TendencyCallsite end
 struct UpdateStateCallsite end
 
+# Buoyancy derivatives
+function ∂x_b end
+function ∂y_b end
+function ∂z_b end
+
 #####
 ##### Place-holder functions
 #####
