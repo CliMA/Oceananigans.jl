@@ -489,9 +489,13 @@ end
             @test all(cbool) == false
 
             any!(cbool_reduced, cbool)
+            @show cbool_reduced[1, 1, 1]
+            @allowscalar cbool_reduced[1, 1, 1]
             @test @allowscalar cbool_reduced[1, 1, 1] == true
 
             all!(cbool_reduced, cbool)
+            @show cbool_reduced[1, 1, 1]
+            @show @allowscalar cbool_reduced[1, 1, 1]
             @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
     end
