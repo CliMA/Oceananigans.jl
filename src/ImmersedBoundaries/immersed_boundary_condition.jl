@@ -1,18 +1,18 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, 
-                                       DefaultBoundaryCondition, 
-                                       LeftBoundary, 
+using Oceananigans.BoundaryConditions: BoundaryCondition,
+                                       DefaultBoundaryCondition,
+                                       LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
                                        VBC, GBC, FBC, Flux
 
-import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,     
-                                        bc_str, 
+import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
+                                        bc_str,
                                         update_boundary_condition!
 
 struct ImmersedBoundaryCondition{W, E, S, N, B, T}
-    west :: W                  
+    west :: W
     east :: E
-    south :: S   
+    south :: S
     north :: N
     bottom :: B
     top :: T
@@ -54,7 +54,6 @@ function ImmersedBoundaryCondition(; west = nothing,
                                      bottom = nothing,
                                      top = nothing)
 
-    @warn "`ImmersedBoundaryCondition` is experimental."
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
 
@@ -71,7 +70,7 @@ regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::G
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
 function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::GFIBG, loc, field_name, args...)
     ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
-    regularize_immersed_boundary_condition(ibc, ibg, loc, field_name, args...) 
+    regularize_immersed_boundary_condition(ibc, ibg, loc, field_name, args...)
 end
 
 """
@@ -164,5 +163,3 @@ end
                                    δzᵃᵃᶜ(i, j, k, ibg, Az_qᶜᶜᶠ, immersed_flux_z, c_bc, (c, c, c), U.u, closure, K, id, args...))
 
 =#
-
-

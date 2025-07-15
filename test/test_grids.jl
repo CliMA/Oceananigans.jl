@@ -1,11 +1,14 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent,
-                          xspacings, yspacings, zspacings, 
+using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
+                          xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
-                          λspacings, φspacings, λspacing, φspacing
+                          λspacings, φspacings
 
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
+
+using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
@@ -46,10 +49,11 @@ function test_regular_rectilinear_correct_coordinate_lengths(FT)
 
     @test length(grid.xᶜᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
-    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
     @test length(grid.xᶠᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶠᵃ) == Ny + 2Hy + 1
-    @test length(grid.zᵃᵃᶠ) == Nz + 2Hz + 1
+
+    @test length(grid.z.cᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid.z.cᵃᵃᶠ) == Nz + 2Hz + 1
 
     return nothing
 end
@@ -75,11 +79,11 @@ function test_regular_rectilinear_correct_halo_faces(FT)
 
     @test grid.xᶠᵃᵃ[0] == - H * Δ
     @test grid.yᵃᶠᵃ[0] == - H * Δ
-    @test grid.zᵃᵃᶠ[0] == - H * Δ
+    @test grid.z.cᵃᵃᶠ[0] == - H * Δ
 
     @test grid.xᶠᵃᵃ[N+1] == L  # Periodic
     @test grid.yᵃᶠᵃ[N+2] == L + H * Δ
-    @test grid.zᵃᵃᶠ[N+2] == L + H * Δ
+    @test grid.z.cᵃᵃᶠ[N+2] == L + H * Δ
 
     return nothing
 end
@@ -94,7 +98,7 @@ function test_regular_rectilinear_correct_first_cells(FT)
 
     @test grid.xᶜᵃᵃ[1] == Δ/2
     @test grid.yᵃᶜᵃ[1] == Δ/2
-    @test grid.zᵃᵃᶜ[1] == Δ/2
+    @test grid.z.cᵃᵃᶜ[1] == Δ/2
 
     return nothing
 end
@@ -109,7 +113,7 @@ function test_regular_rectilinear_correct_end_faces(FT)
 
     @test grid.xᶠᵃᵃ[N+1] == L
     @test grid.yᵃᶠᵃ[N+2] == L + Δ
-    @test grid.zᵃᵃᶠ[N+2] == L + Δ
+    @test grid.z.cᵃᵃᶠ[N+2] == L + Δ
 
     return nothing
 end
@@ -123,10 +127,11 @@ function test_regular_rectilinear_ranges_have_correct_length(FT)
 
     @test length(grid.xᶜᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
-    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
     @test length(grid.xᶠᵃᵃ) == Nx + 1 + 2Hx
     @test length(grid.yᵃᶠᵃ) == Ny + 1 + 2Hy
-    @test length(grid.zᵃᵃᶠ) == Nz + 1 + 2Hz
+
+    @test length(grid.z.cᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid.z.cᵃᵃᶠ) == Nz + 1 + 2Hz
 
     return nothing
 end
@@ -139,28 +144,39 @@ function test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
 
     grid = RectilinearGrid(CPU(), FT, size=(Nx, Ny, Nz), extent=(1, 1, π/2), halo=(1, 1, Hz))
 
-    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
-    @test length(grid.zᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid.z.cᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid.z.cᵃᵃᶠ) == Nz + 2Hz + 1
 
     return nothing
 end
 
 function test_regular_rectilinear_grid_properties_are_same_type(FT)
-    grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+    # Do this test two ways, one with defaults and one with explicit FT
+    for method in (:explicit, :with_default)
 
-    @test grid.Lx isa FT
-    @test grid.Ly isa FT
-    @test grid.Lz isa FT
-    @test grid.Δxᶠᵃᵃ isa FT
-    @test grid.Δyᵃᶠᵃ isa FT
-    @test grid.Δzᵃᵃᶠ isa FT
+        if method === :explicit
+            grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+        elseif method === :with_default
+            FT₀ = Oceananigans.defaults.FloatType
+            Oceananigans.defaults.FloatType = FT
+            grid = RectilinearGrid(CPU(), size=(10, 10, 10), extent=(1, 1//7, 2π))
+            Oceananigans.defaults.FloatType = FT₀
+        end
 
-    @test eltype(grid.xᶠᵃᵃ) == FT
-    @test eltype(grid.yᵃᶠᵃ) == FT
-    @test eltype(grid.zᵃᵃᶠ) == FT
-    @test eltype(grid.xᶜᵃᵃ) == FT
-    @test eltype(grid.yᵃᶜᵃ) == FT
-    @test eltype(grid.zᵃᵃᶜ) == FT
+        @test grid.Lx isa FT
+        @test grid.Ly isa FT
+        @test grid.Lz isa FT
+        @test grid.Δxᶠᵃᵃ isa FT
+        @test grid.Δyᵃᶠᵃ isa FT
+        @test grid.z.Δᵃᵃᶠ isa FT
+
+        @test eltype(grid.xᶠᵃᵃ) == FT
+        @test eltype(grid.yᵃᶠᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶠ) == FT
+        @test eltype(grid.xᶜᵃᵃ) == FT
+        @test eltype(grid.yᵃᶜᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶜ) == FT
+    end
 
     return nothing
 end
@@ -182,8 +198,12 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
     variably_spaced_grid = RectilinearGrid(arch, FT; size, topology,
                                            x=domain, y=domain, z=domain)
 
-    grids_types = ["regularly spaced", "variably spaced"]
-    grids       = [regular_spaced_grid, variably_spaced_grid]
+    ibg_regular_spaced_grid = ImmersedBoundaryGrid(regular_spaced_grid, GridFittedBottom((x, y) -> 0))
+
+    ibg_variably_spaced_grid = ImmersedBoundaryGrid(variably_spaced_grid, GridFittedBottom((x, y) -> 0))
+
+    grids_types = ["regularly spaced", "variably spaced", "IBG regularly spaced", "IBG variably spaced"]
+    grids       = [regular_spaced_grid, variably_spaced_grid, ibg_regular_spaced_grid, ibg_variably_spaced_grid]
 
     for (grid_type, grid) in zip(grids_types, grids)
         @info "        Testing grid utils on $grid_type grid...."
@@ -208,13 +228,13 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test all(y ≈ FT(π/N) for y in yspacings(grid, Face()))
         @test all(z ≈ FT(π/N) for z in zspacings(grid, Face()))
 
-        @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
-        @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
-        @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
+        @test all(xspacings(grid, Face()) .== xspacings(grid, Face(), Center(), Center()))
+        @test all(yspacings(grid, Face()) .== yspacings(grid, Center(), Face(), Center()))
+        @test all(zspacings(grid, Face()) .== zspacings(grid, Center(), Center(), Face()))
 
-        @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
-        @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
-        @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
+        @test Δx(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
+        @test Δy(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
+        @test Δz(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
     end
 
     return nothing
@@ -261,6 +281,9 @@ function test_regular_rectilinear_constructor_errors(FT)
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
 
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
 
     return nothing
 end
@@ -329,7 +352,7 @@ function test_grid_equality(arch)
     grid2 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
     grid3 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
 
-    return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
+    return grid1 == grid1 && grid2 == grid3 && grid1 !== grid3
 end
 
 function test_grid_equality_over_architectures()
@@ -355,11 +378,11 @@ function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
     @test eltype(grid.xᶜᵃᵃ) == FT
     @test eltype(grid.yᵃᶠᵃ) == FT
     @test eltype(grid.yᵃᶜᵃ) == FT
-    @test eltype(grid.zᵃᵃᶠ) == FT
-    @test eltype(grid.zᵃᵃᶜ) == FT
+    @test eltype(grid.z.cᵃᵃᶠ) == FT
+    @test eltype(grid.z.cᵃᵃᶜ) == FT
 
-    @test eltype(grid.Δzᵃᵃᶜ) == FT
-    @test eltype(grid.Δzᵃᵃᶠ) == FT
+    @test eltype(grid.z.Δᵃᵃᶜ) == FT
+    @test eltype(grid.z.Δᵃᵃᶠ) == FT
 
     return nothing
 end
@@ -368,10 +391,10 @@ function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
     grid = RectilinearGrid(arch, FT, size=(1, 1, length(zᵃᵃᶠ)-1), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
 
     ArrayType = array_type(arch)
-    @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.zᵃᵃᶜ  isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.Δzᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.Δzᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.cᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.cᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.Δᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.Δᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
 
     return nothing
 end
@@ -403,19 +426,20 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
     Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
-    @test all(isapprox.(  grid.zᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
-    @test all(isapprox.(  grid.zᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
-    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.cᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
+    @test all(isapprox.(grid.z.cᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.Δᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
-    @test all(isapprox.(zspacings(grid, Face(),   with_halos=true), grid.Δzᵃᵃᶠ))
-    @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
-    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
+    @test all(isapprox.(zspacings(grid, Face()),   reshape(grid.z.Δᵃᵃᶠ[1:N+1], 1, 1, N+1)))
+    @test all(isapprox.(zspacings(grid, Center()), reshape(grid.z.Δᵃᵃᶜ[1:N], 1, 1, N)))
 
-    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+    @test Δz(1, 1, 2, grid, Center(), Center(), Face()) == grid.z.Δᵃᵃᶠ[2]
+
+    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.z.Δᵃᵃᶜ[1:grid.Nz])
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
+    @test all(isapprox.( grid.z.Δᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
 
     return nothing
 end
@@ -442,8 +466,8 @@ function test_basic_lat_lon_bounded_domain(FT)
 
     @test grid.Δλᶠᵃᵃ == 10
     @test grid.Δφᵃᶠᵃ == 5
-    @test grid.Δzᵃᵃᶜ == 1
-    @test grid.Δzᵃᵃᶠ == 1
+    @test grid.z.Δᵃᵃᶜ == 1
+    @test grid.z.Δᵃᵃᶠ == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
@@ -491,8 +515,8 @@ function test_basic_lat_lon_periodic_domain(FT)
 
     @test grid.Δλᶠᵃᵃ == 10
     @test grid.Δφᵃᶠᵃ == 5
-    @test grid.Δzᵃᵃᶜ == 1
-    @test grid.Δzᵃᵃᶠ == 1
+    @test grid.z.Δᵃᵃᶜ == 1
+    @test grid.z.Δᵃᵃᶠ == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
@@ -537,85 +561,82 @@ function test_basic_lat_lon_general_grid(FT)
 
     grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
-    @test typeof(grid_reg.Δzᵃᵃᶜ) == typeof(grid_reg.Δzᵃᵃᶠ) == FT
+    @test typeof(grid_reg.z.Δᵃᵃᶜ) == typeof(grid_reg.z.Δᵃᵃᶠ) == FT
 
-    @test xspacings(grid_reg, Center(), Center(), with_halos=true) == grid_reg.Δxᶜᶜᵃ
-    @test xspacings(grid_reg, Center(), Face(),   with_halos=true) == grid_reg.Δxᶜᶠᵃ
-    @test xspacings(grid_reg, Face(),   Center(), with_halos=true) == grid_reg.Δxᶠᶜᵃ
-    @test xspacings(grid_reg, Face(),   Face(),   with_halos=true) == grid_reg.Δxᶠᶠᵃ
-    @test yspacings(grid_reg, Center(), Face(),   with_halos=true) == grid_reg.Δyᶜᶠᵃ
-    @test yspacings(grid_reg, Face(),   Center(), with_halos=true) == grid_reg.Δyᶠᶜᵃ
-    @test zspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δzᵃᵃᶜ
-    @test zspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δzᵃᵃᶠ
+    @test all(xspacings(grid_reg, Center(), Center()) .== reshape(grid_reg.Δxᶜᶜᵃ[1:Nφ],   1, Nφ,   1))
+    @test all(xspacings(grid_reg, Center(), Face()  ) .== reshape(grid_reg.Δxᶜᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
+    @test all(xspacings(grid_reg, Face(),   Center()) .== reshape(grid_reg.Δxᶠᶜᵃ[1:Nφ],   1, Nφ,   1))
+    @test all(xspacings(grid_reg, Face(),   Face())   .== reshape(grid_reg.Δxᶠᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
+    @test all(yspacings(grid_reg, Center(), Face()) .== grid_reg.Δyᶜᶠᵃ)
+    @test all(yspacings(grid_reg, Face(),   Center()) .== grid_reg.Δyᶠᶜᵃ)
+    @test all(zspacings(grid_reg, Center()) .== grid_reg.z.Δᵃᵃᶜ)
+    @test all(zspacings(grid_reg, Face()) .== grid_reg.z.Δᵃᵃᶠ)
 
-    @test xspacings(grid_reg, Center(), Center(), Center()) == xspacings(grid_reg, Center(), Center())
-    @test xspacings(grid_reg, Face(),   Face(),   Center()) == xspacings(grid_reg, Face(),   Face())
-    @test yspacings(grid_reg, Center(), Face(),   Center()) == yspacings(grid_reg, Center(), Face())
-    @test yspacings(grid_reg, Face(),   Center(), Center()) == yspacings(grid_reg, Face(),   Center())
-    @test zspacings(grid_reg, Face(),   Face(),   Center()) == zspacings(grid_reg, Center())
-    @test zspacings(grid_reg, Face(),   Center(), Face()  ) == zspacings(grid_reg, Face())
+    @test all(xspacings(grid_reg, Center(), Center(), Center()) .== xspacings(grid_reg, Center(), Center()))
+    @test all(xspacings(grid_reg, Face(),   Face(),   Center()) .== xspacings(grid_reg, Face(),   Face()))
+    @test all(yspacings(grid_reg, Center(), Face(),   Center()) .== yspacings(grid_reg, Center(), Face()))
+    @test all(yspacings(grid_reg, Face(),   Center(), Center()) .== yspacings(grid_reg, Face(),   Center()))
+    @test all(zspacings(grid_reg, Face(),   Center(), Center()) .== zspacings(grid_reg, Center()))
+    @test all(zspacings(grid_reg, Face(),   Center(), Face()  ) .== zspacings(grid_reg, Face()))
 
-    @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
-    @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
-    @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
-    @test yspacing(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
-    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
-    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
+    @test Operators.Δx(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
+    @test Operators.Δx(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
+    @test Operators.Δy(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
+    @test Operators.Δy(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
+    @test Operators.Δz(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.z.Δᵃᵃᶠ
+    @test Operators.Δz(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.z.Δᵃᵃᶜ
 
-    @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δλᶜᵃᵃ
-    @test λspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δλᶠᵃᵃ
-    @test φspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δφᵃᶜᵃ
-    @test φspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δφᵃᶠᵃ
+    @test all(λspacings(grid_reg, Center()) .== grid_reg.Δλᶜᵃᵃ)
+    @test all(λspacings(grid_reg, Face()) .== grid_reg.Δλᶠᵃᵃ)
+    @test all(φspacings(grid_reg, Center()) .== grid_reg.Δφᵃᶜᵃ)
+    @test all(φspacings(grid_reg, Face()) .== grid_reg.Δφᵃᶠᵃ)
 
-    @test λspacing(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
-    @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
+    @test Operators.Δλ(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
+    @test Operators.Δφ(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
 
     Δλ = grid_reg.Δλᶠᵃᵃ
     λₛ = (-grid_reg.Lx/2):Δλ:(grid_reg.Lx/2)
 
-    Δz = grid_reg.Δzᵃᵃᶜ
+    Δz = grid_reg.z.Δᵃᵃᶜ
     zₛ = -Lz:Δz:0
 
     grid_str = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=λₛ, z=zₛ)
 
     @test length(grid_str.λᶠᵃᵃ) == length(grid_reg.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid_str.λᶜᵃᵃ) == length(grid_reg.λᶜᵃᵃ) == Nλ + 2Hλ
-        
+
     @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 1
     @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ
-    
-    @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
-    @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
-    
-    @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
-    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz
+
+    @test length(grid_str.z.cᵃᵃᶠ) == length(grid_reg.z.cᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.z.cᵃᵃᶜ) == length(grid_reg.z.cᵃᵃᶜ) == Nz + 2Hz
+
+    @test length(grid_str.z.Δᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.z.Δᵃᵃᶜ) == Nz + 2Hz
 
     @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ)
     @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
     @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
     @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
-    @test all(grid_str.zᵃᵃᶜ == grid_reg.zᵃᵃᶜ)
-    @test all(grid_str.zᵃᵃᶠ == grid_reg.zᵃᵃᶠ)
+    @test all(grid_str.z.cᵃᵃᶜ == grid_reg.z.cᵃᵃᶜ)
+    @test all(grid_str.z.cᵃᵃᶠ == grid_reg.z.cᵃᵃᶠ)
 
-    @test sum(grid_str.Δzᵃᵃᶜ) == grid_reg.Δzᵃᵃᶜ * length(grid_str.Δzᵃᵃᶜ)
-    @test sum(grid_str.Δzᵃᵃᶠ) == grid_reg.Δzᵃᵃᶠ * length(grid_str.Δzᵃᵃᶠ)
+    @test sum(grid_str.z.Δᵃᵃᶜ) == grid_reg.z.Δᵃᵃᶜ * length(grid_str.z.Δᵃᵃᶜ)
+    @test sum(grid_str.z.Δᵃᵃᶠ) == grid_reg.z.Δᵃᵃᶠ * length(grid_str.z.Δᵃᵃᶠ)
 
-    @test xspacings(grid_str, Center(), Center(), with_halos=true) == grid_str.Δxᶜᶜᵃ
-    @test xspacings(grid_str, Center(), Face(),   with_halos=true) == grid_str.Δxᶜᶠᵃ
-    @test xspacings(grid_str, Face(),   Center(), with_halos=true) == grid_str.Δxᶠᶜᵃ
-    @test xspacings(grid_str, Face(),   Face(),   with_halos=true) == grid_str.Δxᶠᶠᵃ
-    @test yspacings(grid_str, Center(), Face(),   with_halos=true) == grid_str.Δyᶜᶠᵃ
-    @test yspacings(grid_str, Face(),   Center(), with_halos=true) == grid_str.Δyᶠᶜᵃ
-    @test zspacings(grid_str, Center(), with_halos=true) == grid_str.Δzᵃᵃᶜ
-    @test zspacings(grid_str, Face(),   with_halos=true) == grid_str.Δzᵃᵃᶠ
+    @test all(xspacings(grid_str, Center(), Center()) .== reshape(grid_str.Δxᶜᶜᵃ[1:Nλ, 1:Nφ],   Nλ, Nφ,   1))
+    @test all(xspacings(grid_str, Center(), Face())   .== reshape(grid_str.Δxᶜᶠᵃ[1:Nλ, 1:Nφ+1], Nλ, Nφ+1, 1))
+    @test all(xspacings(grid_str, Face(),   Center()) .== reshape(grid_str.Δxᶠᶜᵃ[1:Nλ, 1:Nφ],   Nλ, Nφ,   1))
+    @test all(xspacings(grid_str, Face(),   Face())   .== reshape(grid_str.Δxᶠᶠᵃ[1:Nλ, 1:Nφ+1], Nλ, Nφ+1, 1))
 
-    @test xspacings(grid_str, Center(), Center()) == grid_str.Δxᶜᶜᵃ[1:grid_str.Nx, 1:grid_str.Ny]
-    @test xspacings(grid_str, Center(), Face())   == grid_str.Δxᶜᶠᵃ[1:grid_str.Nx, 1:grid_str.Ny+1]
-    @test zspacings(grid_str, Center()) == grid_str.Δzᵃᵃᶜ[1:grid_str.Nz]
-    @test zspacings(grid_str, Face())   == grid_str.Δzᵃᵃᶠ[1:grid_str.Nz+1]
+    @test all(yspacings(grid_str, Center(), Face())   .== grid_str.Δyᶜᶠᵃ)
+    @test all(yspacings(grid_str, Face(),   Center()) .== grid_str.Δyᶠᶜᵃ)
 
-    @test zspacings(grid_str, Face(), Face(),   Center()) == zspacings(grid_str, Center())
-    @test zspacings(grid_str, Face(), Center(), Face()  ) == zspacings(grid_str, Face())
+    @test all(zspacings(grid_str, Center()) .== reshape(grid_str.z.Δᵃᵃᶜ[1:Nz], 1, 1, Nz))
+    @test all(zspacings(grid_str, Face()) .== reshape(grid_str.z.Δᵃᵃᶠ[1:Nz+1], 1, 1, Nz+1))
+
+    @test all(zspacings(grid_str, Center()) .== zspacings(grid_str, Center(), Center(),   Center()))
+    @test all(zspacings(grid_str, Face()) .== zspacings(grid_str, Face(), Center(), Face()))
 
     return nothing
 end
@@ -644,6 +665,7 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     zᵣ  = (-10,    0)
 
     grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20 ? -50 : -0))
 
     @info "        Testing grid utils on LatitudeLongitude grid...."
 
@@ -653,10 +675,19 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     @test ynode(2, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/3)
     @test znode(2, 1, 2, grid, Face(), Face(), Face()) ≈ -5
 
+    @test λnode(3, 1, 2, ibg, Face(), Face(), Face()) ≈ -120
+    @test φnode(3, 2, 2, ibg, Face(), Face(), Face()) ≈ -30
+    @test xnode(5, 1, 2, ibg, Face(), Face(), Face()) / ibg.radius ≈ -FT(π/6)
+    @test ynode(2, 1, 2, ibg, Face(), Face(), Face()) / ibg.radius ≈ -FT(π/3)
+    @test znode(2, 1, 2, ibg, Face(), Face(), Face()) ≈ -5
+
     @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(60)
     @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(45)
     @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
     @test minimum_zspacing(grid) ≈ 5
+
+    @test minimum_xspacing(ibg, Face(), Face(), Face()) / ibg.radius ≈ FT(π/6) * cosd(30)
+    @test minimum_xspacing(ibg) / ibg.radius ≈ FT(π/6) * cosd(15)
 
     return nothing
 end
@@ -686,10 +717,10 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     for lat in latitude
         for lon in longitude
             for z in zcoord
-                println("$lat, $lon, $z")
+                # println("$lat, $lon, $z")
                 grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true)
                 grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z)
-    
+
                 @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
                 @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
                 @test all(Array([all(Array([Δxᶠᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
@@ -699,7 +730,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
                 @test all(Array([all(Array([Azᶜᶠᵃ(i, j, 1, grid_pre) ≈ Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
                 @test all(Array([all(Array([Azᶠᶠᵃ(i, j, 1, grid_pre) ≈ Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
                 @test all(Array([all(Array([Azᶜᶜᵃ(i, j, 1, grid_pre) ≈ Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-            end 
+            end
         end
     end
 
@@ -713,7 +744,7 @@ end
 
 function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
 
-    grid = conformal_cubed_sphere_panel(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+    grid = ConformalCubedSpherePanelGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -737,18 +768,18 @@ function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
     @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
 
-    @test xspacings(grid, Center(), Center(), Face(), with_halos=true) == xspacings(grid, Center(), Center(), with_halos=true) == grid.Δxᶜᶜᵃ
-    @test xspacings(grid, Center(), Face(),   Face(), with_halos=true) == xspacings(grid, Center(), Face(),   with_halos=true) == grid.Δxᶜᶠᵃ
-    @test xspacings(grid, Face(),   Center(), Face())                  == xspacings(grid, Face(),   Center())                  == grid.Δxᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
-    @test xspacings(grid, Face(),   Face(),   Face())                  == xspacings(grid, Face(),   Face())                    == grid.Δxᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
+    @test all(xspacings(grid, Center(), Center(), Face()) .== xspacings(grid, Center(), Center()) .== grid.Δxᶜᶜᵃ[1:Nx,   1:Ny])
+    @test all(xspacings(grid, Center(), Face(),   Face()) .== xspacings(grid, Center(), Face()  ) .== grid.Δxᶜᶠᵃ[1:Nx,   1:Ny+1])
+    @test all(xspacings(grid, Face(),   Center(), Face()) .== xspacings(grid, Face(),   Center()) .== grid.Δxᶠᶜᵃ[1:Nx+1, 1:Ny])
+    @test all(xspacings(grid, Face(),   Face(),   Face()) .== xspacings(grid, Face(),   Face()  ) .== grid.Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1])
 
-    @test yspacings(grid, Center(), Center(), Face(), with_halos=true) == yspacings(grid, Center(), Center(), with_halos=true) == grid.Δyᶜᶜᵃ
-    @test yspacings(grid, Center(), Face(),   Face(), with_halos=true) == yspacings(grid, Center(), Face(),   with_halos=true) == grid.Δyᶜᶠᵃ
-    @test yspacings(grid, Face(),   Center(), Face())                  == yspacings(grid, Face(),   Center())                  == grid.Δyᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
-    @test yspacings(grid, Face(),   Face(),   Face())                  == yspacings(grid, Face(),   Face())                    == grid.Δyᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
+    @test all(yspacings(grid, Center(), Center(), Face()) .== yspacings(grid, Center(), Center()) .== grid.Δyᶜᶜᵃ[1:Nx,   1:Ny])
+    @test all(yspacings(grid, Center(), Face(),   Face()) .== yspacings(grid, Center(), Face()  ) .== grid.Δyᶜᶠᵃ[1:Nx,   1:Ny+1])
+    @test all(yspacings(grid, Face(),   Center(), Face()) .== yspacings(grid, Face(),   Center()) .== grid.Δyᶠᶜᵃ[1:Nx+1, 1:Ny])
+    @test all(yspacings(grid, Face(),   Face(),   Face()) .== yspacings(grid, Face(),   Face()  ) .== grid.Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1])
 
-    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == grid.Δzᵃᵃᶠ
-    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == grid.Δzᵃᵃᶜ
+    @test all(zspacings(grid, Center(), Center(), Face()  ) .== zspacings(grid, Face()  ) .== grid.z.Δᵃᵃᶠ)
+    @test all(zspacings(grid, Center(), Center(), Center()) .== zspacings(grid, Center()) .== grid.z.Δᵃᵃᶜ)
 
     return nothing
 end
@@ -806,7 +837,7 @@ end
 
         @testset "Grid equality" begin
             @info "    Testing grid equality operator (==)..."
-            
+
             for arch in archs
                 test_grid_equality(arch)
             end
@@ -818,7 +849,7 @@ end
 
         # Testing show function
         topo = (Periodic, Periodic, Periodic)
-        
+
         grid = RectilinearGrid(CPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
 
         @test try
@@ -829,7 +860,7 @@ end
             println(sprint(showerror, err))
             false
         end
-        
+
         @test grid isa RectilinearGrid
     end
 
@@ -859,16 +890,16 @@ end
             # Testing show function
             Nz = 20
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
-            
+
             @test try
-            show(grid); println()
+                show(grid); println()
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
                 println(sprint(showerror, err))
                 false
             end
-            
+
             @test grid isa RectilinearGrid
         end
 
@@ -882,8 +913,15 @@ end
             @test cpu_grid_again == cpu_grid
         end
     end
-    
+
     @testset "Latitude-longitude grid" begin
+        @info "  Testing latitude-longitude grid construction errors..."
+
+	for FT in float_types
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+	    @test_throws ArgumentError LatitudeLongitudeGrid(CPU(), FT, size=(10, 10, 4), longitude=(-180, 180), latitude=(-80, 80), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+	end
+
         @info "  Testing general latitude-longitude grid..."
 
         for FT in float_types
@@ -901,7 +939,7 @@ end
 
         # Testing show function for regular grid
         grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
-    
+
         @test try
             show(grid); println()
             true
@@ -947,6 +985,51 @@ end
             cpu_grid_again = on_architecture(CPU(), grid)
             @test cpu_grid_again == cpu_grid
         end
+
+        for arch in archs
+            for FT in float_types
+                @info " Testing construction of LatitudeLongitudeGrid from RectilinearGrid..."
+                Nx = 4
+                Ny = 5
+                Nz = 6
+                Lx = Ly = 2π / 180
+                rectilinear_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-Ly/2, Ly/2), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(0, 0))
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == -1
+                @test λ[Nx+1] == +1
+                @test φ[1]  == -1
+                @test φ[Ny+1] == +1
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(273, 0))
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == 272
+                @test λ[Nx+1] == 274
+                @test φ[1]  == -1
+                @test φ[Ny+1] == +1
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+
+
+                Lx = 2π / 180 * cosd(45)
+                Ly = 2π / 180
+                rectilinear_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-Ly/2, Ly/2), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+                lat_lon_grid = LatitudeLongitudeGrid(rectilinear_grid, radius=1, origin=(0, 45))
+
+                λ = λnodes(lat_lon_grid, Face())
+                φ = φnodes(lat_lon_grid, Face())
+                @test λ[1]  == -1
+                @test λ[Nx+1] == +1
+                @test φ[1]  == 44
+                @test φ[Ny+1] == 46
+                @test znodes(rectilinear_grid, Center()) == znodes(lat_lon_grid, Center())
+                @test znodes(rectilinear_grid, Face()) == znodes(lat_lon_grid, Face())
+            end
+        end
     end
 
     @testset "Single column grids" begin
@@ -987,10 +1070,25 @@ end
                 @test φ[1] isa FT
                 @test λ[1] == λ₀
                 @test φ[1] == convert(FT, φ₀)
+
+                halo_sz = ColumnEnsembleSize(; Nz=4, ensemble=(2, 3), Hz=5)
+                grid = RectilinearGrid(arch, FT; size=halo_sz, halo=halo_sz,
+                                       z=(-10, 0), topology=(Flat, Flat, Bounded))
+                @test size(grid) == (2, 3, 4)
+                @test halo_size(grid) == (0, 0, 5)
+
+                if arch isa GPU
+                    cpu_grid = on_architecture(CPU(), grid)
+                    @test size(cpu_grid) == (2, 3, 4)
+                    @test halo_size(cpu_grid) == (0, 0, 5)
+
+                    gpu_grid = on_architecture(GPU(), grid)
+                    @test gpu_grid == grid
+                end
             end
         end
     end
-    
+
     @testset "Conformal cubed sphere face grid" begin
         @info "  Testing OrthogonalSphericalShellGrid grid..."
 
@@ -999,8 +1097,8 @@ end
         end
 
         # Testing show function
-        grid = conformal_cubed_sphere_panel(CPU(), size=(10, 10, 1), z=(0, 1))
-    
+        grid = ConformalCubedSpherePanelGrid(CPU(), size=(10, 10, 1), z=(0, 1))
+
         @test try
             show(grid); println()
             true
@@ -1012,13 +1110,27 @@ end
 
         @test grid isa OrthogonalSphericalShellGrid
 
+        grid = RotatedLatitudeLongitudeGrid(size = (10, 10, 1),
+                                            latitude = (-60, 60),
+                                            longitude = (-60, 60),
+                                            z = (-1000, 0),
+                                            north_pole = (0, 0),
+                                            topology = (Bounded, Bounded, Bounded))
+
+        @show grid.conformal_mapping
+
+        @test grid isa OrthogonalSphericalShellGrid
+        @test grid isa RotatedLatitudeLongitudeGrid
+        @test grid.Lz == 1000
+        @test size(grid) == (10, 10, 1)
+
         for arch in archs
             for FT in float_types
                 z = (0, 1)
                 radius = 234.5e6
 
                 Nx, Ny = 10, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ[1:Nx, 1:Ny]) ≈ 4π * grid.radius^2 / 6
@@ -1028,19 +1140,18 @@ end
 
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
             end
         end
     end
 end
-

@@ -16,7 +16,7 @@ using ConvergenceTests: compute_error
 c(x, y, z, t, U, κ, t₀) = 1 / √(4π * κ * (t + t₀)) * exp(-((x - U * t)^2 + (y - U * t)^2) / σ(t, κ, t₀))
 
 function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
-                  architecture = CPU(), topo = (Periodic, Periodic, Periodic), advection = CenteredSecondOrder())
+                  architecture = CPU(), topo = (Periodic, Periodic, Periodic), advection = Centered())
 
     t₀ = width^2 / 4κ
 
@@ -176,7 +176,7 @@ function unpack_errors(results)
     uyz_L₁ = map(r -> r.uyz.L₁, results)
     vxz_L₁ = map(r -> r.vxz.L₁, results)
     wxy_L₁ = map(r -> r.wxy.L₁, results)
-    
+
     cxy_L∞ = map(r -> r.cxy.L∞, results)
     cyz_L∞ = map(r -> r.cyz.L∞, results)
     cxz_L∞ = map(r -> r.cxz.L∞, results)

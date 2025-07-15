@@ -4,9 +4,9 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
 using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing, AbstractAccumulating
 
-##### 
+#####
 ##### Metric inference
-##### 
+#####
 
 reduction_grid_metric(dims::Number) = reduction_grid_metric(tuple(dims))
 
@@ -19,9 +19,9 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
                               dims === (1, 2, 3) ? volume :
                               throw(ArgumentError("Cannot determine grid metric for reducing over dims = $dims"))
 
-##### 
+#####
 ##### Metric reductions
-##### 
+#####
 
 struct Averaging <: AbstractReducing end
 const Average = Scan{<:Averaging}
@@ -37,10 +37,12 @@ Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 Over dimensions of variable spacing, `field` is multiplied by the
 appropriate grid length, area or volume, and divided by the total
 spatial extent of the interval.
+
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dx = reduction_grid_metric(dims)
 
     if all(d in regular_dimensions(field.grid) for d in dims)
         # Dimensions being reduced are regular; just use mean!
@@ -48,6 +50,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         return Scan(Averaging(), mean!, operand, dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
+        dx = reduction_grid_metric(dims)
         metric = GridMetricOperation(location(field), dx, field.grid)
         L = sum(metric; condition, mask, dims)
 
@@ -69,6 +72,9 @@ Base.summary(r::Integral) = string("Integral of ", summary(r.operand), " over di
 
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
+
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
 
 Example
 =======
@@ -125,6 +131,9 @@ Base.summary(c::CumulativeIntegral) = string("CumulativeIntegral of ", summary(c
 
 Return an `Accumulation` representing the cumulative spatial integral of `field` over `dims`.
 
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
+
 Example
 =======
 
@@ -170,4 +179,3 @@ function CumulativeIntegral(field::AbstractField; dims, reverse=false, condition
     operand = condition_operand(field * dx, condition, mask)
     return Scan(CumulativelyIntegrating(), maybe_reverse_cumsum, operand, dims)
 end
-

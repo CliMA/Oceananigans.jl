@@ -1,23 +1,27 @@
-using CUDA: @allowscalar
+using GPUArraysCore
 using Oceananigans.Grids: stretched_dimensions
 using Oceananigans.Grids: XDirection, YDirection
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
-using Oceananigans.Solvers: BatchedTridiagonalSolver, 
-                            stretched_direction, 
-                            ZTridiagonalSolver, 
-                            YTridiagonalSolver, 
+using Oceananigans.Solvers: BatchedTridiagonalSolver,
+                            stretched_direction,
+                            tridiagonal_direction,
+                            dimension,
+                            HomogeneousNeumannFormulation,
+                            ZTridiagonalSolver,
+                            YTridiagonalSolver,
                             XTridiagonalSolver,
-                            compute_main_diagonal!
+                            compute_main_diagonal!,
+                            compute_lower_diagonal!
 
-struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β} 
-    plan :: P              
+struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
+    plan :: P
     global_grid :: G
     local_grid :: L
     batched_tridiagonal_solver :: B
     source_term :: R
     storage :: S
-    buffer :: β 
+    buffer :: β
 end
 
 # Usefull aliases for dispatch...
@@ -31,7 +35,7 @@ architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
 @inline Δξᶠ(i, grid, ::Val{1}) = Δxᶠᵃᵃ(i, 1, 1, grid)
 @inline Δξᶠ(j, grid, ::Val{2}) = Δyᵃᶠᵃ(1, j, 1, grid)
 @inline Δξᶠ(k, grid, ::Val{3}) = Δzᵃᵃᶠ(1, 1, k, grid)
-    
+
 """
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
@@ -49,27 +53,27 @@ Supported configurations
 
 In the following, `Nx`, `Ny`, and `Nz` are the number of grid points of the **global** grid
 in the `x`, `y`, and `z` directions, while `Rx`, `Ry`, and `Rz` are the number of ranks in the
-`x`, `y`, and `z` directions, respectively. Furthermore, 'pencil' decomposition refers to a domain 
-decomposed in two different directions (i.e., with `Rx != 1` and `Ry != 1`), while 'slab' decomposition 
+`x`, `y`, and `z` directions, respectively. Furthermore, 'pencil' decomposition refers to a domain
+decomposed in two different directions (i.e., with `Rx != 1` and `Ry != 1`), while 'slab' decomposition
 refers to a domain decomposed only in one direction, (i.e., with either `Rx == 1` or `Ry == 1`).
 Additionally, `storage` indicates the `TransposableField` used for storing intermediate results;
 see [`TransposableField`](@ref).
 
-1. Three dimensional configurations with 'pencil' decompositions in ``(x, y)`` 
+1. Three dimensional configurations with 'pencil' decompositions in ``(x, y)``
 where `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
 
 2. Two dimensional configurations decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
-    
+
 !!! warning "Unsupported decompositions"
     _Any_ configuration decomposed in ``z`` direction is _not_ supported.
     Furthermore, any ``(x, y)`` decompositions other than the configurations mentioned above are also _not_ supported.
-    
+
 Algorithm for pencil decompositions
 ============================================
 
 For pencil decompositions (useful for three-dimensional problems),
 there are two forward transforms, two backward transforms, one tri-diagonal matrix inversion
-and a variable number of transpositions that require MPI communication, dependent on the 
+and a variable number of transpositions that require MPI communication, dependent on the
 stretched direction:
 
 - a stretching in the x-direction requires four transpositions
@@ -81,7 +85,7 @@ stretched direction:
     is computationally cheaper than a stretching in the y-direction, and the latter
     is cheaper than a stretching in the z-direction
 
-In our implementation we require `Nz ≥ Ry` and `Nx ≥ Ry` with the additional constraint 
+In our implementation we require `Nz ≥ Ry` and `Nx ≥ Ry` with the additional constraint
 that `Nz % Ry = 0` and `Ny % Rx = 0`.
 
 x - stretched algorithm
@@ -94,7 +98,7 @@ x - stretched algorithm
 5. Transpose `storage.yfield` + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 6. Solve the tri-diagonal linear system in the ``x`` direction.
 
-Steps 5 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
+Steps 5 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield`
 partitioned over ``(x, y)``.
 
 y - stretched algorithm
@@ -108,7 +112,7 @@ y - stretched algorithm
 6. Transpose `storage.xfield` + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 7. Solve the tri-diagonal linear system in the ``y`` direction.
 
-Steps 6 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
+Steps 6 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield`
 partitioned over ``(x, y)``.
 
 z - stretched algorithm
@@ -123,7 +127,7 @@ z - stretched algorithm
 7. Transpose `storage.yfield` + communicate to `storage.zfield` partitioned into `(Rx, Ry)` processes in ``(x, y)``.
 8. Solve the tri-diagonal linear system in the ``z`` direction.
 
-Steps 7 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
+Steps 7 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield`
 partitioned over ``(x, y)``.
 
 Algorithm for slab decompositions
@@ -146,31 +150,35 @@ Restrictions
     - Same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
 
 """
-function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT; tridiagonal_direction = nothing)
-    
+function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT; tridiagonal_formulation=nothing)
+
     validate_poisson_solver_distributed_grid(global_grid)
     validate_poisson_solver_configuration(global_grid, local_grid)
- 
-    if isnothing(tridiagonal_direction) 
-        tridiagonal_dim = stretched_dimensions(local_grid)[1]
-        tridiagonal_direction = stretched_direction(local_grid)
+
+    # Try to guess what direction should be tridiagonal
+    if isnothing(tridiagonal_formulation)
+        tridiagonal_dir = global_grid isa XYZRegularRG ? ZDirection() : stretched_direction(global_grid)
+        tridiagonal_formulation = HomogeneousNeumannFormulation(tridiagonal_dir)
     else
-        tridiagonal_dim = tridiagonal_direction == XDirection() ? 1 : 
-                          tridiagonal_direction == YDirection() ? 2 : 3
+        tridiagonal_dir = tridiagonal_direction(tridiagonal_formulation)
     end
+
+    tridiagonal_dim = dimension(tridiagonal_dir)
 
     topology(global_grid, tridiagonal_dim) != Bounded &&
         error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $tridiagonal_dim) is `Bounded`.")
 
-    FT         = Complex{eltype(local_grid)}
+    T = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
-    storage    = TransposableField(CenterField(local_grid), FT)
+    storage_field = CenterField(local_grid)
+    storage = TransposableField(storage_field, T)
 
-    topo = (TX, TY, TZ) = topology(global_grid)
-    λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX()), dims=(2, 3))
-    λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
-    λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
-        
+    TX, TY, TZ = topology(global_grid)
+    tx, ty, tz = TX(), TY(), TZ()
+    λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, tx), dims=(2, 3))
+    λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, ty), dims=(1, 3))
+    λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, tz), dims=(1, 2))
+
     if tridiagonal_dim == 1
         arch = architecture(storage.xfield.grid)
         grid = storage.xfield.grid
@@ -191,39 +199,31 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     λ1 = on_architecture(child_arch, λ1)
     λ2 = on_architecture(child_arch, λ2)
 
-    plan = plan_distributed_transforms(global_grid, storage, planner_flag)
-
     # Lower and upper diagonals are the same
-    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid, Val(tridiagonal_dim)) for q in 2:size(grid, tridiagonal_dim) ]
-    lower_diagonal = on_architecture(child_arch, lower_diagonal)
+    main_diagonal = zeros(grid, size(grid)...)
+
+    Nd = size(grid, tridiagonal_dim) - 1
+    lower_diagonal = zeros(grid, Nd) 
     upper_diagonal = lower_diagonal
 
-    # Compute diagonal coefficients for each grid point
-    diagonal = zeros(eltype(grid), size(grid)...)
-    diagonal = on_architecture(arch, diagonal)
-    launch_config = if tridiagonal_dim == 1
-                        :yz
-                    elseif tridiagonal_dim == 2
-                        :xz
-                    elseif tridiagonal_dim == 3
-                        :xy
-                    end
-
-    launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, tridiagonal_direction)
+    compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)
+    Nd > 0 && compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
 
     # Set up batched tridiagonal solver
-    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction)
-    
-    # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
+    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, upper_diagonal,
+                                        diagonal = main_diagonal,
+                                        tridiagonal_direction = tridiagonal_dir)
+
+    # We need to permute indices to apply bounded transforms on the GPU (r2r or r2c with twiddling)
     x_buffer_needed = child_arch isa GPU && TX == Bounded
-    z_buffer_needed = child_arch isa GPU && TZ == Bounded 
-    
+    z_buffer_needed = child_arch isa GPU && TZ == Bounded
+
     # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
     y_buffer_needed = child_arch isa GPU
 
-    buffer_x = x_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.xfield)...)) : nothing
-    buffer_y = y_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.yfield)...)) : nothing 
-    buffer_z = z_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.zfield)...)) : nothing
+    buffer_x = x_buffer_needed ? on_architecture(child_arch, zeros(T, size(storage.xfield)...)) : nothing
+    buffer_y = y_buffer_needed ? on_architecture(child_arch, zeros(T, size(storage.yfield)...)) : nothing
+    buffer_z = z_buffer_needed ? on_architecture(child_arch, zeros(T, size(storage.zfield)...)) : nothing
 
     buffer = if tridiagonal_dim == 1
         (; y = buffer_y, z = buffer_z)
@@ -232,6 +232,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     elseif tridiagonal_dim == 3
         (; x = buffer_x, y = buffer_y)
     end
+
+    plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     if tridiagonal_dim == 1
         forward  = (y! = plan.forward.y!,  z! = plan.forward.z!)
@@ -254,7 +256,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     return DistributedFourierTridiagonalPoissonSolver(plan, global_grid, local_grid, btsolver, source_term, storage, buffer)
 end
 
-# solve! requires that `b` in `A x = b` (the right hand side) 
+# solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::ZStretchedDistributedSolver)
@@ -263,12 +265,12 @@ function solve!(x, solver::ZStretchedDistributedSolver)
     buffer  = solver.buffer
 
     transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield
-    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
+    solver.plan.forward.y!(parent(storage.yfield), buffer.y)
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
     solver.plan.forward.x!(parent(storage.xfield), buffer.x)
     transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
-  
+
     # copy results in the source term
     parent(solver.source_term) .= parent(storage.zfield)
 
@@ -300,7 +302,7 @@ function solve!(x, solver::YStretchedDistributedSolver)
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
     solver.plan.forward.x!(parent(storage.xfield), buffer.x)
     transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
-  
+
     # copy results in the source term
     parent(solver.source_term) .= parent(storage.yfield)
 
@@ -329,7 +331,7 @@ function solve!(x, solver::XStretchedDistributedSolver)
     # Apply forward transforms to b = first(solver.storage).
     solver.plan.forward.z!(parent(storage.zfield), buffer.z)
     transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield
-    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
+    solver.plan.forward.y!(parent(storage.yfield), buffer.y)
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
 
     # copy results in the source term

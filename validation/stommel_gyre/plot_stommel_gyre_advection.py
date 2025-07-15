@@ -6,7 +6,7 @@ import cmocean
 import ffmpeg
 
 shapes = ("Gaussian", "Square")
-schemes = ("CenteredSecondOrder", "CenteredFourthOrder", "WENO")
+schemes = ("Centered", "CenteredFourthOrder", "WENO")
 Ns = (32, 256)
 CFLs = (0.05, 0.30)
 
@@ -15,9 +15,9 @@ def plot_tracer_advection_2d_frame(shape, scheme, N, CFL, n):
     filename = dir + ".nc"
     ds = xr.open_dataset(filename)
     c = ds.c.isel(time=n).squeeze()
-    
+
     print(f"{dir} frame {n}/{len(ds.time)}")
-    
+
     fig, ax = plt.subplots(figsize=(9, 9))
     c.plot.pcolormesh(vmin=-1, vmax=1, cmap=cmocean.cm.balance, extend="both")
     ax.set_title(f"{shape} {scheme} N={N:d} CFL={CFL:.2f}")

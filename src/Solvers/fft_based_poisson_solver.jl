@@ -112,7 +112,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
     # we set this to zero by default. Another slant on this "problem" is that
     # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0, which yields ϕ[1, 1, 1] = Inf or NaN.
-    m === 0 && CUDA.@allowscalar ϕc[1, 1, 1] = 0
+    m === 0 && @allowscalar ϕc[1, 1, 1] = 0
 
     # Apply backward transforms in order
     for transform! in solver.transforms.backward
@@ -120,7 +120,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     end
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
-    
+
     return ϕ
 end
 
@@ -135,4 +135,3 @@ end
 
     @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
 end
-

@@ -1,12 +1,12 @@
 module Fields
 
-export Face, Center
+export Face, Center, location
 export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
-export interior, data, xnode, ynode, znode, location
+export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
-export VelocityFields, TracerFields, TendencyFields, tracernames
+export VelocityFields, TracerFields, tracernames
 export interpolate
 
 using Oceananigans.Architectures
@@ -15,16 +15,21 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 
 import Oceananigans.Architectures: on_architecture
+import Oceananigans: location, instantiated_location
+
+"Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
+@inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
+@inline location(a, i) = location(a)[i]
+@inline instantiated_location(a) = (nothing, nothing, nothing)
 
 include("abstract_field.jl")
 include("constant_field.jl")
 include("function_field.jl")
-include("field_boundary_buffers.jl")
 include("field.jl")
+include("field_indices.jl")
 include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")
-include("background_fields.jl")
 include("interpolate.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")

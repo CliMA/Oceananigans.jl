@@ -92,7 +92,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 for T′ in (Tx, Txy)
                     @test T′.operand.operand === T
                 end
-                
+
                 for w′ in (wx, wxy)
                     @test w′.operand.operand === w
                 end
@@ -255,7 +255,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 push!(results, all(interior(C) .== 1))
             end
 
-            @test mean(results) == 1.0              
+            @test mean(results) == 1.0
         end
 
         @testset "Allocating reductions [$arch_str]" begin
@@ -331,7 +331,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
         @testset "Immersed Fields reduction [$(typeof(arch))]" begin
             @info "  Testing reductions of immersed Fields [$(typeof(arch))]"
             underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
-            
+
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : 0))
             c = Field((Center, Center, Nothing), grid)
 
@@ -363,6 +363,67 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             compute!(bottom_half_average_field)
             bottom_half_average_array = Array(interior(bottom_half_average_field))
             @test bottom_half_average_array[1, 1, 1] == bottom_half_average_manual
+
+            # See: https://github.com/CliMA/Oceananigans.jl/issues/3948
+            underlying_grid = RectilinearGrid(
+                topology=(Periodic, Periodic, Periodic),
+                size=(3, 3, 3),
+                x=(0, 1), y=(0, 1), z=(0, 1)
+            )
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> x + y))
+
+            c = CenterField(grid)
+            set!(c, (x, y, z) -> x + y + z)
+
+            max_c² = Field(Reduction(maximum!, c^2, dims=3))
+            ∫max_c² = Integral(max_c², dims=(1, 2))
+            @test ∫max_c² isa Reduction
+            ∫max_c²_field = Field(∫max_c²)
+            @test ∫max_c²_field isa Field
+            @test ∫max_c²_field.operand === ∫max_c²
+
+            @info "  Testing conditional reductions of immersed Fields [$(typeof(arch))]"
+
+            underlying_grid = LatitudeLongitudeGrid(arch,
+                                                    topology = (Periodic, Bounded, Bounded),
+                                                    size = (24, 16, 8),
+                                                    longitude = (-10, 10),
+                                                    latitude = (-55, -35),
+                                                    z = (-1000, 0),
+                                                    halo = (5, 5, 5))
+
+            Lz_u = underlying_grid.Lz
+            width = 0.5 # degrees
+            bump(λ, φ) = - Lz_u * (1 - 2 * exp(-(λ^2 + φ^2) / 2width^2))
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+
+            u_ibg = XFaceField(grid)
+            u_noibg = XFaceField(grid.underlying_grid)
+            v_ibg = YFaceField(grid)
+            v_noibg = YFaceField(grid.underlying_grid)
+            w_ibg = ZFaceField(grid)
+            w_noibg = ZFaceField(grid.underlying_grid)
+
+            condition = trues(size(grid)) # should work for Periodic but not for Bounded directions
+
+            ∫u_ibg = Integral(u_ibg; dims=1, condition)
+            @test ∫u_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫u_noibg = Integral(u_noibg; dims=1, condition)
+            @test ∫u_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            @test_throws ArgumentError ∫v_ibg = Integral(v_ibg; dims=1, condition)
+            @test_throws ArgumentError ∫v_noibg = Integral(v_noibg; dims=1, condition)
+            @test_throws ArgumentError ∫w_ibg = Integral(w_ibg; dims=1, condition)
+            @test_throws ArgumentError ∫w_noibg = Integral(w_noibg; dims=1, condition)
+            ∫v_ibg = Integral(v_ibg; dims=1, condition=trues(size(v_ibg)))
+            @test ∫v_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫v_noibg = Integral(v_noibg; dims=1, condition=trues(size(v_noibg)))
+            @test ∫v_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫w_ibg = Integral(w_ibg; dims=1, condition=trues(size(w_ibg)))
+            @test ∫w_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫w_noibg = Integral(w_noibg; dims=1, condition=trues(size(w_noibg)))
+            @test ∫w_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
         end
     end
 end

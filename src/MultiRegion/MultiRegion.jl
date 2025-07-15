@@ -14,7 +14,6 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 
 using Adapt
-using CUDA
 using DocStringExtensions
 using OffsetArrays
 
@@ -22,6 +21,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: Reference, Iterate, getnamewrapper
 using Oceananigans.Grids: AbstractUnderlyingGrid
 
+import KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 
 import Base: show, length, size
@@ -35,7 +35,7 @@ import Oceananigans.Utils:
                 _getregion,
                 sync_all_devices!
 
-abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
+abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
 
@@ -63,7 +63,7 @@ end
 struct YPartition{N} <: AbstractPartition
     div :: N
 
-    function YPartition(sizes) 
+    function YPartition(sizes)
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
         end

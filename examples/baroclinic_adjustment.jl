@@ -74,6 +74,7 @@ set!(model, b=bᵢ)
 # Let's visualize the initial buoyancy distribution.
 
 using CairoMakie
+set_theme!(Theme(fontsize = 20))
 
 ## Build coordinates with units of kilometers
 x, y, z = 1e-3 .* nodes(grid, (Center(), Center(), Center()))
@@ -93,7 +94,7 @@ current_figure() #hide
 fig
 
 # ## Simulation
-# 
+#
 # Now let's build a `Simulation`.
 
 simulation = Simulation(model, Δt=20minutes, stop_time=20days)
@@ -118,7 +119,7 @@ function print_progress(sim)
             maximum(abs, u), maximum(abs, v), maximum(abs, w), prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 
@@ -146,17 +147,17 @@ slicers = (east = (grid.Nx, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, ζ);
-                                                       filename = filename * "_$(side)_slice",
-                                                       schedule = TimeInterval(save_fields_interval),
-                                                       overwrite_existing = true,
-                                                       indices)
+    simulation.output_writers[side] = JLD2Writer(model, (; b, ζ);
+                                                 filename = filename * "_$(side)_slice",
+                                                 schedule = TimeInterval(save_fields_interval),
+                                                 overwrite_existing = true,
+                                                 indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (; b=B, u=U, v=V);
-                                                     filename = filename * "_zonal_average",
-                                                     schedule = TimeInterval(save_fields_interval),
-                                                     overwrite_existing = true)
+simulation.output_writers[:zonal] = JLD2Writer(model, (; b=B, u=U, v=V);
+                                               filename = filename * "_zonal_average",
+                                               schedule = TimeInterval(save_fields_interval),
+                                               overwrite_existing = true)
 
 # Now we're ready to _run_.
 
@@ -231,7 +232,7 @@ ax = Axis3(fig[2, 1],
            zlabel = "z (m)",
            xlabeloffset = 100,
            ylabeloffset = 100,
-           zlabeloffset = 100, 
+           zlabeloffset = 100,
            limits = ((x[1], zonal_slice_displacement * x[end]), (y[1], y[end]), (z[1], z[end])),
            elevation = 0.45,
            azimuth = 6.8,
@@ -243,7 +244,7 @@ ax = Axis3(fig[2, 1],
 # We use data from the final savepoint for the 3D plot.
 # Note that this plot can easily be animated by using Makie's `Observable`.
 # To dive into `Observable`s, check out
-# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = length(times)
 
@@ -304,8 +305,6 @@ yv = yv ./ 1e3 # convert m -> km
 
 # Next, we set up a plot with 4 panels. The top panels are large and square, while
 # the bottom panels get a reduced aspect ratio through `rowsize!`.
-
-set_theme!(Theme(fontsize=24))
 
 fig = Figure(size=(1800, 1000))
 

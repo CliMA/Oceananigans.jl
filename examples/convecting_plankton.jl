@@ -66,7 +66,7 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 # buoyancy flux for the visually-oriented,
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24, linewidth=2))
+set_theme!(Theme(fontsize = 20, linewidth=3))
 
 times = range(0, 12hours, length=100)
 
@@ -128,8 +128,7 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
 model = NonhydrostaticModel(; grid,
-                            advection = UpwindBiasedFifthOrder(),
-                            timestepper = :RungeKutta3,
+                            advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                             coriolis = FPlane(f=1e-4),
                             tracers = (:b, :P), # P for Plankton
@@ -172,7 +171,7 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 
 add_callback!(simulation, progress, IterationInterval(100))
 
-# and a basic `JLD2OutputWriter` that writes velocities and both
+# and a basic `JLD2Writer` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
 outputs = (w = model.velocities.w,
@@ -180,10 +179,10 @@ outputs = (w = model.velocities.w,
            avg_P = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
-    JLD2OutputWriter(model, outputs,
-                     schedule = TimeInterval(20minutes),
-                     filename = "convecting_plankton.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, outputs,
+               schedule = TimeInterval(20minutes),
+               filename = "convecting_plankton.jld2",
+               overwrite_existing = true)
 
 # !!! info "Using multiple output writers"
 #     Because each output writer is associated with a single output `schedule`,

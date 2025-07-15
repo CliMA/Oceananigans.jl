@@ -56,17 +56,22 @@ julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
 julia> @unary square_it
-Set{Any} with 10 elements:
+Set{Any} with 15 elements:
   :+
-  :sqrt
-  :square_it
+  :log10
+  :interpolate_identity
   :cos
   :exp
-  :interpolate_identity
-  :-
   :tanh
-  :sin
   :abs
+  :log
+  :cosh
+  :square_it
+  :-
+  :sqrt
+  :tan
+  :sinh
+  :sin
 
 julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
@@ -124,7 +129,7 @@ compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 ##### GPU capabilities
 #####
 
-"Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `UnaryOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     UnaryOperation{LX, LY, LZ}(Adapt.adapt(to, unary.op),
                                Adapt.adapt(to, unary.arg),

@@ -44,7 +44,7 @@ Base.show(io::IO, scheme::FluxFormAdvection) =
 @inline required_halo_size_y(scheme::FluxFormAdvection) = required_halo_size_y(scheme.y)
 @inline required_halo_size_z(scheme::FluxFormAdvection) = required_halo_size_z(scheme.z)
 
-Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} = 
+Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} =
     FluxFormAdvection{N, FT}(Adapt.adapt(to, scheme.x),
                              Adapt.adapt(to, scheme.y),
                              Adapt.adapt(to, scheme.z))

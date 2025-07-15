@@ -14,20 +14,22 @@ ordered_indices(r, i) = i == 1 ? r : i == 2 ? (r[2], r[1], r[3]) : (r[3], r[2], 
 
 global_topology(grid, i) = string(topology(grid, i))
 
-function global_topology(grid::DistributedGrid, i) 
+function global_topology(grid::DistributedGrid, i)
     arch = architecture(grid)
     R = arch.ranks[i]
     r = ordered_indices(arch.local_index, i)
-    T = reconstruct_global_topology(topology(grid, i), R, r..., arch.communicator)
+    T = reconstruct_global_topology(topology(grid, i), R, r..., arch)
     return string(T)
 end
+
+using Oceananigans.Grids: YRegLLGOTF
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
     #####
     ##### Constructing Grid and model
     #####
-    
+
     # This coriolis scheme was used to generated the regression test data
     coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
 
@@ -35,7 +37,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
-    
+
     #####
     ##### Imposing initial conditions:
     #####    u = function of latitude
@@ -46,7 +48,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     step_function(x, d, c) = 1/2 * (1 + tanh((x - c) / d))
     polar_mask(y)          = step_function(y, -5, 40) * step_function(y, 5, -40)
     shear_func(x, y, z, p) = p.U * (0.5 + z / p.Lz) * polar_mask(y)
-    
+
     set!(model, u = (λ, φ, z) -> polar_mask(φ) * exp(-φ^2 / 200),
                 v = (λ, φ, z) -> polar_mask(φ) * sind(2λ))
 
@@ -59,8 +61,8 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     # Time-scale for gravity wave propagation across the smallest grid cell
     # wave_speed is the hydrostatic (shallow water) gravity wave speed
     gravity    = model.free_surface.gravitational_acceleration
-    wave_speed = sqrt(gravity * grid.Lz)                                 
-    
+    wave_speed = sqrt(gravity * grid.Lz)
+
     CUDA.allowscalar(true)
     minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᵃᶜᵃ, 1:grid.Ny))) * deg2rad(minimum(grid.Δλᶜᵃᵃ))
     minimum_Δy = grid.radius * deg2rad(minimum(grid.Δφᵃᶜᵃ))
@@ -89,17 +91,17 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
     if regenerate_data && !(grid isa DistributedGrid) # never regenerate on Distributed
         @warn "Generating new data for the Hydrostatic regression test."
-        
+
         directory =  joinpath(dirname(@__FILE__), "data")
         outputs   = (; u, v, w, η)
-        simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                              dir = directory,
-                                                              schedule = IterationInterval(stop_iteration),
-                                                              filename = output_filename,
-                                                              with_halos = true,
-                                                              overwrite_existing = true)
+        simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                        dir = directory,
+                                                        schedule = IterationInterval(stop_iteration),
+                                                        filename = output_filename,
+                                                        with_halos = true,
+                                                        overwrite_existing = true)
     end
-   
+
     # Let's gooooooo!
     run!(simulation)
 
@@ -133,7 +135,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
         test_fields_equality(cpu_arch, test_fields, truth_fields)
     end
-    
+
     return nothing
 end
 

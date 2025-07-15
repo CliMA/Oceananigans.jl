@@ -5,16 +5,9 @@ using Oceananigans.Grids
 
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels:
-    HydrostaticFreeSurfaceModel,
-    VectorInvariant,
-    ExplicitFreeSurface,
-    ImplicitFreeSurface
-
 using Oceananigans.Units
 
 using Statistics
-using JLD2
 using Printf
 
 Nx = 60
@@ -37,7 +30,7 @@ free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConserving())
 
-@show surface_wind_stress_parameters = (τ₀ = 1e-4,
+@show surface_wind_stress_parameters = (τ₀ = 1e-2,
                                         Lφ = grid.Ly,
                                         φ₀ = 15)
 
@@ -71,10 +64,8 @@ v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 variable_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh)
 constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh₀)
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(; grid, free_surface, coriolis,
                                     momentum_advection = VectorInvariant(),
-                                    free_surface = free_surface,
-                                    coriolis = coriolis,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     closure = constant_horizontal_diffusivity,
                                     #closure = variable_horizontal_diffusivity,
@@ -96,7 +87,7 @@ end
 function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
 
-    @info @sprintf("Time: %s, iteration: %d, max(u): %.2e m s⁻¹, wall time: %s",
+    @info @sprintf("time: %s, iteration: %d, max(u): %.2e m s⁻¹, wall time: %s",
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
                    maximum(sim.model.velocities.u),
@@ -109,18 +100,18 @@ end
 
 simulation = Simulation(model,
                         Δt = 3600,
-                        stop_time = 1years)
+                        stop_time = 2 * 365days)
 
-simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
+simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(24*50))
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(10day),
-                                                      filename = output_prefix,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                schedule = TimeInterval(5day),
+                                                filename = output_prefix,
+                                                overwrite_existing = true)
 
 run!(simulation)
 

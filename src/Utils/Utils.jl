@@ -8,11 +8,10 @@ export ordered_dict_show
 export instantiate
 export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
-export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule 
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
 export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
 export isregional, getregion, _getregion, getdevice, switch_device!, sync_device!, sync_all_devices!
-
-import CUDA  # To avoid name conflicts
+export newton_div
 
 #####
 ##### Misc. small utils
@@ -41,5 +40,6 @@ include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
 include("coordinate_transformations.jl")
 include("sum_of_arrays.jl")
+include("newton_div.jl")
 
 end # module

@@ -21,7 +21,7 @@ function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                maximum_viscosity::FT,
                                                minimum_tke::FT,
                                                minimum_stratification_number_safety_factor::FT,
-                                               negative_tke_damping_time_scale::FT, 
+                                               negative_tke_damping_time_scale::FT,
                                                tke_dissipation_time_step::DT) where {TD, KE, ST, LMIN, FT, DT}
 
     return TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT}(tke_dissipation_equations,
@@ -62,7 +62,7 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
                                       tke_dissipation_time_step = nothing)
 
 Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical mixing by
-microscale ocean turbulence based on the prognostic evolution of two variables: the 
+microscale ocean turbulence based on the prognostic evolution of two variables: the
 turbulent kinetic energy (TKE), and the turbulent kinetic energy dissipation.
 Elsewhere this is referred to as "k-ϵ". For more information about k-ϵ, see
 Burchard and Bolding (2001), Umlauf and Buchard (2003), and Umlauf and Burchard (2005).
@@ -100,7 +100,7 @@ Note that for numerical stability, it is recommended to either have a relative s
 `minimum_turbulent_kinetic_energy`, or both.
 """
 function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
-                                           FT = Float64;
+                                           FT = Oceananigans.defaults.FloatType;
                                            tke_dissipation_equations = TKEDissipationEquations(),
                                            stability_functions = VariableStabilityFunctions(),
                                            minimum_length_scale = StratifiedDisplacementScale(),
@@ -149,7 +149,39 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfTD)
+struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
+    κu :: K
+    κc :: K
+    κe :: K
+    κϵ :: K
+    Le :: L
+    Lϵ :: L
+    previous_velocities :: U
+    _tupled_tracer_diffusivities :: KC
+    _tupled_implicit_linear_coefficients :: LC
+end
+
+Adapt.adapt_structure(to, tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields) =
+    TKEDissipationDiffusivityFields(adapt(to, tke_dissipation_diffusivity_fields.κu),
+                                    adapt(to, tke_dissipation_diffusivity_fields.κc),
+                                    adapt(to, tke_dissipation_diffusivity_fields.κe),
+                                    adapt(to, tke_dissipation_diffusivity_fields.κϵ),
+                                    adapt(to, tke_dissipation_diffusivity_fields.Le),
+                                    adapt(to, tke_dissipation_diffusivity_fields.Lϵ),
+                                    adapt(to, tke_dissipation_diffusivity_fields.previous_velocities),
+                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_tracer_diffusivities),
+                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_implicit_linear_coefficients))
+
+function fill_halo_regions!(tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
+    fields_with_halos_to_fill = (tke_dissipation_diffusivity_fields.κu,
+                                 tke_dissipation_diffusivity_fields.κc,
+                                 tke_dissipation_diffusivity_fields.κe,
+                                 tke_dissipation_diffusivity_fields.κϵ)
+
+    return fill_halo_regions!(fields_with_halos_to_fill, args...; kw...)
+end
+
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
                                κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
@@ -184,9 +216,11 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfTD)
     _tupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
                                                       for name in tracer_names)
 
-    return (; κu, κc, κe, κϵ, Le, Lϵ, previous_velocities,
-            _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
-end        
+    return TKEDissipationDiffusivityFields(κu, κc, κe, κϵ, Le, Lϵ,
+                                           previous_velocities,
+                                           _tupled_tracer_diffusivities,
+                                           _tupled_implicit_linear_coefficients)
+end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
@@ -321,7 +355,7 @@ end
 
 @inline viscosity(::FlavorOfTD, diffusivities) = diffusivities.κu
 @inline diffusivity(::FlavorOfTD, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
-    
+
 #####
 ##### Show
 #####
@@ -344,7 +378,8 @@ function Base.show(io::IO, clo::TDVD)
               "├── tke_dissipation_equations: ", prettysummary(clo.tke_dissipation_equations), '\n',
               "│   ├── Cᵋϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵋϵ),  '\n',
               "│   ├── Cᴾϵ: ", prettysummary(clo.tke_dissipation_equations.Cᴾϵ),  '\n',
-              "│   ├── Cᵇϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ),  '\n',
+              "│   ├── Cᵇϵ⁺: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁺),  '\n',
+              "│   ├── Cᵇϵ⁻: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁻),  '\n',
               "│   ├── Cᵂu★: ", prettysummary(clo.tke_dissipation_equations.Cᵂu★), '\n',
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")

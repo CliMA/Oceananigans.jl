@@ -1,7 +1,7 @@
 module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
-using Oceananigans.Advection: div_Uc, CenteredSecondOrder
+using Oceananigans.Advection: div_Uc, Centered
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: ZeroField
 
@@ -27,29 +27,29 @@ Update biogeochemical state variables. Called at the end of update_state!.
 """
 update_biogeochemical_state!(bgc, model) = nothing
 
-@inline biogeochemical_drift_velocity(bgc, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
+@inline biogeochemical_drift_velocity(bgc, val_tracer_name) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
 """
     AbstractBiogeochemistry
 
-Abstract type for biogeochemical models. To define a biogeochemcial relaionship
+Abstract type for biogeochemical models. To define a biogeochemcial relationship
 the following functions must have methods defined where `BiogeochemicalModel`
 is a subtype of `AbstractBioeochemistry`:
 
-  - `(bgc::BiogeochemicalModel)(i, j, k, grid, ::Val{:tracer_name}, clock, fields)` which 
+  - `(bgc::BiogeochemicalModel)(i, j, k, grid, ::Val{:tracer_name}, clock, fields)` which
      returns the biogeochemical reaction for for each tracer.
 
   - `required_biogeochemical_tracers(::BiogeochemicalModel)` which returns a tuple of
      required `tracer_names`.
 
-  - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns 
+  - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns
      a tuple of required auxiliary fields.
 
   - `biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel)` which returns a `NamedTuple`
      of the models auxiliary fields.
 
-  - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which 
+  - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which
      returns a velocity fields (i.e. a `NamedTuple` of fields with keys `u`, `v` & `w`)
      for each tracer.
 
@@ -70,23 +70,23 @@ abstract type AbstractBiogeochemistry end
 """
     AbstractContinuousFormBiogeochemistry
 
-Abstract type for biogeochemical models with continuous form biogeochemical reaction 
-functions. To define a biogeochemcial relaionship the following functions must have methods 
+Abstract type for biogeochemical models with continuous form biogeochemical reaction
+functions. To define a biogeochemcial relaionship the following functions must have methods
 defined where `BiogeochemicalModel` is a subtype of `AbstractContinuousFormBiogeochemistry`:
 
-  - `(bgc::BiogeochemicalModel)(::Val{:tracer_name}, x, y, z, t, tracers..., auxiliary_fields...)` 
+  - `(bgc::BiogeochemicalModel)(::Val{:tracer_name}, x, y, z, t, tracers..., auxiliary_fields...)`
      which returns the biogeochemical reaction for for each tracer.
 
   - `required_biogeochemical_tracers(::BiogeochemicalModel)` which returns a tuple of
      required tracer names.
 
-  - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns 
+  - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns
      a tuple of required auxiliary fields.
 
   - `biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel)` which returns a `NamedTuple`
      of the models auxiliary fields
 
-  - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which 
+  - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which
      returns "additional" velocity fields modeling, for example, sinking particles
 
   - `update_biogeochemical_state!(bgc::BiogeochemicalModel, model)` (optional) to update the
@@ -164,7 +164,7 @@ contains biogeochemical auxiliary fields.
 
     # Return tracers and aux fields so that users may overload and
     # define their own special auxiliary fields
-    return tracers, auxiliary_fields 
+    return tracers, auxiliary_fields
 end
 
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}

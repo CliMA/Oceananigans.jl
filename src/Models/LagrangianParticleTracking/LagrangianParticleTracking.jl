@@ -1,6 +1,6 @@
 module LagrangianParticleTracking
 
-export LagrangianParticles
+export LagrangianParticles, DroguedParticleDynamics
 
 using Printf
 using Adapt
@@ -17,11 +17,11 @@ using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
-using Oceananigans.Fields: fractional_indices, truncate_fractional_indices
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
-using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
+using Oceananigans.Utils: prettysummary, launch!
 
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.OutputWriters: serializeproperty!, fetch_output
 
 import Base: size, length, show
 
@@ -51,7 +51,7 @@ end
 """
     LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing)
 
-Construct some `LagrangianParticles` that can be passed to a model. The particles will have initial locations
+Construct some `LagrangianParticles` that can be passed to a model. The particles have initial locations
 `x`, `y`, and `z`. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
 
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
@@ -70,7 +70,11 @@ function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, p
 end
 
 """
-    LagrangianParticles(particles::StructArray; restitution=1.0, tracked_fields::NamedTuple=NamedTuple(), dynamics=no_dynamics)
+    LagrangianParticles(particles::StructArray;
+                        restitution = 1.0,
+                        tracked_fields::NamedTuple=NamedTuple(),
+                        dynamics = no_dynamics,
+                        parameters = nothing)
 
 Construct some `LagrangianParticles` that can be passed to a model. The `particles` should be a `StructArray`
 and can contain custom fields. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
@@ -129,6 +133,7 @@ end
 
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
+include("drogued_dynamics.jl")
 
 step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
@@ -141,6 +146,18 @@ function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
 
     # Advect particles
     advect_lagrangian_particles!(particles, model, Δt)
+end
+
+####
+#### Extend output writers to support LagrangianParticles
+####
+
+serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
+
+function fetch_output(lagrangian_particles::LagrangianParticles, model)
+    particle_properties = lagrangian_particles.properties
+    names = propertynames(particle_properties)
+    return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
 
 end # module
