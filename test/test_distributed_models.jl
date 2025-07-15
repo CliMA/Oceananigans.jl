@@ -478,8 +478,6 @@ end
             @test sum(c) == 1*N + 2*N + 3*N + 4*N
 
             sum!(c_reduced, c)
-            @show @allowscalar c_reduced[1, 1, 1]
-            @show 1*N + 2*N + 3*N + 4*N
             @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
             cbool = CenterField(grid, Bool)
@@ -491,13 +489,9 @@ end
             @test all(cbool) == false
 
             any!(cbool_reduced, cbool)
-            @show cbool_reduced[1, 1, 1]
-            @allowscalar cbool_reduced[1, 1, 1]
             @test @allowscalar cbool_reduced[1, 1, 1] == true
 
             all!(cbool_reduced, cbool)
-            @show cbool_reduced[1, 1, 1]
-            @show @allowscalar cbool_reduced[1, 1, 1]
             @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
     end
