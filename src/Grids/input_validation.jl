@@ -147,7 +147,7 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     return ξ
 end
 
-function validate_dimension_specification(T, ξ::Function, dir, N, FT)
+function validate_dimension_specification(T, ξ::Union{Function, CallableCoordinate}, dir, N, FT)
     ξ(N) ≥ ξ(1) || throw(ArgumentError("$dir should have increasing values."))
     return ξ
 end
