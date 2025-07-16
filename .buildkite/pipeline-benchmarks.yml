@@ -29,7 +29,7 @@ steps:
           limit: 1
 
   - wait
-    
+
   - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
     agents:
@@ -37,7 +37,7 @@ steps:
 
     command: |
       # Instantiate
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.add("CUDA"); Pkg.instantiate()'
 
       # List of benchmark groups
       BENCHMARK_GROUPS=(
@@ -47,7 +47,7 @@ steps:
         "bounded_cheap_advection"
         "immersed"
       )
-      
+
       # Profile each benchmark group, save output in txt and remove profiles
       for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
         # Run benchmarks
@@ -77,7 +77,7 @@ steps:
       queue: "Oceananigans-benchmarks"
 
     command: |
-      # First we donwload the artifacts from the current PR build
+      # First we download the artifacts from the current PR build
       buildkite-agent artifact download "*.txt" .
 
       # Getting the JSON file of the latest passing main build
