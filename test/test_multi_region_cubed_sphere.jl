@@ -197,7 +197,7 @@ end
                                         horizontal_direction_halo = Hx, z_halo = Hz)
 
         for panel in 1:6
-            CUDA.@allowscalar begin
+            @allowscalar begin
                 # Test only on cca and ffa; fca and cfa are all zeros on grid_cs32!
                 # Only test interior points since halo regions are not filled for grid_cs32!
 
@@ -233,7 +233,7 @@ panel_sizes = ((8, 8, 1), (9, 9, 2))
                 areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
 
                 for region in 1:number_of_regions(grid)
-                    CUDA.@allowscalar begin
+                    @allowscalar begin
                         areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
                         areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
                         areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
@@ -302,7 +302,7 @@ end
                 north_indices = 1:Nx, Ny-Hy+1:Ny
 
                 # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     switch_device!(grid, 1)
                     @test get_halo_data(getregion(c, 1), West())  == reverse(create_c_test_data(grid, 5)[north_indices...], dims=1)'
                     @test get_halo_data(getregion(c, 1), East())  ==         create_c_test_data(grid, 2)[west_indices...]
@@ -396,7 +396,7 @@ end
                 west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
 
                 # Confirm that the zonal velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     switch_device!(grid, 1)
 
                     # Trivial halo checks with no off-set in index
@@ -496,7 +496,7 @@ end
 
                 # Confirm that the meridional velocity halos were filled according to connectivity described at
                 # ConformalCubedSphereGrid docstring.
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     switch_device!(grid, 1)
 
                     # Trivial halo checks with no off-set in index
@@ -648,7 +648,7 @@ end
                 west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
 
                 # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     # Panel 1
                     switch_device!(grid, 1)
 

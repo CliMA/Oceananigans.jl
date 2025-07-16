@@ -58,7 +58,7 @@ end
         λᶜᶜᵃ = λnodes(grid, Center(), Center())
         φᶜᶜᵃ = φnodes(grid, Center(), Center())
 
-        min_Δφ = CUDA.@allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
+        min_Δφ = @allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
         @allowscalar begin
             @test minimum(λᶜᶜᵃ) ≥ 0
             @test maximum(λᶜᶜᵃ) ≤ 360
