@@ -63,11 +63,8 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     v = wrap_prescribed_field(Center, Face, Center, velocities.v, grid; clock, parameters)
     w = wrap_prescribed_field(Center, Center, Face, velocities.w, grid; clock, parameters)
 
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
+    fill_halo_regions!((u, v))
     fill_halo_regions!(w)
-    prescribed_velocities = (; u, v, w)
-    @apply_regionally replace_horizontal_vector_halos!(prescribed_velocities, grid)
 
     return PrescribedVelocityFields(u, v, w, parameters)
 end
@@ -131,7 +128,6 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end

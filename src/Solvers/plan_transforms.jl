@@ -33,18 +33,8 @@ function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PA
     return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 end
 
-function plan_forward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
-    length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_fft!(A, dims)
-end
-
-function plan_backward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
-    length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_ifft!(A, dims)
-end
-
-plan_backward_transform(A::Union{Array, CuArray}, ::Flat, args...) = nothing
-plan_forward_transform(A::Union{Array, CuArray}, ::Flat, args...) = nothing
+plan_forward_transform(A::AbstractArray, ::Flat, args...) = nothing
+plan_backward_transform(A::AbstractArray, ::Flat, args...) = nothing
 
 batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
                             (Periodic, Periodic, Bounded),
@@ -146,16 +136,28 @@ function plan_transforms(grid::XYZRegularRG, storage, planner_flag)
 end
 
 """ Used by FourierTridiagonalPoissonSolver. """
-function plan_transforms(grid::Union{XYRegularRG, XZRegularRG, YZRegularRG}, storage, planner_flag)
+function plan_transforms(grid, storage, planner_flag, untransformed_dim)
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
 
-    irreg_dim = stretched_dimensions(grid)[1]
-    reg_dims  = regular_dimensions(grid)
-    !(topo[irreg_dim] === Bounded) && error("Transforms can be planned only when the stretched direction's topology is `Bounded`.")
+    transform_dims = if untransformed_dim == 3
+        (1, 2)
+    elseif untransformed_dim == 2
+        (1, 3)
+    elseif untransformed_dim == 1
+        (2, 3)
+    else
+        error("Invalid untransformed dimension: $untransformed_dim")
+    end
 
-    periodic_dims = Tuple( dim for dim in findall(t -> t == Periodic, topo) if dim ≠ irreg_dim )
-    bounded_dims  = Tuple( dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ irreg_dim )
+    for dim in transform_dims
+        dim ∈ regular_dimensions(grid) ||
+            error("Transform directions must be regularly spaced.")
+    end
+        
+    !(topo[untransformed_dim] === Bounded) && error("Transforms can be planned only when the untransformed direction's topology is `Bounded`.")
+    periodic_dims = Tuple(dim for dim in findall(t -> t == Periodic, topo) if dim ≠ untransformed_dim)
+    bounded_dims  = Tuple(dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ untransformed_dim)
 
     arch = architecture(grid)
 
@@ -183,31 +185,31 @@ function plan_transforms(grid::Union{XYRegularRG, XZRegularRG, YZRegularRG}, sto
         # (Periodic, Flat) in the regular dimensions. So, we pretend like we need a 2D
         # doubly-periodic transform (even if one dimension is Flat).
 
-        forward_periodic_plan = plan_forward_transform(storage, Periodic(), reg_dims, planner_flag)
-        backward_periodic_plan = plan_backward_transform(storage, Periodic(), reg_dims, planner_flag)
+        forward_periodic_plan = plan_forward_transform(storage, Periodic(), transform_dims, planner_flag)
+        backward_periodic_plan = plan_backward_transform(storage, Periodic(), transform_dims, planner_flag)
 
-        forward_transforms = tuple(DiscreteTransform(forward_periodic_plan, Forward(), grid, reg_dims))
-        backward_transforms = tuple(DiscreteTransform(backward_periodic_plan, Backward(), grid, reg_dims))
+        forward_transforms = tuple(DiscreteTransform(forward_periodic_plan, Forward(), grid, transform_dims))
+        backward_transforms = tuple(DiscreteTransform(backward_periodic_plan, Backward(), grid, transform_dims))
 
     else # we are on the GPU and we cannot / should not batch!
         Nx, Ny, Nz = size(grid)
         reshaped_storage = reshape(storage, (Ny, Nx, Nz))
 
-        if irreg_dim == 1
+        if untransformed_dim == 1
             forward_plan_1 = plan_forward_transform(reshaped_storage, topo[2](), [1], planner_flag)
             forward_plan_2 = plan_forward_transform(storage,          topo[3](), [3], planner_flag)
 
             backward_plan_1 = plan_backward_transform(reshaped_storage, topo[2](), [1], planner_flag)
             backward_plan_2 = plan_backward_transform(storage,          topo[3](), [3], planner_flag)
 
-        elseif irreg_dim == 2
+        elseif untransformed_dim == 2
             forward_plan_1 = plan_forward_transform(storage, topo[1](), [1], planner_flag)
             forward_plan_2 = plan_forward_transform(storage, topo[3](), [3], planner_flag)
 
             backward_plan_1 = plan_backward_transform(storage, topo[1](), [1], planner_flag)
             backward_plan_2 = plan_backward_transform(storage, topo[3](), [3], planner_flag)
 
-        elseif irreg_dim == 3
+        elseif untransformed_dim == 3
             forward_plan_1 = plan_forward_transform(storage,          topo[1](), [1], planner_flag)
             forward_plan_2 = plan_forward_transform(reshaped_storage, topo[2](), [1], planner_flag)
 
@@ -215,17 +217,17 @@ function plan_transforms(grid::Union{XYRegularRG, XZRegularRG, YZRegularRG}, sto
             backward_plan_2 = plan_backward_transform(reshaped_storage, topo[2](), [1], planner_flag)
         end
 
-        forward_plans  = Dict(reg_dims[1] => forward_plan_1,  reg_dims[2] => forward_plan_2)
-        backward_plans = Dict(reg_dims[1] => backward_plan_1, reg_dims[2] => backward_plan_2)
+        forward_plans  = Dict(transform_dims[1] => forward_plan_1,  transform_dims[2] => forward_plan_2)
+        backward_plans = Dict(transform_dims[1] => backward_plan_1, transform_dims[2] => backward_plan_2)
 
         # Transform Flat topologies into Bounded
         unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
         f_order = forward_orders(unflattened_topo...)
         b_order = backward_orders(unflattened_topo...)
 
-        # Extract stretched dimension
-        f_order = Tuple(f_order[i] for i in findall(d -> d != irreg_dim, f_order))
-        b_order = Tuple(b_order[i] for i in findall(d -> d != irreg_dim, b_order))
+        # Extract untranformed dimension
+        f_order = Tuple(f_order[i] for i in findall(d -> d != untransformed_dim, f_order))
+        b_order = Tuple(b_order[i] for i in findall(d -> d != untransformed_dim, b_order))
 
         forward_transforms = (DiscreteTransform(forward_plans[f_order[1]], Forward(), grid, [f_order[1]]),
                               DiscreteTransform(forward_plans[f_order[2]], Forward(), grid, [f_order[2]]))
