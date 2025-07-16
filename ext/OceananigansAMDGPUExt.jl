@@ -1,27 +1,11 @@
 module OceananigansAMDGPUExt
 
-<<<<<<< HEAD
-using AMDGPU
-using AMDGPU.rocFFT
-=======
->>>>>>> main
 using Oceananigans
-using InteractiveUtils
 using AMDGPU, AMDGPU.rocSPARSE, AMDGPU.rocFFT
+
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+using InteractiveUtils
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
-<<<<<<< HEAD
-
-import KernelAbstractions: __validindex
-
-import Oceananigans.Architectures:
-    architecture,
-    convert_to_device,
-    on_architecture
-import Oceananigans.Solvers:
-    plan_backward_transform,
-    plan_forward_transform
-=======
 using KernelAbstractions
 
 import Oceananigans.Architectures as AC
@@ -31,11 +15,10 @@ import Oceananigans.Fields as FD
 import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
-import SparseArrays: SparseMatrixCSC
+import Oceananigans.DistributedComputations: Distributed
 import KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds,
                            __validindex, CompilerMetadata
-import Oceananigans.DistributedComputations: Distributed
->>>>>>> main
+import SparseArrays: SparseMatrixCSC
 
 const GPUVar = Union{ROCArray, Ptr}
 
@@ -97,30 +80,16 @@ end
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
 
-<<<<<<< HEAD
-function plan_forward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, planner_flag)
-=======
 BC.validate_boundary_condition_architecture(::ROCArray, ::AC.GPU, bc, side) = nothing
 
 BC.validate_boundary_condition_architecture(::ROCArray, ::AC.CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `ROCArray` on CPU architectures!"))
 
 function SO.plan_forward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
->>>>>>> main
     length(dims) == 0 && return nothing
     return AMDGPU.rocFFT.plan_fft!(A, dims)
 end
 
-<<<<<<< HEAD
-function plan_backward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, planner_flag)
-    length(dims) == 0 && return nothing
-    return AMDGPU.rocFFT.plan_bfft!(A, dims)
-end
-
-plan_forward_transform(A::ROCArray, ::Flat, args...) = nothing
-plan_backward_transform(A::ROCArray, ::Flat, args...) = nothing
-
-=======
 FD.set!(v::Field, a::ROCArray) = FD.set_to_array!(v, a)
 DC.set!(v::DC.DistributedField, a::ROCArray) = DC.set_to_array!(v, a)
 
@@ -129,7 +98,6 @@ function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic
     return AMDGPU.rocFFT.plan_ifft!(A, dims)
 end
 
->>>>>>> main
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         I = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
