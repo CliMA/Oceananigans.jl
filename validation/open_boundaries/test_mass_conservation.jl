@@ -1,9 +1,12 @@
 using Oceananigans
+using Oceananigans.Units
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Diagnostics: AdvectiveCFL
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
+
 using Printf
 using Random: seed!
+using Test
 seed!(156)
 
 function create_mass_conservation_simulation(; 
@@ -11,7 +14,8 @@ function create_mass_conservation_simulation(;
     immersed_bottom = nothing,
     arch = CPU(),
     N = 32,
-    L = 1.0,
+    Lx = 1.0,
+    Lz = 1.0,
     U₀ = 1.0,
     stop_time = 1,
     inflow_timescale = 1e-1,
@@ -22,7 +26,7 @@ function create_mass_conservation_simulation(;
     # Create underlying grid
     underlying_grid = RectilinearGrid(arch, topology = (Bounded, Flat, Bounded),
                                       size = (N, N),
-                                      extent = (L, L),
+                                      extent = (Lx, Lz),
                                       halo = (4, 4))
     
     # Choose grid type based on immersed_bottom parameter
@@ -52,27 +56,39 @@ function create_mass_conservation_simulation(;
     set!(model, u=uᵢ)
 
     # Calculate time step
-    Δt = 0.1 * minimum_zspacing(grid) / abs(U₀)
+    Δt = 0.1 * minimum_zspacing(grid) / abs(maximum(model.velocities.u))
     simulation = Simulation(model; Δt, stop_time, verbose=false)
 
     if add_progress_messenger
         # Set up progress monitoring
         u, v, w = model.velocities
-        ∫∇u = Field(Integral(∂x(u) + ∂z(w)))
-        cfl_calculator = AdvectiveCFL(simulation.Δt)
+        ∫∇u = Field(Average(Field(∂x(u) + ∂z(w))))
 
         function progress(sim)
             u, v, w = model.velocities
-            cfl_value = cfl_calculator(model)
             compute!(∫∇u)
-            @info @sprintf("time: %.3f, max|u|: %.3f, CFL: %.2f, Net flux: %.4e",
-                           time(sim), maximum(abs, u), cfl_value, ∫∇u[])
+            @info @sprintf("time: %.3f, max|u|: %.3f, Net flux: %.4e",
+                           time(sim), maximum(abs, u), maximum(∫∇u))
         end
-        add_callback!(simulation, progress, IterationInterval(50))
+        add_callback!(simulation, progress, IterationInterval(1))
     end
     
     return simulation
 end
 
-simulation = create_mass_conservation_simulation(; immersed_bottom = nothing);
-run!(simulation)
+
+common_kwargs = (; add_progress_messenger = true, Lx = 2700meters, Lz = 600meters, stop_time = 1hour, U₀ = 0)
+
+bottom(x) = -400meters + 100meters * sin(2π * x / 1e3meters)
+simulation = create_mass_conservation_simulation(; immersed_bottom = GridFittedBottom(bottom), common_kwargs...);
+time_step!(simulation)
+u, v, w = simulation.model.velocities
+∇u = Field(∂x(u) + ∂z(w))
+
+using GLMakie
+fig = Figure()  
+ax = Axis(fig[1,1])
+hm = heatmap!(ax, ∇u, colormap=:balance)
+Colorbar(fig[1,2], hm)
+
+@test maximum(Field(Average(∇u))) < 1e-10
