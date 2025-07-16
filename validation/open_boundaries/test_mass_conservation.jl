@@ -5,8 +5,9 @@ using Oceananigans.Diagnostics: AdvectiveCFL
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
 
 using Printf
-using Random: seed!
 using Test
+using BenchmarkTools
+using Random: seed!
 seed!(156)
 
 function create_mass_conservation_simulation(; 
@@ -43,7 +44,7 @@ function create_mass_conservation_simulation(;
     # Set boundary conditions based on boolean flag
     if use_open_boundary_condition
         u_boundary_conditions = FieldBoundaryConditions(
-            west = OpenBoundaryCondition(U₀),
+            west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale=1minute, outflow_timescale=10minutes),
             east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)
         )
         boundary_conditions = (; u = u_boundary_conditions)
@@ -76,18 +77,17 @@ function create_mass_conservation_simulation(;
     return simulation
 end
 
-
-common_kwargs = (; add_progress_messenger = true, Lx = 2700meters, Lz = 600meters, stop_time = 1hour, U₀ = 0.1)
-
 bottom(x) = -400meters + 100meters * sin(2π * x / 1e3meters)
-simulation = create_mass_conservation_simulation(; immersed_bottom = GridFittedBottom(bottom), common_kwargs...);
+common_kwargs = (; arch=GPU(), immersed_bottom = GridFittedBottom(bottom), Lx = 2700meters, Lz = 600meters, stop_time = 1hour, U₀ = 0.1)
+
+simulation = create_mass_conservation_simulation(; use_open_boundary_condition = false, common_kwargs...);
 u, v, w = simulation.model.velocities
 ∇u = Field(∂x(u) + ∂z(w))
-
-using GLMakie
-fig = Figure()  
-ax = Axis(fig[1,1])
-hm = heatmap!(ax, ∇u, colormap=:balance)
-Colorbar(fig[1,2], hm)
-
 @test maximum(abs, Field(Average(∇u))) < 1e-10
+b_without = @benchmark time_step!(simulation)
+
+simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true, common_kwargs...);
+u, v, w = simulation.model.velocities
+∇u = Field(∂x(u) + ∂z(w))
+@test maximum(abs, Field(Average(∇u))) < 1e-10
+b_with = @benchmark time_step!(simulation)

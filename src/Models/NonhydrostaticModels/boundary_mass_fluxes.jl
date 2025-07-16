@@ -23,37 +23,37 @@ const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-ve
 function get_west_area(grid)
     f = XFaceField(grid); set!(f, 1) # Create an XFaceField with all ones
     ∫f = Field(Integral(f, dims=(2, 3))) # Integrate over y and z dimensions
-    return interior(∫f, 1, 1, 1)[]
+    return interior(∫f, 1, 1, 1) |> maximum
 end
 
 function get_east_area(grid)
     f = XFaceField(grid); set!(f, 1) # Create an XFaceField with all ones
     ∫f = Field(Integral(f, dims=(2, 3))) # Integrate over y and z dimensions
-    return interior(∫f, grid.Nx+1, 1, 1)[]
+    return interior(∫f, grid.Nx+1, 1, 1) |> maximum
 end
 
 function get_south_area(grid)
     f = YFaceField(grid); set!(f, 1) # Create a YFaceField with all ones
     ∫f = Field(Integral(f, dims=(1, 3))) # Integrate over x and z dimensions
-    return interior(∫f, 1, 1, 1)[]
+    return interior(∫f, 1, 1, 1) |> maximum # Pluck out a scalar value without @allowscalar
 end
 
 function get_north_area(grid)
     f = YFaceField(grid); set!(f, 1) # Create a YFaceField with all ones
     ∫f = Field(Integral(f, dims=(1, 3))) # Integrate over x and z dimensions
-    return interior(∫f, 1, grid.Ny+1, 1)[]
+    return interior(∫f, 1, grid.Ny+1, 1) |> maximum
 end
 
 function get_bottom_area(grid)
     f = ZFaceField(grid); set!(f, 1) # Create a ZFaceField with all ones
     ∫f = Field(Integral(f, dims=(1, 2))) # Integrate over x and y dimensions
-    return interior(∫f, 1, 1, 1)[]
+    return interior(∫f, 1, 1, 1) |> maximum
 end
 
 function get_top_area(grid)
     f = ZFaceField(grid); set!(f, 1) # Create a ZFaceField with all ones
     ∫f = Field(Integral(f, dims=(1, 2))) # Integrate over x and y dimensions
-    return interior(∫f, 1, 1, grid.Nz+1)[]
+    return interior(∫f, 1, 1, grid.Nz+1) |> maximum
 end
 
 
@@ -155,12 +155,12 @@ end
 
 update_open_boundary_mass_fluxes!(model) = map(compute!, model.boundary_mass_fluxes)
 
-open_boundary_mass_flux(model, bc::OBC, ::Val{:west}, u) = model.boundary_mass_fluxes.west_mass_flux[] |> maximum
-open_boundary_mass_flux(model, bc::OBC, ::Val{:east}, u) = model.boundary_mass_fluxes.east_mass_flux[] |> maximum
-open_boundary_mass_flux(model, bc::OBC, ::Val{:south}, v) = model.boundary_mass_fluxes.south_mass_flux[] |> maximum
-open_boundary_mass_flux(model, bc::OBC, ::Val{:north}, v) = model.boundary_mass_fluxes.north_mass_flux[] |> maximum
-open_boundary_mass_flux(model, bc::OBC, ::Val{:bottom}, w) = model.boundary_mass_fluxes.bottom_mass_flux[] |> maximum
-open_boundary_mass_flux(model, bc::OBC, ::Val{:top}, w) = model.boundary_mass_fluxes.top_mass_flux[] |> maximum
+open_boundary_mass_flux(model, bc::OBC, ::Val{:west}, u) = model.boundary_mass_fluxes.west_mass_flux |> maximum
+open_boundary_mass_flux(model, bc::OBC, ::Val{:east}, u) = model.boundary_mass_fluxes.east_mass_flux |> maximum
+open_boundary_mass_flux(model, bc::OBC, ::Val{:south}, v) = model.boundary_mass_fluxes.south_mass_flux |> maximum
+open_boundary_mass_flux(model, bc::OBC, ::Val{:north}, v) = model.boundary_mass_fluxes.north_mass_flux |> maximum
+open_boundary_mass_flux(model, bc::OBC, ::Val{:bottom}, w) = model.boundary_mass_fluxes.bottom_mass_flux |> maximum
+open_boundary_mass_flux(model, bc::OBC, ::Val{:top}, w) = model.boundary_mass_fluxes.top_mass_flux |> maximum
 
 open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:west}, u) = zero(model.grid)
 open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:east}, u) = zero(model.grid)
