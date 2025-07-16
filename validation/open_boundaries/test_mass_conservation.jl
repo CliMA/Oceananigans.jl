@@ -77,11 +77,10 @@ function create_mass_conservation_simulation(;
 end
 
 
-common_kwargs = (; add_progress_messenger = true, Lx = 2700meters, Lz = 600meters, stop_time = 1hour, U₀ = 0)
+common_kwargs = (; add_progress_messenger = true, Lx = 2700meters, Lz = 600meters, stop_time = 1hour, U₀ = 0.1)
 
 bottom(x) = -400meters + 100meters * sin(2π * x / 1e3meters)
 simulation = create_mass_conservation_simulation(; immersed_bottom = GridFittedBottom(bottom), common_kwargs...);
-time_step!(simulation)
 u, v, w = simulation.model.velocities
 ∇u = Field(∂x(u) + ∂z(w))
 
@@ -91,4 +90,4 @@ ax = Axis(fig[1,1])
 hm = heatmap!(ax, ∇u, colormap=:balance)
 Colorbar(fig[1,2], hm)
 
-@test maximum(Field(Average(∇u))) < 1e-10
+@test maximum(abs, Field(Average(∇u))) < 1e-10
