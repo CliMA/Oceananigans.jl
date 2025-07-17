@@ -114,7 +114,6 @@ const F = Face
 end
 
 @testset "ZStar diffusion test" begin
-    @info "testing the ZStar diffusion in a HydrostaticFreeSurfaceModel"
     Random.seed!(1234)
 
     # Build a stretched vertical coordinate
@@ -124,36 +123,46 @@ end
     z_moving = MutableVerticalDiscretization(z_static ./ 1.5)
     
     for arch in archs
+        c₀ = rand(15)
+
+        grid_static = RectilinearGrid(arch; size=15, z=z_static, topology=(Flat, Flat, Bounded))
+        grid_moving = RectilinearGrid(arch; size=15, z=z_moving, topology=(Flat, Flat, Bounded))
+
+        fill!(grid_moving.z.ηⁿ,   5)
+        fill!(grid_moving.z.σᶜᶜ⁻, 1.5)
+        fill!(grid_moving.z.σᶜᶜⁿ, 1.5)
+        fill!(grid_moving.z.σᶜᶠⁿ, 1.5)
+        fill!(grid_moving.z.σᶠᶠⁿ, 1.5)
+        fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
+        
         for TD in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
-            c₀ = rand(15)
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)                
+                for c_bcs in (FluxBoundaryCondition(), FluxBoundaryCondition(0.01), ValueBoundaryCondition(0.01))
+                    @info "testing ZStar diffusion with $arch, $TD, $timestepper, and $c_bcs at the top"
 
-            grid_static = RectilinearGrid(arch; size=15, z=z_static, topology=(Flat, Flat, Bounded))
-            grid_moving = RectilinearGrid(arch; size=15, z=z_moving, topology=(Flat, Flat, Bounded))
-
-            fill!(grid_moving.z.ηⁿ,   5)
-            fill!(grid_moving.z.σᶜᶜ⁻, 1.5)
-            fill!(grid_moving.z.σᶜᶜⁿ, 1.5)
-            fill!(grid_moving.z.σᶜᶠⁿ, 1.5)
-            fill!(grid_moving.z.σᶠᶠⁿ, 1.5)
-            fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
-            
-            model_static = HydrostaticFreeSurfaceModel(; grid = grid_static, 
-                                                        tracers = :c,
-                                                        closure = VerticalScalarDiffusivity(TD(), κ=0.1))
+                    model_static = HydrostaticFreeSurfaceModel(; grid = grid_static, 
+                                                                tracers = :c,
+                                                                timestepper, 
+                                                                boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs)),
+                                                                closure = VerticalScalarDiffusivity(TD(), κ=0.1))
+                                                                    
+                    model_moving = HydrostaticFreeSurfaceModel(; grid = grid_moving, 
+                                                                tracers = :c,
+                                                                timestepper, 
+                                                                boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs))
+                                                                closure = VerticalScalarDiffusivity(TD(), κ=0.1))
                                                             
-            model_moving = HydrostaticFreeSurfaceModel(; grid = grid_moving, 
-                                                        tracers = :c,
-                                                        closure = VerticalScalarDiffusivity(TD(), κ=0.1))
-                                                    
-            set!(model_static, c = c₀)
-            set!(model_moving, c = c₀)
+                    set!(model_static, c = c₀)
+                    set!(model_moving, c = c₀)
 
-            for _ in 1:1000
-                time_step!(model_static, 1.0)
-                time_step!(model_moving, 1.0)
+                    for _ in 1:1000
+                        time_step!(model_static, 1.0)
+                        time_step!(model_moving, 1.0)
+                    end
+
+                    @test all(Array(interior(model_static.tracers.c)) .≈ Array(interior(model_moving.tracers.c)))
+                end
             end
-
-            @test all(Array(interior(model_static.tracers.c)) .≈ Array(interior(model_moving.tracers.c)))
         end
     end
 end

@@ -1,4 +1,5 @@
 using Oceananigans: fields
+using Oceananigans.Operators: σᶜᶜⁿ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
@@ -178,7 +179,7 @@ end
     β = convert(FT, 0.5) + χ
 
     @inbounds begin
-        total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
+        total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ(i, j, k, grid, Center(), Center(), Center())
         e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active
         G⁻e[i, j, k] = total_Gⁿe * active
     end

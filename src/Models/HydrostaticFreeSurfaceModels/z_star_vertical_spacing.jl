@@ -199,6 +199,28 @@ end
 end
 
 #####
+##### Multiply by grid scaling
+#####
+
+multiply_by_grid_scaling!(Gⁿ, tracers, grid) = nothing
+
+function multiply_by_grid_scaling!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+
+    # Multiply the Gⁿ tendencies by the grid scaling
+    for i in propertynames(tracers)
+        @inbounds G = Gⁿ[i]
+        launch!(architecture(grid), grid, :xyz, _multiply_by_grid_scaling!, G, grid)
+    end
+
+    return nothing
+end
+
+@kernel function _multiply_by_grid_scaling!(G, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds G[i, j, k] *= σᶜᶜⁿ(i, j, k, grid, Center(), Center(), Center())
+end
+
+#####
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
