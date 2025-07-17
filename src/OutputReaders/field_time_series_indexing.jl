@@ -131,10 +131,12 @@ function getindex(fts::OnDiskFTS, n::Int)
     loc = location(fts)
     @apply_regionally field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
+    status = @allowscalar FixedTime(fts.times[n])
+
     return Field(loc, fts.grid;
                  indices = fts.indices,
                  boundary_conditions = fts.boundary_conditions,
-                 status = @allowscalar FixedTime(fts.times[n]),
+                 status,
                  data = field_data)
 end
 
