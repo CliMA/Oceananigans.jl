@@ -209,8 +209,7 @@ Oceananigans.jl enables GPU functionality when loaded with packages like
 [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) (most tested and supported),
 [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl), or [Metal.jl](https://github.com/JuliaGPU/Metal.jl)
 
-We focus here on CUDA-enabled GPUs; but the discussion applies general to any
-architectures.
+We focus here on CUDA-enabled GPUs; but the discussion applies to any GPU architecture.
 
 The data for GPU computations are stored in `GPUArrays`, which for CUDA-enabled devices
 are called [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/).
