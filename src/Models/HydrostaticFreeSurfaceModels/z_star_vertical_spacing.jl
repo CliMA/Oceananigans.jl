@@ -217,7 +217,7 @@ end
 
 @kernel function _multiply_by_grid_scaling!(G, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds G[i, j, k] *= σᶜᶜⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds G[i, j, k] *= σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
 
 #####
