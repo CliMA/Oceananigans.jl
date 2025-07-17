@@ -1,12 +1,12 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition, OpenBoundaryCondition
 using Oceananigans.Diagnostics: AdvectiveCFL
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, DiagonallyDominantPreconditioner, fft_poisson_solver
 using Oceananigans.AbstractOperations: ∂x, ∂z, Average
 
 # using GLMakie
-using GLMakie: Observable, save, recordframe!, VideoStream
+using GLMakie: Figure, heatmap!, Colorbar, Axis, recordframe!, VideoStream
 using Printf
 using Test
 using BenchmarkTools
@@ -22,7 +22,7 @@ function create_mass_conservation_simulation(;
     Lz = 1.0,
     U₀ = 1.0,
     stop_time = 1,
-    inflow_timescale = 1e-1,
+    inflow_timescale = 0,
     outflow_timescale = Inf,
     add_progress_messenger = false,
     poisson_solver = nothing,
@@ -40,16 +40,24 @@ function create_mass_conservation_simulation(;
 
     if poisson_solver isa Nothing
         pressure_solver = grid isa ImmersedBoundaryGrid ? ConjugateGradientPoissonSolver(grid) : nothing
-    elseif (poisson_solver == FFTBasedPoissonSolver) && (grid isa ImmersedBoundaryGrid)
-        pressure_solver = poisson_solver(grid.underlying_grid)
+    elseif poisson_solver == :fft
+        if grid isa ImmersedBoundaryGrid
+            pressure_solver = FFTBasedPoissonSolver(grid.underlying_grid)
+        else
+            pressure_solver = FFTBasedPoissonSolver(grid)
+        end
+    elseif poisson_solver == :conjugate_gradient_with_diagonally_dominant_preconditioner
+        pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=DiagonallyDominantPreconditioner())
+    elseif poisson_solver == :conjugate_gradient_with_fft_preconditioner
+        pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=fft_poisson_solver(grid.underlying_grid))
     else
-        pressure_solver = poisson_solver(grid)
+        error("Unknown poisson_solver option: $poisson_solver")
     end
 
     # Set boundary conditions based on boolean flag
     if use_open_boundary_condition
         u_boundary_conditions = FieldBoundaryConditions(
-            west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
+            west = OpenBoundaryCondition(U₀),
             east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)
         )
         boundary_conditions = (; u = u_boundary_conditions)
@@ -58,7 +66,7 @@ function create_mass_conservation_simulation(;
     end
 
     model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper)
-    uᵢ(x, z) = U₀ + 1e-2 * rand()
+    uᵢ(x, z) = U₀ + U₀ * 1e-2 * rand()
     set!(model, u=uᵢ)
 
     # Calculate time step
@@ -112,13 +120,13 @@ function create_mass_conservation_simulation(;
             compute!(ωy)
 
             hm1 = heatmap!(ax1, u, colormap = :balance, colorrange = (-5U₀, 5U₀))
-            Colorbar(fig[2, 1], hm1, vertical=false)
-
             hm2 = heatmap!(ax2, ∇u, colormap = :balance, colorrange = (-1e-10, 1e-10))
-            Colorbar(fig[2, 2], hm2, vertical=false)
-
             hm3 = heatmap!(ax3, ωy, colormap = :balance, colorrange = (-U₀, U₀))
-            Colorbar(fig[2, 3], hm3, vertical=false)
+            if time(sim) == 0
+                Colorbar(fig[2, 1], hm1, vertical=false)
+                Colorbar(fig[2, 2], hm2, vertical=false)
+                Colorbar(fig[2, 3], hm3, vertical=false)
+            end
             recordframe!(io)
         end
         update_plot(simulation)
@@ -130,14 +138,15 @@ function create_mass_conservation_simulation(;
 end
 
 Lx = 700meters
-Lz = 600meters
-bottom(x) = -500meters + (Lz/4) * exp(-(x-Lx/2)^2 / (2 * (Lx/10))^2)
+Lz = 500meters
+bottom(x) = -500meters + (Lz/4) * exp(-(x-Lx/2)^2 / (2 * (Lx/20))^2)
 common_kwargs = (; arch = CPU(),
                    immersed_bottom = GridFittedBottom(bottom),
                    Lx,
                    Lz,
                    stop_time = 1day,
                    U₀ = 0.1,
+                   poisson_solver = :fft,
                    add_progress_messenger = true,
                    timestepper = :RungeKutta3)
 

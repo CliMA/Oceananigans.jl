@@ -1,8 +1,8 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition, OpenBoundaryCondition
 using Oceananigans.Diagnostics: AdvectiveCFL
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, DiagonallyDominantPreconditioner, fft_poisson_solver
 
 using Printf
 using Test
@@ -35,16 +35,24 @@ function create_mass_conservation_simulation(;
 
     if poisson_solver isa Nothing
         pressure_solver = grid isa ImmersedBoundaryGrid ? ConjugateGradientPoissonSolver(grid) : nothing
-    elseif (poisson_solver == FFTBasedPoissonSolver) && (grid isa ImmersedBoundaryGrid)
-        pressure_solver = poisson_solver(grid.underlying_grid)
+    elseif poisson_solver == :fft
+        if grid isa ImmersedBoundaryGrid
+            pressure_solver = FFTBasedPoissonSolver(grid.underlying_grid)
+        else
+            pressure_solver = FFTBasedPoissonSolver(grid)
+        end
+    elseif poisson_solver == :conjugate_gradient_with_diagonally_dominant_preconditioner
+        pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=DiagonallyDominantPreconditioner())
+    elseif poisson_solver == :conjugate_gradient_with_fft_preconditioner
+        pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=fft_poisson_solver(grid.underlying_grid))
     else
-        pressure_solver = poisson_solver(grid)
+        error("Unknown poisson_solver option: $poisson_solver. Valid options are: nothing, :fft, :conjugate_gradient_with_diagonally_dominant_preconditioner, :conjugate_gradient_with_fft_preconditioner")
     end
 
     # Set boundary conditions based on boolean flag
     if use_open_boundary_condition
         u_boundary_conditions = FieldBoundaryConditions(
-            west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
+            west = OpenBoundaryCondition(U₀),
             east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)
         )
         boundary_conditions = (; u = u_boundary_conditions)
