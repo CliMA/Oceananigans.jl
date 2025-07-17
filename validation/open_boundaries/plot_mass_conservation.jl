@@ -3,7 +3,10 @@ using Oceananigans.Units
 using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Diagnostics: AdvectiveCFL
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
+using Oceananigans.AbstractOperations: ∂x, ∂z, Average
 
+# using GLMakie
+using GLMakie: Observable, save, recordframe!, VideoStream
 using Printf
 using Test
 using BenchmarkTools
@@ -23,13 +26,15 @@ function create_mass_conservation_simulation(;
     outflow_timescale = Inf,
     add_progress_messenger = false,
     poisson_solver = nothing,
-    timestepper = :QuasiAdamsBashforth2,)
+    timestepper = :QuasiAdamsBashforth2,
+    animation = false,
+    animation_framerate = 12)
     # Create underlying grid
     underlying_grid = RectilinearGrid(arch, topology = (Bounded, Flat, Bounded),
                                       size = (N, N),
                                       extent = (Lx, Lz),
                                       halo = (4, 4))
-    
+
     # Choose grid type based on immersed_bottom parameter
     grid = immersed_bottom isa Nothing ? underlying_grid : ImmersedBoundaryGrid(underlying_grid, immersed_bottom)
 
@@ -73,7 +78,7 @@ function create_mass_conservation_simulation(;
             max_u = maximum(abs, u)
             @info @sprintf("time: %s, max|u|: %.3f, Net flux: %.4e",
                            prettytime(time(sim)), max_u, maximum(∫∇u))
-            u_critical = 1e2
+            u_critical = 2
             if max_u > u_critical
                 @warn "max|u| > $u_critical, stopping simulation"
                 stop_time(sim) = time(sim)
@@ -83,32 +88,59 @@ function create_mass_conservation_simulation(;
         add_callback!(simulation, progress, IterationInterval(5))
     end
     #---
-    
+
+    #+++ Animation
+    if animation
+        # Create figure and axes
+        global fig = Figure(size = (1500, 400))
+        global io = VideoStream(fig; framerate = animation_framerate)
+        time_str = @sprintf("t = %s", prettytime(time(simulation)))
+        #fig[0, 1:3] = Label(fig, time_str, fontsize=18, tellwidth=false)
+        ax1 = Axis(fig[1, 1], title = "u-velocity", xlabel = "x", ylabel = "z")
+        ax2 = Axis(fig[1, 2], title = "Divergence", xlabel = "x", ylabel = "z")
+        ax3 = Axis(fig[1, 3], title = "y-Vorticity", xlabel = "x", ylabel = "z")
+
+        # Get fields for visualization
+        u, v, w = model.velocities
+        ∇u = Field(∂x(u) + ∂z(w))
+        ωy = Field(∂z(u) - ∂x(w))  # y-direction vorticity
+
+        # Define update function for animation
+        function update_plot(sim)
+            # Compute divergence and vorticity
+            compute!(∇u)
+            compute!(ωy)
+
+            hm1 = heatmap!(ax1, u, colormap = :balance, colorrange = (-5U₀, 5U₀))
+            Colorbar(fig[2, 1], hm1, vertical=false)
+
+            hm2 = heatmap!(ax2, ∇u, colormap = :balance, colorrange = (-1e-10, 1e-10))
+            Colorbar(fig[2, 2], hm2, vertical=false)
+
+            hm3 = heatmap!(ax3, ωy, colormap = :balance, colorrange = (-U₀, U₀))
+            Colorbar(fig[2, 3], hm3, vertical=false)
+            recordframe!(io)
+        end
+        update_plot(simulation)
+        add_callback!(simulation, update_plot, TimeInterval(5minutes))
+    end
+    #---
+
     return simulation
 end
 
-bottom(x) = -400meters + 100meters * sin(2π * x / 1e3meters)
-common_kwargs = (; arch=GPU(),
+Lx = 700meters
+Lz = 600meters
+bottom(x) = -500meters + (Lz/4) * exp(-(x-Lx/2)^2 / (2 * (Lx/10))^2)
+common_kwargs = (; arch = CPU(),
                    immersed_bottom = GridFittedBottom(bottom),
-                   Lx = 2700meters,
-                   Lz = 600meters,
+                   Lx,
+                   Lz,
                    stop_time = 1day,
                    U₀ = 0.1,
                    add_progress_messenger = true,
                    timestepper = :RungeKutta3)
 
-simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true, common_kwargs...);
-u, v, w = simulation.model.velocities
-∇u = Field(∂x(u) + ∂z(w))
-@test maximum(abs, Field(Average(∇u))) < 1e-10
-# fig = Figure()
-# ax = Axis(fig[1, 1])
-# heatmap!(ax, u, colorrange=(-1, 1), colormap=:balance)
-# fig
-b1 = @benchmark time_step!(simulation)
-
-simulation = create_mass_conservation_simulation(; use_open_boundary_condition = false, common_kwargs...);
-u, v, w = simulation.model.velocities
-∇u = Field(∂x(u) + ∂z(w))
-@test maximum(abs, Field(Average(∇u))) < 1e-10
-b2 = @benchmark time_step!(simulation)
+simulation = create_mass_conservation_simulation(; use_open_boundary_condition = true, animation = true, common_kwargs...);
+run!(simulation)
+save("mass_conservation.mp4", io)
