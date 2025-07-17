@@ -57,7 +57,7 @@ function test_zstar_coordinate(model, Ni, Δt)
 end
 
 function info_message(grid, free_surface)
-    msg1 = "$(architecture(grid)) "
+    msg1 = "$(typeof(architecture(grid))) "
     msg2 = string(getnamewrapper(grid))
     msg3 = grid isa ImmersedBoundaryGrid ? " on a " * string(getnamewrapper(grid.underlying_grid)) : ""
     msg4 = grid.z.Δᵃᵃᶠ isa Number ? " with uniform spacing" : " with stretched spacing"
