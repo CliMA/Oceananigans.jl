@@ -266,7 +266,7 @@ function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, add
     return nothing
 end
 
-# For self-starting timesteppers like RK3 we do nothing 
+# For self-starting timesteppers like RK3 we do nothing
 set_time_stepper!(timestepper, args...) = nothing
 
 set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
