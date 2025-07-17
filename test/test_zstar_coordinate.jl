@@ -149,7 +149,7 @@ end
                     model_moving = HydrostaticFreeSurfaceModel(; grid = grid_moving, 
                                                                 tracers = :c,
                                                                 timestepper, 
-                                                                boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs))
+                                                                boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs)),
                                                                 closure = VerticalScalarDiffusivity(TD(), κ=0.1))
                                                             
                     set!(model_static, c = c₀)
