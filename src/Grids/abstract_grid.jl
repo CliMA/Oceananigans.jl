@@ -1,3 +1,5 @@
+import Oceananigans.Utils: get_active_cells_map
+
 """
     AbstractGrid{FT, TX, TY, TZ}
 
