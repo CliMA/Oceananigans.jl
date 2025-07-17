@@ -228,27 +228,31 @@ For example, if can be difficult to just view a `CuArray` since Julia needs to a
 its elements to do that. Consider the example below:
 
 ```@repl GPU-scalar-indexing
-using Oceananigans, CUDA, Adapt
+using Oceananigans, CUDA
 
 grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
 
 model = NonhydrostaticModel(; grid)
 
 typeof(model.velocities.u.data)
+```
+
+If we try to view the `CuArray` that stores values for `u` we hit a wall:
+
+```@repl GPU-scalar-indexing
+model.velocities.u.data`
+```
+
+To view the `CuArray` we first need to transform it into a regular `Array` using `Adapt.adapt`.
+
+```@repl GPU-scalar-indexing
+using Adapt
 
 adapt(Array, model.velocities.u.data)
 ```
 
-Notice that to view the `CuArray` that stores values for `u` we first need to transform
-it into a regular `Array` using `Adapt.adapt`. If we naively try to view the `CuArray`
-without that step we get an error:
-
-```@repl GPU-scalar-indexing
-model.velocities.u.data
-```
-
-Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There are ways to
-overcome this limitation and allow scalar indexing (more about that
+Above, when we tried naïvely to view the `CuArray`, `CUDA.jl` threw an error because scalar `getindex`
+is not `allowed`. There are ways to overcome this limitation and allow scalar indexing (more about that
 in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
 can be very slow on GPUs, so it is advised to only use this last method when using the REPL or
 prototyping -- never in production-ready scripts.
