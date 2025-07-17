@@ -241,7 +241,7 @@ function compute_closure_specific_diffusive_cfl(arch, closure)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test diffusive_flux_x(1, 1, 1, grid, args...) == 0
         @test diffusive_flux_y(1, 1, 1, grid, args...) == 0
         @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
@@ -251,7 +251,7 @@ function compute_closure_specific_diffusive_cfl(arch, closure)
     args = (model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
         @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
         @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
