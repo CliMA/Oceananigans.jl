@@ -60,7 +60,7 @@ function create_mass_conservation_simulation(;
         boundary_conditions = NamedTuple()
     end
 
-    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper)
+    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper, advection = WENO(order=5))
     uᵢ(x, z) = U₀ + 1e-2 * rand()
     set!(model, u=uᵢ)
 

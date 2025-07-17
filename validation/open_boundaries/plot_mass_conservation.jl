@@ -65,7 +65,7 @@ function create_mass_conservation_simulation(;
         boundary_conditions = NamedTuple()
     end
 
-    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper)
+    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper, advection = WENO(order=5))
     uᵢ(x, z) = U₀ + U₀ * 1e-2 * rand()
     set!(model, u=uᵢ)
 
@@ -138,15 +138,15 @@ function create_mass_conservation_simulation(;
 end
 
 Lx = 700meters
-Lz = 500meters
+Lz = 600meters
 bottom(x) = -500meters + (Lz/4) * exp(-(x-Lx/2)^2 / (2 * (Lx/20))^2)
 common_kwargs = (; arch = CPU(),
                    immersed_bottom = GridFittedBottom(bottom),
                    Lx,
                    Lz,
-                   stop_time = 1day,
+                   stop_time = 0.5day,
                    U₀ = 0.1,
-                   poisson_solver = :fft,
+                   poisson_solver = :conjugate_gradient_with_fft_preconditioner ,
                    add_progress_messenger = true,
                    timestepper = :RungeKutta3)
 
