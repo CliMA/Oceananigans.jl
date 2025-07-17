@@ -232,10 +232,6 @@ its elements to do that. Consider the example below:
 julia> using Oceananigans, CUDA, Adapt
 
 julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
-1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
-├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
-├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
-└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=1.0
 
 julia> model = NonhydrostaticModel(; grid)
 
