@@ -227,24 +227,24 @@ section of the CUDA.jl documentation for more information on scalar indexing.
 For example, if can be difficult to just view a `CuArray` since Julia needs to access
 its elements to do that. Consider the example below:
 
-```@example GPU-scalar-indexing
-julia> using Oceananigans, CUDA, Adapt
+```@repl GPU-scalar-indexing
+using Oceananigans, CUDA, Adapt
 
-julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
+grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
 
-julia> model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(; grid)
 
-julia> typeof(model.velocities.u.data)
+typeof(model.velocities.u.data)
 
-julia> adapt(Array, model.velocities.u.data)
+adapt(Array, model.velocities.u.data)
 ```
 
 Notice that to view the `CuArray` that stores values for `u` we first need to transform
 it into a regular `Array` using `Adapt.adapt`. If we naively try to view the `CuArray`
 without that step we get an error:
 
-```@example GPU-scalar-indexing
-julia> model.velocities.u.data
+```@repl GPU-scalar-indexing
+model.velocities.u.data
 ```
 
 Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There are ways to
