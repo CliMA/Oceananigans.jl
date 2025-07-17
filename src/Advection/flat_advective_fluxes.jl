@@ -34,19 +34,15 @@ FlatGrids = [:XFG, :YFG, :ZFG, :XFG, :YFG, :ZFG]
 for (dir, GridType) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ), FlatGrids)
     alt_symm_interp   = Symbol(:_symmetric_interpolate_, dir)
     alt_biased_interp = Symbol(:_biased_interpolate_, dir)
-    @eval begin
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::HOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::LOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::HOADV, ψ::Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::LOADV, ψ::Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::HOADV, ψ::Callable, ::AS, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::LOADV, ψ::Callable, ::AS, args...) = @inbounds ψ(i, j, k, grid, args...)
+    for Scheme in [:Centered, :UpwindBiased, :WENO]
+        @eval begin
+            @inline $alt_symm_interp(i, j, k, grid::$GridType, ::$Scheme, ψ, args...) = @inbounds ψ[i, j, k]
+            @inline $alt_symm_interp(i, j, k, grid::$GridType, ::$Scheme, ψ::Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
+            @inline $alt_symm_interp(i, j, k, grid::$GridType, ::$Scheme, ψ::Callable, ::AS, args...) = @inbounds ψ(i, j, k, grid, args...)
 
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::HOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::HOADV, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::HOADV, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+            @inline $alt_biased_interp(i, j, k, grid::$GridType, ::$Scheme, ψ, args...) = @inbounds ψ[i, j, k]
+            @inline $alt_biased_interp(i, j, k, grid::$GridType, ::$Scheme, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+            @inline $alt_biased_interp(i, j, k, grid::$GridType, ::$Scheme, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+        end
     end
 end
