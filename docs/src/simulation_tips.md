@@ -205,10 +205,18 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store
-data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for
-CPU computations is that `CuArray` elements in general cannot be accessed outside kernels
-launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
+Oceananigans.jl enables GPU functionality when loaded with packages like
+[CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) (most tested and supported),
+[AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl), or [Metal.jl](https://github.com/JuliaGPU/Metal.jl)
+
+We focus here on CUDA-enabled GPUs; but the discussion applies general to any
+architectures.
+
+The data for GPU computations are stored in `GPUArrays`, which for CUDA-enabled devices
+are called [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/).
+One limitation of `GPUArray`s compared to the `Array`s used for
+CPU computations is that `GPUArray` elements in general cannot be accessed outside kernels
+launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
 [here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
 [here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
@@ -220,8 +228,8 @@ section of the CUDA.jl documentation for more information on scalar indexing.
 For example, if can be difficult to just view a `CuArray` since Julia needs to access
 its elements to do that. Consider the example below:
 
-```julia
-julia> using Oceananigans, Adapt
+```@example GPU-scalar-indexing
+julia> using Oceananigans, CUDA, Adapt
 
 julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
@@ -230,45 +238,18 @@ julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 
 └── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=1.0
 
 julia> model = NonhydrostaticModel(; grid)
-NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
-├── timestepper: RungeKutta3TimeStepper
-├── tracers: ()
-├── closure: Nothing
-├── buoyancy: Nothing
-└── coriolis: Nothing
 
 julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}
 
 julia> adapt(Array, model.velocities.u.data)
-3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
-[:, :, 0] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-
-[:, :, 1] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-
-[:, :, 2] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
 ```
 
 Notice that to view the `CuArray` that stores values for `u` we first need to transform
 it into a regular `Array` using `Adapt.adapt`. If we naively try to view the `CuArray`
 without that step we get an error:
 
-```julia
+```@example GPU-scalar-indexing
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
-[:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}:
-ERROR: Scalar indexing is disallowed.
 ```
 
 Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There are ways to
