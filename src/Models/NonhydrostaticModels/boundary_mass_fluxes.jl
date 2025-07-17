@@ -1,24 +1,11 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection, FlatExtrapolation
 using Oceananigans.AbstractOperations: Integral
 using Oceananigans.Fields: Field, interior, XFaceField, YFaceField, ZFaceField
-using Statistics: mean, filter
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
-const MatchingScheme = Union{FlatExtrapolation, PerturbationAdvection}
-const ROBC = BoundaryCondition{<:Open{<:MatchingScheme}} # Radiation OpenBoundaryCondition
 const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no matching scheme)
 const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
 const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
-
-# Left boundary integrals for normal velocity components
-@inline west_integral(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
-@inline south_integral(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
-@inline bottom_integral(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
-
-# Right boundary integrals for normal velocity components
-@inline east_integral(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
-@inline north_integral(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
-@inline top_integral(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
 
 function get_west_area(grid)
     f = XFaceField(grid); set!(f, 1) # Create an XFaceField with all ones
@@ -56,13 +43,22 @@ function get_top_area(grid)
     return interior(∫f, 1, 1, grid.Nz+1) |> maximum
 end
 
+# Left boundary integrals for normal velocity components
+@inline u_west_integral(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+@inline v_south_integral(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
+@inline w_bottom_integral(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
 
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:west})   = (; west_mass_flux = west_integral(u), west_area = get_west_area(u.grid))
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:east})   = (; east_mass_flux = east_integral(u), east_area = get_east_area(u.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:south})  = (; south_mass_flux = south_integral(v), south_area = get_south_area(v.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:north})  = (; north_mass_flux = north_integral(v), north_area = get_north_area(v.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:bottom}) = (; bottom_mass_flux = bottom_integral(w), bottom_area = get_bottom_area(w.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:top})    = (; top_mass_flux = top_integral(w), top_area = get_top_area(w.grid))
+# Right boundary integrals for normal velocity components
+@inline u_east_integral(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+@inline v_north_integral(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
+@inline w_top_integral(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
+
+initialize_boundary_mass_flux(u, bc::OBC, ::Val{:west})   = (; west_mass_flux = u_west_integral(u), west_area = get_west_area(u.grid))
+initialize_boundary_mass_flux(u, bc::OBC, ::Val{:east})   = (; east_mass_flux = u_east_integral(u), east_area = get_east_area(u.grid))
+initialize_boundary_mass_flux(v, bc::OBC, ::Val{:south})  = (; south_mass_flux = v_south_integral(v), south_area = get_south_area(v.grid))
+initialize_boundary_mass_flux(v, bc::OBC, ::Val{:north})  = (; north_mass_flux = v_north_integral(v), north_area = get_north_area(v.grid))
+initialize_boundary_mass_flux(w, bc::OBC, ::Val{:bottom}) = (; bottom_mass_flux = w_bottom_integral(w), bottom_area = get_bottom_area(w.grid))
+initialize_boundary_mass_flux(w, bc::OBC, ::Val{:top})    = (; top_mass_flux = w_top_integral(w), top_area = get_top_area(w.grid))
 
 initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:west})   = NamedTuple()
 initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:east})   = NamedTuple()
@@ -80,6 +76,11 @@ initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:top})    = (; top_mass_flux =
 
 initialize_boundary_mass_flux(velocity, ::Nothing, side) = NamedTuple()
 initialize_boundary_mass_flux(velocity, bc, side) = NamedTuple()
+
+needs_mass_flux_correction(::IOBC) = false
+needs_mass_flux_correction(bc::OBC) = bc.classification.matching_scheme !== nothing ? true : false
+needs_mass_flux_correction(::Nothing) = false
+needs_mass_flux_correction(bc) = false
 
 """
     initialize_boundary_mass_fluxes(velocities::NamedTuple)
@@ -102,7 +103,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check west boundary (u velocity)
     west_flux_and_area = initialize_boundary_mass_flux(u, u_bcs.west, Val(:west))
     boundary_fluxes = merge(boundary_fluxes, west_flux_and_area)
-    if u_bcs.west isa ROBC
+    if needs_mass_flux_correction(u_bcs.west)
         push!(left_matching_scheme_boundaries, :west)
         total_area_matching_scheme_boundaries += boundary_fluxes.west_area
     end
@@ -110,7 +111,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check east boundary (u velocity)
     east_flux_and_area = initialize_boundary_mass_flux(u, u_bcs.east, Val(:east))
     boundary_fluxes = merge(boundary_fluxes, east_flux_and_area)
-    if u_bcs.east isa ROBC
+    if needs_mass_flux_correction(u_bcs.east)
         push!(right_matching_scheme_boundaries, :east)
         total_area_matching_scheme_boundaries += boundary_fluxes.east_area
     end
@@ -118,7 +119,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check south boundary (v velocity)
     south_flux_and_area = initialize_boundary_mass_flux(v, v_bcs.south, Val(:south))
     boundary_fluxes = merge(boundary_fluxes, south_flux_and_area)
-    if v_bcs.south isa ROBC
+    if needs_mass_flux_correction(v_bcs.south)
         push!(left_matching_scheme_boundaries, :south)
         total_area_matching_scheme_boundaries += boundary_fluxes.south_area
     end
@@ -126,7 +127,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check north boundary (v velocity)
     north_flux_and_area = initialize_boundary_mass_flux(v, v_bcs.north, Val(:north))
     boundary_fluxes = merge(boundary_fluxes, north_flux_and_area)
-    if v_bcs.north isa ROBC
+    if needs_mass_flux_correction(v_bcs.north)
         push!(right_matching_scheme_boundaries, :north)
         total_area_matching_scheme_boundaries += boundary_fluxes.north_area
     end
@@ -134,7 +135,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check bottom boundary (w velocity)
     bottom_flux_and_area = initialize_boundary_mass_flux(w, w_bcs.bottom, Val(:bottom))
     boundary_fluxes = merge(boundary_fluxes, bottom_flux_and_area)
-    if w_bcs.bottom isa ROBC
+    if needs_mass_flux_correction(w_bcs.bottom)
         push!(left_matching_scheme_boundaries, :bottom)
         total_area_matching_scheme_boundaries += boundary_fluxes.bottom_area
     end
@@ -142,7 +143,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     # Check top boundary (w velocity)
     top_flux_and_area = initialize_boundary_mass_flux(w, w_bcs.top, Val(:top))
     boundary_fluxes = merge(boundary_fluxes, top_flux_and_area)
-    if w_bcs.top isa ROBC
+    if needs_mass_flux_correction(w_bcs.top)
         push!(right_matching_scheme_boundaries, :top)
         total_area_matching_scheme_boundaries += boundary_fluxes.top_area
     end
@@ -150,6 +151,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     boundary_fluxes = merge(boundary_fluxes, (; left_matching_scheme_boundaries,
                                                 right_matching_scheme_boundaries,
                                                 total_area_matching_scheme_boundaries))
+
     return boundary_fluxes
 end
 
@@ -194,15 +196,21 @@ function open_boundary_mass_inflow(model)
     return total_flux
 end
 
-correct_left_boundary_mass_flux!(u, bc::ROBC, ::Val{:west},   average_mass_inflow) = interior(u, 1, :, :) .-= average_mass_inflow
-correct_left_boundary_mass_flux!(v, bc::ROBC, ::Val{:south},  average_mass_inflow) = interior(v, :, 1, :) .-= average_mass_inflow
-correct_left_boundary_mass_flux!(w, bc::ROBC, ::Val{:bottom}, average_mass_inflow) = interior(w, :, :, 1) .-= average_mass_inflow
-correct_left_boundary_mass_flux!(velocity, bc, side, average_mass_inflow) = nothing
+correct_left_boundary_mass_flux!(u, bc::OBC, ::Val{:west},   avg_mass_inflow) = interior(u, 1, :, :) .-= avg_mass_inflow
+correct_left_boundary_mass_flux!(v, bc::OBC, ::Val{:south},  avg_mass_inflow) = interior(v, :, 1, :) .-= avg_mass_inflow
+correct_left_boundary_mass_flux!(w, bc::OBC, ::Val{:bottom}, avg_mass_inflow) = interior(w, :, :, 1) .-= avg_mass_inflow
+correct_left_boundary_mass_flux!(velocity, bc::IOBC, ::Val{:west}, avg_mass_inflow) = nothing
+correct_left_boundary_mass_flux!(velocity, bc::IOBC, ::Val{:south}, avg_mass_inflow) = nothing
+correct_left_boundary_mass_flux!(velocity, bc::IOBC, ::Val{:bottom}, avg_mass_inflow) = nothing
+correct_left_boundary_mass_flux!(velocity, bc, side, avg_mass_inflow) = nothing
 
-correct_right_boundary_mass_flux!(u, bc::ROBC, ::Val{:east},  average_mass_inflow) = interior(u, u.grid.Nx + 1, :, :) .+= average_mass_inflow
-correct_right_boundary_mass_flux!(v, bc::ROBC, ::Val{:north}, average_mass_inflow) = interior(v, :, v.grid.Ny + 1, :) .+= average_mass_inflow
-correct_right_boundary_mass_flux!(w, bc::ROBC, ::Val{:top},   average_mass_inflow) = interior(w, :, :, w.grid.Nz + 1) .+= average_mass_inflow
-correct_right_boundary_mass_flux!(velocity, bc, side, average_mass_inflow) = nothing
+correct_right_boundary_mass_flux!(u, bc::OBC, ::Val{:east},  avg_mass_inflow) = interior(u, u.grid.Nx + 1, :, :) .+= avg_mass_inflow
+correct_right_boundary_mass_flux!(v, bc::OBC, ::Val{:north}, avg_mass_inflow) = interior(v, :, v.grid.Ny + 1, :) .+= avg_mass_inflow
+correct_right_boundary_mass_flux!(w, bc::OBC, ::Val{:top},   avg_mass_inflow) = interior(w, :, :, w.grid.Nz + 1) .+= avg_mass_inflow
+correct_right_boundary_mass_flux!(velocity, bc::IOBC, ::Val{:east}, avg_mass_inflow) = nothing
+correct_right_boundary_mass_flux!(velocity, bc::IOBC, ::Val{:north}, avg_mass_inflow) = nothing
+correct_right_boundary_mass_flux!(velocity, bc::IOBC, ::Val{:top}, avg_mass_inflow) = nothing
+correct_right_boundary_mass_flux!(velocity, bc, side, avg_mass_inflow) = nothing
 
 """
 enforce_open_boundary_mass_conservation!(model::NonhydrostaticModel)
