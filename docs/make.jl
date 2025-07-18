@@ -189,7 +189,7 @@ makedocs(sitename = "Oceananigans.jl",
                     isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
          doctest = true, # set to false to speed things up
-         draft = false, # set to true to speed things up
+         draft = false,  # set to true to speed things up
          clean = true,
          checkdocs = :exports) # set to :none to speed things up
 
