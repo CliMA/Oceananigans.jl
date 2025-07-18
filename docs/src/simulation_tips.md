@@ -227,7 +227,7 @@ section of the CUDA.jl documentation for more information on scalar indexing.
 For example, if can be difficult to just view a `CuArray` since Julia needs to access
 its elements to do that. Consider the example below:
 
-```@repl GPU-scalar-indexing
+```@example GPU-scalar-indexing
 using Oceananigans, CUDA
 
 grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
@@ -239,13 +239,13 @@ typeof(model.velocities.u.data)
 
 If we try to view the `CuArray` that stores values for `u` we hit a wall:
 
-```@repl GPU-scalar-indexing
+```@example GPU-scalar-indexing
 model.velocities.u.data
 ```
 
 To view the `CuArray` we first need to transform it into a regular `Array` using `Adapt.adapt`.
 
-```@repl GPU-scalar-indexing
+```@example GPU-scalar-indexing
 using Adapt
 
 adapt(Array, model.velocities.u.data)
