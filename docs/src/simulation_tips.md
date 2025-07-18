@@ -169,6 +169,7 @@ requires understanding the C-grid, but incurs only one iteration over the domain
 
 ```julia
 using Oceanostics: IsotropicPseudoViscousDissipationRate
+
 ε = IsotropicViscousDissipationRate(model, u, v, w, ν)
 compute!(ε)
 ```
