@@ -209,7 +209,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-Oceananigans.jl enables GPU functionality when loaded with packages like
+Oceananigans enables GPU functionality when loaded with packages like
 [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) (most tested and supported),
 [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl), or [Metal.jl](https://github.com/JuliaGPU/Metal.jl)
 
@@ -224,7 +224,7 @@ launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more ab
 [here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
-Oceananigans.jl disables CUDA scalar indexing by default. See the
+Oceananigans disables scalar indexing by default. See the
 [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
