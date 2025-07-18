@@ -4,7 +4,7 @@ function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
     interior(b) .= num2
-    return CUDA.@allowscalar a_b[2, 2, 2] == op(num1, num2)
+    return @allowscalar a_b[2, 2, 2] == op(num1, num2)
 end
 
 function three_field_addition(a, b, c, num1, num2)
@@ -12,7 +12,7 @@ function three_field_addition(a, b, c, num1, num2)
     interior(a) .= num1
     interior(b) .= num2
     interior(c) .= num2
-    return CUDA.@allowscalar a_b_c[2, 2, 2] == num1 + num2 + num2
+    return @allowscalar a_b_c[2, 2, 2] == num1 + num2 + num2
 end
 
 function x_derivative(a)
@@ -27,7 +27,7 @@ function x_derivative(a)
         interior(a)[:, 3, k] .= one_two_three
     end
 
-    return CUDA.@allowscalar dx_a[2, 2, 2] == 1
+    return @allowscalar dx_a[2, 2, 2] == 1
 end
 
 function y_derivative(a)
@@ -42,7 +42,7 @@ function y_derivative(a)
         interior(a)[3, :, k] .= one_three_five
     end
 
-    return CUDA.@allowscalar dy_a[2, 2, 2] == 2
+    return @allowscalar dy_a[2, 2, 2] == 2
 end
 
 function z_derivative(a)
@@ -57,7 +57,7 @@ function z_derivative(a)
         interior(a)[3, k, :] .= one_four_seven
     end
 
-    return CUDA.@allowscalar dz_a[2, 2, 2] == 3
+    return @allowscalar dz_a[2, 2, 2] == 3
 end
 
 function x_derivative_cell(arch)
@@ -73,12 +73,12 @@ function x_derivative_cell(arch)
         interior(a)[:, 3, k] .= one_four_four
     end
 
-    return CUDA.@allowscalar dx_a[2, 2, 2] == 3
+    return @allowscalar dx_a[2, 2, 2] == 3
 end
 
 function times_x_derivative(a, b, location, i, j, k, answer)
     b∇a = @at location b * ∂x(a)
-    return CUDA.@allowscalar b∇a[i, j, k] == answer
+    return @allowscalar b∇a[i, j, k] == answer
 end
 
 for arch in archs
@@ -92,12 +92,12 @@ for arch in archs
         @testset "Unary operations and derivatives [$(typeof(arch))]" begin
             for ψ in (u, v, w, c)
                 for op in (sqrt, sin, cos, exp, tanh)
-                    @test CUDA.@allowscalar typeof(op(ψ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(op(ψ)[2, 2, 2]) <: Number
                 end
 
                 for d_symbol in Oceananigans.AbstractOperations.derivative_operators
                     d = eval(d_symbol)
-                    @test CUDA.@allowscalar typeof(d(ψ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(d(ψ)[2, 2, 2]) <: Number
                 end
             end
         end
@@ -107,7 +107,7 @@ for arch in archs
             for (ψ, ϕ) in ((u, v), (u, w), (v, w), (u, c), (generic_function, c), (u, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.binary_operators
                     op = eval(op_symbol)
-                    @test CUDA.@allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
                 end
             end
 
@@ -149,7 +149,7 @@ for arch in archs
             for (ψ, ϕ, σ) in ((u, v, w), (u, v, c), (u, v, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.multiary_operators
                     op = eval(op_symbol)
-                    @test CUDA.@allowscalar typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
         end
@@ -301,7 +301,7 @@ for arch in archs
                         f = Field(loc, rectilinear_grid)
                         f .= 1
 
-                        CUDA.@allowscalar begin
+                        @allowscalar begin
                             # Δx, Δy, Δz = 2, 3, 4
                             # Ax, Ay, Az = 12, 8, 6
                             # volume = 24

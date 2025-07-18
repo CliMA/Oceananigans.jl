@@ -236,7 +236,7 @@ function test_divergence_free_solution(arch, float_type, topos)
         for N in [7, 16]
             grid = make_random_immersed_grid(RectilinearGrid(arch, float_type, topology=topo; size_and_extent_from_topo(N, topo)...))
             ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
-            @test CUDA.@allowscalar interior(∇²ϕ) ≈ interior(R)
+            @test @allowscalar interior(∇²ϕ) ≈ interior(R)
             @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
         end
     end
@@ -249,7 +249,7 @@ function test_divergence_free_solution_on_rectangular_grids(arch, topos)
         for Nx in Ns, Ny in Ns, Nz in Ns
             grid = make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1)))
             ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
-            @test CUDA.@allowscalar interior(∇²ϕ) ≈ interior(R)
+            @test @allowscalar interior(∇²ϕ) ≈ interior(R)
             @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
         end
     end
