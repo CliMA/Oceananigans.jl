@@ -202,6 +202,7 @@ end
 ##### Multiply by grid scaling
 #####
 
+# fallback
 multiply_by_grid_scaling!(Gⁿ, tracers, grid) = nothing
 
 function multiply_by_grid_scaling!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
