@@ -57,8 +57,8 @@ your code as the benefits can potentially be significant.
 
 Running on GPUs can be very different from running on CPUs. Oceananigans makes most of the necessary
 changes in the background, so that for very simple simulations changing between CPUs and GPUs is
-just a matter of changing the `architecture` argument in the model from `CPU()` to `GPU()`. However,
-for more complex simulations some care needs to be taken on the part of the user. While knowledge of
+just a matter of changing the `architecture` argument in the grid constructor from `CPU()` to `GPU()`.
+However, for more complex simulations some care needs to be taken on the part of the user. While knowledge of
 GPU computing (and Julia) is again desirable, an inexperienced user can also achieve high efficiency
 in GPU simulations by following a few simple principles.
 
@@ -102,16 +102,20 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating
-`ε` will not compile on GPUs when we call the command `compute!`:
+`ε` will not compile on GPUs when we call [`compute!`](@ref):
 
 ```julia
 using Oceananigans
+
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, closure=ScalarDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(; grid, closure=ScalarDiffusivity(ν=1e-6))
+
 u, v, w = model.velocities
 ν = model.closure.ν
+
 u² = Field(u^2)
 ε = Field(ν*(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2 + ∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2 + ∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2))
+
 compute!(u²)
 compute!(ε)
 ```
@@ -173,7 +177,7 @@ compute!(ε)
 
 ### Try to decrease the memory-use of your runs
 
-GPU runs are sometimes memory-limited. A state-of-the-art Tesla V100 GPU has 32GB of
+GPU runs are sometimes memory-limited. For example, an Nvidia Tesla V100 GPU has 32GB of
 memory -- enough memory for simulations with about 100 million points, or grids a bit smaller
 than 512 × 512 × 512. (The maximum grid size depends on some user-specified factors,
 like the number of passive tracers or computed diagnostics.)
