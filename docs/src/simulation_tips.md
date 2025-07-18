@@ -240,7 +240,7 @@ typeof(model.velocities.u.data)
 If we try to view the `CuArray` that stores values for `u` we hit a wall:
 
 ```@repl GPU-scalar-indexing
-model.velocities.u.data`
+model.velocities.u.data
 ```
 
 To view the `CuArray` we first need to transform it into a regular `Array` using `Adapt.adapt`.
