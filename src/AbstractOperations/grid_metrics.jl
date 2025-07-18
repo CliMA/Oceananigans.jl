@@ -9,6 +9,7 @@ import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacing
 const AbstractGridMetric = Union{typeof(Δx),
                                  typeof(Δy),
                                  typeof(Δz),
+                                 typeof(Δr),
                                  typeof(Δλ),
                                  typeof(Δφ),
                                  typeof(Ax),

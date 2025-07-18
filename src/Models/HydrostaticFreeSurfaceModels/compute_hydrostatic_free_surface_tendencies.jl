@@ -49,6 +49,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     end
 
     update_tendencies!(model.biogeochemistry, model)
+    multiply_by_grid_scaling!(model.timestepper.Gⁿ, model.tracers, model.grid)
 
     return nothing
 end
@@ -198,6 +199,5 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, args)
     i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...) * σᶜᶜⁿ
+    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
