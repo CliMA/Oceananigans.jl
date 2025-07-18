@@ -179,7 +179,7 @@ end
     β = convert(FT, 0.5) + χ
 
     @inbounds begin
-        total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σⁿ(i, j, k, grid, Center(), Center(), Center())
+        total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe # * σⁿ(i, j, k, grid, Center(), Center(), Center())
         e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active
         G⁻e[i, j, k] = total_Gⁿe * active
     end
