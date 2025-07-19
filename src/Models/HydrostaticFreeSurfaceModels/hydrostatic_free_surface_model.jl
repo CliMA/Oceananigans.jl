@@ -113,8 +113,9 @@ Keyword arguments
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
   - `vertical_coordinate`: Algorithm for grid evolution: `ZStar()` or `ZCoordinate()`.
-                           Default: `ZStar()` for grids with `MutableVerticalDiscretization`;
-                           `ZCoordinate()` otherwise.
+                           Default: `default_vertical_coordinate(grid)`, which returns `ZStar()`
+                           for grids with `MutableVerticalDiscretization` otherwise returns
+                           `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock(grid),
