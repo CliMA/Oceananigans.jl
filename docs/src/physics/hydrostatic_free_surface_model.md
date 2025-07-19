@@ -105,7 +105,7 @@ For `ZStar` vertical coordinate we have
 ```
 where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
 
-![Schematic of the quantities involved in the ZStar generalized vertical coordinate](assets/zstar_schematic.png)
+![Schematic of the quantities involved in the ZStar generalized vertical coordinate](../assets/zstar_schematic.png)
 
 The `ZStar` coordinate definition \eqref{zstardef} implies a specific thickness
 
