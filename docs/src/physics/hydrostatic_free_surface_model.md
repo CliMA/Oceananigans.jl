@@ -85,27 +85,31 @@ equation are
 
 ## Vertical coordinates
 
-We can use either `ZCoordinate` or the `ZStar` [generalized vertical coordinate](@ref generalized_vertical_coordinates).
+We can use either `ZCoordinate`, that is height-coordinate, or the
+`ZStar` [generalized vertical coordinate](@ref generalized_vertical_coordinates).
 
-The `ZStar` vertical coordinate conserves tracers and volume with the grid following the evolution of the free surface in the
-domain [adcroft2004rescaled](@citep).
+The `ZStar` vertical coordinate conserves tracers and volume with the grid following the evolution of the
+free surface in the domain [adcroft2004rescaled](@citep).
 
-In terms of the notation in the [Generalized vertical coordinates](@ref generalized_vertical_coordinates) section,
-for a `ZCoordinate` we have that
+In terms of the notation in the [Generalized vertical coordinates](@ref generalized_vertical_coordinates)
+section, for a `ZCoordinate` we have that
 ```math
 r(x, y, z, t) = z
 ```
 and the specific thickness is ``\sigma = \partial z / \partial r = 1``.
 
-For `ZStar` vertical coordinate we have
+For the `ZStar` generalized vertical coordinate is often denoted as ``z^*`` (zee-star), i.e.,
 ```math
 \begin{equation}
-    r(x, y, z, t) = \frac{H(x, y)}{H(x, y) + \eta(x, y, t)}[z - \eta(x, y, t)]  \label{zstardef}
+    r(x, y, z, t) = z^*(x, y, z, t) = \frac{H(x, y)}{H(x, y) + \eta(x, y, t)}[z - \eta(x, y, t)]  \label{zstardef}
 \end{equation}
 ```
 where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
 
 ![Schematic of the quantities involved in the ZStar generalized vertical coordinate](../assets/zstar_schematic.png)
+
+Note, that while the upper domain in depth coordinates changes with time, ``-H(x, y) \le z \le \eta(x, y, t)``,
+in `ZStar` coordinates we have ``-H(x, y) \le z^* \le 0``.
 
 The `ZStar` coordinate definition \eqref{zstardef} implies a specific thickness
 
@@ -114,7 +118,9 @@ The `ZStar` coordinate definition \eqref{zstardef} implies a specific thickness
 ```
 
 All the equations transformed in ``r``-coordinates are described in the [Generalized vertical coordinates](@ref generalized_vertical_coordinates)
-section. However, for the specific choice of `ZStar` coordinate \eqref{zstardef}, the ``\partial \eta/\partial r`` identically vanishes and
+section.
+
+For the specific choice of `ZStar` coordinate \eqref{zstardef}, the ``\partial \eta/\partial r`` identically vanishes and
 thus the horizontal gradient of the free surface remain unchanged under vertical coordinate transformation, i.e.,
 ```math
 \begin{align}
