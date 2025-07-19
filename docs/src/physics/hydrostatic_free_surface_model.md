@@ -101,15 +101,16 @@ and the specific thickness is ``\sigma = \partial z / \partial r = 1``.
 For the `ZStar` generalized vertical coordinate is often denoted as ``z^*`` (zee-star), i.e.,
 ```math
 \begin{equation}
-    r(x, y, z, t) = z^*(x, y, z, t) = \frac{H(x, y)}{H(x, y) + \eta(x, y, t)}[z - \eta(x, y, t)]  \label{zstardef}
+    r(x, y, z, t) = z^*(x, y, z, t) = \frac{H(x, y)}{H(x, y) + \eta(x, y, t)}[z - \eta(x, y, t)] \label{zstardef}
 \end{equation}
 ```
 where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
 
 ![Schematic of the quantities involved in the ZStar generalized vertical coordinate](../assets/zstar_schematic.png)
 
-Note, that while the upper domain in depth coordinates changes with time, ``-H(x, y) \le z \le \eta(x, y, t)``,
-in `ZStar` coordinates we have ``-H(x, y) \le z^* \le 0``.
+Note, that in both depth and ``z^*`` coordinates the bottom boundary is the same ``z = z^* = - H(x, y)``.
+On the other hand, while in depth coordinates the upper boundary ``z = \eta(x, y, t)`` changes with time,
+but in ``z^*`` coordinates it's fixed to ``z^* = 0``.
 
 The `ZStar` coordinate definition \eqref{zstardef} implies a specific thickness
 
@@ -128,3 +129,59 @@ thus the horizontal gradient of the free surface remain unchanged under vertical
     \frac{\partial \eta}{\partial y} \bigg\rvert_z & = \frac{\partial \eta}{\partial y} \bigg\rvert_r
 \end{align}
 ```
+
+Below we plot an example of how vertical coordinate surfaces look like for `ZCoordinate` and `ZStar`.
+
+```@example
+using CairoMakie
+
+Lz = 25 # m
+Lx = 1e3 # m
+
+x = range(-Lx/2, stop=Lx/2, length=200)
+
+σ = Lx/14
+
+# free surface
+x₀ = -Lx/8
+η₀ = 2 # m
+η = @. -η₀ * ((x - x₀)^2 / σ^2 - 1) * exp(-(x - x₀)^2 / 2σ^2)
+
+# bottom
+x₀ = -Lx/3
+h₀ = 15 # m
+slope = @. h₀ * (1 + tanh(-(x - x₀) / σ)) / 2
+
+x₀ = Lx/3
+h₀ = 6 # m
+mountain = @. h₀ * exp(-(x - x₀)^2 / 2σ^2)
+
+H = @. Lz - slope - mountain
+
+fig = Figure(size=(1000, 400))
+
+axis_kwargs = (titlesize =20, xlabel="x", ylabel="z")
+ax1 = Axis(fig[1, 1]; title="ZCoordinate", axis_kwargs...)
+ax2 = Axis(fig[1, 2]; title="ZStar", axis_kwargs...)
+
+axes = (ax1, ax2)
+for ax in axes
+    band!(ax, x, -H, η, color = (:blue, 0.2))
+    band!(ax, x, -1.1 * Lz, -H, color = (:orange, 0.2))
+    lines!(ax, x, η, linewidth=5, label="free surface", color=:darkblue)
+    lines!(ax, x, -H, linewidth=5, label="bottom", color=:darkgrey)
+end
+
+for rel in 0:1/5:1
+    z = -Lz * rel * ones(size(x))
+    lines!(ax1, x, z, color=:grey, linestyle=:dash)
+
+    zstar = -Lz * rel # zstar ∈ [-Lz, 0]
+    z = @. zstar * (H + η) / H + η
+    lines!(ax2, x, z, color=:grey, linestyle=:dash)
+end
+
+current_figure()
+```
+
+Note that near the top the surfaces of `ZStar` mimic the shape of the free surface but as we move away from the surface the surfaces of `ZStar` resemble more surfaces of constant `ZCoordinate`.
