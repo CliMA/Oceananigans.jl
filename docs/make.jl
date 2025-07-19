@@ -114,7 +114,6 @@ physics_pages = [
         ],
     "`HydrostaticFreeSurfaceModel`" => [
         "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md",
-        "Vertical coordinates" => "physics/zstar_vertical_coordinate.md",
         ],
     "`ShallowWaterModel`" => [
         "Shallow water model" => "physics/shallow_water_model.md"
