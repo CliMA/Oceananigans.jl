@@ -244,8 +244,19 @@ typeof(model.velocities.u.data)
 
 If we try to view the `CuArray` that stores values for `u` we hit a wall:
 
-```@example GPU-scalar-indexing
-model.velocities.u.data
+```julia
+julia> model.velocities.u.data
+3×3×3 OffsetArray(::CuArray{Float64, 3, CUDA.DeviceMemory}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+[:, :, 0] =
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CuArray{Float64, 3, CUDA.DeviceMemory}}:
+ERROR: Scalar indexing is disallowed.
+Invocation of getindex resulted in scalar indexing of a GPU array.
+This is typically caused by calling an iterating implementation of a method.
+Such implementations *do not* execute on the GPU, but very slowly on the CPU,
+and therefore should be avoided.
+
+If you want to allow scalar iteration, use `allowscalar` or `@allowscalar`
+to enable scalar iteration globally or for the operations in question.
 ```
 
 To view the `CuArray` we first need to transform it into a regular `Array` using `Adapt.adapt`.
