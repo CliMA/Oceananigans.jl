@@ -1,4 +1,4 @@
-# Vertical coordinate
+# Vertical coordinates
 
 For [`HydrostaticFreeSurfaceModel`](@ref), we have the choice between `ZCoordinate` and a `ZStar` [generalized vertical coordinate](@ref generalized_vertical_coordinates).
 
