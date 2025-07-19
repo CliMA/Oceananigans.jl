@@ -1,11 +1,11 @@
-# [Finite volume method on a staggered grid](@id finite_volume)
+docs/src/numerical_implementation/finite_volume.md # [Finite volume method on a staggered grid](@id finite_volume)
 
 The `Oceananigans.jl` staggered grid is defined by a rectilinear array of cuboids of horizontal dimensions
 ``\Delta x_{i, j, k}, \Delta y_{i, j, k}`` and vertical dimension
 ``\Delta z_{i, j, k}``, where ``(i, j, k)`` index the location of each cell in the staggered grid.
 Note that the indices ``(i, j, k)`` increase with increasing coordinate ``(x, y, z)``.
 
-![Schematic of staggered grid](../assets/staggered_grid.png)
+![Schematic of staggered grid](assets/staggered_grid.png)
 *A schematic of `Oceananigans.jl` finite volumes for a two-dimensional staggered grid in ``(x, z)``.
 Tracers ``c`` and pressure ``p`` are defined at the center of the control volume. The ``u`` control volumes are
 centered on the left and right edges of the pressure control volume while the ``w`` control volumes are centered

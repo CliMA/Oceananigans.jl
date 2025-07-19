@@ -20,7 +20,7 @@ For `ZStar` vertical coordinate we have
 ```
 where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
 
-![Alt text](../assets/zstar-schematic.png)
+![Schematic of the quantities involved in the definition of `ZStar` generalized vertical coordinate](assets/zstar-schematic.png)
 
 The `ZStar` coordinate definition \eqref{zstardef} implies a specific thickness
 
