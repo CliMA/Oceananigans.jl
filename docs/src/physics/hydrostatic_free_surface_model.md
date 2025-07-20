@@ -47,9 +47,17 @@ where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the hydrostatic kinematic 
 is the *Coriolis parameter*, or the background vorticity associated with the specified rate of
 rotation of the frame of reference.
 
-Equation \eqref{eq:hydrostatic} above is the hydrostatic approximation and comes about as the
-dominant balance of terms in the Navier-Stokes vertical momentum equation under the Boussinesq
-approximation.
+We can recast the advection term ``(\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla}) \boldsymbol{u}``
+above in vector-invariant form as:
+
+```math
+\left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u} = \zeta \hat{\boldsymbol{z}} \times \boldsymbol{u} + \boldsymbol{\nabla}\left(\frac1{2} \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{u}\right) + w \partial_z \boldsymbol{u}
+```
+with ``\zeta(x, y, t) = \partial_x v - \partial_y u`` the vertical component of the relative vorticity.
+The vector-invariant form is used with curvilinear grids, like [`LatitudeLongitudeGrid`](@ref LatitudeLongitudeGrid) or [`OrthogonalSphericalShellGrid`](@ref).
+
+The hydrostatic approximation \eqref{eq:hydrostatic} above comes about as the dominant balance
+of terms in the Navier-Stokes vertical momentum equation under the Boussinesq approximation.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
