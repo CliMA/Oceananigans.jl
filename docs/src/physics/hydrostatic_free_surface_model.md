@@ -153,14 +153,12 @@ mountain = @. h₀ * exp(-(x - x₀)^2 / 2σ^2)
 
 H = @. Lz - slope - mountain
 
-n = Observable(1)
-Nt = 50
-t = 0:2π/Nt:2π*(1-1/Nt)
 
 # free surface
 x₀ = -Lx/8
 η₀ = 2.5 # m
-η = @lift @. -η₀ * ((x - x₀)^2 / σ^2 - 1) * exp(-(x - x₀)^2 / 2σ^2) * cos(t[$n])
+t = Observable(0.0)
+η = @lift @. -η₀ * ((x - x₀)^2 / σ^2 - 1) * exp(-(x - x₀)^2 / 2σ^2) * cos(2π * $t)
 
 fig = Figure(size=(1000, 400))
 
@@ -188,14 +186,17 @@ for r in range(-Lz, stop=0, length=6)
     lines!(ax2, x, z, color=:crimson, linestyle=:dash)
 end
 
-CairoMakie.record(fig, "z-zstar.gif", 1:length(t), framerate=12) do i
-    n[] = i
+Nt = 50
+times = 0:1/Nt:1-1/Nt
+CairoMakie.record(fig, "z-zstar.gif", times, framerate=12) do val
+    t[] = val
 end
 
 nothing #hide
 ```
 
-# ![](z-zstar.gif)
+![](z-zstar.gif)
 
-Near the top the surfaces of `ZStar` mimic the shape of the free surface.
-As we move away from the fluid's surface, the surfaces of `ZStar` resemble more surfaces of constant `ZCoordinate`.
+Near the top, the surfaces of `ZStar` mimic that of the free surface.
+As we move away from the fluid's surface, the surfaces of `ZStar` resemble more surfaces
+of constant depth `ZCoordinate`.
