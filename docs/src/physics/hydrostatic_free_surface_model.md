@@ -160,7 +160,7 @@ H = @. Lz - slope - mountain
 
 fig = Figure(size=(1000, 400))
 
-axis_kwargs = (titlesize =20, xlabel="x", ylabel="z")
+axis_kwargs = (titlesize =20, xlabel="x", ylabel="z", ygridvisible = false)
 ax1 = Axis(fig[1, 1]; title="ZCoordinate", axis_kwargs...)
 ax2 = Axis(fig[1, 2]; title="ZStar", axis_kwargs...)
 
