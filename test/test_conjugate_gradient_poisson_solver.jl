@@ -306,8 +306,8 @@ end
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a PartialCellBottom and open boundary conditions [$(typeof(arch))]" begin
             bottom = PartialCellBottom(-0.5)
             for (underlying_grid_name, underlying_grid) in underlying_grids
-                @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
-                @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+                @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
+                @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end
         end
     end

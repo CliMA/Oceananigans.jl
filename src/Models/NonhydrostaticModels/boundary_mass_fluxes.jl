@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection, FlatExtrapolation
-using Oceananigans.AbstractOperations: Integral
+using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, GridMetricOperation
 using Oceananigans.Fields: Field, interior, XFaceField, YFaceField, ZFaceField
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
@@ -8,39 +8,39 @@ const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-ve
 const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
 
 function get_west_area(grid)
-    f = XFaceField(grid); set!(f, 1) # Create an XFaceField with all ones
-    ∫f = Field(Integral(f, dims=(2, 3))) # Integrate over y and z dimensions
-    return interior(∫f, 1, 1, 1) |> maximum
+    dA = GridMetricOperation((Face, Center, Center), Ax, grid)
+    ∫dA = sum(dA, dims=(2, 3))
+    return interior(∫dA, 1, 1, 1) |> maximum
 end
 
 function get_east_area(grid)
-    f = XFaceField(grid); set!(f, 1) # Create an XFaceField with all ones
-    ∫f = Field(Integral(f, dims=(2, 3))) # Integrate over y and z dimensions
-    return interior(∫f, grid.Nx+1, 1, 1) |> maximum
+    dA = GridMetricOperation((Face, Center, Center), Ax, grid)
+    ∫dA = sum(dA, dims=(2, 3))
+    return interior(∫dA, grid.Nx+1, 1, 1) |> maximum
 end
 
 function get_south_area(grid)
-    f = YFaceField(grid); set!(f, 1) # Create a YFaceField with all ones
-    ∫f = Field(Integral(f, dims=(1, 3))) # Integrate over x and z dimensions
-    return interior(∫f, 1, 1, 1) |> maximum # Pluck out a scalar value without @allowscalar
+    dA = GridMetricOperation((Center, Face, Center), Ay, grid)
+    ∫dA = sum(dA, dims=(1, 3))
+    return interior(∫dA, 1, 1, 1) |> maximum
 end
 
 function get_north_area(grid)
-    f = YFaceField(grid); set!(f, 1) # Create a YFaceField with all ones
-    ∫f = Field(Integral(f, dims=(1, 3))) # Integrate over x and z dimensions
-    return interior(∫f, 1, grid.Ny+1, 1) |> maximum
+    dA = GridMetricOperation((Center, Face, Center), Ay, grid)
+    ∫dA = sum(dA, dims=(1, 3))
+    return interior(∫dA, 1, grid.Ny+1, 1) |> maximum
 end
 
 function get_bottom_area(grid)
-    f = ZFaceField(grid); set!(f, 1) # Create a ZFaceField with all ones
-    ∫f = Field(Integral(f, dims=(1, 2))) # Integrate over x and y dimensions
-    return interior(∫f, 1, 1, 1) |> maximum
+    dA = GridMetricOperation((Center, Center, Face), Az, grid)
+    ∫dA = sum(dA, dims=(1, 2))
+    return interior(∫dA, 1, 1, 1) |> maximum
 end
 
 function get_top_area(grid)
-    f = ZFaceField(grid); set!(f, 1) # Create a ZFaceField with all ones
-    ∫f = Field(Integral(f, dims=(1, 2))) # Integrate over x and y dimensions
-    return interior(∫f, 1, 1, grid.Nz+1) |> maximum
+    dA = GridMetricOperation((Center, Center, Face), Az, grid)
+    ∫dA = sum(dA, dims=(1, 2))
+    return interior(∫dA, 1, 1, grid.Nz+1) |> maximum
 end
 
 # Left boundary integrals for normal velocity components
