@@ -130,7 +130,7 @@ thus the horizontal gradient of the free surface remain unchanged under vertical
 \end{align}
 ```
 
-Below we plot an example of how vertical coordinate surfaces look like for `ZCoordinate` and `ZStar`.
+An example of how the vertical coordinate surfaces differ for `ZCoordinate` and `ZStar` is shown below.
 
 ```@example
 using CairoMakie
@@ -174,14 +174,15 @@ end
 
 for rel in 0:1/5:1
     z = -Lz * rel * ones(size(x))
-    lines!(ax1, x, z, color=:grey, linestyle=:dash)
+    lines!(ax1, x, z, color=:crimson, linestyle=:dash)
 
     zstar = -Lz * rel # zstar ∈ [-Lz, 0]
     z = @. zstar * (H + η) / H + η
-    lines!(ax2, x, z, color=:grey, linestyle=:dash)
+    lines!(ax2, x, z, color=:crimson, linestyle=:dash)
 end
 
 current_figure()
 ```
 
-Note that near the top the surfaces of `ZStar` mimic the shape of the free surface but as we move away from the surface the surfaces of `ZStar` resemble more surfaces of constant `ZCoordinate`.
+Near the top the surfaces of `ZStar` mimic the shape of the free surface.
+As we move away from the fluid's surface, the surfaces of `ZStar` resemble more surfaces of constant `ZCoordinate`.
