@@ -173,9 +173,11 @@ for ax in axes
 end
 
 for r in range(-Lz, stop=0, length=6)
+    # ZCoordinate
     z = r * ones(size(x))
     lines!(ax1, x, z, color=:crimson, linestyle=:dash)
 
+    # ZStar
     z = @. r * (H + η) / H + η
     lines!(ax2, x, z, color=:crimson, linestyle=:dash)
 end
