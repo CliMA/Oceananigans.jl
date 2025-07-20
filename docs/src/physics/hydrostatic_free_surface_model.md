@@ -149,7 +149,7 @@ slope = @. h₀ * (1 + tanh(-(x - x₀) / σ)) / 2
 
 x₀ = Lx/3
 h₀ = 6 # m
-mountain = @. h₀ * exp(-(x - x₀)^2 / 2σ^2)
+mountain = @. h₀ * sech((x - x₀) / σ)^2
 
 H = @. Lz - slope - mountain
 
