@@ -162,7 +162,7 @@ t = Observable(0.0)
 
 fig = Figure(size=(1000, 400))
 
-axis_kwargs = (titlesize =20, xlabel="x", ygridvisible = false)
+axis_kwargs = (titlesize = 20, xlabel = "x", ygridvisible = false)
 ax1 = Axis(fig[1, 1]; title="ZCoordinate", ylabel="z", axis_kwargs...)
 ax2 = Axis(fig[1, 2]; title="ZStar", axis_kwargs...)
 
