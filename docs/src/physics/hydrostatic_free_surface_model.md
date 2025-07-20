@@ -130,7 +130,7 @@ thus the horizontal gradient of the free surface remain unchanged under vertical
 \end{align}
 ```
 
-An example of how the vertical coordinate surfaces differ for `ZCoordinate` and `ZStar` is shown below.
+An example of how the vertical coordinate surfaces differ for `ZCoordinate` and the time-varying `ZStar` coordinate is shown below.
 
 ```@example
 using CairoMakie
