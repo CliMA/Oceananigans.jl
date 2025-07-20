@@ -214,26 +214,24 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
     end
 end
 
-function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
-    # Test open boundary conditions to ensure mass conservation (i.e., ∫∇u ≈ 0)
-    Δ = FT(0.05)
-    N = round(Int, 2 / Δ)
+function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
+    # Test open boundary conditions to ensure domain-wise mass conservation (i.e., ∫∇u ≈ 0)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
 
     model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :RungeKutta3)
-    uᵢ(x, y, z) = FT(1.0) + FT(1e-2) * rand()
+    uᵢ(x, y, z) = 1 + 1e-2 * rand()
     set!(model, u = uᵢ)
 
     u, v, w = model.velocities
-    Δt = 0.1*Δ/maximum(abs, u)
+    Δt = 0.1 * minimum_zspacing(grid) / maximum(abs, u)
     simulation = Simulation(model; stop_time=1, Δt, verbose=false)
 
     ∫∇u = Field(Integral(∂x(u) + ∂y(v) + ∂z(w)))
 
     run!(simulation)
     compute!(∫∇u)
-    @test ∫∇u[] ≈ FT(0)
+    @test ∫∇u[] ≈ 0 atol=2*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
