@@ -165,7 +165,7 @@ ax1 = Axis(fig[1, 1]; title="ZCoordinate", axis_kwargs...)
 ax2 = Axis(fig[1, 2]; title="ZStar", axis_kwargs...)
 
 for ax in (ax1, ax2)
-    band!(ax, x, -H, η, color = (:blue, 0.2))
+    band!(ax, x, -H, η, color = (:dodgerblue, 0.5))
     band!(ax, x, -1.1 * Lz, -H, color = (:orange, 0.2))
     lines!(ax, x, η, linewidth=5, label="free surface", color=:darkblue)
     lines!(ax, x, -H, linewidth=5, label="bottom", color=:darkgrey)
