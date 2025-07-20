@@ -172,12 +172,11 @@ for ax in axes
     lines!(ax, x, -H, linewidth=5, label="bottom", color=:darkgrey)
 end
 
-for rel in 0:1/5:1
-    z = -Lz * rel * ones(size(x))
+for r in range(-Lz, stop=0, length=6)
+    z = r * ones(size(x))
     lines!(ax1, x, z, color=:crimson, linestyle=:dash)
 
-    zstar = -Lz * rel # zstar ∈ [-Lz, 0]
-    z = @. zstar * (H + η) / H + η
+    z = @. r * (H + η) / H + η
     lines!(ax2, x, z, color=:crimson, linestyle=:dash)
 end
 
