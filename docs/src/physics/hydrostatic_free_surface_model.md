@@ -151,16 +151,11 @@ x = range(-Lx/2, stop=Lx/2, length=200)
 σ = Lx/14
 
 # bottom
-x₀ = -Lx/3
-h₀ = 15 # m
+x₀, h₀ = -Lx/3,  15 # m
 slope = @. h₀ * (1 + tanh(-(x - x₀) / σ)) / 2
-
-x₀ = Lx/3
-h₀ = 6 # m
+x₀, h₀ = Lx/3, 6 # m
 mountain = @. h₀ * sech((x - x₀) / σ)^2
-
 H = @. Lz - slope - mountain
-
 
 # free surface
 x₀ = -Lx/8
