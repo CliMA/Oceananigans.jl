@@ -471,6 +471,7 @@ end
             grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 1), extent=(1, 2, 3))
             c = CenterField(grid)
             set!(c, arch.local_rank+1)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
 
             c_reduced = Field{Nothing, Nothing, Nothing}(grid)
 
@@ -478,20 +479,27 @@ end
             @test sum(c) == 1*N + 2*N + 3*N + 4*N
 
             sum!(c_reduced, c)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
+
             @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
             bool_val = arch.local_rank == 0 ? true : false
             set!(cbool, bool_val)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
 
             @test any(cbool) == true
             @test all(cbool) == false
 
             any!(cbool_reduced, cbool)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
+
             @test @allowscalar cbool_reduced[1, 1, 1] == true
 
             all!(cbool_reduced, cbool)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
+
             @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
     end
