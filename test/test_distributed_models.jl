@@ -472,11 +472,14 @@ end
             c = CenterField(grid)
             set!(c, arch.local_rank+1)
             CUDA.synchronize() # Ensure all GPU operations are complete before testing
-
+            
             c_reduced = Field{Nothing, Nothing, Nothing}(grid)
 
             N = grid.Nx * grid.Ny # local rank grid size
-            @test sum(c) == 1*N + 2*N + 3*N + 4*N
+            test = sum(c)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
+
+            @test test == 1*N + 2*N + 3*N + 4*N
 
             sum!(c_reduced, c)
             CUDA.synchronize() # Ensure all GPU operations are complete before testing
@@ -488,9 +491,14 @@ end
             bool_val = arch.local_rank == 0 ? true : false
             set!(cbool, bool_val)
             CUDA.synchronize() # Ensure all GPU operations are complete before testing
+            test = any(cbool)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
 
-            @test any(cbool) == true
-            @test all(cbool) == false
+            @test test == true
+            
+            test = all(cbool)
+            CUDA.synchronize() # Ensure all GPU operations are complete before testing
+            @test test == false
 
             any!(cbool_reduced, cbool)
             CUDA.synchronize() # Ensure all GPU operations are complete before testing
