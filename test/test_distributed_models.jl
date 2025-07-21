@@ -340,14 +340,14 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test @allowscalar all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+        @test @allowscalar all(west_halo(field, include_corners=false) .== arch.connectivity.west)
 
-        @test all(interior(field) .== arch.local_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(interior(field) .== arch.local_rank)
+        @test @allowscalar all(north_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(south_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -362,14 +362,14 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test @allowscalar all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test @allowscalar all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-        @test all(interior(field) .== arch.local_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(interior(field) .== arch.local_rank)
+        @test @allowscalar all(east_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(west_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -384,19 +384,19 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test all(interior(field) .== arch.local_rank)
+        @test @allowscalar all(interior(field) .== arch.local_rank)
 
-        @test all(east_halo(field, include_corners=false)  .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false)  .== arch.connectivity.west)
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test @allowscalar all(east_halo(field, include_corners=false)  .== arch.connectivity.east)
+        @test @allowscalar all(west_halo(field, include_corners=false)  .== arch.connectivity.west)
+        @test @allowscalar all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test @allowscalar all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-        @test all(top_halo(field, include_corners=false)    .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(southwest_halo(field) .== arch.connectivity.southwest)
-        @test all(southeast_halo(field) .== arch.connectivity.southeast)
-        @test all(northwest_halo(field) .== arch.connectivity.northwest)
-        @test all(northeast_halo(field) .== arch.connectivity.northeast)
+        @test @allowscalar all(top_halo(field, include_corners=false)    .== arch.local_rank)
+        @test @allowscalar all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test @allowscalar all(southwest_halo(field) .== arch.connectivity.southwest)
+        @test @allowscalar all(southeast_halo(field) .== arch.connectivity.southeast)
+        @test @allowscalar all(northwest_halo(field) .== arch.connectivity.northwest)
+        @test @allowscalar all(northeast_halo(field) .== arch.connectivity.northeast)
     end
 
     return nothing
