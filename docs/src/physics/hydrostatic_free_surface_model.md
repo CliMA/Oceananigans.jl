@@ -187,7 +187,7 @@ for r in range(-Lz, stop=0, length=6)
 end
 
 Nt = 50
-times = 0:1/Nt:1-1/Nt
+times = 0:1/Nt:1-1/Nt # one period of cos(2πt)
 CairoMakie.record(fig, "z-zstar.gif", times, framerate=12) do val
     t[] = val
 end
