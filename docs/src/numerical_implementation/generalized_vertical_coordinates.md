@@ -16,7 +16,7 @@ involves a series of chain rules for partial differentiation. We have that for a
 \end{align}
 ```
 
-The "specific thickness", i.e., ``\partial z/\partial r`` plays a central role in what follows. We denote it with ``\sigma``:
+The quantity ``\partial z/\partial r`` plays a central role in what follows. We refer to it as "specific thickness" and denote it ``\sigma``:
 ```math
 \sigma \equiv \frac{\partial z}{\partial r} \bigg\rvert_{x, y, t} = \left(\frac{\partial r}{\partial z} \bigg\rvert_{x, y, t}\right)^{-1}
 ```
