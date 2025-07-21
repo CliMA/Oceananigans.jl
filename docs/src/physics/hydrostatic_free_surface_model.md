@@ -143,28 +143,26 @@ An example of how the vertical coordinate surfaces differ for `ZCoordinate` and 
 ```@example
 using CairoMakie
 
-Lz = 25 # m
-Lx = 1e3 # m
+Lx, Lz = 1e3, 25 # m
 
 x = range(-Lx/2, stop=Lx/2, length=200)
 
-σ = Lx/14
+σ = Lx/15 # a horizontal length scale
 
-# bottom
+# bottom, H(x)
 x₀, h₀ = -Lx/3,  15 # m
 slope = @. h₀ * (1 + tanh(-(x - x₀) / σ)) / 2
 x₀, h₀ = Lx/3, 6 # m
 mountain = @. h₀ * sech((x - x₀) / σ)^2
 H = @. Lz - slope - mountain
 
-# free surface
+# free surface, η(x)
 x₀ = -Lx/8
 η₀ = 2.5 # m
 t = Observable(0.0)
 η = @lift @. -η₀ * ((x - x₀)^2 / σ^2 - 1) * exp(-(x - x₀)^2 / 2σ^2) * cos(2π * $t)
 
 fig = Figure(size=(1000, 400))
-
 axis_kwargs = (titlesize = 20, xlabel = "x", ygridvisible = false)
 ax1 = Axis(fig[1, 1]; title="ZCoordinate", ylabel="z", axis_kwargs...)
 ax2 = Axis(fig[1, 2]; title="ZStar", axis_kwargs...)
@@ -185,7 +183,6 @@ for r in range(-Lz, stop=0, length=6)
     z = lift(η) do η_val
         @. r * (H + η_val) / H + η_val
     end
-
     lines!(ax2, x, z, color=:crimson, linestyle=:dash)
 end
 
