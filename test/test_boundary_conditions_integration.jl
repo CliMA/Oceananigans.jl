@@ -227,7 +227,8 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
     Δt = 0.1 * minimum_zspacing(grid) / maximum(abs, u)
     simulation = Simulation(model; stop_time=1, Δt, verbose=false)
 
-    ∫∇u = Field(Integral(∂x(u) + ∂y(v) + ∂z(w)))
+    ∇u = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫∇u = Field(Integral(∇u))
 
     run!(simulation)
     compute!(∫∇u)
