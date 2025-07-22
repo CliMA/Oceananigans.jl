@@ -846,10 +846,8 @@ end
             end
 
             grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
-            @allowscalar begin
-                @test grid.z.cᵃᵃᶠ[1:Nz+1] == z.faces
-                @test grid.z.cᵃᵃᶠ[1:Nz] == Δz
-            end
+            @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
+            @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
 
             # kwarg values that give a uniformly-spaced coordinate
             Nz = 7
@@ -866,10 +864,8 @@ end
             @test z(Nz+1) - z(1) ≈ extent
 
             grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
-            @allowscalar begin
-                @test grid.z.cᵃᵃᶠ[1:Nz+1] == z.faces
-                @test grid.z.cᵃᵃᶠ[1:Nz] == Δz
-            end
+            @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
+            @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
         end
     end
 
