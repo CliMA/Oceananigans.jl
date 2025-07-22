@@ -1,8 +1,8 @@
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
+
 import Oceananigans.Architectures: on_architecture
 import KernelAbstractions as KA
-
 import Base: length
 
 
