@@ -829,8 +829,8 @@ end
 
         Δz = diff(z.faces)
 
-        # 3 x constant_spacing < constant_spacing_extent
-        # 4 x constant_spacing > constant_spacing_extent
+        # 3 x constant_spacing =  75 < constant_spacing_extent
+        # 4 x constant_spacing = 100 > constant_spacing_extent
         for k in 1:Nz-3
             @test @allowscalar Δz[k] > constant_spacing
         end
