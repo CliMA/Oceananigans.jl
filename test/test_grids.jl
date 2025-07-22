@@ -798,7 +798,7 @@ end
         @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
     end
 
-    @testset "Coord utils" begin
+    @testset "Coordinate utils" begin
         @info "  Testing ExponentialCoordinate..."
         Nx = 10
         l, r = -1000, 100
@@ -827,12 +827,12 @@ end
 
         Δz = diff(z.faces)
 
-        # 3 x constant_spacing =  75 < constant_spacing_extent
-        # 4 x constant_spacing = 100 > constant_spacing_extent
-        for k in 1:Nz-4
+        N_uniform_cells = Int(ceil(constant_spacing_extent / constant_spacing))
+
+        for k in 1:Nz-N_uniform_cells
             @test Δz[k] > constant_spacing
         end
-        for k in Nz-3:Nz
+        for k in Nz-(N_uniform_cells-1):Nz
             @test Δz[k] == constant_spacing
         end
 
