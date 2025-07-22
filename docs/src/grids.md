@@ -730,24 +730,24 @@ set_theme!(Theme(fontsize=16))
 bias = :right
 bias_edge = 0
 extent = 800
-constant_spacing = 30
-constant_spacing_extent = 180
+constant_spacing = 25
+constant_spacing_extent = 160
 
 z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
                                   constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.08))
+                                  stretching = PowerLawStretching(1.06))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
 Δz = zspacings(grid, Center())
 Δz = view(Δz, 1, 1, :)  # for plotting
 
-fig = Figure(size=(800, 550))
+fig = Figure(size=(800, 550), colgap = 5)
 
 axΔz1 = Axis(fig[1, 1];
              xlabel = "z-spacing (m)",
              ylabel = "z (m)",
-             title = "PowerLawStretching(1.08)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n ")
+             title = "PowerLawStretching(1.06)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n ")
 
 axz1 = Axis(fig[1, 2])
 
@@ -765,7 +765,7 @@ hidespines!(axz1)
 
 z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
                                   constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.04))
+                                  stretching = PowerLawStretching(1.03))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
@@ -775,7 +775,7 @@ zc = znodes(grid, Center())
 axΔz2 = Axis(fig[1, 3];
              xlabel = "z-spacing (m)",
              ylabel = "z (m)",
-             title = "PowerLawStretching(1.04)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n ")
+             title = "PowerLawStretching(1.03)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n ")
 axz2 = Axis(fig[1, 4])
 
 ldepth = hlines!(axΔz2, bias_edge - extent, color = :salmon, linestyle=:dash)
@@ -791,7 +791,7 @@ hidespines!(axz2)
 
 z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
                                   constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.04),
+                                  stretching = PowerLawStretching(1.03),
                                   maximum_stretching_extent = 500)
 
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
@@ -803,7 +803,7 @@ zc = znodes(grid, Center())
 axΔz3 = Axis(fig[1, 5];
              xlabel = "z-spacing (m)",
              ylabel = "z (m)",
-             title = "PowerLawStretching(1.04)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n maximum_stretching_extent = 500")
+             title = "PowerLawStretching(1.03)\n $(length(zf)) cells\n bottom @ z = $(zf[1]) m\n maximum_stretching_extent = 500")
 axz3 = Axis(fig[1, 6])
 
 ldepth = hlines!(axΔz3, bias_edge - extent, color = :salmon, linestyle=:dash)

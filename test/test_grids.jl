@@ -838,12 +838,18 @@ end
             @test @allowscalar Δz[k] == constant_spacing
         end
 
+        # choose kwarg values to get a uniformly spaced coordinate
         Nz = 7
-        constant_spacing = 25.21
-        extent = Nz * constant_spacing
-        z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent=extent)
+        constant_spacing = 25.34
+        constant_spacing_extent = Nz * constant_spacing
+        extent = constant_spacing_extent
+        z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
         @test length(z) == Nz
         @test length(z.faces) == Nz+1
+
+        Δz = diff(z.faces)
+        @test all(Δz .≈ constant_spacing)
+        @test z(Nz+1) - z(1) ≈ extent
     end
 
     @testset "Regular rectilinear grid" begin

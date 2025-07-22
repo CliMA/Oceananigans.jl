@@ -232,7 +232,7 @@ function compute_stretched_interfaces(; extent,
           throw(ArgumentError("bias must be :left or :right"))
 
     # Generate surface layer grid
-    faces = [bias_edge + dir * Δ₀ * (i-1) for i = 1:ceil(h₀ / Δ₀)]
+    faces = [bias_edge + dir * Δ₀ * (i-1) for i = 1:ceil(h₀ / Δ₀)+1]
 
     # Generate stretched interior grid
     L₀ = extent
@@ -330,13 +330,12 @@ Examples
   z.faces
 
   # output
-
   9-element Vector{Float64}:
-   -228.1
-   -193.16
-   -160.57
-   -130.13
-   -101.66
+   -218.16
+   -185.57
+   -155.13
+   -126.66
+   -100.0
     -75.0
     -50.0
     -25.0
@@ -351,7 +350,7 @@ Examples
 
   # output
 
-  28.099999999999994
+  18.159999999999997
   ```
 
 * A coordinate that that has a 20-meter spacing for 50 meters at the left side of the domain.
@@ -370,18 +369,19 @@ Examples
 
   # output
 
-  11-element Vector{Float64}:
+  12-element Vector{Float64}:
    -50.0
    -30.0
    -10.0
-    11.23
-    33.8
-    57.82
-    83.42
-   110.74
-   139.93
-   171.16
-   204.62
+    10.0
+    31.23
+    53.8
+    77.82
+   103.42
+   130.74
+   159.93
+   191.16
+   224.62
   ```
 
   that ends up with
@@ -390,7 +390,7 @@ Examples
   length(x)
 
   # output
-  10
+  11
   ```
 
   cells that span a domain of:
@@ -399,7 +399,7 @@ Examples
   x.faces[end] - x.faces[1]
 
   # output
-  254.62
+  274.62
   ```
   which is bigger than the desired `extent`.
 """
