@@ -4,51 +4,32 @@ using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
-    ν₀  :: FT
-    κ₀  :: FT
-    κᶜᵃ :: FT
-    Cᵉⁿ :: FT
-    Cᵃᵛ :: FT
-    Ri₀ :: FT
-    Riᵟ :: FT
-    Ri_dependent_tapering :: R
+struct RiBasedVerticalDiffusivity{TD, FT, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
+    ν₀ :: FT
+    κ₀ :: FT
+    νs :: FT
+    νc :: FT
+    Prs :: FT
+    Prc :: FT
+    Ric :: FT
+    ΔRi :: FT
     horizontal_Ri_filter :: HR
-    minimum_entrainment_buoyancy_gradient :: FT
-    maximum_diffusivity :: FT
-    maximum_viscosity :: FT
 end
 
 function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         κ₀::FT,
-                                        κᶜᵃ::FT,
-                                        Cᵉⁿ::FT,
-                                        Cᵃᵛ::FT,
-                                        Ri₀::FT,
-                                        Riᵟ::FT,
-                                        Ri_dependent_tapering::R,
-                                        horizontal_Ri_filter::HR,
-                                        minimum_entrainment_buoyancy_gradient::FT,
-                                        maximum_diffusivity::FT,
-                                        maximum_viscosity::FT) where {TD, FT, R, HR}
+                                        νs :: FT,
+                                        νc :: FT,
+                                        Prs :: FT,
+                                        Prc :: FT,
+                                        Ric :: FT,
+                                        ΔRi :: FT,
+                                        horizontal_Ri_filter::HR) where {TD, FT, HR}
 
 
-    return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
-                                                     Ri_dependent_tapering,
-                                                     horizontal_Ri_filter,
-                                                     minimum_entrainment_buoyancy_gradient,
-                                                     maximum_diffusivity,
-                                                     maximum_viscosity)
+    return RiBasedVerticalDiffusivity{TD, FT, HR}(ν₀, κ₀, νs, νc, Prs, Prc, Ric, ΔRi,
+                                                  horizontal_Ri_filter)
 end
-
-# Ri-dependent tapering flavor
-struct PiecewiseLinearRiDependentTapering end
-struct ExponentialRiDependentTapering end
-struct HyperbolicTangentRiDependentTapering end
-
-Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDependentTapering"
-Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering"
-Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering"
 
 # Horizontal filtering for the Richardson number
 struct FivePointHorizontalFilter end
@@ -124,18 +105,15 @@ Keyword arguments
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Oceananigans.defaults.FloatType;
-                                    Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                                    horizontal_Ri_filter = nothing,
-                                    minimum_entrainment_buoyancy_gradient = 1e-10,
-                                    maximum_diffusivity = Inf,
-                                    maximum_viscosity = Inf,
-                                    ν₀  = 0.7,
-                                    κ₀  = 0.5,
-                                    κᶜᵃ = 1.7,
-                                    Cᵉⁿ = 0.1,
-                                    Cᵃᵛ = 0.6,
-                                    Ri₀ = 0.1,
-                                    Riᵟ = 0.4,
+                                    ν₀ = 1e-5,
+                                    κ₀ = 1e-5,
+                                    νs = 0.0616,
+                                    νc = 0.761,
+                                    Prs = 1.08,
+                                    Prc = 0.175,
+                                    Ric = 0.437,
+                                    ΔRi = 9.7e-3,
+                                    horizontal_Ri_filter = FivePointHorizontalFilter(),
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -147,18 +125,15 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
 
     TD = typeof(time_discretization)
 
-    return RiBasedVerticalDiffusivity{TD}(convert(FT, ν₀),
-                                          convert(FT, κ₀),
-                                          convert(FT, κᶜᵃ),
-                                          convert(FT, Cᵉⁿ),
-                                          convert(FT, Cᵃᵛ),
-                                          convert(FT, Ri₀),
-                                          convert(FT, Riᵟ),
-                                          Ri_dependent_tapering,
-                                          horizontal_Ri_filter,
-                                          convert(FT, minimum_entrainment_buoyancy_gradient),
-                                          convert(FT, maximum_diffusivity),
-                                          convert(FT, maximum_viscosity))
+    return RiBasedVerticalDiffusivity{TD}(convert(FT, ν₀ ),
+                                          convert(FT, κ₀ ),
+                                          convert(FT, νs ),
+                                          convert(FT, νc ),
+                                          convert(FT, Prs),
+                                          convert(FT, Prc),
+                                          convert(FT, Ric),
+                                          convert(FT, ΔRi),
+                                          horizontal_Ri_filter)
 end
 
 RiBasedVerticalDiffusivity(FT::DataType; kw...) =
@@ -228,18 +203,6 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
     return nothing
 end
 
-# 1. x < x₀     => taper = 1
-# 2. x > x₀ + δ => taper = 0
-# 3. Otherwise, vary linearly between 1 and 0
-
-const Linear = PiecewiseLinearRiDependentTapering
-const Exp    = ExponentialRiDependentTapering
-const Tanh   = HyperbolicTangentRiDependentTapering
-
-@inline taper(::Linear, x::T, x₀, δ) where T = one(T) - min(one(T), max(zero(T), (x - x₀) / δ))
-@inline taper(::Exp,    x::T, x₀, δ) where T = exp(- max(zero(T), (x - x₀) / δ))
-@inline taper(::Tanh,   x::T, x₀, δ) where T = (one(T) - tanh((x - x₀) / δ)) / 2
-
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
@@ -273,69 +236,49 @@ end
                                      velocities, tracers, buoyancy, tracer_bcs, clock)
 end
 
-
 @inline function _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
                                                   velocities, tracers, buoyancy, tracer_bcs, clock)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
-    ν₀  = closure_ij.ν₀
-    κ₀  = closure_ij.κ₀
-    κᶜᵃ = closure_ij.κᶜᵃ
-    Cᵉⁿ = closure_ij.Cᵉⁿ
-    Cᵃᵛ = closure_ij.Cᵃᵛ
-    Ri₀ = closure_ij.Ri₀
-    Riᵟ = closure_ij.Riᵟ
-    tapering = closure_ij.Ri_dependent_tapering
+    ν₀  = closure_ij.ν₀ 
+    κ₀  = closure_ij.κ₀ 
+    νs  = closure_ij.νs 
+    νc  = closure_ij.νc 
+    Prs = closure_ij.Prs
+    Prc = closure_ij.Prc
+    Ric = closure_ij.Ric
+    ΔRi = closure_ij.ΔRi
     Ri_filter = closure_ij.horizontal_Ri_filter
-    N²ᵉⁿ = closure_ij.minimum_entrainment_buoyancy_gradient
-    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
-    # Convection and entrainment
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
-
-    # Conditions
-    # TODO: apply a minimum entrainment buoyancy gradient?
-    convecting = N² < 0 # applies regardless of Jᵇ
-    entraining = (N² > N²ᵉⁿ) & (N²_above < 0) & (Jᵇ > 0)
-
-    # Convective adjustment diffusivity
-    κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
-
-    # Entrainment diffusivity
-    κᵉⁿ = ifelse(entraining, Cᵉⁿ * Jᵇ / N², zero(grid))
+    κs = νs / Prs
+    κc = νc / Prc
 
     # (Potentially) apply a horizontal filter to the Richardson number
     Ri = filter_horizontally(i, j, k, grid, Ri_filter, diffusivities.Ri)
 
     # Shear mixing diffusivity and viscosity
-    τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κc★ = κ₀ * τ
-    κu★ = ν₀ * τ
+    νconv  = (νs - νc) * tanh(Ri / ΔRi) + νs
+    νshear = (ν₀ - νs) * Ri / Ric + νs
+
+    κconv  = (κs - κc) * tanh(Ri / ΔRi) + κs
+    κshear = (κ₀ - κs) * Ri / Ric + κs
 
     # Previous diffusivities
     κc = diffusivities.κc
     κu = diffusivities.κu
 
     # New diffusivities
-    κc⁺ = κᶜᵃ + κᵉⁿ + κc★
-    κu⁺ = κu★
-
-    # Limit by specified maximum
-    κc⁺ = min(κc⁺, closure_ij.maximum_diffusivity)
-    κu⁺ = min(κu⁺, closure_ij.maximum_viscosity)
+    κc⁺ = ifelse(Ri < 0, κconv, ifelse(Ri < Ric, κshear, κ₀))
+    κu⁺ = ifelse(Ri < 0, νconv, ifelse(Ri < Ric, νshear, ν₀))
 
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
-    within_inactive = inactive_node(i, j, k, grid, c, c, f)
-    κc⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κc⁺))
-    κu⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κu⁺))
 
     # Update by averaging in time
-    @inbounds κc[i, j, k] = (Cᵃᵛ * κc[i, j, k] + κc⁺) / (1 + Cᵃᵛ)
-    @inbounds κu[i, j, k] = (Cᵃᵛ * κu[i, j, k] + κu⁺) / (1 + Cᵃᵛ)
+    @inbounds κc[i, j, k] = ifelse(on_periphery, zero(grid), κc⁺)
+    @inbounds κu[i, j, k] = ifelse(on_periphery, zero(grid), κu⁺)
 
     return nothing
 end
