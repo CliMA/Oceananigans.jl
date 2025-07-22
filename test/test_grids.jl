@@ -808,14 +808,12 @@ end
         xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
 
         @test length(xₗ) == Nx
-        @allowscalar begin
-            @test xₗ(1) == l
-            @test xₗ(Nx+1) == r
-            @test xᵣ(1) == l
-            @test xᵣ(Nx+1) == r
-            @test xₗ(Nx+1) - xₗ(Nx) ≈ xᵣ(2) - xᵣ(1)
-            @test xᵣ(Nx+1) - xᵣ(Nx) ≈ xₗ(2) - xₗ(1)
-        end
+        @test xₗ(1) == l
+        @test xₗ(Nx+1) == r
+        @test xᵣ(1) == l
+        @test xᵣ(Nx+1) == r
+        @test xₗ(Nx+1) - xₗ(Nx) ≈ xᵣ(2) - xᵣ(1)
+        @test xᵣ(Nx+1) - xᵣ(Nx) ≈ xₗ(2) - xₗ(1)
 
         @info "  Testing ConstantToStretchedCoordinate..."
         extent = 200
@@ -832,10 +830,10 @@ end
         # 3 x constant_spacing =  75 < constant_spacing_extent
         # 4 x constant_spacing = 100 > constant_spacing_extent
         for k in 1:Nz-3
-            @test @allowscalar Δz[k] > constant_spacing
+            @test Δz[k] > constant_spacing
         end
         for k in Nz-2:Nz
-            @test @allowscalar Δz[k] == constant_spacing
+            @test Δz[k] == constant_spacing
         end
 
         # choose kwarg values to get a uniformly spaced coordinate
