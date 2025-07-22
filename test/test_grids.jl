@@ -808,12 +808,14 @@ end
         xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
 
         @test length(xₗ) == Nx
-        @test @allowscalar xₗ(1) == l
-        @test @allowscalar xₗ(Nx+1) == r
-        @test @allowscalar xᵣ(1) == l
-        @test @allowscalar xᵣ(Nx+1) == r
-        @test xₗ(Nx+1) - xₗ(Nx) ≈ xᵣ(2) - xᵣ(1)
-        @test xᵣ(Nx+1) - xᵣ(Nx) ≈ xₗ(2) - xₗ(1)
+        @allowscalar begin
+            @test xₗ(1) == l
+            @test xₗ(Nx+1) == r
+            @test xᵣ(1) == l
+            @test xᵣ(Nx+1) == r
+            @test xₗ(Nx+1) - xₗ(Nx) ≈ xᵣ(2) - xᵣ(1)
+            @test xᵣ(Nx+1) - xᵣ(Nx) ≈ xₗ(2) - xₗ(1)
+        end
 
         @info "  Testing ConstantToStretchedCoordinate..."
         extent = 200
@@ -829,11 +831,11 @@ end
 
         # 3 x constant_spacing < constant_spacing_extent
         # 4 x constant_spacing > constant_spacing_extent
-        for k in Nz:-1:Nz-2
-            @test @allowscalar Δz[k] == constant_spacing
-        end
-        for k in Nz-3:-1:1
+        for k in 1:Nz-3
             @test @allowscalar Δz[k] > constant_spacing
+        end
+        for k in Nz-2:Nz
+            @test @allowscalar Δz[k] == constant_spacing
         end
 
         Nz = 7
