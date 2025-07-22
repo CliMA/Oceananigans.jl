@@ -113,7 +113,7 @@ physics_pages = [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
         ],
     "`HydrostaticFreeSurfaceModel`" => [
-        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
+        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md",
         ],
     "`ShallowWaterModel`" => [
         "Shallow water model" => "physics/shallow_water_model.md"
@@ -128,6 +128,7 @@ physics_pages = [
 numerical_pages = [
     "Finite volume method" => "numerical_implementation/finite_volume.md",
     "Spatial operators" => "numerical_implementation/spatial_operators.md",
+    "Generalized vertical coordinates" => "numerical_implementation/generalized_vertical_coordinates.md",
     "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
     "Time stepping" => "numerical_implementation/time_stepping.md",
     "Boundary conditions" => "numerical_implementation/boundary_conditions.md",
