@@ -798,6 +798,52 @@ end
         @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
     end
 
+    @testset "Coord utils" begin
+        @info "  Testing ExponentialCoordinate..."
+        Nx = 10
+        l, r = -1000, 100
+        scale = (r-l) / 5
+
+        xₗ = ExponentialCoordinate(Nx, l, r; scale, bias =:left)
+        xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
+
+        @test length(xₗ) == Nx
+        @test @allowscalar xₗ(1) == l
+        @test @allowscalar xₗ(Nx+1) == r
+        @test @allowscalar xᵣ(1) == l
+        @test @allowscalar xᵣ(Nx+1) == r
+        @test xₗ(Nx+1) - xₗ(Nx) ≈ xᵣ(2) - xᵣ(1)
+        @test xᵣ(Nx+1) - xᵣ(Nx) ≈ xₗ(2) - xₗ(1)
+
+        @info "  Testing ConstantToStretchedCoordinate..."
+        extent = 200
+        constant_spacing = 25
+        constant_spacing_extent = 90
+        z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+
+        Nz = length(z)
+
+        @test length(z.faces) == Nz+1
+
+        Δz = diff(z.faces)
+
+        # 3 x constant_spacing < constant_spacing_extent
+        # 4 x constant_spacing > constant_spacing_extent
+        for k in Nz:-1:Nz-2
+            @test @allowscalar Δz[k] == constant_spacing
+        end
+        for k in Nz-3:-1:1
+            @test @allowscalar Δz[k] > constant_spacing
+        end
+
+        Nz = 7
+        constant_spacing = 25.21
+        extent = Nz * constant_spacing
+        z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent=extent)
+        @test length(z) == Nz
+        @test length(z.faces) == Nz+1
+    end
+
     @testset "Regular rectilinear grid" begin
         @info "  Testing regular rectilinear grid..."
 
