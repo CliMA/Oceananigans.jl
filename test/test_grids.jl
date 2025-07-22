@@ -829,10 +829,10 @@ end
 
         # 3 x constant_spacing =  75 < constant_spacing_extent
         # 4 x constant_spacing = 100 > constant_spacing_extent
-        for k in 1:Nz-3
+        for k in 1:Nz-4
             @test Δz[k] > constant_spacing
         end
-        for k in Nz-2:Nz
+        for k in Nz-3:Nz
             @test Δz[k] == constant_spacing
         end
 
