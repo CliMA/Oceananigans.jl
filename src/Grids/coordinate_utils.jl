@@ -50,7 +50,6 @@ ExponentialCoordinate
 ├─ right: 100.0
 ├─ scale: 220.0
 └─ bias: :right
-
 ```
 
 To inspect the interfaces of the coordinate we can call:
