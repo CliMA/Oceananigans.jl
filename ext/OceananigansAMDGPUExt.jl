@@ -108,7 +108,6 @@ end
 
 @inline UT.getdevice(roc::GPUVar, i)  = device(roc)
 @inline UT.getdevice(roc::GPUVar)     = device(roc)
-@inline UT.switch_device!(dev::Int64) = device!(dev)
 @inline UT.sync_device!(::ROCGPU)     = AMDGPU.synchronize()
 @inline UT.sync_device!(::ROCBackend) = AMDGPU.synchronize()
 
