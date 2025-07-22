@@ -270,8 +270,12 @@ end
 
 Return a one-dimensional coordinate that has `constant_spacing` over a `constant_spacing_extent`
 on the `bias`-side of the domain.
-Beyond the `constant_spacing_extent`, the interface spacings stretch according
-a provided `stretching` law.
+The coordinate has constant spacing over a distance
+
+    ceil(constant_spacing_extent / constant_spacing) * constant_spacing > constant_spacing_extent
+
+from the `bias_edge`.
+Beyond the above distance, the interface spacings stretch according the provided `stretching` law.
 
 Keyword arguments
 =================
