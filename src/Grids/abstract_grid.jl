@@ -1,5 +1,5 @@
 """
-    AbstractGrid{FT, TX, TY, TZ, Arch
+    AbstractGrid{FT, TX, TY, TZ, Arch}
 
 Abstract supertype for grids with elements of type `FT`, topology `{TX, TY, TZ}`,
 and `Arch`itecture.
