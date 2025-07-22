@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.97.0"
+version = "0.97.1"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -60,7 +60,7 @@ OceananigansOneAPIExt = "oneAPI"
 OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
 
 [compat]
-AMDGPU = "1.2.7"
+AMDGPU = "1.3.6"
 Adapt = "4.1.1"
 CUDA = "5.7"
 ConstructionBase = "1"
@@ -72,6 +72,7 @@ DocStringExtensions = "0.8, 0.9"
 Enzyme = "0.13.30"
 FFTW = "1"
 GPUArrays = "10.3, 11.2.2"
+GPUArraysCore = "0.2"
 Glob = "1.3"
 InteractiveUtils = "1.9"
 IterativeSolvers = "0.9"

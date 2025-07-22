@@ -20,9 +20,9 @@ function euler_time_stepping_doesnt_propagate_NaNs(arch)
                                         buoyancy = BuoyancyTracer(),
                                         tracers = :b)
 
-    CUDA.@allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
+    @allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
     time_step!(model, 1, euler=true)
-    u111 = CUDA.@allowscalar model.velocities.u[1, 1, 1]
+    u111 = @allowscalar model.velocities.u[1, 1, 1]
 
     return !isnan(u111)
 end
@@ -130,7 +130,7 @@ function incompressible_in_time(grid, Nt, timestepper)
     div_U = CenterField(grid)
 
     # Just add a temperature perturbation so we get some velocity field.
-    CUDA.@allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
+    @allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
     update_state!(model)
     for n in 1:Nt
@@ -140,11 +140,11 @@ function incompressible_in_time(grid, Nt, timestepper)
     arch = architecture(grid)
     launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data)
 
-    min_div = CUDA.@allowscalar minimum(interior(div_U))
-    max_div = CUDA.@allowscalar maximum(interior(div_U))
-    max_abs_div = CUDA.@allowscalar maximum(abs, interior(div_U))
-    sum_div = CUDA.@allowscalar sum(interior(div_U))
-    sum_abs_div = CUDA.@allowscalar sum(abs, interior(div_U))
+    min_div = @allowscalar minimum(interior(div_U))
+    max_div = @allowscalar maximum(interior(div_U))
+    max_abs_div = @allowscalar maximum(abs, interior(div_U))
+    sum_div = @allowscalar sum(interior(div_U))
+    sum_abs_div = @allowscalar sum(abs, interior(div_U))
 
     @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $(typeof(grid)), $timestepper]: " *
           "min=$min_div, max=$max_div, max_abs_div=$max_abs_div, sum=$sum_div, abs_sum=$sum_abs_div"
@@ -184,14 +184,14 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     T₀(x, y, z) = 10 + Ty*y + Tz*z + 0.0001*rand()
     set!(model, T=T₀)
 
-    Tavg0 = CUDA.@allowscalar mean(interior(model.tracers.T))
+    Tavg0 = @allowscalar mean(interior(model.tracers.T))
 
     update_state!(model)
     for n in 1:Nt
         time_step!(model, 600)
     end
 
-    Tavg = CUDA.@allowscalar mean(interior(model.tracers.T))
+    Tavg = @allowscalar mean(interior(model.tracers.T))
     @info "Tracer conservation after $Nt time steps [$(typeof(arch)), $FT]: " *
           "⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
