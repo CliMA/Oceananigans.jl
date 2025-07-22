@@ -7,6 +7,7 @@ using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolve
 # using GLMakie
 using GLMakie: Figure, heatmap!, Colorbar, Axis, recordframe!, VideoStream, save
 using Printf
+using CUDA
 
 function create_mass_conservation_simulation(; 
     use_open_boundary_condition = true,
@@ -78,20 +79,21 @@ function create_mass_conservation_simulation(;
         u, v, w = model.velocities
         ∫∇u = Field(Average(Field(∂x(u) + ∂z(w))))
 
-        function progress(sim)
+        function progress(sim, u_critical)
             u, v, w = model.velocities
             compute!(∫∇u)
+            it = sim.model.pressure_solver isa ConjugateGradientPoissonSolver ? iteration(sim.model.pressure_solver) : 0
             max_u = maximum(abs, u)
-            @info @sprintf("time: %s, max|u|: %.3f, Net flux: %.4e",
-                           prettytime(time(sim)), max_u, maximum(∫∇u))
-            u_critical = 2
+            @info @sprintf("time: %s, max|u|: %.3f, Net flux: %.4e, iteration: %d",
+                           prettytime(time(sim)), max_u, maximum(∫∇u), it)
+
             if max_u > u_critical
                 @warn "max|u| > $u_critical, stopping simulation"
                 stop_time(sim) = time(sim)
                 sim.running = false
             end
         end
-        add_callback!(simulation, progress, IterationInterval(5))
+        add_callback!(simulation, progress, IterationInterval(5); parameters = 20*U₀)
     end
     #---
 
