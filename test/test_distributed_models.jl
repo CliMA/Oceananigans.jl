@@ -340,14 +340,14 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test @allowscalar all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test @allowscalar all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
 
-        @test @allowscalar all(interior(field) .== arch.local_rank)
-        @test @allowscalar all(north_halo(field, include_corners=false) .== arch.local_rank)
-        @test @allowscalar all(south_halo(field, include_corners=false) .== arch.local_rank)
-        @test @allowscalar all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test @allowscalar all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(interior(field) .== arch.local_rank)
+        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -362,14 +362,14 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test @allowscalar all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test @allowscalar all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-        @test @allowscalar all(interior(field) .== arch.local_rank)
-        @test @allowscalar all(east_halo(field, include_corners=false) .== arch.local_rank)
-        @test @allowscalar all(west_halo(field, include_corners=false) .== arch.local_rank)
-        @test @allowscalar all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test @allowscalar all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(interior(field) .== arch.local_rank)
+        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -384,19 +384,19 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test @allowscalar all(interior(field) .== arch.local_rank)
+        @test all(interior(field) .== arch.local_rank)
 
-        @test @allowscalar all(east_halo(field, include_corners=false)  .== arch.connectivity.east)
-        @test @allowscalar all(west_halo(field, include_corners=false)  .== arch.connectivity.west)
-        @test @allowscalar all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test @allowscalar all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(east_halo(field, include_corners=false)  .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=false)  .== arch.connectivity.west)
+        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-        @test @allowscalar all(top_halo(field, include_corners=false)    .== arch.local_rank)
-        @test @allowscalar all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        @test @allowscalar all(southwest_halo(field) .== arch.connectivity.southwest)
-        @test @allowscalar all(southeast_halo(field) .== arch.connectivity.southeast)
-        @test @allowscalar all(northwest_halo(field) .== arch.connectivity.northwest)
-        @test @allowscalar all(northeast_halo(field) .== arch.connectivity.northeast)
+        @test all(top_halo(field, include_corners=false)    .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(southwest_halo(field) .== arch.connectivity.southwest)
+        @test all(southeast_halo(field) .== arch.connectivity.southeast)
+        @test all(northwest_halo(field) .== arch.connectivity.northwest)
+        @test all(northeast_halo(field) .== arch.connectivity.northeast)
     end
 
     return nothing
@@ -471,43 +471,27 @@ end
             grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 1), extent=(1, 2, 3))
             c = CenterField(grid)
             set!(c, arch.local_rank+1)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
-            
+
             c_reduced = Field{Nothing, Nothing, Nothing}(grid)
 
             N = grid.Nx * grid.Ny # local rank grid size
-            test = sum(c)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
-
-            @test test == 1*N + 2*N + 3*N + 4*N
+            @test sum(c) == 1*N + 2*N + 3*N + 4*N
 
             sum!(c_reduced, c)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
-
             @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
             bool_val = arch.local_rank == 0 ? true : false
             set!(cbool, bool_val)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
-            test = any(cbool)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
 
-            @test test == true
-            
-            test = all(cbool)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
-            @test test == false
+            @test any(cbool) == true
+            @test all(cbool) == false
 
             any!(cbool_reduced, cbool)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
-
             @test @allowscalar cbool_reduced[1, 1, 1] == true
 
             all!(cbool_reduced, cbool)
-            CUDA.synchronize() # Ensure all GPU operations are complete before testing
-
             @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
     end
