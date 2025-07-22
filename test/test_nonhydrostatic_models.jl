@@ -5,11 +5,17 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
 @testset "Models" begin
     @info "Testing models..."
 
-    @testset "Model constructor errors" begin
-        grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError NonhydrostaticModel(; grid, boundary_conditions=1)
-        @test_throws TypeError NonhydrostaticModel(; grid, forcing=2)
-        @test_throws TypeError NonhydrostaticModel(; grid, background_fields=3)
+    grids = (RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1)),
+             LatitudeLongitudeGrid(CPU(), size=(1,1,1), longitude=(-180, 180), latitude=(-20, 20), z=(-1, 0)))
+
+    for grid in grids
+        @testset "$grid grid construction" begin
+            @info "  Testing $grid grid construction..."
+                @test_throws TypeError NonhydrostaticModel(; grid, boundary_conditions=1)
+                @test_throws TypeError NonhydrostaticModel(; grid, forcing=2)
+                @test_throws TypeError NonhydrostaticModel(; grid, background_fields=3)
+
+        end
     end
 
     topos = ((Periodic, Periodic, Periodic),
@@ -95,13 +101,13 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
     @testset "Model construction with single tracer and nothing tracer" begin
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
-            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+            for grid in grids
+                model = NonhydrostaticModel(; grid, tracers=:c, buoyancy=nothing)
+                @test model isa NonhydrostaticModel
 
-            model = NonhydrostaticModel(; grid, tracers=:c, buoyancy=nothing)
-            @test model isa NonhydrostaticModel
-
-            model = NonhydrostaticModel(; grid, tracers=nothing, buoyancy=nothing)
-            @test model isa NonhydrostaticModel
+                model = NonhydrostaticModel(; grid, tracers=nothing, buoyancy=nothing)
+                @test model isa NonhydrostaticModel
+            end
         end
     end
 
