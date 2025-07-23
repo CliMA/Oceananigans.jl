@@ -21,6 +21,7 @@ using MPI
 
 MPI.Initialized() || MPI.Init()
 
+using Oceananigans: prognostic_fields
 using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
@@ -32,7 +33,7 @@ function Δ_min(grid)
 end
 
 function test_model_equality(test_model, true_model)
-    CUDA.@allowscalar begin
+    @allowscalar begin
         test_model_fields = prognostic_fields(test_model)
         true_model_fields = prognostic_fields(true_model)
         field_names = keys(test_model_fields)
@@ -79,8 +80,8 @@ function rotation_with_shear_test(grid, closure=nothing)
     uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ) + 0.05 * z
     ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
 
-    # Gaussian leads to values with O(1e-60),
-    # too small for repetible testing. We cap it at 0.1
+    # Gaussian leads to values with O(1e-60); too small for reproducibility.
+    # We cap it at 0.1
     cᵢ(λ, φ, z) = max(Gaussian(λ, φ - 5, 10), 0.1)
     vᵢ(λ, φ, z) = 0.1
 
@@ -100,7 +101,7 @@ Nx = 32
 Ny = 32
 
 for arch in archs
-    # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N 
+    # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N
     # which would lead to different advection schemes for partitioned and non-partitioned grids.
     # `Fractional` is, however, tested in regression tests where the horizontal dimensions are larger.
     valid_x_partition = !(arch.partition.x isa Fractional)
@@ -234,8 +235,14 @@ for arch in archs
         #####
 
         rank = arch.local_rank
-        set!(test_model, "checkpoint_$(rank)_iteration5.jld2")
+        set!(test_model, "checkpoint_rank$(rank)_iteration5.jld2")
+        # for f in ocean.model.timestepper.Gⁿ
+        #     Oceananigans.ImmersedBoundaries.mask_immersed_field!(f)
+        # end
 
+        # for f in ocean.model.timestepper.G⁻
+        #     Oceananigans.ImmersedBoundaries.mask_immersed_field!(f)
+        # end
         @test test_model.clock.iteration == checkpointed_model.clock.iteration
         @test test_model.clock.time == checkpointed_model.clock.time
         test_model_equality(test_model, checkpointed_model)
@@ -249,15 +256,17 @@ for arch in archs
 
         test_simulation = Simulation(test_model, Δt=Δt, stop_iteration=9)
 
+        run!(test_simulation)
+
         # Pickup from explicit checkpoint path
-        run!(test_simulation, pickup="checkpoint_$(rank)_iteration0.jld2")
+        run!(test_simulation, pickup="checkpoint_rank$(rank)_iteration0.jld2")
 
         @info "Testing model equality when running with pickup=checkpoint_iteration0.jld2."
         @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
         @test test_simulation.model.clock.time == true_simulation.model.clock.time
         test_model_equality(test_model, true_model)
 
-        run!(test_simulation, pickup="checkpoint_$(rank)_iteration5.jld2")
+        run!(test_simulation, pickup="checkpoint_rank$(rank)_iteration5.jld2")
         @info "Testing model equality when running with pickup=checkpoint_iteration5.jld2."
 
         @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
@@ -293,8 +302,8 @@ for arch in archs
         @test test_simulation.model.clock.time == true_simulation.model.clock.time
         test_model_equality(test_model, true_model)
 
-        rm("checkpoint_$(rank)_iteration0.jld2", force=true)
-        rm("checkpoint_$(rank)_iteration5.jld2", force=true)
+        for iteration in (0, 5)
+            rm("checkpoint_rank$(rank)_iteration$(iteration).jld2", force=true)
+        end
     end
 end
-
