@@ -7,9 +7,9 @@ using Oceananigans.Grids: default_indices, validate_indices, offset_data, instan
 import Oceananigans.Grids: zeros, StaticVerticalDiscretization, total_size
 import Oceananigans.Architectures: child_architecture
 
-import Oceananigans.DistributedComputations: 
-    partition_coordinate, 
-    assemble_coordinate, 
+import Oceananigans.DistributedComputations:
+    partition_coordinate,
+    assemble_coordinate,
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
     barrier!,
@@ -55,9 +55,9 @@ else
     Reactant.to_rarray(a; sharding)
 end
 
-# A function to shard the z-direction (needs to be replicated around 
+# A function to shard the z-direction (needs to be replicated around
 # TODO: add a method for `MutableVerticalDiscretization`
-function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding()) 
+function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding())
     cᵃᵃᶠ = maybe_shard(z.cᵃᵃᶠ, sharding)
     cᵃᵃᶜ = maybe_shard(z.cᵃᵃᶜ, sharding)
 
@@ -99,7 +99,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              z, # Intentionally not sharded
                                              (nothing for i=1:10)..., FT(radius))
 
-    grid = with_precomputed_metrics(grid) 
+    grid = with_precomputed_metrics(grid)
 
     # Extracting the local range
     xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
@@ -109,14 +109,14 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
     # (a NamedSharding of nothings represents a copy to all devices)
     # ``1'' here is the maximum number of dimensions of the fields of ``z''
-    replicate = Sharding.Replicated(arch.connectivity) 
+    replicate = Sharding.Replicated(arch.connectivity)
 
     λsharding = parent(λᶜᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : xsharding
     φsharding = parent(φᵃᶜᵃ) isa StepRangeLen ? Sharding.NoSharding() : ysharding
-    
+
     # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
-    xzmetric_sharding = ndims(grid.Δxᶜᶜᵃ) == 1 ? ysharding : xysharding 
-    
+    xzmetric_sharding = ndims(grid.Δxᶜᶜᵃ) == 1 ? ysharding : xysharding
+
     # Sharding common metricd
     Δλᶠᵃᵃ = Reactant.to_rarray(grid.Δλᶠᵃᵃ; sharding=xsharding)
     Δλᶜᵃᵃ = Reactant.to_rarray(grid.Δλᶜᵃᵃ; sharding=xsharding)
@@ -179,20 +179,20 @@ function RectilinearGrid(arch::ShardedDistributed,
     # Copying the coordinates and metrics to all the devices: we pass a NamedSharding of `nothing`s
     # (a NamedSharding of nothings represents a copy to all devices)
     replicated = Sharding.Replicated(arch.connectivity)
-    
+
     xsharding = parent(xᶠᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
     ysharding = parent(yᵃᶠᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
-    
+
     Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=replicated)
     Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=replicated)
     Δyᵃᶠᵃ = Reactant.to_rarray(Δyᵃᶠᵃ, sharding=replicated)
     Δyᵃᶜᵃ = Reactant.to_rarray(Δyᵃᶜᵃ, sharding=replicated)
-    
+
     xᶠᵃᵃ = Reactant.to_rarray(xᶠᵃᵃ, sharding=xsharding)
     xᶜᵃᵃ = Reactant.to_rarray(xᶜᵃᵃ, sharding=xsharding)
     yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=ysharding)
     yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=ysharding)
-    
+
     z = sharded_z_direction(z; sharding=replicated) # Intentionally not sharded
 
     return RectilinearGrid{TX, TY, TZ}(arch,

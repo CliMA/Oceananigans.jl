@@ -127,7 +127,7 @@ end
             end
 
             zk₋_src = znode(i_src, j_src, k₋_src, source_grid, c, c, f)
-            zk₊_src = znode(i_src, j_src, k₊_src, source_grid, c, c, f) 
+            zk₊_src = znode(i_src, j_src, k₊_src, source_grid, c, c, f)
 
             # Add contribution to integral from fractional left part of the source field,
             # if that region is a part of the grid.
@@ -248,23 +248,23 @@ end
         else
             # Otherwise, our job is a little bit harder and we have to carefully, conservatively
             # sum up all the contributions from the source field to the target cell.
-            
+
             # First we add up all the contributions from all source cells that lie entirely within the target cell.
             for i_src = i₋_src:i₊_src-1
                 target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
-    
+
             # Next, we add contributions from the "fractional" source cells on the right
             # and left of the target cell.
             ξi₋_src = ξnode(i₋_src, j_src, k_src, source_grid, f, c, c)
             ξi₊_src = ξnode(i₊_src, j_src, k_src, source_grid, f, c, c)
-    
+
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
             # We approximate the volume of the fractional part by linearly interpolating the cell volume.
             if i₋_src > 1
                 i_left = i₋_src - 1
-                
+
                 η₁ = ηnode(i_left, j_src,  k_src, source_grid, c, f, c)
                 η₂ = ηnode(i_left, j⁺_src, k_src, source_grid, c, f, c)
                 Az_left = fractional_horizontal_area(source_grid, ξ₋, ξi₋_src, η₁, η₂)
@@ -272,7 +272,7 @@ end
                 target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
             end
 
-                
+
             # Similar to above, add contribution to integral from fractional right part.
             if i₊_src < source_grid.Nx+1
                 i_right = i₊_src
@@ -283,7 +283,7 @@ end
 
                 target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
             end
-    
+
             target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
         end
     end

@@ -103,7 +103,7 @@ end
 Return a callable `IterationInterval` that "actuates" (schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
 
-For example, 
+For example,
 
 * `IterationInterval(100)` actuates at iterations `[100, 200, 300, ...]`.
 * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
@@ -164,7 +164,7 @@ end
     SpecifiedTimes(times)
 
 Return a callable `TimeInterval` that "actuates" (schedules output or callback execution)
-whenever the model's clock equals the specified values in `times`. For example, 
+whenever the model's clock equals the specified values in `times`. For example,
 
 * `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
 

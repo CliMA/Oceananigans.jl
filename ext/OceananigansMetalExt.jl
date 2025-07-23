@@ -1,8 +1,12 @@
 module OceananigansMetalExt
 
 using Metal
+using Metal: thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d
 using Oceananigans
+using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+using KernelAbstractions: __dynamic_checkbounds, __iterspace
 
+import KernelAbstractions: __validindex
 import Oceananigans.Architectures:
     architecture,
     convert_to_device,
@@ -13,6 +17,7 @@ MetalGPU() = GPU(Metal.MetalBackend())
 Base.summary(::MetalGPU) = "MetalGPU"
 
 architecture(::MtlArray) = MetalGPU()
+architecture(::Type{MtlArray}) = MetalGPU()
 
 on_architecture(::MetalGPU, a::Number) = a
 on_architecture(::MetalGPU, a::Array) = MtlArray(a)
@@ -34,6 +39,16 @@ end
 
 @inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
 @inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
+
+Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
+    if __dynamic_checkbounds(ctx)
+        I = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid_1d(),
+                                thread_position_in_threadgroup_1d())
+        return I in __linear_ndrange(ctx)
+    else
+        return true
+    end
+end
 
 end # module
 

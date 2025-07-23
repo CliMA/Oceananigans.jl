@@ -80,7 +80,7 @@ function run_field_reduction_tests(FT, arch)
         ε = eps(eltype(ϕ_vals)) * 10 * maximum(maximum.(ϕs_vals))
         @info "    Testing field reductions with tolerance $ε..."
 
-        @test CUDA.@allowscalar all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
+        @test @allowscalar all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
         # Important to make sure no CUDA scalar operations occur!
         CUDA.allowscalar(false)
@@ -91,6 +91,9 @@ function run_field_reduction_tests(FT, arch)
         @test minimum(∛, ϕ) ≈ minimum(∛, ϕ_vals) atol=ε
         @test maximum(abs, ϕ) ≈ maximum(abs, ϕ_vals) atol=ε
         @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
+
+        @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
+        @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
 
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
@@ -125,7 +128,7 @@ function run_field_interpolation_tests(grid)
 
     # TODO: remove this allowscalar when `nodes` returns broadcastable object on GPU
     xf, yf, zf = nodes(grid, (Face(), Face(), Face()), reshape=true)
-    f_max = CUDA.@allowscalar maximum(func.(xf, yf, zf))
+    f_max = @allowscalar maximum(func.(xf, yf, zf))
     ε_max = eps(f_max)
     tolerance = 10 * ε_max
 
@@ -141,7 +144,7 @@ function run_field_interpolation_tests(grid)
         x, y, z = nodes(f, reshape=true)
         loc = Tuple(L() for L in location(f))
 
-        CUDA.@allowscalar begin
+        @allowscalar begin
             ℑf = interpolate_xyz.(x, y, z, Ref(f.data), Ref(loc), Ref(f.grid))
         end
 
@@ -163,7 +166,7 @@ function run_field_interpolation_tests(grid)
     ys = on_architecture(arch, ys)
     zs = on_architecture(arch, zs)
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         for f in (u, v, w, c)
             loc = Tuple(L() for L in location(f))
             ℑf = interpolate_xyz.(xs, ys, zs, Ref(f.data), Ref(loc), Ref(f.grid))
@@ -210,7 +213,7 @@ function run_field_interpolation_tests(grid)
     set!(If, (x, y)-> x * y)
     interpolate!(wf, If)
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test all(interior(wf) .≈ interior(If))
     end
 
@@ -403,7 +406,7 @@ end
                 sz = size(field)
                 A = rand(FT, sz...)
                 set!(field, A)
-                @test CUDA.@allowscalar field.data[1, 1, 1] == A[1, 1, 1]
+                @test @allowscalar field.data[1, 1, 1] == A[1, 1, 1]
             end
 
             Nx = 8
@@ -425,10 +428,10 @@ end
             xw, yw, zw = nodes(w)
             xc, yc, zc = nodes(c)
 
-            @test CUDA.@allowscalar u[1, 2, 3] ≈ f(xu[1], yu[2], zu[3])
-            @test CUDA.@allowscalar v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
-            @test CUDA.@allowscalar w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
-            @test CUDA.@allowscalar c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
+            @test @allowscalar u[1, 2, 3] ≈ f(xu[1], yu[2], zu[3])
+            @test @allowscalar v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
+            @test @allowscalar w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
+            @test @allowscalar c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
 
             # Test for Field-to-Field setting on same architecture, and cross architecture.
             # The behavior depends on halo size: if the halos of two fields are the same, we can
@@ -488,8 +491,8 @@ end
                 @test fun(windowed_c) ≈ fun(interior(windowed_c))
             end
 
-            @test mean(c) ≈ CUDA.@allowscalar mean(interior(c))
-            @test mean(windowed_c) ≈ CUDA.@allowscalar mean(interior(windowed_c))
+            @test mean(c) ≈ @allowscalar mean(interior(c))
+            @test mean(windowed_c) ≈ @allowscalar mean(interior(windowed_c))
         end
 end
 
@@ -602,18 +605,18 @@ end
             cv = view(c, :, :, 1+1:k_top-1)
             @test size(cv) == (Nx, Ny, k_top-2)
             @test size(parent(cv)) == (Nx+2Hx, Ny+2Hy, k_top-2)
-            CUDA.@allowscalar @test all(cv[i, j, k] == c[i, j, k] for k in 1+1:k_top-1, j in 1:Ny, i in 1:Nx)
+            @allowscalar @test all(cv[i, j, k] == c[i, j, k] for k in 1+1:k_top-1, j in 1:Ny, i in 1:Nx)
 
             # Now test the views of views
             cvv = view(cv, :, :, 1+2:k_top-2)
             @test size(cvv) == (Nx, Ny, k_top-4)
             @test size(parent(cvv)) == (Nx+2Hx, Ny+2Hy, k_top-4)
-            CUDA.@allowscalar @test all(cvv[i, j, k] == cv[i, j, k] for k in 1+2:k_top-2, j in 1:Ny, i in 1:Nx)
+            @allowscalar @test all(cvv[i, j, k] == cv[i, j, k] for k in 1+2:k_top-2, j in 1:Ny, i in 1:Nx)
 
             cvvv = view(cvv, :, :, 1+3:k_top-3)
             @test size(cvvv) == (1, 1, k_top-6)
             @test size(parent(cvvv)) == (Nx+2Hx, Ny+2Hy, k_top-6)
-            CUDA.@allowscalar @test all(cvvv[i, j, k] == cvv[i, j, k] for k in 1+3:k_top-3, j in 1:Ny, i in 1:Nx)
+            @allowscalar @test all(cvvv[i, j, k] == cvv[i, j, k] for k in 1+3:k_top-3, j in 1:Ny, i in 1:Nx)
 
             @test_throws ArgumentError view(cv, :, :, 1)
             @test_throws ArgumentError view(cv, :, :, k_top)

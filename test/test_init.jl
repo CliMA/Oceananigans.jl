@@ -1,6 +1,7 @@
 # TODO: move these imports into test-specific files?
 using Reactant
 using Enzyme
+using CUDA
 using Metal
 using AMDGPU
 using oneAPI

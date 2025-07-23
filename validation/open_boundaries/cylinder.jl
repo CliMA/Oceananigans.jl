@@ -23,7 +23,7 @@ F = ∫ᵥ(∂ₜU)dV + ∮ₛ(U(U⋅n̂) + Pn̂ − τ⋅n̂)dS
 Fᵤ = ∫ᵥ ∂ₜu dV + ∮ₛ(u(u⃗⋅n̂) − τₓₓ)dS + ∮ₛPx̂⋅dS⃗
 Fᵤ = ∫ᵥ ∂ₜ u dV − ∫ₛ₁(u² − 2ν∂ₓ u + P)dS + ∫ₛ₂(u² − 2ν∂ₓ u+P)dS − ∫ₛ₃uvdS + ∫ₛ₄ uvdS
 
-where the bounding box is ``V`` which is formed from the boundaries ``s1``, ``s2``, ``s3``, and ``s4`` 
+where the bounding box is ``V`` which is formed from the boundaries ``s1``, ``s2``, ``s3``, and ``s4``
 which have outward directed normals ``-x̂``, ``x̂``, ``-ŷ``, and ``ŷ``
 
 """
@@ -54,49 +54,34 @@ function drag(model;
     ∂₁uᵣ = Field(∂x(uᶜ), indices = (i₂, j₁:j₂, 1))
 
     ∂ₜuᶜ = Field(@at (Center, Center, Center) model.timestepper.Gⁿ.u)
-
     ∂ₜu = Field(∂ₜuᶜ, indices = (i₁:i₂, j₁:j₂, 1))
 
     p = model.pressures.pNHS
-
     ∫∂ₓp = Field(∂x(p), indices = (i₁:i₂, j₁:j₂, 1))
 
     a_local = Field(Integral(∂ₜu))
-
     a_flux = Field(Integral(uᵣ²)) - Field(Integral(uₗ²)) + Field(Integral(uvᵣ)) - Field(Integral(uvₗ))
-
     a_viscous_stress = 2ν * (Field(Integral(∂₁uᵣ)) - Field(Integral(∂₁uₗ)))
-
     a_pressure = Field(Integral(∫∂ₓp))
 
     return a_local + a_flux + a_pressure - a_viscous_stress
 end
 
-function cylinder_model(open_boundaries; 
-
+function cylinder_model(open_boundaries;
                         obc_name = "",
-
                         u∞ = 1,
                         r = 1/2,
-
                         cylinder = (x, y) -> ((x^2 + y^2) ≤ r^2),
-
                         stop_time = 100,
-
                         arch = GPU(),
-
                         Re = 100,
-                        Ny = 512,
+                        Ny = 128,
                         Nx = Ny,
-
                         ϵ = 0, # break up-down symmetry
                         x = (-6, 12), # 18
                         y = (-6 + ϵ, 6 + ϵ),  # 12
-
                         grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat)),
-
                         prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)_$(obc_name)",
-                        
                         drag_averaging_window = 29)
 
     grid = RectilinearGrid(arch; grid_kwargs...)
@@ -108,9 +93,7 @@ function cylinder_model(open_boundaries;
     closure = ScalarDiffusivity(ν=1/Re)
 
     no_slip = ValueBoundaryCondition(0)
-
     u_bcs = FieldBoundaryConditions(immersed=no_slip, east=open_boundaries.east, west=open_boundaries.west)
-
     v_bcs = FieldBoundaryConditions(immersed=no_slip,
                                     east=GradientBoundaryCondition(0),
                                     west=ValueBoundaryCondition(0))
@@ -154,7 +137,7 @@ function cylinder_model(open_boundaries;
 
         compute!(drag_force)
         D = CUDA.@allowscalar drag_force[1, 1, 1]
-        cᴰ = D / (u∞ * r) 
+        cᴰ = D / (u∞ * r)
         vmax = maximum(model.velocities.v)
 
         msg = @sprintf("Iter: %d, time: %.2f, Δt: %.4f, Poisson iters: %d",
@@ -221,8 +204,8 @@ function cylinder_model(open_boundaries;
 
     supertitle = Label(fig[0, :], title)
 
-    CairoMakie.record(fig, prefix"*.mp4", 1:length(u.times), framerate=20) do i
-        @info "$i"
+    CairoMakie.record(fig, prefix * ".mp4", 1:length(u.times), framerate=20) do i
+        i % 50 == 0 && @info "$i"
         n[] = i
     end
 
@@ -231,15 +214,16 @@ end
 
 u∞ = 1
 
-feobc = (east = FlatExtrapolationOpenBoundaryCondition(), west = OpenBoundaryCondition(u∞))
+feobcs = (west = OpenBoundaryCondition(u∞), east = FlatExtrapolationOpenBoundaryCondition(),)
 
-paobcs = (east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
-          west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = 0.1))
+paobcs = (west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = 0.1),
+          east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
+          )
 
-obcs = (; flat_extrapolation=feobc, 
+obcs = (; flat_extrapolation=feobcs,
           perturbation_advection=paobcs)
 
 for (obc_name, obc) in pairs(obcs)
     @info "Running $(obc_name)"
-    cylinder_model(obc; obc_name, u∞)
+    cylinder_model(obc; obc_name, u∞, arch=CPU(), Ny=16)
 end

@@ -1,13 +1,10 @@
 using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
-using Oceananigans.Models
 using Oceananigans.Utils: TimeInterval, prettykeys
 using Oceananigans.Fields: boundary_conditions, indices
 
-default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
-default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(model) = [:grid]
 
 mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
@@ -80,10 +77,10 @@ Keyword arguments
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
                     `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-                    split the output file when its size exceeds `sz`. Another example is 
+                    split the output file when its size exceeds `sz`. Another example is
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
-                    
+
 - `overwrite_existing`: Remove existing files if their filenames conflict.
                         Default: `false`.
 
@@ -93,7 +90,7 @@ Keyword arguments
           Default: `noinit(args...) = nothing`.
 
 - `including`: List of model properties to save with every file.
-               Default: `[:grid, :coriolis, :buoyancy, :closure]`
+               Default depends of the type of model: `default_included_properties(model)`
 
 ## Miscellaneous keywords
 
@@ -103,16 +100,16 @@ Keyword arguments
 - `part`: The starting part number used when file splitting.
           Default: 1.
 
-- `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
+- `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
 
 Example
 =======
 
-Write out 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
+Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 
 ```@example
 using Oceananigans
-using Oceananigans.Utils: hour, minute
+using Oceananigans.Units
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
@@ -124,22 +121,22 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
+c_avg = Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename = "some_data.jld2",
-                                                    schedule = TimeInterval(20minute),
+                                                    schedule = TimeInterval(20minutes),
                                                     init = init_save_some_metadata!)
 ```
 
-and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
-to a file called `some_averaged_data.jld2`
+and also output a both 5-minute-time-average and horizontal-average of the tracer ``c`` every 20 minutes
+of simulation time to a file called `some_averaged_data.jld2`
 
 ```@example
 simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
                                                filename = "some_averaged_data.jld2",
-                                               schedule = AveragedTimeInterval(20minute, window=5minute))
+                                               schedule = AveragedTimeInterval(20minute, window=5minutes))
 ```
 """
 function JLD2Writer(model, outputs; filename, schedule,
@@ -185,7 +182,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    try 
+    try
         jldopen(filepath, "a+"; jld2_kw...) do file
             saveproperties!(file, model, including)
 
@@ -232,7 +229,7 @@ function iteration_exists(filepath, iter=0)
     return zero_exists
 end
 
-function write_output!(writer::JLD2Writer, model::AbstractModel)
+function write_output!(writer::JLD2Writer, model)
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
@@ -280,10 +277,10 @@ end
 """
     jld2output!(path, iter, time, data, kwargs)
 
-Write the (name, value) pairs in `data`, including the simulation
+Write the `(name, value)` pairs in `data`, including the simulation
 `time`, to the JLD2 file at `path` in the `timeseries` group,
-stamping them with `iter` and using `kwargs` when opening
-the JLD2 file.
+stamping them with `iter`. Provided `kwargs` are used when opening
+the JLD2 file (i.e., provided to `JLD2.jldopen`).
 """
 function jld2output!(path, iter, time, data, kwargs)
     jldopen(path, "r+"; kwargs...) do file
@@ -331,7 +328,7 @@ function Base.show(io::IO, ow::JLD2Writer)
     print(io, "JLD2Writer scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "├── array type: ", show_array_type(ow.array_type), "\n",
+              "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))

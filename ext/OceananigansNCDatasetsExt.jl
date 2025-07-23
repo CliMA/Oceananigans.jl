@@ -5,20 +5,19 @@ using NCDatasets
 using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
 
-using Oceananigans.Fields
-
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization
-using Oceananigans.Grids: topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary
-using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
-using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+using Oceananigans.Fields
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location
+using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
+                          topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
+                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
+using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+using Oceananigans.TimeSteppers: float_or_date_time
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval,
+                          versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using SeawaterPolynomials: BoussinesqEquationOfState
 
 using Oceananigans.OutputWriters:
@@ -60,7 +59,7 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
     else
         inds = validate_index(inds, ℓ, T, N, H)
         inds = restrict_to_interior(inds, ℓ, T, N)
-        return collect(view(ξ, inds))
+        return collect(ξ[inds])
     end
 end
 
@@ -360,34 +359,36 @@ gather_grid_metrics(grid::ImmersedBoundaryGrid, args...) =
 # TODO: Proper masks for 2D models?
 flat_loc(T, L) = T == Flat ? nothing : L
 
-# For Immersed Boundary Grids (IBG) with a Grid Fitted Bottom (GFB)
-function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
-    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
+
+# For Immersed Boundary Grids (IBG) with either a Grid Fitted Bottom (GFB) or a Partial Cell Bottom (PCB)
+function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator)
+    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
     return Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
+                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
 end
 
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
 # For Immersed Boundary Grids (IBG) with a Grid Fitted Boundary (also GFB!)
 function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator)
-    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("immersed_boundary_mask" => Field(grid.immersed_boundary.mask; indices),
-                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
+    return Dict("peripheral_nodes" => Field(grid.immersed_boundary.mask; indices),
+                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
 end
 
 #####
@@ -1397,7 +1398,7 @@ function Base.show(io::IO, ow::NetCDFWriter)
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "└── array type: ", show_array_type(ow.array_type), "\n",
+              "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))
 end
@@ -1436,4 +1437,5 @@ end
 #####
 
 ext(::Type{NetCDFWriter}) = ".nc"
+
 end # module

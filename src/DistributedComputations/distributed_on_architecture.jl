@@ -5,10 +5,8 @@ import Oceananigans.Architectures: on_architecture
 # TODO: support changing the number of ranks / the partitioning?
 
 # Disambiguation for methods defined in `src/Architectures.jl`
-DisambiguationTypes = Union{Array, 
-                            CuArray, 
-                            BitArray, 
-                            SubArray{<:Any, <:Any, <:CuArray}, 
+DisambiguationTypes = Union{Array,
+                            BitArray,
                             SubArray{<:Any, <:Any, <:Array},
                             OffsetArray,
                             Tuple,
@@ -16,7 +14,7 @@ DisambiguationTypes = Union{Array,
 
 on_architecture(arch::Distributed, a::DisambiguationTypes) = on_architecture(child_architecture(arch), a)
 
-function on_architecture(new_arch::Distributed, old_grid::LatitudeLongitudeGrid) 
+function on_architecture(new_arch::Distributed, old_grid::LatitudeLongitudeGrid)
     child_arch = child_architecture(new_arch)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
@@ -56,7 +54,7 @@ end
 
 function on_architecture(new_arch::Distributed, old_grid::OrthogonalSphericalShellGrid)
     child_arch = child_architecture(new_arch)
-    
+
     coordinates = (:λᶜᶜᵃ, :λᶠᶜᵃ, :λᶜᶠᵃ, :λᶠᶠᵃ, :φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ, :z)
     grid_spacings = (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ)
     horizontal_areas = (:Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)

@@ -1,8 +1,9 @@
 module TKEBasedVerticalDiffusivities
 
-using Adapt
-using Adapt
-using CUDA
+export CATKEVerticalDiffusivity,
+       TKEDissipationVerticalDiffusivity
+
+using Adapt, GPUArraysCore
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans
@@ -22,7 +23,6 @@ using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCon
 using Oceananigans.BuoyancyFormulations: BuoyancyTracer, SeawaterBuoyancy
 using Oceananigans.BuoyancyFormulations: TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy
 using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
-using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
@@ -30,7 +30,7 @@ using Oceananigans.TurbulenceClosures:
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
-    
+
 import Oceananigans.BoundaryConditions: getbc, fill_halo_regions!
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
@@ -108,33 +108,33 @@ end
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κc * N²
 end
- 
+
 @inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
     ℑbzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
 
 # Note special attention paid to averaging the vertical grid spacing correctly
-@inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) * 
+@inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) *
                                                   Δzᶠᶜᶠ(i, j, k, grid)     * ∂zᶠᶜᶠ(i, j, k, grid, b)
 
-@inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) * 
+@inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) *
                                                   Δzᶜᶠᶠ(i, j, k, grid)     * ∂zᶜᶠᶠ(i, j, k, grid, b)
 
 @inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, uⁿ, u⁺)
     Δz_Pxⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, uⁿ, u⁺)
     Δz_Px⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, u⁺, u⁺)
-    return (Δz_Pxⁿ + Δz_Px⁺) / (2 * Δzᶠᶜᶜ(i, j, k, grid))
+    return (Δz_Pxⁿ + Δz_Px⁺) / 2 * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
 @inline function shear_production_yᶜᶠᶜ(i, j, k, grid, νₑ, vⁿ, v⁺)
     Δz_Pyⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, vⁿ, v⁺)
     Δz_Py⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, v⁺, v⁺)
-    return (Δz_Pyⁿ + Δz_Py⁺) / (2 * Δzᶜᶠᶜ(i, j, k, grid))
+    return (Δz_Pyⁿ + Δz_Py⁺) / 2 * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
 @inline function shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
     # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
-    # loss of mean kinetic energy due to shear production --- but _not_ respecting the 
+    # loss of mean kinetic energy due to shear production --- but _not_ respecting the
     # the temporal discretization. Note that also respecting the temporal discretization, would
     # require storing the velocity field at n and n+1):
 
@@ -159,7 +159,7 @@ end
 
 function get_time_step(closure_array::AbstractArray)
     # assume they are all the same
-    closure = CUDA.@allowscalar closure_array[1, 1]
+    closure = @allowscalar closure_array[1, 1]
     return get_time_step(closure)
 end
 
@@ -193,4 +193,3 @@ for S in (:CATKEMixingLength,
 end
 
 end # module
-

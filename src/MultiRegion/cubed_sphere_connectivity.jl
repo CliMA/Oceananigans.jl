@@ -21,9 +21,9 @@ struct CubedSphereConnectivity{C, R}
     rotations :: R
 end
 
-function CubedSphereConnectivity(devices, partition::CubedSpherePartition, rotations::Tuple = default_rotations)
-    regions = MultiRegionObject(Tuple(1:length(devices)), devices)
-    rotations = MultiRegionObject(rotations, devices)
+function CubedSphereConnectivity(arch::AbstractArchitecture, devices, partition::CubedSpherePartition, rotations::Tuple = default_rotations)
+    regions = MultiRegionObject(arch, Tuple(1:length(devices)), devices)
+    rotations = MultiRegionObject(arch, rotations, devices)
     @apply_regionally connectivity = find_regional_connectivities(regions, partition)
 
     return CubedSphereConnectivity(connectivity, rotations)
@@ -79,7 +79,7 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     ```
 
     A connectivity that implies that the boundary condition for the
-    north side of region 1 comes from the east side of region 3 is 
+    north side of region 1 comes from the east side of region 3 is
 
     ```jldoctest cubedsphereconnectivity
     julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())

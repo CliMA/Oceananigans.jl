@@ -59,7 +59,7 @@ OceananigansConservativeRegriddingExt = Base.get_extension(Oceananigans, :Oceana
                 fine_stretched_kw = Dict{Any, Any}(d => (0, 1) for d in (:x, :y, :z) if d != dim)
                 fine_stretched_kw[dim] = fine_stretched_ξ
                 fine_stretched_grid = RectilinearGrid(arch, size=sz; topology, fine_stretched_kw...)
-               
+
                 fine_stretched_c                    = CenterField(fine_stretched_grid)
 
                 coarse_1d_regular_c                 = CenterField(coarse_1d_regular_grid)
@@ -75,7 +75,7 @@ OceananigansConservativeRegriddingExt = Base.get_extension(Oceananigans, :Oceana
                 c₁ = 1
                 c₂ = 3
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     interior(fine_1d_stretched_c)[1] = c₁
                     interior(fine_1d_stretched_c)[2] = c₂
                 end
@@ -83,13 +83,13 @@ OceananigansConservativeRegriddingExt = Base.get_extension(Oceananigans, :Oceana
                 # Coarse-graining
                 integral_regrid!(coarse_1d_regular_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(coarse_1d_regular_c)[1] ≈ ℓ/L * c₁ + (1 - ℓ/L) * c₂
                 end
 
                 integral_regrid!(fine_1d_regular_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(fine_1d_regular_c)[1] ≈ ℓ/(L/2) * c₁ + (1 - ℓ/(L/2)) * c₂
                     @test interior(fine_1d_regular_c)[2] ≈ c₂
                 end
@@ -97,7 +97,7 @@ OceananigansConservativeRegriddingExt = Base.get_extension(Oceananigans, :Oceana
                 # Fine-graining
                 integral_regrid!(very_fine_1d_stretched_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(very_fine_1d_stretched_c)[1] ≈ c₁
                     @test interior(very_fine_1d_stretched_c)[2] ≈ (ℓ - 0.2)/0.4 * c₁ + (0.6 - ℓ)/0.4 * c₂
                     @test interior(very_fine_1d_stretched_c)[3] ≈ c₂
@@ -105,7 +105,7 @@ OceananigansConservativeRegriddingExt = Base.get_extension(Oceananigans, :Oceana
                 
                 integral_regrid!(super_fine_1d_stretched_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(super_fine_1d_stretched_c)[1] ≈ c₁
                     @test interior(super_fine_1d_stretched_c)[2] ≈ c₁
                     @test interior(super_fine_1d_stretched_c)[3] ≈ (ℓ - 0.3)/0.35 * c₁ + (0.65 - ℓ)/0.35 * c₂

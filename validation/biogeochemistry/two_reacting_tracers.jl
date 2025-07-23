@@ -8,7 +8,7 @@ sinking = AdvectiveForcing(WENO(), w=-1)
 rising = AdvectiveForcing(WENO(), w=+1)
 
 b_to_a(x, y, z, t, a, b) = + a * b
-a_to_b(x, y, z, t, a, b) = - a * b 
+a_to_b(x, y, z, t, a, b) = - a * b
 
 a_reaction = Forcing(a_to_b, field_dependencies=(:a, :b))
 b_reaction = Forcing(b_to_a, field_dependencies=(:a, :b))

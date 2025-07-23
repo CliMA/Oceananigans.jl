@@ -32,18 +32,18 @@ include("dependencies_for_runtests.jl")
 
         @test prod(fful) == prod(fimm) * 8
         @test all(Array(interior(prod(fful, dims=1)) .== interior(prod(fimm, dims=1)) .* 8))
-    
+
         @info "    Testing Reductions in Standard fields"
-        
+
         fcon = Field{Center, Center, Center}(grid)
-        
+
         fcon .= 2
 
         fcon[1, :, :] .= 1e6
         fcon[2, :, :] .= -1e4
         fcon[3, :, :] .= -12.5
 
-        @test norm(fful) ≈ √2 * norm(fcon, condition = (i, j, k, x, y) -> i > 3) 
+        @test norm(fful) ≈ √2 * norm(fcon, condition = (i, j, k, x, y) -> i > 3)
 
         for reduc in (mean, maximum, minimum)
             @test reduc(fful) == reduc(fcon, condition = (i, j, k, x, y) -> i > 3)
@@ -54,12 +54,12 @@ include("dependencies_for_runtests.jl")
 
         @test prod(fful) == prod(fcon, condition = (i, j, k, x, y) -> i > 3) * 8
         @test all(Array(interior(prod(fful, dims=1)) .== interior(prod(fcon, condition = (i, j, k, x, y) -> i > 3, dims=1)) .* 8))
-    
+
         @info "    Testing in-place conditional reductions"
-    
+
         redimm = Field{Nothing, Center, Center}(ibg)
         for (reduc, reduc!) in zip((mean, maximum, minimum, sum, prod), (mean!, maximum!, minimum!, sum!, prod!))
-            @test CUDA.@allowscalar reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
+            @test @allowscalar reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
         end
     end
 end
