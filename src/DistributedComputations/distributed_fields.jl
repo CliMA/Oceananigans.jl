@@ -1,9 +1,9 @@
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
-using CUDA: @allowscalar
+using GPUArraysCore: @allowscalar
 
-using Oceananigans.Fields: ReducedAbstractField, 
+using Oceananigans.Fields: ReducedAbstractField,
                            get_neutral_mask,
                            condition_operand,
                            initialize_reduced_field!,
@@ -33,7 +33,9 @@ const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
 # Automatically partition under the hood if sizes are compatible
-function set!(u::DistributedField, V::Union{Array, CuArray, OffsetArray})
+set!(u::DistributedField, V::Union{Array, OffsetArray}) = _set!(u, V)
+
+function _set!(u::DistributedField, V::VT) where {VT}
     NV = size(V)
     Nu = global_size(u)
 
@@ -111,7 +113,7 @@ end
 Return the partitioned dimensions of a distributed field or architecture.
 """
 function partition_dimensions(arch::Distributed)
-    R = ranks(arch) 
+    R = ranks(arch)
     dims = []
     for r in eachindex(R)
         if R[r] > 1
@@ -126,6 +128,9 @@ partition_dimensions(f::DistributedField) = partition_dimensions(architecture(f)
 function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
+
+    arch = architecture(f)
+    sync_device!(arch)
 
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))

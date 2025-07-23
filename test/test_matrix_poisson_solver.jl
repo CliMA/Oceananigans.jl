@@ -94,7 +94,7 @@ function run_poisson_equation_test(grid)
 
     parent(ϕ_solution) .-= mean(ϕ_solution)
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test all(interior(∇²ϕ_solution) .≈ interior(∇²ϕ))
         @test all(interior(ϕ_solution)   .≈ interior(ϕ_truth))
     end
