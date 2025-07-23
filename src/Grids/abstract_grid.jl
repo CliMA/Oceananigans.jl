@@ -1,31 +1,32 @@
 """
-    AbstractGrid{FT, TX, TY, TZ}
+    AbstractGrid{FT, TX, TY, TZ, Arch}
 
-Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+Abstract supertype for grids with elements of type `FT`, topology `{TX, TY, TZ}`,
+and `Arch`itecture.
 """
 abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 """
-    AbstractUnderlyingGrid{FT, TX, TY, TZ}
+    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
 
 Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
-with elements of type `FT`, topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
+with elements of type `FT`, topology `{TX, TY, TZ}`, vertical coordinate `CZ`, and `Arch`itecture.
 """
 abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 """
-    AbstractCurvilinearGrid{FT, TX, TY, TZ}
+    AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch}
 
 Abstract supertype for curvilinear grids with elements of type `FT`,
-topology `{TX, TY, TZ}`, and vertical coordinate `CZ`.
+topology `{TX, TY, TZ}`, vertical coordinate `CZ`, and `Arch`itecture.
 """
 abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch} end
 
 """
-    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
+    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch}
 
 Abstract supertype for horizontally-curvilinear grids with elements of type `FT`,
-topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
+topology `{TX, TY, TZ}`, vertical coordinate `CZ`, and `Arch`itecture.
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} end
 
@@ -62,7 +63,7 @@ Return the topology of the `grid` for the `dim`-th dimension.
 """
     architecture(grid::AbstractGrid)
 
-Return the architecture (CPU or GPU) that the `grid` lives on.
+Return the architecture that the `grid` lives on.
 """
 @inline architecture(grid::AbstractGrid) = grid.architecture
 
@@ -101,4 +102,3 @@ halo_size(grid, d) = halo_size(grid)[d]
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
 grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
-
