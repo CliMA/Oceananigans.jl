@@ -11,6 +11,7 @@ using CUDA
 
 function create_mass_conservation_simulation(; 
     use_open_boundary_condition = true,
+    stratification = nothing,
     immersed_bottom = nothing,
     arch = CPU(),
     N = 32,
@@ -63,9 +64,17 @@ function create_mass_conservation_simulation(;
     #---
 
     #+++ Create model and simulation
-    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper, advection = WENO(order=5))
     uᵢ(x, z) = U₀ * (1 + 1e-2 * rand())
-    set!(model, u=uᵢ)
+    if stratification === nothing
+        buoyancy = nothing
+        bᵢ = 0
+    else
+        buoyancy = BuoyancyTracer()
+        bᵢ(x, z) = stratification * z
+    end
+    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper,
+                                  advection = WENO(order=5), tracers = :b, buoyancy)
+    set!(model, u=uᵢ, b=bᵢ)
 
     # Calculate time step
     Δt = 0.1 * minimum_zspacing(grid) / abs(maximum(model.velocities.u))
@@ -99,16 +108,18 @@ function create_mass_conservation_simulation(;
 
     #+++ Animation
     if animation
-        # Create figure and axes
-        global fig = Figure(size = (1500, 400))
+        # Create figure and axes in 2x2 grid
+        global fig = Figure(size = (1000, 800))
         global io = VideoStream(fig; framerate = animation_framerate)
 
         ax1 = Axis(fig[1, 1], title = "u-velocity", xlabel = "x", ylabel = "z")
         ax2 = Axis(fig[1, 2], title = "Divergence", xlabel = "x", ylabel = "z")
-        ax3 = Axis(fig[1, 3], title = "y-Vorticity", xlabel = "x", ylabel = "z")
+        ax3 = Axis(fig[3, 1], title = "y-Vorticity", xlabel = "x", ylabel = "z")
+        ax4 = Axis(fig[3, 2], title = "Buoyancy", xlabel = "x", ylabel = "z")
 
         # Get fields for visualization
         u, v, w = model.velocities
+        b = model.tracers.b
         ∇u = Field(∂x(u) + ∂z(w))
         ωy = Field(∂z(u) - ∂x(w))  # y-direction vorticity
 
@@ -121,13 +132,16 @@ function create_mass_conservation_simulation(;
             hm1 = heatmap!(ax1, u, colormap = :balance, colorrange = (-5U₀, 5U₀))
             hm2 = heatmap!(ax2, ∇u, colormap = :balance, colorrange = (-1e-9, 1e-9))
             hm3 = heatmap!(ax3, ωy, colormap = :balance, colorrange = (-U₀/10, U₀/10))
+            hm4 = heatmap!(ax4, b, colormap = :thermal)
             if time(sim) == 0
                 Colorbar(fig[2, 1], hm1, vertical=false)
                 Colorbar(fig[2, 2], hm2, vertical=false)
-                Colorbar(fig[2, 3], hm3, vertical=false)
+                Colorbar(fig[4, 1], hm3, vertical=false)
+                Colorbar(fig[4, 2], hm4, vertical=false)
             end
             recordframe!(io)
         end
+
         update_plot(simulation)
         add_callback!(simulation, update_plot, TimeInterval(5minutes))
     end
@@ -146,15 +160,16 @@ end
 Lx = 2700meters
 Lz = 850meters
 bottom(x) = -(3Lz/4) + (Lz/4) * sin(2π * x / (Lx/3))
-common_kwargs = (; arch = GPU(),
+common_kwargs = (; arch = CPU(),
                    immersed_bottom = GridFittedBottom(bottom),
                    Lx,
                    Lz,
-                   stop_time = 0.05day,
+                   stop_time = 0.5day,
                    U₀ = 0.1,
                    inflow_timescale = 0,
                    outflow_timescale = Inf,
-                   poisson_solver = :conjugate_gradient_with_fft_preconditioner ,
+                   poisson_solver = :conjugate_gradient_with_fft_preconditioner,
+                   stratification = 1e-6/seconds^2,
                    add_progress_messenger = true,
                    timestepper = :RungeKutta3)
 
