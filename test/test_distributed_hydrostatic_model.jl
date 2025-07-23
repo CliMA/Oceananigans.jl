@@ -256,8 +256,6 @@ for arch in archs
 
         test_simulation = Simulation(test_model, Δt=Δt, stop_iteration=9)
 
-        run!(test_simulation)
-
         # Pickup from explicit checkpoint path
         run!(test_simulation, pickup="checkpoint_rank$(rank)_iteration0.jld2")
 
