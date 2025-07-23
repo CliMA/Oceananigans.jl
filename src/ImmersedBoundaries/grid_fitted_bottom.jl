@@ -1,5 +1,4 @@
 using Adapt
-using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size, rnode
@@ -35,7 +34,6 @@ Return a bottom immersed boundary.
 
 Keyword Arguments
 =================
-
 
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.

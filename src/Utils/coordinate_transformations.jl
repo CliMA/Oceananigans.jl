@@ -1,4 +1,5 @@
 using Oceananigans.Grids: xnode, ynode, total_length
+using GPUArraysCore: @allowscalar
 
 """
     lat_lon_to_cartesian(longitude, latitude)
@@ -111,16 +112,16 @@ function get_lat_lon_nodes_and_vertices(grid, ℓx, ℓy, ℓz)
     φ = zeros(eltype(grid), total_length(ℓx, TX(), grid.Nx, 0), total_length(ℓy, TY(), grid.Ny, 0))
 
     for j in axes(λ, 2), i in axes(λ, 1)
-        λ[i, j] = λnode(i, j, 1, grid, ℓx, ℓy, ℓz)
-        φ[i, j] = φnode(i, j, 1, grid, ℓx, ℓy, ℓz)
+        @allowscalar λ[i, j] = λnode(i, j, 1, grid, ℓx, ℓy, ℓz)
+        @allowscalar φ[i, j] = φnode(i, j, 1, grid, ℓx, ℓy, ℓz)
     end
 
     λvertices = zeros(4, size(λ)...)
     φvertices = zeros(4, size(φ)...)
 
     for j in axes(λ, 2), i in axes(λ, 1)
-        λvertices[:, i, j] = get_longitude_vertices(i, j, 1, grid, ℓx, ℓy, ℓz)
-        φvertices[:, i, j] =  get_latitude_vertices(i, j, 1, grid, ℓx, ℓy, ℓz)
+        @allowscalar λvertices[:, i, j] = get_longitude_vertices(i, j, 1, grid, ℓx, ℓy, ℓz)
+        @allowscalar φvertices[:, i, j] =  get_latitude_vertices(i, j, 1, grid, ℓx, ℓy, ℓz)
     end
 
     λ = mod.(λ .+ 180, 360) .- 180

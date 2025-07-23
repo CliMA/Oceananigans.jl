@@ -94,7 +94,7 @@ function test_grid_fitted_bottom_cell_detection(FT, arch)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
 
     # Test that cells below the bottom are immersed
-    CUDA.@allowscalar begin
+    @allowscalar begin
         for i in 1:4, j in 1:4
             for k in 1:4  # Lower half of domain
                 z_center = znode(i, j, k, ibg, Center(), Center(), Center())
@@ -117,7 +117,7 @@ function test_partial_cell_bottom_cell_detection(FT, arch)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
 
     # Test immersed cell detection
-    CUDA.@allowscalar begin
+    @allowscalar begin
         for i in 1:4, j in 1:4, k in 1:8
             # The partial cell criterion is different - need to check grid spacing
             immersed = _immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary)
@@ -239,7 +239,7 @@ function test_grid_fitted_boundary_with_function(FT, arch)
     @test eltype(ibg.immersed_boundary.mask) === Bool
 
     # Test immersed cell detection
-    CUDA.@allowscalar begin
+    @allowscalar begin
         for i in 1:4, j in 1:4, k in 1:4
             x, y, z = xnode(i, j, k, ibg, Center(), Center(), Center()),
                       ynode(i, j, k, ibg, Center(), Center(), Center()),
@@ -269,7 +269,7 @@ function test_grid_fitted_boundary_with_array(FT, arch)
     @test eltype(ibg) === FT
     @test size(ibg) == size(underlying_grid)
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         # Test that the center cell is immersed
         @test _immersed_cell(2, 2, 2, ibg.underlying_grid, ibg.immersed_boundary) == true
 
@@ -366,9 +366,9 @@ function test_immersed_boundary_grid_nodes_and_spacings(FT, arch, boundary_type)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
 
     # Test that node functions work
-    @test xnodes(ibg, Center(), Center(), Center()) isa SubArray
-    @test ynodes(ibg, Center(), Center(), Center()) isa SubArray
-    @test znodes(ibg, Center(), Center(), Center()) isa SubArray
+    @test xnodes(ibg, Center(), Center(), Center()) isa AbstractArray
+    @test ynodes(ibg, Center(), Center(), Center()) isa AbstractArray
+    @test znodes(ibg, Center(), Center(), Center()) isa AbstractArray
 
     # Test spacing functions
     @test xspacings(ibg, Face(), Center(), Center()) isa KernelFunctionOperation

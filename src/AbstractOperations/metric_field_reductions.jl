@@ -43,7 +43,6 @@ for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dx = reduction_grid_metric(dims)
 
     if all(d in regular_dimensions(field.grid) for d in dims)
         # Dimensions being reduced are regular; just use mean!
@@ -51,6 +50,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         return Scan(Averaging(), mean!, operand, dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
+        dx = reduction_grid_metric(dims)
         metric = GridMetricOperation(location(field), dx, field.grid)
         L = sum(metric; condition, mask, dims)
 

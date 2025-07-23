@@ -107,7 +107,7 @@ function volume_average_of_times(model)
     T, S = model.tracers
 
     @compute ST = Field(Average(S * T, dims=(1, 2, 3)))
-    result = CUDA.@allowscalar ST[1, 1, 1]
+    result = @allowscalar ST[1, 1, 1]
 
     return result ≈ 0.5
 end
