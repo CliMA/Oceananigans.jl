@@ -67,7 +67,7 @@ function validate_boundary_conditions(loc, grid, bcs)
 
     for (side, dir) in zip(sides, directions)
         topo = topology(grid, dir)()
-        ℓ = loc[dir]()
+        ℓ = loc[dir]
         bc = getproperty(bcs, side)
 
         # Check that boundary condition jives with the grid topology
@@ -189,7 +189,7 @@ for LX in (:Center, :Face, :Nothing), LY in (:Center, :Face, :Nothing), LZ in (:
                            T::DataType = eltype(grid);
                            indices = default_indices(3),
                            data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
-                           boundary_conditions = nothing, # FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+                           boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
                            operand = nothing,
                            status = nothing)
 

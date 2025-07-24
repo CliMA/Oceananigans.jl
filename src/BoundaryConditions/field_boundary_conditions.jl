@@ -36,12 +36,12 @@ _default_auxiliary_bc(::Bounded, ::Face)        = nothing
 _default_auxiliary_bc(::RightConnected, ::Face) = nothing
 _default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
 
-default_auxiliary_bc(grid, ::Val{:east}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1]())
-default_auxiliary_bc(grid, ::Val{:west}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1]())
-default_auxiliary_bc(grid, ::Val{:south}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2]())
-default_auxiliary_bc(grid, ::Val{:north}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2]())
-default_auxiliary_bc(grid, ::Val{:bottom}, loc) = _default_auxiliary_bc(topology(grid, 3)(), loc[3]())
-default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology(grid, 3)(), loc[3]())
+default_auxiliary_bc(grid, ::Val{:east}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
+default_auxiliary_bc(grid, ::Val{:west}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
+default_auxiliary_bc(grid, ::Val{:south}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2])
+default_auxiliary_bc(grid, ::Val{:north}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2])
+default_auxiliary_bc(grid, ::Val{:bottom}, loc) = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
+default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
 
 #####
 ##### Field boundary conditions
@@ -198,7 +198,7 @@ regularize_bottom_boundary_condition(bc, args...) = regularize_boundary_conditio
 
 # regularize default boundary conditions
 function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...)
-    default_bc = default_prognostic_bc(topology(grid, dim)(), loc[dim](), default)
+    default_bc = default_prognostic_bc(topology(grid, dim)(), loc[dim], default)
     return regularize_boundary_condition(default_bc, grid, loc, dim, args...)
 end
 
@@ -277,28 +277,28 @@ regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
 regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, LY, LZ), default)
+function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz), default)
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
-    default_bc = default_prognostic_bc(topology(grid, 2)(), LY(), default)
-    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY, LZ) : default_bc
+    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
+    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
 end
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ), default)
+function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz), default)
     φsouth = @allowscalar φnode(1, grid, Face())
-    default_bc = default_prognostic_bc(topology(grid, 2)(), LY(), default)
-    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, LY, LZ) : default_bc
+    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
+    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
 end
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (LX, LY, LZ))
+function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz))
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face())
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY())
-    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, LY, LZ) : default_bc
+    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
+    return φnorth ≈ 90 ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
 end
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (LX, LY, LZ))
+function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz))
     φsouth = @allowscalar φnode(1, grid, Face())
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), LY())
-    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, LY, LZ) : default_bc
+    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
+    return φsouth ≈ -90 ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
 end
 
 default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc, default) = default
