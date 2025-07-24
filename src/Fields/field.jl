@@ -96,12 +96,11 @@ validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
 #####
 
 # Common outer constructor for all field flavors that performs input validation
-function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing)
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
     buffers = communication_buffers(grid, data, bcs)
-    LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
 
@@ -180,19 +179,23 @@ function Field{LX, LY, LZ}(grid::AbstractGrid,
                            T::DataType=eltype(grid);
                            kw...) where {LX, LY, LZ}
 
-    return Field((LX, LY, LZ), grid, T; kw...)
+    return Field((LX(), LY(), LZ()), grid, T; kw...)
 end
 
-function Field(loc::Tuple,
-               grid::AbstractGrid,
-               T::DataType = eltype(grid);
-               indices = default_indices(3),
-               data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
-               boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
-               operand = nothing,
-               status = nothing)
+for LX in (:Center, :Face, :Nothing), LY in (:Center, :Face, :Nothing), LZ in (:Center, :Face, :Nothing)
+    @eval begin
+            function Field(loc::Tuple{<:$LX, <:$LY, <:$LZ},
+                           grid::AbstractGrid,
+                           T::DataType = eltype(grid);
+                           indices = default_indices(3),
+                           data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+                           boundary_conditions = nothing, # FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+                           operand = nothing,
+                           status = nothing)
 
-    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
+            return Field(loc, grid, data, boundary_conditions, indices, operand, status)
+        end
+    end
 end
 
 Field(z::ZeroField; kw...) = z
@@ -204,7 +207,7 @@ Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Center), grid, T; kw...)
+CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Center()), grid, T; kw...)
 
 """
     XFaceField(grid, T=eltype(grid); kw...)
@@ -212,7 +215,7 @@ CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, Center, Center), grid, T; kw...)
+XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face(), Center(), Center()), grid, T; kw...)
 
 """
     YFaceField(grid, T=eltype(grid); kw...)
@@ -220,7 +223,7 @@ XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, C
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Face, Center), grid, T; kw...)
+YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Face(), Center()), grid, T; kw...)
 
 """
     ZFaceField(grid, T=eltype(grid); kw...)
@@ -744,7 +747,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(location(c); dims)
-            r = Field(loc, c.grid, T; indices=indices(c))
+            r = Field(instantiate.(loc), c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
