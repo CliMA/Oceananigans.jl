@@ -182,20 +182,16 @@ function Field{LX, LY, LZ}(grid::AbstractGrid,
     return Field((LX(), LY(), LZ()), grid, T; kw...)
 end
 
-for LX in (:Center, :Face, :Nothing), LY in (:Center, :Face, :Nothing), LZ in (:Center, :Face, :Nothing)
-    @eval begin
-            function Field(loc::Tuple{<:$LX, <:$LY, <:$LZ},
-                           grid::AbstractGrid,
-                           T::DataType = eltype(grid);
-                           indices = default_indices(3),
-                           data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
-                           boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
-                           operand = nothing,
-                           status = nothing)
+function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), Face(), nothing)
+                grid::AbstractGrid,
+                T::DataType = eltype(grid);
+                indices = default_indices(3),
+                data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+                boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+                operand = nothing,
+                status = nothing)
 
-            return Field(loc, grid, data, boundary_conditions, indices, operand, status)
-        end
-    end
+    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
 
 Field(z::ZeroField; kw...) = z
