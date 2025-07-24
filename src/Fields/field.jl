@@ -261,9 +261,7 @@ function offset_windowed_data(data, data_indices, loc, grid, view_indices)
     𝓉y = instantiate(TY)
     𝓉z = instantiate(TZ)
 
-    ℓx, ℓy, ℓz = Loc
-    
-    parent_indices = parent_index_range.(data_indices, view_indices, (ℓx, ℓy, ℓz), (𝓉x, 𝓉y, 𝓉z), halo)
+    parent_indices = parent_index_range.(data_indices, view_indices, loc, (𝓉x, 𝓉y, 𝓉z), halo)
     windowed_parent = view(parent(data), parent_indices...)
 
     sz = size(grid)
@@ -272,7 +270,6 @@ end
 
 convert_colon_indices(view_indices, field_indices) = view_indices
 convert_colon_indices(::Colon, field_indices) = field_indices
-
 """
     view(f::Field, indices...)
 
@@ -409,9 +406,9 @@ function interior(a::OffsetArray,
     j = interior_parent_indices(ℓy, 𝓉y, Ny, Hy)
     k = interior_parent_indices(ℓz, 𝓉z, Nz, Hz)
 
-    iv = interior_view_indices(ind[1], i)
-    jv = interior_view_indices(ind[2], j)
-    kv = interior_view_indices(ind[3], k)
+    iv = @inbounds interior_view_indices(ind[1], i)
+    jv = @inbounds interior_view_indices(ind[2], j)
+    kv = @inbounds interior_view_indices(ind[3], k)
 
     return view(parent(a), iv, jv, kv)
 end
@@ -653,11 +650,21 @@ initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = B
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
 
-function reduced_location(loc; dims)
+const PossibleLocs = Union{<:Nothing, <:Face, <:Center}
+
+function reduced_location(loc::Tuple{}; dims)
     if dims isa Colon
-        return (Nothing, Nothing, Nothing)
+        return (nothing, nothing, nothing)
     else
-        return Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
+        return Tuple(i ∈ dims ? nothing : loc[i] for i in 1:3)
+    end
+end
+
+function reduced_location(loc::Tuple{<:PossibleLocs, <:PossibleLocs, <:PossibleLocs}; dims)
+    if dims isa Colon
+        return (nothing, nothing, nothing)
+    else
+        return Tuple(i ∈ dims ? nothing : loc[i] for i in 1:3)
     end
 end
 
@@ -739,8 +746,8 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
-            loc = reduced_location(location(c); dims)
-            r = Field(instantiate.(loc), c.grid, T; indices=indices(c))
+            loc = reduced_location(instantiated_location(c); dims)
+            r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
