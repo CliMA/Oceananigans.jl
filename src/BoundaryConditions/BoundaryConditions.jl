@@ -10,7 +10,7 @@ export
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
     fill_halo_regions!
 
-using CUDA, Adapt
+using Adapt
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU, device
@@ -19,9 +19,6 @@ using Oceananigans.Operators: Ax, Ay, Az, volume
 using Oceananigans.Grids
 
 import Adapt: adapt_structure
-
-# Switch around halos for cubed sphere by exchanging buffer informations
-replace_horizontal_vector_halos!(velocities, grid::AbstractGrid; signed=true) = nothing
 
 include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")

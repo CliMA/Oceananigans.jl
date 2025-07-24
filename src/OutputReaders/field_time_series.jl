@@ -5,7 +5,7 @@ using Statistics
 using JLD2
 using Adapt
 using Glob
-using CUDA: @allowscalar
+using GPUArraysCore
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -379,7 +379,7 @@ function FieldTimeSeries(loc, grid, times=();
     LX, LY, LZ = loc
 
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
         isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
@@ -654,7 +654,7 @@ function FieldTimeSeries(path::String, name::String;
     end
 
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
@@ -706,9 +706,9 @@ function Field(location, path::String, name::String, iter;
     close(file)
 
     # Change grid to specified architecture?
-    grid     = on_architecture(architecture, grid)
+    grid = on_architecture(architecture, grid)
     raw_data = on_architecture(architecture, raw_data)
-    data     = offset_data(raw_data, grid, location, indices)
+    @apply_regionally data = offset_data(raw_data, grid, location, indices)
 
     return Field(location, grid; boundary_conditions, indices, data)
 end

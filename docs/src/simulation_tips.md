@@ -57,8 +57,8 @@ your code as the benefits can potentially be significant.
 
 Running on GPUs can be very different from running on CPUs. Oceananigans makes most of the necessary
 changes in the background, so that for very simple simulations changing between CPUs and GPUs is
-just a matter of changing the `architecture` argument in the model from `CPU()` to `GPU()`. However,
-for more complex simulations some care needs to be taken on the part of the user. While knowledge of
+just a matter of changing the `architecture` argument in the grid constructor from `CPU()` to `GPU()`.
+However, for more complex simulations some care needs to be taken on the part of the user. While knowledge of
 GPU computing (and Julia) is again desirable, an inexperienced user can also achieve high efficiency
 in GPU simulations by following a few simple principles.
 
@@ -102,16 +102,20 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating
-`ε` will not compile on GPUs when we call the command `compute!`:
+`ε` will not compile on GPUs when we call [`compute!`](@ref):
 
 ```julia
 using Oceananigans
+
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, closure=ScalarDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(; grid, closure=ScalarDiffusivity(ν=1e-6))
+
 u, v, w = model.velocities
 ν = model.closure.ν
+
 u² = Field(u^2)
 ε = Field(ν*(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2 + ∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2 + ∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2))
+
 compute!(u²)
 compute!(ε)
 ```
@@ -165,6 +169,7 @@ requires understanding the C-grid, but incurs only one iteration over the domain
 
 ```julia
 using Oceanostics: IsotropicPseudoViscousDissipationRate
+
 ε = IsotropicViscousDissipationRate(model, u, v, w, ν)
 compute!(ε)
 ```
@@ -173,7 +178,7 @@ compute!(ε)
 
 ### Try to decrease the memory-use of your runs
 
-GPU runs are sometimes memory-limited. A state-of-the-art Tesla V100 GPU has 32GB of
+GPU runs are sometimes memory-limited. For example, an Nvidia Tesla V100 GPU has 32GB of
 memory -- enough memory for simulations with about 100 million points, or grids a bit smaller
 than 512 × 512 × 512. (The maximum grid size depends on some user-specified factors,
 like the number of passive tracers or computed diagnostics.)
@@ -205,74 +210,65 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store
-data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for
-CPU computations is that `CuArray` elements in general cannot be accessed outside kernels
-launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
+Oceananigans enables GPU functionality when loaded with packages like
+[CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) (most tested and supported),
+[AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl), or [Metal.jl](https://github.com/JuliaGPU/Metal.jl)
+
+We focus here on CUDA-enabled GPUs; but the discussion applies to any GPU architecture.
+
+The data for GPU computations are stored in `GPUArrays`, which for CUDA-enabled devices
+are called [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/).
+One limitation of `GPUArray`s compared to the `Array`s used for
+CPU computations is that `GPUArray` elements in general cannot be accessed outside kernels
+launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
 [here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
 [here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
-Oceananigans.jl disables CUDA scalar indexing by default. See the
+Oceananigans disables scalar indexing by default. See the
 [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
 For example, if can be difficult to just view a `CuArray` since Julia needs to access
 its elements to do that. Consider the example below:
 
-```julia
-julia> using Oceananigans, Adapt
+```@example GPU-scalar-indexing
+using Oceananigans, CUDA
 
-julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
-1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
-├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
-├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
-└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=1.0
+grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
 
-julia> model = NonhydrostaticModel(; grid)
-NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
-├── timestepper: RungeKutta3TimeStepper
-├── tracers: ()
-├── closure: Nothing
-├── buoyancy: Nothing
-└── coriolis: Nothing
+model = NonhydrostaticModel(; grid)
 
-julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}
-
-julia> adapt(Array, model.velocities.u.data)
-3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
-[:, :, 0] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-
-[:, :, 1] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-
-[:, :, 2] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
+typeof(model.velocities.u.data)
 ```
 
-Notice that to view the `CuArray` that stores values for `u` we first need to transform
-it into a regular `Array` using `Adapt.adapt`. If we naively try to view the `CuArray`
-without that step we get an error:
+If we try to view the `CuArray` that stores values for `u` we hit a wall:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::CuArray{Float64, 3, CUDA.DeviceMemory}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}:
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CuArray{Float64, 3, CUDA.DeviceMemory}}:
 ERROR: Scalar indexing is disallowed.
+Invocation of getindex resulted in scalar indexing of a GPU array.
+This is typically caused by calling an iterating implementation of a method.
+Such implementations *do not* execute on the GPU, but very slowly on the CPU,
+and therefore should be avoided.
+
+If you want to allow scalar iteration, use `allowscalar` or `@allowscalar`
+to enable scalar iteration globally or for the operations in question.
 ```
 
-Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There are ways to
-overcome this limitation and allow scalar indexing (more about that
+To view the `CuArray` we first need to transform it into a regular `Array` using `Adapt.adapt`.
+
+```@example GPU-scalar-indexing
+using Adapt
+
+adapt(Array, model.velocities.u.data)
+```
+
+Above, when we tried naïvely to view the `CuArray`, `CUDA.jl` threw an error because scalar `getindex`
+is not `allowed`. There are ways to overcome this limitation and allow scalar indexing (more about that
 in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
 can be very slow on GPUs, so it is advised to only use this last method when using the REPL or
 prototyping -- never in production-ready scripts.

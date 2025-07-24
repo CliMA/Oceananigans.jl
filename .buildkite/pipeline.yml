@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.10.9"
+  JULIA_VERSION: "1.10.10"
   JULIA_MINOR_VERSION: "1.10"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -12,9 +12,9 @@ env:
 
 agents:
   queue: "Oceananigans"
-with: 
+with:
   coverage: false
-  
+
 steps:
   - label: "🏕️ initialize tartarus environment"
     key: "init"
@@ -33,7 +33,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-          
+
   - wait
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
