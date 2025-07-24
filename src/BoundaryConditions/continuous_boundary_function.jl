@@ -45,6 +45,8 @@ end
 
 location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
+destantiate(t::T) where {T} = T
+
 #####
 ##### "Regularization" for NonhydrostaticModel setup
 #####
@@ -77,7 +79,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
     boundary_func = bc.condition
 
     # Set boundary-normal location to Nothing:
-    LX, LY, LZ = Tuple(i == dim ? Nothing : loc[i] for i = 1:3)
+    LX, LY, LZ = Tuple(i == dim ? Nothing : destantiate(loc[i]) for i = 1:3)
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
