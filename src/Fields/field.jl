@@ -235,7 +235,7 @@ ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
 function Base.similar(f::Field, grid=f.grid)
-    loc = location(f)
+    loc = instantiated_location(f)
     return Field(loc,
                  grid,
                  new_data(eltype(grid), grid, loc, f.indices),
@@ -254,18 +254,15 @@ If `indices` is not (:, :, :), a `view` of `parent(data)` with `indices`.
 
 If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
 """
-function offset_windowed_data(data, data_indices, Loc, grid, view_indices)
+function offset_windowed_data(data, data_indices, loc, grid, view_indices)
     halo = halo_size(grid)
     TX, TY, TZ = topology(grid)
     𝓉x = instantiate(TX)
     𝓉y = instantiate(TY)
     𝓉z = instantiate(TZ)
 
-    LX, LY, LZ = Loc
-    ℓx = instantiate(LX)
-    ℓy = instantiate(LY)
-    ℓz = instantiate(LZ)
-
+    ℓx, ℓy, ℓz = Loc
+    
     parent_indices = parent_index_range.(data_indices, view_indices, (ℓx, ℓy, ℓz), (𝓉x, 𝓉y, 𝓉z), halo)
     windowed_parent = view(parent(data), parent_indices...)
 
@@ -325,7 +322,7 @@ true
 """
 function Base.view(f::Field, i, j, k)
     grid = f.grid
-    loc = location(f)
+    loc = instantiated_location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
     view_indices = validate_indices((i, j, k), loc, f.grid)
