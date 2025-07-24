@@ -436,7 +436,7 @@ Keyword arguments
 - `name`: name of field for `backend = OnDisk()`
 """
 function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) where {LX, LY, LZ}
-    loc = (LX, LY, LZ)
+    loc = (LX(), LY(), LZ())
     return FieldTimeSeries(loc, grid, times; kwargs...)
 end
 
