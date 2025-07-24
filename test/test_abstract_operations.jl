@@ -354,7 +354,7 @@ for arch in archs
             b = XFaceField(grid,  indices = test_indices[2])
             c = YFaceField(grid,  indices = test_indices[3])
 
-            d = Field((Face, Face, Center), grid, indices = (:, 2:3, 1:2))
+            d = Field((Face(), Face(), Center()), grid, indices = (:, 2:3, 1:2))
 
             @test indices(a * b * c) == (2:3, 2:3, 2:3)
             @test indices(b * a * c) == (3:3, 2:3, 2:3)
