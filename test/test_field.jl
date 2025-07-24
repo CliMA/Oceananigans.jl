@@ -494,7 +494,7 @@ end
             @test mean(c) ≈ @allowscalar mean(interior(c))
             @test mean(windowed_c) ≈ @allowscalar mean(interior(windowed_c))
         end
-end
+    end
 
     @testset "Unit interpolation" begin
         for arch in archs

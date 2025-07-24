@@ -653,11 +653,11 @@ filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
 
 const PossibleLocs = Union{<:Nothing, <:Face, <:Center}
 
-function reduced_location(loc::Tuple{}; dims)
+function reduced_location(loc::Tuple; dims)
     if dims isa Colon
-        return (nothing, nothing, nothing)
+        return (Nothing, Nothing, Nothing)
     else
-        return Tuple(i ∈ dims ? nothing : loc[i] for i in 1:3)
+        return Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
     end
 end
 
