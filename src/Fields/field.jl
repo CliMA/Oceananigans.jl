@@ -227,7 +227,7 @@ YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Face), grid, T; kw...)
+ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Face()), grid, T; kw...)
 
 #####
 ##### Field utils
