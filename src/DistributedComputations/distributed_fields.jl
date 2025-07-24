@@ -14,10 +14,10 @@ using Oceananigans.Fields: ReducedAbstractField,
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
-    indices = validate_indices(indices, (LX, LY, LZ), grid)
-    validate_field_data((LX, LY, LZ), data, grid, indices)
-    validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+    indices = validate_indices(indices, loc, grid)
+    validate_field_data(loc, data, grid, indices)
+    validate_boundary_conditions(loc, grid, old_bcs)
 
     arch = architecture(grid)
     rank = arch.local_rank
