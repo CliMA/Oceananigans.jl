@@ -62,13 +62,13 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
 
     Rx, Ry, _ = zarch.ranks
     if with_halos
-        zfield = Field(loc, zgrid, FT)
-        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT)
-        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT)
+        zfield = Field{loc...}(zgrid, FT)
+        yfield = Ry == 1 ? zfield : Field{loc...}(ygrid, FT)
+        xfield = Rx == 1 ? yfield : Field{loc...}(xgrid, FT)
     else
-        zfield = Field(loc, zgrid, FT; indices = (1:zN[1], 1:zN[2], 1:zN[3]))
-        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT; indices = (1:yN[1], 1:yN[2], 1:yN[3]))
-        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:xN[1], 1:xN[2], 1:xN[3]))
+        zfield = Field{loc...}(zgrid, FT; indices = (1:zN[1], 1:zN[2], 1:zN[3]))
+        yfield = Ry == 1 ? zfield : Field{loc...}(ygrid, FT; indices = (1:yN[1], 1:yN[2], 1:yN[3]))
+        xfield = Rx == 1 ? yfield : Field{loc...}(xgrid, FT; indices = (1:xN[1], 1:xN[2], 1:xN[3]))
     end
 
     # One dimensional buffers to "pack" three-dimensional data in for communication
