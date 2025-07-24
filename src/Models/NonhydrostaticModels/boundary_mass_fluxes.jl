@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection, FlatExtrapolation
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, GridMetricOperation
 using Oceananigans.Fields: Field, interior, XFaceField, YFaceField, ZFaceField
+using GPUArraysCore: @allowscalar
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
 const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no matching scheme)
@@ -10,37 +11,37 @@ const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-ve
 function get_west_area(grid)
     dA = GridMetricOperation((Face, Center, Center), Ax, grid)
     ∫dA = sum(dA, dims=(2, 3))
-    return interior(∫dA, 1, 1, 1) |> maximum
+    return @allowscalar ∫dA[1, 1, 1]
 end
 
 function get_east_area(grid)
     dA = GridMetricOperation((Face, Center, Center), Ax, grid)
     ∫dA = sum(dA, dims=(2, 3))
-    return interior(∫dA, grid.Nx+1, 1, 1) |> maximum
+    return @allowscalar ∫dA[grid.Nx+1, 1, 1]
 end
 
 function get_south_area(grid)
     dA = GridMetricOperation((Center, Face, Center), Ay, grid)
     ∫dA = sum(dA, dims=(1, 3))
-    return interior(∫dA, 1, 1, 1) |> maximum
+    return @allowscalar ∫dA[1, 1, 1]
 end
 
 function get_north_area(grid)
     dA = GridMetricOperation((Center, Face, Center), Ay, grid)
     ∫dA = sum(dA, dims=(1, 3))
-    return interior(∫dA, 1, grid.Ny+1, 1) |> maximum
+    return @allowscalar ∫dA[1, grid.Ny+1, 1]
 end
 
 function get_bottom_area(grid)
     dA = GridMetricOperation((Center, Center, Face), Az, grid)
     ∫dA = sum(dA, dims=(1, 2))
-    return interior(∫dA, 1, 1, 1) |> maximum
+    return @allowscalar ∫dA[1, 1, 1]
 end
 
 function get_top_area(grid)
     dA = GridMetricOperation((Center, Center, Face), Az, grid)
     ∫dA = sum(dA, dims=(1, 2))
-    return interior(∫dA, 1, 1, grid.Nz+1) |> maximum
+    return @allowscalar ∫dA[1, 1, grid.Nz+1]
 end
 
 # Left boundary integrals for normal velocity components
