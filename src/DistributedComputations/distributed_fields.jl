@@ -129,6 +129,9 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
 
+    arch = architecture(f)
+    sync_device!(arch)
+
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))
     end

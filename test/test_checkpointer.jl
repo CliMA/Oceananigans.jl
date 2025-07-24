@@ -7,7 +7,7 @@ using Glob
 #####
 
 function test_model_equality(test_model, true_model)
-    CUDA.@allowscalar begin
+    @allowscalar begin
         test_model_fields = prognostic_fields(test_model)
         true_model_fields = prognostic_fields(true_model)
         field_names = keys(test_model_fields)
@@ -183,7 +183,7 @@ function test_constant_fields_checkpointer(arch)
 
     simulation = Simulation(model, Δt=0.1, stop_iteration=1)
     simulation.output_writers[:checkpointer] = Checkpointer(model, prefix="constant_fields_test",
-                                                            schedule=IterationInterval(1), 
+                                                            schedule=IterationInterval(1),
                                                             properties = [:grid, :velocities])
 
     run!(simulation)
