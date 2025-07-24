@@ -261,7 +261,8 @@ function offset_windowed_data(data, data_indices, loc, grid, view_indices)
     𝓉y = instantiate(TY)
     𝓉z = instantiate(TZ)
 
-    parent_indices = parent_index_range.(data_indices, view_indices, loc, (𝓉x, 𝓉y, 𝓉z), halo)
+    topo = (𝓉x, 𝓉y, 𝓉z)
+    parent_indices = parent_index_range.(data_indices, view_indices, loc, topo, halo)
     windowed_parent = view(parent(data), parent_indices...)
 
     sz = size(grid)
