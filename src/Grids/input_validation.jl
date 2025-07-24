@@ -207,3 +207,14 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 validate_indices(indices, loc, topo, sz, halo_sz) =
     map(validate_index, indices, map(instantiate, loc), map(instantiate, topo), sz, halo_sz)
 
+# Heuristic for a 3-tuple of indices
+function validate_indices(indices::Tuple{<:Any, <:Any, <:Any}, Loc, Topo, sz, halo_sz) 
+
+    @inbounds begin
+        i = validate_index(indices[1], instantiate(Loc[1]), instantiate(Topo[1]), sz[1], halo_sz[1])
+        j = validate_index(indices[2], instantiate(Loc[2]), instantiate(Topo[2]), sz[2], halo_sz[2])
+        k = validate_index(indices[3], instantiate(Loc[3]), instantiate(Topo[3]), sz[3], halo_sz[3])
+    end
+
+    return (i, j, k)
+end
