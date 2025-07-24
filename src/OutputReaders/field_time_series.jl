@@ -365,16 +365,14 @@ time_indices_length(::TotallyInMemory, times) = length(times)
 time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
-function FieldTimeSeries(loc, grid, times=();
+function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
                          indices = (:, :, :),
                          backend = InMemory(),
                          path = nothing,
                          name = nothing,
                          time_indexing = Clamp(),
                          boundary_conditions = FieldBoundaryConditions(grid, loc),
-                         reader_kw = NamedTuple())
-
-    LX, LY, LZ = loc
+                         reader_kw = NamedTuple()) where {LX, LY, LZ}
 
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
@@ -654,6 +652,7 @@ function FieldTimeSeries(path::String, name::String;
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
+    @show LX, LY, LZ
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
 
@@ -727,16 +726,23 @@ Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
 function interior(fts::FieldTimeSeries)
-    loc = map(instantiate, location(fts))
-    topo = map(instantiate, topology(fts.grid))
+    Topo = topology(fts.grid)
+    ℓx, ℓy, ℓz = instantiated_location(fts)
+    𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
+    
     sz = size(fts.grid)
     halo_sz = halo_size(fts.grid)
-
-    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
     indices = fts.indices
-    i_view = map(interior_view_indices, indices, i_interior)
 
-    return view(parent(fts), i_view..., :)
+    i = interior_parent_indices(ℓx, 𝓉x, Nx, Hx)
+    j = interior_parent_indices(ℓy, 𝓉y, Ny, Hy)
+    k = interior_parent_indices(ℓz, 𝓉z, Nz, Hz)
+
+    iv = @inbounds interior_view_indices(ind[1], i)
+    jv = @inbounds interior_view_indices(ind[2], j)
+    kv = @inbounds interior_view_indices(ind[3], k)
+
+    return view(parent(fts), iv, jv, kv, :)
 end
 
 # FieldTimeSeries boundary conditions
