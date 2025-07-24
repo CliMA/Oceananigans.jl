@@ -35,7 +35,7 @@ instantiate(t) = t
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
 
-    ii = ntuple(Val(ndims(underlying_data))) do i
+    ii = ntuple(Val(length(N))) do i
         Base.@_inline_meta
         @inbounds offset_indices(instantiate(loc[i]), instantiate(topo[i]), N[i], H[i], indices[i])
     end
