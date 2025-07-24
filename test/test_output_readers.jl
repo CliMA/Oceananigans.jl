@@ -415,7 +415,7 @@ end
         c = CenterField(grid)
 
         filepath = "testfile.jld2"
-        f = FieldTimeSeries(location(c), grid, 1:10; backend = OnDisk(), path = filepath, name = "c")
+        f = FieldTimeSeries{location(c)...}(grid, 1:10; backend = OnDisk(), path = filepath, name = "c")
 
         for i in 1:10
             set!(c, i)

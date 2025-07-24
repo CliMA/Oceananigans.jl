@@ -652,7 +652,6 @@ function FieldTimeSeries(path::String, name::String;
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
-    @show LX, LY, LZ
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
 
@@ -730,17 +729,17 @@ function interior(fts::FieldTimeSeries)
     ℓx, ℓy, ℓz = instantiated_location(fts)
     𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
     
-    sz = size(fts.grid)
-    halo_sz = halo_size(fts.grid)
-    indices = fts.indices
+    Nx, Ny, Nz = size(fts.grid)
+    Hx, Hy, Hz = halo_size(fts.grid)
+    ix, iy, iz = fts.indices
 
     i = interior_parent_indices(ℓx, 𝓉x, Nx, Hx)
     j = interior_parent_indices(ℓy, 𝓉y, Ny, Hy)
     k = interior_parent_indices(ℓz, 𝓉z, Nz, Hz)
 
-    iv = @inbounds interior_view_indices(ind[1], i)
-    jv = @inbounds interior_view_indices(ind[2], j)
-    kv = @inbounds interior_view_indices(ind[3], k)
+    iv = @inbounds interior_view_indices(ix, i)
+    jv = @inbounds interior_view_indices(iy, j)
+    kv = @inbounds interior_view_indices(iz, k)
 
     return view(parent(fts), iv, jv, kv, :)
 end

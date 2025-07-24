@@ -62,7 +62,7 @@ end
 
 @inline function field(loc, f::Field, grid)
     loc = instantiate(loc)
-    loc === location(f) && grid === f.grid && return f
+    loc === instantiated_location(f) && grid === f.grid && return f
     error("Cannot construct field at $loc and on $grid from $f")
 end
 
