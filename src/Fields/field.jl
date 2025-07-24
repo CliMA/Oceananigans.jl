@@ -257,10 +257,17 @@ If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
 """
 function offset_windowed_data(data, data_indices, Loc, grid, view_indices)
     halo = halo_size(grid)
-    topo = map(instantiate, topology(grid))
-    loc = map(instantiate, Loc)
+    TX, TY, TZ = topology(grid)
+    𝓉x = instantiate(TX)
+    𝓉y = instantiate(TY)
+    𝓉z = instantiate(TZ)
 
-    parent_indices = map(parent_index_range, data_indices, view_indices, loc, topo, halo)
+    LX, LY, LZ = Loc
+    ℓx = instantiate(LX)
+    ℓy = instantiate(LY)
+    ℓz = instantiate(LZ)
+
+    parent_indices = parent_index_range.(data_indices, view_indices, (ℓx, ℓy, ℓz), (𝓉x, 𝓉y, 𝓉z), halo)
     windowed_parent = view(parent(data), parent_indices...)
 
     sz = size(grid)
@@ -380,6 +387,13 @@ data(field::Field) = field.data
 instantiate(T::Type) = T()
 instantiate(t) = t
 
+# Heuristic for tuples
+instantiate(T::Tuple{<:Type}) = (T[1]())
+instantiate(T::Tuple{<:Type, <:Type}) = (T[1](), T[2]())
+instantiate(T::Tuple{<:Type, <:Type, <:Type}) = (T[1](), T[2](), T[3]())
+instantiate(T::Tuple{<:Type, <:Type, <:Type, <:Type}) = (T[1](), T[2](), T[3](), T[4]())
+instantiate(T::NTuple{N, <:Type}) where N = map(instantiate, T)
+
 """Return indices that create a `view` over the interior of a Field."""
 interior_view_indices(field_indices, interior_indices)   = Colon()
 interior_view_indices(::Colon,       interior_indices)   = interior_indices
@@ -391,12 +405,19 @@ function interior(a::OffsetArray,
                   halo_sz::NTuple{N, Int},
                   ind::Tuple=default_indices(3)) where N
 
-    loc = map(instantiate, Loc)
-    topo = map(instantiate, Topo)
-    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
-    i_view = map(interior_view_indices, ind, i_interior)
+    ℓx, ℓy, ℓz = instantiate(Loc)
+    𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
+    Nx, Ny, Nz = sz
+    Hx, Hy, Hz = halo_sz
+    i = interior_parent_indices(ℓx, 𝓉x, Nx, Hx)
+    j = interior_parent_indices(ℓy, 𝓉y, Ny, Hy)
+    k = interior_parent_indices(ℓz, 𝓉z, Nz, Hz)
 
-    return view(parent(a), i_view...)
+    iv = interior_view_indices(ind[1], i)
+    jv = interior_view_indices(ind[2], j)
+    kv = interior_view_indices(ind[3], k)
+
+    return view(parent(a), iv, jv, kv)
 end
 
 """
