@@ -18,7 +18,7 @@ using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices, index_binary_search,
-                           indices_summary, boundary_conditions
+                           indices_summary, boundary_conditions, instantiate
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
@@ -347,8 +347,6 @@ end
 ##### Constructors
 #####
 
-instantiate(T::Type) = T()
-
 new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
@@ -624,7 +622,7 @@ function FieldTimeSeries(path::String, name::String;
 
     isnothing(location) && (location = file["timeseries/$name/serialized/location"])
     LX, LY, LZ = location
-    loc = map(instantiate, location)
+    loc = (LX(), LY(), LZ())
 
     if isnothing(Nparts)
         isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))

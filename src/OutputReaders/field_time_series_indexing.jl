@@ -275,8 +275,8 @@ function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
     arch = architecture(target_grid)
 
     # Make locations
-    source_location = map(instantiate, location(source_fts))
-    target_location = map(instantiate, location(target_fts))
+    source_location = instantiated_location(source_fts)
+    target_location = instantiated_location(target_fts)
 
     launch!(arch, target_grid, size(target_fts),
             _interpolate_field_time_series!,
