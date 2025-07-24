@@ -95,6 +95,7 @@ steps:
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
       TEST_ARCHITECTURE: "CPU"
+    timeout_in_minutes: 1440
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -110,6 +111,7 @@ steps:
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
       TEST_ARCHITECTURE: "GPU"
+    timeout_in_minutes: 1440
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
