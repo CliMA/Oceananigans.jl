@@ -297,7 +297,7 @@ for arch in archs
             for LX in (Center, Face)
                 for LY in (Center, Face)
                     for LZ in (Center, Face)
-                        loc = (LX, LY, LZ)
+                        loc = (LX(), LY(), LZ())
                         f = Field(loc, rectilinear_grid)
                         f .= 1
 
