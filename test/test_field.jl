@@ -577,7 +577,7 @@ end
 
                 for dims in (3, (1, 2), (1, 2, 3))
                     loc = reduced_location((X, Y, Z); dims)
-                    f = Field(loc, grid)
+                    f = Field{loc...}(grid)
                     run_similar_field_tests(f)
                 end
             end
