@@ -187,8 +187,8 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
-            loc = reduced_location(location(c); dims)
-            r = Field(instantiate.(loc), c.grid, T; indices=indices(c))
+            loc = reduced_location(instantiated_location(c); dims)
+            r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
