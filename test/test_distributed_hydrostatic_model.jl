@@ -147,10 +147,10 @@ for arch in archs
                 @test all(isapprox(wp, ws; atol, rtol))
                 @test all(isapprox(cp, cs; atol, rtol))
                 @test all(isapprox(ηp, ηs; atol, rtol))
-            end
-            if arch.local_rank == 0
-                @info "  done distributed solid body rotation"
-                @info "  Testing CATKE with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper)"
+
+                if arch.local_rank == 0
+                    @info "  done distributed solid body rotation"
+                end
             end
 
             # CATKE works only with synchronized communication at the moment
