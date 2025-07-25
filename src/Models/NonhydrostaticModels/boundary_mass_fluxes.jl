@@ -45,21 +45,21 @@ function get_top_area(grid)
 end
 
 # Left boundary integrals for normal velocity components
-@inline u_west_integral(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
-@inline v_south_integral(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
-@inline w_bottom_integral(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
+@inline west_mass_flux(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+@inline south_mass_flux(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
+@inline bottom_mass_flux(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
 
 # Right boundary integrals for normal velocity components
-@inline u_east_integral(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
-@inline v_north_integral(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
-@inline w_top_integral(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
+@inline east_mass_flux(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+@inline north_mass_flux(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
+@inline top_mass_flux(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
 
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:west})   = (; west_mass_flux = u_west_integral(u), west_area = get_west_area(u.grid))
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:east})   = (; east_mass_flux = u_east_integral(u), east_area = get_east_area(u.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:south})  = (; south_mass_flux = v_south_integral(v), south_area = get_south_area(v.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:north})  = (; north_mass_flux = v_north_integral(v), north_area = get_north_area(v.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:bottom}) = (; bottom_mass_flux = w_bottom_integral(w), bottom_area = get_bottom_area(w.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:top})    = (; top_mass_flux = w_top_integral(w), top_area = get_top_area(w.grid))
+initialize_boundary_mass_flux(u, bc::OBC, ::Val{:west})   = (; west_mass_flux = west_mass_flux(u), west_area = get_west_area(u.grid))
+initialize_boundary_mass_flux(u, bc::OBC, ::Val{:east})   = (; east_mass_flux = east_mass_flux(u), east_area = get_east_area(u.grid))
+initialize_boundary_mass_flux(v, bc::OBC, ::Val{:south})  = (; south_mass_flux = south_mass_flux(v), south_area = get_south_area(v.grid))
+initialize_boundary_mass_flux(v, bc::OBC, ::Val{:north})  = (; north_mass_flux = north_mass_flux(v), north_area = get_north_area(v.grid))
+initialize_boundary_mass_flux(w, bc::OBC, ::Val{:bottom}) = (; bottom_mass_flux = bottom_mass_flux(w), bottom_area = get_bottom_area(w.grid))
+initialize_boundary_mass_flux(w, bc::OBC, ::Val{:top})    = (; top_mass_flux = top_mass_flux(w), top_area = get_top_area(w.grid))
 
 initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:west})   = NamedTuple()
 initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:east})   = NamedTuple()
