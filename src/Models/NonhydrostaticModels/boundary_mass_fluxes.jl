@@ -197,21 +197,21 @@ function open_boundary_mass_inflow(model)
     return total_flux
 end
 
-correct_left_boundary_mass_flux!(u, bc::OBC, ::Val{:west},    avg_mass_inflow) = interior(u, 1, :, :) .-= avg_mass_inflow
-correct_left_boundary_mass_flux!(v, bc::OBC, ::Val{:south},   avg_mass_inflow) = interior(v, :, 1, :) .-= avg_mass_inflow
-correct_left_boundary_mass_flux!(w, bc::OBC, ::Val{:bottom},  avg_mass_inflow) = interior(w, :, :, 1) .-= avg_mass_inflow
-correct_left_boundary_mass_flux!(u, bc::IOBC, ::Val{:west},   avg_mass_inflow) = nothing
-correct_left_boundary_mass_flux!(v, bc::IOBC, ::Val{:south},  avg_mass_inflow) = nothing
-correct_left_boundary_mass_flux!(w, bc::IOBC, ::Val{:bottom}, avg_mass_inflow) = nothing
-correct_left_boundary_mass_flux!(u, bc, side, avg_mass_inflow) = nothing
+correct_left_boundary_mass_flux!(u, bc::OBC, ::Val{:west},    A⁻¹_∮udA) = interior(u, 1, :, :) .-= A⁻¹_∮udA
+correct_left_boundary_mass_flux!(v, bc::OBC, ::Val{:south},   A⁻¹_∮udA) = interior(v, :, 1, :) .-= A⁻¹_∮udA
+correct_left_boundary_mass_flux!(w, bc::OBC, ::Val{:bottom},  A⁻¹_∮udA) = interior(w, :, :, 1) .-= A⁻¹_∮udA
+correct_left_boundary_mass_flux!(u, bc::IOBC, ::Val{:west},   A⁻¹_∮udA) = nothing
+correct_left_boundary_mass_flux!(v, bc::IOBC, ::Val{:south},  A⁻¹_∮udA) = nothing
+correct_left_boundary_mass_flux!(w, bc::IOBC, ::Val{:bottom}, A⁻¹_∮udA) = nothing
+correct_left_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
 
-correct_right_boundary_mass_flux!(u, bc::OBC, ::Val{:east},   avg_mass_inflow) = interior(u, u.grid.Nx + 1, :, :) .+= avg_mass_inflow
-correct_right_boundary_mass_flux!(v, bc::OBC, ::Val{:north},  avg_mass_inflow) = interior(v, :, v.grid.Ny + 1, :) .+= avg_mass_inflow
-correct_right_boundary_mass_flux!(w, bc::OBC, ::Val{:top},    avg_mass_inflow) = interior(w, :, :, w.grid.Nz + 1) .+= avg_mass_inflow
-correct_right_boundary_mass_flux!(u, bc::IOBC, ::Val{:east},  avg_mass_inflow) = nothing
-correct_right_boundary_mass_flux!(v, bc::IOBC, ::Val{:north}, avg_mass_inflow) = nothing
-correct_right_boundary_mass_flux!(w, bc::IOBC, ::Val{:top},   avg_mass_inflow) = nothing
-correct_right_boundary_mass_flux!(u, bc, side, avg_mass_inflow) = nothing
+correct_right_boundary_mass_flux!(u, bc::OBC, ::Val{:east},   A⁻¹_∮udA) = interior(u, u.grid.Nx + 1, :, :) .+= A⁻¹_∮udA
+correct_right_boundary_mass_flux!(v, bc::OBC, ::Val{:north},  A⁻¹_∮udA) = interior(v, :, v.grid.Ny + 1, :) .+= A⁻¹_∮udA
+correct_right_boundary_mass_flux!(w, bc::OBC, ::Val{:top},    A⁻¹_∮udA) = interior(w, :, :, w.grid.Nz + 1) .+= A⁻¹_∮udA
+correct_right_boundary_mass_flux!(u, bc::IOBC, ::Val{:east},  A⁻¹_∮udA) = nothing
+correct_right_boundary_mass_flux!(v, bc::IOBC, ::Val{:north}, A⁻¹_∮udA) = nothing
+correct_right_boundary_mass_flux!(w, bc::IOBC, ::Val{:top},   A⁻¹_∮udA) = nothing
+correct_right_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
 
 """
 enforce_open_boundary_mass_conservation!(model::NonhydrostaticModel)
@@ -221,19 +221,17 @@ zero net mass flux through each boundary.
 """
 function enforce_open_boundary_mass_conservation!(model)
     u, v, w = model.velocities
-    grid = model.grid
 
-    total_mass_inflow = open_boundary_mass_inflow(model)
+    ∮udA = open_boundary_mass_inflow(model)
+    A = model.boundary_mass_fluxes.total_area_matching_scheme_boundaries
 
-    # Calculate flux correction per boundary
-    average_mass_inflow = total_mass_inflow / model.boundary_mass_fluxes.total_area_matching_scheme_boundaries
+    A⁻¹_∮udA = ∮udA / A
 
-    # Subtract extra flux from left boundaries to reduce inflow
-    correct_left_boundary_mass_flux!(u, u.boundary_conditions.west, Val(:west), average_mass_inflow)
-    correct_left_boundary_mass_flux!(v, v.boundary_conditions.south, Val(:south), average_mass_inflow)
-    correct_left_boundary_mass_flux!(w, w.boundary_conditions.bottom, Val(:bottom), average_mass_inflow)
+    correct_left_boundary_mass_flux!(u, u.boundary_conditions.west, Val(:west), A⁻¹_∮udA)
+    correct_left_boundary_mass_flux!(v, v.boundary_conditions.south, Val(:south), A⁻¹_∮udA)
+    correct_left_boundary_mass_flux!(w, w.boundary_conditions.bottom, Val(:bottom), A⁻¹_∮udA)
 
-    correct_right_boundary_mass_flux!(u, u.boundary_conditions.east, Val(:east), average_mass_inflow)
-    correct_right_boundary_mass_flux!(v, v.boundary_conditions.north, Val(:north), average_mass_inflow)
-    correct_right_boundary_mass_flux!(w, w.boundary_conditions.top, Val(:top), average_mass_inflow)
+    correct_right_boundary_mass_flux!(u, u.boundary_conditions.east, Val(:east), A⁻¹_∮udA)
+    correct_right_boundary_mass_flux!(v, v.boundary_conditions.north, Val(:north), A⁻¹_∮udA)
+    correct_right_boundary_mass_flux!(w, w.boundary_conditions.top, Val(:top), A⁻¹_∮udA)
 end
