@@ -176,7 +176,6 @@ function test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     seed!(198)  # For reproducible results
 
     grid = ImmersedBoundaryGrid(underlying_grid, immersed_bottom)
-    # Main.@infiltrate
     cg_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=100)
     @test cg_solver isa ConjugateGradientPoissonSolver
 
