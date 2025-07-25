@@ -92,9 +92,9 @@ returning a NamedTuple of boundary fluxes.
 function initialize_boundary_mass_fluxes(velocities::NamedTuple)
 
     u, v, w = velocities
-    u_bcs = velocities.u.boundary_conditions
-    v_bcs = velocities.v.boundary_conditions
-    w_bcs = velocities.w.boundary_conditions
+    u_bcs = u.boundary_conditions
+    v_bcs = v.boundary_conditions
+    w_bcs = w.boundary_conditions
 
     boundary_fluxes = NamedTuple()
     right_matching_scheme_boundaries = Symbol[]
@@ -178,21 +178,17 @@ function open_boundary_mass_inflow(model)
     update_open_boundary_mass_fluxes!(model)
 
     u, v, w = model.velocities
-    u_bcs = u.boundary_conditions
-    v_bcs = v.boundary_conditions
-    w_bcs = w.boundary_conditions
-
     total_flux = zero(model.grid)
 
     # Add flux through left boundaries
-    total_flux += open_boundary_mass_flux(model, u_bcs.west, Val(:west), u)
-    total_flux += open_boundary_mass_flux(model, v_bcs.south, Val(:south), v)
-    total_flux += open_boundary_mass_flux(model, w_bcs.bottom, Val(:bottom), w)
+    total_flux += open_boundary_mass_flux(model, u.boundary_conditions.west, Val(:west), u)
+    total_flux += open_boundary_mass_flux(model, v.boundary_conditions.south, Val(:south), v)
+    total_flux += open_boundary_mass_flux(model, w.boundary_conditions.bottom, Val(:bottom), w)
 
-    # Subtract flux through right boundaries
-    total_flux -= open_boundary_mass_flux(model, u_bcs.east, Val(:east), u)
-    total_flux -= open_boundary_mass_flux(model, v_bcs.north, Val(:north), v)
-    total_flux -= open_boundary_mass_flux(model, w_bcs.top, Val(:top), w)
+    # Subtract flux through right boundaries.
+    total_flux -= open_boundary_mass_flux(model, u.boundary_conditions.east, Val(:east), u)
+    total_flux -= open_boundary_mass_flux(model, v.boundary_conditions.north, Val(:north), v)
+    total_flux -= open_boundary_mass_flux(model, w.boundary_conditions.top, Val(:top), w)
 
     return total_flux
 end

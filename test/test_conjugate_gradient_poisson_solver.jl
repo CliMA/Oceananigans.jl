@@ -274,7 +274,7 @@ end
         end
 
         # Test more than one underlying_grid
-        underlying_grids = Dict(#"regular grid"   => RectilinearGrid(arch, topology = (Bounded, Periodic, Bounded), size=(8, 4, 8), halo=(4, 4, 4), extent = (1, 1, 1)),
+        underlying_grids = Dict("regular grid"   => RectilinearGrid(arch, topology = (Bounded, Periodic, Bounded), size=(8, 4, 8), halo=(4, 4, 4), extent = (1, 1, 1)),
                                 "stretched grid" => RectilinearGrid(arch, topology = (Bounded, Bounded, Bounded), size=(8, 4, 8), halo=(4, 4, 4),
                                                                     x = (0, 1), y = (0, 1), z = -1:0.125:0))
 
