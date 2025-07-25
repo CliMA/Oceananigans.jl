@@ -265,15 +265,15 @@ end
 
 # Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
 # with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
-function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status)
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     arch = architecture(grid)
     yrank = arch.local_index[2] - 1
 
     processor_size = ranks(arch)
 
-    indices = validate_indices(indices, (LX, LY, LZ), grid)
-    validate_field_data((LX, LY, LZ), data, grid, indices)
-    validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
+    indices = validate_indices(indices, loc, grid)
+    validate_field_data(loc, data, grid, indices)
+    validate_boundary_conditions(loc, grid, old_bcs)
     default_zipper = ZipperBoundaryCondition(sign(LX, LY))
 
     if isnothing(old_bcs) || ismissing(old_bcs)
