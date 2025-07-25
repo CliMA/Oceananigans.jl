@@ -215,7 +215,6 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
 end
 
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
-    # Test open boundary conditions to ensure domain-wise mass conservation (i.e., ∫∇u ≈ 0)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
 
@@ -232,7 +231,7 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
 
     run!(simulation)
     compute!(∫∇u)
-    @test ∫∇u[] ≈ 0 atol=2*eps(FT)
+    @test (@allowscalar ∫∇u[]) ≈ 0 atol=2*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
@@ -429,7 +428,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             test_perturbation_advection_open_boundary_conditions(arch, FT)
 
             # Only PerturbationAdvectionOpenBoundaryCondition
-            U₀ = 1.0
+            U₀ = 1
             inflow_timescale = 1e-1
             outflow_timescale = Inf
 
