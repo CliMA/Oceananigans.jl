@@ -6,7 +6,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
     @info "Testing models..."
 
     grids = (RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1)),
-             LatitudeLongitudeGrid(CPU(), size=(1,1,1), longitude=(-180, 180), latitude=(-20, 20), z=(-1, 0)))
+             LatitudeLongitudeGrid(CPU(), size=(1, 1, 1), longitude=(-180, 180), latitude=(-20, 20), z=(-1, 0)))
 
     for grid in grids
         @testset "$grid grid construction" begin
