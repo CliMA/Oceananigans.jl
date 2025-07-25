@@ -1,5 +1,6 @@
 using Oceananigans.Grids: architecture, deflate_tuple
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.Fields: instantiated_location
 
 struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
     xfield :: FX # X-direction is free (x-local)
@@ -58,17 +59,17 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     zarch = architecture(zgrid)
     yarch = architecture(ygrid)
 
-    loc = location(field_in)
+    loc = instantiated_location(field_in)
 
     Rx, Ry, _ = zarch.ranks
     if with_halos
-        zfield = Field{loc...}(zgrid, FT)
-        yfield = Ry == 1 ? zfield : Field{loc...}(ygrid, FT)
-        xfield = Rx == 1 ? yfield : Field{loc...}(xgrid, FT)
+        zfield = Field(loc, zgrid, FT)
+        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT)
+        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT)
     else
-        zfield = Field{loc...}(zgrid, FT; indices = (1:zN[1], 1:zN[2], 1:zN[3]))
-        yfield = Ry == 1 ? zfield : Field{loc...}(ygrid, FT; indices = (1:yN[1], 1:yN[2], 1:yN[3]))
-        xfield = Rx == 1 ? yfield : Field{loc...}(xgrid, FT; indices = (1:xN[1], 1:xN[2], 1:xN[3]))
+        zfield = Field(loc, zgrid, FT; indices = (1:zN[1], 1:zN[2], 1:zN[3]))
+        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT; indices = (1:yN[1], 1:yN[2], 1:yN[3]))
+        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:xN[1], 1:xN[2], 1:xN[3]))
     end
 
     # One dimensional buffers to "pack" three-dimensional data in for communication

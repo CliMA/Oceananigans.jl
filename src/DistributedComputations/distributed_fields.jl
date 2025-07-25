@@ -1,5 +1,5 @@
 using Oceananigans.Grids: topology
-using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
+using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, instantiated_location
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 using GPUArraysCore: @allowscalar
 
@@ -96,7 +96,7 @@ Reconstruct a global field from a local field by combining the data from all pro
 """
 function reconstruct_global_field(field::DistributedField)
     global_grid = reconstruct_global_grid(field.grid)
-    global_field = Field{location(field)...}(global_grid)
+    global_field = Field(instantiated_location(field), global_grid)
     arch = architecture(field)
 
     global_data = construct_global_array(interior(field), arch, size(field))

@@ -8,7 +8,7 @@ using Oceananigans.Fields: ZeroField, ConstantField
 import Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 
 function relative_error(u_num, u, time)
-    u_ans = Field(location(u_num), u_num.grid)
+    u_ans = Field(instantiated_location(u_num), u_num.grid)
     u_set(x...) = u(x..., time)
     set!(u_ans, u_set)
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
@@ -79,7 +79,7 @@ function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c)
     end
 
     diffusing_cosine(ξ, t, κ, m) = exp(-κ * m^2 * t) * cos(m * ξ)
-    analytical_solution = Field{location(field)...}(grid)
+    analytical_solution = Field(instantiated_location(field), grid)
     analytical_solution .= diffusing_cosine.(ξ, model.clock.time, κ, m)
 
     return isapprox(field, analytical_solution, atol=1e-6, rtol=1e-6)

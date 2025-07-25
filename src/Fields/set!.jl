@@ -60,7 +60,7 @@ function set_to_function!(u, f)
     if child_arch isa GPU || child_arch isa ReactantState
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
-        cpu_u    = Field{location(u)...}(cpu_grid; indices = indices(u))
+        cpu_u    = Field(instantiated_location(u), cpu_grid; indices = indices(u))
 
     elseif child_arch isa CPU
         cpu_grid = u.grid
