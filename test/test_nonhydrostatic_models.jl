@@ -118,7 +118,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
             L = (2π, 3π, 5π)
 
             rectilinear_grid = RectilinearGrid(arch, FT, size=N, extent=L,
-                                                topology = (Periodic, Bounded, Bounded))
+                                               topology = (Periodic, Bounded, Bounded))
             latlon_grid = LatitudeLongitudeGrid(arch, FT; size=N, latitude=(-1, 1), longitude=(-1, 1), z=(-100, 0),
                                                 topology = (Periodic, Bounded, Bounded))
             
@@ -173,18 +173,17 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
 
                 values_match = [
                                 all(u_answer .≈ interior(u_cpu)),
-                                #all(v_answer .≈ interior(v_cpu)),
+                                all(v_answer[:, 2:Ny, :] .≈ interior(v_cpu)[:, 2:Ny, :]),
                                 all(w_answer[:, :, 2:Nz] .≈ interior(w_cpu)[:, :, 2:Nz]),
                                 all(T_answer .≈ interior(T_cpu)),
                                 all(S_answer .≈ interior(S_cpu)),
-                            ]
+                               ]
 
                 @test all(values_match)
 
                 # Test whether set! copies boundary conditions
                 # Note: we need to cleanup broadcasting for this -- see https://github.com/CliMA/Oceananigans.jl/pull/2786/files#r1008955571
                 @test u_cpu[1, 1, 1] == u_cpu[Nx+1, 1, 1]  # x-periodicity
-                #@test u_cpu[1, 1, 1] == u_cpu[1, Ny+1, 1]  # y-periodicity
                 @test all(u_cpu[1:Nx, 1:Ny, 1] .== u_cpu[1:Nx, 1:Ny, 0])     # free slip at bottom
                 @test all(u_cpu[1:Nx, 1:Ny, Nz] .== u_cpu[1:Nx, 1:Ny, Nz+1]) # free slip at top
 
