@@ -74,17 +74,16 @@ function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::
 end
 
 """
-    regularize_immersed_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                           topo, loc, dim, I, prognostic_field_names) where C
+    regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 
-    west   = loc[1] === Center ? regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names) : nothing
-    east   = loc[1] === Center ? regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names) : nothing
-    south  = loc[2] === Center ? regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names) : nothing
-    north  = loc[2] === Center ? regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names) : nothing
-    bottom = loc[3] === Center ? regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names) : nothing
-    top    = loc[3] === Center ? regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names) : nothing
+    west   = isa(loc[1], Center) ? regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names) : nothing
+    east   = isa(loc[1], Center) ? regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names) : nothing
+    south  = isa(loc[2], Center) ? regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names) : nothing
+    north  = isa(loc[2], Center) ? regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names) : nothing
+    bottom = isa(loc[3], Center) ? regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names) : nothing
+    top    = isa(loc[3], Center) ? regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names) : nothing
 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
 end

@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
-using Oceananigans.Fields: FunctionField, data_summary, AbstractField
+using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
@@ -74,7 +74,7 @@ function reconstruct_global_field(mrf::MultiRegionField)
     # TODO: Is this correct? Shall we reconstruct a global field on the architecture of the grid?
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
-    global_field = Field(location(mrf), global_grid; indices)
+    global_field = Field(instantiated_location(mrf), global_grid; indices)
 
     data = construct_regionally(interior, mrf)
     data = construct_regionally(Array, data)
@@ -172,12 +172,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 function inject_regional_bcs(grid, connectivity, loc, indices;   
-                             west = default_auxiliary_bc(grid, Val(:west),   loc),
-                             east = default_auxiliary_bc(grid, Val(:east),   loc),
-                             south = default_auxiliary_bc(grid, Val(:south),  loc),
-                             north = default_auxiliary_bc(grid, Val(:north),  loc),
-                             bottom = default_auxiliary_bc(grid, Val(:bottom), loc),
-                             top = default_auxiliary_bc(grid, Val(:top),    loc),
+                             west = default_auxiliary_bc(grid, Val(:west), loc),
+                             east = default_auxiliary_bc(grid, Val(:east), loc),
+                             south = default_auxiliary_bc(grid, Val(:south), loc),
+                             north = default_auxiliary_bc(grid, Val(:north), loc),
+                             bottom = default_auxiliary_bc(grid, Val(:bottom),loc),
+                             top = default_auxiliary_bc(grid, Val(:top), loc),
                              immersed = NoFluxBoundaryCondition())
 
     west  = inject_west_boundary(connectivity, west)

@@ -47,8 +47,8 @@ function set_to_function!(u::ReactantField, f)
     # Supports serial and distributed
     arch = Oceananigans.Architectures.architecture(u)
     cpu_grid = on_architecture(CPU(), u.grid)
-    cpu_u = Field(Oceananigans.Fields.location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
-    f_field = Oceananigans.Fields.field(Oceananigans.Fields.location(u), f, cpu_grid)
+    cpu_u = Field(Oceananigans.Fields.instantiated_location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
+    f_field = Oceananigans.Fields.field(Oceananigans.Fields.instantiated_location(u), f, cpu_grid)
     set!(cpu_u, f_field)
     copyto!(interior(u), interior(cpu_u))
     return nothing

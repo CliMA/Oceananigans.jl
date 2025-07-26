@@ -22,8 +22,8 @@ mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = 2)
 
 ϵ(x, y, z)  =  2rand() - 1
 
-u_init = Array(interior(set!(Field((Face, Center, Center), grid), ϵ)))
-v_init = Array(interior(set!(Field((Center, Face, Center), grid), ϵ)))
+u_init = Array(interior(set!(Field{Face, Center, Center}(grid), ϵ)))
+v_init = Array(interior(set!(Field{Center, Face, Center}(grid), ϵ)))
 
 u_init_mrg = multi_region_object_from_array(u_init, mrg)
 v_init_mrg = multi_region_object_from_array(v_init, mrg)
