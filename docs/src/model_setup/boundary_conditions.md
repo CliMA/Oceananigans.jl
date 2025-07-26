@@ -436,11 +436,11 @@ top and bottom of both `model.velocities.u` and `model.tracers.c`.
 Immersed boundary conditions are supported experimentally. A no-slip boundary condition is specified
 with
 
-```@meta
-DocTestFilters = r"┌ Warning:[\s\S]*\.jl:[0-9]*"
+```@setup immersed_bc
+using Oceananigans
 ```
 
-```julia
+```jldoctest immersed_bc
 # Generate a simple ImmersedBoundaryGrid
 hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
 underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded))
@@ -451,7 +451,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0))
 model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs))
 
-# Insepct the boundary condition on the vertical velocity:
+# Inspect the boundary condition on the vertical velocity:
 model.velocities.w.boundary_conditions.immersed
 
 # output
