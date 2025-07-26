@@ -1,6 +1,6 @@
-abstract type CallableCoordinate end
+abstract type CallableDiscretization end
 
-struct ExponentialCoordinate <: CallableCoordinate
+struct ExponentialDiscretization <: CallableDiscretization
     size :: Int
     left :: Float64
     right :: Float64
@@ -9,42 +9,44 @@ struct ExponentialCoordinate <: CallableCoordinate
 end
 
 """
-    ExponentialCoordinate(N::Int, left, right;
-                          scale = (right-left)/5,
-                          bias = :right)
+    ExponentialDiscretization(N::Int, left, right;
+                              scale = (right-left)/5,
+                              bias = :right)
 
-Return a one-dimensional coordinate with `N` cells that are exponentially spaced
+Return a one-dimensional discretization with `N` cells that are exponentially spaced
 (or, equivalently, with spacings that grow linearly along the coordinate).
-The coordinate spans the range [`left`, `right`]. The exponential e-folding is controlled by `scale`.
+The discretization spans the range [`left`, `right`].
+The exponential e-folding is controlled by `scale`.
 The coordinate interfaces are closely stacked on the `bias`-side of the domain.
 
 Arguments
 =========
 
-- `N`: The number of cells in the coordinate.
-- `left`: The left-most interface of the coordinate.
-- `right`: The right-most interface of the coordinate.
+- `N`: The number of cells in the discretization.
+- `left`: The left-most interface of the discretization.
+- `right`: The right-most interface of the discretization.
 
 Keyword Arguments
 =================
 
 - `scale`: The length scale of the exponential e-folding. Default: `(right - left) / 5`
 - `bias :: Symbol`: Determine whether left or right biased. Default: `:right`.
+- `mutable :: Boolean`: Whether the discretization is mutable. Default: `false`.
 
 Examples
 ========
 
-```jldoctest ExponentialCoordinate
+```jldoctest ExponentialDiscretization
 using Oceananigans
 
 N = 10
 l = -1000
 r = 100
 
-x = ExponentialCoordinate(N, l, r)
+x = ExponentialDiscretization(N, l, r)
 
 # output
-ExponentialCoordinate
+ExponentialDiscretization
 ├─ size: 10
 ├─ left: -1000.0
 ├─ right: 100.0
@@ -54,7 +56,7 @@ ExponentialCoordinate
 
 To inspect the interfaces of the coordinate we can call:
 
-```jldoctest ExponentialCoordinate
+```jldoctest ExponentialDiscretization
 [x(i) for i in 1:N+1]
 
 # output
@@ -76,8 +78,8 @@ To inspect the interfaces of the coordinate we can call:
 Above, the default `bias` is `:right` and thus the interfaces are closer on the `right = 100` side of the domain.
 We can get a left-biased grid via:
 
-```jldoctest ExponentialCoordinate
-x = ExponentialCoordinate(N, l, r, bias=:left)
+```jldoctest ExponentialDiscretization
+x = ExponentialDiscretization(N, l, r, bias=:left)
 
 [x(i) for i in 1:N+1]
 
@@ -97,24 +99,24 @@ x = ExponentialCoordinate(N, l, r, bias=:left)
    100.0
 ```
 """
-ExponentialCoordinate(size::Int, left, right;
-                      scale = (right-left)/5,
-                      bias = :right) = ExponentialCoordinate(size, left, right, scale, bias)
+ExponentialDiscretization(size::Int, left, right;
+                          scale = (right-left)/5,
+                          bias = :right) = ExponentialDiscretization(size, left, right, scale, bias, mutable)
 
 @inline rightbiased_exponential_mapping(x, l, r, h) = @. r - (r - l) * expm1((r - x) / h) / expm1((r - l) / h)
 @inline  leftbiased_exponential_mapping(x, l, r, h) = @. l + (r - l) * expm1((x - l) / h) / expm1((r - l) / h)
 
-function (coord::ExponentialCoordinate)(i)
-    N, left, right, scale = coord.size, coord.left, coord.right, coord.scale
+function (dscr::ExponentialDiscretization)(i)
+    N, left, right, scale = dscr.size, dscr.left, dscr.right, dscr.scale
 
     # uniform coordinate
     Δ = (right - left) / N    # spacing
     ξᵢ = left + (i-1) * Δ     # interfaces
 
     # mapped coordinate
-    if coord.bias === :right
+    if dscr.bias === :right
        xᵢ = rightbiased_exponential_mapping(ξᵢ, left, right, scale)
-    elseif coord.bias === :left
+    elseif dscr.bias === :left
        xᵢ =  leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
@@ -127,17 +129,17 @@ function (coord::ExponentialCoordinate)(i)
     return xᵢ
 end
 
-Base.length(coord::ExponentialCoordinate) = coord.size
+Base.length(dscr::ExponentialDiscretization) = dscr.size
 
-Base.summary(::ExponentialCoordinate) = "ExponentialCoordinate"
+Base.summary(::ExponentialDiscretization) = "ExponentialDiscretization"
 
-function Base.show(io::IO, coord::ExponentialCoordinate)
-    return print(io, summary(coord), '\n',
-                 "├─ size: ", coord.size, '\n',
-                 "├─ left: ", coord.left, '\n',
-                 "├─ right: ", coord.right, '\n',
-                 "├─ scale: ", coord.scale, '\n',
-                 "└─ bias: :$(coord.bias)")
+function Base.show(io::IO, dscr::ExponentialDiscretization)
+    return print(io, summary(dscr), '\n',
+                 "├─ size: ", dscr.size, '\n',
+                 "├─ left: ", dscr.left, '\n',
+                 "├─ right: ", dscr.right, '\n',
+                 "├─ scale: ", dscr.scale, '\n',
+                 "└─ bias: :$(dscr.bias)")
 end
 
 """
@@ -176,7 +178,7 @@ Apply linear stretching to `x` via
 """
 (stretching::LinearStretching)(x) = (1 + stretching.coefficient) * x
 
-struct ConstantToStretchedCoordinate{S, A} <: CallableCoordinate
+struct ConstantToStretchedDiscretization{S, A} <: CallableDiscretization
     extent :: Float64
     bias :: Symbol
     bias_edge :: Float64
@@ -187,15 +189,15 @@ struct ConstantToStretchedCoordinate{S, A} <: CallableCoordinate
     stretching :: S
     faces :: A
 
-    function ConstantToStretchedCoordinate(extent,
-                                           bias,
-                                           bias_edge,
-                                           constant_spacing,
-                                           constant_spacing_extent,
-                                           maximum_stretching_extent,
-                                           maximum_spacing,
-                                           stretching;
-                                           rounding_digits=2)
+    function ConstantToStretchedDiscretization(extent,
+                                               bias,
+                                               bias_edge,
+                                               constant_spacing,
+                                               constant_spacing_extent,
+                                               maximum_stretching_extent,
+                                               maximum_spacing,
+                                               stretching;
+                                               rounding_digits=2)
 
         interfaces = compute_stretched_interfaces(; extent,
                                                   bias,
@@ -258,15 +260,15 @@ function compute_stretched_interfaces(; extent,
 end
 
 """
-    ConstantToStretchedCoordinate(; extent,
-                                  bias = :right,
-                                  bias_edge = 0,
-                                  constant_spacing = extent / 20,
-                                  constant_spacing_extent = 5 * constant_spacing,
-                                  maximum_stretching_extent = Inf,
-                                  maximum_spacing = Inf,
-                                  stretching = PowerLawStretching(1.02),
-                                  rounding_digits = 2)
+    ConstantToStretchedDiscretization(; extent,
+                                      bias = :right,
+                                      bias_edge = 0,
+                                      constant_spacing = extent / 20,
+                                      constant_spacing_extent = 5 * constant_spacing,
+                                      maximum_stretching_extent = Inf,
+                                      maximum_spacing = Inf,
+                                      stretching = PowerLawStretching(1.02),
+                                      rounding_digits = 2)
 
 Return a one-dimensional coordinate that has `constant_spacing` over a `constant_spacing_extent`
 on the `bias`-side of the domain.
@@ -300,14 +302,14 @@ Examples
 * A vertical coordinate with constant 20-meter spacing at the top 110 meters.
   For that, we use the defaults `bias = :right` and `bias_edge = 0`.
 
-  ```jldoctest ConstantToStretchedCoordinate
+  ```jldoctest ConstantToStretchedDiscretization
   using Oceananigans
 
-  z = ConstantToStretchedCoordinate(extent = 200,
-                                    constant_spacing = 25,
-                                    constant_spacing_extent = 90)
+  z = ConstantToStretchedDiscretization(extent = 200,
+                                        constant_spacing = 25,
+                                        constant_spacing_extent = 90)
   # output
-  ConstantToStretchedCoordinate
+  ConstantToStretchedDiscretization
   ├─ extent: 200.0
   ├─ bias: :right
   ├─ bias_edge: 0.0
@@ -321,7 +323,7 @@ Examples
 
   The `z` coordinate above has
 
-  ```jldoctest ConstantToStretchedCoordinate
+  ```jldoctest ConstantToStretchedDiscretization
   N = length(z)
 
   # output
@@ -330,7 +332,7 @@ Examples
 
   cells. The coordinate's interfaces are:
 
-  ```jldoctest ConstantToStretchedCoordinate
+  ```jldoctest ConstantToStretchedDiscretization
   z.faces
 
   # output
@@ -349,7 +351,7 @@ Examples
   The coordinate has an extent that is longer from what prescribed via the `extent`
   keyword argument, namely by:
 
-  ```jldoctest ConstantToStretchedCoordinate
+  ```jldoctest ConstantToStretchedDiscretization
   (z.faces[end] - z.faces[1]) - z.extent
 
   # output
@@ -360,14 +362,14 @@ Examples
 * A coordinate that that has a 20-meter spacing for 50 meters at the left side of the domain.
   The left-most interface of the domain is at -50 meters and the coordinate extends for at least 250 meters.
 
-  ```jldoctest ConstantToStretchedCoordinate
+  ```jldoctest ConstantToStretchedDiscretization
   using Oceananigans
 
-  x = ConstantToStretchedCoordinate(extent = 250,
-                                    bias = :left,
-                                    bias_edge = -50,
-                                    constant_spacing = 20,
-                                    constant_spacing_extent = 50)
+  x = ConstantToStretchedDiscretization(extent = 250,
+                                        bias = :left,
+                                        bias_edge = -50,
+                                        constant_spacing = 20,
+                                        constant_spacing_extent = 50)
 
   x.faces
 
@@ -390,7 +392,7 @@ Examples
 
   that ends up with
 
-  ```jldoctest ConstantToStretchedCoordinate
+  ```jldoctest ConstantToStretchedDiscretization
   length(x)
 
   # output
@@ -399,7 +401,7 @@ Examples
 
   cells that span a domain of:
 
-  ```jldoctest ConstantToStretchedCoordinate
+  ```jldoctest ConstantToStretchedDiscretization
   x.faces[end] - x.faces[1]
 
   # output
@@ -407,42 +409,42 @@ Examples
   ```
   which is bigger than the desired `extent`.
 """
-function ConstantToStretchedCoordinate(; extent = 1000,
-                                       bias = :right,
-                                       bias_edge = 0,
-                                       constant_spacing = extent / 20,
-                                       constant_spacing_extent = 5 * constant_spacing,
-                                       maximum_stretching_extent = Inf,
-                                       maximum_spacing = Inf,
-                                       stretching = PowerLawStretching(1.02),
-                                       rounding_digits = 2)
+function ConstantToStretchedDiscretization(; extent = 1000,
+                                           bias = :right,
+                                           bias_edge = 0,
+                                           constant_spacing = extent / 20,
+                                           constant_spacing_extent = 5 * constant_spacing,
+                                           maximum_stretching_extent = Inf,
+                                           maximum_spacing = Inf,
+                                           stretching = PowerLawStretching(1.02),
+                                           rounding_digits = 2)
 
-    return ConstantToStretchedCoordinate(extent,
-                                         bias,
-                                         bias_edge,
-                                         constant_spacing,
-                                         constant_spacing_extent,
-                                         maximum_stretching_extent,
-                                         maximum_spacing,
-                                         stretching;
-                                         rounding_digits)
+    return ConstantToStretchedDiscretization(extent,
+                                             bias,
+                                             bias_edge,
+                                             constant_spacing,
+                                             constant_spacing_extent,
+                                             maximum_stretching_extent,
+                                             maximum_spacing,
+                                             stretching;
+                                             rounding_digits)
 end
 
-(coord::ConstantToStretchedCoordinate)(i) = coord.faces[i]
+(dsrc::ConstantToStretchedDiscretization)(i) = dsrc.faces[i]
 
-Base.length(coord::ConstantToStretchedCoordinate) = length(coord.faces)-1
+Base.length(dsrc::ConstantToStretchedDiscretization) = length(dsrc.faces)-1
 
-Base.summary(::ConstantToStretchedCoordinate) = "ConstantToStretchedCoordinate"
+Base.summary(::ConstantToStretchedDiscretization) = "ConstantToStretchedDiscretization"
 
-function Base.show(io::IO, coord::ConstantToStretchedCoordinate)
-    return print(io, summary(coord), '\n',
-                 "├─ extent: ", coord.extent, '\n',
-                 "├─ bias: :$(coord.bias)", '\n',
-                 "├─ bias_edge: ", coord.bias_edge, '\n',
-                 "├─ constant_spacing: ", coord.constant_spacing, '\n',
-                 "├─ constant_spacing_extent: ", coord.constant_spacing_extent, '\n',
-                 "├─ maximum_stretching_extent: ", coord.maximum_stretching_extent, '\n',
-                 "├─ maximum_spacing: ", coord.maximum_spacing, '\n',
-                 "├─ stretching: ", coord.stretching, '\n',
-                 "└─ faces: : ", summary(coord.faces))
+function Base.show(io::IO, dscr::ConstantToStretchedDiscretization)
+    return print(io, summary(dscr), '\n',
+                 "├─ extent: ", dscr.extent, '\n',
+                 "├─ bias: :$(dscr.bias)", '\n',
+                 "├─ bias_edge: ", dscr.bias_edge, '\n',
+                 "├─ constant_spacing: ", dscr.constant_spacing, '\n',
+                 "├─ constant_spacing_extent: ", dscr.constant_spacing_extent, '\n',
+                 "├─ maximum_stretching_extent: ", dscr.maximum_stretching_extent, '\n',
+                 "├─ maximum_spacing: ", dscr.maximum_spacing, '\n',
+                 "├─ stretching: ", dscr.stretching, '\n',
+                 "└─ faces: : ", summary(dscr.faces))
 end

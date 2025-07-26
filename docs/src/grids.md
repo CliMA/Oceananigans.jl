@@ -551,13 +551,14 @@ fig
 As described above, to construct grids with stretched coordinates we need to provide as input
 either a function the returns the coordinate's interfaces or an array with the interfaces.
 
-Here we further showcase some helper utilities that can be used to define few special types of
-coordinates with variable spacings.
+Here we showcase some helper utilities that can be used to define few special types of
+discretizations with variable spacings.
 
-### Exponential coordinate
+### Exponential discretization
 
-[`ExponentialCoordinate`](@ref) returns a coordinate with interfaces that lie on an exponential profile.
-By that, we mean that a uniformly discretized domain in the range ``[l, r]`` is mapped back onto itself via either
+[`ExponentialDiscretization`](@ref) returns a discretization with interfaces that lie on an
+exponential profile. By that, we mean that a uniformly discretized domain in the range ``[l, r]``
+is mapped back onto itself via either
 
 ```math
 ξ \mapsto w(ξ) = r - (r - l) \frac{\exp{[(r - ξ) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(right biased)}
@@ -570,16 +571,20 @@ or
 ```
 
 The exponential mappings above have an e-folding controlled by scale ``h``.
-It's worth noting that the exponential maps imply that the cell widths (distances between interfaces) grow linearly at a rate inversely proportional to ``h / (r - l)``.
+It's worth noting that the exponential maps imply that the cell widths (distances between interfaces)
+grow linearly at a rate inversely proportional to ``h / (r - l)``.
 
-The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases the interfaces towards ``l``.
+The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases
+the interfaces towards ``l``.
 
-At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the grid becomes uniformly spaced.
+At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the
+discretization becomes uniformly spaced.
 
 !!! note "Oceanography-related bias"
-    For vertical coordinates fit for oceanographic purposes, the right-biased mapping is usually more relevant as it implies finer vertical resolution closer to the ocean's surface.
+    For vertical coordinates fit for oceanographic purposes, the right-biased mapping is usually more
+    relevant as it implies finer vertical resolution near the ocean's surface.
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 using Oceananigans.Grids: rightbiased_exponential_mapping, leftbiased_exponential_mapping
 
 using CairoMakie
@@ -591,8 +596,8 @@ l, r = 0, 1
 
 fig = Figure(size=(1200, 550))
 
-axis_labels = (xlabel="uniform coordinate ξ / (r-l)",
-               ylabel="mapped coordinate w / (r-l)")
+axis_labels = (xlabel="uniform ξ / (r - l)",
+               ylabel="mapped w / (r - l)")
 
 axl = Axis(fig[1, 1]; title="left-biased map", axis_labels...)
 axr = Axis(fig[1, 2]; title="right-biased map", axis_labels...)
@@ -612,34 +617,36 @@ Legend(fig[2, :], axl, orientation = :horizontal)
 fig
 ```
 
-Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points towards the left or right side of the domain.
+Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points
+towards the left or right side of the domain.
 
-Let's see how we use [`ExponentialCoordinate`](@ref). Below we construct a coordinate with 10 cells that spans the range ``[-700, 300]``. By default, the `ExponentialCoordinate` is right-biased.
+Let's see how we use [`ExponentialDiscretization`](@ref). Below we construct a coordinate with 10 cells
+that spans the range ``[-700, 300]``. By default, the `ExponentialDiscretization` is right-biased.
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 using Oceananigans
 
 N = 10
 l = -700
 r = 300
 
-x = ExponentialCoordinate(N, l, r)
+x = ExponentialDiscretization(N, l, r)
 ```
 
 Note that above, the default e-folding scale (`scale = (r - l) / 5`) was used.
 
 We can inspect the interfaces of the coordinate via
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 [x(i) for i in 1:N+1]
 ```
 
 Being right-biased, note above how the interfaces are closer together near ``r``.
 
-To demonstrate how the scale ``h`` affects the coordinate, we construct below two such exponential
-coordinates: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
+To demonstrate how the scale ``h`` affects the discretization, we construct below two such exponential
+discretizations: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 using Oceananigans
 
 N = 10
@@ -652,7 +659,7 @@ using CairoMakie
 fig = Figure(size=(1000, 1000))
 
 scale = extent / 5
-x = ExponentialCoordinate(N, l, r; scale)
+x = ExponentialDiscretization(N, l, r; scale)
 grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
 xc = xnodes(grid, Center())
 xf = xnodes(grid, Face())
@@ -668,7 +675,7 @@ scatter!(axΔx1, xc, Δx)
 
 
 scale = extent / 2
-x = ExponentialCoordinate(N, l, r; scale)
+x = ExponentialDiscretization(N, l, r; scale)
 grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
 xc = xnodes(grid, Center())
 xf = xnodes(grid, Face())
@@ -700,42 +707,46 @@ rowsize!(fig.layout, 3, Relative(0.1))
 fig
 ```
 
-A downside of [`ExponentialCoordinate`](@ref) coordinate is that we don't have tight control on the minimum spacing at the biased edge.
-To obtain a coordinate with a certain minimum spacing we need to play around with the scale ``h`` and the number of cells.
+A downside of [`ExponentialDiscretization`](@ref) discretization is that we don't have tight control
+on the minimum spacing at the biased edge.
+To obtain a discretization with a certain minimum spacing we need to play around with the scale ``h``
+and the number of cells.
 
 
 ### Constant-to-stretched-spacing coordinate
 
-[`ConstantToStretchedCoordinate`](@ref) returns a coordinate with constant spacing over some extent and beyond
-which the spacing increases with a prescribed stretching law; this allows a tighter control on the spacing at the biased edge.
+[`ConstantToStretchedDiscretization`](@ref) returns a discretization with constant spacing over some extent
+and beyond which the spacing increases with a prescribed stretching law; this allows a tighter control on the
+spacing at the biased edge.
 That is, we can prescribe a constant spacing over the top `surface_layer_height`  below which the grid spacing
 increases following a prescribed stretching law.
-The downside here is that neither the final coordinate extent nor the total number of cells can be prescribed.
-The coordinate's extent is greater or equal from what we prescribe via the keyword argument `extent`.
+The downside here is that neither the final discretization extent nor the total number of cells can be prescribed.
+The discretization's extent is greater or equal from what we prescribe via the keyword argument `extent`.
 Also, the total number of cells we end up with depends on the stretching law.
 
 As an example, we build three single-column vertical grids.
-We use right-biased coordinate (i.e., `bias = :right`) since this way we can have tight control of the spacing at the ocean's surface (`bias_edge = 0`).
+We use right-biased discretization (i.e., `bias = :right`) since this way we can have tight control of the spacing
+at the ocean's surface (`bias_edge = 0`).
 The three grids below have constant 30-meter spacing for the top 180 meters.
 We prescribe to all three a `extent = 800` meters and we apply power-law stretching for depths below 120 meters.
 The bigger the power-law stretching factor is, the further the last interface goes beyond the prescribed depth and/or with less total number of cells.
 
-```@setup ConstantToStretchedCoordinate
+```@setup ConstantToStretchedDiscretization
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(fontsize=16))
 ```
 
-```@example ConstantToStretchedCoordinate
+```@example ConstantToStretchedDiscretization
 bias = :right
 bias_edge = 0
 extent = 800
 constant_spacing = 25
 constant_spacing_extent = 160
 
-z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
-                                  constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.06))
+z = ConstantToStretchedDiscretization(; extent, bias, bias_edge,
+                                      constant_spacing, constant_spacing_extent,
+                                      stretching = PowerLawStretching(1.06))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
@@ -763,9 +774,9 @@ hidedecorations!(axz1)
 hidespines!(axz1)
 
 
-z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
-                                  constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.03))
+z = ConstantToStretchedDiscretization(; extent, bias, bias_edge,
+                                      constant_spacing, constant_spacing_extent,
+                                      stretching = PowerLawStretching(1.03))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
@@ -789,10 +800,10 @@ scatter!(axz2, 0 * zc, zc)
 hidedecorations!(axz2)
 hidespines!(axz2)
 
-z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
-                                  constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.03),
-                                  maximum_stretching_extent = 500)
+z = ConstantToStretchedDiscretization(; extent, bias, bias_edge,
+                                      constant_spacing, constant_spacing_extent,
+                                      stretching = PowerLawStretching(1.03),
+                                      maximum_stretching_extent = 500)
 
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
