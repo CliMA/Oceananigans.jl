@@ -31,7 +31,6 @@ Keyword Arguments
 
 - `scale`: The length scale of the exponential e-folding. Default: `(right - left) / 5`
 - `bias :: Symbol`: Determine whether left or right biased. Default: `:right`.
-- `mutable :: Boolean`: Whether the discretization is mutable. Default: `false`.
 
 Examples
 ========
