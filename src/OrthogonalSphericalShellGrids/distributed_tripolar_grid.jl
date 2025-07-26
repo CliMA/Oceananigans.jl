@@ -263,8 +263,6 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-destantiate(t::T) where T = T
-
 # Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
 # with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
@@ -277,7 +275,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSome
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, old_bcs)
 
-    default_zipper = ZipperBoundaryCondition(sign(destantiate.(loc)[1:2]))
+    default_zipper = ZipperBoundaryCondition(sign(LX, LY))
 
     if isnothing(old_bcs) || ismissing(old_bcs)
         new_bcs = old_bcs
