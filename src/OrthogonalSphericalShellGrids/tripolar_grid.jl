@@ -49,7 +49,7 @@ Keyword Arguments
 - `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
 - `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
 - `radius`: The radius of the spherical shell. Default: `R_Earth`.
-- `z`: The vertical ``z``-coordinate range of the grid. Could either be (i) (i) 2-tuple that specifies
+- `z`: The vertical ``z``-coordinate range of the grid. Could either be (i) 2-tuple that specifies
        the end points of the coordinate, (ii) an array with the ``z`` interfaces, or (iii) a function
        of `k` index that returns the locations of cell interfaces in ``z``-direction. Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
