@@ -100,7 +100,7 @@ x = ExponentialDiscretization(N, l, r, bias=:left)
 """
 ExponentialDiscretization(size::Int, left, right;
                           scale = (right-left)/5,
-                          bias = :right) = ExponentialDiscretization(size, left, right, scale, bias, mutable)
+                          bias = :right) = ExponentialDiscretization(size, left, right, scale, bias)
 
 @inline rightbiased_exponential_mapping(x, l, r, h) = @. r - (r - l) * expm1((r - x) / h) / expm1((r - l) / h)
 @inline  leftbiased_exponential_mapping(x, l, r, h) = @. l + (r - l) * expm1((x - l) / h) / expm1((r - l) / h)
