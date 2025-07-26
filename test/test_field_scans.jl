@@ -329,13 +329,13 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : 0))
-            c = Field((Center, Center, Nothing), grid)
+            c = Field{Center, Center, Nothing}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[1]
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : -0.4))
-            c = Field((Center, Center, Nothing), grid)
+            c = Field{Center, Center, Nothing}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[3]
@@ -343,7 +343,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             underlying_grid = RectilinearGrid(arch, size = (1, 1, 8), extent=(1, 1, 1))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -3/4))
-            c = Field((Center, Center, Center), grid)
+            c = Field{Center, Center, Center}(grid)
 
             set!(c, (x, y, z) -> -z)
             @test maximum(c) == Array(interior(c))[1, 1, 3]

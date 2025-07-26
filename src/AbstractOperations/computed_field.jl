@@ -4,7 +4,7 @@
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index
+using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index, instantiated_location
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -42,13 +42,13 @@ Keyword arguments
 function Field(operand::OperationOrFunctionField;
                data = nothing,
                indices = indices(operand),
-               boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
+               boundary_conditions = FieldBoundaryConditions(operand.grid, instantiated_location(operand)),
                status = nothing,
                compute = true,
                recompute_safely = true)
 
     grid = operand.grid
-    loc = location(operand)
+    loc = instantiated_location(operand)
     indices = validate_indices(indices, loc, grid)
 
     @apply_regionally boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)

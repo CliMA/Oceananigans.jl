@@ -1,5 +1,5 @@
 using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node, FixedTime
+using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
 using GPUArraysCore: @allowscalar
@@ -128,7 +128,7 @@ function getindex(fts::OnDiskFTS, n::Int)
     close(file)
 
     # Wrap Field
-    loc = location(fts)
+    loc = instantiated_location(fts)
     @apply_regionally field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
     status = @allowscalar FixedTime(fts.times[n])
@@ -275,8 +275,8 @@ function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
     arch = architecture(target_grid)
 
     # Make locations
-    source_location = map(instantiate, location(source_fts))
-    target_location = map(instantiate, location(target_fts))
+    source_location = instantiated_location(source_fts)
+    target_location = instantiated_location(target_fts)
 
     launch!(arch, target_grid, size(target_fts),
             _interpolate_field_time_series!,
@@ -368,9 +368,9 @@ function getindex(fts::InMemoryFTS, n::Int)
 
     m = memory_index(fts, n)
     @apply_regionally underlying_data = view(parent(fts), :, :, :, m)
-    @apply_regionally data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+    @apply_regionally data = offset_data(underlying_data, fts.grid, instantiated_location(fts), fts.indices)
     
     status = @allowscalar FixedTime(fts.times[n])
 
-    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices, status)
+    return Field(instantiated_location(fts), fts.grid; data, fts.boundary_conditions, fts.indices, status)
 end
