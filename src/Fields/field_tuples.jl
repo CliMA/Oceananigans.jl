@@ -207,7 +207,7 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function TracerFields(tracer_names, grid, user_bcs)
-    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center, Center, Center)) for name in tracer_names)
+    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for name in tracer_names)
     bcs = merge(default_bcs, user_bcs) # provided bcs overwrite defaults
     return NamedTuple(c => CenterField(grid, boundary_conditions=bcs[c]) for c in tracer_names)
 end
