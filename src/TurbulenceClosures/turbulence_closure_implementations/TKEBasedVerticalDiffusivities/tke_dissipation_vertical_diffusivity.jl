@@ -99,7 +99,7 @@ Note that for numerical stability, it is recommended to either have a relative s
 `negative_turbulent_kinetic_energy_damping_time_scale` or a reasonable
 `minimum_turbulent_kinetic_energy`, or both.
 
-ß
+
 References
 ==========
 
