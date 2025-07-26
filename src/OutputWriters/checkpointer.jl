@@ -1,23 +1,33 @@
 using Glob
 
 using Oceananigans
-using Oceananigans: fields, prognostic_fields
+using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans.Fields: set!
 
-mutable struct Checkpointer{T, P} <: AbstractOutputWriter
+mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
     prefix :: String
-    properties :: P
     overwrite_existing :: Bool
     verbose :: Bool
     cleanup :: Bool
 end
 
 required_checkpoint_properties(model) = [:grid, :clock]
+
+# Certain properties are required for `set!` to pickup from a checkpoint.
+function required_checkpointed_properties(model)
+    properties = [:grid, :clock]
+
+    if has_ab2_timestepper(model)
+        push!(properties, :timestepper)
+    end
+
+    return properties
+end
 
 """
     Checkpointer(model;
@@ -30,16 +40,18 @@ required_checkpoint_properties(model) = [:grid, :clock]
                  properties = required_checkpoint_properties(model))
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
-The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
+The `model.clock.iteration` is included in the filename to distinguish between multiple
+checkpoint files.
 
-To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
-that the checkpoint file is in directory `dir`. See [`run!`](@ref) for more details.
+To restart or "pickup" a model from a checkpoint, specify `pickup = true` when
+calling `run!`, ensuring that the checkpoint file is in directory `dir`.
+See [`run!`](@ref) for more details.
 
 Note that extra model `properties` can be specified, but removing crucial properties
-such as `:timestepper` will render restoring from the checkpoint impossible.
+such as `:timestepper` might render restoring from the checkpoint impossible.
 
 The checkpointer attempts to serialize as much of the model to disk as possible,
-but functions or objects containing functions cannot be serialized at this time.
+but note that functions or objects containing functions cannot be serialized.
 
 Keyword arguments
 =================
@@ -93,7 +105,7 @@ function Checkpointer(model; schedule,
 
     mkpath(dir)
 
-    return Checkpointer(schedule, dir, prefix, properties, overwrite_existing, verbose, cleanup)
+    return Checkpointer(schedule, dir, prefix, overwrite_existing, verbose, cleanup)
 end
 
 #####
@@ -158,16 +170,34 @@ end
 ##### Writing checkpoints
 #####
 
-function write_output!(c::Checkpointer, model)
+function write_output!(c::Checkpointer, model, addr=checkpointer_address(model))
     filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
-    addr = checkpointer_address(model)
 
     t1 = time_ns()
 
-    jldopen(filepath, "w") do file
-        file["$addr/checkpointed_properties"] = c.properties
-        serializeproperties!(file, model, c.properties, addr)
+    write_output!(c, model, filepath, "w")
+
+    t2, sz = time_ns(), filesize(filepath)
+
+    c.verbose && @info "Checkpointing done: time=$(prettytime((t2 - t1) * 1e-9)), size=$(pretty_filesize(sz))"
+
+    c.cleanup && cleanup_checkpoints(c)
+
+    return nothing
+end
+
+function write_output!(c, model, filepath::AbstractString, mode::AbstractString;
+                       properties = default_checkpointed_properties(model))
+    @show properties
+    @show model
+
+    properties = validate_checkpointed_properties(model, properties)
+    addr = checkpointer_address(model)
+
+    jldopen(filepath, mode) do file
+        file["$addr/checkpointed_properties"] =
+        serializeproperties!(file, model, properties, addr)
         model_fields = prognostic_fields(model)
         field_names = keys(model_fields)
         for name in field_names
@@ -175,13 +205,6 @@ function write_output!(c::Checkpointer, model)
             serializeproperty!(file, full_address, model_fields[name])
         end
     end
-
-    t2, sz = time_ns(), filesize(filepath)
-    c.verbose && @info "Checkpointing done: time=$(prettytime((t2 - t1) * 1e-9)), size=$(pretty_filesize(sz))"
-
-    c.cleanup && cleanup_checkpoints(c)
-
-    return nothing
 end
 
 function cleanup_checkpoints(checkpointer)
@@ -197,12 +220,13 @@ end
 
 # Should this go in Models?
 """
-    set!(model, filepath::AbstractString)
+    set!(model::AbstractModel, filepath::AbstractString)
 
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
-function set!(model, filepath::AbstractString)
+function set!(model::AbstractModel, filepath::AbstractString)
+
     addr = checkpointer_address(model)
 
     jldopen(filepath, "r") do file
@@ -225,7 +249,8 @@ function set!(model, filepath::AbstractString)
             end
         end
 
-        set_time_stepper!(model.timestepper, model.architecture, file, model_fields, addr)
+        set_time_stepper!(model.timestepper, file, model_fields, addr)
+        @show model.timestepper.Gⁿ[:u]
 
         if !isnothing(model.particles)
             copyto!(model.particles.properties, file["$addr/particles"])
@@ -251,7 +276,11 @@ function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, add
             parent_data = on_architecture(arch, file["$addr/timestepper/Gⁿ/$name/data"])
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
+
             @apply_regionally copyto!(parent(tendencyⁿ_field), parent_data)
+            if name==:u
+                @show tendencyⁿ_field
+            end
 
             # Tendency "n-1"
             parent_data = on_architecture(arch, file["$addr/timestepper/G⁻/$name/data"])

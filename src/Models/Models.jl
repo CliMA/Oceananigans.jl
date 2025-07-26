@@ -21,6 +21,7 @@ using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
+import Oceananigans.TimeSteppers: reset!, set_clock!
 import Oceananigans.Solvers: iteration
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: reset!, set_clock!
