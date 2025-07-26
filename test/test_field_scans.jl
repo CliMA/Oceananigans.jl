@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.AbstractOperations: BinaryOperation
+using Oceananigans.AbstractOperations: BinaryOperation, GridMetricOperation
 using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: halo_size
@@ -90,15 +90,24 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @compute ζrz = Field(CumulativeIntegral(ζ, dims=3, reverse=true))
 
                 for T′ in (Tx, Txy)
-                    @test T′.operand.operand === T
+                    @test T′.operand.operand.a.a === T
+                    @test T′.operand.operand.a.b isa GridMetricOperation
+                    @test T′.operand.operand.b.operand isa Integral
+                    @test T′.operand.operand.b.operand.operand isa BinaryOperation
                 end
 
                 for w′ in (wx, wxy)
-                    @test w′.operand.operand === w
+                    @test w′.operand.operand.a.a === w
+                    @test w′.operand.operand.a.b isa GridMetricOperation
+                    @test w′.operand.operand.b.operand isa Integral
+                    @test w′.operand.operand.b.operand.operand isa BinaryOperation
                 end
 
                 for ζ′ in (ζx, ζxy)
-                    @test ζ′.operand.operand === ζ
+                    @test ζ′.operand.operand.a.a === ζ
+                    @test ζ′.operand.operand.a.b isa GridMetricOperation
+                    @test ζ′.operand.operand.b.operand isa Integral
+                    @test ζ′.operand.operand.b.operand.operand isa BinaryOperation
                 end
 
                 for f in (wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
@@ -112,11 +121,11 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 end
 
                 for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === mean!
+                    @test f.operand.scan! === sum!
                 end
 
                 for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === mean!
+                    @test f.operand.scan! === sum!
                 end
 
                 for f in (Tcx, Tcy, Tcz, wcx, wcy, wcz, ζcx, ζcy, ζcz)
@@ -130,19 +139,6 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test Txyz.operand isa Reduction
                 @test wxyz.operand isa Reduction
                 @test ζxyz.operand isa Reduction
-
-                # Different behavior for regular grid z vs not.
-                if grid === regular_grid
-                    @test Txyz.operand.scan! === mean!
-                    @test wxyz.operand.scan! === mean!
-                    @test Txyz.operand.operand === T
-                    @test wxyz.operand.operand === w
-                else
-                    @test Txyz.operand.scan! === sum!
-                    @test wxyz.operand.scan! === sum!
-                    @test Txyz.operand.operand isa BinaryOperation
-                    @test wxyz.operand.operand isa BinaryOperation
-                end
 
                 @test Tx.operand.dims === tuple(1)
                 @test wx.operand.dims === tuple(1)
