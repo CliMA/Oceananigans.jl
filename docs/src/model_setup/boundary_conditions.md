@@ -490,7 +490,7 @@ ImmersedBoundaryCondition:
 The `ImmersedBoundaryCondition` may then be incorporated into the boundary conditions for a
 `Field` by prescribing it to the `immersed` boundary label,
 
-```julia
+```jldoctest immersed_bc
 velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
 
 # output
@@ -519,7 +519,7 @@ of the underlying grid.
 
 First we create the boundary condition for the grid's bottom:
 
-```julia
+```jldoctest immersed_bc
 @inline linear_drag(x, y, t, u) = - 0.2 * u
 drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 
@@ -530,7 +530,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag`
 and imposing drag only on "bottom" facets of cells that neighbor immersed cells:
 
-```julia
+```jldoctest immersed_bc
 @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
 immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_dependencies=:u)
 
@@ -548,7 +548,7 @@ ImmersedBoundaryCondition:
 
 Finally, we combine the two:
 
-```julia
+```jldoctest immersed_bc
 u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
 
 # output
@@ -566,8 +566,3 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
     Note the difference between the arguments required for the function within the `bottom` boundary
     condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
     `x, y, t` in `linear_drag()` versus `x, y, z, t` in `immersed_linear_drag()`.
-
-```@meta
-DocTestFilters = nothing
-```
-
