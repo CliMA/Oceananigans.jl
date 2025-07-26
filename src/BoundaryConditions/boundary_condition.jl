@@ -147,4 +147,3 @@ validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
 
 validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
-

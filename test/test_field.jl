@@ -5,7 +5,7 @@ using Statistics
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
-using Oceananigans.Fields: FractionalIndices, interpolator
+using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
@@ -20,7 +20,7 @@ using CUDA: @allowscalar
 Test that the field initialized by the FieldType constructor on `grid`
 has size `(Tx, Ty, Tz)`.
 """
-correct_field_size(grid, loc, Tx, Ty, Tz) = size(parent(Field(loc, grid))) == (Tx, Ty, Tz)
+correct_field_size(grid, loc, Tx, Ty, Tz) = size(parent(Field(instantiate(loc), grid))) == (Tx, Ty, Tz)
 
 function run_similar_field_tests(f)
     g = similar(f)
@@ -330,7 +330,7 @@ end
                                  GradientBoundaryCondition(0))
 
                     wrong_kw = Dict(side => wrong_bc)
-                    wrong_bcs = FieldBoundaryConditions(grid, (Center, Center, Center); wrong_kw...)
+                    wrong_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()); wrong_kw...)
                     @test_throws ArgumentError CenterField(grid, boundary_conditions=wrong_bcs)
                 end
             end
@@ -342,7 +342,7 @@ end
                                  GradientBoundaryCondition(0))
 
                     wrong_kw = Dict(side => wrong_bc)
-                    wrong_bcs = FieldBoundaryConditions(grid, (Center, Center, Center); wrong_kw...)
+                    wrong_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()); wrong_kw...)
                     @test_throws ArgumentError CenterField(grid, boundary_conditions=wrong_bcs)
                 end
             end
@@ -354,14 +354,14 @@ end
                                  GradientBoundaryCondition(0))
 
                     wrong_kw = Dict(side => wrong_bc)
-                    wrong_bcs = FieldBoundaryConditions(grid, (Center, Face, Face); wrong_kw...)
+                    wrong_bcs = FieldBoundaryConditions(grid, (Center(), Face(), Face()); wrong_kw...)
 
                     @test_throws ArgumentError Field{Center, Face, Face}(grid, boundary_conditions=wrong_bcs)
                 end
             end
 
             if arch isa GPU
-                wrong_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+                wrong_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                                     top=FluxBoundaryCondition(zeros(FT, N[1], N[2])))
                 @test_throws ArgumentError CenterField(grid, boundary_conditions=wrong_bcs)
             end
@@ -402,7 +402,7 @@ end
                         (Nothing, Nothing, Center),
                         (Nothing, Nothing, Nothing))
 
-                field = Field(loc, grid)
+                field = Field(instantiate(loc), grid)
                 sz = size(field)
                 A = rand(FT, sz...)
                 set!(field, A)
@@ -494,7 +494,7 @@ end
             @test mean(c) ≈ @allowscalar mean(interior(c))
             @test mean(windowed_c) ≈ @allowscalar mean(interior(windowed_c))
         end
-end
+    end
 
     @testset "Unit interpolation" begin
         for arch in archs
@@ -576,7 +576,7 @@ end
                 run_similar_field_tests(f)
 
                 for dims in (3, (1, 2), (1, 2, 3))
-                    loc = reduced_location((X, Y, Z); dims)
+                    loc = reduced_location((X(), Y(), Z()); dims)
                     f = Field(loc, grid)
                     run_similar_field_tests(f)
                 end
