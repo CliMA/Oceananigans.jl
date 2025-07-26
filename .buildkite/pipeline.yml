@@ -71,7 +71,7 @@ steps:
           - "CPU"
           - "GPU"
         group:
-          # - "🐇 unit"
+          - "🐇 unit"
           # - "👻 abstract_operations"
           # - "🕊 poisson_solvers_1"
           # - "🦖 poisson_solvers_2"
