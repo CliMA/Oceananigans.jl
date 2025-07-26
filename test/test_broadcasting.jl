@@ -74,7 +74,7 @@ include("dependencies_for_runtests.jl")
         ##### Broadcasting with ReducedField
         #####
 
-        for loc in [
+        for Loc in [
                     (Nothing, Center, Center),
                     (Center, Nothing, Center),
                     (Center, Center, Nothing),
@@ -84,9 +84,9 @@ include("dependencies_for_runtests.jl")
                     (Nothing, Nothing, Nothing),
                    ]
 
-            @info "    Testing broadcasting to location $loc..."
+            @info "    Testing broadcasting to location $Loc..."
 
-            r, p, q = [Field(loc, grid) for i = 1:3]
+            r, p, q = [Field{Loc...}(grid) for i = 1:3]
 
             r .= 2
             @test @allowscalar all(r .== 2)

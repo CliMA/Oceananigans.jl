@@ -50,7 +50,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
             file_iter = file_iterations[file_index]
 
             # Note: use the CPU for this step
-            field_n = Field(location(fts), path, name, file_iter,
+            field_n = Field(instantiated_location(fts), path, name, file_iter,
                             grid = on_architecture(CPU(), fts.grid),
                             architecture = cpu_architecture(arch),
                             indices = fts.indices,
