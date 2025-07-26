@@ -267,7 +267,7 @@ destantiate(t::T) where T = T
 
 # Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
 # with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
-function Field(loc::Tuple{<:Any, <:Any, <:Any}, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status)
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     arch = architecture(grid)
     yrank = arch.local_index[2] - 1
 
