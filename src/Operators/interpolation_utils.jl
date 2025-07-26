@@ -81,15 +81,15 @@ function interpolation_operator(::Nothing, to)
 end
 
 function assumed_field_location(name)
-    name === :u  && return (Face, Center, Center)
-    name === :uh && return (Face, Center, Center)
-    name === :ρu && return (Face, Center, Center)
-    name === :v  && return (Center, Face, Center)
-    name === :vh && return (Center, Face, Center)
-    name === :ρv && return (Center, Face, Center)
-    name === :w  && return (Center, Center, Face)
-    name === :ρw && return (Center, Center, Face)
-    return (Center, Center, Center)
+    name === :u  && return (Face(), Center(), Center())
+    name === :uh && return (Face(), Center(), Center())
+    name === :ρu && return (Face(), Center(), Center())
+    name === :v  && return (Center(), Face(), Center())
+    name === :vh && return (Center(), Face(), Center())
+    name === :ρv && return (Center(), Face(), Center())
+    name === :w  && return (Center(), Center(), Face())
+    name === :ρw && return (Center(), Center(), Face())
+    return (Center(), Center(), Center())
 end
 
 """

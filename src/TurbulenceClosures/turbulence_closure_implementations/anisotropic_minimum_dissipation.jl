@@ -350,7 +350,7 @@ end
 
 function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
-    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
     κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
 
