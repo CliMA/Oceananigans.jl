@@ -1,6 +1,8 @@
 using Glob
 
 using Oceananigans
+using Oceananigans.Architectures: architecture
+using Oceananigans.DistributedComputations: Distributed
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
@@ -72,6 +74,13 @@ function Checkpointer(model; schedule,
                       properties = required_checkpoint_properties(model))
 
     required_properties = required_checkpoint_properties(model)
+
+    arch = architecture(model)
+
+    if arch isa Distributed
+        rank = arch.local_rank
+        prefix *= "_rank$rank"
+    end
 
     # Certain properties are required for `set!` to pickup from a checkpoint.
     for rp in required_properties
