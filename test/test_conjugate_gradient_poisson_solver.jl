@@ -35,7 +35,7 @@ function compute_pressure_solution(grid)
     solver = ConjugateGradientPoissonSolver(grid; reltol, abstol, maxiter=Int(1e10))
     R, U = random_divergent_source_term(grid)
 
-    p_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    p_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     ϕ   = CenterField(grid, boundary_conditions=p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
 

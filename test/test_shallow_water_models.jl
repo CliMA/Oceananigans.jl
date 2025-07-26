@@ -75,7 +75,7 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     end
 
     diffusing_cosine(ξ, t, κ, m) = exp(-κ * m^2 * t) * cos(m * ξ)
-    analytical_solution = Field(location(field), grid)
+    analytical_solution = Field(instantiated_location(field), grid)
     analytical_solution .= diffusing_cosine.(ξ, model.clock.time, ν, m)
 
     return isapprox(field, analytical_solution, atol=1e-6, rtol=1e-6)
