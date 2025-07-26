@@ -65,7 +65,7 @@ Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical m
 microscale ocean turbulence based on the prognostic evolution of two variables: the
 turbulent kinetic energy (TKE), and the turbulent kinetic energy dissipation.
 Elsewhere this is referred to as "k-ϵ". For more information about k-ϵ, see
-Burchard and Bolding (2001), Umlauf and Buchard (2003), and Umlauf and Burchard (2005).
+[burchard2001comparative](@citet), [umlauf2003generic](@citet), and [umlauf2005second](@citet).
 
 Arguments
 =========
@@ -98,6 +98,19 @@ Keyword arguments
 Note that for numerical stability, it is recommended to either have a relative short
 `negative_turbulent_kinetic_energy_damping_time_scale` or a reasonable
 `minimum_turbulent_kinetic_energy`, or both.
+
+ß
+References
+==========
+
+Burchard, H., & Bolding, K. (2001). Comparative analysis of four second-moment turbulence closure
+    models for the oceanic mixed layer. Journal of Physical Oceanography, 31(8), 1943-1968.
+
+Umlauf, L., and H. Burchard. (2003). A generic length-scale equation for geophysical turbulence models.
+    Journal of Marine Research 61, (2). https://elischolar.library.yale.edu/journal_of_marine_research/9
+
+Umlauf, L., & Burchard, H. (2005). Second-order turbulence closure models for geophysical boundary layers.
+    A review of recent work. Continental Shelf Research, 25(7-8), 795-827.
 """
 function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                            FT = Oceananigans.defaults.FloatType;
@@ -384,4 +397,3 @@ function Base.show(io::IO, clo::TDVD)
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
-

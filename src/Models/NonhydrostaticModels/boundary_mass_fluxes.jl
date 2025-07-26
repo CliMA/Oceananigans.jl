@@ -210,7 +210,7 @@ correct_right_boundary_mass_flux!(w, bc::IOBC, ::Val{:top},   A⁻¹_∮udA) = n
 correct_right_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
 
 """
-enforce_open_boundary_mass_conservation!(model::NonhydrostaticModel)
+    enforce_open_boundary_mass_conservation!(model)
 
 Correct boundary mass fluxes for perturbation advection boundary conditions to ensure
 zero net mass flux through each boundary.
