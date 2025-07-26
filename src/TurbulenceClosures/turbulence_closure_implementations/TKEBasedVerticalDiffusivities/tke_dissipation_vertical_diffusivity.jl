@@ -183,10 +183,10 @@ end
 
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
 
-    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κe = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κϵ = FieldBoundaryConditions(grid, (Center, Center, Face)))
+    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κe = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κϵ = FieldBoundaryConditions(grid, (Center(), Center(), Face())))
 
     bcs = merge(default_diffusivity_bcs, bcs)
 

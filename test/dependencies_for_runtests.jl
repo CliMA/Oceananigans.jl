@@ -51,7 +51,7 @@ using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperati
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyField
 using Oceananigans.Grids: architecture
-using Oceananigans.Fields: ZeroField, ConstantField, FunctionField, compute_at!, indices
+using Oceananigans.Fields: ZeroField, ConstantField, FunctionField, compute_at!, indices, instantiated_location
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
 using Oceananigans.ImmersedBoundaries: conditional_length
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, hack_cosd
