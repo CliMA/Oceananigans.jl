@@ -45,7 +45,7 @@ end
 
 location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
-destantiate(t::T) where {T} = T
+destantiate(t::T) where T = T
 
 #####
 ##### "Regularization" for NonhydrostaticModel setup
