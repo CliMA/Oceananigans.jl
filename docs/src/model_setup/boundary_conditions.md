@@ -438,6 +438,12 @@ with
 
 ```@setup immersed_bc
 using Oceananigans
+
+# Save original stderr
+original_stderr = stderr
+
+# Redirect stderr to /dev/null (Unix) or "nul" (Windows)
+redirect_stderr(devnull)
 ```
 
 ```jldoctest immersed_bc
@@ -455,6 +461,16 @@ model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=veloc
 model.velocities.w.boundary_conditions.immersed
 
 # output
+┌ Warning: The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
+│ is approximate and will probably produce velocity fields that are divergent
+│ adjacent to the immersed boundary. An experimental but improved pressure_solver
+│ is available which may be used by writing
+│
+│     using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+│     pressure_solver = ConjugateGradientPoissonSolver(grid)
+│
+│ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
+└ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:52
 ImmersedBoundaryCondition:
 ├── west: ValueBoundaryCondition: 0.0
 ├── east: ValueBoundaryCondition: 0.0
@@ -470,11 +486,42 @@ ImmersedBoundaryCondition:
     on the immersed boundary. As a result, simulated dynamics with `NonhydrostaticModel` can
     exhibit egregiously unphysical errors and should be interpreted with caution.
 
+```jldoctest immersed_bc
+hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
+underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
+
+# Create a no-slip boundary condition for velocity fields.
+# Note that the no-slip boundary condition is _only_ applied on immersed boundaries.
+velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0))
+model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs))
+
+# output
+┌ Warning: The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
+│ is approximate and will probably produce velocity fields that are divergent
+│ adjacent to the immersed boundary. An experimental but improved pressure_solver
+│ is available which may be used by writing
+│
+│     using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+│     pressure_solver = ConjugateGradientPoissonSolver(grid)
+│
+│ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
+└ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:52
+NonhydrostaticModel{CPU, ImmersedBoundaryGrid}(time = 0 seconds, iteration = 0)
+├── grid: 32×32×16 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
+├── tracers: ()
+├── closure: Nothing
+├── buoyancy: Nothing
+└── coriolis: Nothing
+```
+
 An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potential boundary-facet
 of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
 cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
-```julia
+```jldoctest immersed_bc
 bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0))
 
 # output
@@ -566,3 +613,8 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
     Note the difference between the arguments required for the function within the `bottom` boundary
     condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
     `x, y, t` in `linear_drag()` versus `x, y, z, t` in `immersed_linear_drag()`.
+
+```@setup immersed_bc
+# Restore original stderr
+redirect_stderr(original_stderr)
+```
