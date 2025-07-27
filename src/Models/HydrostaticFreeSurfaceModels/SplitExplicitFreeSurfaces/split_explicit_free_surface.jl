@@ -71,8 +71,8 @@ Keyword Arguments
                       the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. By default, the averaging kernel described by [Shchepetkin2005](@citet)
-                      is used.
+                      `averaging_kernel > 0`. By default, the averaging kernel described by
+                      [Shchepetkin and McWilliams (2005)](@citet Shchepetkin2005) is used.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
   * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
@@ -81,7 +81,7 @@ Keyword Arguments
 References
 ==========
 
-Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
+Shchepetkin, A. F., and McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
 function SplitExplicitFreeSurface(grid = nothing;
                                   gravitational_acceleration = g_Earth,

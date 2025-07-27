@@ -5,7 +5,12 @@ using Oceananigans: fields
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by [LeMoin1991](@citet).
+time-stepping scheme described by [Le and Moin (1991)](@citet LeMoin1991).
+
+References
+==========
+Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
+    Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
 struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  γ¹ :: FT
@@ -28,9 +33,9 @@ Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
 to the `prognostic_fields` can be modified via the optional `kwargs`.
 
-The scheme is described by [LeMoin1991](@citet). In a nutshell, the 3rd-order
-Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
-A pressure correction step is applied after at each substep.
+The scheme is described by [Le and Moin (1991)](@citet LeMoin1991). In a nutshell,
+the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via
+3 substeps. A pressure correction step is applied after at each substep.
 
 The state `U` after each substep `m` is
 
@@ -49,9 +54,8 @@ then the state at the `Uⁿ⁺¹ = U⁴`.
 
 References
 ==========
-Le, H. and Moin, P. (1991). "An improvement of fractional step methods for the incompressible
-    Navier–Stokes equations." Journal of Computational Physics, 92, 369–379.
-
+Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
+    Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
 function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 implicit_solver::TI = nothing,
