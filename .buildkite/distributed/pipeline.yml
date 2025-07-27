@@ -115,7 +115,7 @@ steps:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     timeout_in_minutes: 1440
     agents:
-      slurm_mem: 80G # Apparently the GPU tests require more memory
+      slurm_mem: 100G # Apparently the GPU tests require more memory
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
