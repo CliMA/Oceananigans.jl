@@ -69,8 +69,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return Oceananigans.AbstractOperations.ConditionalOperation{LX2, LY2, LZ2, F2, C2, O2, G2, M2, T2}
 end
 
-https://github.com/CliMA/Oceananigans.jl/blob/c29939097a8d2f42966e930f2f2605803bf5d44c/src/AbstractOperations/binary_operations.jl#L5
-
+# https://github.com/CliMA/Oceananigans.jl/blob/c29939097a8d2f42966e930f2f2605803bf5d44c/src/AbstractOperations/binary_operations.jl#L5
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{Oceananigans.AbstractOperations.BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T}}),
     seen,
