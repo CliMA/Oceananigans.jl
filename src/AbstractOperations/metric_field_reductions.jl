@@ -45,7 +45,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dx = reduction_grid_metric(dims)
 
-    field_ones = Field(location(field), field.grid); set!(field_ones, 1)
+    field_ones = Field(instantiated_location(field), field.grid); set!(field_ones, 1)
     ∫dx = Integral(field_ones; dims, condition, mask) |> Field
 
     operand = condition_operand(field * dx / ∫dx, condition, mask)
