@@ -159,9 +159,9 @@ with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfRBVD)
-    κc = Field((Center, Center, Face), grid)
-    κu = Field((Center, Center, Face), grid)
-    Ri = Field((Center, Center, Face), grid)
+    κc = Field{Center, Center, Face}(grid)
+    κu = Field{Center, Center, Face}(grid)
+    Ri = Field{Center, Center, Face}(grid)
     return (; κc, κu, Ri)
 end
 

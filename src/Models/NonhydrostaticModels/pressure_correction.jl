@@ -10,6 +10,9 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
+
+    enforce_open_boundary_mass_conservation!(model, model.boundary_mass_fluxes)
+
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
     fill_halo_regions!(model.pressures.pNHS)
 
@@ -41,7 +44,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
             model.velocities,
             model.grid,
             model.pressures.pNHS)
-    
+
     ϵ = eps(eltype(model.pressures.pNHS))
     Δt⁺ = max(ϵ, Δt)
     model.pressures.pNHS ./= Δt⁺
