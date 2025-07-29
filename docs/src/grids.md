@@ -570,7 +570,7 @@ or
 ```
 
 The exponential mappings above have an e-folding controlled by scale ``h``.
-It worths noting that the exponential maps imply that the cell widths (distances between interfaces) grow linearly at a rate inversely proportional to ``h / (r - l)``.
+It's worth noting that the exponential maps imply that the cell widths (distances between interfaces) grow linearly at a rate inversely proportional to ``h / (r - l)``.
 
 The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases the interfaces towards ``l``.
 
@@ -711,7 +711,7 @@ which the spacing increases with a prescribed stretching law; this allows a tigh
 That is, we can prescribe a constant spacing over the top `surface_layer_height`  below which the grid spacing
 increases following a prescribed stretching law.
 The downside here is that neither the final coordinate extent nor the total number of cells can be prescribed.
-The coordinates extent is greater or equal from what we prescribe via the keyword argument `extent`.
+The coordinate's extent is greater or equal from what we prescribe via the keyword argument `extent`.
 Also, the total number of cells we end up with depends on the stretching law.
 
 As an example, we build three single-column vertical grids.

@@ -1,5 +1,6 @@
 using Oceananigans.Grids: architecture, deflate_tuple
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.Fields: instantiated_location
 
 struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
     xfield :: FX # X-direction is free (x-local)
@@ -58,7 +59,7 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     zarch = architecture(zgrid)
     yarch = architecture(ygrid)
 
-    loc = location(field_in)
+    loc = instantiated_location(field_in)
 
     Rx, Ry, _ = zarch.ranks
     if with_halos
