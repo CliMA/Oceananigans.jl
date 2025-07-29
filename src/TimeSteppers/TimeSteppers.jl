@@ -3,11 +3,11 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
+    SplitRungeKutta3TimeStepper,
     time_step!,
     Clock,
     tendencies
 
-using CUDA
 using KernelAbstractions
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
 using Oceananigans.Architectures: device
@@ -23,8 +23,8 @@ abstract type AbstractTimeStepper end
 function update_state! end
 function compute_tendencies! end
 
-calculate_pressure_correction!(model, Δt) = nothing
-pressure_correct_velocities!(model, Δt) = nothing
+compute_pressure_correction!(model, Δt) = nothing
+make_pressure_correction!(model, Δt) = nothing
 
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
@@ -42,13 +42,13 @@ include("split_hydrostatic_runge_kutta_3.jl")
 """
     TimeStepper(name::Symbol, args...; kwargs...)
 
-Returns a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
+Return a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 
 Example
 =======
 
 ```julia
-julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
+julia> stepper = TimeStepper(:QuasiAdamsBashforth2, grid, tracernames)
 ```
 """
 TimeStepper(name::Symbol, args...; kwargs...) = TimeStepper(Val(name), args...; kwargs...)
@@ -56,7 +56,7 @@ TimeStepper(name::Symbol, args...; kwargs...) = TimeStepper(Val(name), args...; 
 # Fallback
 TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
-#individual contructors
+#individual constructors
 TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
     QuasiAdamsBashforth2TimeStepper(args...; kwargs...)
 
@@ -68,7 +68,7 @@ TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)
-    # The first update_state is conditionally gated from within time_step!
+    # The first update_state! is conditionally gated from within time_step!
     # update_state!(model)
     time_step!(model, Δt)
     return nothing
@@ -76,7 +76,7 @@ end
 
 function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
-    # The first update_state is conditionally gated from within time_step!
+    # The first update_state! is conditionally gated from within time_step!
     # update_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing

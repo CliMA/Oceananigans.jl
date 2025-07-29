@@ -55,7 +55,7 @@ Keyword arguments
 
 * `Cκ`: Poincaré constant for tracer eddy diffusivities. If one number or function, the same
         number or function is applied to all tracers. If a `NamedTuple`, it must possess
-        a field specifying the Poncaré constant for every tracer.
+        a field specifying the Poincaré constant for every tracer.
 
 * `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@citet)).
         *Note*: that we _do not_ subtract the horizontally-average component before computing this
@@ -67,8 +67,8 @@ The default Poincaré constant is found by discretizing subgrid scale energy pro
 second-order advection scheme. [Verstappen14](@citet) show that the Poincaré constant
 should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3`
 in our formulation. They also empirically demonstrated that this coefficient produces the correct
-discrete production-dissipation balance. We further demonstrated this in
-https://github.com/CliMA/Oceananigans.jl/issues/4367.
+discrete production-dissipation balance. Further demonstration of this can be found at
+[https://github.com/CliMA/Oceananigans.jl/issues/4367](https://github.com/CliMA/Oceananigans.jl/issues/4367).
 
 `C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
 
@@ -144,11 +144,6 @@ end
 ##### Kernel functions
 #####
 
-# Dispatch on the type of the user-provided AMD model constant.
-# Only numbers, arrays, and functions supported now.
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(i, grid, Center()), ynode(j, grid, Center()), znode(k, grid, Center()))
 
 @kernel function _compute_AMD_viscosity!(νₑ, grid, closure::AMD, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
@@ -168,7 +163,7 @@ end
 
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
 
-        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
+        νˢᵍˢ = - closure_coefficient(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
 
     @inbounds νₑ[i, j, k] = max(zero(FT), νˢᵍˢ)
@@ -189,7 +184,7 @@ end
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, tracer)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
+        κˢᵍˢ = - closure_coefficient(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
@@ -355,7 +350,7 @@ end
 
 function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
-    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
     κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
 

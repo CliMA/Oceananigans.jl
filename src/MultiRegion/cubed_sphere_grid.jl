@@ -7,13 +7,20 @@ using Oceananigans.Grids: R_Earth,
 
 using CubedSphere
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
 
 using Distances
 
-import Oceananigans.Grids: grid_name
+import Oceananigans.Grids: grid_name, nodes
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
+
+const ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} =
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
+
+const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} = 
+    Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 
 """
     ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
@@ -203,9 +210,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
 
     # First we construct the grid on CPU, and then convert to user-prescribed architecture later...
     devices = validate_devices(partition, CPU(), devices)
-    devices = assign_devices(partition, devices)
+    devices = assign_devices(CPU(), partition, devices)
 
-    connectivity = CubedSphereConnectivity(devices, partition)
+    connectivity = CubedSphereConnectivity(CPU(), devices, partition)
 
     region_size = []
     region_η = []
@@ -226,7 +233,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
         push!(region_rotation, connectivity.rotations[panel_index(r, partition)])
     end
 
-    region_size = MultiRegionObject(tuple(region_size...), devices)
+    region_size = MultiRegionObject(CPU(), tuple(region_size...), devices)
     region_ξ = Iterate(region_ξ)
     region_η = Iterate(region_η)
     region_rotation = Iterate(region_rotation)
@@ -260,9 +267,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
     region_grids = grid.region_grids
     @apply_regionally new_region_grids = on_architecture(arch, region_grids)
 
-    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
+    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(device(arch) for _ in 1:length(partition))
 
-    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
+    new_region_grids = MultiRegionObject(arch, new_region_grids.regional_objects, new_devices)
 
     new_grid = MultiRegionGrid{FT, region_topology..., CZ}(arch,
                                                            partition,
@@ -273,15 +280,15 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
     return new_grid
 end
 
-function fill_halo_regions!(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+function fill_halo_regions!(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     Nx, Ny, Nz = size(grid)
 
-    λᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
-    φᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
-    Azᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    λᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
-    φᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
-    Azᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    λᶜᶜᵃ  = Field{Center, Center, Nothing}(grid)
+    φᶜᶜᵃ  = Field{Center, Center, Nothing}(grid)
+    Azᶜᶜᵃ = Field{Center, Center, Nothing}(grid)
+    λᶠᶠᵃ  = Field{Face,   Face,   Nothing}(grid)
+    φᶠᶠᵃ  = Field{Face,   Face,   Nothing}(grid)
+    Azᶠᶠᵃ = Field{Face,   Face,   Nothing}(grid)
 
     for (field, name) in zip(( λᶜᶜᵃ, φᶜᶜᵃ,   Azᶜᶜᵃ,  λᶠᶠᵃ,  φᶠᶠᵃ,  Azᶠᶠᵃ),
                              (:λᶜᶜᵃ, :φᶜᶜᵃ, :Azᶜᶜᵃ, :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ))
@@ -299,24 +306,24 @@ function fill_halo_regions!(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
         end
     end
 
-    Δxᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    Δxᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
-    Δyᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
-    λᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
-    φᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
-    Azᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
-    Δxᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    Δxᶜᶜᵃ = Field{Center, Center, Nothing}(grid)
+    Δxᶠᶜᵃ = Field{Face,   Center, Nothing}(grid)
+    Δyᶠᶜᵃ = Field{Face,   Center, Nothing}(grid)
+    λᶠᶜᵃ  = Field{Face,   Center, Nothing}(grid)
+    φᶠᶜᵃ  = Field{Face,   Center, Nothing}(grid)
+    Azᶠᶜᵃ = Field{Face,   Center, Nothing}(grid)
+    Δxᶠᶠᵃ = Field{Face,   Face,   Nothing}(grid)
 
     fields₁ = ( Δxᶜᶜᵃ,   Δxᶠᶜᵃ,   Δyᶠᶜᵃ,   λᶠᶜᵃ,    φᶠᶜᵃ,    Azᶠᶜᵃ ,  Δxᶠᶠᵃ)
     names₁  = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
 
-    Δyᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    Δyᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
-    Δxᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
-    λᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
-    φᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
-    Azᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
-    Δyᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    Δyᶜᶜᵃ = Field{Center, Center, Nothing}(grid)
+    Δyᶜᶠᵃ = Field{Center, Face,   Nothing}(grid)
+    Δxᶜᶠᵃ = Field{Center, Face,   Nothing}(grid)
+    λᶜᶠᵃ  = Field{Center, Face,   Nothing}(grid)
+    φᶜᶠᵃ  = Field{Center, Face,   Nothing}(grid)
+    Azᶜᶠᵃ = Field{Center, Face,   Nothing}(grid)
+    Δyᶠᶠᵃ = Field{Face,   Face,   Nothing}(grid)
 
     fields₂ = ( Δyᶜᶜᵃ,   Δyᶜᶠᵃ,   Δxᶜᶠᵃ,   λᶜᶠᵃ,    φᶜᶠᵃ,    Azᶜᶠᵃ ,  Δyᶠᶠᵃ)
     names₂  = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ , :Δyᶠᶠᵃ)
@@ -394,9 +401,9 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
     partition = CubedSpherePartition(R = 1)
 
     devices = validate_devices(partition, arch, devices)
-    devices = assign_devices(partition, devices)
+    devices = assign_devices(arch, partition, devices)
 
-    region_Nz = MultiRegionObject(Tuple(repeat([Nz], length(partition))), devices)
+    region_Nz = MultiRegionObject(arch, Tuple(repeat([Nz], length(partition))), devices)
     region_panels = Iterate(Array(1:length(partition)))
 
     region_grids = construct_regionally(ConformalCubedSpherePanelGrid, filepath, arch, FT;
@@ -407,7 +414,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
                                         radius,
                                         halo = panel_halo)
 
-    connectivity = CubedSphereConnectivity(devices, partition)
+    connectivity = CubedSphereConnectivity(arch, devices, partition)
 
     CZ = typeof(getregion(region_grids, 1).z)
 
@@ -446,7 +453,7 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
 
     new_devices = csg.region_grids.devices
 
-    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
+    new_region_grids = MultiRegionObject(arch, new_region_grids.regional_objects, new_devices)
 
     new_grid = MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch,
                                                    partition,
@@ -457,12 +464,26 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
     return new_grid
 end
 
-function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+function with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid})
+    active_cells_map = has_active_cells_map(getregion(ibg, 1))
+    active_z_columns = has_active_z_columns(getregion(ibg, 1))
+    underlying_grid = with_halo(halo, ibg.underlying_grid)
+    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
+                                active_cells_map,
+                                active_z_columns)
+end
+
+function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+    @apply_regionally immersed_nodes = nodes(iccsg.underlying_grid, ℓx, ℓy, ℓz, reshape, with_halos)
+    return immersed_nodes
+end
+
+function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     return string(size_summary(size(grid)),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-radius(mrg::ConformalCubedSphereGrid) = first(mrg).radius
+radius(mrg::ConformalCubedSphereGridOfSomeKind) = first(mrg).radius
 
-grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"
+grid_name(mrg::ConformalCubedSphereGridOfSomeKind) = "ConformalCubedSphereGrid"

@@ -12,13 +12,14 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    ExponentialCoordinate, ConstantToStretchedCoordinate, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Pointwise spacing, area, and volume operators
     xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
-    
+
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
@@ -42,7 +43,7 @@ export
     interior, set!, compute!, regrid!,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
@@ -75,7 +76,7 @@ export
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles,
+    LagrangianParticles, DroguedParticleDynamics,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
@@ -115,7 +116,6 @@ export
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
-using CUDA
 using DocStringExtensions
 using FFTW
 
@@ -135,19 +135,10 @@ function __init__()
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
         FFTW.set_num_threads(4threads)
     end
-
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
-    end
 end
 
 # List of fully-supported floating point types where applicable.
-# Currently used only in the Advection module to specialize 
+# Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
 const fully_supported_float_types = (Float32, Float64)
 
@@ -227,8 +218,17 @@ include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("DistributedComputations/DistributedComputations.jl")
-include("OutputReaders/OutputReaders.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+
+# Simulations and output handling
+include("Diagnostics/Diagnostics.jl")
+include("OutputReaders/OutputReaders.jl")
+include("OutputWriters/OutputWriters.jl")
+include("Simulations/Simulations.jl")
+
+# TODO:
+# include("Diagnostics/Diagnostics.jl") # or just delete
+# include("OutputWriters/OutputWriters.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
@@ -247,11 +247,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("Models/Models.jl")
-
-# Output and Physics, time-stepping, and models
-include("Diagnostics/Diagnostics.jl")
-include("OutputWriters/OutputWriters.jl")
-include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")

@@ -49,6 +49,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     end
 
     update_tendencies!(model.biogeochemistry, model)
+    multiply_by_grid_scaling!(model.timestepper.Gⁿ, model.tracers, model.grid)
 
     return nothing
 end

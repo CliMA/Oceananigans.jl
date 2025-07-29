@@ -8,9 +8,11 @@ Distributed.addprocs(2)
     using Printf
 
     using CairoMakie # to avoid capturing precompilation output by Literate
+    set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "svg")
 
     using Oceananigans
+    using NCDatasets
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
@@ -111,7 +113,7 @@ physics_pages = [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
         ],
     "`HydrostaticFreeSurfaceModel`" => [
-        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
+        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md",
         ],
     "`ShallowWaterModel`" => [
         "Shallow water model" => "physics/shallow_water_model.md"
@@ -126,6 +128,7 @@ physics_pages = [
 numerical_pages = [
     "Finite volume method" => "numerical_implementation/finite_volume.md",
     "Spatial operators" => "numerical_implementation/spatial_operators.md",
+    "Generalized vertical coordinates" => "numerical_implementation/generalized_vertical_coordinates.md",
     "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
     "Time stepping" => "numerical_implementation/time_stepping.md",
     "Boundary conditions" => "numerical_implementation/boundary_conditions.md",
@@ -182,7 +185,8 @@ makedocs(sitename = "Oceananigans.jl",
          format = format,
          pages = pages,
          plugins = [bib],
-         modules = [Oceananigans],
+         modules = [Oceananigans,
+                    isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
          doctest = true, # set to false to speed things up
          draft = false,  # set to true to speed things up
@@ -212,7 +216,7 @@ for pattern in [r"\.jld2", r"\.nc"]
 end
 
 deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-            versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
-            forcepush = true,
-            push_preview = true,
-            devbranch = "main")
+           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+           forcepush = true,
+           push_preview = true,
+           devbranch = "main")

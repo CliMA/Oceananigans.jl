@@ -3,6 +3,21 @@ include("dependencies_for_runtests.jl")
 devices(::CPU, num) = nothing
 devices(::GPU, num) = Tuple(0 for i in 1:num)
 
+# To be extended as we find new use cases
+@testset "Test @apply_regionally macro" begin
+    a = 1
+    b = 2
+    @apply_regionally a = b + 1
+
+    @test a == 3
+    arch = CPU()
+    a = MultiRegionObject(arch, (1, 2, 3))
+    b = MultiRegionObject(arch, (4, 5, 6))
+
+    @apply_regionally a = b + 1
+    @test a == MultiRegionObject(arch, (5, 6, 7))
+end
+
 @testset "Testing multi region grids" begin
     for arch in archs
 

@@ -54,7 +54,7 @@ for arch in archs
             v_field = YFaceField(grid)
 
             ψ(λ, φ) = R * sind(φ)
-            CUDA.@allowscalar set_velocities_from_streamfunction!(u_field, v_field, ψ, arch, grid)
+            @allowscalar set_velocities_from_streamfunction!(u_field, v_field, ψ, arch, grid)
 
             fill_horizontal_velocity_halos!(u_field, v_field, arch)
 

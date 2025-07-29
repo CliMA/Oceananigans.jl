@@ -1,4 +1,3 @@
-using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
@@ -11,14 +10,14 @@ using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, Trac
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
+using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
-import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
+import Oceananigans.Models: total_velocities, timestepper
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -113,9 +112,10 @@ Keyword arguments
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
-  - `vertical_coordinate`: Algorithm for grid evolution: ZStar() or ZCoordinate().
-                           Default: ZStar() for grids with MutableVerticalDiscretization;
-                           ZCoordinate() otherwise.
+  - `vertical_coordinate`: Algorithm for grid evolution: `ZStar()` or `ZCoordinate()`.
+                           Default: `default_vertical_coordinate(grid)`, which returns `ZStar()`
+                           for grids with `MutableVerticalDiscretization` otherwise returns
+                           `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock(grid),
