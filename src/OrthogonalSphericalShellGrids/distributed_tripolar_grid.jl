@@ -60,7 +60,7 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     # a slab decomposition in x is not supported
     if px != 1 && py == 1
         throw(ArgumentError("An x-only partitioning is not supported for TripolarGrid. \n
-                              Please, use a y partitioning configuration or an x-y pencil partitioning."))
+                             Please, use a y partitioning configuration or an x-y pencil partitioning."))
     end
 
     Hx, Hy, Hz = halo
