@@ -37,7 +37,7 @@ const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 
 coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
-struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+struct MutableVerticalDiscretization{C, D, E, F, H, U, CC, FC, CF, FF} <: AbstractVerticalCoordinate
       cᵃᵃᶠ :: C
       cᵃᵃᶜ :: D
       Δᵃᵃᶠ :: E
@@ -45,6 +45,7 @@ struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractV
     Δ⁻¹ᵃᵃᶠ :: E
     Δ⁻¹ᵃᵃᶜ :: F
         ηⁿ :: H
+        Gⁿ :: U # Storage space used in different ways by different timestepping schemes.
       σᶜᶜⁿ :: CC
       σᶠᶜⁿ :: FC
       σᶜᶠⁿ :: CF
@@ -76,7 +77,7 @@ or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coor
 following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates,
 or sigma coordinates.
 """
-MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:15)...)
+MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:16)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -128,6 +129,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
     σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
+    Gⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...) 
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # Fill all the scalings with one for now (i.e. z == r)
@@ -135,7 +137,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
         fill!(σ, 1)
     end
 
-    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, Gⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end
 
 
@@ -167,6 +169,7 @@ Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
                               Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
                               Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ),
                               Adapt.adapt(to, coord.ηⁿ),
+                              Adapt.adapt(to, coord.Gⁿ),
                               Adapt.adapt(to, coord.σᶜᶜⁿ),
                               Adapt.adapt(to, coord.σᶠᶜⁿ),
                               Adapt.adapt(to, coord.σᶜᶠⁿ),
@@ -186,6 +189,7 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
                               on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
                               on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ),
                               on_architecture(arch, coord.ηⁿ),
+                              on_architecture(arch, coord.Gⁿ),
                               on_architecture(arch, coord.σᶜᶜⁿ),
                               on_architecture(arch, coord.σᶠᶜⁿ),
                               on_architecture(arch, coord.σᶜᶠⁿ),
@@ -219,8 +223,8 @@ end
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline rnodes(grid::AUG, ℓz::Face;   with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::AUG, ℓz::Center; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::AUG, ℓz::F; with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
+@inline rnodes(grid::AUG, ℓz::C; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
 @inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
 
 rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1

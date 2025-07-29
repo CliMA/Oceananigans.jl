@@ -95,8 +95,8 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
-    barotropic_x_volume_flux = Field((Face, Center, Nothing), grid)
-    barotropic_y_volume_flux = Field((Center, Face, Nothing), grid)
+    barotropic_x_volume_flux = Field{Face, Center, Nothing}(grid)
+    barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     user_solver_method = free_surface.solver_method # could be = :Default

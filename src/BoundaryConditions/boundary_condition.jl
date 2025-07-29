@@ -100,7 +100,7 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
                   ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
-    
+
 # Support for various types of boundary conditions.
 #
 # Notes:
@@ -109,18 +109,15 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 #     * additional arguments to `fill_halo_regions` enter `getbc` after the `grid` argument:
 #           so `fill_halo_regions!(c, clock, fields)` translates to `getbc(bc, i, j, grid, clock, fields)`, etc.
 
-@inline getbc(bc, args...) = bc.condition(args...) # fallback!
+@inline getbc(bc::BoundaryCondition, args...) = getbc(bc.condition, args...) # unwrap
+@inline getbc(condition, args...) = condition(args...) # fallback!
 
-@inline getbc(::BC{<:Open, Nothing}, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(::BC{<:Flux, Nothing}, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(::Nothing,             ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(::Nothing, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
 
-@inline getbc(bc::BC{<:Any, <:Number}, args...) = bc.condition
-@inline getbc(bc::BC{<:Any, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j]
-
-# Support for Ref boundary conditions
 const NumberRef = Base.RefValue{<:Number}
-@inline getbc(bc::BC{<:Any, <:NumberRef}, args...) = bc.condition[]
+@inline getbc(condition::NumberRef, args...) = condition[]
+@inline getbc(condition::Number, args...) = condition
+@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j]
 
 #####
 ##### Validation with topology
@@ -147,11 +144,6 @@ validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side) =
 
 validate_boundary_condition_architecture(condition, arch, bc, side) = nothing
 validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
-validate_boundary_condition_architecture(::CuArray, ::GPU, bc, side) = nothing
-
-validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
 validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
-

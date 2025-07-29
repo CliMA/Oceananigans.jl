@@ -1,7 +1,7 @@
 # # Langmuir turbulence example
 #
-# This example implements a Langmuir turbulence simulation reported in section
-# 4 of
+# This example implements a Langmuir turbulence simulation similar to the one
+# reported in section 4 of
 #
 # > [Wagner et al., "Near-inertial waves and turbulence driven by the growth of swell", Journal of Physical Oceanography (2021)](https://journals.ametsoc.org/view/journals/phoc/51/5/JPO-D-20-0178.1.xml)
 #
@@ -18,11 +18,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie"
+# pkg"add Oceananigans, CairoMakie, CUDA"
 # ```
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
+using CUDA
 
 # ## Model set-up
 #
@@ -33,7 +34,7 @@ using Oceananigans.Units: minute, minutes, hours
 #
 # We use a modest resolution and the same total extent as Wagner et al. (2021),
 
-grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
+grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
 
 # ### The Stokes Drift profile
 #
@@ -59,7 +60,7 @@ const vertical_scale = wavelength / 4π
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
-# To run this example on the GPU, include `GPU()` in the `RectilinearGrid` constructor above.
+# To run this example on the CPU, replace `GPU()` with `CPU()` in the `RectilinearGrid` constructor above.
 #
 # The Stokes drift profile is
 
@@ -91,7 +92,6 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 # At the surface ``z = 0``, Wagner et al. (2021) impose
 
 τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
-
 u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
@@ -125,11 +125,9 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(),
-                            timestepper = :RungeKutta3,
+                            advection = WENO(order=9),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 
@@ -202,7 +200,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 output_interval = 5minutes
 
-fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
+fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] =
     JLD2Writer(model, fields_to_output,
@@ -258,7 +256,7 @@ nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
-# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 
@@ -356,7 +354,7 @@ fig
 
 frames = 1:length(times)
 
-record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
+CairoMakie.record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide

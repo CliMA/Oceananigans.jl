@@ -6,7 +6,7 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
 
-using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -281,7 +281,7 @@ function test_regular_rectilinear_constructor_errors(FT)
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
 
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Flat), size=16, extent=1)
-    
+
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
     @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
 
@@ -352,7 +352,7 @@ function test_grid_equality(arch)
     grid2 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
     grid3 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
 
-    return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
+    return grid1 == grid1 && grid2 == grid3 && grid1 !== grid3
 end
 
 function test_grid_equality_over_architectures()
@@ -744,7 +744,7 @@ end
 
 function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
 
-    grid = conformal_cubed_sphere_panel(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+    grid = ConformalCubedSpherePanelGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -796,6 +796,77 @@ end
         @info "  Testing grid utilities..."
         @test total_extent(Periodic(), 1, 0.2, 1.0) == 1.2
         @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
+    end
+
+    @testset "Coordinate utils" begin
+        @info "  Testing ExponentialCoordinate..."
+
+        for arch in archs
+            Nx = 10
+            l, r = -1000, 100
+            scale = (r - l) / 5
+
+            xₗ = ExponentialCoordinate(Nx, l, r; scale, bias =:left)
+            xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
+
+            @test length(xₗ) == Nx
+            @test xₗ(1) == l
+            @test xₗ(Nx+1) == r
+            @test xᵣ(1) == l
+            @test xᵣ(Nx+1) == r
+            @test xₗ(Nx+1) - xₗ(Nx) ≈ xᵣ(2) - xᵣ(1)
+            @test xᵣ(Nx+1) - xᵣ(Nx) ≈ xₗ(2) - xₗ(1)
+
+            for x in (xₗ, xᵣ)
+                grid = RectilinearGrid(arch; size=(Nx, 4), x, z=(-1, 0), topology=(Bounded, Flat, Bounded))
+                for i in 1:Nx+1
+                    @allowscalar @test grid.xᶠᵃᵃ[i] == x(i)
+                end
+            end
+
+            @info "  Testing ConstantToStretchedCoordinate..."
+            extent = 200
+            constant_spacing = 25
+            constant_spacing_extent = 90
+            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+
+            Nz = length(z)
+
+            @test length(z.faces) == Nz+1
+
+            Δz = diff(z.faces)
+
+            N_uniform_cells = Int(ceil(constant_spacing_extent / constant_spacing))
+
+            for k in 1:Nz-N_uniform_cells
+                @test Δz[k] > constant_spacing
+            end
+            for k in Nz-(N_uniform_cells-1):Nz
+                @test Δz[k] == constant_spacing
+            end
+
+            grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
+            @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
+            @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
+
+            # kwarg values that give a uniformly-spaced coordinate
+            Nz = 7
+            constant_spacing = 25.34
+            constant_spacing_extent = Nz * constant_spacing
+            extent = constant_spacing_extent
+            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+
+            @test length(z) == Nz
+            @test length(z.faces) == Nz+1
+
+            Δz = diff(z.faces)
+            @test all(Δz .≈ constant_spacing)
+            @test z(Nz+1) - z(1) ≈ extent
+
+            grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
+            @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
+            @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
+        end
     end
 
     @testset "Regular rectilinear grid" begin
@@ -1097,7 +1168,7 @@ end
         end
 
         # Testing show function
-        grid = conformal_cubed_sphere_panel(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = ConformalCubedSpherePanelGrid(CPU(), size=(10, 10, 1), z=(0, 1))
 
         @test try
             show(grid); println()
@@ -1130,7 +1201,7 @@ end
                 radius = 234.5e6
 
                 Nx, Ny = 10, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ[1:Nx, 1:Ny]) ≈ 4π * grid.radius^2 / 6
@@ -1140,16 +1211,16 @@ end
 
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
             end
         end

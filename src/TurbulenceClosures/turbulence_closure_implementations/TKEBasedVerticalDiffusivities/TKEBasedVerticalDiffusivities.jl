@@ -3,8 +3,7 @@ module TKEBasedVerticalDiffusivities
 export CATKEVerticalDiffusivity,
        TKEDissipationVerticalDiffusivity
 
-using Adapt
-using CUDA
+using Adapt, GPUArraysCore
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans
@@ -160,7 +159,7 @@ end
 
 function get_time_step(closure_array::AbstractArray)
     # assume they are all the same
-    closure = CUDA.@allowscalar closure_array[1, 1]
+    closure = @allowscalar closure_array[1, 1]
     return get_time_step(closure)
 end
 

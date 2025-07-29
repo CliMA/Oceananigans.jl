@@ -53,7 +53,10 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
+function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...;
+                            signed = true,  # This kwarg is active only for a `ConformalCubedSphereGrid`, here we discard it.
+                            kwargs...)
+
     flattened = flattened_unique_values(maybe_nested_tuple)
 
     # Look for grid within the flattened field tuple:
@@ -204,7 +207,7 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function TracerFields(tracer_names, grid, user_bcs)
-    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center, Center, Center)) for name in tracer_names)
+    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for name in tracer_names)
     bcs = merge(default_bcs, user_bcs) # provided bcs overwrite defaults
     return NamedTuple(c => CenterField(grid, boundary_conditions=bcs[c]) for c in tracer_names)
 end
@@ -213,11 +216,8 @@ end
     TracerFields(tracer_names, grid; kwargs...)
 
 Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
-`CenterField`s on `grid`. Fields may be passed via optional
-keyword arguments `kwargs` for each field.
-
-This function is used by `OutputWriters.Checkpointer`
-```
+`CenterField`s on `grid`. Fields may be passed via optional keyword arguments `kwargs`
+for each field.
 """
 TracerFields(tracer_names, grid; kwargs...) =
     NamedTuple(c => c ∈ keys(kwargs) ? kwargs[c] : CenterField(grid) for c in tracer_names)

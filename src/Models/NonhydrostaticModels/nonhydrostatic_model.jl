@@ -1,4 +1,3 @@
-using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.Architectures: AbstractArchitecture
@@ -7,11 +6,11 @@ using Oceananigans.Advection: Centered, adapt_advection_order
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, CenterField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_conditions
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, time_discretization, implicit_diffusion_solver
@@ -20,17 +19,18 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
+import Oceananigans.Models: total_velocities, timestepper
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 
 # TODO: this concept may be more generally useful,
 # but for now we use it only for hydrostatic pressure anomalies for now.
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS, A}
+                                   V, S, K, BG, P, BGC, AF, BM} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -51,6 +51,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+ boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
 end
 
 """
@@ -122,7 +123,7 @@ function NonhydrostaticModel(; grid,
                              boundary_conditions::NamedTuple = NamedTuple(),
                              tracers = (),
                              timestepper = :RungeKutta3,
-                             background_fields::NamedTuple = NamedTuple(),
+                             background_fields::BFOrNamedTuple = NamedTuple(),
                              particles::ParticlesOrNothing = nothing,
                              biogeochemistry::AbstractBGCOrNothing = nothing,
                              velocities = nothing,
@@ -221,7 +222,6 @@ function NonhydrostaticModel(; grid,
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
-
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver=implicit_solver)
@@ -229,9 +229,12 @@ function NonhydrostaticModel(; grid,
     # Regularize forcing for model tracer and velocity fields.
     forcing = model_forcing(model_fields; forcing...)
 
+    # Initialize boundary mass fluxes container
+    boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)
+
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
+                                pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
 
     update_state!(model; compute_tendencies = false)
 

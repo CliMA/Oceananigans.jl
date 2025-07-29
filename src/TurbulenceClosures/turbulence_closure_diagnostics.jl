@@ -1,3 +1,5 @@
+import Oceananigans.Diagnostics: cell_diffusion_timescale
+
 #####
 ##### Timescale for diffusion across one cell
 #####
@@ -33,7 +35,7 @@ const FunctionDiffusivity = Union{<:DiscreteDiffusionFunction, <:Function}
 function maximum_numeric_diffusivity(κ::FunctionDiffusivity, grid, clock, fields)
 
     location = (Center(), Center(), Center())
-    diffusivity_kfo = KernelFunctionOperation{Center(), Center(), Center()}(κᶜᶜᶜ, grid, location, κ, clock, fields)
+    diffusivity_kfo = KernelFunctionOperation{Center, Center, Center}(κᶜᶜᶜ, grid, location, κ, clock, fields)
     return maximum(diffusivity_kfo)
 end
 
