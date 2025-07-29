@@ -65,9 +65,9 @@ Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical m
 microscale ocean turbulence based on the prognostic evolution of two variables: the
 turbulent kinetic energy (TKE), and the turbulent kinetic energy dissipation.
 Elsewhere this is referred to as "k-ϵ". For more information about k-ϵ, see
-[Burchard and Bolding (2001)](@citet burchard2001comparative),
-[Umlauf and Burchard (2003)](@citet umlauf2003generic), and
-[Umlauf and Burchard (2005)](@citet umlauf2005second).
+[Burchard and Bolding (2001)](@cite burchard2001comparative),
+[Umlauf and Burchard (2003)](@cite umlauf2003generic), and
+[Umlauf and Burchard (2005)](@cite umlauf2005second).
 
 Arguments
 =========

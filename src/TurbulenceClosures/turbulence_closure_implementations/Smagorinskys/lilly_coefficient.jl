@@ -9,7 +9,7 @@ end
     LillyCoefficient([FT=Float64;] smagorinsky=0.16, reduction_factor=1)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient according to closure
-proposed by [Lilly (1962)](@citet Lilly62), and [Lilly (1966)](@citet Lilly66), which has an
+proposed by [Lilly (1962)](@cite Lilly62), and [Lilly (1966)](@cite Lilly66), which has an
 eddy viscosity of the form
 
 ```
@@ -29,11 +29,11 @@ Keyword arguments
 =================
 
 * `smagorinsky`: Smagorinsky coefficient `Cˢ`. Default value is 0.16 as obtained by
-                 [Lilly (1966)](@citet Lilly66).
+                 [Lilly (1966)](@cite Lilly66).
 
-* `reduction_factor`: Buoyancy term multiplier `Cb` based on [Lilly (1962)](@citet Lilly62)
+* `reduction_factor`: Buoyancy term multiplier `Cb` based on [Lilly (1962)](@cite Lilly62)
                       (`reduction_factor = 0` turns it off, `reduction_factor ≠ 0` turns it on.
-                      Typically, and according to the original work by [Lilly (1962)](@citet Lilly62),
+                      Typically, and according to the original work by [Lilly (1962)](@cite Lilly62),
                       `Cb = 1 / Pr`.)
 
 References

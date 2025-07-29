@@ -23,7 +23,7 @@ end
                         isopycnal_model=SmallSlopeIsopycnalTensor())
 
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
-[Leith (1968)](@citet leith1968diffusion) and [Fox‐Kemper and Menemenlis (2008)](@citet Fox-Kemper2008)
+[Leith (1968)](@cite leith1968diffusion) and [Fox‐Kemper and Menemenlis (2008)](@cite Fox-Kemper2008)
 which has an eddy viscosity of the form
 
 ```julia

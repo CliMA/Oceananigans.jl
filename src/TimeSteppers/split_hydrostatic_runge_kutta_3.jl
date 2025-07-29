@@ -5,7 +5,7 @@ using Oceananigans: fields
     SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by [Lan et al. (2022)](@citet Lan2022).
+time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
 """
 struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     γ² :: FT
@@ -29,7 +29,7 @@ Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified
 via optional `kwargs`.
 
-The scheme is described by [Lan et al. (2022)](@citet Lan2022). In a nutshell,
+The scheme is described by [Lan et al. (2022)](@cite Lan2022). In a nutshell,
 the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
 A barotropic velocity correction step is applied after at each substep.
 

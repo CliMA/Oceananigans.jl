@@ -72,7 +72,7 @@ Keyword Arguments
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
                       `averaging_kernel > 0`. By default, the averaging kernel described by
-                      [Shchepetkin and McWilliams (2005)](@citet Shchepetkin2005) is used.
+                      [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
   * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,

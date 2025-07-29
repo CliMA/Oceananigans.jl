@@ -8,7 +8,7 @@ the locally vertical and the locally horizontal components of the rotation vecto
 The "traditional" approximation in ocean models accounts for only the locally
 vertical component of the rotation vector (see [`BetaPlane`](@reface)).
 
-This implementation is based off of section 5 of paper by [Dellar (2011)](@citet Dellar2011)
+This implementation is based off of section 5 of paper by [Dellar (2011)](@cite Dellar2011)
 and it conserves energy, angular momentum, and potential vorticity.
 
 References
