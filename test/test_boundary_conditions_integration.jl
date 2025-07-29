@@ -62,7 +62,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
-    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
+    κₑ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = NonhydrostaticModel(; grid,
@@ -186,65 +186,23 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
         model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
-
         u = normal_velocity(Val(orientation), model)
-        view(parent(u), :, :, :) .= -1
+        fill!(u, -1)
 
         time_step!(model, 1)
 
         # nothing going on
         @test all(view(parent(u), :, :, :) .== -1)
-
-        # left
-        view(parent(u), :, :, :) .= -1
-        view(parent(u), tuple(map(n -> ifelse(n == orientation, 3, 1), 1:3)...)...) .= -2
-
-        boundary_index = tuple(map(n -> ifelse(n == orientation, 6, 1), 1:3)...)
-        view(parent(u), boundary_index...) .= 0
-
-        time_step!(model, 1)
-
-        # outflow: uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
-        # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = -1.5
-        @test first(interior(u, 1, 1, 1)) == -1.5
-
-        # inflow: uⁿ⁺¹ = (uⁿ + τ̄U) / (1 + τ̄Ū)
-        # Δx = Δt = U = 1, τ̄ = 1/10 -> uⁿ⁺¹) = -1/11
-        @test first(view(parent(u), boundary_index...)) ≈ -1/11
-
-        # right
-        obc = PerturbationAdvectionOpenBoundaryCondition(1, inflow_timescale = 10.0)
-        boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
-
-        model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
-
-        u = normal_velocity(Val(orientation), model)
-        view(parent(u), :, :, :) .= 1
-
-        boundary_adjacent_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
-        view(parent(u), boundary_adjacent_index...) .= 2
-        view(parent(u), tuple(map(n -> ifelse(n == orientation, 1:2, 1), 1:3)...)...) .= 0
-
-        time_step!(model, 1)
-
-        end_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
-
-        # uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
-        # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = 1.5
-        @test all(interior(u, end_index...) .== 1.5)
-
-        # inflow: uⁿ⁺¹ = (uⁿ + τ̄U) / (1 + τ̄Ū)
-        # Δx = Δt = U = 1, τ̄ = 1/10 -> uⁿ⁺¹) = 1/11
-        @test first(view(parent(u), tuple(map(n -> ifelse(n == orientation, 2, 1), 1:3)...)...)) ≈ 1/11
+        @test all(interior(u) .== -1)
 
         obc = PerturbationAdvectionOpenBoundaryCondition((t) -> 0.1*t, inflow_timescale = 0.01, outflow_timescale = 0.5)
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
         model = NonhydrostaticModel(; grid,
-                              boundary_conditions,
-                              timestepper = :QuasiAdamsBashforth2,
-                              forcing)
+                                      boundary_conditions,
+                                      timestepper = :QuasiAdamsBashforth2,
+                                      forcing)
 
         u = normal_velocity(Val(orientation), model)
 
@@ -254,6 +212,26 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
 
         @test all(map(u->isapprox(u, 1, atol=0.1), interior(u)))
     end
+end
+
+function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+
+    model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :RungeKutta3)
+    uᵢ(x, y, z) = 1 + 1e-2 * rand()
+    set!(model, u = uᵢ)
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_zspacing(grid) / maximum(abs, u)
+    simulation = Simulation(model; stop_time=1, Δt, verbose=false)
+
+    ∇u = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫∇u = Field(Integral(∇u))
+
+    run!(simulation)
+    compute!(∫∇u)
+    @test (@allowscalar ∫∇u[]) ≈ 0 atol=3*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
@@ -348,11 +326,11 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
     @testset "Boundary condition time-stepping works" begin
         for arch in archs, FT in (Float64,) #float_types
-            @info "  Testing that time-stepping with boundary conditions works [$(typeof(arch)), $FT]..."
 
             topo = (Bounded, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
+                @info "  Testing that time-stepping with $boundary_condition works [$(typeof(arch)), $FT]..."
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
@@ -448,6 +426,34 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             @info "  Testing open boundary conditions [$A, $FT]..."
             test_flat_extrapolation_open_boundary_conditions(arch, FT)
             test_perturbation_advection_open_boundary_conditions(arch, FT)
+
+            # Only PerturbationAdvectionOpenBoundaryCondition
+            U₀ = 1
+            inflow_timescale = 1e-1
+            outflow_timescale = Inf
+
+            u_bcs = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
+                                            east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
+            boundary_conditions = (; u = u_bcs)
+            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+
+            # Only FlatExtrapolationOpenBoundaryCondition
+            u_bcs = FieldBoundaryConditions(west = FlatExtrapolationOpenBoundaryCondition(),
+                                            east = FlatExtrapolationOpenBoundaryCondition())
+            boundary_conditions = (; u = u_bcs)
+            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+
+            # Mixed open boundary conditions
+            u_bcs = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
+                                            east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
+            v_bcs = FieldBoundaryConditions(south = FlatExtrapolationOpenBoundaryCondition(),
+                                            north = FlatExtrapolationOpenBoundaryCondition())
+            w_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(0),
+                                            top = OpenBoundaryCondition(0))
+
+            boundary_conditions = (; u = u_bcs, v = v_bcs, w = w_bcs)
+            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+
         end
     end
 end
