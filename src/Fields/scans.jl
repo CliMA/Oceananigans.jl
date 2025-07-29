@@ -46,7 +46,7 @@ function Field(scan::Scan;
 
     operand = scan.operand
     grid = operand.grid
-    LX, LY, LZ = loc = location(scan)
+    LX, LY, LZ = loc = instantiated_location(scan)
     indices = scan_indices(scan.type, indices; dims=scan.dims)
 
     if isnothing(data)

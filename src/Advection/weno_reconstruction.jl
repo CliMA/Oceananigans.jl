@@ -56,6 +56,7 @@ WENO{3, Float64, Float32}(order=5)
 To build a 9th-order scheme (often a good choice for a stable
 yet minimally-dissipative advection scheme):
 
+```jldoctest weno
 julia> WENO(order=9)
 WENO{5, Float64, Float32}(order=9)
 └── advection_velocity_scheme: Centered(order=8)
@@ -66,6 +67,7 @@ julia> WENO(order=9, bounds=(0, 1))
 WENO{5, Float64, Float32}(order=9)
 ├── bounds: (0, 1)
 └── advection_velocity_scheme: Centered(order=8)
+```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
@@ -91,11 +93,11 @@ Base.summary(a::WENO{N, FT, FT2}) where {N, FT, FT2} = string("WENO{$N, $FT, $FT
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')
-    
+
     if !isnothing(a.bounds)
         print(io, "├── bounds: ", string(a.bounds), '\n')
-    end
-    
+    end    
+
     print(io, "└── advection_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 end
 
