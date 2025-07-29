@@ -74,7 +74,6 @@ function define_binary_operator(op)
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) = 
             @inbounds apply_bcast($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
-        end
 
         # These shenanigans seem to help / encourage the compiler to infer types of objects
         # buried in deep AbstractOperations trees.
