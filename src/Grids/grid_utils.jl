@@ -100,7 +100,11 @@ corresponding to the number of grid points along `x, y, z`.
 """
 function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
-    return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
+    N = ntuple(Val(D)) do d
+        Base.@_inline_meta
+        @inbounds total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d])
+    end
+    return N
 end
 
 total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
@@ -117,7 +121,7 @@ constant grid spacing `Δ`, and interior extent `L`.
 @inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
-@inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
+@inline domain(topo, N, ξ) = @allowscalar ξ[1], ξ[N+1]
 @inline domain(::Flat, N, ξ::AbstractArray) = ξ[1]
 @inline domain(::Flat, N, ξ::Number) = ξ
 @inline domain(::Flat, N, ::Nothing) = nothing

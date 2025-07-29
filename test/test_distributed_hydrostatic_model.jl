@@ -153,6 +153,10 @@ for arch in archs
             arch    = synchronized(arch)
             closure = CATKEVerticalDiffusivity()
 
+            if arch.local_rank == 0
+                @info "  Testing CATKE with $(ranks(arch)) ranks"
+            end
+
             # "s" for "serial" computation, "p" for parallel
             ms = rotation_with_shear_test(global_underlying_grid, closure)
             mp = rotation_with_shear_test(underlying_grid, closure)
@@ -188,4 +192,3 @@ for arch in archs
         end
     end
 end
-

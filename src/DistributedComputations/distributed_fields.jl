@@ -1,9 +1,9 @@
 using Oceananigans.Grids: topology
-using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
+using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, instantiated_location
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
-using CUDA: @allowscalar
+using GPUArraysCore: @allowscalar
 
-using Oceananigans.Fields: ReducedAbstractField, 
+using Oceananigans.Fields: ReducedAbstractField,
                            get_neutral_mask,
                            condition_operand,
                            initialize_reduced_field!,
@@ -14,10 +14,10 @@ using Oceananigans.Fields: ReducedAbstractField,
 import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
-    indices = validate_indices(indices, (LX, LY, LZ), grid)
-    validate_field_data((LX, LY, LZ), data, grid, indices)
-    validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+    indices = validate_indices(indices, loc, grid)
+    validate_field_data(loc, data, grid, indices)
+    validate_boundary_conditions(loc, grid, old_bcs)
 
     arch = architecture(grid)
     rank = arch.local_rank
@@ -33,7 +33,9 @@ const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
 # Automatically partition under the hood if sizes are compatible
-function set!(u::DistributedField, V::Union{Array, CuArray, OffsetArray})
+set!(u::DistributedField, V::Union{Array, OffsetArray}) = _set!(u, V)
+
+function _set!(u::DistributedField, V::VT) where {VT}
     NV = size(V)
     Nu = global_size(u)
 
@@ -94,7 +96,7 @@ Reconstruct a global field from a local field by combining the data from all pro
 """
 function reconstruct_global_field(field::DistributedField)
     global_grid = reconstruct_global_grid(field.grid)
-    global_field = Field(location(field), global_grid)
+    global_field = Field(instantiated_location(field), global_grid)
     arch = architecture(field)
 
     global_data = construct_global_array(interior(field), arch, size(field))
@@ -111,7 +113,7 @@ end
 Return the partitioned dimensions of a distributed field or architecture.
 """
 function partition_dimensions(arch::Distributed)
-    R = ranks(arch) 
+    R = ranks(arch)
     dims = []
     for r in eachindex(R)
         if R[r] > 1
@@ -126,6 +128,9 @@ partition_dimensions(f::DistributedField) = partition_dimensions(architecture(f)
 function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
+
+    arch = architecture(f)
+    sync_device!(arch)
 
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))
@@ -182,7 +187,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
-            loc = reduced_location(location(c); dims)
+            loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)

@@ -384,9 +384,9 @@ for arch in archs
 
 
 
-        u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
-        v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]
-        w₀ = CUDA.@allowscalar model.velocities.w[3, 3, 3]
+        u₀ = @allowscalar model.velocities.u[3, 3, 3]
+        v₀ = @allowscalar model.velocities.v[3, 3, 3]
+        w₀ = @allowscalar model.velocities.w[3, 3, 3]
 
         run!(simulation)
 

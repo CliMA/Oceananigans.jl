@@ -5,7 +5,6 @@ using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
-using CUDA
 
 Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
@@ -280,7 +279,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
 
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,
                                           north = e_bcs.north,
@@ -288,13 +287,13 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
                                           east = e_bcs.east,
                                           west = e_bcs.west)
     else
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_tke_bc)
     end
 
     if :ϵ ∈ keys(user_bcs)
         ϵ_bcs = user_bcs[:ϵ]
 
-        dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+        dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                                   top = top_dissipation_bc,
                                                   bottom = e_bcs.bottom,
                                                   north = e_bcs.north,
@@ -302,7 +301,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
                                                   east = e_bcs.east,
                                                   west = e_bcs.west)
     else
-        dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_dissipation_bc)
+        dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_dissipation_bc)
     end
 
     new_boundary_conditions = merge(user_bcs, (e=tke_bcs, ϵ=dissipation_bcs))

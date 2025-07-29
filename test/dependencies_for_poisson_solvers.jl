@@ -54,7 +54,7 @@ function random_divergent_source_term(grid::ImmersedBoundaryGrid)
     set!(Ru, rand(size(Ru)...))
     set!(Rv, rand(size(Rv)...))
     set!(Rw, rand(size(Rw)...))
-    
+
     mask_immersed_field!(Ru)
     mask_immersed_field!(Rv)
     mask_immersed_field!(Rw)
@@ -116,7 +116,7 @@ function divergence_free_poisson_solution(grid, planner_flag=FFTW.MEASURE)
     solver = FFTBasedPoissonSolver(grid, planner_flag)
     R, U = random_divergent_source_term(grid)
 
-    p_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    p_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     ϕ   = CenterField(grid, boundary_conditions=p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
 
@@ -125,7 +125,7 @@ function divergence_free_poisson_solution(grid, planner_flag=FFTW.MEASURE)
 
     compute_∇²!(∇²ϕ, ϕ, arch, grid)
 
-    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
+    return @allowscalar interior(∇²ϕ) ≈ R
 end
 
 #####
@@ -202,7 +202,7 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
     stretched_grid = RectilinearGrid(arch, FT; topology=topo, size=sz, z=faces, intervals...)
     solver = FourierTridiagonalPoissonSolver(stretched_grid)
 
-    p_bcs = FieldBoundaryConditions(stretched_grid, (Center, Center, Center))
+    p_bcs = FieldBoundaryConditions(stretched_grid, (Center(), Center(), Center()))
     ϕ   = CenterField(stretched_grid, boundary_conditions=p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(stretched_grid, boundary_conditions=p_bcs)
 
@@ -213,7 +213,7 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
     solve!(ϕc, solver)
 
     # interior(ϕ) = solution(solver) or solution!(interior(ϕ), solver)
-    CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
+    @allowscalar interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, stretched_grid)
 
     return Array(interior(∇²ϕ)) ≈ Array(R)

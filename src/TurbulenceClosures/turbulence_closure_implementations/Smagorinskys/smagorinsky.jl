@@ -8,7 +8,7 @@ using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
     ThreeDimensionalFormulation,
     ExplicitTimeDiscretization,
-    closure_constant,
+    closure_coefficient,
     convert_diffusivity
 
 import Oceananigans.Utils: with_tracers
@@ -106,7 +106,7 @@ end
 end
 
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, args...) = c.coefficient^2
-@inline square_smagorinsky_coefficient(i, j, k, grid, c, args...) = closure_constant(i, j, k, grid, c)^2
+@inline square_smagorinsky_coefficient(i, j, k, grid, c, args...) = closure_coefficient(i, j, k, grid, c)^2
 
 compute_coefficient_fields!(diffusivity_fields, closure, model; parameters) = nothing
 
@@ -130,7 +130,7 @@ allocate_coefficient_fields(closure, grid) = NamedTuple()
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
     coefficient_fields = allocate_coefficient_fields(closure, grid)
 
-    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center(), Center(), Center())))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
     viscosity_nt = (; νₑ)

@@ -28,8 +28,8 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravi
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
 
-    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 

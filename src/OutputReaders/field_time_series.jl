@@ -5,7 +5,7 @@ using Statistics
 using JLD2
 using Adapt
 using Glob
-using CUDA: @allowscalar
+using GPUArraysCore
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -18,7 +18,7 @@ using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices, index_binary_search,
-                           indices_summary, boundary_conditions
+                           indices_summary, boundary_conditions, instantiate
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
@@ -347,8 +347,6 @@ end
 ##### Constructors
 #####
 
-instantiate(T::Type) = T()
-
 new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
@@ -367,16 +365,14 @@ time_indices_length(::TotallyInMemory, times) = length(times)
 time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
-function FieldTimeSeries(loc, grid, times=();
+function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
                          indices = (:, :, :),
                          backend = InMemory(),
                          path = nothing,
                          name = nothing,
                          time_indexing = Clamp(),
                          boundary_conditions = FieldBoundaryConditions(grid, loc),
-                         reader_kw = NamedTuple())
-
-    LX, LY, LZ = loc
+                         reader_kw = NamedTuple()) where {LX, LY, LZ}
 
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
@@ -436,7 +432,7 @@ Keyword arguments
 - `name`: name of field for `backend = OnDisk()`
 """
 function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) where {LX, LY, LZ}
-    loc = (LX, LY, LZ)
+    loc = (LX(), LY(), LZ())
     return FieldTimeSeries(loc, grid, times; kwargs...)
 end
 
@@ -624,7 +620,7 @@ function FieldTimeSeries(path::String, name::String;
 
     isnothing(location) && (location = file["timeseries/$name/serialized/location"])
     LX, LY, LZ = location
-    loc = map(instantiate, location)
+    loc = (LX(), LY(), LZ())
 
     if isnothing(Nparts)
         isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))
@@ -729,16 +725,23 @@ Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
 function interior(fts::FieldTimeSeries)
-    loc = map(instantiate, location(fts))
-    topo = map(instantiate, topology(fts.grid))
-    sz = size(fts.grid)
-    halo_sz = halo_size(fts.grid)
+    Topo = topology(fts.grid)
+    ℓx, ℓy, ℓz = instantiated_location(fts)
+    𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
+    
+    Nx, Ny, Nz = size(fts.grid)
+    Hx, Hy, Hz = halo_size(fts.grid)
+    ix, iy, iz = fts.indices
 
-    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
-    indices = fts.indices
-    i_view = map(interior_view_indices, indices, i_interior)
+    i = interior_parent_indices(ℓx, 𝓉x, Nx, Hx)
+    j = interior_parent_indices(ℓy, 𝓉y, Ny, Hy)
+    k = interior_parent_indices(ℓz, 𝓉z, Nz, Hz)
 
-    return view(parent(fts), i_view..., :)
+    iv = @inbounds interior_view_indices(ix, i)
+    jv = @inbounds interior_view_indices(iy, j)
+    kv = @inbounds interior_view_indices(iz, k)
+
+    return view(parent(fts), iv, jv, kv, :)
 end
 
 # FieldTimeSeries boundary conditions

@@ -163,7 +163,7 @@ end
 
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
 
-        νˢᵍˢ = - closure_constant(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
+        νˢᵍˢ = - closure_coefficient(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
 
     @inbounds νₑ[i, j, k] = max(zero(FT), νˢᵍˢ)
@@ -184,7 +184,7 @@ end
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, tracer)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - closure_constant(i, j, k, grid, Cκ) * δ² * ϑ / σ
+        κˢᵍˢ = - closure_coefficient(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
@@ -350,7 +350,7 @@ end
 
 function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
-    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
     κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
 
