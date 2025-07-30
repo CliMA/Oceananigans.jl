@@ -249,7 +249,7 @@ end
                                                 tracers = (:b, :c, :constant),
                                                 timestepper = :SplitRungeKutta3,
                                                 buoyancy = BuoyancyTracer(),
-                                                vertical_coordinate = ZStarCoordinate())
+                                                vertical_coordinate = ZStarCoordinate(grid))
 
             bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
@@ -292,7 +292,7 @@ end
                                                   free_surface,
                                                   tracers = (:b, :c, :constant),
                                                   buoyancy = BuoyancyTracer(),
-                                                  vertical_coordinate = ZStarCoordinate())
+                                                  vertical_coordinate = ZStarCoordinate(grid))
 
             bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
 
