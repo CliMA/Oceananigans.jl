@@ -101,7 +101,8 @@ Keyword arguments
 
 - `x`, `y`, and `z`: Each of `x, y, z` are either (i) 2-tuples that specify the end points of the domain
                      in their respect directions (in which case scalar values may be used in `Flat`
-                     directions), or (ii) arrays or functions of the corresponding indices `i`, `j`, or `k`
+                     directions), (ii) arrays that specify the locations of cell faces in the `x`-, `y`-,
+                     or `z`-direction, or (iii) functions of the corresponding indices `i`, `j`, or `k`
                      that specify the locations of cell faces in the `x`-, `y`-, or `z`-direction, respectively.
                      For example, to prescribe the cell faces in `z` we need to provide a function that takes
                      `k` as argument and returns the location of the faces for indices `k = 1` through `k = Nz + 1`,
