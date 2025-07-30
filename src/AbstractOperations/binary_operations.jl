@@ -53,13 +53,8 @@ choose_location(::Type{Nothing}, Lb::ConcreteLocationType, Lc) = Lb #
 
 # Apply the function if the inputs are scalars, otherwise broadcast it over the inputs
 # This can occur in the binary operator code if we index into with an array, e.g. array[1:10]
-@inline @propagate_inbounds function apply_bcast(f, lhs, rhs)
-    f(lhs, rhs)
-end
-
-@inline @propagate_inbounds function apply_bcast(f, lhs::AbstractArray, rhs::AbstractArray)
-    f.(lhs, rhs)
-end
+@inline @propagate_inbounds apply_op(op, a, b) = op(a, b)
+@inline @propagate_inbounds apply_op(op, a::AbstractArray, b::AbstractArray) = op.(a, b)
 
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)
@@ -73,34 +68,34 @@ function define_binary_operator(op)
         local AF = AbstractField
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) = 
-            @inbounds apply_bcast($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
+            @inbounds apply_op($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
 
         # These shenanigans seem to help / encourage the compiler to infer types of objects
         # buried in deep AbstractOperations trees.
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::BinaryOperation)
-            @inline a(ii, jj, kk, grid) = apply_bcast(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
-            @inline b(ii, jj, kk, grid) = apply_bcast(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
-            return @inbounds apply_bcast($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
+            @inline a(ii, jj, kk, grid) = apply_op(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            @inline b(ii, jj, kk, grid) = apply_op(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds apply_op($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::AbstractField)
-            @inline a(ii, jj, kk, grid) = apply_bcast(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
-            return @inbounds apply_bcast($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, B))
+            @inline a(ii, jj, kk, grid) = apply_op(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            return @inbounds apply_op($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, B))
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::AbstractField, B::BinaryOperation)
-            @inline b(ii, jj, kk, grid) = apply_bcast(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
-            return @inbounds apply_bcast($op, ▶a(i, j, k, grid, A), ▶b(i, j, k, grid, b))
+            @inline b(ii, jj, kk, grid) = apply_op(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds apply_op($op, ▶a(i, j, k, grid, A), ▶b(i, j, k, grid, b))
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::Number)
-            @inline a(ii, jj, kk, grid) = apply_bcast(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
-            return @inbounds apply_bcast($op, ▶a(i, j, k, grid, a), B)
+            @inline a(ii, jj, kk, grid) = apply_op(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            return @inbounds apply_op($op, ▶a(i, j, k, grid, a), B)
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::Number, B::BinaryOperation)
-            @inline b(ii, jj, kk, grid) = apply_bcast(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
-            return @inbounds apply_bcast($op, A, ▶b(i, j, k, grid, b))
+            @inline b(ii, jj, kk, grid) = apply_op(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds apply_op($op, A, ▶b(i, j, k, grid, b))
         end
 
         """
