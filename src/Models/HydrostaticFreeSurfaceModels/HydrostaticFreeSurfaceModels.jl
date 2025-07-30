@@ -27,7 +27,7 @@ abstract type AbstractFreeSurface{E, G} end
 struct ZCoordinate end
 
 struct ZStarCoordinate{CC}
-    storage :: CC
+    storage :: CC # Storage space used in different ways by different timestepping schemes.
 end
 
 ZStarCoordinate(grid::AbstractGrid) = ZStarCoordinate(Field{Center, Center, Nothing}(grid))
