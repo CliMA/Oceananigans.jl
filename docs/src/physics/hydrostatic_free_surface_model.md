@@ -198,6 +198,6 @@ nothing #hide
 
 ![](z-zstar.gif)
 
-Near the top, the surfaces of `ZStarCoordinate` mimic that of the free surface.
-As we move away from the fluid's surface, the surfaces of `ZStarCoordinate` resemble more surfaces
+Near the top, the surfaces of `ZStarCoordinate` mimic the free surface.
+Further away from the fluid's surface, the surfaces of `ZStarCoordinate` resemble more surfaces
 of constant depth `ZCoordinate`.
