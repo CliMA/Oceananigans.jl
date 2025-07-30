@@ -170,7 +170,7 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
 
         if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
             # We need to cache the surface height somewhere!
-            parent(model.vertical_coordinate.Gⁿ) .= parent(model.grid.z.ηⁿ)
+            parent(model.vertical_coordinate.storage) .= parent(model.grid.z.ηⁿ)
         end
     end
 
