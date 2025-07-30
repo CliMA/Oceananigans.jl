@@ -89,7 +89,7 @@ function Regridder(dst_field::RegriddableField, src_field::RegriddableField)
     src_cells = compute_cell_matrix(src_field)
     dst_cells = compute_cell_matrix(dst_field)
 
-    return ConservativeRegridding.Regridder(src_cells, dst_cells)
+    return ConservativeRegridding.Regridder(dst_cells, src_cells)
 end
 
 """
