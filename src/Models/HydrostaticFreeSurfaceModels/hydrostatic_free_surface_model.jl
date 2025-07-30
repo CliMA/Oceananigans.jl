@@ -113,7 +113,7 @@ Keyword arguments
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
   - `vertical_coordinate`: Algorithm for grid evolution: `ZStarCoordinate()` or `ZCoordinate()`.
-                           Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate()`
+                           Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
 """
