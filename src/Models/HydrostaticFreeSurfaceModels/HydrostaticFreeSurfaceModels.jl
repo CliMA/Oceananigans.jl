@@ -32,6 +32,9 @@ end
 
 ZStarCoordinate(grid::AbstractGrid) = ZStarCoordinate(Field{Center, Center, Nothing}(grid))
 
+Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
+Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
+
 Adapt.adapt_structure(to, coord::ZStarCoordinate) = ZStarCoordinate(Adapt.adapt(to, coord.storage))
 on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
 
