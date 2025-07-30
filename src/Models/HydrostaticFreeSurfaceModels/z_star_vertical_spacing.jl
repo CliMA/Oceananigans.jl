@@ -30,7 +30,7 @@ end
 params_range(H, N, ::Type{Flat}) = 1:1
 params_range(H, N, T) = -H+2:N+H-1
 
-function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, χ)
+function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
 
     # Scalings and free surface
     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
@@ -39,7 +39,7 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, χ)
     σᶜᶠⁿ = grid.z.σᶜᶠⁿ
     σᶠᶠⁿ = grid.z.σᶠᶠⁿ
     ηⁿ   = grid.z.ηⁿ
-    Gⁿ   = grid.z.Gⁿ
+    Gⁿ   = ztype.storage
 
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
@@ -74,10 +74,10 @@ end
 end
 
 rk3_substep_grid!(grid, model, vertical_coordinate, Δt, γⁿ, ζⁿ) = nothing
-rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStar, Δt, ::Nothing, ::Nothing) =
+rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, ::Nothing, ::Nothing) =
     rk3_substep_grid!(grid, model, ztype, Δt, one(grid), zero(grid))
 
-function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, γⁿ, ζⁿ)
+function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, γⁿ, ζⁿ)
 
     # Scalings and free surface
     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
@@ -86,7 +86,7 @@ function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStar, Δt, γ�
     σᶜᶠⁿ = grid.z.σᶜᶠⁿ
     σᶠᶠⁿ = grid.z.σᶠᶠⁿ
     ηⁿ   = grid.z.ηⁿ
-    ηⁿ⁻¹ = grid.z.Gⁿ
+    ηⁿ⁻¹ = ztype.storage
 
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
@@ -145,7 +145,7 @@ end
 
 update_grid_vertical_velocity!(model, grid, ztype) = nothing
 
-function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZStar)
+function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZStarCoordinate)
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
@@ -222,21 +222,21 @@ end
 end
 
 #####
-##### ZStar-specific implementation of the additional terms to be included in the momentum equations
+##### ZStarCoordinate-specific implementation of the additional terms to be included in the momentum equations
 #####
 
 # Fallbacks
 @inline grid_slope_contribution_x(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
 
-@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStar, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStar, model_fields) = zero(grid)
+@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStarCoordinate, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStarCoordinate, model_fields) = zero(grid)
 
 @inline ∂x_z(i, j, k, grid) = ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 @inline ∂y_z(i, j, k, grid) = ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 
-@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) =
+@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂x_z(i, j, k, grid)
 
-@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) =
+@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)

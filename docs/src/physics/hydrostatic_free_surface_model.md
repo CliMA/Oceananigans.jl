@@ -94,9 +94,9 @@ equation are
 ## Vertical coordinates
 
 We can use either `ZCoordinate`, that is height-coordinate, or the
-`ZStar` [generalized vertical coordinate](@ref generalized_vertical_coordinates).
+`ZStarCoordinate` [generalized vertical coordinate](@ref generalized_vertical_coordinates).
 
-The `ZStar` vertical coordinate conserves tracers and volume with the grid following the evolution of the
+The `ZStarCoordinate` vertical coordinate conserves tracers and volume with the grid following the evolution of the
 free surface in the domain [adcroft2004rescaled](@citep).
 
 In terms of the notation in the [Generalized vertical coordinates](@ref generalized_vertical_coordinates)
@@ -106,7 +106,7 @@ r(x, y, z, t) = z
 ```
 and the specific thickness is ``\sigma = \partial z / \partial r = 1``.
 
-For the `ZStar` generalized vertical coordinate is often denoted as ``z^*`` (zee-star), i.e.,
+For the `ZStarCoordinate` generalized vertical coordinate is often denoted as ``z^*`` (zee-star), i.e.,
 ```math
 \begin{equation}
     r(x, y, z, t) = z^*(x, y, z, t) = \frac{H(x, y)}{H(x, y) + \eta(x, y, t)}[z - \eta(x, y, t)] \label{zstardef}
@@ -114,13 +114,13 @@ For the `ZStar` generalized vertical coordinate is often denoted as ``z^*`` (zee
 ```
 where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
 
-![Schematic of the quantities involved in the ZStar generalized vertical coordinate](../assets/zstar_schematic.png)
+![Schematic of the quantities involved in the ZStarCoordinate generalized vertical coordinate](../assets/zstar_schematic.png)
 
 Note, that in both depth and ``z^*`` coordinates the bottom boundary is the same ``z = z^* = - H(x, y)``.
 On the other hand, while in depth coordinates the upper boundary ``z = \eta(x, y, t)`` changes with time,
 but in ``z^*`` coordinates it's fixed to ``z^* = 0``.
 
-The `ZStar` coordinate definition \eqref{zstardef} implies a specific thickness
+The `ZStarCoordinate` coordinate definition \eqref{zstardef} implies a specific thickness
 
 ```math
 \sigma = 1 + \frac{\eta}{H}
@@ -129,7 +129,7 @@ The `ZStar` coordinate definition \eqref{zstardef} implies a specific thickness
 All the equations transformed in ``r``-coordinates are described in the [Generalized vertical coordinates](@ref generalized_vertical_coordinates)
 section.
 
-For the specific choice of `ZStar` coordinate \eqref{zstardef}, the ``\partial \eta/\partial r`` identically vanishes and
+For the specific choice of `ZStarCoordinate` coordinate \eqref{zstardef}, the ``\partial \eta/\partial r`` identically vanishes and
 thus the horizontal gradient of the free surface remain unchanged under vertical coordinate transformation, i.e.,
 ```math
 \begin{align}
@@ -138,7 +138,7 @@ thus the horizontal gradient of the free surface remain unchanged under vertical
 \end{align}
 ```
 
-An example of how the vertical coordinate surfaces differ for `ZCoordinate` and the time-varying `ZStar` coordinate is shown below.
+An example of how the vertical coordinate surfaces differ for `ZCoordinate` and the time-varying `ZStarCoordinate` coordinate is shown below.
 
 ```@example
 using CairoMakie
@@ -165,7 +165,7 @@ t = Observable(0.0)
 fig = Figure(size=(1000, 400))
 axis_kwargs = (titlesize = 20, xlabel = "x", ygridvisible = false)
 ax1 = Axis(fig[1, 1]; title="ZCoordinate", ylabel="z", axis_kwargs...)
-ax2 = Axis(fig[1, 2]; title="ZStar", axis_kwargs...)
+ax2 = Axis(fig[1, 2]; title="ZStarCoordinate", axis_kwargs...)
 
 for ax in (ax1, ax2)
     band!(ax, x, -H, η, color = (:dodgerblue, 0.5))
@@ -179,7 +179,7 @@ for r in range(-Lz, stop=0, length=6)
     z = r * ones(size(x))
     lines!(ax1, x, z, color=:crimson, linestyle=:dash)
 
-    # ZStar
+    # ZStarCoordinate
     z = lift(η) do η_val
         @. r * (H + η_val) / H + η_val
     end
@@ -197,6 +197,6 @@ nothing #hide
 
 ![](z-zstar.gif)
 
-Near the top, the surfaces of `ZStar` mimic that of the free surface.
-As we move away from the fluid's surface, the surfaces of `ZStar` resemble more surfaces
+Near the top, the surfaces of `ZStarCoordinate` mimic that of the free surface.
+As we move away from the fluid's surface, the surfaces of `ZStarCoordinate` resemble more surfaces
 of constant depth `ZCoordinate`.
