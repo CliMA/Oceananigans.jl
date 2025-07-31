@@ -140,3 +140,98 @@ where `c = C[tracer_index]`.
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
+
+
+@inline function hydrostatic_free_surface_TKE_tendency(i, j, k, grid,
+                                                       val_tracer_index::Val{tracer_index},
+                                                       val_tracer_name,
+                                                       advection,
+                                                       closure,
+                                                       c_immersed_bc,
+                                                       buoyancy,
+                                                       biogeochemistry,
+                                                       velocities,
+                                                       free_surface,
+                                                       tracers,
+                                                       diffusivities,
+                                                       auxiliary_fields,
+                                                       clock,
+                                                       forcing) where tracer_index
+
+    @inbounds c = tracers[tracer_index]
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers),
+                         auxiliary_fields,
+                         biogeochemical_auxiliary_fields(biogeochemistry))
+
+    biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
+    closure_velocities = closure_turbulent_velocity(closure, diffusivities, val_tracer_name)
+
+    total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
+    total_velocities = with_advective_forcing(forcing, total_velocities)
+
+    Gⁿ_closure = closure_dependent_forcing(i, j, k, grid, closure, diffusivities, val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
+
+    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + forcing(i, j, k, grid, clock, model_fields)
+             + Gⁿ_closure)
+end
+
+@inline function closure_dependent_forcing(i, j, k, grid, closures::Tuple, diffusivities, val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
+
+    Gⁿ = 0
+    for n in eachindex(closures)
+        @inbounds Gⁿ += closure_dependent_forcing(i, j, k, grid, closures[n], diffusivities, val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
+    end
+
+    return Gⁿ
+end
+
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, explicit_buoyancy_flux, bottommost_active_node, dissipation_rate
+
+@inline function closure_dependent_forcing(i, j, k, grid, closure::FlavorOfCATKE, diffusivities, ::Val{:e}, e, clock, model_fields, buoyancy)
+
+    closure_ij = getclosure(i, j, closure)
+
+    # Compute additional diagonal component of the linear TKE operator
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, model_fields, buoyancy, diffusivities)
+    wb⁻ = min(zero(grid), wb)
+    wb⁺ = max(zero(grid), wb)
+
+    κe = diffusivity_fields.κe
+    Le = diffusivity_fields.Le
+
+    eⁱʲᵏ = @inbounds e[i, j, k]
+    eᵐⁱⁿ = closure_ij.minimum_tke
+    wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
+
+    on_bottom = bottommost_active_node(i, j, k, grid, c, c, c)
+    active = !inactive_cell(i, j, k, grid)
+    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
+    e⁺ = clip(eⁱʲᵏ)
+    w★ = sqrt(e⁺)
+    div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
+
+    # Implicit TKE dissipation
+    ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+
+    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
+
+    # Compute fast TKE RHS
+    u⁺ = velocities.u
+    v⁺ = velocities.v
+    uⁿ = velocities.u
+    vⁿ = velocities.v
+    κu = diffusivities.κu
+
+    # TODO: correctly handle closure / diffusivity tuples
+    # TODO: the shear_production is actually a slow term so we _could_ precompute.
+    P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
+    ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+    fast_Gⁿe = P + wb⁺ - ϵ
+
+    return fast_Gⁿe
+end

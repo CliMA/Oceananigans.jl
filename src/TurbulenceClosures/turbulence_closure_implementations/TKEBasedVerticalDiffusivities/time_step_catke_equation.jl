@@ -11,6 +11,10 @@ get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
 function time_step_catke_equation!(model)
 
+    if model.timestepper isa Oceananigans.TimeSteppers.SplitRungeKutta3TimeStepper
+        return nothing
+    end
+
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
         closure = first(model.closure)
