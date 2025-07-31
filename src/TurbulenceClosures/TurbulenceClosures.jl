@@ -56,6 +56,7 @@ using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, linear_index_to_tuple
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture

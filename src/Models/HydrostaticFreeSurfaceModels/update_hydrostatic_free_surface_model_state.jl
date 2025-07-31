@@ -3,7 +3,8 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_conditions!
+using Oceananigans.BoundaryConditions: update_boundary_condition!
+using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
@@ -85,6 +86,9 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
 
     # Update the vertical velocity to comply with the barotropic correction step
     update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
+
+    # Maybe compute buoyancy gradients
+    compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
 
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)

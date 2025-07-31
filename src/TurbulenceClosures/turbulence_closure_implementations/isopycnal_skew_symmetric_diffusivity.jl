@@ -125,7 +125,6 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; par
     launch!(arch, grid, parameters,
             compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
 
-
     compute_eddy_velocities!(diffusivities, closure, model; parameters)
 
     return nothing
