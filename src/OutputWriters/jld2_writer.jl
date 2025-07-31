@@ -1,7 +1,7 @@
 using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
-using Oceananigans.Utils: TimeInterval, prettykeys
+using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
 using Oceananigans.Fields: boundary_conditions, indices
 
 default_included_properties(model) = [:grid]
@@ -164,7 +164,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
-    schedule = deepcopy(schedule) # assume user wants to reuse a schedule
+    schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model)

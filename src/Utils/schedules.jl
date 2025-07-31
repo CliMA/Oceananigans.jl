@@ -303,3 +303,5 @@ Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")
 
+materialize_schedule(s) = s
+materialize_schedule(ti::TimeInterval) = deepcopy(ti) # required to reuse a pre-defined TimeInterval

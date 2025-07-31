@@ -16,7 +16,7 @@ using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, Lat
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
 using Oceananigans.TimeSteppers: float_or_date_time
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval,
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
                           versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using SeawaterPolynomials: BoussinesqEquationOfState
 
@@ -1010,7 +1010,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
 
     initialize!(file_splitting, model)
 
-    schedule = deepcopy(schedule) # assume user wants to reuse a schedule
+    schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
     if isnothing(overwrite_existing)
