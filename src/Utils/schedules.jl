@@ -27,12 +27,6 @@ end
 ##### TimeInterval
 #####
 
-"""
-    mutable struct TimeInterval{FT} <: AbstractSchedule
-
-Callable `TimeInterval` schedule for periodic output or diagnostic evaluation
-according to `model.clock.time`.
-"""
 mutable struct TimeInterval{FT} <: AbstractSchedule
     interval :: FT
     first_actuation_time :: FT
