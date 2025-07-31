@@ -50,9 +50,9 @@ mask_immersed_field!(field, grid, loc, value) = nothing
 
 masks `field` defined on `grid` with a value `val` at locations where `peripheral_node` evaluates to `true`
 """
-function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
+function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, (LX, LY, LZ), value)
     arch = architecture(field)
-    loc  = instantiate.(loc)
+    loc  = (LX(), LY(), LZ())
     launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
     return nothing
 end
@@ -92,9 +92,9 @@ mask_immersed_field_xy!(field, grid, loc, value, k) = nothing
 
 Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_peripheral_node` returns `true`.
 """
-function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value, k)
+function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, (LX, LY, LZ), value, k)
     arch = architecture(field)
-    loc  = instantiate.(loc)
+    loc  = (LX(), LY(), LZ())
     return launch!(arch, grid, :xy, _mask_immersed_field_xy!, field, loc, grid, value, k)
 end
 
@@ -110,8 +110,8 @@ end
 
 # We mask a `ReducedField` if the entire reduced direction is immersed.
 # This requires a sweep over the reduced direction
-function mask_immersed_field!(field::ReducedField, grid::ImmersedBoundaryGrid, loc, value)
-    loc  = instantiate.(loc)
+function mask_immersed_field!(field::ReducedField, grid::ImmersedBoundaryGrid, (LX, LY, LZ), value)
+    loc  = (LX(), LY(), LZ())
     dims = reduced_dimensions(field)
     launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, dims, loc, grid, value)
     return nothing
