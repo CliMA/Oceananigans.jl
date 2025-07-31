@@ -1,4 +1,5 @@
 using Oceananigans.Operators
+using Oceananigans.Operators: Ax_∂xᶠᵃᵃ, Ay_∂yᵃᶠᵃ, Az_∂zᵃᵃᶠ, ∇²ᶜᶜᶜ, Vᶜᶜᶜ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
 
@@ -31,9 +32,9 @@ function Base.show(io::IO, ips::ConjugateGradientPoissonSolver)
 end
 
 @inline function V∇²ᶜᶜᶜ(i, j, k, grid, c)
-    return δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶜᶜ, c) +
-           δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c) +
-           δzᵃᵃᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c)
+    return δxᶜᶜᶜ(i, j, k, grid, Ax_∂xᶠᶜᶜ, c) +
+           δyᶜᶜᶜ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c) +
+           δzᶜᶜᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c)
 end
 
 @kernel function laplacian!(∇²ϕ, grid, ϕ)
@@ -52,7 +53,7 @@ end
 @kernel function subtract_and_mask!(a, grid, b)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    a[i, j, k] = (a[i, j, k] - b) * active
+    @inbounds a[i, j, k] = (a[i, j, k] - b) * active
 end
 
 function enforce_zero_mean_gauge!(x, r)
