@@ -1009,6 +1009,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
     filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)
+
+    schedule = deepcopy(schedule) # assume user wants to reuse a schedule
     update_file_splitting_schedule!(file_splitting, filepath)
 
     if isnothing(overwrite_existing)
