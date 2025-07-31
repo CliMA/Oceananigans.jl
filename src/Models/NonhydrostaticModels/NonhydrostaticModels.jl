@@ -15,7 +15,7 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
 using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
@@ -35,6 +35,10 @@ end
 nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
 nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver) =
     FourierTridiagonalPoissonSolver(grid)
+
+# A LatitudeLongitudeGrid cannot use an FFT-based solver, we use a conjugate gradient solver instead.
+nonhydrostatic_pressure_solver(arch, grid::LatitudeLongitudeGrid) = 
+    ConjugateGradientPoissonSolver(grid)
 
 const IBGWithFFTSolver = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
 
@@ -66,6 +70,7 @@ nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architectu
 #####
 
 include("background_fields.jl")
+include("boundary_mass_fluxes.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")

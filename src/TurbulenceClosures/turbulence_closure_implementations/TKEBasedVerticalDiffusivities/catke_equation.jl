@@ -138,7 +138,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
 
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,
                                           north = e_bcs.north,
@@ -146,7 +146,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
                                           east = e_bcs.east,
                                           west = e_bcs.west)
     else
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_tke_bc)
     end
 
     new_boundary_conditions = merge(user_bcs, (; e = tke_bcs))
