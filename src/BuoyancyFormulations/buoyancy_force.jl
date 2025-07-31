@@ -12,10 +12,6 @@ struct BuoyancyForce{M, G, B}
     gradients :: B
 end
 
-Adapt.adapt_structure(to, bf::BuoyancyForce) =
-    BuoyancyForce(adapt(to, bf.formulation),
-                  adapt(to, bf.gravity_unit_vector))
-
 """
     BuoyancyForce(formulation; gravity_unit_vector=NegativeZDirection())
 
