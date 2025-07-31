@@ -94,7 +94,7 @@ end
 """
     IterationInterval(interval; offset=0)
 
-Return a callable `IterationInterval` that "actuates" (schedules output or callback execution)
+Return a callable `IterationInterval` that "actuates" (i.e., schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
 
 For example,
@@ -157,7 +157,7 @@ end
 """
     SpecifiedTimes(times)
 
-Return a `schedule::SpecifiedTimes` that "actuates" (schedules output or callback execution)
+Return a `schedule::SpecifiedTimes` that "actuates" (i.e., schedules output or callback execution)
 whenever the model's clock equals the specified values in `times`. For example,
 
 * `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
