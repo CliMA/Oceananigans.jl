@@ -77,10 +77,10 @@ function tupled_fill_halo_regions!(fields, args...; kwargs...)
 
     if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
         grid = first(not_reduced_fields).grid
-        fill_halo_regions!(map(data, not_reduced_fields),
-                           map(boundary_conditions, not_reduced_fields),
+        fill_halo_regions!(data.(not_reduced_fields),
+                           boundary_conditions.(not_reduced_fields),
                            default_indices(3),
-                           map(instantiated_location, not_reduced_fields),
+                           instantiated_location.(not_reduced_fields),
                            grid, args...; kwargs...)
     end
 
@@ -93,10 +93,10 @@ function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs..
     not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
 
     if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
-        fill_halo_regions!(map(data, not_reduced_fields),
-                           map(boundary_conditions, not_reduced_fields),
+        fill_halo_regions!(data.(not_reduced_fields),
+                           boundary_conditions.(not_reduced_fields),
                            default_indices(3),
-                           map(instantiated_location, not_reduced_fields),
+                           instantiated_location.(not_reduced_fields),
                            grid, args...; kwargs...)
     end
 

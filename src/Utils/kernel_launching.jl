@@ -148,10 +148,12 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 @inline function interior_work_layout(grid, workdims::Symbol, location)
     valdims = Val(workdims)
     Nx, Ny, Nz = size(grid)
+    LX, LY, LZ = location
+    TX, TY, TZ = topology(grid)
 
     # just an example for :xyz
-    ℓx, ℓy, ℓz = map(instantiate, location)
-    tx, ty, tz = map(instantiate, topology(grid))
+    ℓx, ℓy, ℓz = LX(), LY(), LZ()
+    tx, ty, tz = TX(), TY(), TZ()
 
     # Offsets
     ox = periphery_offset(ℓx, tx, Nx)

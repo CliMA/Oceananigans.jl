@@ -33,7 +33,7 @@ end
 
 # Special recursion rules for `Tuple` and `Field` types
 extract_field_time_series(t::AbstractOperation) = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
-extract_field_time_series(t::Union{Tuple, NamedTuple}) = map(extract_field_time_series, t)
+extract_field_time_series(t::Union{Tuple, NamedTuple}) = Tuple(extract_field_time_series(p) for p in t)
 
 const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
 const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}

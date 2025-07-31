@@ -24,7 +24,7 @@ function update_lagrangian_particle_properties!(particles, model, Δt)
     for (name, field) in pairs(particles.tracked_fields)
         compute!(field)
         particle_property = getproperty(particles.properties, name)
-        ℓx, ℓy, ℓz = map(instantiate, location(field))
+        ℓx, ℓy, ℓz = instantiated_location(field)
 
         update_field_property_kernel! = update_property!(device(arch), workgroup, worksize)
 

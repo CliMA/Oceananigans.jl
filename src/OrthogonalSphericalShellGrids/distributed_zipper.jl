@@ -108,9 +108,9 @@ function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:D
     recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
     north_bc = field.boundary_conditions.north
-    instantiated_location = map(instantiate, location(field))
+    loc = instantiated_location(field)
 
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location)
+    switch_north_halos!(field, north_bc, field.grid, loc)
 
     return nothing
 end

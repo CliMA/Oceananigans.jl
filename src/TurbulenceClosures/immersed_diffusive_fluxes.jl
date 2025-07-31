@@ -195,9 +195,13 @@ end
     q̃ᴮ = bottom_ib_flux(i, j, k, ibg, bc.bottom, loc, c, closure, K, id, clock, fields)
     q̃ᵀ =    top_ib_flux(i, j, k, ibg, bc.top,    loc, c, closure, K, id, clock, fields)
 
-    iᵂ, jˢ, kᴮ = map(index_left,  (i, j, k), loc) # Broadcast instead of map causes inference failure
-    iᴱ, jᴺ, kᵀ = map(index_right, (i, j, k), loc)
     LX, LY, LZ = loc
+    iᵂ = index_left(i, LX)
+    jˢ = index_left(j, LY)
+    kᴮ = index_left(k, LZ) # Broadcast instead of map causes inference failure
+    iᴱ = index_right(i, LX)
+    jᴺ = index_right(j, LY)
+    kᵀ = index_right(k, LZ)
 
     # Impose i) immersed fluxes if we're on an immersed boundary or ii) zero otherwise.
     qᵂ = conditional_flux(iᵂ, j, k, ibg, flip(LX), LY, LZ, q̃ᵂ, zero(eltype(ibg)))

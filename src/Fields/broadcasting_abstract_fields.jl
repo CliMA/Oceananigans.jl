@@ -48,6 +48,7 @@ end
 @inline offset_index(::Colon) = 0
 @inline offset_index(range::UnitRange) = range[1] - 1
 @inline offset_index(range::Base.OneTo) = offset_index(UnitRange(range))
+@inline offset_index(a::Tuple{<:Any, <:Any, <:Any}) = @inbounds (offset_index(a[1]), offset_index(a[2]), offset_index(a[3]))
 
 @kernel function _broadcast_kernel!(dest, bc)
     i, j, k = @index(Global, NTuple)
@@ -73,7 +74,7 @@ end
     arch = architecture(dest)
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
-    param = KernelParameters(size(dest), map(offset_index, dest.indices))
+    param = KernelParameters(size(dest), offset_index(dest.indices))
     launch!(arch, grid, param, _broadcast_kernel!, dest, bc′)
 
     return dest

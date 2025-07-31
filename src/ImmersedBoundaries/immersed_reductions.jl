@@ -2,7 +2,7 @@ using Oceananigans.Fields: AbstractField, OneField, indices
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
-import Oceananigans.Fields: condition_operand, conditional_length
+import Oceananigans.Fields: condition_operand, conditional_length, instantiated_location
 
 # ImmersedReducedFields
 const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
@@ -70,7 +70,7 @@ end
                                     grid::ImmersedBoundaryGrid,
                                     co::ConditionalOperation) #, args...)
 
-    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    ℓx, ℓy, ℓz = instantiated_location(co)
     immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed
 end
@@ -80,13 +80,13 @@ end
                                     grid::ImmersedBoundaryGrid,
                                     co::ConditionalOperation, args...)
 
-    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    ℓx, ℓy, ℓz = instantiated_location(co)
     immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
 end
 
 @inline function evaluate_condition(condition::NotImmersed, i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg, co::ConditionalOperation, args...)
-    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    ℓx, ℓy, ℓz = instantiated_location(co)
     immersed = immersed_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz) .| inactive_node(i, j, k, ibg, ℓx, ℓy, ℓz)
     return Base.broadcast(!, immersed) .& evaluate_condition(condition.func, i, j, k, ibg, args...)
 end
@@ -146,7 +146,7 @@ end
 @inline function immersed_column(field::IRF)
     grid         = field.grid
     reduced_dims = reduced_dimensions(field)
-    LX, LY, LZ   = map(center_to_nothing, location(field))
+    LX, LY, LZ   = center_to_nothing(location(field))
     one_field    = ConditionalOperation{LX, LY, LZ}(OneField(Int), identity, grid, NotImmersed(), zero(grid))
     return sum(one_field, dims=reduced_dims)
 end
@@ -154,6 +154,10 @@ end
 @inline center_to_nothing(::Type{Face})    = Face
 @inline center_to_nothing(::Type{Center})  = Center
 @inline center_to_nothing(::Type{Nothing}) = Center
+
+@inline center_to_nothing(loc::Tuple{<:Any, <:Any, <:Any}) = @inbounds (center_to_nothing(loc[1]),
+                                                                        center_to_nothing(loc[2]),
+                                                                        center_to_nothing(loc[3]))
 
 @inline function evaluate_condition(nic::NotImmersedColumn, i, j, k,
                                     grid::ImmersedBoundaryGrid,
