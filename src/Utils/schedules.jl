@@ -297,5 +297,9 @@ Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")
 
+const StatefulSchedules = Union{TimeInterval, SpecifiedTimes, ConsecutiveIterations}
+
 materialize_schedule(s) = s
-materialize_schedule(ti::TimeInterval) = deepcopy(ti) # required to reuse a pre-defined TimeInterval
+materialize_schedule(ss::StatefulSchedules) = deepcopy(ss) # required to reuse a pre-defined schedule with a state
+materialize_schedule(or::OrSchedule) = OrSchedule(Tuple(materialize_schedule(s) for s in or.schedules))
+materialize_schedule(and::AndSchedule) = AndSchedule(Tuple(materialize_schedule(s) for s in and.schedules))
