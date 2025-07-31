@@ -109,6 +109,8 @@ end
 @inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 @inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
+@inline Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = permutedims(Base.stack(collect(Base.stack(collect(getspacing(k, grid.z.Δᵃᵃᶜ) for _ in j)) for _ in i)), (3,2,1))
+
 @inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 #####
@@ -156,7 +158,9 @@ end
 @inline Δλᶠᵃᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δλᶠᵃᵃ
 
 @inline Δφᵃᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δφᵃᶜᵃ[j]
+@inline Δφᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δφᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δφᵃᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δφᵃᶠᵃ[j]
+@inline Δφᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δφᵃᶠᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δφᵃᶜᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δφᵃᶜᵃ
 @inline Δφᵃᶠᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δφᵃᶠᵃ
 
@@ -165,9 +169,15 @@ end
 ### Precomputed metrics
 
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
+@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGY) = Base.stack(collect(Base.stack(collect(Base.stack(collect(Δyᵃᶜᵃ(1, 1, 1, grid) for _ in i)) for _ in j)) for _ in k))
+
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
+@inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGY) = Base.stack(collect(Base.stack(collect(Base.stack(collect(Δyᵃᶠᵃ(1, 1, 1, grid) for _ in i)) for _ in j)) for _ in k))
+
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶠᶜᵃ[j]
+#@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶜᶠᵃ[j]
+#@inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶠᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 
 ### On-the-fly metrics
 
@@ -189,9 +199,17 @@ end
 ### Pre computed metrics
 
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶜᶠᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶠᶜᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶠᶠᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶜᶜᵃ(i, j, 1, grid) for _ in k))
+
 
 ### XRegularLLG with pre computed metrics
 
