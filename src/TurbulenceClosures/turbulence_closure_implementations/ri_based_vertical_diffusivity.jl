@@ -59,7 +59,7 @@ struct FivePointHorizontalFilter end
     RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                FT = Float64;]
                                Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                               horizontal_Ri_filter = nothing,
+                               horizontal_Ri_filter = FivePointHorizontalFilter(),
                                minimum_entrainment_buoyancy_gradient = 1e-10,
                                maximum_diffusivity = Inf,
                                maximum_viscosity = Inf,
@@ -125,7 +125,7 @@ Keyword arguments
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Oceananigans.defaults.FloatType;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                                    horizontal_Ri_filter = nothing,
+                                    horizontal_Ri_filter = FivePointHorizontalFilter(),
                                     minimum_entrainment_buoyancy_gradient = 1e-10,
                                     maximum_diffusivity = Inf,
                                     maximum_viscosity = Inf,
