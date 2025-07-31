@@ -28,7 +28,7 @@ end
 #####
 
 """
-    struct TimeInterval <: AbstractSchedule
+    mutable struct TimeInterval{FT} <: AbstractSchedule
 
 Callable `TimeInterval` schedule for periodic output or diagnostic evaluation
 according to `model.clock.time`.
@@ -163,7 +163,7 @@ end
 """
     SpecifiedTimes(times)
 
-Return a callable `TimeInterval` that "actuates" (schedules output or callback execution)
+Return a `schedule::SpecifiedTimes` that "actuates" (schedules output or callback execution)
 whenever the model's clock equals the specified values in `times`. For example,
 
 * `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
