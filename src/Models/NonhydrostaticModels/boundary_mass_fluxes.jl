@@ -149,8 +149,8 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
         total_area_matching_scheme_boundaries += boundary_fluxes.top_area
     end
 
-    boundary_fluxes = merge(boundary_fluxes, (; left_matching_scheme_boundaries,
-                                                right_matching_scheme_boundaries,
+    boundary_fluxes = merge(boundary_fluxes, (; left_matching_scheme_boundaries = Tuple(left_matching_scheme_boundaries),
+                                                right_matching_scheme_boundaries = Tuple(right_matching_scheme_boundaries),
                                                 total_area_matching_scheme_boundaries))
 
     if length(left_matching_scheme_boundaries) == 0 && length(right_matching_scheme_boundaries) == 0
