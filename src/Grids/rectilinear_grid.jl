@@ -48,13 +48,13 @@ const XZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVertic
 const YZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Any, <:Number}
 const XYZRegularRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Number}
 
-regular_dimensions(::XRegularRG)  = tuple(1)
-regular_dimensions(::YRegularRG)  = tuple(2)
-regular_dimensions(::ZRegularRG)  = tuple(3)
-regular_dimensions(::XYRegularRG) = (1, 2)
-regular_dimensions(::XZRegularRG) = (1, 3)
-regular_dimensions(::YZRegularRG) = (2, 3)
-regular_dimensions(::XYZRegularRG)   = (1, 2, 3)
+regular_dimensions(::XRegularRG)   = tuple(1)
+regular_dimensions(::YRegularRG)   = tuple(2)
+regular_dimensions(::ZRegularRG)   = tuple(3)
+regular_dimensions(::XYRegularRG)  = (1, 2)
+regular_dimensions(::XZRegularRG)  = (1, 3)
+regular_dimensions(::YZRegularRG)  = (2, 3)
+regular_dimensions(::XYZRegularRG) = (1, 2, 3)
 
 stretched_dimensions(::YZRegularRG) = tuple(1)
 stretched_dimensions(::XZRegularRG) = tuple(2)
