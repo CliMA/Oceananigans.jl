@@ -28,7 +28,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
     Δxᶠᶜᵃ :: DXFC
     Δxᶜᶠᵃ :: DXCF
     Δxᶠᶠᵃ :: DXFF
-    Δyᶠᶜᵃ :: DYFC
+    Δyᶠᶜᵃ :: DYFC # Problem
     Δyᶜᶠᵃ :: DYCF
     Azᶜᶜᵃ :: DXCC
     Azᶠᶜᵃ :: DXFC

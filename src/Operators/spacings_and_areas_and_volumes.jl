@@ -109,7 +109,7 @@ end
 @inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 @inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
-@inline Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = permutedims(Base.stack(collect(Base.stack(collect(getspacing(k, grid.z.Δᵃᵃᶜ) for _ in j)) for _ in i)), (3,2,1))
+@inline Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = permutedims(Base.stack(collect(Base.stack(collect(getspacing(k, grid.z.Δᵃᵃᶜ) for _ in j)) for _ in i)), (3,2,1)) # one part
 
 @inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
@@ -169,7 +169,7 @@ end
 ### Precomputed metrics
 
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
-@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGY) = Base.stack(collect(Base.stack(collect(Base.stack(collect(Δyᵃᶜᵃ(1, 1, 1, grid) for _ in i)) for _ in j)) for _ in k))
+@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGY) = Base.stack(collect(Base.stack(collect(Base.stack(collect(Δyᵃᶜᵃ(1, 1, 1, grid) for _ in i)) for _ in j)) for _ in k)) # other part
 
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
 @inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGY) = Base.stack(collect(Base.stack(collect(Base.stack(collect(Δyᵃᶠᵃ(1, 1, 1, grid) for _ in i)) for _ in j)) for _ in k))
@@ -324,7 +324,9 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
 
         @eval begin
             @inline $Axˡˡˡ(i, j, k, grid) = $Δyˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
+            @inline $Axˡˡˡ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = $Δyˡˡˡ(i, j, k, grid) .* $Δzˡˡˡ(i, j, k, grid)
             @inline $Ayˡˡˡ(i, j, k, grid) = $Δxˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
+            @inline $Ayˡˡˡ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = $Δxˡˡˡ(i, j, k, grid) .* $Δzˡˡˡ(i, j, k, grid)
 
             # For the moment the horizontal area is independent of `z`. This might change if
             # we want to implement deep atmospheres where Az is a function of z
