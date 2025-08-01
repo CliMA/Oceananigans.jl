@@ -67,6 +67,18 @@ function enforce_zero_mean_gauge!(x, r)
     launch!(arch, grid, :xyz, subtract_and_mask!, r, grid, mean_r)
 end
 
+@kernel function cell_volume!(V, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds V[i, j, k] = Vᶜᶜᶜ(i, j, k, grid)
+end
+
+function minimum_cell_volume(grid)
+    V = CenterField(grid)
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, cell_volume!, V, grid)
+    return minimum(V)
+end
+
 struct DefaultPreconditioner end
 
 """
@@ -88,8 +100,8 @@ is a common choice to remove this degree of freedom.
 """
 function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
-                                        reltol = sqrt(eps(grid)),
-                                        abstol = sqrt(eps(grid)),
+                                        reltol = sqrt(eps(grid)) * minimum_cell_volume(grid),
+                                        abstol = sqrt(eps(grid)) * minimum_cell_volume(grid),
                                         enforce_gauge_condition! = enforce_zero_mean_gauge!,
                                         kw...)
 
@@ -120,22 +132,22 @@ end
 
 @kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k] / Vᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 function compute_preconditioner_rhs!(solver::FFTBasedPoissonSolver, rhs)
@@ -157,7 +169,7 @@ end
 
 const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
 
-function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
+@inline function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner, preconditioner.storage)
     return p
