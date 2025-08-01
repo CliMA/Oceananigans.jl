@@ -23,7 +23,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     closure = nothing,
                                     tracers = :b,
                                 timestepper = :SplitRungeKutta3,
-                        vertical_coordinate = Oceananigans.Models.ZStar(),
+                        vertical_coordinate = ZStarCoordinate(grid),
                                free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
 
 g = model.free_surface.gravitational_acceleration

@@ -3,10 +3,11 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStar, ZCoordinate
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
+using Adapt
 
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
@@ -24,7 +25,18 @@ using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashfort
 abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
-struct ZStar end
+
+struct ZStarCoordinate{CC}
+    storage :: CC # Storage space used in different ways by different timestepping schemes.
+end
+
+ZStarCoordinate(grid::AbstractGrid) = ZStarCoordinate(Field{Center, Center, Nothing}(grid))
+
+Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
+Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
+
+Adapt.adapt_structure(to, coord::ZStarCoordinate) = ZStarCoordinate(Adapt.adapt(to, coord.storage))
+on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -60,7 +72,7 @@ include("hydrostatic_free_surface_field_tuples.jl")
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 using .SplitExplicitFreeSurfaces
 
-# ZStar implementation
+# ZStarCoordinate implementation
 include("z_star_vertical_spacing.jl")
 
 # Hydrostatic model implementation

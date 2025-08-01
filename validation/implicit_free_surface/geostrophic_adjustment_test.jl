@@ -1,7 +1,7 @@
 using Revise
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface, ZStar
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface, ZStarCoordinate
 using Oceananigans.MultiRegion
 using Statistics
 using Printf
@@ -17,7 +17,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
                                           coriolis=FPlane(f = 1e-4),
                                           timestepper,
                                           free_surface,
-                                          vertical_coordinate=ZStar())
+                                          vertical_coordinate=ZStarCoordinate(grid))
 
     gaussian(x, L) = exp(-x^2 / 2L^2)
 
