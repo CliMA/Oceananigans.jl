@@ -255,15 +255,15 @@ end
 
 @kernel function multiply_by_spacing!(b, ::XDirection, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds b[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
+    @inbounds b[i, j, k] *= Δxᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function multiply_by_spacing!(b, ::YDirection, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds b[i, j, k] *= Δyᵃᶜᵃ(i, j, k, grid)
+    @inbounds b[i, j, k] *= Δyᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function multiply_by_spacing!(b, ::ZDirection, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds b[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
+    @inbounds b[i, j, k] *= Δzᶜᶜᶜ(i, j, k, grid)
 end
