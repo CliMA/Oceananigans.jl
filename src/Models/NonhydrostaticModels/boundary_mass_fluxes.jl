@@ -153,7 +153,11 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
                                                 right_matching_scheme_boundaries,
                                                 total_area_matching_scheme_boundaries))
 
-    return boundary_fluxes
+    if length(left_matching_scheme_boundaries) == 0 && length(right_matching_scheme_boundaries) == 0
+        return nothing
+    else
+        return boundary_fluxes
+    end
 end
 
 update_open_boundary_mass_fluxes!(model) = map(compute!, model.boundary_mass_fluxes)
@@ -209,17 +213,19 @@ correct_right_boundary_mass_flux!(v, bc::IOBC, ::Val{:north}, A⁻¹_∮udA) = n
 correct_right_boundary_mass_flux!(w, bc::IOBC, ::Val{:top},   A⁻¹_∮udA) = nothing
 correct_right_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
 
+enforce_open_boundary_mass_conservation!(model, ::Nothing) = nothing
+
 """
-enforce_open_boundary_mass_conservation!(model::NonhydrostaticModel)
+    enforce_open_boundary_mass_conservation!(model, boundary_mass_fluxes)
 
 Correct boundary mass fluxes for perturbation advection boundary conditions to ensure
 zero net mass flux through each boundary.
 """
-function enforce_open_boundary_mass_conservation!(model)
+function enforce_open_boundary_mass_conservation!(model, boundary_mass_fluxes)
     u, v, w = model.velocities
 
     ∮udA = open_boundary_mass_inflow(model)
-    A = model.boundary_mass_fluxes.total_area_matching_scheme_boundaries
+    A = boundary_mass_fluxes.total_area_matching_scheme_boundaries
 
     A⁻¹_∮udA = ∮udA / A
 
