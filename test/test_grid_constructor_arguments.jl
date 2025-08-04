@@ -1,5 +1,4 @@
-using Oceananigans
-using Test
+include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: constructor_arguments, halo_size
 
@@ -30,12 +29,15 @@ function test_regular_rectilinear_grid_reconstruction(arch, FT)
     # Test coordinate spacings (for regular grids these should be constant numbers)
     @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
     @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
+    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
 
     # Test face and center coordinates match
     @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
     @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
     @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
     @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
+    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
 
     return nothing
 end
@@ -70,12 +72,15 @@ function test_stretched_rectilinear_grid_reconstruction(arch, FT)
     # Test coordinate spacings (for regular grids these should be constant numbers)
     @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
     @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
+    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
 
     # Test coordinate arrays match (these should be arrays for stretched grids)
     @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
     @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
     @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
     @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
+    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
 
     # Test vertical coordinate
     @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
@@ -108,12 +113,15 @@ function test_flat_dimension_grid_reconstruction(arch, FT)
     # Test coordinate spacings (for regular grids these should be constant numbers)
     @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
     @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
+    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
 
     # Test coordinates match
     @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
     @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
     @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
     @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
+    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
 
     return nothing
 end
@@ -147,12 +155,15 @@ function test_different_topologies_grid_reconstruction(arch, FT)
         # Test coordinate spacings (for regular grids these should be constant numbers)
         @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
         @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
+        @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
 
         # Test coordinates match
         @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
         @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
         @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
         @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
+        @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+        @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
     end
 
     return nothing
@@ -214,12 +225,15 @@ function test_latitude_longitude_grid_reconstruction(arch, FT)
     @test reconstructed_grid.Δφᵃᶠᵃ == original_grid.Δφᵃᶠᵃ
     @test reconstructed_grid.Δxᶠᶠᵃ == original_grid.Δxᶠᶠᵃ
     @test reconstructed_grid.Δyᶜᶠᵃ == original_grid.Δyᶜᶠᵃ
+    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
 
     # Test coordinate arrays match
     @test all(reconstructed_grid.λᶠᵃᵃ == original_grid.λᶠᵃᵃ)
     @test all(reconstructed_grid.λᶜᵃᵃ == original_grid.λᶜᵃᵃ)
     @test all(reconstructed_grid.φᵃᶠᵃ == original_grid.φᵃᶠᵃ)
     @test all(reconstructed_grid.φᵃᶜᵃ == original_grid.φᵃᶜᵃ)
+    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
 
     return nothing
 end
@@ -230,22 +244,6 @@ end
 
 @testset "Grid constructor_arguments and reconstruction tests" begin
     @info "Testing grid constructor_arguments function and reconstruction..."
-
-    # Define test architectures and float types
-    archs = [CPU()]
-    
-    # Add GPU if available
-    if @isdefined(GPU)
-        try
-            if CUDA.functional()
-                push!(archs, GPU())
-            end
-        catch
-            # CUDA not functional, continue with CPU only
-        end
-    end
-
-    float_types = [Float32, Float64]
 
     for arch in archs, FT in float_types
         @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
