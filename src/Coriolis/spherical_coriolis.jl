@@ -11,7 +11,7 @@ using Oceananigans.ImmersedBoundaries
 
 A parameter object for constant rotation around a vertical axis on the sphere.
 """
-struct SphericalCoriolis{S, FT} <: AbstractRotation
+struct SphericalCoriolis{H, S, FT} <: AbstractRotation
     rotation_rate :: FT
     scheme :: S
 end
