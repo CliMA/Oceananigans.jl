@@ -5,7 +5,7 @@ using Oceananigans: fields
     SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by [Lan2022](@citet).
+time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
 """
 struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     γ² :: FT
@@ -26,11 +26,12 @@ end
                                 G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified via optional `kwargs`.
+The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified
+via optional `kwargs`.
 
-The scheme is described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge-Kutta timestepper
-steps forward the state `Uⁿ` by `Δt` via 3 substeps. A barotropic velocity correction step is applied
-after at each substep.
+The scheme is described by [Lan et al. (2022)](@cite Lan2022). In a nutshell,
+the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
+A barotropic velocity correction step is applied after at each substep.
 
 The state `U` after each substep `m` is
 
@@ -47,9 +48,10 @@ The state at the first substep is taken to be the one that corresponds to the ``
 
 References
 ==========
-Lan, R., Ju, L., Wanh, Z., Gunzburger, M., and Jones, P. (2022). "High-order multirate explicit
-    time-stepping schemes for the baroclinic-barotropic split dynamics in primitive equations",
-    Journal of Computational Physics 457, 111050.
+
+Lan, R., Ju, L., Wanh, Z., Gunzburger, M., and Jones, P. (2022). High-order multirate explicit
+    time-stepping schemes for the baroclinic-barotropic split dynamics in primitive equations.
+    Journal of Computational Physics, 457, 111050.
 """
 function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
