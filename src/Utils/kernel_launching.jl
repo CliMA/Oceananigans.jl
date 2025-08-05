@@ -213,8 +213,8 @@ end
 end
 
 @inline function work_layout(active_cells_map::AbstractArray)
-    length_map = length(active_cells_map)
-    workgroup = min(length_map, 256)
+    length_map = tuple(length(active_cells_map))
+    workgroup = tuple(min(length_map, 256))
     return StaticSize{workgroup}(), StaticSize{length_map}()
 end
 
