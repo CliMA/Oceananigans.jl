@@ -204,43 +204,30 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
     workgroup = heuristic_workgroup(Wx, Wy, Wz)
     worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
-    return StaticSize(workgroup), StaticSize(worksize)
+    return StaticSize{workgroup}(), StaticSize{worksize}()
 end
 
-function work_layout(grid, (wx, wy)::NTuple{2, Int}, reduced_dimensions) 
-    workgroup = heuristic_workgroup(wx, wy)
-    return StaticSize(workgroup), StaticSize((wx, wy))
-end
-
-# Heuristic to infer the size of the worksize
-function work_layout(grid, (wx, wy, wz)::NTuple{3, Int}, reduced_dimensions)
-    workgroup = heuristic_workgroup(wx, wy, wz)
-    return StaticSize(workgroup), StaticSize((wx, wy, wz))
-end
-
-# Heuristic to infer the size of the worksize
-function work_layout(grid, (wx, wy, wz, wt)::NTuple{4, Int}, reduced_dimensions) 
-    workgroup = heuristic_workgroup(wx, wy, wz, wt)
-    return StaticSize(workgroup), StaticSize((wx, wy, wz, wt))
-end
-
-function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
+@inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
     workgroup = heuristic_workgroup(worksize...)
-    return StaticSize(workgroup), StaticSize(worksize)
+    return StaticSize{workgroup}(), StaticSize{worksize}()
 end
 
-function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
+@inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
     workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
     range = contiguousrange(worksize, offsets)
-    return  workgroup, OffsetStaticSize(range)
+    return  workgroup, OffsetStaticSize{range}()
+end
+
+@inline function work_layout(active_cells_map::AbstractArray)
+    length_map = length(active_cells_map)
+    workgroup = min(length_map, 256)
+    return StaticSize{workgroup}(), StaticSize{length_map}()
 end
 
 """
-    configure_kernel(arch, grid, workspec, kernel!;
-                     exclude_periphery = false,
+    configure_kernel(arch, grid, workspec, kernel!, [active_cells_map=nothing, exclude_periphery=nothing];
                      reduced_dimensions = (),
-                     location = nothing,
-                     active_cells_map = nothing)
+                     location = nothing)
 
 Configure `kernel!` to launch over the `dims` of `grid` on
 the architecture `arch`.
@@ -252,17 +239,17 @@ Arguments
 - `grid`: The grid on which the kernel will be executed.
 - `workspec`: The workspec that defines the work distribution.
 - `kernel!`: The kernel function to be executed.
+- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
+                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
+- `exclude_periphery`: A Val{boolean} indicating whether to exclude the periphery, used only for interior kernels.
 
 Keyword Arguments
 =================
 
-- `exclude_periphery`: A boolean indicating whether to exclude the periphery. Default is `false`.
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
-- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
-                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
-@inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::Nothing=nothing, exclude_periphery=nothing;
+@inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::Nothing=nothing, args...; 
                                   reduced_dimensions = (),
                                   location = nothing)
 
@@ -280,13 +267,14 @@ end
 
     workgroup, worksize = interior_work_layout(grid, workspec, location)
     dev  = Architectures.device(arch)
-    loop = kernel!(dev, StaticSize(workgroup), StaticSize(worksize))
+    loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::OffsetStaticSize
 end
 
 # When there are KernelParameters, we use the `offset_work_layout` function
-@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, active_cells_map::Nothing=nothing, exclude_periphery=nothing; reduced_dimensions = (), kwargs...)
+@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, active_cells_map::Nothing=nothing, args...; 
+                                  reduced_dimensions = (), kwargs...)
 
     workgroup, worksize = offset_work_layout(grid, workspec, reduced_dimensions)
     dev  = Architectures.device(arch)
@@ -296,10 +284,9 @@ end
 end
 
 # When there is an active_cells_map, we use the `mapped_kernel` function
-@inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::AbstractArray, exclude_periphery=nothing; kwargs...)
+@inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::AbstractArray, args...; kwargs...)
 
-    workgroup = StaticSize(Tuple(min(length(active_cells_map), 256)))
-    worksize = StaticSize(Tuple(length(active_cells_map)))
+    workgroup, worksize = work_layout(active_cells_map)
 
     dev  = Architectures.device(arch)
     loop = kernel!(dev, workgroup, worksize)
