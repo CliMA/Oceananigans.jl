@@ -249,7 +249,7 @@ Keyword Arguments
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
 """
-@inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::Nothing=nothing, args...; 
+@inline function configure_kernel(arch, grid, workspec, kernel!, ::Nothing, args...; 
                                   reduced_dimensions = (),
                                   location = nothing)
 
@@ -284,7 +284,7 @@ end
 end
 
 # When there are KernelParameters, we use the `offset_work_layout` function
-@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, active_cells_map::Nothing=nothing, args...; 
+@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, ::Nothing, args...; 
                                   reduced_dimensions = (), kwargs...)
 
     workgroup, worksize = offset_work_layout(grid, workspec, reduced_dimensions)
