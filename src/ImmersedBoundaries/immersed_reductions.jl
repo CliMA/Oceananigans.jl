@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, OneField, indices
+using Oceananigans.Fields: AbstractField, OneField, indices, instantiated_location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
