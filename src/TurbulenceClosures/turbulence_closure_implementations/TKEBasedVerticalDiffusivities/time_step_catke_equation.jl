@@ -9,6 +9,42 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydr
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
+@inline function closure_specific_forcing(i, j, k, grid, timestepper, closures::Tuple, diffusivities, val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
+
+    Gⁿ = 0
+    for n in eachindex(closures)
+        @show "trying different closures?"
+        @inbounds Gⁿ += closure_specific_forcing(i, j, k, grid, timestepper, closures[n], diffusivities[n], val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
+    end
+
+    return Gⁿ
+end
+
+@inline closure_specific_forcing(i, j, k, grid, timesper, closure, diffusivities, args...) = zero(grid)
+@inline closure_specific_forcing(i, j, k, grid, timesper, closure::FlavorOfCATKE, diffusivities, args...) = zero(grid)
+
+# For RK3 we do not substep, we just add the closure forcing to the e equation and perform the stepping exaclty 
+# as the other variables
+@inline function closure_specific_forcing(i, j, k, grid, ::SplitRungeKutta3TimeStepper, closure::FlavorOfCATKE, diffusivities, ::Val{:e}, e, clock, velocities, tracers, buoyancy, model_fields)
+
+    closure_ij = getclosure(i, j, closure)
+    wb  = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, model_fields, buoyancy, diffusivities)
+    wb⁺ = max(zero(grid), wb)
+
+    u  = velocities.u
+    v  = velocities.v
+    κu = diffusivities.κu
+
+    # TODO: correctly handle closure / diffusivity tuples
+    # TODO: the shear_production is actually a slow term so we _could_ precompute.
+    P = shear_production(i, j, k, grid, κu, u, u, v, v)
+    ω = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+    ϵ = dissipation(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+    fast_Gⁿe = P + wb⁺ - ϵ 
+
+    return fast_Gⁿe
+end
+
 function time_step_catke_equation!(model)
 
     if model.timestepper isa Oceananigans.TimeSteppers.SplitRungeKutta3TimeStepper

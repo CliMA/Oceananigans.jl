@@ -92,6 +92,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      model.tracers,
                      model.diffusivity_fields,
                      model.auxiliary_fields,
+                     model.timestepper,
                      model.clock,
                      c_forcing)
 

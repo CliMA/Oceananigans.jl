@@ -1,3 +1,5 @@
+using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -251,18 +253,20 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
+    model_fields = fields(model)
+
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            diffusivities.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+            diffusivities.Jᵇ, grid, closure, model.timestepper, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     launch!(arch, grid, parameters,
             compute_CATKE_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy)
+            diffusivities, grid, closure, model.timestepper, velocities, tracers, buoyancy, model_fields)
 
     return nothing
 end
 
-@kernel function compute_average_surface_buoyancy_flux!(Jᵇ, grid, closure, velocities, tracers,
+@kernel function compute_average_surface_buoyancy_flux!(Jᵇ, grid, closure, timestepper, velocities, tracers,
                                                         buoyancy, top_tracer_bcs, clock, Δt)
     i, j = @index(Global, NTuple)
     k = grid.Nz
@@ -282,7 +286,65 @@ end
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
 end
 
-@kernel function compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
+@kernel function compute_average_surface_buoyancy_flux!(Jᵇ, grid, closure, ::SplitRungeKutta3TimeStepper, velocities, tracers,
+                                                        buoyancy, top_tracer_bcs, clock, Δt)
+    i, j = @index(Global, NTuple)
+    k = grid.Nz
+
+    closure = getclosure(i, j, closure)
+
+    model_fields = merge(velocities, tracers)
+    Jᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, model_fields)
+    ℓᴰ  = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ)
+    Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    
+    @inbounds Jᵇ[i, j, 1] = max(Jᵇᵋ, Jᵇ[i, j, 1], Jᵇ★) # selects fastest (dominant) time-scale
+end
+
+@kernel function compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, ::SplitRungeKutta3TimeStepper, velocities, tracers, buoyancy, model_fields)
+    i, j, k = @index(Global, NTuple)
+
+    # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
+    closure_ij = getclosure(i, j, closure)
+    Jᵇ = diffusivities.Jᵇ
+
+    # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though it
+    # is recomputed in time_step_turbulent_kinetic_energy.
+    κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+    κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+
+    κu★ = mask_diffusivity(i, j, k, grid, κu★)
+    κc★ = mask_diffusivity(i, j, k, grid, κc★)
+    κe★ = mask_diffusivity(i, j, k, grid, κe★)
+
+    # Compute additional diagonal component of the linear TKE operator
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, model_fields, buoyancy, diffusivities)
+    ω  = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+    wb⁻ = min(zero(grid), wb)
+
+    e  = tracers.e
+    eⁱʲᵏ = @inbounds e[i, j, k]
+    eᵐⁱⁿ = closure_ij.minimum_tke
+    wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
+
+    on_bottom = bottommost_active_node(i, j, k, grid, c, c, c)
+    active = !inactive_cell(i, j, k, grid)
+    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
+    e⁺ = clip(eⁱʲᵏ)
+    w★ = sqrt(e⁺)
+    div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
+
+    @inbounds begin
+        diffusivities.κu[i, j, k] = κu★
+        diffusivities.κc[i, j, k] = κc★
+        diffusivities.κe[i, j, k] = κe★
+        diffusivities.Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
+    end
+end
+
+@kernel function compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, timestepper, velocities, tracers, buoyancy, model_fields)
     i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
