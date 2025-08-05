@@ -212,16 +212,16 @@ end
     return StaticSize{workgroup}(), StaticSize{worksize}()
 end
 
-@inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
-    workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
-    range = contiguousrange(worksize, offsets)
-    return  workgroup, OffsetStaticSize{range}()
-end
-
 @inline function work_layout(active_cells_map::AbstractArray)
     length_map = length(active_cells_map)
     workgroup = min(length_map, 256)
     return StaticSize{workgroup}(), StaticSize{length_map}()
+end
+
+@inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
+    workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
+    range = contiguousrange(worksize, offsets)
+    return  workgroup, OffsetStaticSize{range}()
 end
 
 """
