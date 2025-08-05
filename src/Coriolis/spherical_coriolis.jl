@@ -14,12 +14,14 @@ A parameter object for constant rotation around a vertical axis on the sphere.
 struct SphericalCoriolis{H, S, FT} <: AbstractRotation
     rotation_rate :: FT
     scheme :: S
+    HydrostaticCoriolis :: H
 end
 
 """
     SphericalCoriolis([FT=Float64;]
                                  rotation_rate = Ω_Earth,
                                  scheme = EnstrophyConserving())
+                                 HydrostaticCoriolis = 
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 
@@ -28,7 +30,9 @@ Keyword arguments
 
 - `rotation_rate`: Sphere's rotation rate; default: [`Ω_Earth`](@ref).
 - `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `EnstrophyConserving()` (default).
+- 'HydrostaticCoriolis`: `HydrostaticCoriolis` or `NonhydrostaticCoriolis`.
 """
+
 function SphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
                                       rotation_rate = Ω_Earth,
                                       scheme :: S = EnstrophyConserving(FT)) where S
@@ -44,72 +48,30 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, face, face)
 @inline φᶠᶠᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶠᶠᵃ(i, j, k, grid.underlying_grid)
 
-@inline fᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) =
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
 @inline f̃ᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_cosd(φᶠᶠᵃ(i, j, k, grid))
 
-# Check if the model is Nonhydrostatic
-# I know that want to do something different but this is place holder until
-# I have a better idea as to what people would like to do here.
+@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::NonhydrostaticSphericalCoriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑzᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
+@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis, u) = zero(grid)
 
-nonhydrostatic = false #true
+@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 
-if nonhydrostatic
-    @inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
-    @inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis, v) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
+@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::NonhydrostaticSphericalCoriolis, v) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
+@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis, v) = zero(grid)
 
-    @inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+@inline x_f_cross_U(i, j, k, grid, U) =
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)  
+                + ℑzᵃᶜᵃ(i, j, k, grid, f̃_ℑx_wᶠᶠᵃ, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 
-    @inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑzᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
+@inline y_f_cross_U(i, j, k, grid, U) =
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
-    @inline x_f_cross_U(i, j, k, grid, U) =
-        @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)  
-                  + ℑzᵃᶜᵃ(i, j, k, grid, f̃_ℑx_wᶠᶠᵃ, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 
-    @inline y_f_cross_U(i, j, k, grid, U) =
-        @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-
-    @inline z_f_cross_U(i, j, k, grid, U) =
-        @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶠᵃ, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
-else
-    @inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = zero(grid)
-
-    #####
-    ##### Active Point Enstrophy-conserving scheme
-    #####
-
-    # It might happen that a cell is active but all the neighbouring staggered nodes are inactive,
-    # (an example is a 1-cell large channel)
-    # In that case the Coriolis force is equal to zero
-
-    const CoriolisEnstrophyConserving = SphericalCoriolis{<:EnstrophyConserving}
-
-    @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-        @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                    active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-
-    @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-        @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                    active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-
-    #####
-    ##### Energy-conserving scheme
-    #####
-
-    const CoriolisEnergyConserving = SphericalCoriolis{<:EnergyConserving}
-
-    @inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
-    @inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
-
-    @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnergyConserving, U) =
-        @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-
-    @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnergyConserving, U) =
-        @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-
-end
-
+@inline z_f_cross_U(i, j, k, grid, U) =
+    @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶠᵃ, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
 
 #####
 ##### Show

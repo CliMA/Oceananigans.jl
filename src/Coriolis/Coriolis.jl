@@ -25,8 +25,15 @@ Abstract supertype for parameters related to background rotation rates.
 """
 abstract type AbstractRotation end
 
+abstract type HydrostaticCoriolis end
+
+abstract type NonhydrostaticCoriolis end
+
 const face = Face()
 const center = Center()
+
+const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{HydrostaticCoriolis, S, FT}
+const NonhydrostaticSphericalCoriolis{S, FT} =  SphericalCoriolis{NonhydrostaticCoriolis, S, FT}
 
 include("no_rotation.jl")
 include("f_plane.jl")
