@@ -66,11 +66,11 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = p_kerne
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    # Compute diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
-
     # Maybe compute buoyancy gradients
     compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
+
+    # Compute diffusivities
+    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
 
     # Update hydrostatic pressure
     update_hydrostatic_pressure!(model; parameters = p_parameters)

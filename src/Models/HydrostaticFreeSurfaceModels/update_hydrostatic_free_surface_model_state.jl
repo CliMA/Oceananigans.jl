@@ -84,11 +84,11 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     P    = model.pressure.pHY′
     arch = architecture(grid)
 
-    # Update the vertical velocity to comply with the barotropic correction step
-    update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
-
     # Maybe compute buoyancy gradients
     compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
+
+    # Update the vertical velocity to comply with the barotropic correction step
+    update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
 
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)
