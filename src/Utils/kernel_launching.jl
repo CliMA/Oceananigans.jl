@@ -260,6 +260,17 @@ Keyword Arguments
     return loop, worksize::StaticSize
 end
 
+@inline function configure_kernel(arch, grid, workspec, kernel!; 
+                                  active_cells_map = nothing,
+                                  exclude_periphery = false,
+                                  reduced_dimensions = (),
+                                  location = nothing)
+
+    return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
+                                  reduced_dimensions = (),
+                                  location = nothing)
+end
+
 # With a "true" exclude_periphery, we use the `interior_work_layout` function
 @inline function configure_kernel(arch, grid, workspec::Symbol, kernel!, ::Nothing, ::Val{true};
                                   reduced_dimensions = (),
