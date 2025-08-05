@@ -96,7 +96,7 @@ contiguousrange(range::NTuple{3, Int}, offset::NTuple{3, Int}) = @inbounds (1+of
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 
-# Heuristic for a 3-tuple of integers (our case)
+# Heuristic for a 3-tuple of integers (our main case)
 flatten_reduced_dimensions(worksize::Tuple{Int, Int, Int}, dims) = 
     (1 ∈ dims ? 1 : worksize[1],
      2 ∈ dims ? 1 : worksize[2],
