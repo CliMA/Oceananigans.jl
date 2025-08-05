@@ -213,9 +213,9 @@ end
 end
 
 @inline function work_layout(active_cells_map::AbstractArray)
-    length_map = tuple(length(active_cells_map))
+    length_map = length(active_cells_map)
     workgroup = tuple(min(length_map, 256))
-    return StaticSize{workgroup}(), StaticSize{length_map}()
+    return StaticSize{workgroup}(), StaticSize{tuple(length_map)}()
 end
 
 @inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
