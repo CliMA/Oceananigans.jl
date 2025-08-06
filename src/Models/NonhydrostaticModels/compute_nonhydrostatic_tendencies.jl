@@ -176,9 +176,9 @@ function compute_flux_bc_tendencies!(model::NonhydrostaticModel)
     model_fields = fields(model)
     prognostic_fields = merge(model.velocities, model.tracers)
 
-    foreach(i -> apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
-    foreach(i -> apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
-    foreach(i -> apply_z_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
+    foreach(i -> compute_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
+    foreach(i -> compute_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
+    foreach(i -> compute_z_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
 
     return nothing
 end

@@ -92,12 +92,12 @@ end
 ##### Applying flux boundary conditions
 #####
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_flux_bcs!
 
-function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, c::AbstractCubedSphereField, arch, args...)
+function compute_flux_bcs!(Gcⁿ::AbstractCubedSphereField, c::AbstractCubedSphereField, arch, args...)
 
     for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
-        apply_flux_bcs!(Gcⁿ_face, get_face(c, face_index), arch,
+        compute_flux_bcs!(Gcⁿ_face, get_face(c, face_index), arch,
                         Tuple(get_face(a, face_index) for a in args)...)
     end
 

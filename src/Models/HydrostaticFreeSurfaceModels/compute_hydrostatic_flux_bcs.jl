@@ -4,10 +4,10 @@ import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 ##### Boundary contributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, c, arch, args)
-    apply_x_bcs!(Gcⁿ, c, arch, args...)
-    apply_y_bcs!(Gcⁿ, c, arch, args...)
-    apply_z_bcs!(Gcⁿ, c, arch, args...)
+function compute_flux_bcs!(Gcⁿ, c, arch, args)
+    compute_x_bcs!(Gcⁿ, c, arch, args...)
+    compute_y_bcs!(Gcⁿ, c, arch, args...)
+    compute_z_bcs!(Gcⁿ, c, arch, args...)
     return nothing
 end
 
@@ -24,12 +24,12 @@ function compute_flux_bc_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
+        compute_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
     end
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args)
+        compute_flux_bcs!(Gⁿ[i], tracers[i], arch, args)
     end
 
     return nothing
