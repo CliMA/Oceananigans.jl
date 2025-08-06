@@ -9,7 +9,6 @@ using Oceananigans.OutputWriters: write_grid_reconstruction_data!, de_netcdfify_
 #####
 
 function test_regular_rectilinear_grid_reconstruction(arch, FT)
-    # Test regular rectilinear grid reconstruction
     original_grid = RectilinearGrid(arch, FT,
                                     size = (4, 6, 8),
                                     extent = (2π, 3π, 4π),
@@ -45,7 +44,6 @@ function test_regular_rectilinear_grid_reconstruction(arch, FT)
 end
 
 function test_stretched_rectilinear_grid_reconstruction(arch, FT)
-    # Test grid with stretched coordinates
     N = 8
     x_faces = collect(range(0, 1, length=N+1))
     y_faces = [0.0, 0.1, 0.3, 0.6, 1.0]  # Irregular spacing
@@ -92,7 +90,6 @@ function test_stretched_rectilinear_grid_reconstruction(arch, FT)
 end
 
 function test_flat_dimension_grid_reconstruction(arch, FT)
-    # Test grid with flat dimensions
     original_grid = RectilinearGrid(arch, FT,
                                     size = (8, 16),
                                     x = (0, 2),
@@ -129,7 +126,6 @@ function test_flat_dimension_grid_reconstruction(arch, FT)
 end
 
 function test_different_topologies_grid_reconstruction(arch, FT)
-    # Test various topology combinations
     topologies = [(Periodic, Periodic, Bounded),
                   (Bounded, Bounded, Bounded),
                   (Periodic, Bounded, Bounded),
@@ -234,6 +230,51 @@ function test_latitude_longitude_grid_reconstruction(arch, FT)
     @test all(reconstructed_grid.λᶜᵃᵃ == original_grid.λᶜᵃᵃ)
     @test all(reconstructed_grid.φᵃᶠᵃ == original_grid.φᵃᶠᵃ)
     @test all(reconstructed_grid.φᵃᶜᵃ == original_grid.φᵃᶜᵃ)
+    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
+
+    return nothing
+end
+
+function test_immersed_grid_reconstruction(arch, FT; immersed_boundary_type=GridFittedBottom)
+    original_underlying_grid = RectilinearGrid(arch, FT,
+                                               size = (8, 8, 8),
+                                               extent = (1, 1, 1),
+                                               topology = (Bounded, Bounded, Bounded),
+                                               halo = (1, 1, 1))
+
+    original_ib = immersed_boundary_type(-1/2)
+    original_grid = ImmersedBoundaryGrid(original_underlying_grid, original_ib)
+
+    # Get constructor arguments
+    args, kwargs = constructor_arguments(original_grid)
+    Main.@infiltrate
+
+    # Reconstruct the grid
+    reconstructed_ib = immersed_boundary_type(args[:bottom_height], args[:immersed_condition])
+    reconstructed_underlying_grid = RectilinearGrid(args[:architecture], args[:number_type]; kwargs...)
+    reconstructed_grid = ImmersedBoundaryGrid(reconstructed_underlying_grid, reconstructed_ib)
+
+    # TODO add proper tests for immersed boundary grid equalities
+    # Test that key properties match
+    @test reconstructed_grid == original_grid # tests grid type, topology and face locations
+    @test size(reconstructed_grid) == size(original_grid)
+    @test halo_size(reconstructed_grid) == halo_size(original_grid)
+    @test eltype(reconstructed_grid) == eltype(original_grid)
+
+    # Test that the underlying grid properties match
+    @test reconstructed_grid.underlying_grid == original_grid.underlying_grid
+
+    # Test coordinate spacings
+    @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
+    @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
+    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
+
+    # Test face and center coordinates match
+    @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
+    @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
+    @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
+    @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
     @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
     @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
 
