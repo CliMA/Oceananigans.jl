@@ -256,75 +256,31 @@ function test_netcdf_grid_reconstruction(arch, FT)
     filename = "test_grid_reconstruction_$(typeof(arch))_$(FT).nc"
     isfile(filename) && rm(filename)
 
-    model = NonhydrostaticModel(grid = original_grid,
-                                closure = nothing,
-                                buoyancy = nothing,
-                                coriolis = nothing,
-                                tracers = nothing,
-                                velocities = nothing,
-                                )
+    # model = NonhydrostaticModel(grid = original_grid,
+    #                             closure = nothing,
+    #                             buoyancy = nothing,
+    #                             coriolis = nothing,
+    #                             tracers = nothing,
+    #                             velocities = nothing,
+    #                             )
 
-    output_writer = NetCDFWriter(model, model.velocities;
-                                 filename = "filename",
-                                 schedule = IterationInterval(1))
- 
+    # output_writer = NetCDFWriter(model, model.velocities;
+    #                              filename = "filename",
+    #                              schedule = IterationInterval(1))
 
     # Create NetCDF dataset and write grid reconstruction metadata
     ds = NCDataset(filename, "c")
     write_grid_reconstruction_metadata!(ds, original_grid, (:, :, :), Array{Float32}, 0)
     close(ds)
 
-    Main.@infiltrate
     # Read back the grid reconstruction metadata
     ds = NCDataset(filename, "r")
-    grid_group = ds["grid_reconstruction"]
-    
-    # Extract grid attributes
-    grid_attrs = Dict{String, Any}()
-    for (attr_name, attr_value) in grid_group.attrib
-        grid_attrs[attr_name] = attr_value
-    end
-
-    # Extract coordinate arrays if they exist
-    grid_dims = Dict{String, Array}()
-    if haskey(grid_group, "x_f")
-        grid_dims["x_f"] = Array(grid_group["x_f"][:])
-    end
-    if haskey(grid_group, "y_f")
-        grid_dims["y_f"] = Array(grid_group["y_f"][:])
-    end
-    if haskey(grid_group, "z_f")
-        grid_dims["z_f"] = Array(grid_group["z_f"][:])
-    end
-
+    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> copy
+    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> copy
     close(ds)
 
-    # Reconstruct the grid using the saved metadata
-    # We need to convert the saved metadata back to constructor arguments
-    reconstructed_args = copy(args)
-    reconstructed_kwargs = copy(kwargs)
-
-    # Update kwargs based on saved metadata
-    if haskey(grid_attrs, "x_spacing") && grid_attrs["x_spacing"] == "regular"
-        # For regular spacing, we can reconstruct from extent
-        if haskey(grid_attrs, "Nx") && haskey(grid_attrs, "Ny") && haskey(grid_attrs, "Nz")
-            reconstructed_kwargs[:size] = (grid_attrs["Nx"], grid_attrs["Ny"], grid_attrs["Nz"])
-        end
-    elseif haskey(grid_attrs, "x_spacing") && grid_attrs["x_spacing"] == "irregular"
-        # For irregular spacing, we need the coordinate arrays
-        if haskey(grid_dims, "x_f")
-            reconstructed_kwargs[:x] = grid_dims["x_f"]
-        end
-        if haskey(grid_dims, "y_f")
-            reconstructed_kwargs[:y] = grid_dims["y_f"]
-        end
-        if haskey(grid_dims, "z_f")
-            reconstructed_kwargs[:z] = grid_dims["z_f"]
-        end
-    end
-
     # Reconstruct the grid
-    reconstructed_grid = RectilinearGrid(reconstructed_args[:architecture], reconstructed_args[:number_type]; reconstructed_kwargs...)
+    reconstructed_grid = RectilinearGrid(grid_reconstruction_args...; grid_reconstruction_kwargs...)
 
     # Test that key properties match
     @test reconstructed_grid == original_grid # tests grid type, topology and face locations

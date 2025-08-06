@@ -4,6 +4,7 @@ using NCDatasets
 
 using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
+using OrderedCollections: OrderedDict
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: KernelFunctionOperation
@@ -708,21 +709,24 @@ function grid_attributes(ibg::ImmersedBoundaryGrid)
     return attrs, dims
 end
 
-netcdfify_dict_values(dict) = Dict(key => netcdfify(value) for (key, value) in dict)
+netcdfify_dict_values(dict) = OrderedDict(key => netcdfify(value) for (key, value) in dict)
 netcdfify(x::Number) = x
+netcdfify(x::NTuple{N, Number}) where N = collect(x)
 netcdfify(x) = string(x)
 
 function write_grid_reconstruction_metadata!(ds, grid, indices, array_type, deflatelevel)
     grid_attrs, grid_dims = grid_attributes(grid)
 
-    ds_grid = defGroup(ds, "grid_attributes"; attrib = sort(collect(pairs(grid_attrs)), by=first))
+    sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first)
+    ds_grid = defGroup(ds, "grid_attributes"; attrib = sorted_grid_attrs)
     for (dim_name, dim_array) in grid_dims
         defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
     end
 
     args, kwargs = constructor_arguments(grid)
-    args_and_kwargs = netcdfify_dict_values(merge(args, kwargs))
-    ds_grid = defGroup(ds, "grid_reconstruction"; attrib = sort(collect(pairs(args_and_kwargs)), by=first))
+    args, kwargs = map(netcdfify_dict_values, (args, kwargs))
+    defGroup(ds, "grid_reconstruction_args"; attrib = args)
+    defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
 
     return ds
 end
