@@ -152,7 +152,6 @@ to be specified.
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 @inline function interior_work_layout(grid, workdims::Symbol, (LX, LY, LZ))
-    valdims = Val(workdims)
     Nx, Ny, Nz = size(grid)
 
     # just an example for :xyz
@@ -201,7 +200,6 @@ to be specified.
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 @inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
-    valdims = Val(workdims)
     Nx, Ny, Nz = size(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
     workgroup = heuristic_workgroup(Wx, Wy, Wz)
