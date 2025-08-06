@@ -12,7 +12,11 @@ import Oceananigans.TimeSteppers: ab2_step!
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
     grid = model.grid
-    apply_model_flux_bcs!(model, grid)
+
+    @apply_regionally begin
+        apply_model_flux_bcs!(model, grid)
+        multiply_by_grid_scaling!(model.timestepper.Gⁿ, model.tracers, model.grid)
+    end
 
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
