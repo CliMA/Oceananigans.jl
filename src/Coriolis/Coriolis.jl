@@ -32,9 +32,6 @@ abstract type NonhydrostaticCoriolis end
 const face = Face()
 const center = Center()
 
-const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{HydrostaticCoriolis, S, FT}
-const NonhydrostaticSphericalCoriolis{S, FT} =  SphericalCoriolis{NonhydrostaticCoriolis, S, FT}
-
 include("no_rotation.jl")
 include("f_plane.jl")
 include("constant_cartesian_coriolis.jl")

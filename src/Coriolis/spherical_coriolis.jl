@@ -6,6 +6,9 @@ using Oceananigans.Fields
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.ImmersedBoundaries
 
+const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{HydrostaticCoriolis, S, FT}
+const NonhydrostaticSphericalCoriolis{S, FT} =  SphericalCoriolis{NonhydrostaticCoriolis, S, FT}
+
 """
     struct SphericalCoriolis{S, FT} <: AbstractRotation
 
