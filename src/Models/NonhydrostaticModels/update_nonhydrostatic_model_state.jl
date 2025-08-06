@@ -7,6 +7,7 @@ using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_hydrostatic_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: p_kernel_parameters, w_kernel_parameters, compute_w_from_continuity!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -63,12 +64,12 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p
     closure = model.closure
     diffusivity = model.diffusivity_fields
 
-    w_parameters = tuple(w_kernel_parameters(model.grid))
-
-    for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
-        if !isnothing(model.free_surface)
-            compute_w_from_continuity!(model; parameters = wpar)
-        end
+    # w_parameters = tuple(w_kernel_parameters(model.grid))
+ 
+    for (ppar, κpar) in zip(p_parameters, κ_parameters)                                # for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
+        # if !isnothing(model.free_surface)
+        #     compute_w_from_continuity!(model; parameters = wpar)
+        # end
 
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model; parameters = ppar)

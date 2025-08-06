@@ -7,12 +7,8 @@ using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
-<<<<<<< HEAD
-using Oceananigans.Fields: replace_horizontal_vector_halos!
-=======
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: tupled_fill_halo_regions!
->>>>>>> upstream/main
 
 import Oceananigans.Models: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!

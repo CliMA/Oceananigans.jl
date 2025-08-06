@@ -16,13 +16,8 @@ using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
 using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size, topology
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-<<<<<<< HEAD
-using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
-using Oceananigans.Utils: Time, KernelParameters
-=======
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
-using Oceananigans.Utils: Time
->>>>>>> upstream/main
+using Oceananigans.Utils: Time, KernelParameters
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture

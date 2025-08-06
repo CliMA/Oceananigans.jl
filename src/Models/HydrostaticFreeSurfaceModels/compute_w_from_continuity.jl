@@ -16,19 +16,6 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 compute_w_from_continuity!(model; kwargs...) =
     compute_w_from_continuity!(model.velocities, model.free_surface, model.architecture, model.grid; kwargs...)
 
-<<<<<<< HEAD
-compute_w_from_continuity!(velocities, free_surface, arch, grid; parameters = w_kernel_parameters(grid)) = 
-    launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, free_surface, grid)
-
-@kernel function _compute_w_from_continuity!(U, free_surface, grid)
-    i, j = @index(Global, NTuple)
-
-    Δt = 0.01
-
-    @inbounds U.w[i, j, 1] = 0
-    for k in 2:grid.Nz+1
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᶜᶜᶜ(i, j, k-1, grid) * div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v)
-=======
 compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_parameters(grid)) =
     launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
@@ -68,7 +55,6 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
 
         wᵏ -= (δ + w̃)
         @inbounds w[i, j, k] = wᵏ
->>>>>>> upstream/main
     end
     free_surface.η[i,j] += Δt*U.w[i,j,grid.Nz+1]
 end

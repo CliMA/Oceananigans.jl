@@ -216,6 +216,7 @@ end
     solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
 end
 
+using Printf
 @inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)

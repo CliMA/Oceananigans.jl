@@ -33,13 +33,8 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 # but for now we use it only for hydrostatic pressure anomalies for now.
 struct DefaultHydrostaticPressureAnomaly end
 
-<<<<<<< HEAD
-mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
-                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS}
-=======
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS, A}
->>>>>>> upstream/main
+                                   V, S, K, BG, P, BGC, AF, FS} <: AbstractModel{TS, A}
 
     architecture :: A           # Computer `Architecture` on which `Model` is run
     grid :: G                   # Grid of physical points on which `Model` is solved

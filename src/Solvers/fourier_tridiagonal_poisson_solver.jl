@@ -20,48 +20,6 @@ end
 
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
 
-<<<<<<< HEAD
-@kernel function compute_main_diagonal!(D, grid, λy, λz, ::XDirection)
-    j, k = @index(Global, NTuple)
-    Nx = size(grid, 1)
-
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
-    for i in 2:Nx-1
-        @inbounds D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
-    end
-    @inbounds D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
-end 
-
-@kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
-    i, k = @index(Global, NTuple)
-    Ny = size(grid, 2)
-
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    @inbounds D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
-    for j in 2:Ny-1
-        @inbounds D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
-    end
-    @inbounds D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
-end
-
-@kernel function compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
-    g = 10
-    Δt = 0.01
-
-    i, j = @index(Global, NTuple)
-    Nz = size(grid, 3)
-
-    # Using a Robin boundary condition:
-    @inbounds D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j]) 
-    for k in 2:Nz-1
-        @inbounds D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
-    end
-    @inbounds D[i, j, Nz] = -(-1 / Δzᵃᵃᶠ(i, j, Nz, grid) *((-3 / (2*g*Δt^2) - 1 / Δzᵃᵃᶠ(i, j, Nz, grid))/(1 / Δzᵃᵃᶠ(i, j, Nz, grid) + 1 / (2*g*Δt^2)))) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j]) 
-end
-
-=======
->>>>>>> upstream/main
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
 stretched_direction(::XYRegularRG) = ZDirection()
@@ -220,14 +178,21 @@ end
 end
 
 @kernel function _compute_main_diagonal!(D, grid, λx, λy, ::HomogeneousZFormulation)
+    g = 10
+    Δt = 0.01
+
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
 
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds begin
         D[i, j, 1]  = -1 / Δzᵃᵃᶠ(i, j,  2, grid) - Δzᵃᵃᶜ(i, j,  1, grid) * (λx[i] + λy[j])
-        D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+        
+        # rigid lid
+        # D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 
+        # free surface (robin bc)
+        D[i, j, Nz] = -(-1 / Δzᵃᵃᶠ(i, j, Nz, grid) *((-3 / (2*g*Δt^2) - 1 / Δzᵃᵃᶠ(i, j, Nz, grid))/(1 / Δzᵃᵃᶠ(i, j, Nz, grid) + 1 / (2*g*Δt^2)))) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+        
         for k in 2:Nz-1
             D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
         end
@@ -272,7 +237,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
-    ϕ .= ϕ .- mean(ϕ)
+    # ϕ .= ϕ .- mean(ϕ)
 
     arch = architecture(solver)
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))

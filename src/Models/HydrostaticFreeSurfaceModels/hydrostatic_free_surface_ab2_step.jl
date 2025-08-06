@@ -18,6 +18,8 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
+    χ = model.timestepper.χ
+
     # Step locally velocity and tracers
     @apply_regionally begin
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
