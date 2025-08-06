@@ -1,4 +1,5 @@
 import Oceananigans.TimeSteppers: compute_tendencies!
+import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 
 using Oceananigans.Utils: launch!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
@@ -192,8 +193,14 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function compute_boundary_tendency_contributions!(Gⁿ, arch, solution, tracers, clock, model_fields)
-    prognostic_fields = merge(solution, tracers)
+function compute_flux_bc_tendencies!(model::ShallowWaterModel)
+    
+    Gⁿ    = model.timestepper.Gⁿ
+    arch  = model.architecture
+    clock = model.clock
+
+    model_fields = fields(model)
+    prognostic_fields = merge(model.solution, model.tracers)
 
     # Solution fields and tracer fields
     for i in 1:length(Gⁿ)
