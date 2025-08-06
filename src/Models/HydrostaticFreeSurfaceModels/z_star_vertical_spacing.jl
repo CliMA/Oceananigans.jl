@@ -203,20 +203,20 @@ end
 #####
 
 # fallback
-multiply_by_grid_scaling!(Gⁿ, tracers, grid) = nothing
+ scale_by_stretching_factor!!(Gⁿ, tracers, grid) = nothing
 
-function multiply_by_grid_scaling!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+function  scale_by_stretching_factor!!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
 
     # Multiply the Gⁿ tendencies by the grid scaling
     for i in propertynames(tracers)
         @inbounds G = Gⁿ[i]
-        launch!(architecture(grid), grid, :xyz, _multiply_by_grid_scaling!, G, grid)
+        launch!(architecture(grid), grid, :xyz, _ scale_by_stretching_factor!!, G, grid)
     end
 
     return nothing
 end
 
-@kernel function _multiply_by_grid_scaling!(G, grid)
+@kernel function _ scale_by_stretching_factor!!(G, grid)
     i, j, k = @index(Global, NTuple)
     @inbounds G[i, j, k] *= σⁿ(i, j, k, grid, Center(), Center(), Center())
 end

@@ -13,7 +13,7 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     compute_free_surface_tendency!(grid, model, free_surface)
 
     @apply_regionally begin
-        multiply_by_grid_scaling!(model.timestepper.Gⁿ, model.tracers, model.grid)
+         scale_by_stretching_factor!!(model.timestepper.Gⁿ, model.tracers, model.grid)
         rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt, γⁿ, ζⁿ)
         rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
         rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
