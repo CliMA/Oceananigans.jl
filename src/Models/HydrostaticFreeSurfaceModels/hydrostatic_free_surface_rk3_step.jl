@@ -10,6 +10,8 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     timestepper  = model.timestepper
     free_surface = model.free_surface
 
+    apply_model_flux_bcs!(model, grid)
+
     compute_free_surface_tendency!(grid, model, free_surface)
 
     @apply_regionally begin

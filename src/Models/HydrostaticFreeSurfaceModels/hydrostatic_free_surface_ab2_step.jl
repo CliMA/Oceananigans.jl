@@ -12,6 +12,8 @@ import Oceananigans.TimeSteppers: ab2_step!
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
     grid = model.grid
+    apply_model_flux_bcs!(model, grid)
+
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
