@@ -7,11 +7,13 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
+using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
-using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
+using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
+                          AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
                           parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
                           constructor_arguments
@@ -39,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_metadata!
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_metadata!, de_netcdfify_dict_values
 
 const c = Center()
 const f = Face()
@@ -709,10 +711,16 @@ function grid_attributes(ibg::ImmersedBoundaryGrid)
     return attrs, dims
 end
 
-netcdfify_dict_values(dict) = OrderedDict(key => netcdfify(value) for (key, value) in dict)
+# Using OrderedDict to preserve order of keys. Important for positional arguments.
+netcdfify_dict_values(dict) = OrderedDict{Symbol, Any}(key => netcdfify(value) for (key, value) in dict)
 netcdfify(x::Number) = x
 netcdfify(x::NTuple{N, Number}) where N = collect(x)
 netcdfify(x) = string(x)
+
+de_netcdfify_dict_values(dict) = OrderedDict(Symbol(key) => de_netcdfify(value) for (key, value) in dict)
+de_netcdfify(x::Number) = x
+de_netcdfify(x::Array) = Tuple(x)
+de_netcdfify(x::String) = @eval $(Meta.parse(x))
 
 function write_grid_reconstruction_metadata!(ds, grid, indices, array_type, deflatelevel)
     grid_attrs, grid_dims = grid_attributes(grid)

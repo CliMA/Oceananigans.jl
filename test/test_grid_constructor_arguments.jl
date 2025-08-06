@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: constructor_arguments, halo_size
 using NCDatasets
-using Oceananigans.OutputWriters: write_grid_reconstruction_metadata!
+using Oceananigans.OutputWriters: write_grid_reconstruction_metadata!, de_netcdfify_dict_values
 
 #####
 ##### Grid reconstruction tests using constructor_arguments
@@ -240,33 +240,38 @@ function test_latitude_longitude_grid_reconstruction(arch, FT)
     return nothing
 end
 
-function test_netcdf_grid_reconstruction(arch, FT)
+function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false)
     # Test grid reconstruction via NetCDF file I/O
-    original_grid = RectilinearGrid(arch, FT,
-                                    size = (4, 6, 8),
-                                    extent = (2π, 3π, 4π),
-                                    topology = (Periodic, Bounded, Bounded),
-                                    halo = (2, 3, 2))
+    if stretched_grid
+        N = 8
+        x_faces = collect(range(0, 1, length=N+1))
+        y_faces = [0.0, 0.1, 0.3, 0.6, 1.0]  # Irregular spacing
+        z_func(k) = -1.0 + (k-1)/N  # Function-based coordinate
+
+        original_grid = RectilinearGrid(arch, FT,
+                                      size = (N, 4, N),
+                                      x = x_faces,
+                                      y = y_faces,
+                                      z = z_func,
+                                      topology = (Bounded, Bounded, Bounded),
+                                      halo = (1, 1, 1))
+
+        filename = "test_stretched_grid_reconstruction_$(typeof(arch))_$(FT).nc"
+    else
+        original_grid = RectilinearGrid(arch, FT,
+                                      size = (4, 6, 8),
+                                      extent = (2π, 3π, 4π),
+                                      topology = (Periodic, Bounded, Bounded),
+                                      halo = (2, 3, 2))
+
+        filename = "test_grid_reconstruction_$(typeof(arch))_$(FT).nc"
+    end
 
     # Get constructor arguments
     args, kwargs = constructor_arguments(original_grid)
 
     # Create a temporary NetCDF file to save grid reconstruction metadata
-    
-    filename = "test_grid_reconstruction_$(typeof(arch))_$(FT).nc"
     isfile(filename) && rm(filename)
-
-    # model = NonhydrostaticModel(grid = original_grid,
-    #                             closure = nothing,
-    #                             buoyancy = nothing,
-    #                             coriolis = nothing,
-    #                             tracers = nothing,
-    #                             velocities = nothing,
-    #                             )
-
-    # output_writer = NetCDFWriter(model, model.velocities;
-    #                              filename = "filename",
-    #                              schedule = IterationInterval(1))
 
     # Create NetCDF dataset and write grid reconstruction metadata
     ds = NCDataset(filename, "c")
@@ -275,12 +280,16 @@ function test_netcdf_grid_reconstruction(arch, FT)
 
     # Read back the grid reconstruction metadata
     ds = NCDataset(filename, "r")
-    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> copy
-    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> copy
+    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> de_netcdfify_dict_values
+    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> de_netcdfify_dict_values
     close(ds)
 
+    # Verify that the values in both the original and read-from-file dictionaries match
+    @test grid_reconstruction_kwargs == kwargs
+    @test grid_reconstruction_args == args
+
     # Reconstruct the grid
-    reconstructed_grid = RectilinearGrid(grid_reconstruction_args...; grid_reconstruction_kwargs...)
+    reconstructed_grid = RectilinearGrid(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
 
     # Test that key properties match
     @test reconstructed_grid == original_grid # tests grid type, topology and face locations
@@ -288,7 +297,7 @@ function test_netcdf_grid_reconstruction(arch, FT)
     @test halo_size(reconstructed_grid) == halo_size(original_grid)
     @test eltype(reconstructed_grid) == eltype(original_grid)
 
-    # Test coordinate spacings (for regular grids these should be constant numbers)
+    # Test coordinate spacings
     @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
     @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
     @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
@@ -298,113 +307,6 @@ function test_netcdf_grid_reconstruction(arch, FT)
     @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
     @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
     @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
-    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
-    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
-
-    # Clean up
-    rm(filename)
-
-    return nothing
-end
-
-function test_netcdf_stretched_grid_reconstruction(arch, FT)
-    # Test stretched grid reconstruction via NetCDF file I/O
-    N = 8
-    x_faces = collect(range(0, 1, length=N+1))
-    y_faces = [0.0, 0.1, 0.3, 0.6, 1.0]  # Irregular spacing
-    z_func(k) = -1.0 + (k-1)/N  # Function-based coordinate
-
-    original_grid = RectilinearGrid(arch, FT,
-                                    size = (N, 4, N),
-                                    x = x_faces,
-                                    y = y_faces,
-                                    z = z_func,
-                                    topology = (Bounded, Bounded, Bounded),
-                                    halo = (1, 1, 1))
-
-    # Get constructor arguments
-    args, kwargs = constructor_arguments(original_grid)
-
-    # Create a temporary NetCDF file to save grid reconstruction metadata
-    filename = "test_stretched_grid_reconstruction_$(typeof(arch))_$(FT).nc"
-    isfile(filename) && rm(filename)
-
-    # Create NetCDF dataset and write grid reconstruction metadata
-    ds = NCDataset(filename, "c")
-    write_grid_reconstruction_metadata!(ds, original_grid, (:, :, :), Array{Float32}, 0)
-    close(ds)
-
-    # Read back the grid reconstruction metadata
-    ds = NCDataset(filename, "r")
-    grid_group = ds["grid_reconstruction"]
-    
-    # Extract grid attributes
-    grid_attrs = Dict{String, Any}()
-    for (attr_name, attr_value) in grid_group.attrib
-        grid_attrs[attr_name] = attr_value
-    end
-
-    # Extract coordinate arrays if they exist
-    grid_dims = Dict{String, Array}()
-    if haskey(grid_group, "x_f")
-        grid_dims["x_f"] = Array(grid_group["x_f"][:])
-    end
-    if haskey(grid_group, "y_f")
-        grid_dims["y_f"] = Array(grid_group["y_f"][:])
-    end
-    if haskey(grid_group, "z_f")
-        grid_dims["z_f"] = Array(grid_group["z_f"][:])
-    end
-
-    close(ds)
-
-    # Reconstruct the grid using the saved metadata
-    # We need to convert the saved metadata back to constructor arguments
-    reconstructed_args = copy(args)
-    reconstructed_kwargs = copy(kwargs)
-
-    # Update kwargs based on saved metadata
-    if haskey(grid_attrs, "x_spacing") && grid_attrs["x_spacing"] == "regular"
-        # For regular spacing, we can reconstruct from extent
-        if haskey(grid_attrs, "Nx") && haskey(grid_attrs, "Ny") && haskey(grid_attrs, "Nz")
-            reconstructed_kwargs[:size] = (grid_attrs["Nx"], grid_attrs["Ny"], grid_attrs["Nz"])
-        end
-    elseif haskey(grid_attrs, "x_spacing") && grid_attrs["x_spacing"] == "irregular"
-        # For irregular spacing, we need the coordinate arrays
-        if haskey(grid_dims, "x_f")
-            reconstructed_kwargs[:x] = grid_dims["x_f"]
-        end
-        if haskey(grid_dims, "y_f")
-            reconstructed_kwargs[:y] = grid_dims["y_f"]
-        end
-        if haskey(grid_dims, "z_f")
-            reconstructed_kwargs[:z] = grid_dims["z_f"]
-        end
-    end
-
-    # Reconstruct the grid
-    reconstructed_grid = RectilinearGrid(reconstructed_args[:architecture], reconstructed_args[:number_type]; reconstructed_kwargs...)
-
-    # Test that key properties match
-    @test reconstructed_grid == original_grid # tests grid type, topology and face locations
-    @test size(reconstructed_grid) == size(original_grid)
-    @test halo_size(reconstructed_grid) == halo_size(original_grid)
-    @test eltype(reconstructed_grid) == eltype(original_grid)
-
-    # Test coordinate spacings (for stretched grids these should be arrays)
-    @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
-    @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
-    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
-
-    # Test coordinate arrays match (these should be arrays for stretched grids)
-    @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
-    @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
-    @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
-    @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
-    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
-    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
-
-    # Test vertical coordinate
     @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
     @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
 
@@ -424,17 +326,18 @@ end
     for arch in archs, FT in float_types
         @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
-            
+
             test_regular_rectilinear_grid_reconstruction(arch, FT)
             test_stretched_rectilinear_grid_reconstruction(arch, FT)
             test_flat_dimension_grid_reconstruction(arch, FT)
             test_different_topologies_grid_reconstruction(arch, FT)
             test_grid_equality_after_reconstruction(arch, FT)
+            test_netcdf_grid_reconstruction(arch, FT)
+            test_netcdf_grid_reconstruction(arch, FT; stretched_grid=true)
         end
 
         @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
-            
             test_latitude_longitude_grid_reconstruction(arch, FT)
         end
     end
