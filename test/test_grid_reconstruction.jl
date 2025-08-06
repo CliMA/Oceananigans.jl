@@ -394,8 +394,14 @@ end
             test_flat_dimension_grid_reconstruction(arch, FT)
             test_different_topologies_grid_reconstruction(arch, FT)
             test_grid_equality_after_reconstruction(arch, FT)
+
             test_netcdf_rectilinear_grid_reconstruction(arch, FT)
             test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=true)
+        end
+
+        @testset "ImmersedBoundaryGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing ImmersedBoundaryGrid reconstruction [$FT, $(typeof(arch))]..."
+            test_immersed_grid_reconstruction(arch, FT)
         end
 
         @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
