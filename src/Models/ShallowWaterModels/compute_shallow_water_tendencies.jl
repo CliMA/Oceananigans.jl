@@ -44,15 +44,6 @@ function compute_tendencies!(model::ShallowWaterModel, callbacks)
                                              model.clock,
                                              model.formulation)
 
-    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
-    # boundaries of the domain
-    compute_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                             model.architecture,
-                                             model.solution,
-                                             model.tracers,
-                                             model.clock,
-                                             fields(model))
-
     [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
     return nothing
