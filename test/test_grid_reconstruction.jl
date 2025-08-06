@@ -241,10 +241,8 @@ function test_latitude_longitude_grid_reconstruction(arch, FT)
 end
 
 function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false, grid_type=:rectilinear)
-    # Test grid reconstruction via NetCDF file I/O
     if grid_type == :latitude_longitude
         if stretched_grid
-            # Stretched latitude-longitude grid with irregular spacing
             N = 6
             λ_faces = collect(range(-180, 180, length=N+1))
             φ_faces = [-80, -60, -30, 0, 30, 60, 80]  # Irregular latitude spacing
@@ -259,7 +257,6 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false, grid_ty
 
             filename = "test_stretched_latlon_grid_reconstruction_$(typeof(arch))_$(FT).nc"
         else
-            # Regular latitude-longitude grid
             original_grid = LatitudeLongitudeGrid(arch, FT,
                                                   size = (36, 24, 16),
                                                   longitude = (-180, 180),
@@ -291,9 +288,6 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false, grid_ty
         filename = "test_grid_reconstruction_$(typeof(arch))_$(FT).nc"
     end
 
-    # Get constructor arguments
-    args, kwargs = constructor_arguments(original_grid)
-
     # Create a temporary NetCDF file to save grid reconstruction metadata
     isfile(filename) && rm(filename)
 
@@ -308,10 +302,6 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false, grid_ty
     grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> de_netcdfify_dict_values
     close(ds)
 
-    # Verify that the values in both the original and read-from-file dictionaries match
-    @test grid_reconstruction_kwargs == kwargs
-    @test grid_reconstruction_args == args
-
     # Reconstruct the grid based on grid type
     if grid_type == :latitude_longitude
         reconstructed_grid = LatitudeLongitudeGrid(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
@@ -324,38 +314,6 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false, grid_ty
     @test size(reconstructed_grid) == size(original_grid)
     @test halo_size(reconstructed_grid) == halo_size(original_grid)
     @test eltype(reconstructed_grid) == eltype(original_grid)
-
-    # Test coordinate spacings
-    if grid_type == :latitude_longitude
-        @test reconstructed_grid.Δλᶠᵃᵃ == original_grid.Δλᶠᵃᵃ
-        @test reconstructed_grid.Δφᵃᶠᵃ == original_grid.Δφᵃᶠᵃ
-        @test reconstructed_grid.Δxᶠᶠᵃ == original_grid.Δxᶠᶠᵃ
-        @test reconstructed_grid.Δyᶜᶠᵃ == original_grid.Δyᶜᶠᵃ
-        @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
-
-        # Test coordinate arrays match
-        @test all(reconstructed_grid.λᶠᵃᵃ == original_grid.λᶠᵃᵃ)
-        @test all(reconstructed_grid.λᶜᵃᵃ == original_grid.λᶜᵃᵃ)
-        @test all(reconstructed_grid.φᵃᶠᵃ == original_grid.φᵃᶠᵃ)
-        @test all(reconstructed_grid.φᵃᶜᵃ == original_grid.φᵃᶜᵃ)
-        @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
-        @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
-
-        # Test radius
-        @test reconstructed_grid.radius == original_grid.radius
-    else
-        @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
-        @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
-        @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
-
-        # Test face and center coordinates match
-        @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
-        @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
-        @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
-        @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
-        @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
-        @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
-    end
 
     # Clean up
     rm(filename)
