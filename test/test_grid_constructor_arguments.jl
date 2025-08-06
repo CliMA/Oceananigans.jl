@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: constructor_arguments, halo_size
 using NCDatasets
-using Oceananigans.OutputWriters: write_grid_reconstruction_metadata!, de_netcdfify_dict_values
+using Oceananigans.OutputWriters: write_grid_reconstruction_data!, de_netcdfify_dict_values
 
 #####
 ##### Grid reconstruction tests using constructor_arguments
@@ -297,9 +297,9 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false, grid_ty
     # Create a temporary NetCDF file to save grid reconstruction metadata
     isfile(filename) && rm(filename)
 
-    # Create NetCDF dataset and write grid reconstruction metadata
+    # Create NetCDF dataset and write grid reconstruction data
     ds = NCDataset(filename, "c")
-    write_grid_reconstruction_metadata!(ds, original_grid)
+    write_grid_reconstruction_data!(ds, original_grid)
     close(ds)
 
     # Read back the grid reconstruction metadata
@@ -386,6 +386,8 @@ end
         @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
             test_latitude_longitude_grid_reconstruction(arch, FT)
+            test_netcdf_grid_reconstruction(arch, FT; grid_type=:latitude_longitude)
+            test_netcdf_grid_reconstruction(arch, FT; grid_type=:latitude_longitude, stretched_grid=true)
         end
     end
 end

@@ -41,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_metadata!, de_netcdfify_dict_values
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, de_netcdfify_dict_values
 
 const c = Center()
 const f = Face()
@@ -714,6 +714,7 @@ end
 # Using OrderedDict to preserve order of keys. Important for positional arguments.
 netcdfify_dict_values(dict) = OrderedDict{Symbol, Any}(key => netcdfify(value) for (key, value) in dict)
 netcdfify(x::Number) = x
+netcdfify(x::Bool) = string(x)
 netcdfify(x::NTuple{N, Number}) where N = collect(x)
 netcdfify(x) = string(x)
 
@@ -722,7 +723,7 @@ de_netcdfify(x::Number) = x
 de_netcdfify(x::Array) = Tuple(x)
 de_netcdfify(x::String) = @eval $(Meta.parse(x))
 
-function write_grid_reconstruction_metadata!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
+function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
     grid_attrs, grid_dims = grid_attributes(grid)
 
     sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first)
@@ -1144,7 +1145,7 @@ function initialize_nc_file(model,
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         # This metadata is to support `FieldTimeSeries`.
-        write_grid_reconstruction_metadata!(dataset, grid, indices, array_type, deflatelevel)
+        write_grid_reconstruction_data!(dataset, grid, indices, array_type, deflatelevel)
 
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?

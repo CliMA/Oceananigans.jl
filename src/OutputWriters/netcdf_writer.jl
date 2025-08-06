@@ -30,5 +30,5 @@ function NetCDFWriter(model, outputs; kw...)
     throw(MethodError(NetCDFWriter, (model, outputs)))
 end
 
-function write_grid_reconstruction_metadata! end
+function write_grid_reconstruction_data! end
 function de_netcdfify_dict_values end
