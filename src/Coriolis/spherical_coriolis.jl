@@ -6,9 +6,6 @@ using Oceananigans.Fields
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.ImmersedBoundaries
 
-const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{HydrostaticCoriolis, S, FT}
-const NonhydrostaticSphericalCoriolis{S, FT} =  SphericalCoriolis{NonhydrostaticCoriolis, S, FT}
-
 """
     struct SphericalCoriolis{S, FT} <: AbstractRotation
 
@@ -46,6 +43,10 @@ end
 Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
     SphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate),
                                  Adapt.adapt(to, coriolis.scheme))
+
+const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{HydrostaticCoriolis, S, FT}
+const NonhydrostaticSphericalCoriolis{S, FT} =  SphericalCoriolis{NonhydrostaticCoriolis, S, FT}
+
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, face)
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, face, face)
