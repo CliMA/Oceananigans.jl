@@ -97,6 +97,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
 
     model.clock.stage = 1
 
+    compute_flux_bc_tendencies!(model)
     split_rk3_substep!(model, Δt, nothing, nothing)
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)
@@ -108,6 +109,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
 
     model.clock.stage = 2
 
+    compute_flux_bc_tendencies!(model)
     split_rk3_substep!(model, Δt, γ², ζ²)
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)
@@ -119,6 +121,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
 
     model.clock.stage = 3
 
+    compute_flux_bc_tendencies!(model)
     split_rk3_substep!(model, Δt, γ³, ζ³)
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)

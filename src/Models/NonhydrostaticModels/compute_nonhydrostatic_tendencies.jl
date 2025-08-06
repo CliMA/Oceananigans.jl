@@ -7,6 +7,7 @@ using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
                                        linear_index_to_tuple
 
 import Oceananigans.TimeSteppers: compute_tendencies!
+import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 
 """
     compute_tendencies!(model::NonhydrostaticModel, callbacks)
@@ -34,15 +35,6 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
-
-    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
-    # boundaries of the domain
-    compute_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                             model.architecture,
-                                             model.velocities,
-                                             model.tracers,
-                                             model.clock,
-                                             fields(model))
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
@@ -175,13 +167,18 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function compute_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
-    fields = merge(velocities, tracers)
+function compute_flux_bc_tendencies!(model::NonhydrostaticModel)
+    
+    Gⁿ    = model.timestepper.Gⁿ
+    arch  = model.architecture
+    clock = model.clock
 
-    foreach(i -> apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-    foreach(i -> apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-    foreach(i -> apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+    model_fields = fields(model)
+    prognostic_fields = merge(model.velocities, model.tracers)
+
+    foreach(i -> apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
+    foreach(i -> apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
+    foreach(i -> apply_z_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
 
     return nothing
 end
-

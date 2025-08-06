@@ -1,3 +1,5 @@
+import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
+
 #####
 ##### Boundary contributions to hydrostatic free surface model
 #####
@@ -10,9 +12,10 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function apply_model_flux_bcs!(model, grid)
+function compute_flux_bc_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     Gⁿ         = model.timestepper.Gⁿ
+    grid       = model.grid
     arch       = architecture(grid)
     velocities = model.velocities
     tracers    = model.tracers
