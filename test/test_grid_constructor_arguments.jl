@@ -240,29 +240,53 @@ function test_latitude_longitude_grid_reconstruction(arch, FT)
     return nothing
 end
 
-function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false)
+function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false, grid_type=:rectilinear)
     # Test grid reconstruction via NetCDF file I/O
-    if stretched_grid
-        N = 8
-        x_faces = collect(range(0, 1, length=N+1))
-        y_faces = [0.0, 0.1, 0.3, 0.6, 1.0]  # Irregular spacing
-        z_func(k) = -1.0 + (k-1)/N  # Function-based coordinate
+    if grid_type == :latitude_longitude
+        if stretched_grid
+            # Stretched latitude-longitude grid with irregular spacing
+            N = 6
+            λ_faces = collect(range(-180, 180, length=N+1))
+            φ_faces = [-80, -60, -30, 0, 30, 60, 80]  # Irregular latitude spacing
 
+            original_grid = LatitudeLongitudeGrid(arch, FT,
+                                                  size = (N, N, N),
+                                                  longitude = λ_faces,
+                                                  latitude = φ_faces,
+                                                  z = k -> -1000 + (k-1)/N * 1000,
+                                                  topology = (Periodic, Bounded, Bounded),
+                                                  halo = (1, 1, 1))
+
+            filename = "test_stretched_latlon_grid_reconstruction_$(typeof(arch))_$(FT).nc"
+        else
+            # Regular latitude-longitude grid
+            original_grid = LatitudeLongitudeGrid(arch, FT,
+                                                  size = (36, 24, 16),
+                                                  longitude = (-180, 180),
+                                                  latitude = (-80, 80),
+                                                  z = (-1000, 0),
+                                                  topology = (Periodic, Bounded, Bounded),
+                                                  halo = (2, 2, 2))
+
+            filename = "test_latlon_grid_reconstruction_$(typeof(arch))_$(FT).nc"
+        end
+    elseif stretched_grid
+        N = 4
         original_grid = RectilinearGrid(arch, FT,
-                                      size = (N, 4, N),
-                                      x = x_faces,
-                                      y = y_faces,
-                                      z = z_func,
-                                      topology = (Bounded, Bounded, Bounded),
-                                      halo = (1, 1, 1))
+                                        size = (N, N, N),
+                                        x = collect(range(0, 1, length=N+1)),
+                                        y = [0, 0.1, 0.3, 0.6, 1],
+                                        z = k -> -1 + (k-1)/N,
+                                        topology = (Bounded, Bounded, Bounded),
+                                        halo = (1, 1, 1))
 
         filename = "test_stretched_grid_reconstruction_$(typeof(arch))_$(FT).nc"
     else
         original_grid = RectilinearGrid(arch, FT,
-                                      size = (4, 6, 8),
-                                      extent = (2π, 3π, 4π),
-                                      topology = (Periodic, Bounded, Bounded),
-                                      halo = (2, 3, 2))
+                                        size = (4, 6, 8),
+                                        extent = (2π, 3π, 4π),
+                                        topology = (Periodic, Bounded, Bounded),
+                                        halo = (2, 3, 2))
 
         filename = "test_grid_reconstruction_$(typeof(arch))_$(FT).nc"
     end
@@ -275,7 +299,7 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false)
 
     # Create NetCDF dataset and write grid reconstruction metadata
     ds = NCDataset(filename, "c")
-    write_grid_reconstruction_metadata!(ds, original_grid, (:, :, :), Array{Float32}, 0)
+    write_grid_reconstruction_metadata!(ds, original_grid)
     close(ds)
 
     # Read back the grid reconstruction metadata
@@ -288,8 +312,12 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false)
     @test grid_reconstruction_kwargs == kwargs
     @test grid_reconstruction_args == args
 
-    # Reconstruct the grid
-    reconstructed_grid = RectilinearGrid(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+    # Reconstruct the grid based on grid type
+    if grid_type == :latitude_longitude
+        reconstructed_grid = LatitudeLongitudeGrid(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+    else
+        reconstructed_grid = RectilinearGrid(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+    end
 
     # Test that key properties match
     @test reconstructed_grid == original_grid # tests grid type, topology and face locations
@@ -298,17 +326,36 @@ function test_netcdf_grid_reconstruction(arch, FT; stretched_grid=false)
     @test eltype(reconstructed_grid) == eltype(original_grid)
 
     # Test coordinate spacings
-    @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
-    @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
-    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
+    if grid_type == :latitude_longitude
+        @test reconstructed_grid.Δλᶠᵃᵃ == original_grid.Δλᶠᵃᵃ
+        @test reconstructed_grid.Δφᵃᶠᵃ == original_grid.Δφᵃᶠᵃ
+        @test reconstructed_grid.Δxᶠᶠᵃ == original_grid.Δxᶠᶠᵃ
+        @test reconstructed_grid.Δyᶜᶠᵃ == original_grid.Δyᶜᶠᵃ
+        @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
 
-    # Test face and center coordinates match
-    @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
-    @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
-    @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
-    @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
-    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
-    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
+        # Test coordinate arrays match
+        @test all(reconstructed_grid.λᶠᵃᵃ == original_grid.λᶠᵃᵃ)
+        @test all(reconstructed_grid.λᶜᵃᵃ == original_grid.λᶜᵃᵃ)
+        @test all(reconstructed_grid.φᵃᶠᵃ == original_grid.φᵃᶠᵃ)
+        @test all(reconstructed_grid.φᵃᶜᵃ == original_grid.φᵃᶜᵃ)
+        @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+        @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
+
+        # Test radius
+        @test reconstructed_grid.radius == original_grid.radius
+    else
+        @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
+        @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
+        @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
+
+        # Test face and center coordinates match
+        @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
+        @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
+        @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
+        @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
+        @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
+        @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
+    end
 
     # Clean up
     rm(filename)
@@ -333,7 +380,7 @@ end
             test_different_topologies_grid_reconstruction(arch, FT)
             test_grid_equality_after_reconstruction(arch, FT)
             test_netcdf_grid_reconstruction(arch, FT)
-            test_netcdf_grid_reconstruction(arch, FT; stretched_grid=true)
+            test_netcdf_grid_reconstruction(arch, FT, stretched_grid=true)
         end
 
         @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin

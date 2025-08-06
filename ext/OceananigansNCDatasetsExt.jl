@@ -722,7 +722,7 @@ de_netcdfify(x::Number) = x
 de_netcdfify(x::Array) = Tuple(x)
 de_netcdfify(x::String) = @eval $(Meta.parse(x))
 
-function write_grid_reconstruction_metadata!(ds, grid, indices, array_type, deflatelevel)
+function write_grid_reconstruction_metadata!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
     grid_attrs, grid_dims = grid_attributes(grid)
 
     sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first)
