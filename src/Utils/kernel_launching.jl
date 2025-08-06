@@ -134,15 +134,8 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
-
 periphery_offset(loc, topo, N) = 0
 periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
-
-drop_omitted_dims(::Val{:xyz}, xyz) = xyz
-drop_omitted_dims(::Val{:xy}, (x, y, z)) = (x, y)
-drop_omitted_dims(::Val{:xz}, (x, y, z)) = (x, z)
-drop_omitted_dims(::Val{:yz}, (x, y, z)) = (y, z)
-drop_omitted_dims(workdims, xyz) = throw(ArgumentError("Unsupported launch configuration: $workdims"))
 
 """
     interior_work_layout(grid, dims, location)
@@ -180,8 +173,14 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     workgroup = StaticSize(workgroup)
 
     # Adapt to workdims
-    worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
-    offsets = drop_omitted_dims(valdims, (ox, oy, oz))
+    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
+               ifelse(workdims == :xy,  (Wx, Wy),
+               ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
+               
+    offsets = ifelse(workdims == :xyz, (ox, oy, oz),
+              ifelse(workdims == :xy,  (ox, oy),
+              ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
+
     range = contiguousrange(worksize, offsets)
     worksize = OffsetStaticSize(range)
 
@@ -206,7 +205,11 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     Nx, Ny, Nz = size(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
     workgroup = heuristic_workgroup(Wx, Wy, Wz)
-    worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
+    
+    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
+               ifelse(workdims == :xy, (Wx, Wy),
+               ifelse(workdims == :xz, (Wx, Wz), (Wy, Wz))))
+
     return StaticSize{workgroup}(), StaticSize{worksize}()
 end
 
