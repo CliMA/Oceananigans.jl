@@ -1,8 +1,8 @@
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
+
 import Oceananigans.Architectures: on_architecture
 import KernelAbstractions as KA
-
 import Base: length
 
 
@@ -212,9 +212,8 @@ end
 
 Distributes locally the function calls in `expr`ession
 
-It calls [`apply_regionally!`](@ref) when the functions do not return anything.
-
-In case the function in `expr` returns something, `@apply_regionally` calls [`construct_regionally`](@ref).
+When the function call in `expr` does not return anything, then `apply_regionally!` method is used.
+When the function in `expr` returns something, the `construct_regionally` method is used.
 """
 macro apply_regionally(expr)
     if expr.head == :call
