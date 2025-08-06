@@ -162,7 +162,7 @@ function compute_explicit_free_surface_tendency!(grid, model)
             model.closure,
             model.buoyancy)
 
-    apply_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
+    compute_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
 
     return nothing
 end

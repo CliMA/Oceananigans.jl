@@ -195,8 +195,8 @@ function compute_flux_bc_tendencies!(model::ShallowWaterModel)
 
     # Solution fields and tracer fields
     for i in 1:length(Gⁿ)
-        apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
-        apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
+        compute_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
+        compute_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
     end
 
     return nothing
