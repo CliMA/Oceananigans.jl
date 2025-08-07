@@ -9,6 +9,14 @@ using Oceananigans.Grids: AbstractGrid
 using Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
+using KernelAbstractions.NDIteration: _Size, StaticSize
+using KernelAbstractions.NDIteration: NDRange
+
+using KernelAbstractions.NDIteration
+using KernelAbstractions: ndrange, workgroupsize
+
+using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
+using KernelAbstractions: CompilerMetadata
 
 import Oceananigans
 import KernelAbstractions: get, expand, StaticSize
@@ -364,7 +372,7 @@ end
                                        reduced_dimensions)
 
     # Don't launch kernels with no size
-    haswork = if worksize isa OffsetStaticSize
+    haswork = if worksize isa _Size
         length(worksize) > 0
     elseif worksize isa Number
         worksize > 0
@@ -393,15 +401,6 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-using KernelAbstractions.NDIteration: _Size, StaticSize
-using KernelAbstractions.NDIteration: NDRange
-
-using KernelAbstractions.NDIteration
-using KernelAbstractions: ndrange, workgroupsize
-
-using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
-using KernelAbstractions: CompilerMetadata
-
 import KernelAbstractions: partition
 import KernelAbstractions: __ndrange, __groupsize
 import KernelAbstractions: __validindex
