@@ -371,10 +371,8 @@ end
                                        location,
                                        reduced_dimensions)
 
-    # Don't launch kernels with no size
-    haswork = length(worksize) > 0
-    
-    if haswork
+    # Don't launch kernels with no size    
+    if length(worksize) > 0
         loop!(first_kernel_arg, other_kernel_args...)
     end
 
