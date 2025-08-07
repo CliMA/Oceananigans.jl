@@ -362,10 +362,8 @@ function test_grid_equality_over_architectures()
 end
 
 function test_immersed_boundary_grid_equality(arch)
-    # Create underlying grids
     underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
 
-    # Create immersed boundary grids
     ib1 = GridFittedBottom(-1/2)
     ibg1 = ImmersedBoundaryGrid(underlying_grid, ib1)
     @test ibg1 != underlying_grid
@@ -374,7 +372,7 @@ function test_immersed_boundary_grid_equality(arch)
 
     ibg2 = ImmersedBoundaryGrid(underlying_grid, ib1)
     @test ibg1 == ibg2
-    # Test PartialCellBottom equality
+
     ib2 = PartialCellBottom(-1/2)
     ibg3 = ImmersedBoundaryGrid(underlying_grid, ib2)
     ibg4 = ImmersedBoundaryGrid(underlying_grid, ib2)
@@ -383,7 +381,6 @@ function test_immersed_boundary_grid_equality(arch)
     @test ibg3 != ibg1
     @test ibg3 != ibg5
 
-    # Test GridFittedBoundary equality
     mask1 = zeros(Bool, 4, 4, 4)
     mask1[2:3, 2:3, 2:3] .= true
     ib3 = GridFittedBoundary(mask1)
