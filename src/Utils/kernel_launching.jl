@@ -208,24 +208,24 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
                ifelse(workdims == :xy, (Wx, Wy),
                ifelse(workdims == :xz, (Wx, Wz), (Wy, Wz))))
 
-    return StaticSize{workgroup}(), StaticSize{worksize}()
+    return StaticSize(workgroup), StaticSize(worksize)
 end
 
 @inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
     workgroup = heuristic_workgroup(worksize...)
-    return StaticSize{workgroup}(), StaticSize{worksize}()
+    return StaticSize(workgroup), StaticSize(worksize)
 end
 
 @inline function work_layout(active_cells_map::AbstractArray)
     length_map = length(active_cells_map)
-    workgroup = tuple(min(length_map, 256))
-    return StaticSize{workgroup}(), StaticSize{tuple(length_map)}()
+    workgroup = min(length_map, 256)
+    return StaticSize(workgroup), StaticSize(length_map)
 end
 
 @inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
     workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
     range = contiguousrange(worksize, offsets)
-    return  workgroup, OffsetStaticSize{range}()
+    return  workgroup, OffsetStaticSize(range)
 end
 
 """
