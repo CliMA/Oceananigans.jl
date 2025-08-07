@@ -372,14 +372,8 @@ end
                                        reduced_dimensions)
 
     # Don't launch kernels with no size
-    haswork = if worksize isa _Size
-        length(worksize) > 0
-    elseif worksize isa Number
-        worksize > 0
-    else
-        true
-    end
-
+    haswork = length(worksize) > 0
+    
     if haswork
         loop!(first_kernel_arg, other_kernel_args...)
     end
