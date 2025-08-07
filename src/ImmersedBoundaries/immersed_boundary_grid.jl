@@ -136,10 +136,6 @@ function Base.:(==)(grid1::IBG, grid2::IBG)
     #check if grids are of the same type
     equal_underlying_grids = grid1.underlying_grid == grid2.underlying_grid
     equal_immersed_boundaries = grid1.immersed_boundary == grid2.immersed_boundary
-    # Main.@infiltrate
 
     return equal_underlying_grids && equal_immersed_boundaries
 end
-
-Base.:(==)(grid1::IBG, grid2::AbstractGrid) = false
-Base.:(==)(grid1::AbstractGrid, grid2::IBG) = false
