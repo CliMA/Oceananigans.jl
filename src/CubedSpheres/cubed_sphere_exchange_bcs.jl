@@ -1,15 +1,13 @@
 using Adapt
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
+using Oceananigans.Grids: AbstractGrid
 
 import Base: show
-
-import Oceananigans.BoundaryConditions: bc_str
-
 import Oceananigans.BoundaryConditions:
+    bc_str,
     compute_x_bcs!,
     compute_y_bcs!,
     compute_x_east_bc!,
@@ -21,7 +19,7 @@ struct CubedSphereExchange <: AbstractBoundaryConditionClassification end
 
 const CubedSphereExchangeBC = BoundaryCondition{<:CubedSphereExchange}
 
-bc_str(::CubedSphereExchangeBC) ="CubedSphereExchange"
+bc_str(::CubedSphereExchangeBC) = "CubedSphereExchange"
 
 CubedSphereExchangeBoundaryCondition(val; kwargs...) = BoundaryCondition(CubedSphereExchange, val; kwargs...)
 
@@ -89,10 +87,10 @@ Adapt.adapt_structure(to, ::CubedSphereExchangeInformation) = nothing
 Adapt.adapt_structure(to, ::CubedSphereExchangeBC) = nothing
 
 # Don't "apply fluxes" across CubedSphere boundaries
-@inline compute_x_east_bc!(  Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
-@inline compute_x_west_bc!(  Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
-@inline compute_y_north_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
-@inline compute_y_south_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline compute_x_east_bc!(Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline compute_x_west_bc!(Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline compute_y_north_bc!(Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline compute_y_south_bc!(Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
 
 compute_x_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = nothing
 compute_y_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = nothing
