@@ -243,16 +243,28 @@ Arguments
 - `grid`: The grid on which the kernel will be executed.
 - `workspec`: The workspec that defines the work distribution.
 - `kernel!`: The kernel function to be executed.
-- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
-                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
-- `exclude_periphery`: A Val{boolean} indicating whether to exclude the periphery, used only for interior kernels.
 
 Keyword Arguments
 =================
 
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
+- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
+                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
+- `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
 """
+@inline function configure_kernel(arch, grid, workspec, kernel!; 
+                                  active_cells_map = nothing,
+                                  exclude_periphery = false,
+                                  reduced_dimensions = (),
+                                  location = nothing)
+
+    # Transform keyword arguments into arguments to be able to dispatch correctly 
+    return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
+                                  reduced_dimensions = (),
+                                  location = nothing)
+end
+
 @inline function configure_kernel(arch, grid, workspec, kernel!, ::Nothing, args...; 
                                   reduced_dimensions = (),
                                   location = nothing)
@@ -262,17 +274,6 @@ Keyword Arguments
     loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::StaticSize
-end
-
-@inline function configure_kernel(arch, grid, workspec, kernel!; 
-                                  active_cells_map = nothing,
-                                  exclude_periphery = false,
-                                  reduced_dimensions = (),
-                                  location = nothing)
-
-    return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
-                                  reduced_dimensions = (),
-                                  location = nothing)
 end
 
 # With a "true" exclude_periphery, we use the `interior_work_layout` function
