@@ -115,6 +115,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
+    compute_flux_bc_tendencies!(model)
     rk3_substep!(model, Δt, γ¹, nothing)
 
     tick!(model.clock, first_stage_Δt; stage=true)
@@ -130,6 +131,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Second stage
     #
 
+    compute_flux_bc_tendencies!(model)
     rk3_substep!(model, Δt, γ², ζ²)
 
     tick!(model.clock, second_stage_Δt; stage=true)
@@ -145,6 +147,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Third stage
     #
 
+    compute_flux_bc_tendencies!(model)
     rk3_substep!(model, Δt, γ³, ζ³)
 
     # This adjustment of the final time-step reduces the accumulation of
