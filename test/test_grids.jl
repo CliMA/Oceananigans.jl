@@ -361,6 +361,27 @@ function test_grid_equality_over_architectures()
     return grid_cpu == grid_gpu
 end
 
+function test_immersed_boundary_grid_equality(arch)
+    # Create underlying grids
+    underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+
+    # Create immersed boundary grids
+    ib1 = GridFittedBottom(-1/2)
+    ibg1 = ImmersedBoundaryGrid(underlying_grid, ib1)
+    @test ibg1 != underlying_grid
+    @test underlying_grid != ibg1
+    @test ibg1 == ibg1
+
+    ibg2 = ImmersedBoundaryGrid(underlying_grid, ib1)
+    @test ibg1 == ibg2
+
+    # Test that grids with same underlying grid, same immersed boundary type with different immersed boundary functions are not equal
+    ibg3 = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-1/3))
+    @test ibg1 != ibg3
+
+    return true
+end
+
 #####
 ##### Vertically stretched grids
 #####
