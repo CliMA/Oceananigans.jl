@@ -117,7 +117,9 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     end
 
     arch = architecture(grid)
-    fill_halos!, bcs = permute_boundary_conditions(bcs)
+    fill_halos! = bcs.auxiliaries.fill_halos!
+    bcs         = bcs.auxiliaries.ordered_boundary_conditions
+
     number_of_tasks  = length(fill_halos!)
     outstanding_requests = length(arch.mpi_requests)
 
