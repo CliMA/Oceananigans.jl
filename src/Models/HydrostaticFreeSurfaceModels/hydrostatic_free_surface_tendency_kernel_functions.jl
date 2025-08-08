@@ -8,7 +8,6 @@ using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, closure_turbulent_velocity
-using Oceananigans.TurbulenceClosures: closure_specific_forcing
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: sum_of_velocities
 using KernelAbstractions: @private
@@ -122,7 +121,6 @@ where `c = C[tracer_index]`.
                                                           tracers,
                                                           diffusivities,
                                                           auxiliary_fields,
-                                                          timestepper,
                                                           clock,
                                                           forcing) where tracer_index
 
@@ -141,6 +139,5 @@ where `c = C[tracer_index]`.
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
-             + closure_specific_forcing(i, j, k, grid, timestepper, closure, diffusivities, val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
