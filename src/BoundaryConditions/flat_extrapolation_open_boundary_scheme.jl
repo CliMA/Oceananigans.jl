@@ -8,7 +8,7 @@ Zero gradient perpendicular velocity boundary condition.
 We find the boundary value by Taylor expanding the gradient at the boundary point (`xᵢ`)
 to second order:
 ```math
-f′(xᵢ) ≈ f′(xᵢ₋₁) + f′′(xᵢ₋₁)(xᵢ₋₁ - xᵢ) + O(Δx²),
+f′(xᵢ) ≈ f′(xᵢ₋₁) + f′′(xᵢ₋₁)(xᵢ₋₁ - xᵢ) + O(Δx²) = f′(xᵢ₋₁) + f′′(xᵢ₋₁)Δx + O(Δx²),
 ```
 where ``Δx=xᵢ₋₁ - xᵢ`` (for simplicity, we will also assume the spacing is constant at
 all ``i`` for now).
@@ -148,5 +148,3 @@ end
 
     return nothing
 end
-
-
