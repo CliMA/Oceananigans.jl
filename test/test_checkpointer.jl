@@ -7,7 +7,7 @@ using Glob
 #####
 
 function test_model_equality(test_model, true_model)
-    CUDA.@allowscalar begin
+    @allowscalar begin
         test_model_fields = prognostic_fields(test_model)
         true_model_fields = prognostic_fields(true_model)
         field_names = keys(test_model_fields)
@@ -78,12 +78,8 @@ function test_thermal_bubble_checkpointer_output(arch)
     return run_checkpointer_tests(true_model, test_model, Δt)
 end
 
-function test_hydrostatic_splash_checkpointer(arch, free_surface)
+function test_hydrostatic_splash_checkpointer(grid, free_surface)
     # Create and run "true model"
-    Nx, Ny, Nz = 16, 16, 4
-    Lx, Ly, Lz = 1, 1, 1
-
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
     closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
     true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
@@ -187,7 +183,7 @@ function test_constant_fields_checkpointer(arch)
 
     simulation = Simulation(model, Δt=0.1, stop_iteration=1)
     simulation.output_writers[:checkpointer] = Checkpointer(model, prefix="constant_fields_test",
-                                                            schedule=IterationInterval(1), 
+                                                            schedule=IterationInterval(1),
                                                             properties = [:grid, :velocities])
 
     run!(simulation)
@@ -223,12 +219,20 @@ end
 for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
+
         test_thermal_bubble_checkpointer_output(arch)
 
-        for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
-                             ImplicitFreeSurface(gravitational_acceleration=1)]
+        # create a grid to test hydrostatic model
+        Nx, Ny, Nz = 16, 16, 4
+        Lx, Ly, Lz = 1, 1, 1
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
 
-            test_hydrostatic_splash_checkpointer(arch, free_surface)
+        for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
+                             ImplicitFreeSurface(gravitational_acceleration=1),
+                             SplitExplicitFreeSurface(gravitational_acceleration=1, substeps=5),
+                             SplitExplicitFreeSurface(grid; cfl=0.7, gravitational_acceleration=1)]
+
+            test_hydrostatic_splash_checkpointer(grid, free_surface)
         end
 
         run_checkpointer_cleanup_tests(arch)

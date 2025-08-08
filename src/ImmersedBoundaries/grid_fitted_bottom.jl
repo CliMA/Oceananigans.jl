@@ -1,5 +1,4 @@
 using Adapt
-using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size, rnode
@@ -35,7 +34,6 @@ Return a bottom immersed boundary.
 
 Keyword Arguments
 =================
-
 
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
@@ -157,3 +155,7 @@ YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Abstrac
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
+
+function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
+    return gfb1.bottom_height == gfb2.bottom_height && gfb1.immersed_condition == gfb2.immersed_condition
+end

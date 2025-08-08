@@ -2457,16 +2457,16 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     @test ds["y_aca"][1] == grid.yᵃᶜᵃ[1]
     @test ds["y_afa"][1] == grid.yᵃᶠᵃ[1]
 
-    @test CUDA.@allowscalar ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1]
-    @test CUDA.@allowscalar ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1]
+    @test @allowscalar ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1]
+    @test @allowscalar ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds["x_caa"][end] == grid.xᶜᵃᵃ[Nx]
     @test ds["x_faa"][end] == grid.xᶠᵃᵃ[Nx]
     @test ds["y_aca"][end] == grid.yᵃᶜᵃ[Ny]
     @test ds["y_afa"][end] == grid.yᵃᶠᵃ[Ny]
 
-    @test CUDA.@allowscalar ds["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz]
-    @test CUDA.@allowscalar ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test @allowscalar ds["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test @allowscalar ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     close(ds)
     rm(nc_filepath)

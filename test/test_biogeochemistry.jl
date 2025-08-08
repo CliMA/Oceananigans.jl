@@ -118,8 +118,8 @@ function test_biogeochemistry(grid, MinimalBiogeochemistryType, ModelType)
 
     time_step!(model, 1)
 
-    @test CUDA.@allowscalar any(biogeochemistry.photosynthetic_active_radiation .!= 0) # update state did get called
-    @test CUDA.@allowscalar any(model.tracers.P .!= 1) # bgc forcing did something
+    @test @allowscalar any(biogeochemistry.photosynthetic_active_radiation .!= 0) # update state did get called
+    @test @allowscalar any(model.tracers.P .!= 1) # bgc forcing did something
 
     return nothing
 end

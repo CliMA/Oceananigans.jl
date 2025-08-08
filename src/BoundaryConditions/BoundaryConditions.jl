@@ -7,10 +7,10 @@ export
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
-    apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
+    compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
     fill_halo_regions!
 
-using CUDA, Adapt
+using Adapt
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU, device
@@ -35,7 +35,7 @@ include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_nothing.jl")
 include("fill_halo_regions_zipper.jl")
 
-include("apply_flux_bcs.jl")
+include("compute_flux_bcs.jl")
 
 include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")

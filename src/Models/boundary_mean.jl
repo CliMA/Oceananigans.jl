@@ -1,4 +1,4 @@
-using Adapt, CUDA
+using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
 using Oceananigans.Fields: Center, Face
 using Oceananigans.AbstractOperations: GridMetricOperation, Ax, Ay, Az
@@ -98,12 +98,12 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     # get the total flux
     sum!(bam.flux_field, u * An)
 
-    bam.value[] = CUDA.@allowscalar bam.flux_field[iB, jB, kB]
+    bam.value[] = @allowscalar bam.flux_field[iB, jB, kB]
 
     # get the normalizing area
     sum!(bam.flux_field, An)
 
-    bam.value[] /= CUDA.@allowscalar bam.flux_field[iB, jB, kB]
+    bam.value[] /= @allowscalar bam.flux_field[iB, jB, kB]
 
     return nothing
 end

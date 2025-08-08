@@ -4,7 +4,7 @@ using Random
 using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
-using Oceananigans.Models: ZStar, ZCoordinate
+using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 
 function test_zstar_coordinate(model, Ni, Δt)
 
@@ -22,10 +22,10 @@ function test_zstar_coordinate(model, Ni, Δt)
     for step in 1:Ni
         time_step!(model, Δt)
 
-    	∫b = Field(Integral(model.tracers.b))
-    	∫c = Field(Integral(model.tracers.c))
-    	compute!(∫b)
-    	compute!(∫c)
+        ∫b = Field(Integral(model.tracers.b))
+        ∫c = Field(Integral(model.tracers.c))
+        compute!(∫b)
+        compute!(∫c)
 
         condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
         @test condition
@@ -49,15 +49,15 @@ function test_zstar_coordinate(model, Ni, Δt)
         end
 
         # Constancy preservation test
-        @test maximum(model.tracers.constant) ≈ 1 
-        @test minimum(model.tracers.constant) ≈ 1 
+        @test maximum(model.tracers.constant) ≈ 1
+        @test minimum(model.tracers.constant) ≈ 1
     end
 
     return nothing
 end
 
 function info_message(grid, free_surface)
-    msg1 = "$(architecture(grid)) "
+    msg1 = "$(typeof(architecture(grid))) "
     msg2 = string(getnamewrapper(grid))
     msg3 = grid isa ImmersedBoundaryGrid ? " on a " * string(getnamewrapper(grid.underlying_grid)) : ""
     msg4 = grid.z.Δᵃᵃᶠ isa Number ? " with uniform spacing" : " with stretched spacing"
@@ -113,8 +113,7 @@ const F = Face
     @test all(um.data .≈ us.data)
 end
 
-@testset "ZStar diffusion test" begin
-    @info "testing the ZStar diffusion in a HydrostaticFreeSurfaceModel"
+@testset "ZStarCoordinate diffusion test" begin
     Random.seed!(1234)
 
     # Build a stretched vertical coordinate
@@ -122,43 +121,53 @@ end
     z_static[1] = -15
     z_static[end] = 0
     z_moving = MutableVerticalDiscretization(z_static ./ 1.5)
-    
+
     for arch in archs
+        c₀ = rand(15)
+
+        grid_static = RectilinearGrid(arch; size=15, z=z_static, topology=(Flat, Flat, Bounded))
+        grid_moving = RectilinearGrid(arch; size=15, z=z_moving, topology=(Flat, Flat, Bounded))
+
+        fill!(grid_moving.z.ηⁿ,   5)
+        fill!(grid_moving.z.σᶜᶜ⁻, 1.5)
+        fill!(grid_moving.z.σᶜᶜⁿ, 1.5)
+        fill!(grid_moving.z.σᶜᶠⁿ, 1.5)
+        fill!(grid_moving.z.σᶠᶠⁿ, 1.5)
+        fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
+
         for TD in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
-            c₀ = rand(15)
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                for c_bcs in (NoFluxBoundaryCondition(), FluxBoundaryCondition(0.01), ValueBoundaryCondition(0.01))
+                    @info "testing ZStarCoordinate diffusion on $(typeof(arch)) with $TD, $timestepper, and $c_bcs at the top"
 
-            grid_static = RectilinearGrid(arch; size=15, z=z_static, topology=(Flat, Flat, Bounded))
-            grid_moving = RectilinearGrid(arch; size=15, z=z_moving, topology=(Flat, Flat, Bounded))
+                    model_static = HydrostaticFreeSurfaceModel(; grid = grid_static,
+                                                                tracers = :c,
+                                                                timestepper,
+                                                                boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs)),
+                                                                closure = VerticalScalarDiffusivity(TD(), κ=0.1))
 
-            fill!(grid_moving.z.ηⁿ,   5)
-            fill!(grid_moving.z.σᶜᶜ⁻, 1.5)
-            fill!(grid_moving.z.σᶜᶜⁿ, 1.5)
-            fill!(grid_moving.z.σᶜᶠⁿ, 1.5)
-            fill!(grid_moving.z.σᶠᶠⁿ, 1.5)
-            fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
-            
-            model_static = HydrostaticFreeSurfaceModel(; grid = grid_static, 
-                                                        tracers = :c,
-                                                        closure = VerticalScalarDiffusivity(TD(), κ=0.1))
-                                                            
-            model_moving = HydrostaticFreeSurfaceModel(; grid = grid_moving, 
-                                                        tracers = :c,
-                                                        closure = VerticalScalarDiffusivity(TD(), κ=0.1))
-                                                    
-            set!(model_static, c = c₀)
-            set!(model_moving, c = c₀)
+                    model_moving = HydrostaticFreeSurfaceModel(; grid = grid_moving,
+                                                                tracers = :c,
+                                                                timestepper,
+                                                                boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs)),
+                                                                closure = VerticalScalarDiffusivity(TD(), κ=0.1))
 
-            for _ in 1:1000
-                time_step!(model_static, 1.0)
-                time_step!(model_moving, 1.0)
+                    set!(model_static, c = c₀)
+                    set!(model_moving, c = c₀)
+
+                    for _ in 1:1000
+                        time_step!(model_static, 1.0)
+                        time_step!(model_moving, 1.0)
+                    end
+
+                    @test all(Array(interior(model_static.tracers.c)) .≈ Array(interior(model_moving.tracers.c)))
+                end
             end
-
-            @test all(Array(interior(model_static.tracers.c)) .≈ Array(interior(model_moving.tracers.c)))
         end
     end
 end
 
-@testset "ZStar tracer conservation testset" begin
+@testset "ZStarCoordinate tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded),
                    (Periodic, Bounded, Bounded),
@@ -212,7 +221,7 @@ end
                                                             free_surface,
                                                             tracers = (:b, :c, :constant),
                             				                buoyancy = BuoyancyTracer(),
-                                                            vertical_coordinate = ZStar())
+                                                            vertical_coordinate = ZStarCoordinate(grid))
 
                         bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
@@ -224,8 +233,8 @@ end
                 end
             end
         end
-    
-        @info "  Testing a ZStar and Runge Kutta 3rd order time stepping"
+
+        @info "  Testing a ZStarCoordinate and Runge-Kutta 3rd order time stepping"
 
         topology = topologies[2]
         rtg  = RectilinearGrid(arch; size=(10, 10, 20), x=(0, 100kilometers), y=(-10kilometers, 10kilometers), topology, z=z_stretched)
@@ -235,23 +244,23 @@ end
 
         for grid in [rtg, llg, irtg, illg]
             split_free_surface = SplitExplicitFreeSurface(grid; substeps=50)
-            model = HydrostaticFreeSurfaceModel(; grid, 
-                                                free_surface = split_free_surface, 
-                                                tracers = (:b, :c, :constant), 
+            model = HydrostaticFreeSurfaceModel(; grid,
+                                                free_surface = split_free_surface,
+                                                tracers = (:b, :c, :constant),
                                                 timestepper = :SplitRungeKutta3,
                                                 buoyancy = BuoyancyTracer(),
-                                                vertical_coordinate = ZStar())
+                                                vertical_coordinate = ZStarCoordinate(grid))
 
-            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
+            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
             set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
             Δt = 2minutes
             test_zstar_coordinate(model, 100, Δt)
         end
-    
-        @testset "TripolarGrid ZStar tracer conservation tests" begin
-            @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
+
+        @testset "TripolarGrid ZStarCoordinate tracer conservation tests" begin
+            @info "Testing a ZStarCoordinate coordinate with a Tripolar grid on $(arch)..."
 
             grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched)
 
@@ -283,7 +292,7 @@ end
                                                   free_surface,
                                                   tracers = (:b, :c, :constant),
                                                   buoyancy = BuoyancyTracer(),
-                                                  vertical_coordinate = ZStar())
+                                                  vertical_coordinate = ZStarCoordinate(grid))
 
             bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
 

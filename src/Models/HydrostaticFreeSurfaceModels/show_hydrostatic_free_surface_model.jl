@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettytime, ordered_dict_show, prettykeys
+using Oceananigans.Utils: prettytime, prettykeys
 using Oceananigans.TurbulenceClosures: closure_summary
 
 function Base.summary(model::HydrostaticFreeSurfaceModel)
@@ -41,6 +41,8 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         name = names[end]
         print(io, "│   └── " * string(name) * ": " * summary(model.advection[name]), "\n")
     end
+
+    print(io, "├── vertical_coordinate: $(summary(model.vertical_coordinate))", "\n")
 
     if isnothing(model.particles)
         print(io, "└── coriolis: $(typeof(model.coriolis))")
