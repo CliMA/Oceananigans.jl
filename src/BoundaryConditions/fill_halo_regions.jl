@@ -35,10 +35,11 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
         fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
     end
 
+    bcs              = extract_boundary_conditions(boundary_conditions)
+    fill_halos!      = bcs.auxiliaries.fill_halos!
+    bcs              = bcs.auxiliaries.ordered_boundary_conditions
     number_of_tasks  = length(fill_halos!)
-    fill_halos!      = first(boundary_conditions).auxiliaries.fill_halos!
-    bcs              = first(boundary_conditions).auxiliaries.ordered_boundary_conditions
-
+    
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, args...; kwargs...)
