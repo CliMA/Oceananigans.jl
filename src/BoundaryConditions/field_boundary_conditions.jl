@@ -229,7 +229,14 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               prognostic_names=nothing)
 
     loc = assumed_field_location(field_name)
+    return regularize_field_boundary_conditions(bcs, grid, loc, prognostic_names)
+end
 
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              grid::AbstractGrid,
+                                              loc::Tuple,
+                                              prognostic_names=nothing)
+    
     west   = regularize_west_boundary_condition(bcs.west,     grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_east_boundary_condition(bcs.east,     grid, loc, 1, RightBoundary, prognostic_names)
     south  = regularize_south_boundary_condition(bcs.south,   grid, loc, 2, LeftBoundary,  prognostic_names)
