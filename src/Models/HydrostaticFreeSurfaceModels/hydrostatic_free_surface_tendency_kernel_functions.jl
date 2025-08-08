@@ -12,8 +12,6 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Utils: sum_of_velocities
 using KernelAbstractions: @private
 
-import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
-
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
 direction, ``u``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
