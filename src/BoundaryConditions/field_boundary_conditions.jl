@@ -47,7 +47,7 @@ default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology
 ##### Field boundary conditions
 #####
 
-mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
+mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, A}
     west :: W
     east :: E
     south :: S
@@ -55,14 +55,13 @@ mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
     bottom :: B
     top :: T
     immersed :: I
+    auxiliaries :: A # Auxiliaires used to fill halo regions
 end
 
 function FieldBoundaryConditions(indices::Tuple, west, east, south, north, bottom, top, immersed)
-    # Turn bcs in windowed dimensions into nothing
-    west, east   = window_boundary_conditions(indices[1], west, east)
-    south, north = window_boundary_conditions(indices[2], south, north)
-    bottom, top  = window_boundary_conditions(indices[3], bottom, top)
-    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    bcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing)
+    fill_halos!, bcs = permute_boundary_conditions(bcs)
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, (; fill_halos!, ordered_boundary_conditions = bcs))
 end
 
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
@@ -83,7 +82,8 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.north),
                             on_architecture(arch, fbcs.bottom),
                             on_architecture(arch, fbcs.top),
-                            on_architecture(arch, fbcs.immersed))
+                            on_architecture(arch, fbcs.immersed), 
+                            on_architecture(arch, fbcs.execution_auxiliaries))
 
 """
     FieldBoundaryConditions(; kwargs...)
@@ -111,14 +111,15 @@ and the topology in the boundary-normal direction is used:
  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
  - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCondition();
+function FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCondition();
                         west = DefaultBoundaryCondition(default_bounded_bc),
                         east = DefaultBoundaryCondition(default_bounded_bc),
                         south = DefaultBoundaryCondition(default_bounded_bc),
                         north = DefaultBoundaryCondition(default_bounded_bc),
                         bottom = DefaultBoundaryCondition(default_bounded_bc),
                         top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
+                        immersed = DefaultBoundaryCondition(default_bounded_bc))
+                        
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
