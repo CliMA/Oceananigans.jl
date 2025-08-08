@@ -40,6 +40,6 @@ include("compute_flux_bcs.jl")
 include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
 
-include("flat_extrapolation_open_boundary_matching_scheme.jl")
-include("perturbation_advection_open_boundary_matching_scheme.jl")
+include("flat_extrapolation_open_boundary_scheme.jl")
+include("perturbation_advection_open_boundary_scheme.jl")
 end # module

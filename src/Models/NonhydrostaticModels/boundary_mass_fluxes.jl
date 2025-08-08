@@ -4,7 +4,7 @@ using Oceananigans.Fields: Field, interior, XFaceField, YFaceField, ZFaceField
 using GPUArraysCore: @allowscalar
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
-const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no matching scheme)
+const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no scheme)
 const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
 const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
 
@@ -79,7 +79,7 @@ initialize_boundary_mass_flux(velocity, ::Nothing, side) = NamedTuple()
 initialize_boundary_mass_flux(velocity, bc, side) = NamedTuple()
 
 needs_mass_flux_correction(::IOBC) = false
-needs_mass_flux_correction(bc::OBC) = bc.classification.matching_scheme !== nothing
+needs_mass_flux_correction(bc::OBC) = bc.classification.scheme !== nothing
 needs_mass_flux_correction(::Nothing) = false
 needs_mass_flux_correction(bc) = false
 
@@ -97,63 +97,63 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
     w_bcs = w.boundary_conditions
 
     boundary_fluxes = NamedTuple()
-    right_matching_scheme_boundaries = Symbol[]
-    left_matching_scheme_boundaries = Symbol[]
-    total_area_matching_scheme_boundaries = zero(eltype(u))
+    right_scheme_boundaries = Symbol[]
+    left_scheme_boundaries = Symbol[]
+    total_area_scheme_boundaries = zero(eltype(u))
 
     # Check west boundary (u velocity)
     west_flux_and_area = initialize_boundary_mass_flux(u, u_bcs.west, Val(:west))
     boundary_fluxes = merge(boundary_fluxes, west_flux_and_area)
     if needs_mass_flux_correction(u_bcs.west)
-        push!(left_matching_scheme_boundaries, :west)
-        total_area_matching_scheme_boundaries += boundary_fluxes.west_area
+        push!(left_scheme_boundaries, :west)
+        total_area_scheme_boundaries += boundary_fluxes.west_area
     end
 
     # Check east boundary (u velocity)
     east_flux_and_area = initialize_boundary_mass_flux(u, u_bcs.east, Val(:east))
     boundary_fluxes = merge(boundary_fluxes, east_flux_and_area)
     if needs_mass_flux_correction(u_bcs.east)
-        push!(right_matching_scheme_boundaries, :east)
-        total_area_matching_scheme_boundaries += boundary_fluxes.east_area
+        push!(right_scheme_boundaries, :east)
+        total_area_scheme_boundaries += boundary_fluxes.east_area
     end
 
     # Check south boundary (v velocity)
     south_flux_and_area = initialize_boundary_mass_flux(v, v_bcs.south, Val(:south))
     boundary_fluxes = merge(boundary_fluxes, south_flux_and_area)
     if needs_mass_flux_correction(v_bcs.south)
-        push!(left_matching_scheme_boundaries, :south)
-        total_area_matching_scheme_boundaries += boundary_fluxes.south_area
+        push!(left_scheme_boundaries, :south)
+        total_area_scheme_boundaries += boundary_fluxes.south_area
     end
 
     # Check north boundary (v velocity)
     north_flux_and_area = initialize_boundary_mass_flux(v, v_bcs.north, Val(:north))
     boundary_fluxes = merge(boundary_fluxes, north_flux_and_area)
     if needs_mass_flux_correction(v_bcs.north)
-        push!(right_matching_scheme_boundaries, :north)
-        total_area_matching_scheme_boundaries += boundary_fluxes.north_area
+        push!(right_scheme_boundaries, :north)
+        total_area_scheme_boundaries += boundary_fluxes.north_area
     end
 
     # Check bottom boundary (w velocity)
     bottom_flux_and_area = initialize_boundary_mass_flux(w, w_bcs.bottom, Val(:bottom))
     boundary_fluxes = merge(boundary_fluxes, bottom_flux_and_area)
     if needs_mass_flux_correction(w_bcs.bottom)
-        push!(left_matching_scheme_boundaries, :bottom)
-        total_area_matching_scheme_boundaries += boundary_fluxes.bottom_area
+        push!(left_scheme_boundaries, :bottom)
+        total_area_scheme_boundaries += boundary_fluxes.bottom_area
     end
 
     # Check top boundary (w velocity)
     top_flux_and_area = initialize_boundary_mass_flux(w, w_bcs.top, Val(:top))
     boundary_fluxes = merge(boundary_fluxes, top_flux_and_area)
     if needs_mass_flux_correction(w_bcs.top)
-        push!(right_matching_scheme_boundaries, :top)
-        total_area_matching_scheme_boundaries += boundary_fluxes.top_area
+        push!(right_scheme_boundaries, :top)
+        total_area_scheme_boundaries += boundary_fluxes.top_area
     end
 
-    boundary_fluxes = merge(boundary_fluxes, (; left_matching_scheme_boundaries = Tuple(left_matching_scheme_boundaries),
-                                                right_matching_scheme_boundaries = Tuple(right_matching_scheme_boundaries),
-                                                total_area_matching_scheme_boundaries))
+    boundary_fluxes = merge(boundary_fluxes, (; left_scheme_boundaries = Tuple(left_scheme_boundaries),
+                                                right_scheme_boundaries = Tuple(right_scheme_boundaries),
+                                                total_area_scheme_boundaries))
 
-    if length(left_matching_scheme_boundaries) == 0 && length(right_matching_scheme_boundaries) == 0
+    if length(left_scheme_boundaries) == 0 && length(right_scheme_boundaries) == 0
         return nothing
     else
         return boundary_fluxes
@@ -225,7 +225,7 @@ function enforce_open_boundary_mass_conservation!(model, boundary_mass_fluxes)
     u, v, w = model.velocities
 
     ∮udA = open_boundary_mass_inflow(model)
-    A = boundary_mass_fluxes.total_area_matching_scheme_boundaries
+    A = boundary_mass_fluxes.total_area_scheme_boundaries
 
     A⁻¹_∮udA = ∮udA / A
 

@@ -8,7 +8,7 @@ Zero gradient perpendicular velocity boundary condition.
 We find the boundary value by Taylor expanding the gradient at the boundary point (`xᵢ`)
 to second order:
 ```math
-f′(xᵢ) ≈ f′(xᵢ₋₁) + f′′(xᵢ₋₁)(xᵢ₋₁ - xᵢ) + O(Δx²) = f′(xᵢ₋₁) + f′′(xᵢ₋₁)Δx + O(Δx²),
+f′(xᵢ) ≈ f′(xᵢ₋₁) + f′′(xᵢ₋₁)(xᵢ₋₁ - xᵢ) + O(Δx²),
 ```
 where ``Δx=xᵢ₋₁ - xᵢ`` (for simplicity, we will also assume the spacing is constant at
 all ``i`` for now).
@@ -47,7 +47,7 @@ end
 
 @inline function relax(l, m, grid, ϕ, bc, clock, model_fields)
     Δt = clock.last_stage_Δt
-    τ = bc.classification.matching_scheme.relaxation_timescale
+    τ = bc.classification.scheme.relaxation_timescale
 
     Δt̄ = min(1, Δt / τ)
     ϕₑₓₜ = getbc(bc, l, m, grid, clock, model_fields)
@@ -148,3 +148,5 @@ end
 
     return nothing
 end
+
+

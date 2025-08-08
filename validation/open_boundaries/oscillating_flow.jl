@@ -5,7 +5,7 @@
 # forcings and boundary conditions originally designed for `v` aere then used for `w` without
 # modification).
 #
-# This case also has a stretched grid to validate the matching scheme on a stretched grid.
+# This case also has a stretched grid to validate the scheme on a stretched grid.
 
 using Oceananigans, CairoMakie
 using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition, PerturbationAdvectionOpenBoundaryCondition
@@ -123,7 +123,7 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
 end
 
 inflow_timescale = outflow_timescale = 1/4
-matching_scheme_name(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
+scheme_name(obc) = string(nameof(typeof(obc.classification.scheme)))
 for grid in (xygrid, xzgrid)
 
     u_fe = FlatExtrapolationOpenBoundaryCondition(u∞, parameters = (; U, T), relaxation_timescale = 1)
@@ -146,10 +146,10 @@ for grid in (xygrid, xzgrid)
     for obcs in (feobcs, paobcs,)
         if grid isa Oceananigans.Grids.ZFlatGrid
             boundary_conditions = (u = obcs.u, v = obcs.v)
-            simname = "xy_" * matching_scheme_name(boundary_conditions.u.east)
+            simname = "xy_" * scheme_name(boundary_conditions.u.east)
         elseif grid isa Oceananigans.Grids.YFlatGrid
             boundary_conditions = (u = obcs.u, w = obcs.w)
-            simname = "xz_" * matching_scheme_name(boundary_conditions.u.east)
+            simname = "xz_" * scheme_name(boundary_conditions.u.east)
         end
         @info "Running $simname"
         run_cylinder(grid, boundary_conditions, simname = simname, stop_time = T)
