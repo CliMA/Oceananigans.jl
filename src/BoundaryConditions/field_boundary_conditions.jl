@@ -58,7 +58,7 @@ mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, A}
     auxiliaries :: A # Auxiliaires used to fill halo regions
 end
 
-function FieldBoundaryConditions(indices::Tuple, west, east, south, north, bottom, top, immersed)
+function FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
     bcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing)
     fill_halos!, bcs = permute_boundary_conditions(bcs)
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, (; fill_halos!, ordered_boundary_conditions = bcs))
