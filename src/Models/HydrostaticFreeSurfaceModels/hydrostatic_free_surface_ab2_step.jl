@@ -12,7 +12,6 @@ import Oceananigans.TimeSteppers: ab2_step!
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
     grid = model.grid
-
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
@@ -21,7 +20,6 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
     # Step locally velocity and tracers
     @apply_regionally begin
-        scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         ab2_step_tracers!(model.tracers, model, Δt, χ)
