@@ -234,12 +234,14 @@ end
     # Advance TKE and store tendency
     FT = eltype(χ)
     Δτ = convert(FT, Δτ)
+    e  = tracers.e
 
     # See below.    
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
@@ -255,6 +257,8 @@ end
 
     i, j, k = @index(Global, NTuple)
 
+    e = tracers.e
+
     fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
                                  next_velocities, previous_velocities,
                                  tracers, buoyancy, diffusivities)
@@ -262,6 +266,7 @@ end
     # See below.
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
