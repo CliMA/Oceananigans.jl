@@ -24,7 +24,7 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 const MaybeTupledData = Union{OffsetArray, Tuple{Vararg{OffsetArray}}}
 
 @inline extract_boundary_conditions(bcs::FieldBoundaryConditions) = bcs
-@inline extract_boundary_conditions(bcs::NTuple{N, <:FieldBoundaryConditions}) = bcs[1]
+@inline extract_boundary_conditions(bcs::NTuple{N, <:FieldBoundaryConditions}) where N = bcs[1]
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...;
