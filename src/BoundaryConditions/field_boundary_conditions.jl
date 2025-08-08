@@ -47,7 +47,7 @@ default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology
 ##### Field boundary conditions
 #####
 
-mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, A}
+mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, K, O}
     west :: W
     east :: E
     south :: S
@@ -55,14 +55,23 @@ mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, A}
     bottom :: B
     top :: T
     immersed :: I
-    auxiliaries :: A # Auxiliaires used to fill halo regions
+    kernels :: K # kernels used to fill halo regions
+    ordered_bcs :: O
 end
 
 # Internal constructor that fills up computational details in the "auxiliaries" spot.
 function FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
-    bcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing)
+    bcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing, nothing)
     fill_halos!, bcs = permute_boundary_conditions(bcs)
-    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, (; fill_halos!, ordered_boundary_conditions = bcs))
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, fill_halos!, bcs)
+end
+
+function FieldBoundaryConditions(indices::Tuple, west, east, south, north, bottom, top, immersed)
+    # Turn bcs in windowed dimensions into nothing
+    west, east   = window_boundary_conditions(indices[1], west, east)
+    south, north = window_boundary_conditions(indices[2], south, north)
+    bottom, top  = window_boundary_conditions(indices[3], bottom, top)
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
