@@ -35,14 +35,3 @@ end
     return NamedTuple{κ_names}(κ_values)
 end
 
-@inline function closure_specific_forcing(i, j, k, grid, timestepper, closures::Tuple, diffusivities, val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
-
-    Gⁿ = 0
-    for n in eachindex(closures)
-        @inbounds Gⁿ += closure_specific_forcing(i, j, k, grid, closures[n], diffusivities[n], val_tracer_name, c, clock, velocities, tracers, buoyancy, model_fields)
-    end
-
-    return Gⁿ
-end
-
-@inline closure_specific_forcing(i, j, k, grid, timestepper, closure, diffusivities, args...) = zero(grid)

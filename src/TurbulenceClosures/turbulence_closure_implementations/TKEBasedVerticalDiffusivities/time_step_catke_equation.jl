@@ -3,41 +3,13 @@ using Oceananigans.Operators: σⁿ, σ⁻
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
-using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
+using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
-@inline closure_specific_forcing(i, j, k, grid, timesper, closure::FlavorOfCATKE, diffusivities, args...) = zero(grid)
-
-# For RK3 we do not substep, we just add the closure forcing to the e equation and perform the stepping exaclty 
-# as the other variables
-@inline function closure_specific_forcing(i, j, k, grid, ::SplitRungeKutta3TimeStepper, closure::FlavorOfCATKE, diffusivities, ::Val{:e}, e, clock, velocities, tracers, buoyancy, model_fields)
-
-    closure_ij = getclosure(i, j, closure)
-    wb  = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, model_fields, buoyancy, diffusivities)
-    wb⁺ = max(zero(grid), wb)
-
-    u  = velocities.u
-    v  = velocities.v
-    κu = diffusivities.κu
-
-    # TODO: correctly handle closure / diffusivity tuples
-    # TODO: the shear_production is actually a slow term so we _could_ precompute.
-    P = shear_production(i, j, k, grid, κu, u, u, v, v)
-    ω = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
-    ϵ = dissipation(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
-    fast_Gⁿe = P + wb⁺ - ϵ 
-
-    return fast_Gⁿe
-end
-
 function time_step_catke_equation!(model)
-
-    if model.timestepper isa Oceananigans.TimeSteppers.SplitRungeKutta3TimeStepper
-        return nothing
-    end
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
