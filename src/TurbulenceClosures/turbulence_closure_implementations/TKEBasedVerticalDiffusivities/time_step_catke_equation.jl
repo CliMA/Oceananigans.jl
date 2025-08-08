@@ -109,7 +109,7 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
 
     Δt = model.clock.last_Δt
     stage = model.clock.stage
-    γⁿ, ζⁿ = rk3_coeffs(timestepper, model.clock.stage)
+    γⁿ, ζⁿ = rk3_coeffs(model.timestepper, model.clock.stage)
 
     # Compute the linear implicit component of the RHS (diffusivities, L)...
     launch!(arch, grid, :xyz,
@@ -127,7 +127,7 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
 
     implicit_step!(e, implicit_solver, closure,
                    diffusivity_fields, Val(tracer_index),
-                   model.clock, Δτ)
+                   model.clock, Δt)
 
     return nothing
 end
@@ -146,12 +146,9 @@ const c = Center()
     @inbounds κe[i, j, k] = κe★
 end
 
-@kernel function _ab2_substep_turbulent_kinetic_energy!(Le, grid, closure,
-                                                        next_velocities, previous_velocities,
-                                                        tracers, buoyancy, diffusivities,
-                                                        Δτ, χ, slow_Gⁿe, G⁻e)
-
-    i, j, k = @index(Global, NTuple)
+@inline function fast_tke_tendency(i, j, k, grid, Le, closure,
+                                   next_velocities, previous_velocities,
+                                   tracers, buoyancy, diffusivities)
 
     e = tracers.e
     closure_ij = getclosure(i, j, closure)
@@ -220,7 +217,19 @@ end
     # TODO: the shear_production is actually a slow term so we _could_ precompute.
     P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
     ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
-    fast_Gⁿe = P + wb⁺ - ϵ
+    return P + wb⁺ - ϵ
+end
+
+@kernel function _ab2_substep_turbulent_kinetic_energy!(Le, grid, closure,
+                                                        next_velocities, previous_velocities,
+                                                        tracers, buoyancy, diffusivities,
+                                                        Δτ, χ, slow_Gⁿe, G⁻e)
+
+    i, j, k = @index(Global, NTuple)
+
+    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                 next_velocities, previous_velocities,
+                                 tracers, buoyancy, diffusivities)
 
     # Advance TKE and store tendency
     FT = eltype(χ)
@@ -246,82 +255,17 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    e = tracers.e
-    closure_ij = getclosure(i, j, closure)
-
-    # Compute additional diagonal component of the linear TKE operator
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
-    wb⁻ = min(zero(grid), wb)
-    wb⁺ = max(zero(grid), wb)
-
-    eⁱʲᵏ = @inbounds e[i, j, k]
-    eᵐⁱⁿ = closure_ij.minimum_tke
-    wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
-
-    # Treat the divergence of TKE flux at solid bottoms implicitly.
-    # This will damp TKE near boundaries. The bottom-localized TKE flux may be written
-    #
-    #       ∂t e = - δ(z + h) ∇ ⋅ Jᵉ + ⋯
-    #       ∂t e = + δ(z + h) Jᵉ / Δz + ⋯
-    #
-    # where δ(z + h) is a δ-function that is 0 everywhere except adjacent to the bottom boundary
-    # at $z = -h$ and Δz is the grid spacing at the bottom
-    #
-    # Thus if
-    #
-    #       Jᵉ ≡ - Cᵂϵ * √e³
-    #          = - (Cᵂϵ * √e) e
-    #
-    # Then the contribution of Jᵉ to the implicit flux is
-    #
-    #       Lᵂ = - Cᵂϵ * √e / Δz.
-
-    on_bottom = bottommost_active_node(i, j, k, grid, c, c, c)
-    active = !inactive_cell(i, j, k, grid)
-    Δz = Δzᶜᶜᶜ(i, j, k, grid)
-    Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
-    e⁺ = clip(eⁱʲᵏ)
-    w★ = sqrt(e⁺)
-    div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
-
-    # Implicit TKE dissipation
-    ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
-
-    # The interior contributions to the linear implicit term `L` are defined via
-    #
-    #       ∂t e = Lⁱ e + ⋯,
-    #
-    # So
-    #
-    #       Lⁱ e = wb - ϵ
-    #            = (wb / e - ω) e,
-    #               ↖--------↗
-    #                  = Lⁱ
-    #
-    # where ω = ϵ / e ∼ √e / ℓ.
-
-    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
-
-    # Compute fast TKE RHS
-    u⁺ = next_velocities.u
-    v⁺ = next_velocities.v
-    uⁿ = previous_velocities.u
-    vⁿ = previous_velocities.v
-    κu = diffusivities.κu
-
-    # TODO: correctly handle closure / diffusivity tuples
-    # TODO: the shear_production is actually a slow term so we _could_ precompute.
-    P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
-    ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
-    fast_Gⁿe = P + wb⁺ - ϵ
+    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                 next_velocities, previous_velocities,
+                                 tracers, buoyancy, diffusivities)
 
     # See below.
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (ζⁿ * e⁻[i, j, k] + γⁿ * (e[i, j, k] + Δt * total_Gⁿe) * active) / σᶜᶜⁿ
+        total_Gⁿ = slow_Gⁿ[i, j, k] + fast_Gⁿ * σᶜᶜⁿ
+        e[i, j, k] = (ζⁿ * e⁻[i, j, k] + γⁿ * (e[i, j, k] + Δt * total_Gⁿ) * active) / σᶜᶜⁿ
     end
 end
 
