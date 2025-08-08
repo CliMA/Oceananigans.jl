@@ -41,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, de_netcdfify_dict_values
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf
 
 const c = Center()
 const f = Face()
@@ -712,16 +712,16 @@ function grid_attributes(ibg::ImmersedBoundaryGrid)
 end
 
 # Using OrderedDict to preserve order of keys. Important for positional arguments.
-netcdfify_dict_values(dict) = OrderedDict{Symbol, Any}(key => netcdfify(value) for (key, value) in dict)
-netcdfify(x::Number) = x
-netcdfify(x::Bool) = string(x)
-netcdfify(x::NTuple{N, Number}) where N = collect(x)
-netcdfify(x) = string(x)
+convert_for_netcdf(dict::Dict) = OrderedDict{Symbol, Any}(key => convert_for_netcdf(value) for (key, value) in dict)
+convert_for_netcdf(x::Number) = x
+convert_for_netcdf(x::Bool) = string(x)
+convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
+convert_for_netcdf(x) = string(x)
 
-de_netcdfify_dict_values(dict) = OrderedDict(Symbol(key) => de_netcdfify(value) for (key, value) in dict)
-de_netcdfify(x::Number) = x
-de_netcdfify(x::Array) = Tuple(x)
-de_netcdfify(x::String) = @eval $(Meta.parse(x))
+materialize_from_netcdf(dict::Dict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
+materialize_from_netcdf(x::Number) = x
+materialize_from_netcdf(x::Array) = Tuple(x)
+materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
 
 function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
     grid_attrs, grid_dims = grid_attributes(grid)
@@ -733,7 +733,7 @@ function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)
     end
 
     args, kwargs = constructor_arguments(grid)
-    args, kwargs = map(netcdfify_dict_values, (args, kwargs))
+    args, kwargs = map(convert_for_netcdf, (args, kwargs))
     defGroup(ds, "grid_reconstruction_args"; attrib = args)
     defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
 

@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: constructor_arguments, halo_size
 using NCDatasets
-using Oceananigans.OutputWriters: write_grid_reconstruction_data!, de_netcdfify_dict_values
+using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf
 
 #####
 ##### Grid reconstruction tests using constructor_arguments
@@ -310,8 +310,8 @@ function test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=fa
 
     # Read back the grid reconstruction metadata
     ds = NCDataset(filename, "r")
-    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> de_netcdfify_dict_values
-    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> de_netcdfify_dict_values
+    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
     close(ds)
 
     # Reconstruct the grid
@@ -358,8 +358,8 @@ function test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=false)
 
     # Read back the grid reconstruction metadata
     ds = NCDataset(filename, "r")
-    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> de_netcdfify_dict_values
-    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> de_netcdfify_dict_values
+    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
     close(ds)
 
     # Reconstruct the grid
