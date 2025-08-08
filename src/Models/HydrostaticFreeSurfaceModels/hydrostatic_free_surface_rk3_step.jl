@@ -101,24 +101,30 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     grid = model.grid
     FT = eltype(grid)
 
+    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
-        Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-        θ  = tracers[tracer_name]
-        closure = model.closure
+        if catke_in_closures && tracer_name == :e
+            @debug "Skipping RK3 step for e"
+        else
+            Gⁿ = model.timestepper.Gⁿ[tracer_name]
+            Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
+            θ  = tracers[tracer_name]
+            closure = model.closure
 
-        launch!(architecture(grid), grid, :xyz,
-                _split_rk3_substep_tracer_field!, θ, grid, convert(FT, Δt), γⁿ, ζⁿ, Gⁿ, Ψ⁻)
+            launch!(architecture(grid), grid, :xyz,
+                    _split_rk3_substep_tracer_field!, θ, grid, convert(FT, Δt), γⁿ, ζⁿ, Gⁿ, Ψ⁻)
 
-        implicit_step!(θ,
-                       model.timestepper.implicit_solver,
-                       closure,
-                       model.diffusivity_fields,
-                       Val(tracer_index),
-                       model.clock,
-                       Δt)
+            implicit_step!(θ,
+                        model.timestepper.implicit_solver,
+                        closure,
+                        model.diffusivity_fields,
+                        Val(tracer_index),
+                        model.clock,
+                        Δt)
+        end
     end
 
     return nothing
@@ -168,11 +174,11 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         else # Velocities and free surface are stored without the grid scaling
             parent(Ψ⁻) .= parent(Ψⁿ)
         end
+    end
 
-        if grid isa MutableGridOfSomeKind
-            # We need to cache the grid spacing somewhere!
-            parent(model.grid.z.Gⁿ) .= parent(model.grid.z.ηⁿ)
-        end
+    if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
+        # We need to cache the grid spacing somewhere!
+        parent(model.grid.z.Gⁿ) .= parent(model.grid.z.ηⁿ)
     end
 
     return nothing
