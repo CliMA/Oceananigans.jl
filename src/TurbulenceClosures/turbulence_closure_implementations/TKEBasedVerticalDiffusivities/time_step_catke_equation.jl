@@ -251,7 +251,7 @@ end
 @kernel function _rk3_substep_turbulent_kinetic_energy!(Le, grid, closure,
                                                         next_velocities, previous_velocities,
                                                         tracers, buoyancy, diffusivities,
-                                                        Δt, γⁿ, ζⁿ, slow_Gⁿ, e⁻)
+                                                        Δt, γⁿ, ζⁿ, slow_Gⁿe, e⁻)
 
     i, j, k = @index(Global, NTuple)
 
@@ -264,7 +264,7 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        total_Gⁿ = slow_Gⁿ[i, j, k] + fast_Gⁿ * σᶜᶜⁿ
+        total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
         e[i, j, k] = (ζⁿ * e⁻[i, j, k] + γⁿ * (e[i, j, k] + Δt * total_Gⁿ) * active) / σᶜᶜⁿ
     end
 end
