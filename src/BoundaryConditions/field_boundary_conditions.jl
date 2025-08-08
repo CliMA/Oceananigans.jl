@@ -63,6 +63,8 @@ end
 function FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
     bcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing, nothing)
     fill_halos!, bcs = permute_boundary_conditions(bcs)
+    fill_halos! = tuple(fill_halos!...)
+    
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, fill_halos!, bcs)
 end
 
