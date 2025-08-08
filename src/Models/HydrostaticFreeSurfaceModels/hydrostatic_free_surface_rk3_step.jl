@@ -13,6 +13,7 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     compute_free_surface_tendency!(grid, model, free_surface)
 
     @apply_regionally begin
+        scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
         rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt, γⁿ, ζⁿ)
         rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
         rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
@@ -167,11 +168,11 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         else # Velocities and free surface are stored without the grid scaling
             parent(Ψ⁻) .= parent(Ψⁿ)
         end
+    end
 
-        if grid isa MutableGridOfSomeKind
-            # We need to cache the grid spacing somewhere!
-            parent(model.grid.z.Gⁿ) .= parent(model.grid.z.ηⁿ)
-        end
+    if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
+        # We need to cache the grid spacing somewhere!
+        parent(model.grid.z.Gⁿ) .= parent(model.grid.z.ηⁿ)
     end
 
     return nothing
