@@ -102,17 +102,12 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     FT = eltype(grid)
 
     catke_in_closures = hasclosure(closure, FlavorOfCATKE)
-    td_in_closures    = hasclosure(closure, FlavorOfTD)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
         if catke_in_closures && tracer_name == :e
-            @debug "Skipping AB2 step for e"
-        elseif td_in_closures && tracer_name == :ϵ
-            @debug "Skipping AB2 step for ϵ"
-        elseif td_in_closures && tracer_name == :e
-            @debug "Skipping AB2 step for e"
+            @debug "Skipping RK3 step for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
