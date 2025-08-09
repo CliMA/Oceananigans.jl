@@ -40,7 +40,7 @@ Converts a linear index to a tuple of indices based on the given map and grid.
 # Returns
 A tuple of indices corresponding to the linear index.
 """
-@inline linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
+@inline linear_index_to_tuple(idx, active_cells_map) = @inbounds active_cells_map[idx]
 
 #=
 @inline function linear_index_to_tuple(idx, active_cells_map::Tuple{<:Any, <:Any, <:Any})
