@@ -47,7 +47,7 @@ end
 
 @inline function relax(l, m, grid, ϕ, bc, clock, model_fields)
     Δt = clock.last_stage_Δt
-    τ = bc.classification.matching_scheme.relaxation_timescale
+    τ = bc.classification.scheme.relaxation_timescale
 
     Δt̄ = min(1, Δt / τ)
     ϕₑₓₜ = getbc(bc, l, m, grid, clock, model_fields)

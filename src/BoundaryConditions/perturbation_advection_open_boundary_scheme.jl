@@ -68,8 +68,6 @@ function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType
     outflow_timescale = convert(FT, outflow_timescale)
     classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
 
-    @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
-
     return BoundaryCondition(classification, val; kwargs...)
 end
 
@@ -87,7 +85,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
-    pa = bc.classification.matching_scheme
+    pa = bc.classification.scheme
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ # last stage Δt normalized by the inflow/output timescale
 
@@ -111,7 +109,7 @@ end
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
-    pa = bc.classification.matching_scheme
+    pa = bc.classification.scheme
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ # last stage Δt normalized by the inflow/output timescale
 

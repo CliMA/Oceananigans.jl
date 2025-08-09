@@ -60,14 +60,14 @@ Open boundary conditions are used to specify the component of a velocity field n
 and can also be used to describe nested or linked simulation domains.
 """
 struct Open{MS} <: AbstractBoundaryConditionClassification
-    matching_scheme::MS
+    scheme::MS
 end
 
 Open() = Open(nothing)
 
 (open::Open)() = open
 
-Adapt.adapt_structure(to, open::Open) = Open(adapt(to, open.matching_scheme))
+Adapt.adapt_structure(to, open::Open) = Open(adapt(to, open.scheme))
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification
