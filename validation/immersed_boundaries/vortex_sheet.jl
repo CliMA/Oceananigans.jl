@@ -1,6 +1,11 @@
 using Oceananigans
-using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver
+using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
+using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
 using Oceananigans.Solvers: DiagonallyDominantPreconditioner
+using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: launch!
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Operators
 using Oceananigans.Grids: with_number_type
 using Printf
 using Statistics
@@ -30,30 +35,38 @@ initial_u(x, z) = 1e-7 * rand() + U₀
 c_tendency(x, z, t, c) = - γ / Δt * (c - sin(40π * z / Lz)) * exp(-γ * x/Δx)
 u_tendency(x, z, t, u) = - γ / Δt * (u - U₀) * exp(-γ * x/Δx)
 
-underlying_grid = RectilinearGrid(
-    GPU(),
-    size = (Nx, Nz),
-    x = (0.0, Lx),
-    z = (- Lz / 2, Lz / 2),
-    topology = (Periodic, Flat, Bounded),
-    halo = (4, 4),
-)
-
 function is_obstacle(x, z)
     return (x - x₀)^2 + (z - z₀)^2 < r₀^2
 end
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(is_obstacle))
+function setup_grid()
+    zs = collect(range(-Lz / 2, Lz / 2, length=Nz+1))
+    zs[2:end-1] .+= randn(length(zs[2:end-1])) * (1 / Nz) / 10
+
+    underlying_grid = RectilinearGrid(
+        GPU(),
+        size = (Nx, Nz),
+        x = (0.0, Lx),
+        z = (- Lz / 2, Lz / 2),
+        # z = zs,               # if you want to use a non-uniform grid
+        topology = (Periodic, Flat, Bounded),
+        halo = (4, 4),
+    )
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(is_obstacle))
+    return grid
+end
+
 closure = ScalarDiffusivity(ν = ν)
 
 c_forcing = Forcing(c_tendency, field_dependencies = (:c, ))
 u_forcing = Forcing(u_tendency, field_dependencies = (:u, ))
 
-reduced_precision_grid = with_number_type(Float32, underlying_grid)
-preconditioner = FFTBasedPoissonSolver(reduced_precision_grid)
-# preconditioner = FFTBasedPoissonSolver(underlying_grid)
+grid = setup_grid()
+preconditioner = nonhydrostatic_pressure_solver(with_number_type(Float32, grid.underlying_grid))
 # preconditioner = DiagonallyDominantPreconditioner()
 # preconditioner = nothing
+
 pressure_solver = ConjugateGradientPoissonSolver(
     grid, maxiter=1000, preconditioner=preconditioner)
 
@@ -67,10 +80,27 @@ model = NonhydrostaticModel(;
 
 set!(model, u = initial_u)
 
-simulation = Oceananigans.Simulation(model; Δt = Δt, stop_iteration = 10, minimum_relative_step = 1e-10)
+# simulation = Oceananigans.Simulation(model; Δt = Δt, stop_iteration = 10, minimum_relative_step = 1e-10)
+simulation = Oceananigans.Simulation(model; Δt = Δt, stop_time = 10, minimum_relative_step = 1e-10)
+
+time_wizard = TimeStepWizard(cfl=0.6, max_change=1.05, min_Δt=1e-4, max_Δt=1)
+simulation.callbacks[:wizard] = Callback(time_wizard, IterationInterval(1))
 
 u, v, w = model.velocities
-d = Field(∂x(u) + ∂y(v) + ∂z(w))
+d = CenterField(grid)
+
+@kernel function _divergence!(target_field, u, v, w, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds target_field[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
+end
+
+function compute_flow_divergence!(target_field, model)
+    grid = model.grid
+    u, v, w = model.velocities
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _divergence!, target_field, u, v, w, grid)
+    return nothing
+end
 
 function progress(sim)
     if pressure_solver isa ConjugateGradientPoissonSolver
@@ -82,7 +112,7 @@ function progress(sim)
     msg = @sprintf("Iter: %d, time: %6.3e, Δt: %6.3e, Poisson iters: %d",
                     iteration(sim), time(sim), sim.Δt, pressure_iters)
 
-    compute!(d)
+    compute_flow_divergence!(d, sim.model)
 
     msg *= @sprintf(", max u: %6.3e, max v: %6.3e, max w: %6.3e, max d: %6.3e, max pressure: %6.3e, mean pressure: %6.3e",
                     maximum(abs, sim.model.velocities.u),
@@ -105,7 +135,7 @@ simulation.callbacks[:progress] = Callback(
 
 u, v, w = model.velocities
 c = model.tracers.c
-d = Field(∂x(u) + ∂y(v) + ∂z(w))
+compute_flow_divergence!(d, model)
 p = model.pressures.pNHS
 
 output_fields = (; u, v, w, c, d, p)
@@ -138,7 +168,7 @@ ulim = (minimum(interior(u_data)), maximum(interior(u_data)))
 wlim = (-maximum(abs, interior(w_data)), maximum(abs, interior(w_data)))
 clim = (minimum(interior(c_data)), maximum(interior(c_data)))
 # dlim = (-maximum(abs, interior(d_data)), maximum(abs, interior(d_data)))
-dlim = (-2e-7, 2e-7)
+dlim = (-2e-9, 2e-9)
 plim = (-maximum(abs, interior(p_data)), maximum(abs, interior(p_data))) ./ 2
 #%%
 using CairoMakie
@@ -159,10 +189,10 @@ pₙ = @lift interior(p_data[$n], :, 1, :)
 timeₙ = @lift "Time = $(times[$n])"
 
 heatmap!(axu, xF, zC, uₙ, colormap=:turbo, colorrange=ulim)
-heatmap!(axw, xF, zC, wₙ, colormap=:balance, colorrange=wlim)
-heatmap!(axc, xF, zC, cₙ, colormap=:turbo, colorrange=clim)
-heatmap!(axd, xF, zC, dₙ, colormap=:balance, colorrange=dlim)
-heatmap!(axp, xF, zC, pₙ, colormap=:balance, colorrange=plim)
+heatmap!(axw, xC, zF, wₙ, colormap=:balance, colorrange=wlim)
+heatmap!(axc, xC, zC, cₙ, colormap=:turbo, colorrange=clim)
+heatmap!(axd, xC, zC, dₙ, colormap=:balance, colorrange=dlim)
+heatmap!(axp, xC, zC, pₙ, colormap=:balance, colorrange=plim)
 
 Label(fig[0, :], timeₙ, tellwidth=false)
 display(fig)
