@@ -110,6 +110,7 @@ and the topology in the boundary-normal direction is used:
  - `NoFluxBoundaryCondition` for `Bounded` directions and `Centered`-located fields
  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
  - `nothing` for `Flat` directions and/or `Nothing`-located fields
+ - `nothing` for `immersed` boundaries
 """
 FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCondition();
                         west = DefaultBoundaryCondition(default_bounded_bc),
@@ -118,18 +119,18 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
                         north = DefaultBoundaryCondition(default_bounded_bc),
                         bottom = DefaultBoundaryCondition(default_bounded_bc),
                         top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
+                        immersed = DefaultBoundaryCondition(nothing)) =
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
     FieldBoundaryConditions(grid, location, indices=(:, :, :);
                             west     = default_auxiliary_bc(grid, boundary, loc),
                             east     = default_auxiliary_bc(grid, boundary, loc),
-                            south    = default_auxiliary_bc(grid, boundary, loc),
-                            north    = default_auxiliary_bc(grid, boundary, loc),
-                            bottom   = default_auxiliary_bc(grid, boundary, loc),
-                            top      = default_auxiliary_bc(grid, boundary, loc),
-                            immersed = NoFluxBoundaryCondition())
+                            south    = default_auxiliary_bc(grid, boundary, loc), 
+                            north    = default_auxiliary_bc(grid, boundary, loc), 
+                            bottom   = default_auxiliary_bc(grid, boundary, loc), 
+                            top      = default_auxiliary_bc(grid, boundary, loc), 
+                            immersed = nothing)
 
 Return boundary conditions for auxiliary fields (fields whose values are
 derived from a model's prognostic fields) on `grid` and at `location`.
@@ -154,6 +155,7 @@ and the topology in the boundary-normal direction is used:
 - `GradientBoundaryCondition(0)` for `Bounded` directions and `Centered`-located fields
 - `nothing` for `Bounded` directions and `Face`-located fields
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
+- `nothing` for `immersed` boundaries
 """
 function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  west     = default_auxiliary_bc(grid, Val(:west),   loc),
@@ -162,7 +164,7 @@ function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  north    = default_auxiliary_bc(grid, Val(:north),  loc),
                                  bottom   = default_auxiliary_bc(grid, Val(:bottom), loc),
                                  top      = default_auxiliary_bc(grid, Val(:top),    loc),
-                                 immersed = NoFluxBoundaryCondition())
+                                 immersed = nothing)
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
@@ -175,7 +177,7 @@ end
 
 # Friendly warning?
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
-    if !(ibc isa DefaultBoundaryCondition)
+    if !(ibc isa DefaultBoundaryCondition) && !(ibc isa Nothing)
         msg = """$field_name was assigned an immersed boundary condition
               $ibc,
               but this is not supported on

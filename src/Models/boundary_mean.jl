@@ -45,10 +45,10 @@ struct BoundaryAdjacentMean{FF, BV}
     BoundaryAdjacentMean: (-1.5612511283791264e-18)
     ```
     """
-    BoundaryAdjacentMean(grid, side;
-                         flux_field::FF = boundary_reduced_field(Val(side), grid),
-                         value::BV = Ref(zero(grid))) where {FF, BV} =
-        new{FF, BV}(flux_field, value)
+    function BoundaryAdjacentMean(grid, side; flux_field::FF = boundary_reduced_field(Val(side), grid),
+                                              value::BV = Ref(zero(grid))) where {FF, BV}
+        return new{FF, BV}(flux_field, value)
+    end
 end
 
 @inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
