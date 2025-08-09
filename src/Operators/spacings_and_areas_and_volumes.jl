@@ -109,7 +109,14 @@ end
 @inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 @inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
-@inline Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = permutedims(Base.stack(collect(Base.stack(collect(getspacing(k, grid.z.Δᵃᵃᶜ) for _ in j)) for _ in i)), (3,2,1)) # one part
+@inline function Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid)
+    # Make everything a 1D array:
+    i = reshape(i, (length(i),))
+    j = reshape(j, (length(j),))
+    k = reshape(k, (length(k),))
+    thing = permutedims(Base.stack(collect(Base.stack(collect(getspacing(k, grid.z.Δᵃᵃᶜ) for _ in j)) for _ in i)), (3,2,1))
+    return thing
+end
 
 @inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
@@ -131,7 +138,14 @@ end
 @inline Δyᵃᶠᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶠᵃ[j]
 @inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶠᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δyᵃᶜᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
+
+@inline function Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG)
+    # Make everything a 1D array:
+    i = reshape(i, (length(i),))
+    j = reshape(j, (length(j),))
+    k = reshape(k, (length(k),))
+    return Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
+end
 
 ### XRegularRG
 

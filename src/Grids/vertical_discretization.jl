@@ -187,6 +187,8 @@ AUG = AbstractUnderlyingGrid
 
 @inline function rnode(i::AbstractArray, j::AbstractArray, k, grid, ℓx, ℓy, ℓz)
     res = rnode(k, grid, ℓz)
+    # Make res a 1D array. This has no effect if res is already 1D:
+    res = reshape(res, (length(res),))
     toperm = Base.stack(collect(Base.stack(collect(res for _ in 1:size(j, 2))) for _ in 1:size(i, 1)))
     permutedims(toperm, (3, 2, 1))
 end

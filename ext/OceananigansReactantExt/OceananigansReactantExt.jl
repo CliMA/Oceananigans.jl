@@ -240,7 +240,12 @@ end
     return c
 end
 
+using InteractiveUtils: @which
+
 @inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
+    @show c
+    #@show typeof(c)
+    @show size(c)
     N = ndims(c)
     axes2 = ntuple(Val(N)) do i
         reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
@@ -252,6 +257,9 @@ end
         end)...)
     end
     tracedidxs = axes2
+
+    @show c.operand
+    @show axes2
 
     conds = Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c)
     if conds isa Bool
@@ -265,9 +273,23 @@ end
 
     @assert size(tvals) == size(c)
     gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
+    @show gf
+    @show typeof(gf)
     if gf isa AbstractFloat
 	 gf = Reactant.Ops.fill(gf, size(c))
     end
+
+    @show @which getindex(c.operand, axes2...)
+
+    @show @which  c.operand.op(axes2..., c.operand.grid, c.operand.▶a, c.operand.▶b, c.operand.a, c.operand.b)
+
+    @show typeof(c.operand.▶a(axes2..., c.operand.grid, c.operand.a))
+    @show typeof(c.operand.▶b(axes2..., c.operand.grid, c.operand.b))
+
+    @show c.operand.▶b(axes2..., c.operand.grid, c.operand.b)
+    @show c.operand.b
+    @show typeof(c.operand.b)
+
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func isa Nothing ? Base.identity : c.func, gf))
 
     mask = c.mask
