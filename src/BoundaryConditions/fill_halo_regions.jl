@@ -34,7 +34,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
         fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
     end
 
-    fill_halos!      = first(bcs).kernels
+    fill_halos!      = boundary_conditions.kernels
     bcs              = extract_ordered_boundary_conditions(boundary_conditions)
     number_of_tasks  = length(fill_halos!)
     
