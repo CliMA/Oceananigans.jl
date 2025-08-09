@@ -1,11 +1,12 @@
+using CUDA: @allowscalar
 using Oceananigans.Utils: prettykeys
 
-mutable struct NaNChecker{F}
+mutable struct NaNChecker{F, H}
     fields :: F
+    hasnan :: H
     erroring :: Bool
 end
 
-NaNChecker(fields) = NaNChecker(fields, false) # default
 default_nan_checker(model) = nothing
 
 function Base.summary(nc::NaNChecker)
@@ -23,19 +24,28 @@ Base.show(io, nc::NaNChecker) = print(io, summary(nc))
     NaNChecker(; fields, erroring=false)
 
 Return a `NaNChecker`, which sets `sim.running=false` if a `NaN` is detected
-in any member of `fields` when `NaNChecker(sim)` is called. `fields` should be
-a container with key-value pairs like a dictionary or `NamedTuple`.
+in any member of `fields` when `(::NaNChecker)(sim)` is called. `fields` should be
+a container with key-value pairs like a dictionary or `NamedTuple`. 
+`(::NaNChecker)(sim)` also returns a boolean indicating whether NaNs were found.
 
 If `erroring=true`, the `NaNChecker` will throw an error on NaN detection.
 """
-NaNChecker(; fields, erroring=false) = NaNChecker(fields, erroring)
+function NaNChecker(; fields, erroring=false)
+    first_field = first(fields)
+    hasnan = Field{Nothing, Nothing, Nothing}(first_field.grid, Bool)
+    return NaNChecker(fields, hasnan, erroring)
+end
 
-hasnan(field::AbstractArray) = any(isnan, parent(field))
-hasnan(model) = hasnan(first(fields(model)))
-
+function hasnan(field, checker)
+    any!(isnan, checker.hasnan, field)
+    return @allowscalar first(checker.hasnan)
+end
+    
 function (nc::NaNChecker)(simulation)
+    found_nan = false
     for (name, field) in pairs(nc.fields)
-        if hasnan(field)
+        found_nan = hasnan(field, nc)
+        if found_nan
             simulation.running = false
             clock = simulation.model.clock
             t = time(simulation)
@@ -48,7 +58,7 @@ function (nc::NaNChecker)(simulation)
             end
         end
     end
-    return nothing
+    return found_nan
 end
 
 """
