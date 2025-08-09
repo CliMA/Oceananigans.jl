@@ -73,35 +73,42 @@ end
 # Version where we find grid amongst ordinary fields:
 function tupled_fill_halo_regions!(fields, args...; kwargs...)
 
-    not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
-
-    if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
-        grid = first(not_reduced_fields).grid
-        fill_halo_regions!(map(data, not_reduced_fields),
-                           map(boundary_conditions, not_reduced_fields),
-                           default_indices(3),
-                           map(instantiated_location, not_reduced_fields),
-                           grid, args...; kwargs...)
+    for field in fields
+        fill_halo_regions!(field, args...; kwargs...)
     end
 
     return nothing
 end
 
-# Version where grid is provided:
-function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
+#     not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
 
-    not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
+#     if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
+#         grid = first(not_reduced_fields).grid
+#         fill_halo_regions!(map(data, not_reduced_fields),
+#                            map(boundary_conditions, not_reduced_fields),
+#                            default_indices(3),
+#                            map(instantiated_location, not_reduced_fields),
+#                            grid, args...; kwargs...)
+#     end
 
-    if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
-        fill_halo_regions!(map(data, not_reduced_fields),
-                           map(boundary_conditions, not_reduced_fields),
-                           default_indices(3),
-                           map(instantiated_location, not_reduced_fields),
-                           grid, args...; kwargs...)
-    end
+#     return nothing
+# end
+# 
+# # Version where grid is provided:
+# function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
 
-    return nothing
-end
+#     not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
+
+#     if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
+#         fill_halo_regions!(map(data, not_reduced_fields),
+#                            map(boundary_conditions, not_reduced_fields),
+#                            default_indices(3),
+#                            map(instantiated_location, not_reduced_fields),
+#                            grid, args...; kwargs...)
+#     end
+
+#     return nothing
+# end
 
 # Helper function to create the tuple of ordinary fields:
 function fill_reduced_field_halos!(fields, args...; kwargs)
