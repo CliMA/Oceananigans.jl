@@ -1,5 +1,4 @@
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
-using Oceananigans: defaults
 
 """
     FlatExtrapolation
