@@ -1,4 +1,5 @@
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans: defaults
 
 """
     FlatExtrapolation
@@ -33,17 +34,13 @@ of 1/2 changes to ``Δx₋₁/(Δx₋₂ + Δx₋₃)`` instead, i.e.:
 f(xᵢ) ≈ f(xᵢ₋₂) - (f(xᵢ₋₁) - f(xᵢ₋₃))Δxᵢ₋₁/(Δxᵢ₋₂ + Δxᵢ₋₃) + O(Δx²)
 ```.
 """
-struct FlatExtrapolation{FT}
-    relaxation_timescale :: FT
+@kwdef struct FlatExtrapolation{FT}
+    relaxation_timescale :: FT = Inf
 end
+
+Adapt.adapt_structure(to, fe::FlatExtrapolation) = FlatExtrapolation(adapt(to, fe.relaxation_timescale))
 
 const FEOBC = BoundaryCondition{<:Open{<:FlatExtrapolation}}
-
-function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timescale = Inf, kwargs...)
-    classification = Open(FlatExtrapolation(relaxation_timescale))
-
-    return BoundaryCondition(classification, val; kwargs...)
-end
 
 @inline function relax(l, m, grid, ϕ, bc, clock, model_fields)
     Δt = clock.last_stage_Δt
