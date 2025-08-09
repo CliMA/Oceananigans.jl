@@ -81,7 +81,7 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
 
 @kernel function _explicit_rk3_step_free_surface!(η, Δt, γⁿ, ζⁿ, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
-    @inbounds η[i, j, Nz+1] += ζⁿ * η⁻[i, j, Nz+1] + γⁿ * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
+    @inbounds η[i, j, Nz+1] = ζⁿ * η⁻[i, j, Nz+1] + γⁿ * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
 end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)
