@@ -24,6 +24,7 @@ include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
 include("discrete_boundary_function.jl")
 include("continuous_boundary_function.jl")
+include("boundary_condition_ordering.jl")
 include("field_boundary_conditions.jl")
 include("show_boundary_conditions.jl")
 
