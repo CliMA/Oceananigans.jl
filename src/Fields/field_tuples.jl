@@ -58,7 +58,7 @@ function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...;
                             kwargs...)
 
     for field in fields
-        fill_halo_regions!(field, args...; signed=signed, kwargs...)
+        fill_halo_regions!(field, args...; kwargs...)
     end
 
     return nothing
