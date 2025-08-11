@@ -22,6 +22,7 @@ abstract type AbstractTimeStepper end
 
 function update_state! end
 function compute_tendencies! end
+function compute_flux_bc_tendencies! end
 
 compute_pressure_correction!(model, Δt) = nothing
 make_pressure_correction!(model, Δt) = nothing

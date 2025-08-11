@@ -188,8 +188,12 @@ makedocs(sitename = "Oceananigans.jl",
          modules = [Oceananigans,
                     isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
-         doctest = true, # set to false to speed things up
-         draft = false,  # set to true to speed things up
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         doctestfilters = [
+             r"┌ Warning:.*",  # remove standard warning lines
+             r"└ @ .*",        # remove the source location of warnings
+         ],
          clean = true,
          checkdocs = :exports) # set to :none to speed things up
 
