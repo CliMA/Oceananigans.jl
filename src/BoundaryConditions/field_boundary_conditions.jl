@@ -95,7 +95,8 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.bottom),
                             on_architecture(arch, fbcs.top),
                             on_architecture(arch, fbcs.immersed), 
-                            on_architecture(arch, fbcs.execution_auxiliaries))
+                            fbcs.kernels,
+                            on_architecture(arch, fbcs.ordered_bcs))
 
 """
     FieldBoundaryConditions(; kwargs...)
