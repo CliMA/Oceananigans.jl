@@ -23,8 +23,9 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     step_free_surface!(free_surface, model, timestepper, Δt)
 
     # Average free surface variables in the second stage
-    model.clock.stage == 2 && 
+    if model.clock.stage == 2 
         @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
+    end
     
     return nothing
 end
@@ -86,8 +87,10 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
                        model.clock,
                        Δt)
 
-        launch!(architecture(grid), grid, :xyz,
+        if model.clock.stage > 1 
+            launch!(architecture(grid), grid, :xyz,
                 _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
+        end
     end
 
     return nothing
@@ -115,11 +118,11 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-            θ  = tracers[tracer_name]
+            c  = tracers[tracer_name]
             closure = model.closure
 
             launch!(architecture(grid), grid, :xyz,
-                    _euler_substep_tracer_field!, θ, grid, convert(FT, Δt), Gⁿ)
+                    _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
 
             implicit_step!(θ,
                         model.timestepper.implicit_solver,
@@ -129,8 +132,9 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                         model.clock,
                         Δt)
 
+        if model.clock.stage > 1 
             launch!(architecture(grid), grid, :xyz,
-                    _split_rk3_average_field!, θ, γⁿ, ζⁿ, Ψ⁻)
+                    _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
         end
     end
 
@@ -141,7 +145,6 @@ end
 ##### Tracer update in mutable vertical coordinates
 #####
 
-
 # σθ is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
 @kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
@@ -151,9 +154,21 @@ end
     @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
 
+@kernel function _split_rk3_average_tracer_field!(c, grid, γⁿ, ζⁿ, c⁻)
+    i, j, k = @index(Global, NTuple)
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = ζⁿ * c⁻[i, j, k] / σᶜᶜⁿ + γⁿ * c[i, j, k]
+end
+
 #####
 ##### Storing previous fields for the RK3 update
 #####
+
+# Tracers are multiplied by the vertical coordinate scaling factor
+@kernel function _cache_tracer_fields!(Ψ⁻, grid, Ψⁿ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
+end
 
 function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
 
@@ -165,7 +180,11 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
     for name in keys(model_fields)
         Ψ⁻ = previous_fields[name]
         Ψⁿ = model_fields[name]
-        parent(Ψ⁻) .= parent(Ψⁿ)
+        if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
+            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+        else # Velocities and free surface are stored without the grid scaling
+            parent(Ψ⁻) .= parent(Ψⁿ)
+        end
     end
 
     if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
