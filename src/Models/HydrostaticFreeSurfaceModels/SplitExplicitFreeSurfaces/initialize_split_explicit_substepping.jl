@@ -27,36 +27,12 @@ end
 
 # `initialize_free_surface_state!` is called at the beginning of the substepping to
 # reset the filtered state to zero and reinitialize the state from the filtered state.
-function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper, stage)
+function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper)
 
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
 
     initialize_free_surface_timestepper!(timestepper, η, U, V)
-
-    fill!(free_surface.filtered_state.η, 0)
-    fill!(free_surface.filtered_state.U, 0)
-    fill!(free_surface.filtered_state.V, 0)
-
-    return nothing
-end
-
-# At the last stage we reset the velocities and perform the complete substepping from n to n+1
-function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts, ::Val{3})
-
-    η = free_surface.η
-    U, V = free_surface.barotropic_velocities
-
-    Uⁿ⁻¹ = baroclinic_ts.Ψ⁻.U
-    Vⁿ⁻¹ = baroclinic_ts.Ψ⁻.V
-    ηⁿ⁻¹ = baroclinic_ts.Ψ⁻.η
-
-    # Restart from the state at baroclinic step n
-    parent(U) .= parent(Uⁿ⁻¹)
-    parent(V) .= parent(Vⁿ⁻¹)
-    parent(η) .= parent(ηⁿ⁻¹)
-
-    initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
 
     fill!(free_surface.filtered_state.η, 0)
     fill!(free_surface.filtered_state.U, 0)

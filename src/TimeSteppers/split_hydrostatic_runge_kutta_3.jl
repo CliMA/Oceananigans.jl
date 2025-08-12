@@ -2,18 +2,17 @@ using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
-    SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
+    SplitRungeKutta3TimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
+time-stepping scheme modified from the scheme described by [Lan et al. (2022)](@cite Lan2022).
 """
-struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
+struct SplitRungeKutta3TimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
     γ² :: FT
     γ³ :: FT
     ζ² :: FT
     ζ³ :: FT
     Gⁿ :: TG
-    G⁻ :: TE # only needed for barotropic velocities in the barotropic step
     Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
@@ -26,11 +25,12 @@ end
                                 G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified
+The tendency fields `Gⁿ` and the previous state ` Ψ⁻` can be modified
 via optional `kwargs`.
 
-The scheme is described by [Lan et al. (2022)](@cite Lan2022). In a nutshell,
-the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
+The scheme is a modified version of the scheme described by [Lan et al. (2022)](@cite Lan2022).
+A manuscript describing the implementation and the stability characteristics of the scheme is in preparation.
+In a nutshell, the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
 A barotropic velocity correction step is applied after at each substep.
 
 The state `U` after each substep `m` is
@@ -56,8 +56,7 @@ Lan, R., Ju, L., Wanh, Z., Gunzburger, M., and Jones, P. (2022). High-order mult
 function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
                                      Gⁿ::TG = map(similar, prognostic_fields),
-                                     Ψ⁻::PF = map(similar, prognostic_fields),
-                                     G⁻::TE = nothing) where {TI, TG, PF, TE}
+                                     G⁻::PF = map(similar, prognostic_fields)) where {TI, TG, PF}
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is and experimental.\n" *
           "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
@@ -70,7 +69,7 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
 
     FT = eltype(grid)
 
-    return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, Ψ⁻, implicit_solver)
+    return SplitRungeKutta3TimeStepper{FT, TG, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
 
 function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; callbacks=[])

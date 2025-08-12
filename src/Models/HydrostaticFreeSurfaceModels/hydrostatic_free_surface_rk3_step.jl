@@ -23,7 +23,7 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     step_free_surface!(free_surface, model, timestepper, Δt)
 
     # Average free surface variables in the second stage
-    if model.clock.stage == 2 
+    if model.clock.stage > 1 
         @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
     end
     
@@ -52,12 +52,17 @@ function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid,
 
     Uⁿ⁻¹ = timestepper.Ψ⁻.U
     Vⁿ⁻¹ = timestepper.Ψ⁻.V
+    ηⁿ⁻¹ = timestepper.Ψ⁻.η
+
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
+    ηⁿ   = free_surface.η
+    
     params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
     
     launch!(arch, grid, params, _split_rk3_average_field!, Uⁿ, γⁿ, ζⁿ, Uⁿ⁻¹)
     launch!(arch, grid, params, _split_rk3_average_field!, Vⁿ, γⁿ, ζⁿ, Vⁿ⁻¹)
+    launch!(arch, grid, params, _split_rk3_average_field!, ηⁿ, γⁿ, ζⁿ, ηⁿ⁻¹)
 
     return nothing
 end
