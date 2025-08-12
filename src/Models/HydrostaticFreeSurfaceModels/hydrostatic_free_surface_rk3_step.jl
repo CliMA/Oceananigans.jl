@@ -77,6 +77,9 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
         launch!(model.architecture, model.grid, :xyz,
                 _split_rk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
 
+        launch!(model.architecture, model.grid, :xyz,
+                _euler_substep_field!, velocity_field, convert(FT, Δt), Gⁿ)
+
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
@@ -84,6 +87,9 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
                        nothing,
                        model.clock,
                        Δt)
+
+        launch!(model.architecture, model.grid, :xyz,
+                _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
     end
 
     return nothing
@@ -110,7 +116,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
         closure = model.closure
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_substep_tracer_field!, θ, grid, convert(FT, Δt), γⁿ, ζⁿ, Gⁿ, Ψ⁻)
+                _euler_substep_tracer_field!, θ, grid, convert(FT, Δt), Gⁿ)
 
         implicit_step!(θ,
                        model.timestepper.implicit_solver,
@@ -119,6 +125,9 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        Val(tracer_index),
                        model.clock,
                        Δt)
+
+        launch!(architecture(grid), grid, :xyz,
+                _split_rk3_average_field!, θ, γⁿ, ζⁿ, Ψ⁻)
     end
 
     return nothing
@@ -131,27 +140,31 @@ end
 # σθ is the evolved quantity.
 # We store temporarily σθ in θ. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
 # Ψ⁻ is the previous tracer already scaled by the vertical coordinate scaling factor: ψ⁻ = σ * θ
-@kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
+@kernel function _euler_substep_field!(u, Δt, Gⁿ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds u[i, j, k] = u[i, j, k] + Δt * Gⁿ[i, j, k]
+end
+
+# σθ is the evolved quantity.
+# We store temporarily σθ in θ. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
+# Ψ⁻ is the previous tracer already scaled by the vertical coordinate scaling factor: ψ⁻ = σ * θ
+@kernel function _euler_substep_tracer_field!(θ, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
-    @inbounds θ[i, j, k] = (ζⁿ * Ψ⁻[i, j, k] + γⁿ * (σᶜᶜ⁻ * θ[i, j, k] + Δt * Gⁿ[i, j, k])) / σᶜᶜⁿ
+    @inbounds θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
 
-@kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, ::Nothing, ::Nothing, Gⁿ, Ψ⁻)
+@kernel function _split_rk3_average_field!(θ, γⁿ, ζⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
-    @inbounds θ[i, j, k] = (Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds θ[i, j, k] = ζⁿ * Ψ⁻[i, j, k] + γⁿ * θ[i, j, k] 
 end
+
+@kernel _split_rk3_substep_field!(θ, ::Nothing, ::Nothing, Ψ⁻) = nothing
 
 #####
 ##### Storing previous fields for the RK3 update
 #####
-
-# Tracers are multiplied by the vertical coordinate scaling factor
-@kernel function _cache_tracer_fields!(Ψ⁻, grid, Ψⁿ)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
-end
 
 function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
 
@@ -163,16 +176,12 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
     for name in keys(model_fields)
         Ψ⁻ = previous_fields[name]
         Ψⁿ = model_fields[name]
-        if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
-            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
-        else # Velocities and free surface are stored without the grid scaling
-            parent(Ψ⁻) .= parent(Ψⁿ)
-        end
+        parent(Ψ⁻) .= parent(Ψⁿ)
+    end
 
-        if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
-            # We need to cache the surface height somewhere!
-            parent(model.vertical_coordinate.storage) .= parent(model.grid.z.ηⁿ)
-        end
+    if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
+        # We need to cache the surface height somewhere!
+        parent(model.vertical_coordinate.storage) .= parent(model.grid.z.ηⁿ)
     end
 
     return nothing
