@@ -59,11 +59,6 @@ function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid,
     return nothing
 end
 
-@kernel function _rk3_average_free_surface!(η, grid, η⁻, γⁿ, ζⁿ)
-    i, j = @index(Global, NTuple)
-    @inbounds η[i, j, k] = ζⁿ * η⁻[i, j, k] + γⁿ * η[i, j, k]
-end
-
 #####
 ##### Time stepping in each substep
 #####
