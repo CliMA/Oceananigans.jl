@@ -110,13 +110,13 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
 
         Gⁿ = model.timestepper.Gⁿ[tracer_name]
         Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-        θ  = tracers[tracer_name]
+        c  = tracers[tracer_name]
         closure = model.closure
 
         launch!(architecture(grid), grid, :xyz,
-                _euler_substep_tracer_field!, θ, grid, convert(FT, Δt), Gⁿ)
+                _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
 
-        implicit_step!(θ,
+        implicit_step!(c,
                        model.timestepper.implicit_solver,
                        closure,
                        model.diffusivity_fields,
@@ -125,7 +125,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        Δt)
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_average_field!, θ, γⁿ, ζⁿ, Ψ⁻)
+                _split_rk3_average_field!,cθ, γⁿ, ζⁿ, Ψ⁻)
     end
 
     return nothing
@@ -138,11 +138,11 @@ end
 
 # σθ is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
-@kernel function _euler_substep_tracer_field!(θ, grid, Δt, Gⁿ)
+@kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
-    @inbounds θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
+    @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
 
 #####
