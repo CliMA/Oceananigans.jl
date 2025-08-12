@@ -2,7 +2,7 @@ using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
-import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, cache_previous_fields!
+import Oceananigans.TimeSteppers: split_rk3_substep!, _euler_substep_field!, _split_rk3_average_field!, cache_previous_fields!
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
 
@@ -69,15 +69,15 @@ end
 
 function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
 
+    grid = model.grid
+    FT = eltype(grid)
+
     for name in (:u, :v)
         Gⁿ = model.timestepper.Gⁿ[name]
         Ψ⁻ = model.timestepper.Ψ⁻[name]
         velocity_field = velocities[name]
 
-        launch!(model.architecture, model.grid, :xyz,
-                _split_rk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
-
-        launch!(model.architecture, model.grid, :xyz,
+        launch!(architecture(grid), grid, :xyz,
                 _euler_substep_field!, velocity_field, convert(FT, Δt), Gⁿ)
 
         implicit_step!(velocity_field,
@@ -88,7 +88,7 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
                        model.clock,
                        Δt)
 
-        launch!(model.architecture, model.grid, :xyz,
+        launch!(architecture(grid), grid, :xyz,
                 _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
     end
 
@@ -137,13 +137,6 @@ end
 ##### Tracer update in mutable vertical coordinates
 #####
 
-# σθ is the evolved quantity.
-# We store temporarily σθ in θ. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
-# Ψ⁻ is the previous tracer already scaled by the vertical coordinate scaling factor: ψ⁻ = σ * θ
-@kernel function _euler_substep_field!(u, Δt, Gⁿ)
-    i, j, k = @index(Global, NTuple)
-    @inbounds u[i, j, k] = u[i, j, k] + Δt * Gⁿ[i, j, k]
-end
 
 # σθ is the evolved quantity.
 # We store temporarily σθ in θ. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
@@ -154,13 +147,6 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
     @inbounds θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
-
-@kernel function _split_rk3_average_field!(θ, γⁿ, ζⁿ, Ψ⁻)
-    i, j, k = @index(Global, NTuple)
-    @inbounds θ[i, j, k] = ζⁿ * Ψ⁻[i, j, k] + γⁿ * θ[i, j, k] 
-end
-
-@kernel _split_rk3_substep_field!(θ, ::Nothing, ::Nothing, Ψ⁻) = nothing
 
 #####
 ##### Storing previous fields for the RK3 update

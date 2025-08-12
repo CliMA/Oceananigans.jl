@@ -134,25 +134,28 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     return nothing
 end
 
-@kernel function _split_rk3_substep_field!(cⁿ, Δt, γⁿ::FT, ζⁿ, Gⁿ, cⁿ⁻¹) where FT
+@kernel function _euler_substep_field!(u, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
-    cⁿ[i, j, k] =  ζⁿ * cⁿ⁻¹[i, j, k] + γⁿ * (cⁿ[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
+    @inbounds u[i, j, k] = u[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
-@kernel function _split_rk3_substep_field!(cⁿ, Δt, ::Nothing, ::Nothing, Gⁿ, cⁿ⁻¹)
+@kernel function _split_rk3_average_field!(θ, γⁿ, ζⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
-    cⁿ[i, j, k] = cⁿ[i, j, k] + Δt * Gⁿ[i, j, k]
+    @inbounds θ[i, j, k] = ζⁿ * Ψ⁻[i, j, k] + γⁿ * θ[i, j, k] 
 end
+
+@kernel _split_rk3_average_field!(θ, ::Nothing, ::Nothing, Ψ⁻) = nothing
 
 function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     grid = model.grid
+    FT   = eltype(grid)
     arch = architecture(grid)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.Ψ⁻[i])
-        launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
+        launch!(arch, grid, :xyz, _euler_substep_field!, field, convert(FT, Δt), model.timestepper.Gⁿ[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -163,7 +166,9 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
-                       stage_Δt(Δt, γⁿ, ζⁿ))
+                       Δt)
+
+        launch!(arch, grid, :xyz, _split_rk3_average_field!, field, γⁿ, ζⁿ, model.timestepper.Ψ⁻[i])
     end
 end
 
