@@ -4,7 +4,8 @@ using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
-using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!, QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!, _split_rk3_average_field!
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
@@ -119,15 +120,20 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
                 
     # ... and step forward.
     launch!(arch, grid, :xyz,
-            _rk3_substep_turbulent_kinetic_energy!,
+            _euler_step_turbulent_kinetic_energy!,
             Le, grid, closure,
             model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
             model.tracers, model.buoyancy, diffusivity_fields,
-            Δt, γⁿ, ζⁿ, Gⁿ, e⁻)
+            Δt, Gⁿ)
 
     implicit_step!(e, implicit_solver, closure,
                    diffusivity_fields, Val(tracer_index),
                    model.clock, Δt)
+
+    if model.clock.stage > 1
+        launch!(arch, grid, :xyz, 
+                _split_rk3_average_field!, e, γⁿ, ζⁿ, e⁻)
+    end
 
     return nothing
 end
@@ -250,10 +256,10 @@ end
     end
 end
 
-@kernel function _rk3_substep_turbulent_kinetic_energy!(Le, grid, closure,
-                                                        next_velocities, previous_velocities,
-                                                        tracers, buoyancy, diffusivities,
-                                                        Δt, γⁿ, ζⁿ, slow_Gⁿe, e⁻)
+@kernel function _euler_step_turbulent_kinetic_energy!(Le, grid, closure,
+                                                       next_velocities, previous_velocities,
+                                                       tracers, buoyancy, diffusivities,
+                                                       Δt, slow_Gⁿe)
 
     i, j, k = @index(Global, NTuple)
 
@@ -270,7 +276,7 @@ end
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (ζⁿ * e⁻[i, j, k] + γⁿ * (e[i, j, k] + Δt * total_Gⁿ) * active) / σᶜᶜⁿ
+        e[i, j, k] = (σᶜᶜ⁻ * e[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
     end
 end
 
