@@ -1,8 +1,15 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
 using Oceananigans: defaults
 
+struct PerturbationAdvection{FT}
+    inflow_timescale :: FT
+   outflow_timescale :: FT
+end
+
 """
-    PerturbationAdvection
+    PerturbationAdvection(FT = defaults.FloatType;
+                          outflow_timescale = Inf,
+                          inflow_timescale = 0)
 
 Create a `PerturbationAdvection` scheme to be used with an `OpenBoundaryCondition`.
 This scheme will nudge the boundary velocity to the OpenBoundaryCondition's exterior value `val`,
@@ -47,11 +54,6 @@ to point into the domain.
 The ideal value of the timescales probably depend on the grid spacing and details of the
 boundary flow.
 """
-struct PerturbationAdvection{FT}
-    inflow_timescale :: FT
-   outflow_timescale :: FT
-end
-
 function PerturbationAdvection(FT = defaults.FloatType;
                                outflow_timescale = Inf,
                                inflow_timescale = 0)

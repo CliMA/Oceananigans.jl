@@ -193,7 +193,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         @test all(view(parent(u), :, :, :) .== -1)
         @test all(interior(u) .== -1)
 
-        obc = OpenBoundaryCondition((t) -> 0.1*t, scheme = PerturbationAdvection(inflow_timescale = 0.01, outflow_timescale = 0.5))
+        obc = OpenBoundaryCondition(t -> 0.1*t, scheme = PerturbationAdvection(inflow_timescale = 0.01, outflow_timescale = 0.5))
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
