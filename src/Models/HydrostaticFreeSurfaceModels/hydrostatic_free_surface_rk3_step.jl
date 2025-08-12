@@ -141,7 +141,7 @@ end
 #####
 
 
-# σθ is the evolved quantity, so tracer fields need to be evolved
+# σc is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
 @kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
