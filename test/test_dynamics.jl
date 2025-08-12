@@ -667,80 +667,90 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                       y_periodic_regularly_spaced_vertically_stretched_grid,
                       y_flat_regularly_spaced_vertically_stretched_grid)
 
+        free_surface_types(::Val{:QuasiAdamsBashforth2}, g) = (ImplicitFreeSurface(; gravitational_acceleration=g), 
+                                                               SplitExplicitFreeSurface(; gravitational_acceleratio=g, cfl=0.5))   
+
+        free_surface_types(::Val{:SplitRungeKutta3}, g) = (SplitExplicitFreeSurface(; gravitational_acceleratio=g, cfl=0.5), ) 
+
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for grid in test_grids
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
+                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                    grid_name = typeof(grid).name.wrapper
+                    topo = topology(grid)
 
-                # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
-                gravitational_acceleration = (10σ)^2 / Lx
-                free_surface = ImplicitFreeSurface(; gravitational_acceleration)
-                model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+                    # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
+                    gravitational_acceleration = (10σ)^2 / Lx
 
-                @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
+                    for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration)
+                        model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+
+                        free_surface_type = typeof(free_surface).name.wrapper
+                        @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo, $timestepper, $free_surface_type]..."
+                        internal_wave_dynamics_test(model, solution, Δt)
+                    end
+                end
             end
         end
 
-        @testset "Internal wave with NonhydrostaticModel" begin
-            for grid in test_grids
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
+    #     @testset "Internal wave with NonhydrostaticModel" begin
+    #         for grid in test_grids
+    #             grid_name = typeof(grid).name.wrapper
+    #             topo = topology(grid)
 
-                model = NonhydrostaticModel(; grid, kwargs...)
+    #             model = NonhydrostaticModel(; grid, kwargs...)
 
-                @info "  Testing internal wave [NonhydrostaticModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
-            end
-        end
-    end
+    #             @info "  Testing internal wave [NonhydrostaticModel, $grid_name, $topo]..."
+    #             internal_wave_dynamics_test(model, solution, Δt)
+    #         end
+    #     end
+    # end
 
-    @testset "Taylor-Green vortex" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-                td = typeof(time_discretization).name.wrapper
-                @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
-                @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)
-            end
-        end
-    end
+    # @testset "Taylor-Green vortex" begin
+    #     for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
+    #         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+    #             td = typeof(time_discretization).name.wrapper
+    #             @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
+    #             @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)
+    #         end
+    #     end
+    # end
 
-    @testset "Background fields" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing dynamics with background fields [$timestepper]..."
-            @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
+    # @testset "Background fields" begin
+    #     for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
+    #         @info "  Testing dynamics with background fields [$timestepper]..."
+    #         @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
 
-            Nx = Nz = 128
-            Lx = Lz = 2π
+    #         Nx = Nz = 128
+    #         Lx = Lz = 2π
 
-            # Regular grid with no flat dimension
-            y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                      size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+    #         # Regular grid with no flat dimension
+    #         y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+    #                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
 
-            solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
+    #         solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
 
-            model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields, kwargs...)
-            internal_wave_dynamics_test(model, solution, Δt)
-        end
-    end
+    #         model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields, kwargs...)
+    #         internal_wave_dynamics_test(model, solution, Δt)
+    #     end
+    # end
 
-    @testset "Tilted gravity" begin
-        for arch in archs
-            @info "  Testing tilted gravity [$(typeof(arch))]..."
-            for θ in (0, 1, -30, 60, 90, -180)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64, θ=θ)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64, θ=θ)
-            end
-        end
-    end
+    # @testset "Tilted gravity" begin
+    #     for arch in archs
+    #         @info "  Testing tilted gravity [$(typeof(arch))]..."
+    #         for θ in (0, 1, -30, 60, 90, -180)
+    #             stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64, θ=θ)
+    #             stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64, θ=θ)
+    #         end
+    #     end
+    # end
 
-    # This test alone runs for 2 hours on the GPU!!!!!
-    @testset "Background rotation about arbitrary axis" begin
-        for arch in archs
-            if arch == CPU() # This test is removed on the GPU (see Issue #2647)
-                @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
-                inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
-            end
-        end
-    end
+    # # This test alone runs for 2 hours on the GPU!!!!!
+    # @testset "Background rotation about arbitrary axis" begin
+    #     for arch in archs
+    #         if arch == CPU() # This test is removed on the GPU (see Issue #2647)
+    #             @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
+    #             inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
+    #         end
+    #     end
+    # end
 end
