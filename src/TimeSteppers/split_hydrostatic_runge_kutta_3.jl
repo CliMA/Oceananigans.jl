@@ -59,12 +59,8 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      Ψ⁻::PF = map(similar, prognostic_fields),
                                      G⁻::TE = nothing) where {TI, TG, PF, TE}
 
-    @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *
+    @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is and experimental.\n" *
           "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
-
-    !isnothing(implicit_solver) &&
-        @warn("Implicit-explicit time-stepping with SplitRungeKutta3TimeStepper is not tested. " *
-                "\n implicit_solver: $(typeof(implicit_solver))")
 
     γ² = 1 // 4
     γ³ = 2 // 3
