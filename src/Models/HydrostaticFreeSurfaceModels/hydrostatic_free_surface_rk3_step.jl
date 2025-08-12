@@ -125,7 +125,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        Δt)
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_average_field!,cθ, γⁿ, ζⁿ, Ψ⁻)
+                _split_rk3_average_field!, c, γⁿ, ζⁿ, Ψ⁻)
     end
 
     return nothing
