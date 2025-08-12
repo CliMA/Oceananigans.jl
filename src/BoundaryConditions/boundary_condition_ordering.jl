@@ -1,4 +1,3 @@
-
 # In case of a DistributedCommunication paired with a
 # Flux, Value or Gradient boundary condition, we split the direction in two single-sided
 # fill_halo! events (see issue #3342)
@@ -8,11 +7,6 @@ function permute_boundary_conditions(bcs)
 
     split_x_halo_filling = split_halo_filling(bcs.west, bcs.east)
     split_y_halo_filling = split_halo_filling(bcs.south, bcs.north)
-
-    west_bc  = bcs.west
-    east_bc  = bcs.east
-    south_bc = bcs.south
-    north_bc = bcs.north
 
     if split_x_halo_filling
         if split_y_halo_filling
