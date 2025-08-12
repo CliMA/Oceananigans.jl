@@ -37,15 +37,27 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
-        @inbounds fill_halos![task](c, bcs[task]..., loc, grid)
+        fill_halo_event!(c, fill_halos![task], bcs[task], loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
+fill_halo_event!(c::OffsetArray, fill_halo!, bc, loc, arch, grid, args...; kwargs...) = fill_halo!(c, bc..., loc, grid, Tuple(args))
+
 #####
 ##### Double-sided fill_halo! kernels
 #####
+
+function fill_west_and_east_halo! end
+function fill_south_and_north_halo! end
+function fill_bottom_and_top_halo! end
+function fill_west_halo! end
+function fill_east_halo! end
+function fill_south_halo! end
+function fill_north_halo! end
+function fill_bottom_halo! end
+function fill_top_halo! end
 
 @kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args)
     j, k = @index(Global, NTuple)

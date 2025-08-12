@@ -35,6 +35,7 @@ include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_nothing.jl")
 include("fill_halo_regions_zipper.jl")
+include("fill_halo_kernels.jl")
 
 include("compute_flux_bcs.jl")
 
@@ -43,4 +44,5 @@ include("polar_boundary_condition.jl")
 
 include("flat_extrapolation_open_boundary_matching_scheme.jl")
 include("perturbation_advection_open_boundary_matching_scheme.jl")
+
 end # module

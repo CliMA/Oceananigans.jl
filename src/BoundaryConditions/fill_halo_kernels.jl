@@ -8,7 +8,7 @@ function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
 
     kernels!, ordered_bcs = fill_halo_kernels!(data, grid, loc, indices, bcs)
     regularized_bcs = FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north,
-                                              bcs.bottom, bcs.top, bcs.immmersed,
+                                              bcs.bottom, bcs.top, bcs.immersed,
                                               kernels!, ordered_bcs)
     return regularized_bcs
 end
@@ -22,7 +22,7 @@ function fill_halo_kernels!(data, grid, loc, indices, boundary_conditions::Field
 
     arch = architecture(grid)
 
-    fill_halos!, bcs = permute_boundary_conditions(bcs)
+    fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
     fill_halos! = tuple(fill_halos!...)
 
     kernels! = []
