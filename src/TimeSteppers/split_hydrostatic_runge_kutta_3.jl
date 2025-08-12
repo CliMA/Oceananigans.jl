@@ -140,8 +140,6 @@ end
     @inbounds field[i, j, k] = ζⁿ * field⁻[i, j, k] + γⁿ * field[i, j, k]
 end
 
-@kernel _split_rk3_average_field!(field, ::Nothing, ::Nothing, field⁻) = nothing
-
 function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     grid = model.grid
@@ -164,7 +162,8 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.clock,
                        Δt)
 
-        launch!(arch, grid, :xyz, _split_rk3_average_field!, field, γⁿ, ζⁿ, model.timestepper.Ψ⁻[i])
+        model.clock.stage > 1 && 
+            launch!(arch, grid, :xyz, _split_rk3_average_field!, field, γⁿ, ζⁿ, model.timestepper.Ψ⁻[i])
     end
 end
 

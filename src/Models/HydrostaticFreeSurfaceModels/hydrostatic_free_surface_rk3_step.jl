@@ -23,8 +23,9 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     step_free_surface!(free_surface, model, timestepper, Δt)
 
     # Average free surface variables in the second stage
-    model.clock.stage == 2 && 
+    if model.clock.stage == 2 
         @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
+    end
     
     return nothing
 end
@@ -86,8 +87,10 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
                        model.clock,
                        Δt)
 
-        launch!(architecture(grid), grid, :xyz,
+        if model.clock.stage > 1 
+            launch!(architecture(grid), grid, :xyz,
                 _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
+        end
     end
 
     return nothing
@@ -124,8 +127,10 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        model.clock,
                        Δt)
 
-        launch!(architecture(grid), grid, :xyz,
-                _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+        if model.clock.stage > 1 
+            launch!(architecture(grid), grid, :xyz,
+                    _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+        end
     end
 
     return nothing
@@ -144,8 +149,6 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
     @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
-
-@kernel _split_rk3_average_tracer_field!(c, grid, ::Nothing, ::Nothing, c⁻) = nothing
 
 @kernel function _split_rk3_average_tracer_field!(c, grid, γⁿ, ζⁿ, c⁻)
     i, j, k = @index(Global, NTuple)
