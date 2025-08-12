@@ -22,7 +22,8 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...;
-                            fill_boundary_normal_velocities = true, kwargs...)
+                            fill_boundary_normal_velocities = true, 
+                            kwargs...)
     
     if fill_boundary_normal_velocities
         fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
@@ -40,22 +41,12 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     return nothing
 end
 
-@inline fill_halo_event!(c::OffsetArray, fill_halo!, bcs, loc, grid, args...; kwargs...) = 
-    fill_halo!(c, bcs..., loc, grid, Tuple(args))
+@inline fill_halo_event!(c, fill_halo!, bcs, loc, grid, args...; kwargs...) = fill_halo!(c, bcs..., loc, grid, Tuple(args))
+@inline fill_halo_event!(c, ::Nothing,  bcs, loc, grid, args...; kwargs...) = nothing
 
 #####
 ##### Double-sided fill_halo! kernels
 #####
-
-function fill_west_and_east_halo! end
-function fill_south_and_north_halo! end
-function fill_bottom_and_top_halo! end
-function fill_west_halo! end
-function fill_east_halo! end
-function fill_south_halo! end
-function fill_north_halo! end
-function fill_bottom_halo! end
-function fill_top_halo! end
 
 @kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args)
     j, k = @index(Global, NTuple)
@@ -113,9 +104,20 @@ end
 ##### Calculate kernel size and offset for Windowed and Sliced Fields
 #####
 
-const WEB = Union{typeof(fill_west_and_east_halo!), typeof(fill_west_halo!), typeof(fill_east_halo!)}
-const SNB = Union{typeof(fill_south_and_north_halo!), typeof(fill_south_halo!), typeof(fill_north_halo!)}
-const TBB = Union{typeof(fill_bottom_and_top_halo!), typeof(fill_bottom_halo!), typeof(fill_top_halo!)}
+# All possible fill_halo! kernels
+struct WestAndEastKernels end
+struct SouthAndNorthKernels end
+struct BottomAndTopKernels end
+struct WestKernel end
+struct EastKernel end
+struct SouthKernel end
+struct NorthKernel end
+struct BottomKernel end
+struct TopKernel end
+
+const WEB = Union{WestAndEastKernels, WestKernel, EastKernel}
+const SNB = Union{SouthAndNorthKernels, SouthKernel, NorthKernel}
+const TBB = Union{BottomAndTopKernels, BottomKernel, TopKernel}
 
 # Tupled halo filling _only_ deals with full fields!
 @inline fill_halo_size(::Tuple, ::WEB, args...) = :yz

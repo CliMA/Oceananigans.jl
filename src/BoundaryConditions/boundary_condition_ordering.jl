@@ -1,61 +1,38 @@
 
-retrieve_bc(bc) = bc
-
-# Returns the boundary conditions a specific side for `FieldBoundaryConditions` inputs and
-# a tuple of boundary conditions for `NTuple{N, <:FieldBoundaryConditions}` inputs
-for dir in (:west, :east, :south, :north, :bottom, :top)
-    extract_side_bc = Symbol(:extract_, dir, :_bc)
-    @eval begin
-        @inline $extract_side_bc(bc) = retrieve_bc(bc.$dir)
-        @inline $extract_side_bc(bc::Tuple) = map($extract_side_bc, bc)
-    end
-end
-#
-@inline extract_bc(bc, ::Val{:west})   = tuple(extract_west_bc(bc))
-@inline extract_bc(bc, ::Val{:east})   = tuple(extract_east_bc(bc))
-@inline extract_bc(bc, ::Val{:south})  = tuple(extract_south_bc(bc))
-@inline extract_bc(bc, ::Val{:north})  = tuple(extract_north_bc(bc))
-@inline extract_bc(bc, ::Val{:bottom}) = tuple(extract_bottom_bc(bc))
-@inline extract_bc(bc, ::Val{:top})    = tuple(extract_top_bc(bc))
-
-@inline extract_bc(bc, ::Val{:west_and_east})   = (extract_west_bc(bc), extract_east_bc(bc))
-@inline extract_bc(bc, ::Val{:south_and_north}) = (extract_south_bc(bc), extract_north_bc(bc))
-@inline extract_bc(bc, ::Val{:bottom_and_top})  = (extract_bottom_bc(bc), extract_top_bc(bc))
-
 # In case of a DistributedCommunication paired with a
 # Flux, Value or Gradient boundary condition, we split the direction in two single-sided
 # fill_halo! events (see issue #3342)
 # `permute_boundary_conditions` returns a 2-tuple containing the ordered operations to execute in
 # position [1] and the associated boundary conditions in position [2]
-function permute_boundary_conditions(boundary_conditions)
+function permute_boundary_conditions(bcs)
 
-    split_x_halo_filling = split_halo_filling(extract_west_bc(boundary_conditions),  extract_east_bc(boundary_conditions))
-    split_y_halo_filling = split_halo_filling(extract_south_bc(boundary_conditions), extract_north_bc(boundary_conditions))
+    split_x_halo_filling = split_halo_filling(bcs.west, bcs.east)
+    split_y_halo_filling = split_halo_filling(bcs.south, bcs.north)
 
-    west_bc  = extract_west_bc(boundary_conditions)
-    east_bc  = extract_east_bc(boundary_conditions)
-    south_bc = extract_south_bc(boundary_conditions)
-    north_bc = extract_north_bc(boundary_conditions)
+    west_bc  = bcs.west
+    east_bc  = bcs.east
+    south_bc = bcs.south
+    north_bc = bcs.north
 
     if split_x_halo_filling
         if split_y_halo_filling
-            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
+            fill_halos! = [WestKernel(), EastKernel(), SouthKernel(), NorthKernel(), BottomAndTopKernels()]
             sides       = [:west, :east, :south, :north, :bottom_and_top]
-            bcs_array   = [west_bc, east_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
+            bcs_array   = [bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom]
         else
-            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
+            fill_halos! = [WestKernel(), EastKernel(), SouthAndNorthKernels(), BottomAndTopKernels()]
             sides       = [:west, :east, :south_and_north, :bottom_and_top]
-            bcs_array   = [west_bc, east_bc, south_bc, extract_bottom_bc(boundary_conditions)]
+            bcs_array   = [bcs.west, east_bc, bcs.south, bcs.bottom]
         end
     else
         if split_y_halo_filling
-            fill_halos! = [fill_west_and_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
+            fill_halos! = [WestAndEastKernels(), SouthKernel(), NorthKernel(), BottomAndTopKernels()]
             sides       = [:west_and_east, :south, :north, :bottom_and_top]
-            bcs_array   = [west_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
+            bcs_array   = [bcs.west, bcs.south, bcs.north, bcs.bottom]
         else
-            fill_halos! = [fill_west_and_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
+            fill_halos! = [WestAndEastKernels(), SouthAndNorthKernels(), BottomAndTopKernels()]
             sides       = [:west_and_east, :south_and_north, :bottom_and_top]
-            bcs_array   = [west_bc, south_bc, extract_bottom_bc(boundary_conditions)]
+            bcs_array   = [bcs.west, bcs.south, bcs.bottom]
         end
     end
 
