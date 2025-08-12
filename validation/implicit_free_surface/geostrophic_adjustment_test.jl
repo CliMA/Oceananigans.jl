@@ -47,9 +47,13 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
     save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
 
-    progress_message(sim) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
+    function progress_message(sim) 
+        H = sum(sim.model.free_surface.η)
+        @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e, sim(η): %e",
         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
-        sim.model.clock.time, maximum(abs, sim.model.velocities.u))
+        sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
+    end
+
 
     simulation.callbacks[:save_η]   = Callback(save_η, IterationInterval(1))
     simulation.callbacks[:save_v]   = Callback(save_v, IterationInterval(1))
@@ -76,11 +80,15 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 
 explicit_free_surface = ExplicitFreeSurface()
-splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=10)
+implicit_free_surface = ImplicitFreeSurface()
+splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=30)
 
 seab2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid)
 serk3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid, :SplitRungeKutta3)
 efab2 = geostrophic_adjustment_simulation(explicit_free_surface, grid)
+efrk3 = geostrophic_adjustment_simulation(explicit_free_surface, grid, :SplitRungeKutta3)
+imab2 = geostrophic_adjustment_simulation(implicit_free_surface, grid)
+imrk3 = geostrophic_adjustment_simulation(implicit_free_surface, grid, :SplitRungeKutta3)
 
 function plot_variable(sims, var; filename="test.mp4")
     fig = Figure()
