@@ -595,11 +595,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 coord = coords[case]
 
                 for fieldname in fieldnames[case]
+                    @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :RungeKutta3, grid, closure, coord)
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :QuasiAdamsBashforth2, grid, closure, coord)
 
                     if fieldname != :w && topology(grid)[3] == Bounded                        
-                        @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
                         @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta3, grid, closure, coord; free_surface=nothing)
                         @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :QuasiAdamsBashforth2, grid, closure, coord; free_surface = nothing)
                     end
