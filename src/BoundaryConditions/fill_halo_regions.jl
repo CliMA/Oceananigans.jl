@@ -25,9 +25,9 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
                             fill_boundary_normal_velocities = true, 
                             kwargs...)
     
-    if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
-    end
+    # if fill_boundary_normal_velocities
+    #     fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
+    # end
 
     fill_halos! = boundary_conditions.kernels
     bcs         = boundary_conditions.ordered_bcs
