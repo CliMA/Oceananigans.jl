@@ -130,17 +130,17 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     return nothing
 end
 
-@kernel function _euler_substep_field!(θ, Δt, Gⁿ)
+@kernel function _euler_substep_field!(field, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
-    @inbounds θ[i, j, k] = θ[i, j, k] + Δt * Gⁿ[i, j, k]
+    @inbounds field[i, j, k] = field[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
-@kernel function _split_rk3_average_field!(θ, γⁿ, ζⁿ, θ⁻)
+@kernel function _split_rk3_average_field!(field, γⁿ, ζⁿ, field⁻)
     i, j, k = @index(Global, NTuple)
-    @inbounds θ[i, j, k] = ζⁿ * θ⁻[i, j, k] + γⁿ * θ[i, j, k]
+    @inbounds field[i, j, k] = ζⁿ * field⁻[i, j, k] + γⁿ * field[i, j, k]
 end
 
-@kernel _split_rk3_average_field!(θ, ::Nothing, ::Nothing, θ⁻) = nothing
+@kernel _split_rk3_average_field!(field, ::Nothing, ::Nothing, field⁻) = nothing
 
 function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
 

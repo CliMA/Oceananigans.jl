@@ -34,10 +34,10 @@ rk3_average_free_surface!(free_surface, args...) = nothing
 function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
     arch = architecture(grid)
     Nx, Ny, Nz = size(grid)
-    params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
 
     ηⁿ⁻¹ = timestepper.Ψ⁻.η
     ηⁿ   = free_surface.η
+    params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
 
     launch!(arch, grid, params, _split_rk3_average_field!, ηⁿ, γⁿ, ζⁿ, ηⁿ⁻¹)
 
@@ -144,11 +144,11 @@ end
 
 # σθ is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
-@kernel function _euler_substep_tracer_field!(θ, grid, Δt, Gⁿ)
+@kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
-    @inbounds θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
+    @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
 
 #####
