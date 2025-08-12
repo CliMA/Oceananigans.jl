@@ -401,98 +401,98 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 @testset "Dynamics" begin
     @info "Testing dynamics..."
 
-    # @testset "Simple diffusion" begin
-    #     @info "  Testing simple diffusion..."
-    #     for fieldname in (:u, :v, :c), timestepper in timesteppers
-    #         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-    #             @test test_diffusion_simple(fieldname, timestepper, time_discretization)
-    #         end
-    #     end
-    # end
+    @testset "Simple diffusion" begin
+        @info "  Testing simple diffusion..."
+        for fieldname in (:u, :v, :c), timestepper in timesteppers
+            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                @test test_diffusion_simple(fieldname, timestepper, time_discretization)
+            end
+        end
+    end
 
-    # @testset "Budgets in isotropic diffusion" begin
-    #     @info "  Testing model budgets with isotropic diffusion..."
-    #     for timestepper in timesteppers
-    #         for topology in ((Periodic, Periodic, Periodic),
-    #                          (Periodic, Periodic, Bounded),
-    #                          (Periodic, Bounded, Bounded),
-    #                          (Bounded, Bounded, Bounded))
+    @testset "Budgets in isotropic diffusion" begin
+        @info "  Testing model budgets with isotropic diffusion..."
+        for timestepper in timesteppers
+            for topology in ((Periodic, Periodic, Periodic),
+                             (Periodic, Periodic, Bounded),
+                             (Periodic, Bounded, Bounded),
+                             (Bounded, Bounded, Bounded))
 
-    #             # Can't use implicit time-stepping in vertically-periodic domains right now
-    #             if topology !== (Periodic, Periodic, Periodic)
-    #                 time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-    #             else
-    #                 time_discretizations = tuple(ExplicitTimeDiscretization())
-    #             end
+                # Can't use implicit time-stepping in vertically-periodic domains right now
+                if topology !== (Periodic, Periodic, Periodic)
+                    time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                else
+                    time_discretizations = tuple(ExplicitTimeDiscretization())
+                end
 
-    #             for time_discretization in time_discretizations
-    #                 for closurename in [ScalarDiffusivity, VerticalScalarDiffusivity, HorizontalScalarDiffusivity]
+                for time_discretization in time_discretizations
+                    for closurename in [ScalarDiffusivity, VerticalScalarDiffusivity, HorizontalScalarDiffusivity]
 
-    #                     # VerticallyImplicitTimeDiscretization is not supported for HorizontalScalarDiffusivity
-    #                     (closurename == HorizontalScalarDiffusivity && time_discretization == VerticallyImplicitTimeDiscretization()) && continue
+                        # VerticallyImplicitTimeDiscretization is not supported for HorizontalScalarDiffusivity
+                        (closurename == HorizontalScalarDiffusivity && time_discretization == VerticallyImplicitTimeDiscretization()) && continue
 
-    #                     closure = closurename(time_discretization, ν=1, κ=1)
+                        closure = closurename(time_discretization, ν=1, κ=1)
 
-    #                     fieldnames = [:c]
-    #                     topology[1] === Periodic && push!(fieldnames, :u)
-    #                     topology[2] === Periodic && push!(fieldnames, :v)
-    #                     topology[3] === Periodic && push!(fieldnames, :w)
+                        fieldnames = [:c]
+                        topology[1] === Periodic && push!(fieldnames, :u)
+                        topology[2] === Periodic && push!(fieldnames, :v)
+                        topology[3] === Periodic && push!(fieldnames, :w)
 
-    #                     grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+                        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
-    #                     model = NonhydrostaticModel(; timestepper,
-    #                                                   grid,
-    #                                                   closure,
-    #                                                   tracers = :c,
-    #                                                   coriolis = nothing,
-    #                                                   buoyancy = nothing)
+                        model = NonhydrostaticModel(; timestepper,
+                                                      grid,
+                                                      closure,
+                                                      tracers = :c,
+                                                      coriolis = nothing,
+                                                      buoyancy = nothing)
 
-    #                     td = typeof(time_discretization).name.wrapper
+                        td = typeof(time_discretization).name.wrapper
 
-    #                     for fieldname in fieldnames
-    #                         @info "    [$timestepper, $td, $closurename] " *
-    #                               "Testing $fieldname budget in a $topology domain with scalar diffusion..."
-    #                         @test test_ScalarDiffusivity_budget(fieldname, model)
-    #                     end
-    #                 end
-    #             end
-    #         end
-    #     end
-    # end
+                        for fieldname in fieldnames
+                            @info "    [$timestepper, $td, $closurename] " *
+                                  "Testing $fieldname budget in a $topology domain with scalar diffusion..."
+                            @test test_ScalarDiffusivity_budget(fieldname, model)
+                        end
+                    end
+                end
+            end
+        end
+    end
 
-    # @testset "Budgets in biharmonic diffusion" begin
-    #     @info "  Testing model budgets with biharmonic diffusion..."
-    #     for timestepper in timesteppers
-    #         for topology in ((Periodic, Periodic, Periodic),
-    #                          (Periodic, Periodic, Bounded),
-    #                          (Periodic, Bounded, Bounded),
-    #                          (Bounded, Bounded, Bounded))
+    @testset "Budgets in biharmonic diffusion" begin
+        @info "  Testing model budgets with biharmonic diffusion..."
+        for timestepper in timesteppers
+            for topology in ((Periodic, Periodic, Periodic),
+                             (Periodic, Periodic, Bounded),
+                             (Periodic, Bounded, Bounded),
+                             (Bounded, Bounded, Bounded))
 
-    #             fieldnames = [:c]
+                fieldnames = [:c]
 
-    #             topology[1] === Periodic && push!(fieldnames, :u)
-    #             topology[2] === Periodic && push!(fieldnames, :v)
-    #             topology[3] === Periodic && push!(fieldnames, :w)
+                topology[1] === Periodic && push!(fieldnames, :u)
+                topology[2] === Periodic && push!(fieldnames, :v)
+                topology[3] === Periodic && push!(fieldnames, :w)
 
-    #             grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
+                grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-    #             for formulation in (ThreeDimensionalFormulation(), HorizontalFormulation(), VerticalFormulation())
-    #                 model = NonhydrostaticModel(; timestepper,
-    #                                               grid,
-    #                                               closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
-    #                                               coriolis = nothing,
-    #                                               tracers = :c,
-    #                                               buoyancy = nothing)
+                for formulation in (ThreeDimensionalFormulation(), HorizontalFormulation(), VerticalFormulation())
+                    model = NonhydrostaticModel(; timestepper,
+                                                  grid,
+                                                  closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
+                                                  coriolis = nothing,
+                                                  tracers = :c,
+                                                  buoyancy = nothing)
 
-    #                 for fieldname in fieldnames
-    #                     @info "    [$timestepper] Testing $fieldname budget in a $topology domain " *
-    #                           "with biharmonic diffusion and $formulation..."
-    #                     @test test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
-    #                 end
-    #             end
-    #         end
-    #     end
-    # end
+                    for fieldname in fieldnames
+                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain " *
+                              "with biharmonic diffusion and $formulation..."
+                        @test test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
+                    end
+                end
+            end
+        end
+    end
 
     @testset "Diffusion of a cosine" begin
         for arch in [CPU()] # Need some work to make these run on GPU
@@ -596,16 +596,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 for fieldname in fieldnames[case]
                     @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
-
-                    @info " RK3 NonhydrostaticModel"
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :RungeKutta3, grid, closure, coord)
-                    @info " QuasiAdamsBashforth2 NonhydrostaticModel"
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :QuasiAdamsBashforth2, grid, closure, coord)
 
-                    if fieldname != :w && topology(grid)[3] == Bounded
-                        @info " SplitRungeKutta3 HydrostaticFreeSurfaceModel"
-                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta3, grid, closure, coord; free_surface = nothing)
-                        @info " QuasiAdamsBashforth2 HydrostaticFreeSurfaceModel"
+                    if fieldname != :w && topology(grid)[3] == Bounded                        
+                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta3, grid, closure, coord; free_surface=nothing)
                         @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :QuasiAdamsBashforth2, grid, closure, coord; free_surface = nothing)
                     end
                 end
@@ -667,20 +662,31 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                       y_periodic_regularly_spaced_vertically_stretched_grid,
                       y_flat_regularly_spaced_vertically_stretched_grid)
 
+        free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g), 
+                                                                     SplitExplicitFreeSurface(grid, ; gravitational_acceleration=g, cfl=0.5))
+
+        free_surface_types(::Val{:SplitRungeKutta3}, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), ) 
+
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for grid in test_grids
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
+                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                    grid_name = typeof(grid).name.wrapper
+                    topo = topology(grid)
 
-                # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
-                gravitational_acceleration = (10σ)^2 / Lx
-                free_surface = ImplicitFreeSurface(; gravitational_acceleration)
-                model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+                    # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
+                    gravitational_acceleration = (10σ)^2 / Lx
 
-                @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
+                    for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
+                        model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+
+                        free_surface_type = typeof(free_surface).name.wrapper
+                        @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo, $timestepper, $free_surface_type]..."
+                        internal_wave_dynamics_test(model, solution, Δt)
+                    end
+                end
             end
         end
+    end
 
         @testset "Internal wave with NonhydrostaticModel" begin
             for grid in test_grids
