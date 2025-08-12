@@ -16,8 +16,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     model = HydrostaticFreeSurfaceModel(; grid,
                                           coriolis=FPlane(f = 1e-4),
                                           timestepper,
-                                          free_surface,
-                                          vertical_coordinate=ZStarCoordinate(grid))
+                                          free_surface)
 
     gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -67,7 +66,8 @@ Lz = 400meters
 
 grid = RectilinearGrid(size = (80, 3, 1),
                        halo = (2, 2, 2),
-                       x = (0, Lh), y = (0, Lh), z = MutableVerticalDiscretization((-Lz, 0)),
+                       x = (0, Lh), y = (0, Lh), 
+                       z = (-Lz, 0),  #MutableVerticalDiscretization((-Lz, 0)),
                        topology = (Periodic, Periodic, Bounded))
 
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters

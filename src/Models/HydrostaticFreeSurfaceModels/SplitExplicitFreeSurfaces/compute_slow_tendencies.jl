@@ -32,8 +32,7 @@ end
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ,
-                                                 timestepper::QuasiAdamsBashforth2TimeStepper, stage)
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper)
     active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
