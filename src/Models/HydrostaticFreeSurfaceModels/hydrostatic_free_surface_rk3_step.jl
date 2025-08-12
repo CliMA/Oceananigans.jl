@@ -118,19 +118,20 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
             θ  = tracers[tracer_name]
             closure = model.closure
 
-        launch!(architecture(grid), grid, :xyz,
-                _euler_substep_tracer_field!, θ, grid, convert(FT, Δt), Gⁿ)
+            launch!(architecture(grid), grid, :xyz,
+                    _euler_substep_tracer_field!, θ, grid, convert(FT, Δt), Gⁿ)
 
-        implicit_step!(θ,
-                       model.timestepper.implicit_solver,
-                       closure,
-                       model.diffusivity_fields,
-                       Val(tracer_index),
-                       model.clock,
-                       Δt)
+            implicit_step!(θ,
+                        model.timestepper.implicit_solver,
+                        closure,
+                        model.diffusivity_fields,
+                        Val(tracer_index),
+                        model.clock,
+                        Δt)
 
-        launch!(architecture(grid), grid, :xyz,
-                _split_rk3_average_field!, θ, γⁿ, ζⁿ, Ψ⁻)
+            launch!(architecture(grid), grid, :xyz,
+                    _split_rk3_average_field!, θ, γⁿ, ζⁿ, Ψ⁻)
+        end
     end
 
     return nothing
