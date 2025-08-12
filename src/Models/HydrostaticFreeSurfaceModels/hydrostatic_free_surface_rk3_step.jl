@@ -124,13 +124,13 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
             launch!(architecture(grid), grid, :xyz,
                     _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
 
-            implicit_step!(θ,
-                        model.timestepper.implicit_solver,
-                        closure,
-                        model.diffusivity_fields,
-                        Val(tracer_index),
-                        model.clock,
-                        Δt)
+            implicit_step!(c,
+                           model.timestepper.implicit_solver,
+                           closure,
+                           model.diffusivity_fields,
+                           Val(tracer_index),
+                           model.clock,
+                           Δt)
 
             if model.clock.stage > 1 
                 launch!(architecture(grid), grid, :xyz,
