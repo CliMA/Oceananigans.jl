@@ -33,11 +33,13 @@ rk3_average_free_surface!(free_surface, args...) = nothing
 
 function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
     arch = architecture(grid)
+    Nx, Ny, Nz = size(grid)
 
     ηⁿ⁻¹ = timestepper.Ψ⁻.η
     ηⁿ   = free_surface.η
+    params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
 
-    launch!(arch, grid, :xy, _rk3_average_free_surface!, ηⁿ, grid, ηⁿ⁻¹, γⁿ, ζⁿ)
+    launch!(arch, grid, params, _split_rk3_average_field!, ηⁿ, γⁿ, ζⁿ, ηⁿ⁻¹)
 
     return nothing
 end
