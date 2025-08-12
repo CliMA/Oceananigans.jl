@@ -1,3 +1,15 @@
+
+extract_bc(bcs, ::Val{:west})   = tuple(bcs.west)
+extract_bc(bcs, ::Val{:east})   = tuple(bcs.east)
+extract_bc(bcs, ::Val{:south})  = tuple(bcs.south)
+extract_bc(bcs, ::Val{:north})  = tuple(bcs.north)
+extract_bc(bcs, ::Val{:bottom}) = tuple(bcs.bottom)
+extract_bc(bcs, ::Val{:top})    = tuple(bcs.top)
+
+extract_bc(bcs, ::Val{:bottom_and_top})  = (bcs.bottom, bcs.top)
+extract_bc(bcs, ::Val{:west_and_east})   = (bcs.west, bcs.east)
+extract_bc(bcs, ::Val{:south_and_north}) =(bcs.south, bcs.north)
+
 # In case of a DistributedCommunication paired with a
 # Flux, Value or Gradient boundary condition, we split the direction in two single-sided
 # fill_halo! events (see issue #3342)

@@ -249,7 +249,7 @@ include("Biogeochemistry.jl")
 include("Models/Models.jl")
 
 # Abstractions for distributed and multi-region models
-include("MultiRegion/MultiRegion.jl")
+# include("MultiRegion/MultiRegion.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -279,6 +279,6 @@ using .Diagnostics
 using .OutputWriters
 using .Simulations
 using .AbstractOperations
-using .MultiRegion
+# using .MultiRegion
 
 end # module
