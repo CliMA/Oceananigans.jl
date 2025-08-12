@@ -108,28 +108,34 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     grid = model.grid
     FT = eltype(grid)
 
+    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
-        Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-        c  = tracers[tracer_name]
-        closure = model.closure
+        if catke_in_closures && tracer_name == :e
+            @debug "Skipping RK3 step for e"
+        else
+            Gⁿ = model.timestepper.Gⁿ[tracer_name]
+            Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
+            c  = tracers[tracer_name]
+            closure = model.closure
 
-        launch!(architecture(grid), grid, :xyz,
-                _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
-
-        implicit_step!(c,
-                       model.timestepper.implicit_solver,
-                       closure,
-                       model.diffusivity_fields,
-                       Val(tracer_index),
-                       model.clock,
-                       Δt)
-
-        if model.clock.stage > 1 
             launch!(architecture(grid), grid, :xyz,
-                    _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+                    _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
+
+            implicit_step!(c,
+                           model.timestepper.implicit_solver,
+                           closure,
+                           model.diffusivity_fields,
+                           Val(tracer_index),
+                           model.clock,
+                           Δt)
+
+            if model.clock.stage > 1 
+                launch!(architecture(grid), grid, :xyz,
+                        _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+            end
         end
     end
 
@@ -139,7 +145,6 @@ end
 #####
 ##### Tracer update in mutable vertical coordinates
 #####
-
 
 # σc is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
