@@ -45,21 +45,22 @@ end
 function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
 
     arch = architecture(grid)
+    Nx, Ny, Nz = size(grid)
 
     Uⁿ⁻¹ = timestepper.Ψ⁻.U
     Vⁿ⁻¹ = timestepper.Ψ⁻.V
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
+    params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
     
-    launch!(arch, grid, :xy, _rk3_average_free_surface!, Uⁿ, grid, Uⁿ⁻¹, γⁿ, ζⁿ)
-    launch!(arch, grid, :xy, _rk3_average_free_surface!, Vⁿ, grid, Vⁿ⁻¹, γⁿ, ζⁿ)
+    launch!(arch, grid, params, _split_rk3_average_field!, Uⁿ, γⁿ, ζⁿ, Uⁿ⁻¹)
+    launch!(arch, grid, params, _split_rk3_average_field!, Vⁿ, γⁿ, ζⁿ, Vⁿ⁻¹)
 
     return nothing
 end
 
 @kernel function _rk3_average_free_surface!(η, grid, η⁻, γⁿ, ζⁿ)
     i, j = @index(Global, NTuple)
-    k = grid.Nz + 1
     @inbounds η[i, j, k] = ζⁿ * η⁻[i, j, k] + γⁿ * η[i, j, k]
 end
 
