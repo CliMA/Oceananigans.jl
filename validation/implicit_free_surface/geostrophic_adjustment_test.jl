@@ -37,7 +37,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model; Δt = 20wave_propagation_time_scale, stop_iteration)
+    simulation = Simulation(model; Δt = 0.1 * wave_propagation_time_scale, stop_iteration)
 
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
