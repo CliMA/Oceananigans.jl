@@ -130,8 +130,10 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
                    diffusivity_fields, Val(tracer_index),
                    model.clock, Δt)
 
-    launch!(arch, grid, :xyz, 
-            _split_rk3_average_field!, e, γⁿ, ζⁿ, e⁻)
+    if model.clock.stage > 1
+        launch!(arch, grid, :xyz, 
+                _split_rk3_average_field!, e, γⁿ, ζⁿ, e⁻)
+    end
 
     return nothing
 end

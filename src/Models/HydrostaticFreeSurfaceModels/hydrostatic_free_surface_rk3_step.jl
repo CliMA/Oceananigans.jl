@@ -132,9 +132,10 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                         model.clock,
                         Δt)
 
-        if model.clock.stage > 1 
-            launch!(architecture(grid), grid, :xyz,
-                    _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+            if model.clock.stage > 1 
+                launch!(architecture(grid), grid, :xyz,
+                        _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+            end
         end
     end
 
