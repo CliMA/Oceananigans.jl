@@ -33,11 +33,11 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     set!(model, v=vᴳ, η=ηᴳ)
 
-    stop_iteration=1000
+    stop_iteration=100
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model; Δt = 0.1 * wave_propagation_time_scale, stop_iteration)
+    simulation = Simulation(model; Δt = 10 * wave_propagation_time_scale, stop_iteration)
 
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
@@ -76,28 +76,34 @@ grid = RectilinearGrid(size = (80, 3, 1),
 
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters
 
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-
+# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 explicit_free_surface = ExplicitFreeSurface()
 implicit_free_surface = ImplicitFreeSurface()
-splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=30)
+splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=60)
 
 seab2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid)
 serk3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid, :SplitRungeKutta3)
-efab2 = geostrophic_adjustment_simulation(explicit_free_surface, grid)
-efrk3 = geostrophic_adjustment_simulation(explicit_free_surface, grid, :SplitRungeKutta3)
+# efab2 = geostrophic_adjustment_simulation(explicit_free_surface, grid)
+# efrk3 = geostrophic_adjustment_simulation(explicit_free_surface, grid, :SplitRungeKutta3)
 imab2 = geostrophic_adjustment_simulation(implicit_free_surface, grid)
-imrk3 = geostrophic_adjustment_simulation(implicit_free_surface, grid, :SplitRungeKutta3)
+# imrk3 = geostrophic_adjustment_simulation(implicit_free_surface, grid, :SplitRungeKutta3)
 
-function plot_variable(sims, var; filename="test.mp4")
+function plot_variable(sims, var; 
+                       filename="test.mp4",
+                       labels=nothing)
     fig = Figure()
     ax  = Axis(fig[1, 1])
 
     iter = Observable(1)
     for (is, sim) in enumerate(sims)
         vi = @lift(interior(sim[var][$iter], :, 1, 1))
-        lines!(ax, vi, label="sim: $is")
+        if labels === nothing
+            label = "sim $is"
+        else
+            label = labels[is]
+        end
+        lines!(ax, vi; label)
     end
 
     axislegend(ax; position=:rt)
