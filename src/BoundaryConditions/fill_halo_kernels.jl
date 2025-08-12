@@ -92,17 +92,17 @@ fill_halo_kernel!(::typeof(fill_top_halo!), bc::BoundaryCondition, grid, size, o
 
 function fill_halo_kernel!(::typeof(fill_west_and_east_halo!), bc::PBC, grid, size, offset, data) 
     yz_size, offset = periodic_size_and_offset(data, 2, 3, size, offset)
-    return configure_kernel(architecture(grid), grid, KernelParameters(yz_size, offset), _fill_west_and_east_halo!)[1]
+    return configure_kernel(architecture(grid), grid, KernelParameters(yz_size, offset), _fill_periodic_west_and_east_halo!)[1]
 end
 
 function fill_halo_kernel!(::typeof(fill_south_and_north_halo!), bc::PBC, grid, size, offset, data) 
     xz_size, offset = periodic_size_and_offset(data, 1, 3, size, offset)
-    return configure_kernel(architecture(grid), grid, KernelParameters(xz_size, offset), _fill_south_and_north_halo!)[1]
+    return configure_kernel(architecture(grid), grid, KernelParameters(xz_size, offset), _fill_periodic_south_and_north_halo!)[1]
 end
 
 function fill_halo_kernel!(::typeof(fill_bottom_and_top_halo!), bc::PBC, grid, size, offset, data) 
     xy_size, offset = periodic_size_and_offset(data, 1, 2, size, offset)
-    return configure_kernel(architecture(grid), grid, KernelParameters(xy_size, offset), _fill_bottom_and_top_halo!)[1]
+    return configure_kernel(architecture(grid), grid, KernelParameters(xy_size, offset), _fill_periodic_bottom_and_top_halo!)[1]
 end
 
 #####
