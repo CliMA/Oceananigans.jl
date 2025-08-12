@@ -686,7 +686,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 end
             end
         end
-    end
 
         @testset "Internal wave with NonhydrostaticModel" begin
             for grid in test_grids
