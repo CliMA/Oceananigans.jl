@@ -46,7 +46,7 @@ function permute_boundary_conditions(bcs)
     fill_halos! = fill_halos![perm]
     sides = sides[perm]
 
-    boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
+    boundary_conditions = Tuple(extract_bc(bcs, Val(side)) for side in sides)
 
     return fill_halos!, boundary_conditions
 end
