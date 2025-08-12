@@ -125,7 +125,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        Δt)
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_average_field!, c, γⁿ, ζⁿ, Ψ⁻)
+                _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
     end
 
     return nothing
@@ -145,9 +145,23 @@ end
     @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
 
+@kernel _split_rk3_average_tracer_field!(c, grid, ::Nothing, ::Nothing, c⁻) = nothing
+
+@kernel function _split_rk3_average_tracer_field!(c, grid, γⁿ, ζⁿ, c⁻)
+    i, j, k = @index(Global, NTuple)
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = ζⁿ * c⁻[i, j, k] / σᶜᶜⁿ + γⁿ * c[i, j, k]
+end
+
 #####
 ##### Storing previous fields for the RK3 update
 #####
+
+# Tracers are multiplied by the vertical coordinate scaling factor
+@kernel function _cache_tracer_fields!(Ψ⁻, grid, Ψⁿ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
+end
 
 function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
 
@@ -159,7 +173,11 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
     for name in keys(model_fields)
         Ψ⁻ = previous_fields[name]
         Ψⁿ = model_fields[name]
-        parent(Ψ⁻) .= parent(Ψⁿ)
+        if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
+            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+        else # Velocities and free surface are stored without the grid scaling
+            parent(Ψ⁻) .= parent(Ψⁿ)
+        end
     end
 
     if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
