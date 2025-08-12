@@ -120,7 +120,7 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
                 
     # ... and step forward.
     launch!(arch, grid, :xyz,
-            _euler_substep_turbulent_kinetic_energy!,
+            _euler_step_turbulent_kinetic_energy!,
             Le, grid, closure,
             model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
             model.tracers, model.buoyancy, diffusivity_fields,
