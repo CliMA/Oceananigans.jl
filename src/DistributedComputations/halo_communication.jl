@@ -1,9 +1,8 @@
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Fields: reduced_dimensions, 
-                           instantiated_location,
-                           fill_reduced_field_halos!
-
+                           instantiated_location
+                           
 using Oceananigans.BoundaryConditions:
     fill_halo_size,
     fill_halo_offset,

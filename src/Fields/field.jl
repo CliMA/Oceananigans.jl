@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper, construct_boundary_conditions_kernels
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 
@@ -31,6 +31,7 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
+        bcs = construct_boundary_conditions_kernels(bcs, data, grid, loc, indices) # Adding the kernels to the bcs
         return new{LX, LY, LZ, O, G, I, D, T, B, S, F}(grid, data, bcs, indices, op, status, buffers)
     end
 end
