@@ -57,55 +57,12 @@ end
     end
 end
 
-@kernel function fill_periodic_bottom_and_top_halo!(c, ::Val{H}, N) where H
+@kernel function fill_periodic_bottom_and_top_halo!(c, ::Val{H}, N)
     i, j = @index(Global, NTuple)
     @unroll for k = 1:H
         @inbounds begin
             c[i, j, k]     = c[i, j, N+k] # top
             c[i, j, N+H+k] = c[i, j, H+k] # bottom
-        end
-    end
-end
-
-####
-#### Tupled periodic boundary condition
-####
-
-@kernel function fill_periodic_west_and_east_halo!(c::Tuple, ::Val{H}, N) where {H}
-    j, k = @index(Global, NTuple)
-    ntuple(Val(length(c))) do n
-        Base.@_inline_meta
-        @unroll for i = 1:H
-            @inbounds begin
-                  c[n][i, j, k]     = c[n][N+i, j, k] # west
-                  c[n][N+H+i, j, k] = c[n][H+i, j, k] # east
-            end
-        end
-    end
-end
-
-@kernel function fill_periodic_south_and_north_halo!(c::Tuple, ::Val{H}, N) where {H}
-    i, k = @index(Global, NTuple)
-    ntuple(Val(length(c))) do n
-        Base.@_inline_meta
-        @unroll for j = 1:H
-            @inbounds begin
-                c[n][i, j, k]     = c[n][i, N+j, k] # south
-                c[n][i, N+H+j, k] = c[n][i, H+j, k] # north
-            end
-        end
-    end
-end
-
-@kernel function fill_periodic_bottom_and_top_halo!(c::Tuple, ::Val{H}, N) where {H}
-    i, j = @index(Global, NTuple)
-    ntuple(Val(length(c))) do n
-        Base.@_inline_meta
-        @unroll for k = 1:H
-            @inbounds begin
-                c[n][i, j, k]     = c[n][i, j, N+k] # top
-                c[n][i, j, N+H+k] = c[n][i, j, H+k] # bottom
-            end
         end
     end
 end

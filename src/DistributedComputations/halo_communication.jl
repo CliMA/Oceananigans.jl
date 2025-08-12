@@ -4,8 +4,6 @@ using Oceananigans.Fields: reduced_dimensions,
                            instantiated_location,
                            fill_reduced_field_halos!
 
-import Oceananigans.Fields: tupled_fill_halo_regions!
-
 using Oceananigans.BoundaryConditions:
     fill_halo_size,
     fill_halo_offset,
@@ -85,15 +83,6 @@ end
 #####
 ##### Filling halos for halo communication boundary conditions
 #####
-
-function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
-    not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
-
-    for field in not_reduced_fields
-        # Make sure we are filling a `Field` type.
-        field isa Field && fill_halo_regions!(field, args...; kwargs...)
-    end
-end
 
 function fill_halo_regions!(field::DistributedField, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)

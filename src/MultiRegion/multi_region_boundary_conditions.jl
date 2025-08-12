@@ -15,7 +15,7 @@ using Oceananigans.BoundaryConditions:
     MCBC,
     fill_open_boundary_regions!
 
-import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data
+import Oceananigans.Fields: boundary_conditions, data
 
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
@@ -31,7 +31,7 @@ import Oceananigans.BoundaryConditions:
 @inline extract_field_buffers(field::Field)          = field.communication_buffers
 @inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
-@inline function tupled_fill_halo_regions!(fields::NamedTuple, grid::ConformalCubedSphereGridOfSomeKind, args...; kwargs...)
+@inline function fill_halo_regions!(fields::NamedTuple, grid::ConformalCubedSphereGridOfSomeKind, args...; kwargs...)
     u = haskey(fields, :u) ? fields.u : nothing
     v = haskey(fields, :v) ? fields.v : nothing
 

@@ -20,13 +20,10 @@ conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
-# Finally, the true fill_halo!
-const MaybeTupledData = Union{OffsetArray, Tuple{Vararg{OffsetArray}}}
-
 @inline extract_ordered_boundary_conditions(bcs::FieldBoundaryConditions) = bcs.ordered_bcs
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...;
+function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...;
                             fill_boundary_normal_velocities = true, kwargs...)
     arch = architecture(grid)
 
@@ -115,50 +112,6 @@ end
 @kernel function _fill_only_top_halo!(c, bc, loc, grid, args)
     i, j = @index(Global, NTuple)
     _fill_top_halo!(i, j, grid, c, bc, loc, args...)
-end
-
-#####
-##### Tupled double-sided fill_halo! kernels
-#####
-
-# Note, we do not need tupled single-sided fill_halo! kernels since `DCBC` do not
-# support tupled halo filling
-import Oceananigans.Utils: @constprop
-
-@kernel function _fill_west_and_east_halo!(c::Tuple, west_bc, east_bc, loc, grid, args)
-    j, k = @index(Global, NTuple)
-    ntuple(Val(length(west_bc))) do n
-        Base.@_inline_meta
-        @constprop(:aggressive) # TODO constprop failure on `loc[n]`
-        @inbounds begin
-            _fill_west_halo!(j, k, grid, c[n], west_bc[n], loc[n], args...)
-            _fill_east_halo!(j, k, grid, c[n], east_bc[n], loc[n], args...)
-        end
-    end
-end
-
-@kernel function _fill_south_and_north_halo!(c::Tuple, south_bc, north_bc, loc, grid, args)
-    i, k = @index(Global, NTuple)
-    ntuple(Val(length(south_bc))) do n
-        Base.@_inline_meta
-        @constprop(:aggressive) # TODO constprop failure on `loc[n]`
-        @inbounds begin
-            _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc[n], args...)
-            _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc[n], args...)
-        end
-    end
-end
-
-@kernel function _fill_bottom_and_top_halo!(c::Tuple, bottom_bc, top_bc, loc, grid, args)
-    i, j = @index(Global, NTuple)
-    ntuple(Val(length(bottom_bc))) do n
-        Base.@_inline_meta
-        @constprop(:aggressive) # TODO constprop failure on `loc[n]`
-        @inbounds begin
-            _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], args...)
-               _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], args...)
-        end
-    end
 end
 
 #####
