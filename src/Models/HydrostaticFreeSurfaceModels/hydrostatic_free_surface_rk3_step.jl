@@ -89,7 +89,7 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
 
         if model.clock.stage > 1 
             launch!(architecture(grid), grid, :xyz,
-                _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
+                    _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
         end
     end
 
@@ -146,7 +146,7 @@ end
 ##### Tracer update in mutable vertical coordinates
 #####
 
-# σθ is the evolved quantity, so tracer fields need to be evolved
+# σc is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
 @kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
