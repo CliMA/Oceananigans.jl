@@ -56,7 +56,7 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
         CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing)
 
     Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
-    `from_side :: AbstractRegionSide` → `side :: AbstractRegionSide`. The rotation of
+    `from_side` → `side`. The rotation of
     the adjacent region relative to the host region is prescribed via `rotation` argument
     (default `rotation=nothing`).
 

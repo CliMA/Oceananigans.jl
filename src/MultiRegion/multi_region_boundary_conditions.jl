@@ -64,15 +64,15 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs=true, kwargs...)
     arch = architecture(mrg)
 
-    kernels! = bcs.kernels
-    bcs      = bcs.ordered_bcs
+    @apply_regionally kernels!    = getproperty(bcs, :kernels)
+    @apply_regionally ordered_bcs = getproperty(bcs, :ordered_bcs)
 
     # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
     # When we want to allow asynchronous communication, we will might need to split the halos sides
     # and the number of tasks might increase.
     for task in 1:3
         @apply_regionally begin
-            bcs_side = getindex(bcs, task)
+            bcs_side = getindex(ordered_bcs, task)
             kernel!  = getindex(kernels!, task)
             fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
         end
@@ -101,6 +101,11 @@ end
 #####
 
 fill_halo_event!(c, kernel!::MultiRegionFillHalo, bcs, loc, grid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, buffers)
+
+getside(x, ::North) = x.north
+getside(x, ::South) = x.south
+getside(x, ::West)  = x.west
+getside(x, ::East)  = x.east
 
 ##### 
 ##### Double-sided MultiRegion filling kernels
@@ -290,7 +295,9 @@ end
                                     _getregion(fc.north, i),
                                     _getregion(fc.bottom, i),
                                     _getregion(fc.top, i),
-                                    fc.immersed)
+                                    fc.immersed,
+                                    fc.kernels,
+                                    _getregion(fc.ordered_bcs, i))
 
 @inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
@@ -311,7 +318,9 @@ end
                                     getregion(fc.north, i),
                                     getregion(fc.bottom, i),
                                     getregion(fc.top, i),
-                                    fc.immersed)
+                                    fc.immersed,
+                                    fc.kernels,
+                                    getregion(fc.ordered_bcs, i))
 
 @inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
