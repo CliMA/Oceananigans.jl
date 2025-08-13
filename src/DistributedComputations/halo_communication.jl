@@ -193,7 +193,7 @@ end
 for side in [:southwest, :southeast, :northwest, :northeast]
     fill_corner_halo! = Symbol("fill_$(side)_halo!")
     send_side_halo  = Symbol("send_$(side)_halo")
-    recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
+    recv_side_halo! = Symbol("recv_$(side)_halo!")
 
     @eval begin
         $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
@@ -202,7 +202,7 @@ for side in [:southwest, :southeast, :northwest, :northeast]
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 
-            recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
+            recv_req = $recv_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
             send_req = $send_side_halo(c, grid, arch, loc, local_rank, corner, buffers)
 
             return [send_req, recv_req]
@@ -218,8 +218,8 @@ function (::DistributedFillHalo{<:WestAndEast})(c, west_bc, east_bc, loc, grid, 
     @assert west_bc.condition.from == east_bc.condition.from  # Extra protection in case of bugs
     local_rank = west_bc.condition.from
 
-    recv_req1 = recv_and_fill_west_halo!(c, grid, arch, loc, local_rank, west_bc.condition.to, buffers)
-    recv_req2 = recv_and_fill_east_halo!(c, grid, arch, loc, local_rank, east_bc.condition.to, buffers)
+    recv_req1 = recv_west_halo!(c, grid, arch, loc, local_rank, west_bc.condition.to, buffers)
+    recv_req2 = recv_east_halo!(c, grid, arch, loc, local_rank, east_bc.condition.to, buffers)
 
     send_req1 = send_west_halo(c, grid, arch, loc, local_rank, west_bc.condition.to, buffers)
     send_req2 = send_east_halo(c, grid, arch, loc, local_rank, east_bc.condition.to, buffers)
@@ -231,8 +231,8 @@ function (::DistributedFillHalo{<:SouthAndNorth})(c, south_bc, north_bc, loc, gr
     @assert south_bc.condition.from == north_bc.condition.from  # Extra protection in case of bugs
     local_rank = south_bc.condition.from
 
-    recv_req1 = recv_and_fill_south_halo!(c, grid, arch, loc, local_rank, south_bc.condition.to, buffers)
-    recv_req2 = recv_and_fill_north_halo!(c, grid, arch, loc, local_rank, north_bc.condition.to, buffers)
+    recv_req1 = recv_south_halo!(c, grid, arch, loc, local_rank, south_bc.condition.to, buffers)
+    recv_req2 = recv_north_halo!(c, grid, arch, loc, local_rank, north_bc.condition.to, buffers)
 
     send_req1 = send_south_halo(c, grid, arch, loc, local_rank, south_bc.condition.to, buffers)
     send_req2 = send_north_halo(c, grid, arch, loc, local_rank, north_bc.condition.to, buffers)
@@ -246,28 +246,28 @@ end
 
 function (::DistributedFillHalo{<:West})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_and_fill_west_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    recv_req = recv_west_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     send_req = send_west_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     return [send_req, recv_req]
 end
 
 function (::DistributedFillHalo{<:East})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_and_fill_east_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    recv_req = recv_east_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     send_req = send_east_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     return [send_req, recv_req]
 end
 
 function (::DistributedFillHalo{<:South})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_and_fill_south_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    recv_req = recv_south_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     send_req = send_south_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     return [send_req, recv_req]
 end
 
 function (::DistributedFillHalo{<:North})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_and_fill_north_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    recv_req = recv_north_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     send_req = send_north_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
     return [send_req, recv_req]
 end
@@ -312,13 +312,13 @@ end
 
 for side in sides
     side_str = string(side)
-    recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
+    recv_side_halo! = Symbol("recv_$(side)_halo!")
     underlying_side_halo = Symbol("underlying_$(side)_halo")
     side_recv_tag = Symbol("$(side)_recv_tag")
     get_side_recv_buffer = Symbol("get_$(side)_recv_buffer")
 
     @eval begin
-        function $recv_and_fill_side_halo!(c, grid, arch, location, local_rank, rank_to_recv_from, buffers)
+        function $recv_side_halo!(c, grid, arch, location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = $get_side_recv_buffer(c, grid, buffers, arch)
             recv_tag = $side_recv_tag(arch, grid, location)
 
