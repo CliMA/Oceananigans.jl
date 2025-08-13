@@ -64,7 +64,8 @@ function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...
 end
 
 # This is a convenience function that allows `fill_halo_regions!` to be dispatched on the grid type.
-fill_halo_regions!(fields::Union{NamedTuple, Tuple}, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
+fill_halo_regions!(fields::NamedTuple, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
+fill_halo_regions!(fields::Tuple,      grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
 
 #####
 ##### Tracer names
