@@ -41,7 +41,7 @@ function permute_boundary_conditions(bcs)
     perm  = sortperm(bcs_array, lt=fill_first)
     sides = sides[perm]
 
-    boundary_conditions = Tuple(extract_bc(bcs, Val(side)) for side in sides)
+    boundary_conditions = Tuple(extract_bc(bcs, side) for side in sides)
 
     return sides, boundary_conditions
 end
