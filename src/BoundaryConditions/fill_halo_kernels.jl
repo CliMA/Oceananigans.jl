@@ -46,8 +46,7 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 
     for task in 1:length(sides)
         side = sides[task]
-        bc   = ordered_bcs[task]
-        bc   = select_bcs(bc)
+        bc   = select_bc(ordered_bcs[task])
         
         size    = fill_halo_size(data, side, indices, bc, loc, grid)
         offset  = fill_halo_offset(size, side, indices)
