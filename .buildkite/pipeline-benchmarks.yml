@@ -62,12 +62,17 @@ steps:
         rm \${OUTPUT_PREFIX}.sqlite
       done
 
+      # Unit tests (on CPU) using BenchmarkTools
+      export BENCHMARK_GROUP="unit"
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+
     artifact_paths:
       - "periodic_output.txt"
       - "bounded_output.txt"
       - "periodic_cheap_advection_output.txt"
       - "bounded_cheap_advection_output.txt"
       - "immersed_output.txt"
+      - "unit.txt"
     soft_fail:
       - exit_status: 3
 
@@ -114,3 +119,4 @@ steps:
       - "diff_periodic_cheap_advection_output.txt"
       - "diff_bounded_cheap_advection_output.txt"
       - "diff_immersed_output.txt"
+      - "diff_unit.txt"
