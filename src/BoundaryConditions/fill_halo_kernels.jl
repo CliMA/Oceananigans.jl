@@ -108,3 +108,9 @@ end
 #####
 ##### Distributed boundary conditions?
 #####
+
+# struct DistributedWestAndEastBoundaryKernel 
+#     local_kernel! :: K
+#     size :: S
+#     offsets :: O
+# end
