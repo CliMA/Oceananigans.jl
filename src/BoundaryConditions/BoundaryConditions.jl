@@ -23,6 +23,17 @@ using Oceananigans.Grids
 
 import Adapt: adapt_structure
 
+# All possible fill_halo! kernels
+struct WestAndEast end
+struct SouthAndNorth end
+struct BottomAndTop end
+struct West end
+struct East end
+struct South end
+struct North end
+struct Bottom end
+struct Top end
+
 include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
 include("discrete_boundary_function.jl")

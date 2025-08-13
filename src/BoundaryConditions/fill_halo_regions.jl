@@ -101,17 +101,6 @@ end
 ##### Calculate kernel size and offset for Windowed and Sliced Fields
 #####
 
-# All possible fill_halo! kernels
-struct WestAndEast end
-struct SouthAndNorth end
-struct BottomAndTop end
-struct West end
-struct East end
-struct South end
-struct North end
-struct Bottom end
-struct Top end
-
 const WEB = Union{WestAndEast, West, East}
 const SNB = Union{SouthAndNorth, South, North}
 const TBB = Union{BottomAndTop, Bottom, Top}
