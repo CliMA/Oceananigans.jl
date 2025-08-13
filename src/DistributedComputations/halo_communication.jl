@@ -5,10 +5,7 @@ using Oceananigans.Fields: reduced_dimensions,
 
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
-    fill_halo_size,
-    fill_halo_offset,
     DistributedFillHalo,
-    permute_boundary_conditions,
     PBCT, DCBCT # tuples
 
 #####
@@ -168,16 +165,6 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
 
     return nothing
 end
-
-@inline communication_side(kernel!::DistributedFillHalo) = kernel.side!
-@inline communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
-@inline communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
-@inline communication_side(::Val{fill_west_halo!})   = :west
-@inline communication_side(::Val{fill_east_halo!})   = :east
-@inline communication_side(::Val{fill_south_halo!})  = :south
-@inline communication_side(::Val{fill_north_halo!})  = :north
-@inline communication_side(::Val{fill_bottom_halo!}) = :bottom
-@inline communication_side(::Val{fill_top_halo!})    = :top
 
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
