@@ -113,5 +113,3 @@ if group == :model_stepping
     println()
     show(df[3], allcols=true)
 end
-
-end
