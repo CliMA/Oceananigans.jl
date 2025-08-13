@@ -1,4 +1,3 @@
-
 extract_bc(bcs, ::West)   = tuple(bcs.west)
 extract_bc(bcs, ::East)   = tuple(bcs.east)
 extract_bc(bcs, ::South)  = tuple(bcs.south)
