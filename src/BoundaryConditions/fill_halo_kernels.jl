@@ -51,11 +51,9 @@ end
 #### Fill halo configured kernels
 ####
 
-@inline nothing_function(args...) = nothing
-
 const NoBC = Union{Nothing, Missing}
 
-fill_halo_kernel!(value, bc::NoBC, args...) = nothing_function(args...)
+fill_halo_kernel!(value, bc::NoBC, args...) = nothing
 
 @inline kernel_parameters(size, offset) = KernelParameters(size, offset)
 @inline kernel_parameters(size::Symbol, offset) = size
@@ -129,5 +127,5 @@ for Side in (:WestAndEast, :SouthAndNorth, :BottomAndTop, :West, :East, :South, 
 end
 
 #####
-##### MultiRegion Boundary Conditions
+##### TODO: MultiRegion Boundary Conditions 
 #####
