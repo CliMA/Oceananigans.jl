@@ -51,7 +51,7 @@ end
 end
 
 @inline get_boundary_kernels(bcs::NoKernelFBC, data, grid, loc, indices) = fill_halo_kernels(bcs, data, grid, loc, indices)
-@inline get_boundary_kernels(bcs::FieldBoundaryConditions, args...)      = bcs.kernels!, bcs.ordered_bcs
+@inline get_boundary_kernels(bcs::FieldBoundaryConditions, args...)      = bcs.kernels, bcs.ordered_bcs
 
 @inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
 
