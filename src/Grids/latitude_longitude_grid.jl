@@ -132,7 +132,7 @@ Keyword arguments
   Each is either a:
   1. 2-tuple that specify the end points of the domain,
   2. one-dimensional array specifying the cell interface locations, or
-  3. a single-argument function that takes an index and returns cell interface location.
+  3. single-argument function that takes an index and returns cell interface location.
 
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
 

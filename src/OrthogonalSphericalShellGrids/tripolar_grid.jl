@@ -46,10 +46,12 @@ Keyword Arguments
 =================
 
 - `size`: The number of cells in the (longitude, latitude, vertical) dimensions.
-- `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default is -80.
-- `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default is (4, 4, 4).
-- `radius`: The radius of the spherical shell. Default is `R_Earth`.
-- `z`: The vertical ``z``-coordinate range of the grid. Default is (0, 1).
+- `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
+- `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
+- `radius`: The radius of the spherical shell. Default: `R_Earth`.
+- `z`: The vertical ``z``-coordinate range of the grid. Could either be (i) 2-tuple that specifies
+       the end points of the coordinate, (ii) an array with the ``z`` interfaces, or (iii) a function
+       of `k` index that returns the locations of cell interfaces in ``z``-direction. Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
 - `north_poles_latitude`: The latitude of the "north" singularities.
@@ -233,9 +235,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
           radius)
 
     # Metrics fields to fill halos
-    FF = Field{Face, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
-    FC = Field{Face, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
-    CF = Field{Center, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
+    FF = Field{Face,   Face,   Center}(grid; boundary_conditions = default_boundary_conditions)
+    FC = Field{Face,   Center, Center}(grid; boundary_conditions = default_boundary_conditions)
+    CF = Field{Center, Face,   Center}(grid; boundary_conditions = default_boundary_conditions)
     CC = Field{Center, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
 
     # Fill all periodic halos
