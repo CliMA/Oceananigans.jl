@@ -115,6 +115,6 @@ struct DistributedFillHalo{S}
     side :: S
 end
 
-for Side in (WestAndEast, SouthAndNorth, BottomAndTop, West, East, South, North, Bottom, Top)
-    fill_halo_kernel!(::Side, bc::DCBC, grid, size, offset, data) =  DistributedFillHalo(Side())
+for Side in (:WestAndEast, :SouthAndNorth, :BottomAndTop, :West, :East, :South, :North, :Bottom, :Top)
+    @eval fill_halo_kernel!(::$Side, bc::DCBC, grid, size, offset, data) =  DistributedFillHalo($Side())
 end
