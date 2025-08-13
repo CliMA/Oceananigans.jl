@@ -9,10 +9,12 @@ using Oceananigans.BoundaryConditions:
     DiscreteBoundaryFunction,
     permute_boundary_conditions,
     fill_halo_event!,
+    MultiRegionFillHalo,
     MCBCT,
     MCBC
 
 import Oceananigans.Fields: boundary_conditions, data
+import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 @inline extract_field_buffers(field::Field)          = field.communication_buffers
@@ -43,19 +45,15 @@ import Oceananigans.Fields: boundary_conditions, data
     return nothing
 end
 
-function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
-    reduced_dims = reduced_dimensions(field)
-
-    return fill_halo_regions!(field.data,
-                              field.boundary_conditions,
-                              field.indices,
-                              instantiated_location(field),
-                              field.grid,
-                              field.communication_buffers,
-                              args...;
-                              reduced_dimensions = reduced_dims,
-                              kwargs...)
-end
+fill_halo_regions!(field::MultiRegionField, args...; kwargs...) = 
+    fill_halo_regions!(field.data,
+                       field.boundary_conditions,
+                       field.indices,
+                       instantiated_location(field),
+                       field.grid,
+                       field.communication_buffers,
+                       args...;
+                       kwargs...)
 
 fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
 
@@ -63,47 +61,7 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 ##### fill_halo_regions! for a MultiRegionObject
 #####
 
-# this can be used once we don't need to fill Value, Flux and Gradient anymore!
-# fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
-#     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
-
-# TODO: Adapt MultiRegion boundary conditions to the Distributed logic: aka split the
-# halo sides in two different sides. Requires synchronizing all workers.
-# Might be difficult for `CubedSphereGrids` where all buffers must be filled prior
-# communicating.
-# For the moment we keep the old version because asynchronous communication,
-# which requires splitting, is not yet implemented.
-extract_west_or_east_bc(bc)   = max(bc.west,   bc.east)
-extract_south_or_north_bc(bc) = max(bc.south,  bc.north)
-extract_bottom_or_top_bc(bc)  = max(bc.bottom, bc.top)
-
-function multi_region_permute_boundary_conditions(bcs)
-    fill_halos! = [
-        fill_west_and_east_halo!,
-        fill_south_and_north_halo!,
-        fill_bottom_and_top_halo!,
-    ]
-
-    boundary_conditions_array = [
-        extract_west_or_east_bc(bcs),
-        extract_south_or_north_bc(bcs),
-        extract_bottom_or_top_bc(bcs)
-    ]
-
-    boundary_conditions = [
-        (extract_west_bc(bcs), extract_east_bc(bcs)),
-        (extract_south_bc(bcs), extract_north_bc(bcs)),
-        (extract_bottom_bc(bcs), extract_top_bc(bcs))
-    ]
-
-    perm = sortperm(boundary_conditions_array)
-    fill_halos! = fill_halos![perm]
-    boundary_conditions = boundary_conditions[perm]
-
-    return (fill_halos!, boundary_conditions)
-end
-
-function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs = true, kwargs...)
+function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs=true, kwargs...)
     arch = architecture(mrg)
 
     kernels! = bcs.kernels
@@ -122,7 +80,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
         buff = Reference(buffers.regional_objects)
 
         apply_regionally!(fill_halo_event!, c, kernel!, bcs_side,
-                          loc, mrg, buff, args...; kwargs...)
+                          loc, mrg, buff, args...; fill_open_bcs, kwargs...)
     end
 
     return nothing
@@ -138,46 +96,17 @@ function fill_multiregion_send_buffers!(c, buffers, grid, bcs)
     return nothing
 end
 
-#=
 #####
-##### fill_halo! for Communicating boundary condition
+##### fill halo event, splat the args...
 #####
 
-## Fill communicating boundary condition halos
-for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :top])
-    fill_both_halo!  = Symbol(:fill_, lside, :_and_, rside, :_halo!)
-    fill_left_halo!  = Symbol(:fill_, lside, :_halo!)
-    fill_right_halo! = Symbol(:fill_, rside, :_halo!)
+fill_halo_event!(c, kernel!::MultiRegionFillHalo, bcs, loc, grid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, buffers)
 
-    @eval begin
-        function $fill_both_halo!(c, left_bc::MCBC, right_bc, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
-            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
-            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
-            return nothing
-        end
+##### 
+##### Double-sided MultiRegion filling kernels
+#####
 
-        function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
-            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
-            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
-            return nothing
-        end
-    end
-end
-
-getside(x, ::North) = x.north
-getside(x, ::South) = x.south
-getside(x, ::West)  = x.west
-getside(x, ::East)  = x.east
-
-fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
-fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
-
-fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
-fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
-fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
-fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
-
-function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
+function (::MultiRegionFillHalo{<:WestAndEast})(c, westbc, eastbc, loc, grid, buffers)
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -217,7 +146,7 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
     return nothing
 end
 
-function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
+function (::MultiRegionFillHalo{<:SouthAndNorth})(c, southbc, northbc, loc, grid, buffers)
     H = halo_size(grid)[2]
     N = size(grid)[2]
 
@@ -261,13 +190,10 @@ function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size
 end
 
 #####
-##### Single fill_halo! for Communicating boundary condition
+##### Single-sided MultiRegion filling kernels
 #####
 
-# TODO: Allow support for `Bounded` Cubed sphere grids
-# (i.e. with the same shift implemented in the double-sided fill halo)
-
-function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
+function (::MultiRegionFillHalo{<:West})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -287,7 +213,7 @@ function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buff
     return nothing
 end
 
-function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
+function (::MultiRegionFillHalo{<:East})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -307,7 +233,7 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buff
     return nothing
 end
 
-function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
+function (::MultiRegionFillHalo{<:South})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[2]
     N = size(grid)[2]
 
@@ -327,7 +253,7 @@ function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
     return nothing
 end
 
-function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
+function (::MultiRegionFillHalo{<:North})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[2]
     N = size(grid)[2]
 
@@ -352,7 +278,6 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
 
     return nothing
 end
-=#
 
 #####
 ##### MultiRegion boundary condition utils

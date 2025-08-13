@@ -129,3 +129,13 @@ end
 #####
 ##### TODO: MultiRegion Boundary Conditions 
 #####
+
+# A struct to hold the side of the fill_halo kernel
+# These are defined in `src/MultiRegion/multi_region_boundary_conditions.jl`
+struct MultiRegionFillHalo{S}
+    side :: S
+end
+
+for Side in (:WestAndEast, :SouthAndNorth, :BottomAndTop, :West, :East, :South, :North, :Bottom, :Top)
+    @eval fill_halo_kernel!(::$Side, bc::MCBC, grid, size, offset, data, reduced_dimensions) =  MultiRegionFillHalo($Side())
+end
