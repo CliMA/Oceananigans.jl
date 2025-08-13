@@ -67,6 +67,7 @@ split_halo_filling(::DCBC, bcs2)   = true
 const PBCT  = Union{PBC,  Tuple{Vararg{PBC}}}
 const MCBCT = Union{MCBC, Tuple{Vararg{MCBC}}}
 const DCBCT = Union{DCBC, Tuple{Vararg{DCBC}}}
+const OBCTC = Union{OBC,  Tuple{Vararg{OBC}}}
 
 # Distributed halos have to be filled last to allow the
 # possibility of asynchronous communication:

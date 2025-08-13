@@ -5,3 +5,10 @@
 @inline  _fill_north_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
 @inline _fill_bottom_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
 @inline    _fill_top_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
+
+@inline function fill_halo_event!(c, kernel!, bcs::OBCTC, loc, grid, args...; fill_boundary_normal_velocities=true, kwargs...)
+    if !fill_boundary_normal_velocities
+        return kernel!(c, bcs..., loc, grid, Tuple(args))
+    end
+    return nothing
+end
