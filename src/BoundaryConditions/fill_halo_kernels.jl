@@ -13,11 +13,21 @@ to the provided `FieldBoundaryConditions` object.
 function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                                data::OffsetArray,
                                                grid::AbstractGrid,
-                                               loc,
-                                               indices)
+                                               loc, indices)
+
+    kernels!, ordered_bcs = fill_halo_kernels(bcs, data, grid, loc, indices)
+    regularized_bcs = FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north,
+                                              bcs.bottom, bcs.top, bcs.immersed,
+                                              kernels!, ordered_bcs)
+    return regularized_bcs
+end
+
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions,
+                                   data::OffsetArray,
+                                   grid::AbstractGrid,
+                                   loc, indices)
 
     arch = architecture(grid)
-
     sides, ordered_bcs = permute_boundary_conditions(bcs)
     sides = tuple(sides...)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
@@ -36,11 +46,12 @@ function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
     end
 
     kernels! = tuple(kernels!...)
-    regularized_bcs = FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north,
-                                              bcs.bottom, bcs.top, bcs.immersed,
-                                              kernels!, ordered_bcs)
-    return regularized_bcs
+
+    return kernels!, ordered_bcs
 end
+
+@inline get_boundary_kernels(bcs::NoKernelFBC, data, grid, loc, indices) = fill_halo_kernels(bcs, data, grid, loc, indices)
+@inline get_boundary_kernels(bcs::FieldBoundaryConditions, args...)      = bcs.kernels!, bcs.ordered_bcs
 
 @inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
 

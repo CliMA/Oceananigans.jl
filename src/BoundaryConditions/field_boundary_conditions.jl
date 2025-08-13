@@ -59,6 +59,8 @@ mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, K, O}
     ordered_bcs :: O
 end
 
+const NoKernelFBC = FieldBoundaryConditions{W, E, S, N, B, T, I, Nothing, Nothing} where {W, E, S, N, B, T, I}
+
 # Internal constructor that fills up computational details in the "auxiliaries" spot.
 function FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing, nothing)

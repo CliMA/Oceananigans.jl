@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: permute_boundary_conditions,
-                                       fill_halo_event!,
+                                       fill_halo_event!, get_boundary_kernels,
                                        DistributedCommunication
 
 using Oceananigans.DistributedComputations: cooperative_waitall!,
@@ -64,8 +64,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     north_bc = bcs.north
 
     arch = architecture(grid)
-    kernels! = bcs.kernels
-    bcs      = bcs.ordered_bcs
+    kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
     number_of_tasks = length(kernels!)
     outstanding_requests = length(arch.mpi_requests)

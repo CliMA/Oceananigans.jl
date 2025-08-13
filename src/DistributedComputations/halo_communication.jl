@@ -5,7 +5,7 @@ using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
-    PBCT, DCBCT # tuples
+    PBCT, DCBCT, get_boundary_kernels
 
 import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 
@@ -88,9 +88,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
                             fill_open_bcs=true, kwargs...)
 
     arch = architecture(grid)
-    
-    kernels! = bcs.kernels
-    bcs      = bcs.ordered_bcs
+    kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
     number_of_tasks  = length(kernels!)
     outstanding_requests = length(arch.mpi_requests)
