@@ -18,8 +18,8 @@ function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
 
     arch = architecture(grid)
 
-    sides, ordered_bcs = permute_boundary_conditions(boundary_conditions)
-    sides = tuple(fill_halos!...)
+    sides, ordered_bcs = permute_boundary_conditions(bcs)
+    sides = tuple(sides...)
 
     kernels! = []
 
