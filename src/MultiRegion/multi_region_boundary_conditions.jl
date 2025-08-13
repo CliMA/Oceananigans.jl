@@ -11,12 +11,9 @@ using Oceananigans.BoundaryConditions:
     MultiRegionFillHalo,
     MCBCT, MCBC
 
-import Oceananigans.Fields: boundary_conditions, data
 import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
-@inline extract_field_buffers(field::Field)          = field.communication_buffers
-@inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
 @inline function fill_halo_regions!(fields::NamedTuple, grid::ConformalCubedSphereGridOfSomeKind, args...; kwargs...)
     u = haskey(fields, :u) ? fields.u : nothing

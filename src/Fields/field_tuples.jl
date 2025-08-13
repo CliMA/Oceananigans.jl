@@ -54,9 +54,7 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...;
-                            signed = true,  # This kwarg is active only for a `ConformalCubedSphereGrid`, here we discard it.
-                            kwargs...)
+function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
 
     for field in fields
         fill_halo_regions!(field, args...; kwargs...)
@@ -64,6 +62,9 @@ function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...;
 
     return nothing
 end
+
+# This is a convenience function that allows `fill_halo_regions!` to be dispatched on the grid type.
+fill_halo_regions!(fields::Union{NamedTuple, Tuple}, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
 
 #####
 ##### Tracer names

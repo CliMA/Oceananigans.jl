@@ -39,7 +39,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally update_boundary_conditions!(fields(model), model)
 
     # Fill the halos
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async=true)
+    fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); async=true)
 
     @apply_regionally compute_auxiliaries!(model)
 
