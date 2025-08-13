@@ -22,7 +22,7 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...;
-                            fill_boundary_normal_velocities = true, # Need to deal with this im some way
+                            fill_open_bcs = true, # Need to deal with this im some way
                             kwargs...)
     
     kernels! = boundary_conditions.kernels
@@ -32,7 +32,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
-        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; fill_boundary_normal_velocities, kwargs...)
+        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; fill_open_bcs, kwargs...)
     end
 
     return nothing

@@ -59,7 +59,7 @@ end
 end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...;
-                            only_local_halos=false, fill_boundary_normal_velocities=true, kwargs...)
+                            only_local_halos=false, fill_open_bcs=true, kwargs...)
 
     north_bc = bcs.north
 

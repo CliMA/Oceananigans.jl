@@ -103,7 +103,7 @@ function multi_region_permute_boundary_conditions(bcs)
     return (fill_halos!, boundary_conditions)
 end
 
-function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
+function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs = true, kwargs...)
     arch = architecture(mrg)
 
     kernels! = bcs.kernels
