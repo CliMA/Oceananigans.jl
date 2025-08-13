@@ -67,9 +67,9 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     arch     = architecture(mrg)
     buff_ref = Reference(buffers.regional_objects)
 
-    @apply_regionally fill_send_buffers!(c, buffers, mrg)
+    apply_regionally!(fill_send_buffers!, c, buffers, mrg)
     apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_open_bcs, kwargs...)
-    @apply_regionally fill_send_buffers!(c, buffers, mrg)
+    apply_regionally!(fill_send_buffers!, c, buffers, mrg)
     apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_open_bcs, kwargs...)
 
     return nothing
