@@ -22,7 +22,7 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...;
-                            fill_open_bcs = true, # Need to deal with this im some way
+                            fill_open_bcs = true, 
                             kwargs...)
     
     kernels! = boundary_conditions.kernels
