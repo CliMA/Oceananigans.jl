@@ -1,24 +1,20 @@
 using Oceananigans.Utils: configure_kernel
 
+"""
+    construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
+                                          data::OffsetArray,
+                                          grid::AbstractGrid,
+                                          loc,
+                                          indices)
+
+Constructs and attaches preconfigured boundary condition kernels for a given data array and grid
+to the provided `FieldBoundaryConditions` object.
+"""
 function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                                data::OffsetArray,
                                                grid::AbstractGrid,
                                                loc,
                                                indices)
-
-    kernels!, ordered_bcs = fill_halo_kernels!(data, grid, loc, indices, bcs)
-    regularized_bcs = FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north,
-                                              bcs.bottom, bcs.top, bcs.immersed,
-                                              kernels!, ordered_bcs)
-    return regularized_bcs
-end
-
-@inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
-
-@inline periodic_size_and_offset(c, dim1, dim2, size, offset)     = (size, fix_halo_offsets.(offset, c.offsets[[dim1, dim2]]))
-@inline periodic_size_and_offset(c, dim1, dim2, ::Symbol, offset) = (size(parent(c))[[dim1, dim2]], (0, 0))
-
-function fill_halo_kernels!(data, grid, loc, indices, boundary_conditions::FieldBoundaryConditions)
 
     arch = architecture(grid)
 
@@ -38,14 +34,23 @@ function fill_halo_kernels!(data, grid, loc, indices, boundary_conditions::Field
         push!(kernels!, kernel!)
     end
 
-    return tuple(kernels!...), bcs
+    kernels! = tuple(kernels!...)
+    regularized_bcs = FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north,
+                                              bcs.bottom, bcs.top, bcs.immersed,
+                                              kernels!, ordered_bcs)
+    return regularized_bcs
 end
+
+@inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
+
+@inline periodic_size_and_offset(c, dim1, dim2, size, offset)     = (size, fix_halo_offsets.(offset, c.offsets[[dim1, dim2]]))
+@inline periodic_size_and_offset(c, dim1, dim2, ::Symbol, offset) = (size(parent(c))[[dim1, dim2]], (0, 0))
 
 ####
 #### Fill halo configured kernels
 ####
 
-nothing_function(args...) = nothing
+@inline nothing_function(args...) = nothing
 
 const NoBC = Union{Nothing, Missing}
 
