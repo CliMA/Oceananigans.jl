@@ -1,14 +1,14 @@
 
-extract_bc(bcs, ::Val{:west})   = tuple(bcs.west)
-extract_bc(bcs, ::Val{:east})   = tuple(bcs.east)
-extract_bc(bcs, ::Val{:south})  = tuple(bcs.south)
-extract_bc(bcs, ::Val{:north})  = tuple(bcs.north)
-extract_bc(bcs, ::Val{:bottom}) = tuple(bcs.bottom)
-extract_bc(bcs, ::Val{:top})    = tuple(bcs.top)
+extract_bc(bcs, ::West)   = tuple(bcs.west)
+extract_bc(bcs, ::East)   = tuple(bcs.east)
+extract_bc(bcs, ::South)  = tuple(bcs.south)
+extract_bc(bcs, ::North)  = tuple(bcs.north)
+extract_bc(bcs, ::Bottom) = tuple(bcs.bottom)
+extract_bc(bcs, ::Top)    = tuple(bcs.top)
 
-extract_bc(bcs, ::Val{:bottom_and_top})  = (bcs.bottom, bcs.top)
-extract_bc(bcs, ::Val{:west_and_east})   = (bcs.west, bcs.east)
-extract_bc(bcs, ::Val{:south_and_north}) =(bcs.south, bcs.north)
+extract_bc(bcs, ::BottomAndTop)  = (bcs.bottom, bcs.top)
+extract_bc(bcs, ::WestAndEast)   = (bcs.west, bcs.east)
+extract_bc(bcs, ::SouthAndNorth) = (bcs.south, bcs.north)
 
 # In case of a DistributedCommunication paired with a
 # Flux, Value or Gradient boundary condition, we split the direction in two single-sided
@@ -22,33 +22,28 @@ function permute_boundary_conditions(bcs)
 
     if split_x_halo_filling
         if split_y_halo_filling
-            fill_halos! = [WestKernel(), EastKernel(), SouthKernel(), NorthKernel(), BottomAndTopKernels()]
-            sides       = [:west, :east, :south, :north, :bottom_and_top]
-            bcs_array   = [bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom]
+            sides      = [West(), East(), South(), North(), BottomAndTop()]
+            bcs_array  = [bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom]
         else
-            fill_halos! = [WestKernel(), EastKernel(), SouthAndNorthKernels(), BottomAndTopKernels()]
-            sides       = [:west, :east, :south_and_north, :bottom_and_top]
-            bcs_array   = [bcs.west, east_bc, bcs.south, bcs.bottom]
+            sides     = [West(), East(), SouthAndNorth(), BottomAndTop()]
+            bcs_array = [bcs.west, east_bc, bcs.south, bcs.bottom]
         end
     else
         if split_y_halo_filling
-            fill_halos! = [WestAndEastKernels(), SouthKernel(), NorthKernel(), BottomAndTopKernels()]
-            sides       = [:west_and_east, :south, :north, :bottom_and_top]
-            bcs_array   = [bcs.west, bcs.south, bcs.north, bcs.bottom]
+            sides     = [WestAndEast(), South(), North(), BottomAndTop()]
+            bcs_array = [bcs.west, bcs.south, bcs.north, bcs.bottom]
         else
-            fill_halos! = [WestAndEastKernels(), SouthAndNorthKernels(), BottomAndTopKernels()]
-            sides       = [:west_and_east, :south_and_north, :bottom_and_top]
-            bcs_array   = [bcs.west, bcs.south, bcs.bottom]
+            sides     = [WestAndEast(), SouthAndNorth(), BottomAndTop()]
+            bcs_array = [bcs.west, bcs.south, bcs.bottom]
         end
     end
 
-    perm = sortperm(bcs_array, lt=fill_first)
-    fill_halos! = fill_halos![perm]
+    perm  = sortperm(bcs_array, lt=fill_first)
     sides = sides[perm]
 
     boundary_conditions = Tuple(extract_bc(bcs, Val(side)) for side in sides)
 
-    return fill_halos!, boundary_conditions
+    return sides, boundary_conditions
 end
 
 # Split direction in two distinct fill_halo! events in case of a communication boundary condition
