@@ -22,9 +22,10 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
 end
 
 @inline function fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, region, connections,
-                                                     fill_halo_function!, _fill_halo_kernel!)
-    sz = fill_halo_size(field.data, fill_halo_function!, field.indices, FullyConnected, location(field), grid)
-    of = fill_halo_offset(sz, fill_halo_function!, field.indices)
+                                                     side, _fill_halo_kernel!)
+
+    sz = fill_halo_size(field.data, side, field.indices, FullyConnected, location(field), grid)
+    of = fill_halo_offset(sz, side, field.indices)
     kernel_parameters = KernelParameters(sz, of)
     reduced_dims = reduced_dimensions(field)
 
@@ -231,9 +232,10 @@ end
 
 @inline function fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
                                                            multiregion_field_2, region, connections, plmn,
-                                                           fill_halo_function!, _fill_halo_kernel!)
-    sz = fill_halo_size(field_1.data, fill_halo_function!, field_1.indices, FullyConnected, location(field_1), grid)
-    of = fill_halo_offset(sz, fill_halo_function!, field_1.indices)
+                                                           side, _fill_halo_kernel!)
+    
+    sz = fill_halo_size(field_1.data, side, field_1.indices, FullyConnected, location(field_1), grid)
+    of = fill_halo_offset(sz, side, field_1.indices)
     kernel_parameters = KernelParameters(sz, of)
     reduced_dims = reduced_dimensions(field_1)
 
