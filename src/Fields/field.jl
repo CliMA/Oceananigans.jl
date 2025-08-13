@@ -805,18 +805,11 @@ end
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, args...; kwargs...)
-    reduced_dims = reduced_dimensions(field)
-
+fill_halo_regions!(field::Field, args...; kwargs...) =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
                        instantiated_location(field),
                        field.grid,
                        args...;
-                       reduced_dimensions = reduced_dims,
                        kwargs...)
-
-    return nothing
-end
-

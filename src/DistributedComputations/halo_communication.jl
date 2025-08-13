@@ -73,19 +73,15 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_halo_regions!(field::DistributedField, args...; kwargs...)
-    reduced_dims = reduced_dimensions(field)
-
-    return fill_halo_regions!(field.data,
-                              field.boundary_conditions,
-                              field.indices,
-                              instantiated_location(field),
-                              field.grid,
-                              field.communication_buffers,
-                              args...;
-                              reduced_dimensions = reduced_dims,
-                              kwargs...)
-end
+fill_halo_regions!(field::DistributedField, args...; kwargs...) = 
+    fill_halo_regions!(field.data,
+                       field.boundary_conditions,
+                       field.indices,
+                       instantiated_location(field),
+                       field.grid,
+                       field.communication_buffers,
+                       args...;
+                       kwargs...)
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...;
                             fill_open_bcs=true, kwargs...)
