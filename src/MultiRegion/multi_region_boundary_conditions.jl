@@ -12,8 +12,7 @@ using Oceananigans.BoundaryConditions:
     extract_north_bc, extract_top_bc, extract_bottom_bc,
     fill_halo_event!,
     MCBCT,
-    MCBC,
-    fill_open_boundary_regions!
+    MCBC
 
 import Oceananigans.Fields: boundary_conditions, data
 
@@ -118,10 +117,6 @@ end
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
     arch = architecture(mrg)
-
-    if fill_boundary_normal_velocities
-        apply_regionally!(fill_open_boundary_regions!, c, bcs, indices, loc, mrg, args...)
-    end
 
     @apply_regionally fill_halos!, permuted_bcs = multi_region_permute_boundary_conditions(bcs)
 
