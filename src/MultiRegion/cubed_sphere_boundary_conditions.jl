@@ -21,6 +21,8 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
     return nothing
 end
 
+#=
+
 @inline function fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, region, connections,
                                                      fill_halo_function!, _fill_halo_kernel!)
     sz = fill_halo_size(field.data, fill_halo_function!, field.indices, FullyConnected, location(field), grid)
@@ -724,3 +726,5 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
         end
     end
 end
+
+=#
