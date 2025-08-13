@@ -1,5 +1,5 @@
-using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset, fill_west_and_east_halo!,
-    fill_south_and_north_halo!
+using Oceananigans.BoundaryConditions
+using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset
 using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.MultiRegion: number_of_regions
 
@@ -12,16 +12,14 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; kwargs.
     regions = Iterate(1:6)
 
     @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
-        grid.connectivity.connections, fill_west_and_east_halo!,
+        grid.connectivity.connections, WestAndEast(),
         _fill_cubed_sphere_center_center_field_east_west_halo_regions!)
     @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
-        grid.connectivity.connections, fill_south_and_north_halo!,
+        grid.connectivity.connections, SouthAndNorth(),
         _fill_cubed_sphere_center_center_field_north_south_halo_regions!)
 
     return nothing
 end
-
-#=
 
 @inline function fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, region, connections,
                                                      fill_halo_function!, _fill_halo_kernel!)
@@ -107,10 +105,10 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; kwargs...)
     regions = Iterate(1:6)
 
     @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
-        grid.connectivity.connections, fill_west_and_east_halo!,
+        grid.connectivity.connections, WestAndEast(),
         _fill_cubed_sphere_face_face_field_east_west_halo_regions!)
     @apply_regionally fill_cubed_sphere_field_halo_event!(grid, field, multiregion_field, regions,
-        grid.connectivity.connections, fill_south_and_north_halo!,
+        grid.connectivity.connections, SouthAndNorth(),
         _fill_cubed_sphere_face_face_field_north_south_halo_regions!)
 
     return nothing
@@ -222,10 +220,10 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     regions = Iterate(1:6)
 
     @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
-        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_west_and_east_halo!,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, WestAndEast(),
         _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!)
     @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
-        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_south_and_north_halo!,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, SouthAndNorth(),
         _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!)
 
     return nothing
@@ -353,10 +351,10 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     regions = Iterate(1:6)
 
     @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
-        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_west_and_east_halo!,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, WestAndEast(),
         _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!)
     @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
-        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_south_and_north_halo!,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, SouthAndNorth(),
         _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!)
 
     #=
@@ -582,10 +580,10 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     regions = Iterate(1:6)
 
     @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
-        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_west_and_east_halo!,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, WestAndEast(),
         _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!)
     @apply_regionally fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
-        multiregion_field_2, regions, grid.connectivity.connections, plmn, fill_south_and_north_halo!,
+        multiregion_field_2, regions, grid.connectivity.connections, plmn, SouthAndNorth(),
         _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!)
 
     return nothing
@@ -726,5 +724,3 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
         end
     end
 end
-
-=#

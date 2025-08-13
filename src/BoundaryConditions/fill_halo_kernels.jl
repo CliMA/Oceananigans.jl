@@ -22,18 +22,18 @@ function fill_halo_kernels!(data, grid, loc, indices, boundary_conditions::Field
 
     arch = architecture(grid)
 
-    fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
-    fill_halos! = tuple(fill_halos!...)
+    sides, bcs = permute_boundary_conditions(boundary_conditions)
+    sides = tuple(fill_halos!...)
 
     kernels! = []
 
     for task in 1:length(fill_halos!)
-        fill_halo! = fill_halos![task]
-        bc         = bcs[task]
+        side = sides[task]
+        bc   = bcs[task]
 
-        size    = fill_halo_size(data, fill_halo!, indices, bc[1], loc, grid)
-        offset  = fill_halo_offset(size, fill_halo!, indices)
-        kernel! = fill_halo_kernel!(fill_halo!, bc[1], grid, size, offset, data)
+        size    = fill_halo_size(data, side, indices, bc[1], loc, grid)
+        offset  = fill_halo_offset(size, side, indices)
+        kernel! = fill_halo_kernel!(side, bc[1], grid, size, offset, data)
 
         push!(kernels!, kernel!)
     end

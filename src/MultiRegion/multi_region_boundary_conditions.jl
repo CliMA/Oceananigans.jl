@@ -2,29 +2,17 @@ using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
-using Oceananigans.DistributedComputations: communication_side, fill_send_buffers!
+using Oceananigans.DistributedComputations: fill_send_buffers!
 
 using Oceananigans.BoundaryConditions:
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
     permute_boundary_conditions,
-    extract_west_bc, extract_east_bc, extract_south_bc, 
-    extract_north_bc, extract_top_bc, extract_bottom_bc,
     fill_halo_event!,
     MCBCT,
     MCBC
 
 import Oceananigans.Fields: boundary_conditions, data
-
-import Oceananigans.BoundaryConditions:
-    fill_halo_regions!,
-    fill_west_and_east_halo!,
-    fill_south_and_north_halo!,
-    fill_bottom_and_top_halo!,
-    fill_west_halo!,
-    fill_east_halo!,
-    fill_south_halo!,
-    fill_north_halo!
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 @inline extract_field_buffers(field::Field)          = field.communication_buffers
