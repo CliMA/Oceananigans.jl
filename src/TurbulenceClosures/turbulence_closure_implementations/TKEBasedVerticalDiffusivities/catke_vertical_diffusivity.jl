@@ -180,13 +180,12 @@ Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
                            adapt(to, catke_diffusivity_fields._tupled_implicit_linear_coefficients))
 
 function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, args...; kw...)
-    grid = catke_diffusivity_fields.κu.grid
 
     κ = (catke_diffusivity_fields.κu,
          catke_diffusivity_fields.κc,
          catke_diffusivity_fields.κe)
 
-    return fill_halo_regions!(κ, grid, args...; kw...)
+    return fill_halo_regions!(κ, args...; kw...)
 end
 
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)

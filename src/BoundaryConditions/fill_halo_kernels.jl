@@ -4,11 +4,11 @@ using Oceananigans.Utils: configure_kernel
     construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                           data::OffsetArray,
                                           grid::AbstractGrid,
-                                          loc,
-                                          indices)
+                                          loc, indices)
 
-Constructs and attaches preconfigured boundary condition kernels for a given data array and grid
-to the provided `FieldBoundaryConditions` object.
+Constructs preconfigured boundary condition kernels for a given data arraym, grid, 
+and the provided `FieldBoundaryConditions` object. Returns a new `FieldBoundaryConditions` object
+with the preconfigured kernels and ordered boundary conditions.
 """
 function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                                data::OffsetArray,
@@ -21,6 +21,10 @@ function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                               kernels!, ordered_bcs)
     return regularized_bcs
 end
+
+# If the bcs are nothing or missing... they remain nothing or missing
+construct_boundary_conditions_kernels(::Nothing, data, grid, loc, indices) = nothing
+construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = missing
 
 @inline function fill_halo_kernels(bcs::FieldBoundaryConditions,
                                    data::OffsetArray,

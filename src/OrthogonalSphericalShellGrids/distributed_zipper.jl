@@ -64,13 +64,13 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     north_bc = bcs.north
 
     arch = architecture(grid)
-    kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
+    kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
 
     number_of_tasks = length(kernels!)
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, buffers, args...; kwargs...)
+        fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
