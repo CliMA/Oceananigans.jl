@@ -1,12 +1,13 @@
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Fields: reduced_dimensions, 
-                           instantiated_location
+using Oceananigans.Fields: instantiated_location
 
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
     PBCT, DCBCT # tuples
+
+import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 
 #####
 ##### MPI tags for halo communication BCs
