@@ -26,6 +26,12 @@ end
 construct_boundary_conditions_kernels(::Nothing, data, grid, loc, indices) = nothing
 construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = missing
 
+# Select the valid BC out of a tuple to configure the kernel
+@inline select_bc(bcs::Tuple) = @inbounds bcs[1]
+@inline select_bc(bcs::Tuple{<:Nothing, <:BoundaryCondition}) = @inbounds bcs[2]
+@inline select_bc(bcs::Tuple{<:BoundaryCondition, <:Nothing}) = @inbounds bcs[1]
+@inline select_bc(bcs::BoundaryCondition) = bc
+
 @inline function fill_halo_kernels(bcs::FieldBoundaryConditions,
                                    data::OffsetArray,
                                    grid::AbstractGrid,
@@ -41,10 +47,11 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
     for task in 1:length(sides)
         side = sides[task]
         bc   = ordered_bcs[task]
-
-        size    = fill_halo_size(data, side, indices, bc[1], loc, grid)
+        bc   = select_bcs(bc)
+        
+        size    = fill_halo_size(data, side, indices, bc, loc, grid)
         offset  = fill_halo_offset(size, side, indices)
-        kernel! = fill_halo_kernel!(side, bc[1], grid, size, offset, data, reduced_dimensions)
+        kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
 
         push!(kernels!, kernel!)
     end

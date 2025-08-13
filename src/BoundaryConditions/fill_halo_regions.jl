@@ -44,6 +44,17 @@ const NoBCs = Union{Nothing, Tuple{Nothing, Nothing}}
 @inline fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid, args...; kwargs...) = nothing
 
 #####
+##### Nothing BCs
+#####
+
+@inline _fill_west_halo!(j, k, grid, c, ::Nothing, args...)   = nothing
+@inline _fill_east_halo!(j, k, grid, c, ::Nothing, args...)   = nothing
+@inline _fill_south_halo!(i, k, grid, c, ::Nothing, args...)  = nothing
+@inline _fill_north_halo!(i, k, grid, c, ::Nothing, args...)  = nothing
+@inline _fill_bottom_halo!(i, j, grid, c, ::Nothing, args...) = nothing
+@inline _fill_top_halo!(i, j, grid, c, ::Nothing, args...)    = nothing
+
+#####
 ##### Double-sided fill_halo! kernels
 #####
 
