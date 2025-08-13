@@ -8,7 +8,10 @@ export
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
-    fill_halo_regions!
+    fill_halo_regions!,
+    WestAndEast, SouthAndNorth, BottomAndTop,
+    West, East, South, North, Bottom, Top,
+    DistributedFillHalo
 
 using Adapt
 using KernelAbstractions: @index, @kernel

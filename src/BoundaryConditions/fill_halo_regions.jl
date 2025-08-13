@@ -102,19 +102,19 @@ end
 #####
 
 # All possible fill_halo! kernels
-struct WestAndEastKernels end
-struct SouthAndNorthKernels end
-struct BottomAndTopKernels end
-struct WestKernel end
-struct EastKernel end
-struct SouthKernel end
-struct NorthKernel end
-struct BottomKernel end
-struct TopKernel end
+struct WestAndEast end
+struct SouthAndNorth end
+struct BottomAndTop end
+struct West end
+struct East end
+struct South end
+struct North end
+struct Bottom end
+struct Top end
 
-const WEB = Union{WestAndEastKernels, WestKernel, EastKernel}
-const SNB = Union{SouthAndNorthKernels, SouthKernel, NorthKernel}
-const TBB = Union{BottomAndTopKernels, BottomKernel, TopKernel}
+const WEB = Union{WestAndEast, West, East}
+const SNB = Union{SouthAndNorth, South, North}
+const TBB = Union{BottomAndTop, Bottom, Top}
 
 # Tupled halo filling _only_ deals with full fields!
 @inline fill_halo_size(::Tuple, ::WEB, args...) = :yz
