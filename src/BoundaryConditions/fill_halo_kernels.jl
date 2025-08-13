@@ -18,14 +18,14 @@ function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
 
     arch = architecture(grid)
 
-    sides, bcs = permute_boundary_conditions(boundary_conditions)
+    sides, ordered_bcs = permute_boundary_conditions(boundary_conditions)
     sides = tuple(fill_halos!...)
 
     kernels! = []
 
-    for task in 1:length(fill_halos!)
+    for task in 1:length(sides)
         side = sides[task]
-        bc   = bcs[task]
+        bc   = ordered_bcs[task]
 
         size    = fill_halo_size(data, side, indices, bc[1], loc, grid)
         offset  = fill_halo_offset(size, side, indices)
@@ -111,7 +111,7 @@ function fill_halo_kernel!(::BottomAndTop, bc::PBC, grid, size, offset, data)
 end
 
 #####
-##### Distributed boundary conditions?
+##### Distributed Boundary Conditions
 #####
 
 # A struct to hold the side of the fill_halo kernel
@@ -123,3 +123,7 @@ end
 for Side in (:WestAndEast, :SouthAndNorth, :BottomAndTop, :West, :East, :South, :North, :Bottom, :Top)
     @eval fill_halo_kernel!(::$Side, bc::DCBC, grid, size, offset, data) =  DistributedFillHalo($Side())
 end
+
+#####
+##### MultiRegion Boundary Conditions
+#####
