@@ -130,7 +130,7 @@ end
 
     # Reset MPI tag
     arch.mpi_tag[] -= arch.mpi_tag[]
-    recv_from_buffers!(c, buffers, grid, Val(side))
+    recv_from_buffers!(c, buffers, grid, side)
 
     return nothing
 end
@@ -158,7 +158,7 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     !isnothing(reqnw) && push!(requests, reqnw...)
     !isnothing(reqne) && push!(requests, reqne...)
 
-    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, :corners)
+    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, Val(:corners))
 
     return nothing
 end
