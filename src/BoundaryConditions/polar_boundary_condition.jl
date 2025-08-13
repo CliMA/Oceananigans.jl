@@ -55,11 +55,11 @@ function update_pole_value!(bc::PolarValue, c, grid, loc)
 end
 
 const SouthPolarBC = Tuple{<:PolarBoundaryCondition, <:BoundaryCondition}
-const NorthPolarBC = Tuple{<:PolarBoundaryCondition, <:BoundaryCondition}
+const NorthPolarBC = Tuple{<:BoundaryCondition, <:PolarBoundaryCondition}
 const SouthAndNorthPolarBC = Tuple{<:PolarBoundaryCondition, <:PolarBoundaryCondition}
 
 # fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
-function fill_halo_event!(c, kernel!, bc::PolarBoundaryCondition, loc::Tuple, grid, args...; kwargs...)
+function fill_halo_event!(c, kernel!, bc::PolarBoundaryCondition, loc, grid, args...; kwargs...)
     update_pole_value!(bc.condition, c, grid, loc)
     return kernel!(c, bc, loc, grid, Tuple(args))
 end
