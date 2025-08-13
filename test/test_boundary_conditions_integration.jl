@@ -148,8 +148,8 @@ function test_flat_extrapolation_open_boundary_conditions(arch, FT)
         set!(u1, (X, ) -> 2-X)
         set!(u2, (X, ) -> 1+X)
 
-        fill_halo_regions!(u1, clock, (); fill_open_bcs = false)
-        fill_halo_regions!(u2, clock, (); fill_open_bcs = false)
+        fill_halo_regions!(u1, clock, (); fill_open_bcs=false)
+        fill_halo_regions!(u2, clock, (); fill_open_bcs=false)
 
         # we can stop the wall normal halos being filled after the pressure solve - this serves more as a test of the general OBC stuff
         @test interior(u1, 1, 1, 1) .== 2

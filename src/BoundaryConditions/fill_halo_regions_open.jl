@@ -7,7 +7,7 @@
 @inline    _fill_top_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
 
 @inline function fill_halo_event!(c, kernel!, bcs::OBCTC, loc, grid, args...; fill_open_bcs=true, kwargs...)
-    if !fill_open_bcs
+    if fill_open_bcs
         return kernel!(c, bcs..., loc, grid, Tuple(args))
     end
     return nothing
