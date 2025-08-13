@@ -1,27 +1,3 @@
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
-#####
-##### Periodic boundary conditions
-#####
-
-function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; only_local_halos = false, kw...)
-    c_parent, yz_size, offset = periodic_size_and_offset(c, 2, 3, size, offset)
-    launch!(arch, grid, KernelParameters(yz_size, offset), _fill_periodic_west_and_east_halo!, c, Val(grid.Hx), grid.Nx; kw...)
-    return nothing
-end
-
-function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; only_local_halos = false, kw...)
-    c_parent, xz_size, offset = periodic_size_and_offset(c, 1, 3, size, offset)
-    launch!(arch, grid, KernelParameters(xz_size, offset), _fill_periodic_south_and_north_halo!, c, Val(grid.Hy), grid.Ny;  kw...)
-    return nothing
-end
-
-function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; only_local_halos = false, kw...)
-    c_parent, xy_size, offset = periodic_size_and_offset(c, 1, 2, size, offset)
-    launch!(arch, grid, KernelParameters(xy_size, offset), _fill_periodic_bottom_and_top_halo!, c, Val(grid.Hz), grid.Nz; kw...)
-    return nothing
-end
-
 #####
 ##### Periodic boundary condition kernels
 #####
