@@ -7,11 +7,9 @@ using Oceananigans.DistributedComputations: fill_send_buffers!
 using Oceananigans.BoundaryConditions:
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
-    permute_boundary_conditions,
-    fill_halo_event!,
+    fill_halo_event!, get_boundary_kernels,
     MultiRegionFillHalo,
-    MCBCT,
-    MCBC
+    MCBCT, MCBC
 
 import Oceananigans.Fields: boundary_conditions, data
 import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
@@ -61,37 +59,23 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 ##### fill_halo_regions! for a MultiRegionObject
 #####
 
+# Fill halo regions with a double pass for the moment.
+# TODO: Optimize this some way (needs infra-regional-function synchronization between regions).
+# The complication here is the possibility of different regions having different number of tasks,
+# Which might happen, for example, for a grid that partitioned in a Bounded direction.
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs=true, kwargs...)
     arch = architecture(mrg)
 
-    @apply_regionally kernels!    = getproperty(bcs, :kernels)
-    @apply_regionally ordered_bcs = getproperty(bcs, :ordered_bcs)
+    # Send if we need to send the buffers
+    @apply_regionally fill_send_buffers!(c, buffers, mrg)
+    buff_ref = Reference(buffers.regional_objects)
 
-    # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
-    # When we want to allow asynchronous communication, we will might need to split the halos sides
-    # and the number of tasks might increase.
-    for task in 1:3
-        @apply_regionally begin
-            bcs_side = getindex(ordered_bcs, task)
-            kernel!  = getindex(kernels!, task)
-            fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
-        end
+    apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_open_bcs, kwargs...)
+    
+    @apply_regionally fill_send_buffers!(c, buffers, mrg)
+    buff_ref = Reference(buffers.regional_objects)
 
-        buff = Reference(buffers.regional_objects)
-
-        apply_regionally!(fill_halo_event!, c, kernel!, bcs_side,
-                          loc, mrg, buff, args...; fill_open_bcs, kwargs...)
-    end
-
-    return nothing
-end
-
-# Find a better way to do this (this will not work for corners!!)
-function fill_multiregion_send_buffers!(c, buffers, grid, bcs)
-
-    if !isempty(filter(x -> x isa MCBCT, bcs))
-        fill_send_buffers!(c, buffers, grid)
-    end
+    apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_open_bcs, kwargs...)
 
     return nothing
 end

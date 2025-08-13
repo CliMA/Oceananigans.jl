@@ -25,7 +25,7 @@ function permute_boundary_conditions(bcs)
             bcs_array  = [bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom]
         else
             sides     = [West(), East(), SouthAndNorth(), BottomAndTop()]
-            bcs_array = [bcs.west, east_bc, bcs.south, bcs.bottom]
+            bcs_array = [bcs.west, bcs.east, bcs.south, bcs.bottom]
         end
     else
         if split_y_halo_filling
@@ -51,6 +51,15 @@ split_halo_filling(bcs1, bcs2)     = false
 split_halo_filling(::DCBC, ::DCBC) = false
 split_halo_filling(bcs1, ::DCBC)   = true
 split_halo_filling(::DCBC, bcs2)   = true
+
+# Same thing for MultiRegion boundary conditions
+split_halo_filling(::MCBC, ::MCBC) = false
+split_halo_filling(bcs1, ::MCBC)   = true
+split_halo_filling(::MCBC, bcs2)   = true
+
+# heterogenous distribute-shared communication is not supported
+split_halo_filling(::MCBC, ::DCBC) = throw("Cannot split MultiRegion and Distributed boundary conditions.")
+split_halo_filling(::DCBC, ::MCBC) = throw("Cannot split MultiRegion and Distributed boundary conditions.")
 
 # TODO: support heterogeneous distributed-shared communication
 # split_halo_filling(::MCBC, ::DCBC) = false
