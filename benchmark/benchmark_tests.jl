@@ -4,7 +4,6 @@ using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10
 using BenchmarkTools
-using Suppressor
 using CUDA
 using Random
 
@@ -97,22 +96,7 @@ if group == :immersed
     run_benchmark(model)
 end    
 
-if group == :unit
-    grid = RectilinearGrid(size = (10, 10, 10), extent = (1, 1, 1))
-    u = XFaceField(grid)
-    v = YFaceField(grid)
-    w = ZFaceField(grid)
-    c = Tuple(CenterField(grid) for i in 1:10)
-
-    vars = (u, v, w, c...)
-
-    output =  @capture_out begin
-        @benchmark Oceananigans.BoundaryConditions.fill_halo_regions!(u)
-        @benchmark Oceananigans.BoundaryConditions.fill_halo_regions!(v)
-        @benchmark Oceananigans.BoundaryConditions.fill_halo_regions!(w)
-        @benchmark Oceananigans.BoundaryConditions.fill_halo_regions!(c)
-        @benchmark Oceananigans.BoundaryConditions.fill_halo_regions!(vars)
-    end
+if group == :fill_halo_regions
 end
 
 end

@@ -37,7 +37,7 @@ steps:
 
     command: |
       # Instantiate
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.add("CUDA", "BenchmarkTools", "Suppressor"); Pkg.instantiate()'
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=benchmark --check-bounds=no -e 'using Pkg; Pkg.add("./"); Pkg.instantiate()'
 
       # List of benchmark groups
       BENCHMARK_GROUPS=(
@@ -54,7 +54,7 @@ steps:
         export BENCHMARK_GROUP
         OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
 
-        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=benchmark --check-bounds=no benchmark/benchmark_tests.jl
         $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
 
         # Remove generated output files
