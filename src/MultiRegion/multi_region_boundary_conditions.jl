@@ -118,23 +118,23 @@ end
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
     arch = architecture(mrg)
 
-    @apply_regionally fill_halos!, permuted_bcs = multi_region_permute_boundary_conditions(bcs)
+    kernels! = bcs.kernels
+    bcs      = bcs.ordered_bcs
 
     # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
     # When we want to allow asynchronous communication, we will might need to split the halos sides
     # and the number of tasks might increase.
     for task in 1:3
         @apply_regionally begin
-            bcs_side = getindex(permuted_bcs, task)
-            fill_halo_side! = getindex(fill_halos!, task)
+            bcs_side = getindex(bcs, task)
+            kernel!  = getindex(kernels!, task)
             fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
         end
 
         buff = Reference(buffers.regional_objects)
 
-        apply_regionally!(fill_halo_event!, c, fill_halo_side!, bcs_side,
-                          indices, loc, arch, mrg, buff,
-                          args...; kwargs...)
+        apply_regionally!(fill_halo_event!, c, kernel!, bcs_side,
+                          loc, mrg, buff, args...; kwargs...)
     end
 
     return nothing
@@ -150,6 +150,7 @@ function fill_multiregion_send_buffers!(c, buffers, grid, bcs)
     return nothing
 end
 
+#=
 #####
 ##### fill_halo! for Communicating boundary condition
 #####
@@ -363,6 +364,7 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
 
     return nothing
 end
+=#
 
 #####
 ##### MultiRegion boundary condition utils
