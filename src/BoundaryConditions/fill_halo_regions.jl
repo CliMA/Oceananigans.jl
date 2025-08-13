@@ -38,7 +38,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     return nothing
 end
 
-const NoBCs = Union{Nothing, Tuple{Nothing, Nothing}}
+const NoBCs = Union{Nothing, Tuple{Vararg{Nothing}}}
 
 @inline fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...) = kernel!(c, bcs..., loc, grid, Tuple(args))
 @inline fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid, args...; kwargs...) = nothing
