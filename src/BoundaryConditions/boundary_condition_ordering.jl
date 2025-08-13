@@ -58,15 +58,9 @@ split_halo_filling(bcs1, ::MCBC)   = true
 split_halo_filling(::MCBC, bcs2)   = true
 
 # heterogenous distribute-shared communication is not supported
+# TODO: support heterogeneous distributed-shared communication
 split_halo_filling(::MCBC, ::DCBC) = throw("Cannot split MultiRegion and Distributed boundary conditions.")
 split_halo_filling(::DCBC, ::MCBC) = throw("Cannot split MultiRegion and Distributed boundary conditions.")
-
-# TODO: support heterogeneous distributed-shared communication
-# split_halo_filling(::MCBC, ::DCBC) = false
-# split_halo_filling(::DCBC, ::MCBC) = false
-# split_halo_filling(::MCBC, ::MCBC) = false
-# split_halo_filling(bcs1, ::MCBC)   = true
-# split_halo_filling(::MCBC, bcs2)   = true
 
 #####
 ##### Halo filling order
