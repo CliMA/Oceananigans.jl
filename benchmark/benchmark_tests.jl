@@ -96,7 +96,22 @@ if group == :immersed
     run_benchmark(model)
 end    
 
-if group == :fill_halo_regions
+if group == :model_stepping
+    include("benchmark_model_stepping.jl")
+    df = stepping_benchmarks()
+    @info "NonhydrostaticModel Benchmark Results"
+    println()
+    show(df[1], allcols=true)
+    println()
+    println()
+    @info "HydrostaticFreeSurfaceModel Benchmark Results"
+    println()
+    show(df[2], allcols=true)
+    println()
+    println()
+    @info "ShalloWaterModel Benchmark Results"
+    println()
+    show(df[3], allcols=true)
 end
 
 end
