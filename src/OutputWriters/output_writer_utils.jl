@@ -95,13 +95,15 @@ end
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
-        bc = getproperty(bcs, boundary)
-        file[address * "/$boundary/type"] = bc_str(bc)
+        if !(boundary == :kernels || boundary == :ordered_bcs) # Skip kernels and ordered_bcs.
+            bc = getproperty(bcs, boundary)
+            file[address * "/$boundary/type"] = bc_str(bc)
 
-        if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
-            file[address * "/$boundary/condition"] = missing
-        else
-            file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
+                file[address * "/$boundary/condition"] = missing
+            else
+                file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            end
         end
     end
 end
