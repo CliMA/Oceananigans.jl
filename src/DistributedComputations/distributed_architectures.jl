@@ -326,6 +326,9 @@ convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architectur
 barrier(arch::AbstractSerialArchitecture) = nothing
 barrier(arch::Distributed) = MPI.Barrier(arch.communicator)
 
+mpi_rank(arch::Distributed) = arch.local_rank
+mpi_size(arch) = prod(ranks(arch))
+
 # Switch to a synchronized architecture
 synchronized(arch) = arch
 synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
