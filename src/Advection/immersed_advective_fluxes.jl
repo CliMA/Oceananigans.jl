@@ -118,19 +118,30 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
  :(inactive_node(i + 1,  j, k, ibg, c, c, c))
 ```
 """
-@inline function inside_immersed_boundary(buffer, dir, side;
-                                          xside = :f, yside = :f, zside = :f)
+@inline function inside_immersed_boundary(buffer, dir, side)
 
     N = buffer * 2
     rng = 1:N+1
 
     inactive_cells  = Vector(undef, length(rng))
 
+    xside = :f
+    yside = :f
+    zside = :f
+
+    if dir == :x
+        xside = side
+    elseif dir == :y
+        yside = side
+    elseif dir == :z
+        zside = side
+    end
+
     for (idx, n) in enumerate(rng)
         c = side == :f ? n - buffer - 1 : n - buffer 
-        xflipside = xside == :f ? :c : :f
-        yflipside = yside == :f ? :c : :f
-        zflipside = zside == :f ? :c : :f
+        xflipside = flip(xside)
+        yflipside = flip(yside)
+        zflipside = flip(zside)
         inactive_cells[idx] =  dir == :x ? 
                                :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
@@ -140,6 +151,8 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 
     return :($(inactive_cells...),)
 end
+
+flip(l) = ifelse(l == :f, :c, :f)
 
 # For an immersed boundary grid, we compute the reduced order based on the inactive cells around the
 # reconstruction interface (either face or center). 
@@ -160,7 +173,6 @@ end
 #   |     |     └── 3rd ────────────────────────────|     |     |
 #   |     └── 4th ────────────────────────────────────────|     |
 #   └── 5th ────────────────────────────────────────────────────|
-#   
 #
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
@@ -169,13 +181,13 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}) = 1
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{2}) 
-            I = $(inside_immersed_boundary(2, dir, loc; xside = loc))
+            I = $(inside_immersed_boundary(2, dir, loc))
             to1 = @inbounds (I[1] | I[4]) # Check only first and last
             return ifelse(to1, 1, 2) 
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{3}) 
-            I = $(inside_immersed_boundary(3, dir, loc; xside = loc))
+            I = $(inside_immersed_boundary(3, dir, loc))
             to2 = @inbounds (I[1] | I[6])
             to1 = @inbounds (I[2] | I[5]) 
             return ifelse(to1, 1, 
@@ -183,7 +195,7 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{4}) 
-            I = $(inside_immersed_boundary(4, dir, loc; xside = loc))
+            I = $(inside_immersed_boundary(4, dir, loc))
             to3 = @inbounds (I[1] | I[8])
             to2 = @inbounds (I[2] | I[7]) 
             to1 = @inbounds (I[3] | I[6])
@@ -193,7 +205,7 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{5}) 
-            I = $(inside_immersed_boundary(5, dir, loc; xside = loc))
+            I = $(inside_immersed_boundary(5, dir, loc))
             to4 = @inbounds (I[1] | I[10])
             to3 = @inbounds (I[2] | I[9])
             to2 = @inbounds (I[3] | I[8]) 
