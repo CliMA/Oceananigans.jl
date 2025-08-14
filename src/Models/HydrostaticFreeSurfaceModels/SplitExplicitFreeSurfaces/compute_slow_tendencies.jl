@@ -78,11 +78,14 @@ end
 end
 
 @inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{2})
-    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
-    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+    GUi = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    GVi = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
-    @inbounds GU⁻[i, j, 1] = (GUⁿ[i, j, 1] + GU⁻[i, j, 1]) / 6
-    @inbounds GV⁻[i, j, 1] = (GVⁿ[i, j, 1] + GV⁻[i, j, 1]) / 6
+    @inbounds GUⁿ[i, j, 1] = (GUi + GU⁻[i, j, 1]) / 4
+    @inbounds GVⁿ[i, j, 1] = (GVi + GV⁻[i, j, 1]) / 4
+
+    @inbounds GU⁻[i, j, 1] = (GUi + GU⁻[i, j, 1]) / 6
+    @inbounds GV⁻[i, j, 1] = (GVi + GV⁻[i, j, 1]) / 6
 
     return nothing
 end

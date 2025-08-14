@@ -16,8 +16,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     model = HydrostaticFreeSurfaceModel(; grid,
                                           coriolis=FPlane(f = 1e-4),
                                           timestepper,
-                                          free_surface,
-                                          vertical_coordinate=ZStarCoordinate(grid))
+                                          free_surface)
 
     gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -38,7 +37,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model; Δt = 20wave_propagation_time_scale, stop_iteration)
+    simulation = Simulation(model; Δt = 1 * wave_propagation_time_scale, stop_iteration)
 
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
@@ -48,9 +47,13 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
     save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
 
-    progress_message(sim) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
+    function progress_message(sim) 
+        H = sum(sim.model.free_surface.η)
+        @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e, sim(η): %e",
         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
-        sim.model.clock.time, maximum(abs, sim.model.velocities.u))
+        sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
+    end
+
 
     simulation.callbacks[:save_η]   = Callback(save_η, IterationInterval(1))
     simulation.callbacks[:save_v]   = Callback(save_v, IterationInterval(1))
@@ -67,29 +70,40 @@ Lz = 400meters
 
 grid = RectilinearGrid(size = (80, 3, 1),
                        halo = (2, 2, 2),
-                       x = (0, Lh), y = (0, Lh), z = MutableVerticalDiscretization((-Lz, 0)),
+                       x = (0, Lh), y = (0, Lh), 
+                       z = (-Lz, 0),  #MutableVerticalDiscretization((-Lz, 0)),
                        topology = (Periodic, Periodic, Bounded))
 
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters
 
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-
+# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 explicit_free_surface = ExplicitFreeSurface()
-splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=10)
+implicit_free_surface = ImplicitFreeSurface()
+splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=60)
 
 seab2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid)
 serk3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid, :SplitRungeKutta3)
-efab2 = geostrophic_adjustment_simulation(explicit_free_surface, grid)
+# efab2 = geostrophic_adjustment_simulation(explicit_free_surface, grid)
+# efrk3 = geostrophic_adjustment_simulation(explicit_free_surface, grid, :SplitRungeKutta3)
+imab2 = geostrophic_adjustment_simulation(implicit_free_surface, grid)
+# imrk3 = geostrophic_adjustment_simulation(implicit_free_surface, grid, :SplitRungeKutta3)
 
-function plot_variable(sims, var; filename="test.mp4")
+function plot_variable(sims, var; 
+                       filename="test.mp4",
+                       labels=nothing)
     fig = Figure()
     ax  = Axis(fig[1, 1])
 
     iter = Observable(1)
     for (is, sim) in enumerate(sims)
         vi = @lift(interior(sim[var][$iter], :, 1, 1))
-        lines!(ax, vi, label="sim: $is")
+        if labels === nothing
+            label = "sim $is"
+        else
+            label = labels[is]
+        end
+        lines!(ax, vi; label)
     end
 
     axislegend(ax; position=:rt)
