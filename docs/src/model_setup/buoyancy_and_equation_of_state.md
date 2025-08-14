@@ -65,6 +65,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
 │   └── momentum: VectorInvariant
+├── vertical_coordinate: ZCoordinate
 └── coriolis: Nothing
 ```
 
@@ -100,6 +101,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── advection scheme:
 │   ├── momentum: VectorInvariant
 │   └── b: Centered(order=2)
+├── vertical_coordinate: ZCoordinate
 └── coriolis: Nothing
 ```
 
@@ -142,6 +144,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 │   ├── momentum: VectorInvariant
 │   ├── T: Centered(order=2)
 │   └── S: Centered(order=2)
+├── vertical_coordinate: ZCoordinate
 └── coriolis: Nothing
 ```
 
@@ -246,4 +249,3 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── buoyancy: BuoyancyTracer with ĝ = (0.0, 0.707107, 0.707107)
 └── coriolis: Nothing
 ```
-
