@@ -19,10 +19,6 @@ const BT = Union{Bounded, RightConnected, LeftConnected}
 const AGX   = AG{<:Any, <:BT}
 const AGY   = AG{<:Any, <:Any, <:BT}
 const AGZ   = AG{<:Any, <:Any, <:Any, <:BT}
-const AGXY  = AG{<:Any, <:BT,  <:BT}
-const AGXZ  = AG{<:Any, <:BT,  <:Any, <:BT}
-const AGYZ  = AG{<:Any, <:Any, <:BT,  <:BT}
-const AGXYZ = AG{<:Any, <:BT,  <:BT,  <:BT}
 
 # Reduction of the order near boundaries
 #
