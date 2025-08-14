@@ -19,10 +19,8 @@ import Oceananigans.Fields: Field, validate_indices, validate_boundary_condition
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
 
-const DistributedTripolarGridOfSomeKind = Union{
-    DistributedTripolarGrid,
-    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
-}
+const MPITripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
+const MPITripolarGridOfSomeKind = Union{MPITripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MPITripolarGrid}}
 
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)
@@ -234,7 +232,7 @@ end
 # a distributed `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
 # only on the last rank
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              grid::DistributedTripolarGridOfSomeKind,
+                                              grid::MPITripolarGridOfSomeKind,
                                               field_name::Symbol,
                                               prognostic_names=nothing)
 
@@ -274,7 +272,7 @@ end
 
 # Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
 # with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     arch = architecture(grid)
     yrank = arch.local_index[2] - 1
 
@@ -327,7 +325,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSome
 end
 
 # Reconstruction the global tripolar grid for visualization purposes
-function reconstruct_global_grid(grid::DistributedTripolarGrid)
+function reconstruct_global_grid(grid::MPITripolarGrid)
 
     arch = grid.architecture
 
@@ -354,8 +352,7 @@ function reconstruct_global_grid(grid::DistributedTripolarGrid)
                         z)
 end
 
-function with_halo(new_halo, old_grid::DistributedTripolarGrid)
-
+function with_halo(new_halo, old_grid::MPITripolarGrid) 
     arch = old_grid.architecture
 
     n  = size(old_grid)
