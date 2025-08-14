@@ -143,10 +143,10 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
         yflipside = flip(yside)
         zflipside = flip(zside)
         inactive_cells[idx] =  dir == :x ? 
-                               :(immersed_inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
-                               :(immersed_inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(immersed_inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
+                               :(inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
     end
 
     return :($(inactive_cells...),)
