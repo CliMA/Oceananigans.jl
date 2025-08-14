@@ -10,7 +10,6 @@ import Base
 
 fill_halo_regions!(::Ref, args...; kwargs...) = nothing # a lot of Refs are passed around, so we need this
 fill_halo_regions!(::Nothing, args...; kwargs...) = nothing
-fill_halo_regions!(::NamedTuple{(), Tuple{}}, args...; kwargs...) = nothing
 
 """
     fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
