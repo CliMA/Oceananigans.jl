@@ -56,10 +56,18 @@ red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Cen
 
         extent = grid_args(instantiate.(topology))
         grid = RectilinearGrid(; size = 10, extent..., topology, halo=5)
-        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary(false)) # A fake immersed boundary
         adv  = Centered(order=10) 
+
         red_ord_face   = red_order_field(grid, adv, Face())
         red_ord_center = red_order_field(grid, adv, Center())
+
+        @test all(interior(red_ord_face)[:]   .== [1, 2, 3, 4, 5, 5, 5, 4, 3, 2, 1])
+        @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
+    
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary(false)) # A fake immersed boundary
+
+        red_ord_face   = red_order_field(ibg, adv, Face())
+        red_ord_center = red_order_field(ibg, adv, Center())
 
         @test all(interior(red_ord_face)[:]   .== [1, 2, 3, 4, 5, 5, 5, 4, 3, 2, 1])
         @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
