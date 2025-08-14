@@ -97,7 +97,7 @@ if group == :immersed
 end    
 
 if group == :model_stepping
-    include("benchmark_model_stepping.jl")
+    include("benchmark_models_stepping.jl")
     df = stepping_benchmarks()
     @info "NonhydrostaticModel Benchmark Results"
     println()
