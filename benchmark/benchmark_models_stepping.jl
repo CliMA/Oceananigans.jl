@@ -4,8 +4,6 @@ using BenchmarkTools
 using CUDA
 using Oceananigans
 using Benchmarks
-using Plots
-pyplot()
 # Benchmark function
 
 function benchmark_nonhydrostatic_model(Arch, FT, N)
@@ -52,21 +50,19 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [CPU, GPU] : [CPU]
-Float_types = [Float64]
-Ns = [32, 64, 128, 256]
+function stepping_benchmarks()
+    df = []
+    for (model, name) in zip((:nonhydrostatic, :hydrostatic, :shallowwater), ("NonhydrostaticModel", "HydrostaticFreeSurfaceModel", "ShallowWaterModel"))
+        Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+        Float_types = [Float64]
+        Ns = [32, 64, 128, 256]
 
-# Run and summarize benchmarks
+        benchmark_func = Symbol(:benchmark_, model, :_model)
+        @eval begin
+            suite = run_benchmarks($benchmark_func; Architectures=$Architectures, Float_types=$Float_types, Ns=$Ns)
+        end
 
-print_system_info()
-
-for (model, name) in zip((:nonhydrostatic, :hydrostatic, :shallowwater), ("NonhydrostaticModel", "HydrostaticFreeSurfaceModel", "ShallowWaterModel"))
-
-    benchmark_func = Symbol(:benchmark_, model, :_model)
-    @eval begin
-        suite = run_benchmarks($benchmark_func; Architectures, Float_types, Ns)
+        push!(df, benchmarks_dataframe(suite))
     end
-
-    df = benchmarks_dataframe(suite)
-    benchmarks_pretty_table(df, title=name * " benchmarks")
+    return df
 end
