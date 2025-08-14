@@ -234,19 +234,16 @@ for arch in archs
         true_simulation.stop_iteration = 9
         run!(true_simulation) # for 4 more iterations
 
+        # Let's wait until all ranks complete the simulation!
+        Oceananigans.DistributedComputations.barrier(arch)
+
         #####
         ##### Test `set!(model, checkpoint_file)`
         #####
 
         rank = arch.local_rank
         set!(test_model, "checkpoint_rank$(rank)_iteration5.jld2")
-        # for f in ocean.model.timestepper.Gⁿ
-        #     Oceananigans.ImmersedBoundaries.mask_immersed_field!(f)
-        # end
-
-        # for f in ocean.model.timestepper.G⁻
-        #     Oceananigans.ImmersedBoundaries.mask_immersed_field!(f)
-        # end
+        
         @test test_model.clock.iteration == checkpointed_model.clock.iteration
         @test test_model.clock.time == checkpointed_model.clock.time
         test_model_equality(test_model, checkpointed_model)
@@ -268,6 +265,7 @@ for arch in archs
         @test test_simulation.model.clock.time == true_simulation.model.clock.time
         test_model_equality(test_model, true_model)
 
+        Oceananigans.DistributedComputations.barrier(arch)
         run!(test_simulation, pickup="checkpoint_rank$(rank)_iteration5.jld2")
         @info "Testing model equality when running with pickup=checkpoint_iteration5.jld2."
 
@@ -283,6 +281,7 @@ for arch in archs
         test_simulation.output_writers[:checkpointer] =
             Checkpointer(test_model, schedule=IterationInterval(5), overwrite_existing=true)
 
+        Oceananigans.DistributedComputations.barrier(arch)
         run!(test_simulation, pickup=true)
         @info "    Testing model equality when running with pickup=true."
 
@@ -290,6 +289,7 @@ for arch in archs
         @test test_simulation.model.clock.time == true_simulation.model.clock.time
         test_model_equality(test_model, true_model)
 
+        Oceananigans.DistributedComputations.barrier(arch)
         run!(test_simulation, pickup=0)
         @info "    Testing model equality when running with pickup=0."
 
@@ -297,13 +297,15 @@ for arch in archs
         @test test_simulation.model.clock.time == true_simulation.model.clock.time
         test_model_equality(test_model, true_model)
 
+        Oceananigans.DistributedComputations.barrier(arch)
         run!(test_simulation, pickup=5)
         @info "    Testing model equality when running with pickup=5."
 
         @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
         @test test_simulation.model.clock.time == true_simulation.model.clock.time
         test_model_equality(test_model, true_model)
-
+        Oceananigans.DistributedComputations.barrier(arch)
+        
         for iteration in (0, 5)
             rm("checkpoint_rank$(rank)_iteration$(iteration).jld2", force=true)
         end

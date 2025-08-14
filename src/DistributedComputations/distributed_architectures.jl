@@ -1,4 +1,5 @@
 using Oceananigans.Architectures
+using Oceananigans.Architectures: AbstractSerialArchitecture
 using Oceananigans.Grids: topology, validate_tupled_argument
 
 import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
@@ -320,6 +321,10 @@ zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT,
 array_type(arch::Distributed)              = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
 convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
+
+# Using Oceananigans' architectures...
+barrier(arch::AbstractSerialArchitecture) = nothing
+barrier(arch::Distributed) = MPI.Barrier(arch.communicator)
 
 # Switch to a synchronized architecture
 synchronized(arch) = arch

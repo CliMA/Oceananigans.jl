@@ -9,8 +9,9 @@ using MPI
 mpi_initialized()     = MPI.Initialized()
 mpi_rank(comm)        = MPI.Comm_rank(comm)
 mpi_size(comm)        = MPI.Comm_size(comm)
-global_barrier(comm)  = MPI.Barrier(comm)
+barrier(comm)         = MPI.Barrier(comm)
 global_communicator() = MPI.COMM_WORLD
+barrier()             = barrier(global_communicator())
 
 """
     @root communicator exp...
@@ -26,7 +27,7 @@ macro root(communicator, exp)
             if rank == 0
                 $exp
             end
-            Oceananigans.DistributedComputations.global_barrier($communicator)
+            Oceananigans.DistributedComputations.barrier($communicator)
         else
             $exp
         end
