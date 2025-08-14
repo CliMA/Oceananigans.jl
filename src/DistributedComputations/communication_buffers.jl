@@ -24,6 +24,26 @@ struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
    northeast :: NE
 end
 
+Adapt.adapt_structure(to, buff::CommunicationBuffers) =
+    CommunicationBuffers(Adapt.adapt(to, buff.west), 
+                         Adapt.adapt(to, buff.east),    
+                         Adapt.adapt(to, buff.north), 
+                         Adapt.adapt(to, buff.south), 
+                         Adapt.adapt(to, buff.southwest), 
+                         Adapt.adapt(to, buff.southeast), 
+                         Adapt.adapt(to, buff.northwest), 
+                         Adapt.adapt(to, buff.northeast))
+
+on_architecture(arch, buff::CommunicationBuffers) =
+    CommunicationBuffers(on_architecture(arch, buff.west), 
+                         on_architecture(arch, buff.east),    
+                         on_architecture(arch, buff.north), 
+                         on_architecture(arch, buff.south), 
+                         on_architecture(arch, buff.southwest), 
+                         on_architecture(arch, buff.southeast), 
+                         on_architecture(arch, buff.northwest), 
+                         on_architecture(arch, buff.northeast))
+
 communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
 function CommunicationBuffers(grid, data, boundary_conditions::FieldBoundaryConditions)
@@ -54,16 +74,9 @@ const OneDBuffers = CommunicationBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, 
 x_communication_buffer(arch, grid, data, H, bc) = nothing
 y_communication_buffer(arch, grid, data, H, bc) = nothing
 
-# Only used for `Distributed` architectures
-corner_communication_buffer(arch, grid, data, Hx, Hy, edge1, edge2) = nothing
-
-# Disambiguation
-corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
-
-function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, edge1, edge2)
-    return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
-            recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
-end
+####
+#### X and Y communication buffers
+####
 
 function x_communication_buffer(arch::Distributed, grid, data, H, ::DCBC) 
     # Either we pass corners or it is a 1D parallelization in x
@@ -87,27 +100,42 @@ y_communication_buffer(arch, grid, data, H, ::MCBC) =
            (send = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
 
-Adapt.adapt_structure(to, buff::CommunicationBuffers) =
-    CommunicationBuffers(Adapt.adapt(to, buff.west), 
-                         Adapt.adapt(to, buff.east),    
-                         Adapt.adapt(to, buff.north), 
-                         Adapt.adapt(to, buff.south), 
-                         Adapt.adapt(to, buff.southwest), 
-                         Adapt.adapt(to, buff.southeast), 
-                         Adapt.adapt(to, buff.northwest), 
-                         Adapt.adapt(to, buff.northeast))
+#####
+##### Corner communication buffers
+#####
 
-on_architecture(arch, buff::CommunicationBuffers) =
-    CommunicationBuffers(on_architecture(arch, buff.west), 
-                         on_architecture(arch, buff.east),    
-                         on_architecture(arch, buff.north), 
-                         on_architecture(arch, buff.south), 
-                         on_architecture(arch, buff.southwest), 
-                         on_architecture(arch, buff.southeast), 
-                         on_architecture(arch, buff.northwest), 
-                         on_architecture(arch, buff.northeast))
+# Only used for `Distributed` architectures
+corner_communication_buffer(arch, grid, data, Hx, Hy, xedge, yedge) = nothing
 
-fill_send_buffers!(c::OffsetArray, ::Nothing, grid) = nothing
+# Disambiguation
+corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
+
+# Could be either a 1D parallelization or a `RightConnected` or `LeftConnected` topology in the first
+# case we do not need to pass corners, in the second case we do.
+function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, ::Nothing, yedge)
+    if arch.ranks[1] == 1
+        return nothing
+    else
+        return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
+                recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
+    end
+end
+
+# Could be either a 1D parallelization or a `RightConnected` or `LeftConnected` topology in the first
+# case we do not need to pass corners, in the second case we do.
+function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, ::Nothing) 
+    if arch.ranks[2] == 1
+        return nothing
+    else
+        return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
+                recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
+    end
+end
+
+function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, yedge)
+    return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
+            recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
+end
 
 """
     fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
@@ -131,6 +159,7 @@ function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
     return nothing
 end
 
+fill_send_buffers!(c::OffsetArray, ::Nothing, grid) = nothing
 fill_send_buffers!(c::OffsetArray, ::Nothing, grid, ::Val{:corners}) = nothing
 
 function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:corners})
