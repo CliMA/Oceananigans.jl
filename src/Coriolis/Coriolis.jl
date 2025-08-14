@@ -25,10 +25,6 @@ Abstract supertype for parameters related to background rotation rates.
 """
 abstract type AbstractRotation end
 
-abstract type HydrostaticCoriolis end
-
-abstract type NonhydrostaticCoriolis end
-
 const face = Face()
 const center = Center()
 
