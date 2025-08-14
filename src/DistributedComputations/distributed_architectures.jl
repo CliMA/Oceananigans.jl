@@ -327,7 +327,7 @@ barrier(arch::AbstractSerialArchitecture) = nothing
 barrier(arch::Distributed) = MPI.Barrier(arch.communicator)
 
 mpi_rank(arch::Distributed) = arch.local_rank
-mpi_size(arch) = prod(ranks(arch))
+mpi_size(arch::Distributed) = MPI.Comm_size(arch.communicator)
 
 # Switch to a synchronized architecture
 synchronized(arch) = arch
