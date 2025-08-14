@@ -58,8 +58,6 @@ y_communication_buffer(arch, grid, data, H, bc) = nothing
 corner_communication_buffer(arch, grid, data, Hx, Hy, edge1, edge2) = nothing
 
 # Disambiguation
-corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, edge2) = nothing
-corner_communication_buffer(::Distributed, grid, data, Hx, Hy, edge1, ::Nothing) = nothing
 corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
 
 function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, edge1, edge2)
