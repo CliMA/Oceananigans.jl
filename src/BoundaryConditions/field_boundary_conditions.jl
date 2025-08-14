@@ -47,7 +47,7 @@ default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology
 ##### Field boundary conditions
 #####
 
-mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
+mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, K, O}
     west :: W
     east :: E
     south :: S
@@ -55,6 +55,15 @@ mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
     bottom :: B
     top :: T
     immersed :: I
+    kernels :: K # kernels used to fill halo regions
+    ordered_bcs :: O
+end
+
+const NoKernelFBC = FieldBoundaryConditions{W, E, S, N, B, T, I, Nothing, Nothing} where {W, E, S, N, B, T, I}
+
+# Internal constructor that fills up computational details in the "auxiliaries" spot.
+function FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing, nothing)
 end
 
 function FieldBoundaryConditions(indices::Tuple, west, east, south, north, bottom, top, immersed)
@@ -66,7 +75,7 @@ function FieldBoundaryConditions(indices::Tuple, west, east, south, north, botto
 end
 
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
-    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in propertynames(bcs))...)
+    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in propertynames(bcs)[1:7])...)
 
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 FieldBoundaryConditions(indices::Tuple, ::Missing) = nothing
@@ -83,7 +92,9 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.north),
                             on_architecture(arch, fbcs.bottom),
                             on_architecture(arch, fbcs.top),
-                            on_architecture(arch, fbcs.immersed))
+                            on_architecture(arch, fbcs.immersed), 
+                            fbcs.kernels,
+                            on_architecture(arch, fbcs.ordered_bcs))
 
 """
     FieldBoundaryConditions(; kwargs...)
@@ -118,7 +129,7 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
                         north = DefaultBoundaryCondition(default_bounded_bc),
                         bottom = DefaultBoundaryCondition(default_bounded_bc),
                         top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
+                        immersed = DefaultBoundaryCondition(default_bounded_bc)) = 
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """

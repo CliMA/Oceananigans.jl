@@ -1,13 +1,13 @@
 using Oceananigans.Grids: topology
 
 """
-    struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
+    struct RegionalConnectivity{S, FS} <: AbstractConnectivity
 
 The connectivity among various regions in a multi-region partition.
 
 $(TYPEDFIELDS)
 """
-struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
+struct RegionalConnectivity{S, FS} <: AbstractConnectivity
     "the current region rank"
          rank :: Int
     "the region from which boundary condition comes from"

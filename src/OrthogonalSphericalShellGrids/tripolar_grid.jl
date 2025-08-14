@@ -153,7 +153,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # ZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
     # want for coordinates and metrics)
     default_boundary_conditions = FieldBoundaryConditions(north  = ZipperBoundaryCondition(),
-                                                          south  = nothing, # The south should be `continued`
+                                                          south  = NoFluxBoundaryCondition(), # The south should be `continued`
                                                           west   = Oceananigans.PeriodicBoundaryCondition(),
                                                           east   = Oceananigans.PeriodicBoundaryCondition(),
                                                           top    = nothing,

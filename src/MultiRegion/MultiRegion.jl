@@ -2,7 +2,6 @@ module MultiRegion
 
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
-export AbstractRegionSide, East, West, North, South
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
 using Oceananigans
@@ -40,13 +39,6 @@ abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, 
 abstract type AbstractPartition end
 
 abstract type AbstractConnectivity end
-
-abstract type AbstractRegionSide end
-
-struct West <: AbstractRegionSide end
-struct East <: AbstractRegionSide end
-struct North <: AbstractRegionSide end
-struct South <: AbstractRegionSide end
 
 struct XPartition{N} <: AbstractPartition
     div :: N
