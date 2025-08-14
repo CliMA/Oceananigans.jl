@@ -70,7 +70,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
+        @inbounds fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
