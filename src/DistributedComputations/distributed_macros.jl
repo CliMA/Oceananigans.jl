@@ -60,7 +60,7 @@ macro onrank(communicator, on_rank, exp)
             if rank == $on_rank
                 $exp
             end
-            Oceananigans.DistributedComputations.global_barrier($communicator)
+            Oceananigans.DistributedComputations.barrier($communicator)
         end
     end
 
@@ -109,7 +109,7 @@ macro distribute(communicator, exp)
                     $forbody
                 end
             end
-            Oceananigans.DistributedComputations.global_barrier($communicator)
+            Oceananigans.DistributedComputations.barrier($communicator)
         end
     end
 
@@ -139,7 +139,7 @@ macro handshake(communicator, exp)
                 if rank == r
                     $exp
                 end
-                Oceananigans.DistributedComputations.global_barrier($communicator)
+                Oceananigans.DistributedComputations.barrier($communicator)
             end
         else
             $exp
