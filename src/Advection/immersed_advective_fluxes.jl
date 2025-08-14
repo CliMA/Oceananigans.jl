@@ -1,5 +1,5 @@
 using Oceananigans.ImmersedBoundaries
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
 using Oceananigans.Fields: ZeroField
 
 const IBG = ImmersedBoundaryGrid
@@ -143,10 +143,10 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
         yflipside = flip(yside)
         zflipside = flip(zside)
         inactive_cells[idx] =  dir == :x ? 
-                               :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(immersed_inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
-                               :(inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
+                               :(immersed_inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(immersed_inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
     end
 
     return :($(inactive_cells...),)
@@ -180,40 +180,48 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         # Faces symmetric
         @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}) = 1
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{2}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{2}) 
             I = $(inside_immersed_boundary(2, dir, loc))
             to1 = @inbounds (I[1] | I[4]) # Check only first and last
-            return ifelse(to1, 1, 2) 
+            ior = ifelse(to1, 1, 2) 
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
         end
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{3}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{3}) 
             I = $(inside_immersed_boundary(3, dir, loc))
             to2 = @inbounds (I[1] | I[6])
             to1 = @inbounds (I[2] | I[5]) 
-            return ifelse(to1, 1, 
-                   ifelse(to2, 2, 3))
+            ior = ifelse(to1, 1, 
+                  ifelse(to2, 2, 3))
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
         end
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{4}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{4}) 
             I = $(inside_immersed_boundary(4, dir, loc))
             to3 = @inbounds (I[1] | I[8])
             to2 = @inbounds (I[2] | I[7]) 
             to1 = @inbounds (I[3] | I[6])
-            return ifelse(to1, 1, 
-                   ifelse(to2, 2, 
-                   ifelse(to3, 3, 4)))
+            ior = ifelse(to1, 1, 
+                  ifelse(to2, 2, 
+                  ifelse(to3, 3, 4)))
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
         end
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{5}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{5}) 
             I = $(inside_immersed_boundary(5, dir, loc))
             to4 = @inbounds (I[1] | I[10])
             to3 = @inbounds (I[2] | I[9])
             to2 = @inbounds (I[3] | I[8]) 
             to1 = @inbounds (I[4] | I[7])
-            return ifelse(to1, 1, 
-                   ifelse(to2, 2, 
-                   ifelse(to3, 3, 
-                   ifelse(to4, 4, 5))))
+            ior = ifelse(to1, 1, 
+                  ifelse(to2, 2, 
+                  ifelse(to3, 3, 
+                  ifelse(to4, 4, 5))))
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
         end
     end
 end

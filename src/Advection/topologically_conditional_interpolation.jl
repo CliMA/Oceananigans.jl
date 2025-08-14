@@ -32,9 +32,9 @@ const AGZ = AG{<:Any, <:Any, <:Any, <:BT}
 #  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
 #  order:    1     1     2     3    ...               ...    3     2     1     1
 
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i-1))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N+1-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i-1, N+1-i))
+@inline reduced_face_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i))
+@inline reduced_face_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N+2-i))
+@inline reduced_face_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i, N+2-i))
 
 @inline reduced_center_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i))
 @inline reduced_center_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N+1-i))
