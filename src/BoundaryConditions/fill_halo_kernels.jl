@@ -148,7 +148,7 @@ for Side in (:WestAndEast, :SouthAndNorth, :BottomAndTop, :West, :East, :South, 
 end
 
 #####
-##### TODO: MultiRegion Boundary Conditions 
+##### MultiRegion Boundary Conditions 
 #####
 
 # A struct to hold the side of the fill_halo kernel
