@@ -1,5 +1,4 @@
-
-# _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
+# _UNIFORM_ reconstruction coefficients
 
 # The naming convention for the coefficients is as follows:
 # RSXYZ

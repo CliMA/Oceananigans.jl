@@ -1,5 +1,5 @@
-# _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
-
+# _UNIFORM_ smoothness coefficients for WENO reconstructions
+#
 # The naming convention for the coefficients is as follows:
 # SSXYZ
 # SS -> smoothness stencil

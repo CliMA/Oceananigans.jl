@@ -1,4 +1,3 @@
-
 # WENO stencils
 #
 # This file contains the WENO stencils used in the WENO advection scheme.
