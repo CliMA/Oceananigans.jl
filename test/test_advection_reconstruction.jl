@@ -2,7 +2,15 @@ include("dependencies_for_runtests.jl")
 
 using Random
 
+using Oceananigans.Fields: instantiate
 using Oceananigans.Advection: LeftBias, RightBias
+
+using Oceananigans.Advection: compute_face_reduced_order_x,
+                              compute_face_reduced_order_y,
+                              compute_face_reduced_order_z,
+                              compute_center_reduced_order_x,
+                              compute_center_reduced_order_y,
+                              compute_center_reduced_order_z
 
 using Oceananigans.Advection: symmetric_interpolate_xᶠᵃᵃ,
                               symmetric_interpolate_yᵃᶠᵃ,
@@ -18,8 +26,45 @@ using Oceananigans.Advection: biased_interpolate_xᶠᵃᵃ,
                               biased_interpolate_yᵃᶜᵃ,
                               biased_interpolate_zᵃᵃᶜ
 
+@inline grid_args(::Tuple{Bounded, Flat, Flat}) = (; x = (0, 1))
+@inline grid_args(::Tuple{Flat, Bounded, Flat}) = (; y = (0, 1))
+@inline grid_args(::Tuple{Flat, Flat, Bounded}) = (; z = (0, 1))
+
+red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Face) = 
+    compute!(Field(KernelFunctionOperation{Face, Nothing, Nothing}(compute_face_reduced_order_x, grid, adv)))
+
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Face) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Face, Nothing}(compute_face_reduced_order_y, grid, adv)))
+
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Face) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Nothing, Face}(compute_face_reduced_order_z, grid, adv)))
+
+red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Center) = 
+    compute!(Field(KernelFunctionOperation{Center, Nothing, Nothing}(compute_center_reduced_order_x, grid, adv)))
+
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Center) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Center, Nothing}(compute_center_reduced_order_y, grid, adv)))
+
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Center) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Nothing, Center}(compute_center_reduced_order_z, grid, adv)))
 
 @testset "Reduced order reconstruction" begin
+
+    for topology in ((Bounded, Flat, Flat), 
+                     (Flat, Bounded, Flat),
+                     (Flat, Flat, Bounded))
+
+        extent = grid_args(instantiate.(topology))
+        grid = RectilinearGrid(; size = 10, extent..., topology, halo=5)
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary(false)) # A fake immersed boundary
+        adv  = Centered(order=10) 
+        red_ord_face   = red_order_field(grid, adv, Face())
+        red_ord_center = red_order_field(grid, adv, Center())
+
+        @test all(interior(red_ord_face)[:]   .== [1, 2, 3, 4, 5, 5, 5, 4, 3, 2, 1])
+        @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
+    end
+
     grid = RectilinearGrid(size=(20, 20, 20), extent=(1, 1, 1), halo=(6, 6, 6), topology=(Periodic, Periodic, Periodic))
     c = CenterField(grid)    
     u = XFaceField(grid)
