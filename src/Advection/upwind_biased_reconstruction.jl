@@ -49,53 +49,43 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                                                                                                                                                  $(stencil_reconstruction(FT, 1, :right, dir, bool)))
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{2, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    @muladd ifelse(red_order==1,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 1, :right, dir, bool))),
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 2, :right, dir, bool))))
+                    @muladd ifelse(red_order==1, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 1, :right, dir, bool))),
+                                                 ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 2, :right, dir, bool))))
                 end
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{3, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    @muladd ifelse(red_order==1,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 1, :right, dir, bool))),
-                    ifelse(red_order==2,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 2, :right, dir, bool))),
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 3, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 3, :right, dir, bool)))))
+                    @muladd ifelse(red_order==1, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 1, :right, dir, bool))),
+                            ifelse(red_order==2, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 2, :right, dir, bool))),
+                                                 ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 3, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 3, :right, dir, bool)))))
                 end
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{4, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    @muladd ifelse(red_order==1,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 1, :right, dir, bool))),
-                    ifelse(red_order==2,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 2, :right, dir, bool))),
-                    ifelse(red_order==3,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 3, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 3, :right, dir, bool))),
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 4, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 4, :right, dir, bool))))))
+                    @muladd ifelse(red_order==1, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 1, :right, dir, bool))),
+                            ifelse(red_order==2, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 2, :right, dir, bool))),
+                            ifelse(red_order==3, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 3, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 3, :right, dir, bool))),
+                                                 ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 4, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 4, :right, dir, bool))))))
                 end
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{5, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    @muladd ifelse(red_order==1,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 1, :right, dir, bool))),
-                    ifelse(red_order==2,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 2, :right, dir, bool))),
-                    ifelse(red_order==3,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 3, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 3, :right, dir, bool))),
-                    ifelse(red_order==4,
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 4, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 4, :right, dir, bool))),
-                           ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 5, :left,  dir, bool)), 
-                                                     $(stencil_reconstruction(FT, 5, :right, dir, bool)))))))
+                    @muladd ifelse(red_order==1, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 1, :right, dir, bool))),
+                            ifelse(red_order==2, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 2, :right, dir, bool))),
+                            ifelse(red_order==3, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 3, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 3, :right, dir, bool))),
+                            ifelse(red_order==4, ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 4, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 4, :right, dir, bool))),
+                                                 ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 5, :left,  dir, bool)), 
+                                                                           $(stencil_reconstruction(FT, 5, :right, dir, bool)))))))
                 end
             end
         end
