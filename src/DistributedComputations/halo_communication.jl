@@ -84,8 +84,7 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        args...;
                        kwargs...)
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...;
-                            fill_open_bcs=true, kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
 
     arch = architecture(grid)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
@@ -94,7 +93,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, buffers, args...; fill_open_bcs, kwargs...)
+        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
