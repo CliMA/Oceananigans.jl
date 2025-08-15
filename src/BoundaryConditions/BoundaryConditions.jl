@@ -5,7 +5,7 @@ export
     BoundaryCondition, getbc, setbc!,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
-    FlatExtrapolation, PerturbationAdvection,
+    PerturbationAdvection,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
@@ -41,6 +41,5 @@ include("compute_flux_bcs.jl")
 include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
 
-include("flat_extrapolation_open_boundary_scheme.jl")
 include("perturbation_advection_open_boundary_scheme.jl")
 end # module

@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection, FlatExtrapolation
+using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, GridMetricOperation
 using Oceananigans.Fields: Field, interior, XFaceField, YFaceField, ZFaceField
 using GPUArraysCore: @allowscalar
