@@ -6,7 +6,7 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Printf
 using CUDA
 
-using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.BoundaryConditions: PerturbationAdvection
 
 # there is some problem using ConjugateGradientPoissonSolver with TimeInterval because the timestep can go really small
 # so while I identify the issue I'm using IterationInterval and a fixed timestep
@@ -213,8 +213,8 @@ end
 
 u∞ = 1
 
-paobcs = (west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = 0.1),
-          east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
+paobcs = (west = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 0.1, outflow_timescale = 0.1)),
+          east = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 1/4, outflow_timescale = Inf)),
           )
 
 obcs = (; perturbation_advection=paobcs,)
