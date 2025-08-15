@@ -134,7 +134,7 @@ for grid in (xygrid, xzgrid)
                                               top    = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale), parameters = (; U, T)))
     paobcs = (u = u_boundaries_pa, v = v_boundaries_pa, w = w_boundaries_pa)
 
-    for obcs in (paobcs,)
+    for obcs in tuple(paobcs)
         if grid isa Oceananigans.Grids.ZFlatGrid
             boundary_conditions = (u = obcs.u, v = obcs.v)
             simname = "xy_" * scheme_name(boundary_conditions.u.east)
