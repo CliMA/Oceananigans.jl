@@ -178,6 +178,4 @@ red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Cen
             end
         end
     end
-
 end
-
