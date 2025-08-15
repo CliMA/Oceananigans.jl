@@ -55,7 +55,7 @@ red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Cen
                      (Flat, Flat, Bounded))
 
         extent = grid_args(instantiate.(topology))
-        grid = RectilinearGrid(; size = 10, extent..., topology, halo=5)
+        grid = RectilinearGrid(; size = 10, extent..., topology, halo=6)
         adv  = Centered(order=10) 
 
         red_ord_face   = red_order_field(grid, adv, Face())
