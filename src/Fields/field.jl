@@ -818,7 +818,7 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
             field.indices,
             instantiated_location(field),
             field.grid,
-            positional_args......; kwargs...)
+            positional_args...; kwargs...)
     end
 
     return nothing
