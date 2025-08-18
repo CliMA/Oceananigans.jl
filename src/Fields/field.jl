@@ -809,7 +809,12 @@ end
 function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
 
     arch = architecture(field.grid)
-    args = ()
+    args = (field.data,
+            field.boundary_conditions,
+            field.indices,
+            instantiated_location(field),
+            field.grid,
+            positional_args...)
 
     GC.@preserve args begin # preserve args in case of GC during fill_halo_regions!
         converted_args = convert_to_device(arch, args)
