@@ -135,14 +135,21 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
+function remove_function_bcs(fbcs::FieldBoundaryConditions)
+    west     = has_reference(Function, fbcs.west)     ? missing : fbcs.west
+    east     = has_reference(Function, fbcs.east)     ? missing : fbcs.east
+    south    = has_reference(Function, fbcs.south)    ? missing : fbcs.south
+    north    = has_reference(Function, fbcs.north)    ? missing : fbcs.north
+    bottom   = has_reference(Function, fbcs.bottom)   ? missing : fbcs.bottom
+    top      = has_reference(Function, fbcs.top)      ? missing : fbcs.top
+    immersed = has_reference(Function, fbcs.immersed) ? missing : fbcs.immersed
+    new_fbcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    return new_fbcs
+end
+
 function serializeproperty!(file, address, fbcs::FieldBoundaryConditions)
-    # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
-    # rather than punting with `missing` instead.
-    if has_reference(Function, fbcs)
-        file[address] = missing
-    else
-        file[address] = on_architecture(CPU(), fbcs)
-    end
+    new_fbcs = remove_function_bcs(fbcs)
+    file[address] = on_architecture(CPU(), new_fbcs)
 end
 
 function serializeproperty!(file, address, f::Field)

@@ -94,7 +94,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, buffers, args...; fill_open_bcs, kwargs...)
+        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
