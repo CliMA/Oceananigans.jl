@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper, construct_boundary_conditions_kernels
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
+using Oceananigans.Architectures: convert_to_device
 
 using Adapt
 using LinearAlgebra
@@ -818,7 +819,7 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
     # Manually convert args... to be 
     # passed to the fill_halo_regions! function.
     GC.@preserve args begin
-        converted_args = Oceananigans.Architectures.convert_to_device(arch, args)
+        converted_args = convert_to_device(arch, args)
         fill_halo_regions!(converted_args...; kwargs...)
     end
 
