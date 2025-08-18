@@ -805,11 +805,22 @@ end
 ##### fill_halo_regions!
 #####
 
-fill_halo_regions!(field::Field, args...; kwargs...) =
-    fill_halo_regions!(field.data,
-                       field.boundary_conditions,
-                       field.indices,
-                       instantiated_location(field),
-                       field.grid,
-                       args...;
-                       kwargs...)
+function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
+
+    arch = architecture(field.grid)
+    args = (field.data,
+            field.boundary_conditions,
+            field.indices,
+            instantiated_location(field),
+            field.grid,
+            positional_args...)
+    
+    # Manually convert args... to be 
+    # passed to the fill_halo_regions! function.
+    GC.@preserve args begin
+        converted_args = Oceananigans.Architectures.convert_to_device(arch, args)
+        fill_halo_regions!(converted_args...; kwargs...)
+    end
+
+    return nothing
+end
