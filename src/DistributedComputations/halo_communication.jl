@@ -84,7 +84,7 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        args...;
                        kwargs...)
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...;
+function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args...;
                             fill_open_bcs=true, kwargs...)
 
     arch = architecture(grid)
