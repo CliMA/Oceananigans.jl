@@ -192,6 +192,13 @@ has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 has_reference(T::Type{Function}, f::Field) =
     has_reference(T, f.data) || has_reference(T, f.boundary_conditions)
 
+# Short circuit on boundary conditions.
+has_reference(T::Type{Function}, bcs::FieldBoundaryConditions) =
+    has_reference(T, bcs.west) || has_reference(T, bcs.east) ||
+    has_reference(T, bcs.south) || has_reference(T, bcs.north) ||
+    has_reference(T, bcs.bottom) || has_reference(T, bcs.top) ||
+    has_reference(T, bcs.immersed)
+
 """
     has_reference(has_type, obj)
 
