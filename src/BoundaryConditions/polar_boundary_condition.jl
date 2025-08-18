@@ -50,7 +50,7 @@ function update_pole_value!(bc::PolarValue, c, grid, loc)
     Nz = size(c, 3)
     Oz = c.offsets[3]
     params = KernelParameters(1:1, 1:1, 1+Oz:Nz+Oz)
-    launch!(architecture(grid), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
+    launch!(architecture(bc.data), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
     return nothing
 end
 
