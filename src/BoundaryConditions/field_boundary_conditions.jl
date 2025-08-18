@@ -96,6 +96,16 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             fbcs.kernels,
                             on_architecture(arch, fbcs.ordered_bcs))
 
+""" A struct that holds the adapted boundary condition kernels and ordered boundary conditions for GPU architectures. """
+struct GPUFieldBoundaryConditions{K, O}
+    kernels :: K
+    ordered_bcs :: O
+end
+
+Adapt.adapt_structure(to, fbcs::FieldBoundaryConditions) =
+    GPUFieldBoundaryConditions(fbcs.kernels,
+                               Adapt.adapt(to, fbcs.ordered_bcs))
+
 """
     FieldBoundaryConditions(; kwargs...)
 
