@@ -131,7 +131,7 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper, Val(stage))
     
     fields_to_fill = (GUⁿ, GVⁿ)
-    fill_halo_regions!(fields_to_fill; async = true)
+    fill_halo_regions!(fields_to_fill; async=true)
 
     return nothing
 end
