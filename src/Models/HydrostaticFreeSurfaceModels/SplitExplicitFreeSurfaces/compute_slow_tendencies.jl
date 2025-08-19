@@ -23,7 +23,7 @@ end
     C₂ =     one(grid) / 2 + χ
 
     # multiply G⁻ by false if C₂ is zero to
-    # prevent propagationg possible NaNs
+    # prevent propagating possible NaNs
     not_euler = C₂ != 0
 
     Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k] * not_euler
