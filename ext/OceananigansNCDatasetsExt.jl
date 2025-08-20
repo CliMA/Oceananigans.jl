@@ -1145,7 +1145,7 @@ function initialize_nc_file(model,
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         # This metadata is to support `FieldTimeSeries`.
-        write_grid_reconstruction_data!(dataset, grid, indices, array_type, deflatelevel)
+        write_grid_reconstruction_data!(dataset, grid; array_type, deflatelevel)
 
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?

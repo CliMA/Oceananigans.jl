@@ -249,7 +249,7 @@ function test_immersed_grid_reconstruction(arch, FT; immersed_boundary_type=Grid
     # Get constructor arguments
     args, kwargs = constructor_arguments(original_grid)
 
-    Main.@infiltrate
+    # Main.@infiltrate
     @test "immersed_boundary_type" in keys(args)
     @test "immersed_condition" in keys(args)
     @test "bottom_height" in keys(args)
