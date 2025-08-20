@@ -712,13 +712,13 @@ function grid_attributes(ibg::ImmersedBoundaryGrid)
 end
 
 # Using OrderedDict to preserve order of keys. Important for positional arguments.
-convert_for_netcdf(dict::Dict) = OrderedDict{Symbol, Any}(key => convert_for_netcdf(value) for (key, value) in dict)
+convert_for_netcdf(dict::AbstractDict) = OrderedDict{Symbol, Any}(key => convert_for_netcdf(value) for (key, value) in dict)
 convert_for_netcdf(x::Number) = x
 convert_for_netcdf(x::Bool) = string(x)
 convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
 convert_for_netcdf(x) = string(x)
 
-materialize_from_netcdf(dict::Dict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
+materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
 materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
