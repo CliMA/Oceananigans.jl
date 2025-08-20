@@ -153,7 +153,7 @@ function initialize_boundary_mass_fluxes(velocities::NamedTuple)
                                                 right_scheme_boundaries = Tuple(right_scheme_boundaries),
                                                 total_area_scheme_boundaries))
 
-    if length(left_scheme_boundaries) == 0 && length(right_scheme_boundaries) == 0
+    if length(boundary_fluxes.left_scheme_boundaries) == 0 && length(boundary_fluxes.right_scheme_boundaries) == 0
         return nothing
     else
         return boundary_fluxes
