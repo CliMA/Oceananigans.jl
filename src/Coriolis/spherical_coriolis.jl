@@ -6,15 +6,6 @@ using Oceananigans.Fields
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.ImmersedBoundaries
 
-
-"""
-Will use the following syntax:
-
-hydrostatic_coriolis = HydrostaticSphericalCoriolis()
-full_coriolis = SphericalCoriolis()
-
-"""
-
 struct HydrostaticFormulation end
 struct NonhydrostaticFormulation end
 
