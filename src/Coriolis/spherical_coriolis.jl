@@ -9,7 +9,6 @@ using Oceananigans.ImmersedBoundaries
 struct HydrostaticFormulation end
 struct NonhydrostaticFormulation end
 
-
 """
     struct SphericalCoriolis{S, FT, F} 
 
