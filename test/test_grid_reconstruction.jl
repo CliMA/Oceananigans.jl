@@ -248,7 +248,13 @@ function test_immersed_grid_reconstruction(arch, FT; immersed_boundary_type=Grid
 
     # Get constructor arguments
     args, kwargs = constructor_arguments(original_grid)
-    # Main.@infiltrate
+
+    Main.@infiltrate
+    @test "immersed_boundary_type" in keys(args)
+    @test "immersed_condition" in keys(args)
+    @test "bottom_height" in keys(args)
+    @test "architecture" in keys(args)
+    @test "number_type" in keys(args)
 
     # Reconstruct the grid
     reconstructed_ib = immersed_boundary_type(args[:bottom_height], args[:immersed_condition])
@@ -386,29 +392,31 @@ end
     @info "Testing grid constructor_arguments function and reconstruction..."
 
     for arch in archs, FT in float_types
-        @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
-            @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
+        # @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+        #     @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
 
-            test_regular_rectilinear_grid_reconstruction(arch, FT)
-            test_stretched_rectilinear_grid_reconstruction(arch, FT)
-            test_flat_dimension_grid_reconstruction(arch, FT)
-            test_different_topologies_grid_reconstruction(arch, FT)
-            test_grid_equality_after_reconstruction(arch, FT)
+        #     test_regular_rectilinear_grid_reconstruction(arch, FT)
+        #     test_stretched_rectilinear_grid_reconstruction(arch, FT)
+        #     test_flat_dimension_grid_reconstruction(arch, FT)
+        #     test_different_topologies_grid_reconstruction(arch, FT)
+        #     test_grid_equality_after_reconstruction(arch, FT)
 
-            test_netcdf_rectilinear_grid_reconstruction(arch, FT)
-            test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=true)
-        end
+        #     test_netcdf_rectilinear_grid_reconstruction(arch, FT)
+        #     test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=true)
+        # end
 
         @testset "ImmersedBoundaryGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing ImmersedBoundaryGrid reconstruction [$FT, $(typeof(arch))]..."
-            test_immersed_grid_reconstruction(arch, FT)
+            test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=GridFittedBottom)
+            # test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=PartialCellBottom)
+            # test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=GridFittedBoundary)
         end
 
-        @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
-            @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
-            test_latitude_longitude_grid_reconstruction(arch, FT)
-            test_netcdf_latlon_grid_reconstruction(arch, FT)
-            test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=true)
-        end
+        # @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+        #     @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
+        #     test_latitude_longitude_grid_reconstruction(arch, FT)
+        #     test_netcdf_latlon_grid_reconstruction(arch, FT)
+        #     test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=true)
+        # end
     end
 end

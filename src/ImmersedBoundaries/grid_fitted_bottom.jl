@@ -162,7 +162,8 @@ YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Abstrac
 function constructor_arguments(grid::AGFBIBG)
     args, kwargs = constructor_arguments(grid.underlying_grid)
     args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,
-                            :immersed_condition => grid.immersed_boundary.immersed_condition))
+                            :immersed_condition => grid.immersed_boundary.immersed_condition,
+                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
     return args, kwargs
 end
 
