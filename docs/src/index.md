@@ -121,7 +121,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2025). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.21105/jcon.00148), _The Proceedings of the JuliaCon Conferences_, **7(67)**, 148. DOI: [10.21105/jcon.00148](https://doi.org/10.21105/jcon.00148)
 
-1. Atkinson, E., McWilliams, J., and Grisouard, N. (2024) [Near-inertial echoes of ageostrophic instability in submesoscale filaments](https://doi.org/10.48550/arXiv.2407.16059), _arXiv preprint_, arXiv:2407.16059. DOI: [10.48550/arXiv.2407.16059](https://doi.org/10.48550/arXiv.2407.16059)
+1. Atkinson, E., McWilliams, J., and Grisouard, N. (2025) [Near-inertial echoes of ageostrophic instability in submesoscale filaments](https://doi.org/10.1017/jfm.2025.10348), _Journal of Fluid Mechanics_, **1015**, A17. DOI: [10.1017/jfm.2025.10348](https://doi.org/10.1017/jfm.2025.10348)
 
 1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
 
