@@ -25,7 +25,7 @@ end
     SphericalCoriolis([FT=Float64;]
                                  rotation_rate = Ω_Earth,
                                  scheme = EnstrophyConserving())
-                                 formulation = HydrostaticFormulation/NonhydrostaticFormulation 
+                                 formulation = HydrostaticFormulation()
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 
