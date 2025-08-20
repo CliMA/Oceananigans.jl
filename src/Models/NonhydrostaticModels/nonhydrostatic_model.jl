@@ -232,6 +232,8 @@ function NonhydrostaticModel(; grid,
     # Initialize boundary mass fluxes container
     boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)
 
+    !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
+
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
