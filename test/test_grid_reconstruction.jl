@@ -326,17 +326,8 @@ function test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=fa
 end
 
 function test_netcdf_grid_reconstruction(original_grid)
-    if original_grid isa RectilinearGrid
-        grid_type = :RectilinearGrid
-    elseif original_grid isa LatitudeLongitudeGrid
-        grid_type = :LatitudeLongitudeGrid
-    else
-        error("Unsupported grid type: $(typeof(original_grid))")
-    end
-
-    filename = "test_$(grid_type)_grid_reconstruction.nc"
-
     # Create NetCDF dataset and write grid reconstruction data
+    filename = "test_netcdf_grid_reconstruction.nc"
     ds = NCDataset(filename, "c")
     write_grid_reconstruction_data!(ds, original_grid)
     close(ds)
@@ -390,7 +381,8 @@ function test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=false)
     close(ds)
 
     # Reconstruct the grid
-    reconstructed_grid = LatitudeLongitudeGrid(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+    args = collect(values(grid_reconstruction_args))[1:2] # Only the first two arguments are used in the constructor
+    reconstructed_grid = LatitudeLongitudeGrid(args...; grid_reconstruction_kwargs...)
 
     # Test that key properties match
     @test reconstructed_grid == original_grid # tests grid type, topology and face locations
@@ -441,6 +433,18 @@ N = 6
                                                       topology = (Periodic, Bounded, Bounded),
                                                       halo = (1, 1, 1))
 
+        bfboundary = GridFittedBoundary((x, y, z) -> z < -1/2)
+        gfboundary_rectilinear_grid = ImmersedBoundaryGrid(regular_rectilinear_grid, bfboundary)
+        gfboundary_latlon_grid = ImmersedBoundaryGrid(regular_latlon_grid, bfboundary)
+
+        gfbottom = GridFittedBottom(-1/2)
+        gfbottom_rectilinear_grid = ImmersedBoundaryGrid(regular_rectilinear_grid, gfbottom)
+        gfbottom_latlon_grid = ImmersedBoundaryGrid(regular_latlon_grid, gfbottom)
+
+        pcbottom = PartialCellBottom(-1/2)
+        pcbottom_rectilinear_grid = ImmersedBoundaryGrid(regular_rectilinear_grid, pcbottom)
+        pcbottom_latlon_grid = ImmersedBoundaryGrid(regular_latlon_grid, pcbottom)
+
         @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
 
@@ -474,6 +478,16 @@ N = 6
             test_netcdf_grid_reconstruction(regular_latlon_grid)
             test_netcdf_grid_reconstruction(stretched_rectilinear_grid)
             test_netcdf_grid_reconstruction(stretched_latlon_grid)
+
+            # TODO: Make the functionality below work
+            # test_netcdf_grid_reconstruction(gfboundary_rectilinear_grid)
+            # test_netcdf_grid_reconstruction(gfboundary_latlon_grid)
+
+            # test_netcdf_grid_reconstruction(gfbottom_rectilinear_grid)
+            # test_netcdf_grid_reconstruction(gfbottom_latlon_grid)
+
+            # test_netcdf_grid_reconstruction(pcbottom_rectilinear_grid)
+            # test_netcdf_grid_reconstruction(pcbottom_latlon_grid)
         end
     end
 end

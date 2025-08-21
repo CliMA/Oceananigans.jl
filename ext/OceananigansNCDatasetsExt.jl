@@ -639,27 +639,6 @@ function grid_attributes(grid::RectilinearGrid)
                  "Hy" => grid.Hy,
                  "Hz" => grid.Hz)
 
-    if TX == Flat
-        attrs["x_spacing"] = "flat"
-    else
-        attrs["x_spacing"] = grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular"
-        dims["x_f"] = grid.xᶠᵃᵃ[1:grid.Nx+1]
-    end
-
-    if TY == Flat
-        attrs["y_spacing"] = "flat"
-    else
-        attrs["y_spacing"] = grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular"
-        dims["y_f"] = grid.yᵃᶠᵃ[1:grid.Ny+1]
-    end
-
-    if TZ == Flat
-        attrs["z_spacing"] = "flat"
-    else
-        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
-        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
-    end
-
     return attrs, dims
 end
 
@@ -679,27 +658,6 @@ function grid_attributes(grid::LatitudeLongitudeGrid)
                  "Hx" => grid.Hx,
                  "Hy" => grid.Hy,
                  "Hz" => grid.Hz)
-
-    if TX == Flat
-        attrs["λ_spacing"] = "flat"
-    else
-        attrs["λ_spacing"] = grid.Δλᶠᵃᵃ isa Number ? "regular" : "irregular"
-        dims["λ_f"] = grid.λᶠᵃᵃ[1:grid.Nx+1]
-    end
-
-    if TY == Flat
-        attrs["φ_spacing"] = "flat"
-    else
-        attrs["φ_spacing"] = grid.Δφᵃᶠᵃ isa Number ? "regular" : "irregular"
-        dims["φ_f"] = grid.φᵃᶠᵃ[1:grid.Ny+1]
-    end
-
-    if TZ == Flat
-        attrs["z_spacing"] = "flat"
-    else
-        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
-        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
-    end
 
     return attrs, dims
 end
