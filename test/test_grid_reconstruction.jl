@@ -243,46 +243,37 @@ function test_immersed_grid_reconstruction(arch, FT; immersed_boundary_type=Grid
                                                topology = (Bounded, Bounded, Bounded),
                                                halo = (1, 1, 1))
 
-    original_ib = immersed_boundary_type(-1/2)
+    if immersed_boundary_type == GridFittedBoundary
+        original_ib = GridFittedBoundary((x, y, z) -> z < 1/2)
+    else
+        original_ib = immersed_boundary_type(-1/2)
+    end
     original_grid = ImmersedBoundaryGrid(original_underlying_grid, original_ib)
 
     # Get constructor arguments
     args, kwargs = constructor_arguments(original_grid)
 
-    # Main.@infiltrate
-    @test "immersed_boundary_type" in keys(args)
-    @test "immersed_condition" in keys(args)
-    @test "bottom_height" in keys(args)
-    @test "architecture" in keys(args)
-    @test "number_type" in keys(args)
+    @test :immersed_boundary_type in keys(args)
+    @test :architecture in keys(args)
+    @test :number_type in keys(args)
 
     # Reconstruct the grid
-    reconstructed_ib = immersed_boundary_type(args[:bottom_height], args[:immersed_condition])
+    if immersed_boundary_type == GridFittedBottom
+        reconstructed_ib = immersed_boundary_type(args[:bottom_height], args[:immersed_condition])
+    elseif immersed_boundary_type == PartialCellBottom
+        reconstructed_ib = immersed_boundary_type(args[:bottom_height], args[:minimum_fractional_cell_height])
+    elseif immersed_boundary_type == GridFittedBoundary
+        reconstructed_ib = immersed_boundary_type(args[:mask])
+    end
     reconstructed_underlying_grid = RectilinearGrid(args[:architecture], args[:number_type]; kwargs...)
     reconstructed_grid = ImmersedBoundaryGrid(reconstructed_underlying_grid, reconstructed_ib)
 
-    # TODO add proper tests for immersed boundary grid equalities
     # Test that key properties match
-    @test reconstructed_grid == original_grid # tests grid type, topology and face locations
+    @test reconstructed_grid.underlying_grid == original_grid.underlying_grid # tests grid type, topology and face locations
+    @test reconstructed_grid == original_grid
     @test size(reconstructed_grid) == size(original_grid)
     @test halo_size(reconstructed_grid) == halo_size(original_grid)
     @test eltype(reconstructed_grid) == eltype(original_grid)
-
-    # Test that the underlying grid properties match
-    @test reconstructed_grid.underlying_grid == original_grid.underlying_grid
-
-    # Test coordinate spacings
-    @test reconstructed_grid.Δxᶠᵃᵃ == original_grid.Δxᶠᵃᵃ
-    @test reconstructed_grid.Δyᵃᶠᵃ == original_grid.Δyᵃᶠᵃ
-    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
-
-    # Test face and center coordinates match
-    @test all(reconstructed_grid.xᶠᵃᵃ == original_grid.xᶠᵃᵃ)
-    @test all(reconstructed_grid.xᶜᵃᵃ == original_grid.xᶜᵃᵃ)
-    @test all(reconstructed_grid.yᵃᶠᵃ == original_grid.yᵃᶠᵃ)
-    @test all(reconstructed_grid.yᵃᶜᵃ == original_grid.yᵃᶜᵃ)
-    @test all(reconstructed_grid.z.cᵃᵃᶠ == original_grid.z.cᵃᵃᶠ)
-    @test all(reconstructed_grid.z.cᵃᵃᶜ == original_grid.z.cᵃᵃᶜ)
 
     return nothing
 end
@@ -392,31 +383,31 @@ end
     @info "Testing grid constructor_arguments function and reconstruction..."
 
     for arch in archs, FT in float_types
-        # @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
-        #     @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
+        @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
 
-        #     test_regular_rectilinear_grid_reconstruction(arch, FT)
-        #     test_stretched_rectilinear_grid_reconstruction(arch, FT)
-        #     test_flat_dimension_grid_reconstruction(arch, FT)
-        #     test_different_topologies_grid_reconstruction(arch, FT)
-        #     test_grid_equality_after_reconstruction(arch, FT)
+            test_regular_rectilinear_grid_reconstruction(arch, FT)
+            test_stretched_rectilinear_grid_reconstruction(arch, FT)
+            test_flat_dimension_grid_reconstruction(arch, FT)
+            test_different_topologies_grid_reconstruction(arch, FT)
+            test_grid_equality_after_reconstruction(arch, FT)
 
-        #     test_netcdf_rectilinear_grid_reconstruction(arch, FT)
-        #     test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=true)
-        # end
+            test_netcdf_rectilinear_grid_reconstruction(arch, FT)
+            test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=true)
+        end
 
         @testset "ImmersedBoundaryGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing ImmersedBoundaryGrid reconstruction [$FT, $(typeof(arch))]..."
             test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=GridFittedBottom)
-            # test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=PartialCellBottom)
-            # test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=GridFittedBoundary)
+            test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=PartialCellBottom)
+            test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=GridFittedBoundary)
         end
 
-        # @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
-        #     @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
-        #     test_latitude_longitude_grid_reconstruction(arch, FT)
-        #     test_netcdf_latlon_grid_reconstruction(arch, FT)
-        #     test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=true)
-        # end
+        @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
+            test_latitude_longitude_grid_reconstruction(arch, FT)
+            test_netcdf_latlon_grid_reconstruction(arch, FT)
+            test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=true)
+        end
     end
 end

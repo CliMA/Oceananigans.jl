@@ -33,4 +33,13 @@ on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
 
 Adapt.adapt_structure(to, ib::AbstractGridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
 
+const AGFBoundIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
+function constructor_arguments(grid::AGFBoundIBG)
+    args, kwargs = constructor_arguments(grid.underlying_grid)
+    args = merge(args, Dict(:mask => grid.immersed_boundary.mask,
+                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
+    return args, kwargs
+end
+
+
 Base.:(==)(gfb1::GridFittedBoundary, gfb2::GridFittedBoundary) = gfb1.mask == gfb2.mask
