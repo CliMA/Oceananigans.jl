@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition, OpenBoundaryCondition
+using Oceananigans.BoundaryConditions: PerturbationAdvection, OpenBoundaryCondition
 using Oceananigans.Diagnostics: AdvectiveCFL
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, DiagonallyDominantPreconditioner, fft_poisson_solver
 
@@ -54,8 +54,8 @@ function create_mass_conservation_simulation(;
     #+++ Set boundary conditions
     if use_open_boundary_condition
         u_boundary_conditions = FieldBoundaryConditions(
-            west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
-            east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale)
+            west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
+            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale))
         )
         boundary_conditions = (; u = u_boundary_conditions)
     else

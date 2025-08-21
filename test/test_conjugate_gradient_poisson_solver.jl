@@ -3,7 +3,6 @@ include("dependencies_for_poisson_solvers.jl")
 
 using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner
 using Oceananigans.TimeSteppers: compute_pressure_correction!
-using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
 using Oceananigans.Grids: XYZRegularRG
 using LinearAlgebra: norm
 using Random: seed!
@@ -183,8 +182,8 @@ function test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     U = 1
     inflow_timescale = 1e-4
     outflow_timescale = Inf
-    u_boundaries = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale),
-                                           east = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale))
+    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
+                                           east = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)))
 
     model = NonhydrostaticModel(grid = grid,
                                 boundary_conditions = (u = u_boundaries,),
