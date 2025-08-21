@@ -148,7 +148,6 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.Ψ⁻[i])
         launch!(arch, grid, :xyz, _euler_substep_field!, field, convert(FT, Δt), model.timestepper.Gⁿ[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
@@ -162,8 +161,9 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.clock,
                        Δt)
 
-        model.clock.stage > 1 && 
+        if model.clock.stage > 1 
             launch!(arch, grid, :xyz, _split_rk3_average_field!, field, γⁿ, ζⁿ, model.timestepper.Ψ⁻[i])
+        end
     end
 end
 
