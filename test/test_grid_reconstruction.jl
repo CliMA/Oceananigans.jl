@@ -312,7 +312,8 @@ function test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=fa
     close(ds)
 
     # Reconstruct the grid
-    reconstructed_grid = RectilinearGrid(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+    args = collect(values(grid_reconstruction_args))[1:2] # Only the first two arguments are used in the constructor
+    reconstructed_grid = RectilinearGrid(args...; grid_reconstruction_kwargs...)
 
     # Test that key properties match
     @test reconstructed_grid == original_grid # tests grid type, topology and face locations
