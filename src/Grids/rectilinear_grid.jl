@@ -1,3 +1,5 @@
+using OrderedCollections: OrderedDict
+
 struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
@@ -387,7 +389,7 @@ cpu_face_constructor_y(grid::YRegularRG) = y_domain(grid)
 function constructor_arguments(grid::RectilinearGrid)
     arch = architecture(grid)
     FT = eltype(grid)
-    args = Dict(:architecture => arch, :number_type => eltype(grid))
+    args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
     topo = topology(grid)
