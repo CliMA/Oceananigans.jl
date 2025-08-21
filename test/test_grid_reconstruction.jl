@@ -193,17 +193,7 @@ function test_grid_equality_after_reconstruction(arch, FT)
     return nothing
 end
 
-function test_latitude_longitude_grid_reconstruction(arch, FT)
-    # Test LatitudeLongitudeGrid reconstruction
-    original_grid = LatitudeLongitudeGrid(arch, FT,
-                                          size = (36, 24, 16),
-                                          longitude = (-180, 180),
-                                          latitude = (-80, 80),
-                                          z = (-1000, 0),
-                                          topology = (Periodic, Bounded, Bounded),
-                                          halo = (2, 2, 2))
-
-    # Get constructor arguments
+function test_latitude_longitude_grid_reconstruction(original_grid)
     args, kwargs = constructor_arguments(original_grid)
 
     # Reconstruct the grid
@@ -236,34 +226,21 @@ function test_latitude_longitude_grid_reconstruction(arch, FT)
     return nothing
 end
 
-function test_immersed_grid_reconstruction(arch, FT; immersed_boundary_type=GridFittedBottom)
-    original_underlying_grid = RectilinearGrid(arch, FT,
-                                               size = (8, 8, 8),
-                                               extent = (1, 1, 1),
-                                               topology = (Bounded, Bounded, Bounded),
-                                               halo = (1, 1, 1))
-
-    if immersed_boundary_type == GridFittedBoundary
-        original_ib = GridFittedBoundary((x, y, z) -> z < 1/2)
-    else
-        original_ib = immersed_boundary_type(-1/2)
-    end
-    original_grid = ImmersedBoundaryGrid(original_underlying_grid, original_ib)
-
-    # Get constructor arguments
+function test_immersed_grid_reconstruction(original_grid)
     args, kwargs = constructor_arguments(original_grid)
 
     @test :immersed_boundary_type in keys(args)
     @test :architecture in keys(args)
     @test :number_type in keys(args)
 
-    # Reconstruct the grid
-    if immersed_boundary_type == GridFittedBottom
-        reconstructed_ib = immersed_boundary_type(args[:bottom_height], args[:immersed_condition])
-    elseif immersed_boundary_type == PartialCellBottom
-        reconstructed_ib = immersed_boundary_type(args[:bottom_height], args[:minimum_fractional_cell_height])
-    elseif immersed_boundary_type == GridFittedBoundary
-        reconstructed_ib = immersed_boundary_type(args[:mask])
+    # Reconstruct the immersed boundary and then the grid
+    original_ib = original_grid.immersed_boundary
+    if original_ib isa GridFittedBottom
+        reconstructed_ib = GridFittedBottom(args[:bottom_height], args[:immersed_condition])
+    elseif original_ib isa PartialCellBottom
+        reconstructed_ib = PartialCellBottom(args[:bottom_height], args[:minimum_fractional_cell_height])
+    elseif original_ib isa GridFittedBoundary
+        reconstructed_ib = GridFittedBoundary(args[:mask])
     end
     reconstructed_underlying_grid = RectilinearGrid(args[:architecture], args[:number_type]; kwargs...)
     reconstructed_grid = ImmersedBoundaryGrid(reconstructed_underlying_grid, reconstructed_ib)
@@ -275,53 +252,6 @@ function test_immersed_grid_reconstruction(arch, FT; immersed_boundary_type=Grid
     @test halo_size(reconstructed_grid) == halo_size(original_grid)
     @test eltype(reconstructed_grid) == eltype(original_grid)
 
-    return nothing
-end
-
-function test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=false)
-    if stretched_grid
-        N = 4
-        original_grid = RectilinearGrid(arch, FT,
-                                        size = (N, N, N),
-                                        x = collect(range(0, 1, length=N+1)),
-                                        y = [0, 0.1, 0.3, 0.6, 1],
-                                        z = k -> -1 + (k-1)/N,
-                                        topology = (Bounded, Bounded, Bounded),
-                                        halo = (1, 1, 1))
-
-        filename = "test_stretched_rectilinear_grid_reconstruction_$(typeof(arch))_$(FT).nc"
-    else
-        original_grid = RectilinearGrid(arch, FT,
-                                        size = (4, 6, 8),
-                                        extent = (2π, 3π, 4π),
-                                        topology = (Periodic, Bounded, Bounded),
-                                        halo = (2, 3, 2))
-
-        filename = "test_rectilinear_grid_reconstruction_$(typeof(arch))_$(FT).nc"
-    end
-
-    # Create NetCDF dataset and write grid reconstruction data
-    ds = NCDataset(filename, "c")
-    write_grid_reconstruction_data!(ds, original_grid)
-    close(ds)
-
-    # Read back the grid reconstruction metadata
-    ds = NCDataset(filename, "r")
-    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
-    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
-    close(ds)
-
-    # Reconstruct the grid
-    args = collect(values(grid_reconstruction_args))[1:2] # Only the first two arguments are used in the constructor
-    reconstructed_grid = RectilinearGrid(args...; grid_reconstruction_kwargs...)
-
-    # Test that key properties match
-    @test reconstructed_grid == original_grid # tests grid type, topology and face locations
-    @test size(reconstructed_grid) == size(original_grid)
-    @test halo_size(reconstructed_grid) == halo_size(original_grid)
-    @test eltype(reconstructed_grid) == eltype(original_grid)
-
-    rm(filename)
     return nothing
 end
 
@@ -345,58 +275,6 @@ function test_netcdf_grid_reconstruction(original_grid)
     return nothing
 end
 
-function test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=false)
-    if stretched_grid
-        N = 6
-        original_grid = LatitudeLongitudeGrid(arch, FT,
-                                              size = (N, N, N),
-                                              longitude = collect(range(-180, 180, length=N+1)),
-                                              latitude = collect(range(-80, 80, length=N+1)),
-                                              z = k -> -1000 + (k-1)/N * 1000,
-                                              topology = (Periodic, Bounded, Bounded),
-                                              halo = (1, 1, 1))
-
-        filename = "test_stretched_latlon_grid_reconstruction_$(typeof(arch))_$(FT).nc"
-    else
-        original_grid = LatitudeLongitudeGrid(arch, FT,
-                                              size = (36, 24, 16),
-                                              longitude = (-180, 180),
-                                              latitude = (-80, 80),
-                                              z = (-1000, 0),
-                                              topology = (Periodic, Bounded, Bounded),
-                                              halo = (2, 2, 2))
-
-        filename = "test_latlon_grid_reconstruction_$(typeof(arch))_$(FT).nc"
-    end
-
-    # Create NetCDF dataset and write grid reconstruction data
-    ds = NCDataset(filename, "c")
-    write_grid_reconstruction_data!(ds, original_grid)
-    close(ds)
-
-    # Read back the grid reconstruction metadata
-    ds = NCDataset(filename, "r")
-    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
-    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
-    close(ds)
-
-    # Reconstruct the grid
-    args = collect(values(grid_reconstruction_args))[1:2] # Only the first two arguments are used in the constructor
-    reconstructed_grid = LatitudeLongitudeGrid(args...; grid_reconstruction_kwargs...)
-
-    # Test that key properties match
-    @test reconstructed_grid == original_grid # tests grid type, topology and face locations
-    @test size(reconstructed_grid) == size(original_grid)
-    @test halo_size(reconstructed_grid) == halo_size(original_grid)
-    @test eltype(reconstructed_grid) == eltype(original_grid)
-
-    # Test radius
-    @test reconstructed_grid.radius == original_grid.radius
-
-    rm(filename)
-    return nothing
-end
-
 #####
 ##### Run tests
 #####
@@ -407,6 +285,17 @@ N = 6
     @info "Testing grid constructor_arguments function and reconstruction..."
 
     for arch in archs, FT in float_types
+
+        @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
+
+            test_regular_rectilinear_grid_reconstruction(arch, FT)
+            test_stretched_rectilinear_grid_reconstruction(arch, FT)
+            test_flat_dimension_grid_reconstruction(arch, FT)
+            test_different_topologies_grid_reconstruction(arch, FT)
+            test_grid_equality_after_reconstruction(arch, FT)
+        end
+
         regular_rectilinear_grid = RectilinearGrid(arch, FT, size=(N, N, N),
                                                    extent = (1, 1, 1),
                                                    topology = (Periodic, Bounded, Bounded),
@@ -445,31 +334,17 @@ N = 6
         pcbottom_rectilinear_grid = ImmersedBoundaryGrid(regular_rectilinear_grid, pcbottom)
         pcbottom_latlon_grid = ImmersedBoundaryGrid(regular_latlon_grid, pcbottom)
 
-        @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
-            @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
-
-            test_regular_rectilinear_grid_reconstruction(arch, FT)
-            test_stretched_rectilinear_grid_reconstruction(arch, FT)
-            test_flat_dimension_grid_reconstruction(arch, FT)
-            test_different_topologies_grid_reconstruction(arch, FT)
-            test_grid_equality_after_reconstruction(arch, FT)
-
-            test_netcdf_rectilinear_grid_reconstruction(arch, FT)
-            test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=true)
-        end
-
         @testset "ImmersedBoundaryGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing ImmersedBoundaryGrid reconstruction [$FT, $(typeof(arch))]..."
-            test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=GridFittedBottom)
-            test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=PartialCellBottom)
-            test_immersed_grid_reconstruction(arch, FT, immersed_boundary_type=GridFittedBoundary)
+            test_immersed_grid_reconstruction(gfboundary_rectilinear_grid)
+            test_immersed_grid_reconstruction(gfbottom_rectilinear_grid)
+            test_immersed_grid_reconstruction(pcbottom_rectilinear_grid)
         end
 
         @testset "LatitudeLongitudeGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
-            test_latitude_longitude_grid_reconstruction(arch, FT)
-            test_netcdf_latlon_grid_reconstruction(arch, FT)
-            test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=true)
+            test_latitude_longitude_grid_reconstruction(regular_latlon_grid)
+            test_latitude_longitude_grid_reconstruction(stretched_latlon_grid)
         end
 
         @testset "NetCDF grid reconstruction tests [$FT, $(typeof(arch))]" begin
