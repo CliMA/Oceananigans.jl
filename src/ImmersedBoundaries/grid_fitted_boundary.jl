@@ -1,5 +1,7 @@
 using OffsetArrays
 
+import Oceananigans.Grids: constructor_arguments
+
 """
     GridFittedBoundary(mask)
 
@@ -40,6 +42,5 @@ function constructor_arguments(grid::AGFBoundIBG)
                             :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
     return args, kwargs
 end
-
 
 Base.:(==)(gfb1::GridFittedBoundary, gfb2::GridFittedBoundary) = gfb1.mask == gfb2.mask

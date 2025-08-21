@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: constructor_arguments, halo_size
 using NCDatasets
-using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf
+using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid_from_netcdf
 
 #####
 ##### Grid reconstruction tests using constructor_arguments
@@ -324,6 +324,35 @@ function test_netcdf_rectilinear_grid_reconstruction(arch, FT; stretched_grid=fa
     return nothing
 end
 
+function test_netcdf_grid_reconstruction(original_grid)
+    if original_grid isa RectilinearGrid
+        grid_type = :RectilinearGrid
+    elseif original_grid isa LatitudeLongitudeGrid
+        grid_type = :LatitudeLongitudeGrid
+    else
+        error("Unsupported grid type: $(typeof(original_grid))")
+    end
+
+    filename = "test_$(grid_type)_grid_reconstruction.nc"
+
+    # Create NetCDF dataset and write grid reconstruction data
+    ds = NCDataset(filename, "c")
+    write_grid_reconstruction_data!(ds, original_grid)
+    close(ds)
+
+    # Read back the grid reconstruction metadata
+    reconstructed_grid = reconstruct_grid_from_netcdf(filename)
+
+    # Test that key properties match
+    @test reconstructed_grid == original_grid # tests grid type, topology and face locations
+    @test size(reconstructed_grid) == size(original_grid)
+    @test halo_size(reconstructed_grid) == halo_size(original_grid)
+    @test eltype(reconstructed_grid) == eltype(original_grid)
+
+    rm(filename)
+    return nothing
+end
+
 function test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=false)
     if stretched_grid
         N = 6
@@ -379,10 +408,38 @@ end
 ##### Run tests
 #####
 
+N = 6
+
 @testset "Grid constructor_arguments and reconstruction tests" begin
     @info "Testing grid constructor_arguments function and reconstruction..."
 
     for arch in archs, FT in float_types
+        regular_rectilinear_grid = RectilinearGrid(arch, FT, size=(N, N, N),
+                                                   extent = (1, 1, 1),
+                                                   topology = (Periodic, Bounded, Bounded),
+                                                   halo=(2, 2, 2))
+
+        regular_latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(N, N, N),
+                                                   longitude = (0, 1),
+                                                   latitude = (0, 1),
+                                                   z = (-1, 0),
+                                                   topology = (Periodic, Bounded, Bounded),
+                                                   halo = (2, 2, 2))
+
+        stretched_rectilinear_grid = RectilinearGrid(arch, FT, size=(N, N, N),
+                                                     x = collect(range(0, 1, length=N+1)),
+                                                     y = collect(range(0, 1, length=N+1)),
+                                                     z = k -> -1 + (k-1)/N,
+                                                     topology = (Bounded, Bounded, Bounded),
+                                                     halo=(1, 1, 1))
+
+        stretched_latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(N, N, N),
+                                                      longitude = collect(range(0, 1, length=N+1)),
+                                                      latitude = collect(range(0, 1, length=N+1)),
+                                                      z = k -> -1 + (k-1)/N,
+                                                      topology = (Periodic, Bounded, Bounded),
+                                                      halo = (1, 1, 1))
+
         @testset "RectilinearGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing RectilinearGrid reconstruction [$FT, $(typeof(arch))]..."
 
@@ -408,6 +465,14 @@ end
             test_latitude_longitude_grid_reconstruction(arch, FT)
             test_netcdf_latlon_grid_reconstruction(arch, FT)
             test_netcdf_latlon_grid_reconstruction(arch, FT; stretched_grid=true)
+        end
+
+        @testset "NetCDF grid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing NetCDF grid reconstruction [$FT, $(typeof(arch))]..."
+            test_netcdf_grid_reconstruction(regular_rectilinear_grid)
+            test_netcdf_grid_reconstruction(regular_latlon_grid)
+            test_netcdf_grid_reconstruction(stretched_rectilinear_grid)
+            test_netcdf_grid_reconstruction(stretched_latlon_grid)
         end
     end
 end

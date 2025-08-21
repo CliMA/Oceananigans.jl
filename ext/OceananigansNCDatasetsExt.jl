@@ -41,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid_from_netcdf
 
 const c = Center()
 const f = Face()
@@ -734,10 +734,39 @@ function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)
 
     args, kwargs = constructor_arguments(grid)
     args, kwargs = map(convert_for_netcdf, (args, kwargs))
+    args[:grid_type] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+
     defGroup(ds, "grid_reconstruction_args"; attrib = args)
     defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
 
     return ds
+end
+
+function reconstruct_grid_from_netcdf(filename::String)
+    ds = NCDataset(filename, "r")
+    grid = reconstruct_grid_from_netcdf(ds)
+    close(ds)
+    return grid
+end
+
+function reconstruct_grid_from_netcdf(ds)
+    # Read back the grid reconstruction metadata
+    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+
+    # Pop out infomration about grid type and immersed boundary type from Dict
+    grid_type = pop!(grid_reconstruction_args, :grid_type)
+    is_immersed = haskey(grid_reconstruction_args, :immersed_boundary_type)
+    if is_immersed
+        ib_type = pop!(grid_reconstruction_args, :immersed_boundary_type)
+    end
+
+    # Reconstruct the grid which may or may not be an underlying grid to an ImmersedBoundaryGrid
+    maybe_underlying_grid = grid_type(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+
+    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary
+    grid = is_immersed ? ImmersedBoundaryGrid(maybe_underlying_grid, ib_type) : maybe_underlying_grid
+    return grid
 end
 
 #####
