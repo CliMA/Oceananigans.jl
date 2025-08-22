@@ -81,7 +81,7 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
 
 @kernel function _explicit_rk3_step_free_surface!(η, Δt, γⁿ, ζⁿ, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
-    @inbounds η[i, j, Nz+1] += ζⁿ * η⁻[i, j, Nz+1] + γⁿ * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
+    @inbounds η[i, j, Nz+1] = ζⁿ * η⁻[i, j, Nz+1] + γⁿ * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
 end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)
@@ -134,8 +134,7 @@ The tendency is called ``G_η`` and defined via
     k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return @inbounds (  velocities.w[i, j, k_top]
-                      + forcings.η(i, j, k_top, grid, clock, model_fields))
+    return @inbounds velocities.w[i, j, k_top] + forcings.η(i, j, k_top, grid, clock, model_fields)
 end
 
 compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
@@ -162,7 +161,7 @@ function compute_explicit_free_surface_tendency!(grid, model)
             model.closure,
             model.buoyancy)
 
-    apply_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
+    compute_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
 
     return nothing
 end
