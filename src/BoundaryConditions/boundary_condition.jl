@@ -114,8 +114,8 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 ##### Support for CombinationBoundaryCondition (aka "Robin" boundary condition)
 #####
 
-struct CombinationCondition{C, B}
-    coefficient :: C
+struct CombinationCondition{A, B}
+    coefficient :: A
     combination :: B
 end
 
