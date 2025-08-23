@@ -14,11 +14,16 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
+using Oceananigans.Architectures: GPU
+using CUDA
+CUDA.device!(0)
+
+
 const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
 
 # Architecture
-architecture = CPU()
+architecture = GPU()
 
 # number of grid points
 Nx = 96
