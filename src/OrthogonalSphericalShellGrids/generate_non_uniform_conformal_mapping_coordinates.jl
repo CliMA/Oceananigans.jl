@@ -497,8 +497,11 @@ function forward_map(Nx, Ny, spacing_type, θ)
     minimum_reference_cell_area = minimum(cell_areas)
     
     x, y, X, Y, Z = (
-    conformal_cubed_sphere_coordinates(Nx, Ny; non_uniform_spacing = true, spacing_type = spacing_type,
-                                       ratio_raised_to_Nx_minus_one = θ[1], k₀ByNx = θ[1]))
+    conformal_cubed_sphere_coordinates(Nx, Ny;
+                                       non_uniform_spacing = true,
+                                       spacing_type,
+                                       ratio_raised_to_Nx_minus_one = θ[1],
+                                       k₀ByNx = θ[1]))
     
     model_diagnostics = compute_model_diagnostics(X, Y, Z, minimum_reference_cell_area)
 
@@ -568,7 +571,10 @@ after each iteration.
 - `θ_series`: A length `nIterations + 1` vector; each entry is a **snapshot** of the full ensemble (index 1 is the 
   initial ensemble; the last is the final ensemble). The input `θ` is also mutated to the final state.
 """
-function optimize!(Nx, Ny, spacing_type, θ; nIterations = 10, Δt = 1)
+function optimize!(Nx, Ny, spacing_type, θ;
+                   nIterations = 10,
+                   Δt = 1,
+                   verbose = false)
     ideal_data = specify_ideal_weighted_model_diagnostics()
     model_data = forward_map(Nx, Ny, spacing_type, mean(θ))
 
@@ -579,7 +585,9 @@ function optimize!(Nx, Ny, spacing_type, θ; nIterations = 10, Δt = 1)
 
     error = norm(model_data - ideal_data)
 
-    @info("\nIteration 0 with error $error")
+    if verbose
+        @info("\nIteration 0 with error $error")
+    end
 
 	G = [copy(model_data) for i in 1:nEnsemble]
 
@@ -623,7 +631,9 @@ function optimize!(Nx, Ny, spacing_type, θ; nIterations = 10, Δt = 1)
         end
 
         error = norm(mean(r))
-        @info "Iteration $i with error $error"
+        if verbose
+            @info "Iteration $i with error $error"
+        end
         push!(θ_series, copy(θ))
     end
 
@@ -653,17 +663,21 @@ For `"geometric"`, the parameter is `ratio^(Nx-1)`; for `"exponential"`, the par
 - `X, Y, Z`: `(Nx, Ny)` Cartesian coordinates of the vertices of the **optimized** non-uniform conformal cubed sphere
   panel.
 """
-function optimized_non_uniform_conformal_cubed_sphere_coordinates(Nx, Ny, spacing_type)
+function optimized_non_uniform_conformal_cubed_sphere_coordinates(Nx, Ny, spacing_type;
+                                                                  verbose = false)
     nEnsemble = 40 # Choose nEnsemble to be at least 4 times the number of parameters.
     
-    @info "Optimize non-uniform conformal cubed sphere for Nx = $Nx and Ny = $Ny"
-    
+    if verbose
+        @info "Optimize non-uniform conformal cubed sphere for Nx = $Nx and Ny = $Ny"
+    end
+
     begin
         Random.seed!(123)
         θᵣ = specify_random_parameters(nEnsemble, spacing_type)
         θᵢ = deepcopy(θᵣ)
 
-        θ_series = optimize!(Nx, Ny, spacing_type, θᵣ; nIterations = 10)
+        θ_series = optimize!(Nx, Ny, spacing_type, θᵣ;
+                             nIterations = 10)
     end
     
     if spacing_type == "geometric"
@@ -672,12 +686,17 @@ function optimized_non_uniform_conformal_cubed_sphere_coordinates(Nx, Ny, spacin
         θ_name = "k₀ByNx"
     end
 
-    println("\nThe unoptimized parameters are: $θ_name = $(round(mean(θᵢ)[1], digits=2))\n")
-    println("\nThe optimized parameters are: $θ_name = $(round(mean(θᵣ)[1], digits=2))\n")
+    if verbose
+        println("\nThe unoptimized parameters are: $θ_name = $(round(mean(θᵢ)[1], digits=2))\n")
+        println("\nThe optimized parameters are: $θ_name = $(round(mean(θᵣ)[1], digits=2))\n")
+    end
     
     x, y, X, Y, Z = (
-    conformal_cubed_sphere_coordinates(Nx, Ny; non_uniform_spacing = true, spacing_type = spacing_type,
-                                       ratio_raised_to_Nx_minus_one = mean(θᵣ)[1], k₀ByNx = mean(θᵣ)[1]))
+    conformal_cubed_sphere_coordinates(Nx, Ny;
+                                       non_uniform_spacing = true,
+                                       spacing_type,
+                                       ratio_raised_to_Nx_minus_one = mean(θᵣ)[1],
+                                       k₀ByNx = mean(θᵣ)[1]))
     
     return x, y, X, Y, Z
 end
