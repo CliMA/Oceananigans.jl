@@ -39,7 +39,6 @@ CUDA.allowscalar() do
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
-            include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
@@ -49,7 +48,7 @@ CUDA.allowscalar() do
             include("test_schedules.jl")
         end
     end
-
+    
     if group == :abstract_operations || group == :all
         @testset "AbstractOperations and broadcasting tests" begin
             include("test_abstract_operations.jl")
@@ -64,6 +63,13 @@ CUDA.allowscalar() do
             include("test_tripolar_grid.jl")
         end
     end
+
+    if group == :conservative_regridding || group == :all
+        @testset "Conservative regridding" begin
+            include("test_regrid.jl")
+        end
+    end
+
 
     if group == :poisson_solvers_1 || group == :all
         @testset "Poisson Solvers 1" begin
