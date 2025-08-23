@@ -164,7 +164,8 @@ function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  top      = default_auxiliary_bc(grid, Val(:top),    loc),
                                  immersed = NoFluxBoundaryCondition())
 
-    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+    bcs = FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+    return regularize_field_boundary_conditions(bcs, grid, loc)
 end
 
 #####
@@ -174,8 +175,8 @@ end
 #####
 
 # Friendly warning?
-function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
-    if !(ibc isa DefaultBoundaryCondition)
+function validate_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
+    if !(ibc isa DefaultBoundaryCondition || ibc isa NoFluxBoundaryCondition)
         msg = """$field_name was assigned an immersed boundary condition
               $ibc,
               but this is not supported on
@@ -202,11 +203,20 @@ function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, 
     return regularize_boundary_condition(default_bc, grid, loc, dim, args...)
 end
 
-regularize_boundary_condition(bc, args...) = bc # fallback
+function regularize_boundary_condition(bc::BoundaryCondition, grid, loc, dim, args...)
+    regularized = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
+    return BoundaryCondition(bc.classification, regularized)
+end
 
 # Convert all `Number` boundary conditions to `eltype(grid)`
-regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...) where C =
-    BoundaryCondition(bc.classification, convert(eltype(grid), bc.condition))
+regularize_boundary_condition(condition::Number, grid, args...) = convert(eltype(grid), condition)
+regularize_boundary_condition(condition, grid, args...) = condition # fallback
+
+function regularize_boundary_condition(cc::CombinationCondition, grid, args...)
+    coefficient = regularize_boundary_condition(cc.coefficient, grid, args...)
+    combination = regularize_boundary_condition(cc.combination, grid, args...)
+    return CombinationCondition(coefficient, combination)
+end
 
 """
     regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
@@ -217,11 +227,9 @@ regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...)
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.
 
-!!! warn "No support for `ContinuousBoundaryFunction` for immersed boundary conditions"
-    Do not regularize immersed boundary conditions.
-
-    Currently, there is no support `ContinuousBoundaryFunction` for immersed boundary
-    conditions.
+!!! warn "Immersed `ContinuousBoundaryFunction` is unsupported"
+    `ContinuousBoundaryFunction` is not supported on immersed boundaries.
+    As a result, we do not regularize immersed boundary conditions.
 """
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               grid::AbstractGrid,
@@ -245,7 +253,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
     top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
 
-    immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
+    immersed = validate_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end

@@ -1,6 +1,8 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper
+using Oceananigans.BoundaryConditions: Combination, CombinationBoundaryCondition
+using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -64,7 +66,7 @@ end
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 
-        for C in (Value, Gradient, Flux, Value(), Gradient(), Flux())
+        for C in (Value, Gradient, Flux, Combination, Value(), Gradient(), Flux(), Combination())
             @test can_instantiate_boundary_condition(integer_bc, C)
             @test can_instantiate_boundary_condition(irrational_bc, C)
             @test can_instantiate_boundary_condition(simple_function_bc, C)
@@ -256,6 +258,24 @@ end
 
         grid = bbb_grid
 
+        one_bc = BoundaryCondition(Value(), 1.0)
+
+        T_bcs = FieldBoundaryConditions(east = one_bc,
+                                        west = one_bc,
+                                        bottom = one_bc,
+                                        top = one_bc,
+                                        north = one_bc,
+                                        south = one_bc)
+
+        T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
+
+        @test T_bcs.east   === one_bc
+        @test T_bcs.west   === one_bc
+        @test T_bcs.north  === one_bc
+        @test T_bcs.south  === one_bc
+        @test T_bcs.top    === one_bc
+        @test T_bcs.bottom === one_bc
+
         T_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                         east = ValueBoundaryCondition(simple_bc),
                                         west = ValueBoundaryCondition(simple_bc),
@@ -278,23 +298,39 @@ end
         @test T_bcs.top.condition.func === simple_bc
         @test T_bcs.bottom.condition.func === simple_bc
 
-        one_bc = BoundaryCondition(Value(), 1.0)
+        # Combination boundary conditions
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=bbb_topology)
+        ϕ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
+                                        east = CombinationBoundaryCondition(simple_bc, simple_bc),
+                                        west = CombinationBoundaryCondition(1),
+                                        bottom = CombinationBoundaryCondition(2, π),
+                                        top = CombinationBoundaryCondition(3, 2π),
+                                        north = CombinationBoundaryCondition(simple_bc, simple_bc),
+                                        south = ValueBoundaryCondition(simple_bc))
 
-        T_bcs = FieldBoundaryConditions(east = one_bc,
-                                        west = one_bc,
-                                        bottom = one_bc,
-                                        top = one_bc,
-                                        north = one_bc,
-                                        south = one_bc)
+        @test ϕ_bcs.east.condition.coefficient isa ContinuousBoundaryFunction
+        @test ϕ_bcs.east.condition.combination isa ContinuousBoundaryFunction
+        @test ϕ_bcs.west.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.west.condition.combination isa eltype(grid)
+        @test ϕ_bcs.bottom.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.bottom.condition.combination isa eltype(grid)
+        @test ϕ_bcs.top.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.top.condition.combination isa eltype(grid)
 
-        T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
+        ϕ = CenterField(grid, boundary_conditions=ϕ_bcs)
+        set!(ϕ, 1)
 
-        @test T_bcs.east   === one_bc
-        @test T_bcs.west   === one_bc
-        @test T_bcs.north  === one_bc
-        @test T_bcs.south  === one_bc
-        @test T_bcs.top    === one_bc
-        @test T_bcs.bottom === one_bc
+        dummy_clock = (; time=0)
+        fields = tuple()
+        fill_halo_regions!(ϕ, dummy_clock, fields)
+
+        west_bc_field = Field(∂x(ϕ) + ϕ)
+        bottom_bc_field = Field(∂z(ϕ) + 2 * ϕ)
+        top_bc_field = Field(∂z(ϕ) + 3 * ϕ)
+
+        @test all(interior(west_bc_field, 1, :, :) .≈ 0)
+        @test all(interior(bottom_bc_field, :, :, 1) .≈ π)
+        @test all(interior(top_bc_field, :, :, 3) .≈ 2π)
 
         grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
         f = CenterField(grid)

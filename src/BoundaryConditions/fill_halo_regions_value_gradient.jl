@@ -14,21 +14,21 @@ using Oceananigans.Operators: Δx, Δy, Δz
 
 @inline function left_gradient(bc::CBC, c¹, Δ, i, j, args...)
     coefficient = bc.condition.coefficient 
-    sum = bc.condition.sum
+    combination = bc.condition.combination
     a = getbc(coefficient, i, j, args...)
-    b = getbc(sum, i, j, args...)
-    g₁ = c¹ / Δ * (1 - (1 - a * Δ / 2) / (1 + a * Δ / 2))
-    g₂ = b / (1 + a * Δ / 2)
+    b = getbc(combination, i, j, args...)
+    g₁ = c¹ / Δ * (1 - (1 + a * Δ / 2) / (1 - a * Δ / 2))
+    g₂ = b / (1 - a * Δ / 2)
     return g₁ + g₂
 end
 
 @inline function right_gradient(bc::CBC, cᴺ, Δ, i, j, args...)
     coefficient = bc.condition.coefficient 
-    sum = bc.condition.sum
+    combination = bc.condition.combination
     a = getbc(coefficient, i, j, args...)
-    b = getbc(coefficient, i, j, args...)
-    g₁ = cᴺ / Δ * ((1 + a * Δ / 2) / (1 - a * Δ / 2) - 1)
-    g₂ = b / (1 - a * Δ / 2)
+    b = getbc(combination, i, j, args...)
+    g₁ = cᴺ / Δ * ((1 - a * Δ / 2) / (1 + a * Δ / 2) - 1)
+    g₂ = b / (1 + a * Δ / 2)
     return g₁ + g₂
 end
 
