@@ -1,7 +1,6 @@
 module Benchmarks
 
 export @sync_gpu,
-       Slab, Pencil,
        print_system_info,
        run_benchmarks,
        benchmarks_dataframe,
@@ -20,11 +19,6 @@ using BenchmarkTools: prettytime, prettymemory
 using Oceananigans: OceananigansLogger
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: oceananigans_versioninfo, versioninfo_with_gpu
-
-abstract type AbstractDomainDecomposition end
-
-struct Slab <: AbstractDomainDecomposition end
-struct Pencil <: AbstractDomainDecomposition end
 
 function __init__()
     Logging.global_logger(OceananigansLogger())
