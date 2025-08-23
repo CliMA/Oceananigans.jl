@@ -175,7 +175,7 @@ end
 #####
 
 # Friendly warning?
-function validate_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
+function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
     if !(ibc isa DefaultBoundaryCondition || ibc isa NoFluxBoundaryCondition)
         msg = """$field_name was assigned an immersed boundary condition
               $ibc,
@@ -253,7 +253,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
     top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
 
-    immersed = validate_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
+    immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
