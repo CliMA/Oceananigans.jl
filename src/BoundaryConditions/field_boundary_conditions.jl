@@ -162,9 +162,10 @@ function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  north    = default_auxiliary_bc(grid, Val(:north),  loc),
                                  bottom   = default_auxiliary_bc(grid, Val(:bottom), loc),
                                  top      = default_auxiliary_bc(grid, Val(:top),    loc),
-                                 immersed = NoFluxBoundaryCondition())
+                                 immersed = DefaultBoundaryCondition())
 
-    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+    bcs = FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+    return regularize_field_boundary_conditions(bcs, grid, loc)
 end
 
 #####
