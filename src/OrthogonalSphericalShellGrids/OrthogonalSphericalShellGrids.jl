@@ -35,6 +35,7 @@ include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
 include("rotated_latitude_longitude_grid.jl")
+include("generate_non_uniform_conformal_mapping_coordinates.jl")
 include("conformal_cubed_sphere_panel.jl")
 
 # Distributed computations on a tripolar grid
