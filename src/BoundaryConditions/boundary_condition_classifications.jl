@@ -50,6 +50,14 @@ boundary condition.
 struct Value <: AbstractBoundaryConditionClassification end
 
 """
+    struct Combination <: AbstractBoundaryConditionClassification
+
+A classification specifying a boundary condition that represents a linear combination of
+the field's gradient and value. Also called a Robin boundary condition.
+"""
+struct Combination <: AbstractBoundaryConditionClassification end
+
+"""
     struct Open <: AbstractBoundaryConditionClassification
 
 A classification that specifies the halo regions of a field directly.

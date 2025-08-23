@@ -79,6 +79,7 @@ const PBC  = BoundaryCondition{<:Periodic}
 const OBC  = BoundaryCondition{<:Open}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
+const CBC  = BoundaryCondition{<:Combination}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
@@ -100,6 +101,16 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
                   ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
+
+struct CombinationCondition{C, S}
+    coefficient :: C
+    sum :: S
+end
+
+function CombinationBoundaryCondition(coefficient, sum=0; kwargs...)
+    condition = CombinationCondition(coefficient, sum)
+    return BoundaryCondition(Combination(), condition; kwargs...)
+end
 
 # Support for various types of boundary conditions.
 #
