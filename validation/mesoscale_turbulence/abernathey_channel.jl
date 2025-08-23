@@ -68,7 +68,7 @@ parameters = (
 )
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
-    y = ynode(Center(), j, grid)
+    y = ynode(j, grid, Center())
     return ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0.0)
 end
 
@@ -76,7 +76,7 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form = true, pa
 
 
 @inline function u_stress(i, j, grid, clock, model_fields, p)
-    y = ynode(Center(), j, grid)
+    y = ynode(j, grid, Center())
     return -p.τ * sin(π * y / p.Ly)
 end
 
@@ -111,8 +111,8 @@ coriolis = BetaPlane(f₀ = f, β = β)
 
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
     timescale = p.λt
-    y = ynode(Center(), j, grid)
-    z = znode(Center(), k, grid)
+    y = ynode(j, grid, Center())
+    z = znode(k, grid, Center())
     target_b = initial_buoyancy(z, p)
     b = @inbounds model_fields.b[i, j, k]
 
@@ -143,8 +143,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
     free_surface = ImplicitFreeSurface(),
-    momentum_advection = WENO(grid = grid),
-    tracer_advection = WENO(grid = grid),
+    momentum_advection = WENO(),
+    tracer_advection = WENO(),
     buoyancy = BuoyancyTracer(),
     coriolis = coriolis,
     closure = (horizontal_closure, vertical_closure, convective_adjustment),
@@ -236,7 +236,6 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 simulation.output_writers[:fields] = JLD2Writer(model, outputs,
     schedule = TimeInterval(5days),
     filename = "abernathey_channel",
-    field_slicer = nothing,
     verbose = true,
     overwrite_existing = true)
 
@@ -248,20 +247,22 @@ simulation.output_writers[:averages] = JLD2Writer(model, averaged_outputs,
 
 @info "Running the simulation..."
 
+run!(simulation, pickup = false)
+#=
 try
     run!(simulation, pickup = false)
 catch err
     @info "run! threw an error! The error message is"
     showerror(stdout, err)
 end
-
+=#
 # #####
 # ##### Visualization
 # #####
 
 using Plots
 
-grid = RectilinearGrid(architecture = CPU(),
+grid = RectilinearGrid(CPU(),
     topology = (Periodic, Bounded, Bounded),
     size = (grid.Nx, grid.Ny, grid.Nz),
     halo = (3, 3, 3),
@@ -269,9 +270,9 @@ grid = RectilinearGrid(architecture = CPU(),
     y = (0, grid.Ly),
     z = z_faces)
 
-xζ, yζ, zζ = nodes((Face, Face, Center), grid)
-xc, yc, zc = nodes((Center, Center, Center), grid)
-xw, yw, zw = nodes((Center, Center, Face), grid)
+xζ, yζ, zζ = nodes(grid, Face(), Face(), Center())
+xc, yc, zc = nodes(grid, Center(), Center(), Center())
+xw, yw, zw = nodes(grid, Center(), Center(), Face())
 
 j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
