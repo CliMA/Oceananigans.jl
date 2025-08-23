@@ -174,9 +174,8 @@ end
 ##### TODO: this probably belongs in Oceananigans.Models
 #####
 
-# Friendly warning?
-function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
-    if !(ibc isa DefaultBoundaryCondition)
+function validate_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
+    if !(ibc isa DefaultBoundaryCondition || ibc isa NoFluxBoundaryCondition)
         msg = """$field_name was assigned an immersed boundary condition
               $ibc,
               but this is not supported on
@@ -218,11 +217,9 @@ regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...)
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.
 
-!!! warn "No support for `ContinuousBoundaryFunction` for immersed boundary conditions"
-    Do not regularize immersed boundary conditions.
-
-    Currently, there is no support `ContinuousBoundaryFunction` for immersed boundary
-    conditions.
+!!! warn "Immersed `ContinuousBoundaryFunction` is unsupported"
+    `ContinuousBoundaryFunction` is not supported on immersed boundaries.
+    We therefore do not regularize the immersed boundary condition.
 """
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               grid::AbstractGrid,
@@ -246,7 +243,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
     top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
 
-    immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
+    immersed = validate_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
