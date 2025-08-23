@@ -45,6 +45,13 @@ function BoundaryCondition(classification::AbstractBoundaryConditionClassificati
                            discrete_form = false,
                            field_dependencies=())
 
+    materialized = materialize_condition(condition, parameters, discrete_form, field_dependencies)
+    return BoundaryCondition(classification, materialized)
+end
+
+materialize_condition(condition, args...) = condition
+
+function materialize_condition(condition::Function, parameters, discrete_form, field_dependencies)
     if discrete_form
         field_dependencies != () && error("Cannot set `field_dependencies` when `discrete_form=true`!")
         condition = DiscreteBoundaryFunction(condition, parameters)
@@ -53,7 +60,7 @@ function BoundaryCondition(classification::AbstractBoundaryConditionClassificati
         condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end
 
-    return BoundaryCondition(classification, condition)
+    return condition
 end
 
 # Convenience constructors for buondary condition passing classification types
@@ -79,11 +86,13 @@ const PBC  = BoundaryCondition{<:Periodic}
 const OBC  = BoundaryCondition{<:Open}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
+const CBC  = BoundaryCondition{<:Combination}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
 
+const NoFluxBoundaryCondition = ZFBC
 const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:DistributedCommunication}
 
 # More readable BC constructors for the public API.
@@ -100,6 +109,41 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
                   ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
+
+#####
+##### Support for CombinationBoundaryCondition (aka "Robin" boundary condition)
+#####
+
+struct CombinationCondition{A, B}
+    coefficient :: A
+    combination :: B
+end
+
+"""
+    CombinationBoundaryCondition(coefficient, combination=0; kwargs...)
+
+Construct a `CombinationBoundaryCondition` representing the condition
+
+```math
+\\partial_n c + a c = b
+```
+
+where ``a`` is the `coefficient` and ``b`` is the `combination`.
+
+See [`BoundaryCondition`](@ref) for information about the possible `kwargs`
+when using function `coefficient` and/or `combination`.
+"""
+function CombinationBoundaryCondition(coefficient, combination=0;
+                                      parameters = nothing,
+                                      discrete_form = false,
+                                      field_dependencies = ())
+
+    coefficient = materialize_condition(coefficient, parameters, discrete_form, field_dependencies)
+    combination = materialize_condition(combination, parameters, discrete_form, field_dependencies)
+    condition = CombinationCondition(coefficient, combination)
+
+    return BoundaryCondition(Combination(), condition)
+end
 
 # Support for various types of boundary conditions.
 #
