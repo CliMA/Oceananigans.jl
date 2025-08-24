@@ -174,7 +174,7 @@ set!(model, b = bᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 4000days
+stop_time = 2000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -215,6 +215,7 @@ b = model.tracers.b
 ζ = Field(∂x(v) - ∂y(u))
 
 B = Field(Average(b, dims = 1))
+U = Field(Average(u, dims = 1))
 V = Field(Average(v, dims = 1))
 W = Field(Average(w, dims = 1))
 
@@ -225,7 +226,7 @@ w′ = w - W
 v′b′ = Field(Average(v′ * b′, dims = 1))
 w′b′ = Field(Average(w′ * b′, dims = 1))
 
-outputs = (; b, ζ, w)
+outputs = (; b, ζ, u, v, w)
 
 averaged_outputs = (; v′b′, w′b′, B)
 
@@ -279,12 +280,20 @@ xζ, yζ, zζ = nodes(grid, Face(), Face(), Center())
 xc, yc, zc = nodes(grid, Center(), Center(), Center())
 xw, yw, zw = nodes(grid, Center(), Center(), Face())
 
+
+xu, yu, zu = nodes(grid, Face(), Center(), Center())
+xv, yv, zv = nodes(grid, Center(), Face(), Center())
+
 j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
 
 b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
 ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
 w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
+
+
+u_timeseries = FieldTimeSeries("abernathey_channel.jld2", "u", grid = grid)
+v_timeseries = FieldTimeSeries("abernathey_channel.jld2", "v", grid = grid)
 
 @show b_timeseries
 
@@ -360,3 +369,76 @@ anim = @animate for i in 1:length(b_timeseries.times)
 end
 
 mp4(anim, "abernathey_channel.mp4", fps = 8) #hide
+
+
+anim2 = @animate for i in 1:length(b_timeseries.times)
+    u = u_timeseries[i]
+    v = v_timeseries[i]
+    w = w_timeseries[i]
+
+    u_xy = interior(u)[:, :, grid.Nz]
+    v_xy = interior(v)[:, :, grid.Nz]
+    ζ_xz = interior(ζ)[:, j′, :]
+    w_xz = interior(w)[:, j′, :]
+
+    @show umax = max(1e-9, maximum(abs, u_xy))
+    @show vmax = max(1e-9, maximum(abs, v_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
+
+    ulims = (-umax, umax) .* 0.8
+    vlims = (-vmax, vmax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
+
+    ulevels = vcat([-umax], range(ulims[1], ulims[2], length = 31), [umax])
+    vlevels = vcat([-vmax], range(vlims[1], vlims[2], length = 31), [vmax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
+
+    xlims = (0, grid.Lx) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
+        xlabel = "x (km)",
+        ylabel = "z (m)",
+        aspectratio = 0.05,
+        linewidth = 0,
+        levels = wlevels,
+        clims = wlims,
+        xlims = xlims,
+        ylims = zlims,
+        color = :balance)
+
+    u_xy_plot = contourf(xu * 1e-3, yu * 1e-3, u_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = ulevels,
+        clims = ulims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    v_xy_plot = contourf(xv * 1e-3, yv * 1e-3, v_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = blevels,
+        clims = vlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    u_xz_title = @sprintf("u(x, z) at t = %s", prettytime(u_timeseries.times[i]))
+    u_xy_title = "u(x, y)"
+    v_xy_title = "v(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+        Plots.grid(1, 2)]
+
+    plot(w_xz_plot, u_xy_plot, v_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title u_xy_title v_xy_title])
+end
+
+mp4(anim2, "abernathey_channel_horizontal_velocities.mp4", fps = 8) #hide
