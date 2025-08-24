@@ -371,7 +371,7 @@ end
 mp4(anim, "abernathey_channel.mp4", fps = 8) #hide
 
 
-anim2 = @animate for i in 1:length(b_timeseries.times)
+anim2 = @animate for i in 1:length(u_timeseries.times)
     u = u_timeseries[i]
     v = v_timeseries[i]
     w = w_timeseries[i]
@@ -424,7 +424,7 @@ anim2 = @animate for i in 1:length(b_timeseries.times)
         ylabel = "y (km)",
         aspectratio = :equal,
         linewidth = 0,
-        levels = blevels,
+        levels = vlevels,
         clims = vlims,
         xlims = xlims,
         ylims = ylims,
