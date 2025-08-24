@@ -1,6 +1,7 @@
 module OceananigansNCDatasetsExt
 
 using NCDatasets
+import NCDatasets: defVar
 
 using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
@@ -43,6 +44,17 @@ const c = Center()
 const f = Face()
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
+
+function defVar(ds, name, field::AbstractField;
+                time_dependent=false,
+                dimension_name_generator = trilocation_dim_name,
+                kwargs...)
+    FT = Array{eltype(field)}(field)
+    dims = field_dimensions(field, dimension_name_generator)
+    all_dims = time_dependent ? (dims..., "time") : dims
+
+    defVar(ds, name, FT, all_dims; kwargs...)
+end
 
 #####
 ##### Utils

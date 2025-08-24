@@ -2726,6 +2726,21 @@ function test_netcdf_buoyancy_force(arch)
     return nothing
 end
 
+function test_netcdf_single_field_defvar()
+    grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+    c = CenterField(grid)
+    filepath = "test_single_field_defvar.nc"
+    isfile(filepath) && rm(filepath)
+
+    ds = NCDataset(filepath, "c")
+    defVar(ds, "c", c, time_dependent=false)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2775,5 +2790,7 @@ for arch in archs
         test_netcdf_free_surface_mixed_output(arch)
 
         test_netcdf_buoyancy_force(arch)
+
+        test_netcdf_single_field_defvar()
     end
 end
