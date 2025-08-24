@@ -174,7 +174,7 @@ set!(model, b = bᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 60days
+stop_time = 4000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -311,7 +311,7 @@ anim = @animate for i in 1:length(b_timeseries.times)
     ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length = 31), [ζmax])
     wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
 
-    xlims = (-grid.Lx / 2, grid.Lx / 2) .* 1e-3
+    xlims = (0, grid.Lx) .* 1e-3
     ylims = (0, grid.Ly) .* 1e-3
     zlims = (-grid.Lz, 0)
 
