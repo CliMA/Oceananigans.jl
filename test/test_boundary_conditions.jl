@@ -258,24 +258,6 @@ end
 
         grid = bbb_grid
 
-        one_bc = BoundaryCondition(Value(), 1.0)
-
-        T_bcs = FieldBoundaryConditions(east = one_bc,
-                                        west = one_bc,
-                                        bottom = one_bc,
-                                        top = one_bc,
-                                        north = one_bc,
-                                        south = one_bc)
-
-        T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
-
-        @test T_bcs.east   === one_bc
-        @test T_bcs.west   === one_bc
-        @test T_bcs.north  === one_bc
-        @test T_bcs.south  === one_bc
-        @test T_bcs.top    === one_bc
-        @test T_bcs.bottom === one_bc
-
         T_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                         east = ValueBoundaryCondition(simple_bc),
                                         west = ValueBoundaryCondition(simple_bc),
@@ -297,6 +279,24 @@ end
         @test T_bcs.south.condition.func === simple_bc
         @test T_bcs.top.condition.func === simple_bc
         @test T_bcs.bottom.condition.func === simple_bc
+
+        one_bc = BoundaryCondition(Value(), 1.0)
+
+        T_bcs = FieldBoundaryConditions(east = one_bc,
+                                        west = one_bc,
+                                        bottom = one_bc,
+                                        top = one_bc,
+                                        north = one_bc,
+                                        south = one_bc)
+
+        T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
+
+        @test T_bcs.east   === one_bc
+        @test T_bcs.west   === one_bc
+        @test T_bcs.north  === one_bc
+        @test T_bcs.south  === one_bc
+        @test T_bcs.top    === one_bc
+        @test T_bcs.bottom === one_bc
 
         # Combination boundary conditions
         grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=bbb_topology)
