@@ -12,7 +12,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
-using Oceananigans.TurbulenceClosures: Horizontal, Vertical
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 using Oceananigans.Architectures: GPU
 using CUDA
@@ -136,8 +136,13 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-    convective_νz = 0.0)
+#convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
+#    convective_νz = 0.0)
+
+vertical_closure_CATKE = CATKEVerticalDiffusivity(minimum_tke=1e-7,
+                                                  maximum_tracer_diffusivity=0.3,
+                                                  maximum_viscosity=0.5)
+
 
 #####
 ##### Model building
@@ -147,13 +152,13 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
-    free_surface = ImplicitFreeSurface(),
+    free_surface = SplitExplicitFreeSurface(substeps=500),
     momentum_advection = WENO(),
     tracer_advection = WENO(),
     buoyancy = BuoyancyTracer(),
     coriolis = coriolis,
-    closure = (horizontal_closure, vertical_closure, convective_adjustment),
-    tracers = :b,
+    closure = (horizontal_closure, vertical_closure, vertical_closure_CATKE),
+    tracers = (:b, :e),
     boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
     forcing = (; b = Fb)
 )
