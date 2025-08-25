@@ -22,9 +22,11 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     # Full step for Implicit and Split-Explicit, substep for Explicit
     step_free_surface!(free_surface, model, timestepper, Δt)
 
-    # Average free surface variables in the second stage
-    @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
-    
+    if model.clock.stage == 2
+        # Average free surface variables in the second stage
+        @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
+    end
+
     return nothing
 end
 
@@ -58,11 +60,6 @@ function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid,
     
     launch!(arch, grid, params, _split_rk3_average_field!, Uⁿ, γⁿ, ζⁿ, Uⁿ⁻¹)
     launch!(arch, grid, params, _split_rk3_average_field!, Vⁿ, γⁿ, ζⁿ, Vⁿ⁻¹)
-
-    # Match the free surface to the vertical grid
-    if grid isa MutableVerticalDiscretization
-        parent(free_surface.η) .= parent(grid.z.ηⁿ)
-    end
 
     return nothing
 end
