@@ -175,7 +175,7 @@ end
 #####
 
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
-    if !(ibc isa DefaultBoundaryCondition || ibc isa NoFluxBoundaryCondition)
+    if !(ibc isa DefaultBoundaryCondition || isnothing(ibc)
         msg = """$field_name was assigned an immersed boundary condition
               $ibc,
               but this is not supported on
@@ -186,7 +186,7 @@ function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args
         @warn msg
     end
 
-    return NoFluxBoundaryCondition()
+    return nothing
 end
 
   regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
