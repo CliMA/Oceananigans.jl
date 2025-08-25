@@ -23,14 +23,14 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     step_free_surface!(free_surface, model, timestepper, Δt)
 
     # Average free surface variables in the second stage
-    if model.clock.stage > 1 
-        @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
-    end
+    @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
     
     return nothing
 end
 
-rk3_average_free_surface!(free_surface, args...) = nothing
+rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ) = nothing
+rk3_average_free_surface!(::ImplicitFreeSurface, grid, timestepper, ::Nothing, ::Nothing) = nothing
+rk3_average_free_surface!(::SplitExplicitFreeSurface, grid, timestepper, ::Nothing, ::Nothing) = nothing
 
 function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
     arch = architecture(grid)
@@ -52,17 +52,17 @@ function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid,
 
     Uⁿ⁻¹ = timestepper.Ψ⁻.U
     Vⁿ⁻¹ = timestepper.Ψ⁻.V
-    ηⁿ⁻¹ = timestepper.Ψ⁻.η
-
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
-    ηⁿ   = free_surface.η
-    
     params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
     
     launch!(arch, grid, params, _split_rk3_average_field!, Uⁿ, γⁿ, ζⁿ, Uⁿ⁻¹)
     launch!(arch, grid, params, _split_rk3_average_field!, Vⁿ, γⁿ, ζⁿ, Vⁿ⁻¹)
-    launch!(arch, grid, params, _split_rk3_average_field!, ηⁿ, γⁿ, ζⁿ, ηⁿ⁻¹)
+
+    # Match the free surface to the vertical grid
+    if grid isa MutableVerticalDiscretization
+        parent(free_surface.η) .= parent(grid.z.ηⁿ)
+    end
 
     return nothing
 end
@@ -94,7 +94,7 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
 
         if model.clock.stage > 1 
             launch!(architecture(grid), grid, :xyz,
-                _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
+                    _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
         end
     end
 
@@ -113,28 +113,34 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     grid = model.grid
     FT = eltype(grid)
 
+    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
-        Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-        c  = tracers[tracer_name]
-        closure = model.closure
+        if catke_in_closures && tracer_name == :e
+            @debug "Skipping RK3 step for e"
+        else
+            Gⁿ = model.timestepper.Gⁿ[tracer_name]
+            Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
+            c  = tracers[tracer_name]
+            closure = model.closure
 
-        launch!(architecture(grid), grid, :xyz,
-                _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
-
-        implicit_step!(c,
-                       model.timestepper.implicit_solver,
-                       closure,
-                       model.diffusivity_fields,
-                       Val(tracer_index),
-                       model.clock,
-                       Δt)
-
-        if model.clock.stage > 1 
             launch!(architecture(grid), grid, :xyz,
-                    _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+                    _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
+
+            implicit_step!(c,
+                           model.timestepper.implicit_solver,
+                           closure,
+                           model.diffusivity_fields,
+                           Val(tracer_index),
+                           model.clock,
+                           Δt)
+
+            if model.clock.stage > 1 
+                launch!(architecture(grid), grid, :xyz,
+                        _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+            end
         end
     end
 
@@ -145,8 +151,7 @@ end
 ##### Tracer update in mutable vertical coordinates
 #####
 
-
-# σθ is the evolved quantity, so tracer fields need to be evolved
+# σc is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
 @kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
