@@ -10,56 +10,22 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
     timestepper  = model.timestepper
     free_surface = model.free_surface
 
-    compute_free_surface_tendency!(grid, model, free_surface)
-
     @apply_regionally begin
         scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
         rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt, γⁿ, ζⁿ)
+    end
+
+    compute_free_surface_tendency!(grid, model, free_surface)
+
+    @apply_regionally begin
         rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
         rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
     end
 
     # Full step for Implicit and Split-Explicit, substep for Explicit
+    # Note that the RHS tendencies are computed on the averaged velocities
+    # and correctly averaged tendencies
     step_free_surface!(free_surface, model, timestepper, Δt)
-
-    if model.clock.stage == 2
-        # Average free surface variables in the second stage
-        @apply_regionally rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
-    end
-
-    return nothing
-end
-
-rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ) = nothing
-rk3_average_free_surface!(::ImplicitFreeSurface, grid, timestepper, ::Nothing, ::Nothing) = nothing
-rk3_average_free_surface!(::SplitExplicitFreeSurface, grid, timestepper, ::Nothing, ::Nothing) = nothing
-
-function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
-    arch = architecture(grid)
-    Nx, Ny, Nz = size(grid)
-
-    ηⁿ⁻¹ = timestepper.Ψ⁻.η
-    ηⁿ   = free_surface.η
-    params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
-
-    launch!(arch, grid, params, _split_rk3_average_field!, ηⁿ, γⁿ, ζⁿ, ηⁿ⁻¹)
-
-    return nothing
-end
-
-function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
-
-    arch = architecture(grid)
-    Nx, Ny, Nz = size(grid)
-
-    Uⁿ⁻¹ = timestepper.Ψ⁻.U
-    Vⁿ⁻¹ = timestepper.Ψ⁻.V
-    Uⁿ   = free_surface.barotropic_velocities.U
-    Vⁿ   = free_surface.barotropic_velocities.V
-    params = KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1)
-    
-    launch!(arch, grid, params, _split_rk3_average_field!, Uⁿ, γⁿ, ζⁿ, Uⁿ⁻¹)
-    launch!(arch, grid, params, _split_rk3_average_field!, Vⁿ, γⁿ, ζⁿ, Vⁿ⁻¹)
 
     return nothing
 end

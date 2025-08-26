@@ -42,7 +42,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 end
 
 # At the last stage we reset the velocities and perform the complete substepping from n to n+1
-function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts, ::Val{3})
+function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts, stage) #::Val{3})
 
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
