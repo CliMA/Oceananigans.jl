@@ -32,8 +32,8 @@ Keyword arguments
 =================
 
 - `rotation_rate`: Sphere's rotation rate; default: [`Ω_Earth`](@ref).
-- `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `EnstrophyConserving()` (default).
-- 'formulation`: `HydrostaticFormulation` or `NonhydrostaticFormulation`.
+- `scheme`: Either `EnergyConserving()` or `EnstrophyConserving()` (default).
+- `formulation`: `HydrostaticFormulation` or `NonhydrostaticFormulation`.
 """
 function SphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
                            rotation_rate = Ω_Earth,
