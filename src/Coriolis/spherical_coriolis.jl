@@ -38,12 +38,17 @@ Keyword arguments
 function SphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
                            rotation_rate = Ω_Earth,
                            scheme = EnstrophyConserving(FT),
-                           formulation = HydrostaticFormulation()) 
+                           formulation = HydrostaticFormulation())   # change defaults???
 
     return SphericalCoriolis(rotation_rate, scheme, formulation)
 end
 
-const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{S, FT, <:HydrostaticFormulation} where {S, FT}
+const HydrostaticSphericalCoriolis{S, FT}    = SphericalCoriolis{S, FT, <:HydrostaticFormulation} where {S, FT}
+const NonhydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{S, FT, <:NonhydrostaticFormulation} where {S, FT}
+
+# using Oceananigans.Coriolis: HydrostaticFormulation, NonhydrostaticFormulation
+# model_hy = HydrostaticFreeSurfaceModel(; grid, coriolis=SphericalCoriolis(scheme=EnstrophyConserving(), formulation=HydrostaticFormulation()))
+# model_nh = NonhydrostaticModel(; grid=grid, coriolis=SphericalCoriolis(formulation=NonhydrostaticFormulation()))
 
 Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
     SphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate),
@@ -54,23 +59,23 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, face, face)
 @inline φᶠᶠᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶠᶠᵃ(i, j, k, grid.underlying_grid)
 
-@inline fᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
-@inline f̃ᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶠᶠᵃ(i, j, k, grid))
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis) = 2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
+@inline f̃ᶠᶠᵃ(i, j, k, grid, coriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶠᶠᵃ(i, j, k, grid))
 
-@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
-@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
+@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 
-@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑzᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
-@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis, w) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
+@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑzᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
+@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, w) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
 
-@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, ::HydrostaticSphericalCoriolis, u) = zero(grid)
-@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, ::HydrostaticSphericalCoriolis, w) = zero(grid)
+@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, u) = zero(grid)
+@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, w) = zero(grid)
 
 @inline x_f_cross_U(i, j, k, grid, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid) + ℑzᵃᶜᵃ(i, j, k, grid, f̃_ℑx_wᶠᶠᵃ, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline y_f_cross_U(i, j, k, grid, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 @inline z_f_cross_U(i, j, k, grid, U) = @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶠᵃ, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
 
-@inline z_f_cross_U(i, j, k, grid, ::HydrostaticSphericalCoriolis, U) = zero(grid)
+@inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, U) = zero(grid)
 
 #####
 ##### Active Point Enstrophy-conserving scheme
