@@ -6,9 +6,10 @@ using Oceananigans.Utils: configure_kernel
                                           grid::AbstractGrid,
                                           loc, indices)
 
-Constructs preconfigured boundary condition kernels for a given data arraym, grid, 
-and the provided `FieldBoundaryConditions` object. Returns a new `FieldBoundaryConditions` object
-with the preconfigured kernels and ordered boundary conditions.
+Construct preconfigured boundary condition kernels for a given `data` array, `grid`, 
+and the provided `bcs` (a FieldBoundaryConditions` object).
+Return a new `FieldBoundaryConditions` object with the preconfigured kernels and
+ordered boundary conditions.
 """
 function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                                data::OffsetArray,
