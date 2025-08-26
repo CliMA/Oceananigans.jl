@@ -1,7 +1,8 @@
 abstract type CallableCoordinate end
 
-# To make Callable coordinates can be indexed just like arrays!
+# Callable coordinates can be indexed just like arrays!
 Base.getindex(coord::CallableCoordinate, i) = coord(i)
+
 
 struct ExponentialCoordinate <: CallableCoordinate
     size :: Int
@@ -135,11 +136,13 @@ Base.length(coord::ExponentialCoordinate) = coord.size
 Base.summary(::ExponentialCoordinate) = "ExponentialCoordinate"
 
 function Base.show(io::IO, coord::ExponentialCoordinate)
+    array = [coord(i) for i in 1:coord.size+1]
     return print(io, summary(coord), '\n',
                  "├─ size: ", coord.size, '\n',
                  "├─ left: ", coord.left, '\n',
                  "├─ right: ", coord.right, '\n',
                  "├─ scale: ", coord.scale, '\n',
+                 "├─ faces: ", array, '\n',
                  "└─ bias: :$(coord.bias)")
 end
 
