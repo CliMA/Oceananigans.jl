@@ -5,11 +5,19 @@ Base.getindex(coord::CallableCoordinate, i) = coord(i)
 
 struct ExponentialCoordinate <: CallableCoordinate
     size :: Int
+    faces :: Vector{Float64}
     left :: Float64
     right :: Float64
     scale :: Float64
     bias :: Symbol
+    function ExponentialCoordinate(size::Int, left::Float64, right::Float64, scale::Float64, bias::Symbol)
+        faces = [construct_exponential_coordinate(i, size, left, right, scale, bias) for i in 1:size]
+        return new(size, faces, left, right, scale, bias)
+    end
 end
+
+# An exponential coordinate actually has faces
+Base.getindex(coord::ExponentialCoordinate, i) = coord.faces[i]
 
 """
     ExponentialCoordinate(N::Int, left, right;
@@ -109,15 +117,19 @@ ExponentialCoordinate(size::Int, left, right;
 
 function (coord::ExponentialCoordinate)(i)
     N, left, right, scale = coord.size, coord.left, coord.right, coord.scale
+    return construct_exponential_coordinate(i, N, left, right, scale, coord.bias)
+end
+
+function construct_exponential_coordinate(i, N, left, right, scale, bias)
 
     # uniform coordinate
     Δ = (right - left) / N    # spacing
     ξᵢ = left + (i-1) * Δ     # interfaces
 
     # mapped coordinate
-    if coord.bias === :right
+    if bias === :right
        xᵢ = rightbiased_exponential_mapping(ξᵢ, left, right, scale)
-    elseif coord.bias === :left
+    elseif bias === :left
        xᵢ =  leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
@@ -135,13 +147,12 @@ Base.length(coord::ExponentialCoordinate) = coord.size
 Base.summary(::ExponentialCoordinate) = "ExponentialCoordinate"
 
 function Base.show(io::IO, coord::ExponentialCoordinate)
-    array = [coord(i) for i in 1:coord.size+1]
     return print(io, summary(coord), '\n',
                  "├─ size: ", coord.size, '\n',
                  "├─ left: ", coord.left, '\n',
                  "├─ right: ", coord.right, '\n',
                  "├─ scale: ", coord.scale, '\n',
-                 "├─ faces: ", array, '\n',
+                 "├─ faces: ", coord.faces, '\n',
                  "└─ bias: :$(coord.bias)")
 end
 
