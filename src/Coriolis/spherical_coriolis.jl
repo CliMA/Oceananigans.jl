@@ -10,11 +10,10 @@ struct HydrostaticFormulation end
 struct NonhydrostaticFormulation end
 
 """
-    struct SphericalCoriolis{S, FT, F} 
+    struct SphericalCoriolis{S, FT, F} <: AbstractRotation 
 
 A parameter object for constant rotation around a vertical axis on the sphere.
 """
-
 struct SphericalCoriolis{S, FT, F}
     rotation_rate :: FT
     scheme :: S
@@ -36,9 +35,6 @@ Keyword arguments
 - `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `EnstrophyConserving()` (default).
 - 'formulation`: `HydrostaticFormulation` or `NonhydrostaticFormulation`.
 """
-
-const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{S, FT, <:HydrostaticFormulation} where {S, FT}
-
 function SphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
                            rotation_rate = Ω_Earth,
                            scheme = EnstrophyConserving(FT),
@@ -46,6 +42,8 @@ function SphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
 
     return SphericalCoriolis(rotation_rate, scheme, formulation)
 end
+
+const HydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{S, FT, <:HydrostaticFormulation} where {S, FT}
 
 Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
     SphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate),
