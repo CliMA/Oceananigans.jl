@@ -2727,15 +2727,33 @@ function test_netcdf_buoyancy_force(arch)
 end
 
 function test_netcdf_single_field_defvar()
-    grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+    N = 4
+    grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
     c = CenterField(grid)
+    set!(c, (x, y, z) -> x + y + z)
+
     filepath = "test_single_field_defvar.nc"
     isfile(filepath) && rm(filepath)
 
     ds = NCDataset(filepath, "c")
-    defVar(ds, "c", c, time_dependent=false)
+    defVar(ds, "c", c, attrib=Dict("long_name" => "Center field", "units" => "kg/m³"))
+
+    # Write an abstract operation
+    c² = c^2
+    defVar(ds, "c²", c², attrib=Dict("long_name" => "Center field squared"))
+
+    # Write a reduction
+    c̄ = Average(c, dims=3)
+    defVar(ds, "c̄", c̄, attrib=Dict("long_name" => "Average center field", "units" => "kg/m²"))
 
     close(ds)
+    ds = NCDataset(filepath, "r")
+    @test "c" ∈ keys(ds)
+    @test all(ds["c"] .== interior(c))
+    @test ds["c"].attrib["long_name"] == "Center field"
+    @test ds["c"].attrib["units"] == "kg/m³"
+    close(ds)
+
     rm(filepath)
 
     return nothing

@@ -7,11 +7,11 @@ using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location
-using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
+using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location
+using Oceananigans.Grids: Center, Face, Flat, nodes, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
                           parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
@@ -45,6 +45,9 @@ const f = Face()
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
 
+defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+
 function defVar(ds, name, field::AbstractField;
                 time_dependent=false,
                 dimension_name_generator = trilocation_dim_name,
@@ -53,7 +56,54 @@ function defVar(ds, name, field::AbstractField;
     dims = field_dimensions(field, dimension_name_generator)
     all_dims = time_dependent ? (dims..., "time") : dims
 
+    # Validate that all dimensions exist and match the field
+    validate_field_dimensions(ds, field, all_dims, name, dimension_name_generator)
+
     defVar(ds, name, FT, all_dims; kwargs...)
+end
+
+#####
+##### Dimension validation
+#####
+
+"""
+    validate_field_dimensions(ds, field::AbstractField, all_dims, name)
+
+Validates that all dimensions in `all_dims` exist in the NetCDF dataset `ds` and match
+the expected dimensions for the given `field`. Creates missing dimensions if needed.
+
+Arguments:
+- `ds`: NetCDF dataset
+- `field`: AbstractField being written  
+- `all_dims`: Tuple of dimension names to validate
+- `name`: Variable name (for error messages)
+"""
+function validate_field_dimensions(ds, field::AbstractField, all_dims, name, dimension_name_generator)
+    dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
+    spatial_dims = all_dims[1:end-(("time" in all_dims) ? 1 : 0)]
+
+    for (i, dim_name) in enumerate(spatial_dims)
+        expected_size = size(field)[i]
+        if dim_name ∉ keys(ds.dim)
+            # Create missing dimension
+            dim_data = nodes(field)[i]
+            defVar(ds, dim_name, dim_data, (dim_name,), attrib=dimension_attributes[dim_name])
+        else
+            # Validate existing dimension size
+            dataset_dim_size = length(ds[dim_name])
+            if dataset_dim_size != expected_size
+                throw(ArgumentError("Dimension '$dim_name' for field '$name' has size $dataset_dim_size " *
+                                    "in the dataset, but field requires size $expected_size"))
+            end
+        end
+    end
+
+    # Create time dimension if needed
+    if "time" in all_dims && "time" ∉ keys(ds.dim)
+        create_time_dimension!(ds)
+    end
+    
+    return nothing
 end
 
 #####
@@ -74,6 +124,20 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
         return collect(ξ[inds])
     end
 end
+
+function create_time_dimension!(dataset)
+    # Create an unlimited dimension "time"
+    # Time should always be Float64 to be extra safe from rounding errors.
+    # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
+    defDim(dataset, "time", Inf)
+    defVar(dataset, "time", Float64, ("time",))
+end
+
+# function create_spatial_dimensions!(dataset, dims, attributes_dict; kwargs...)
+#     for (dim_name, dim_data) in dims
+#         defVar(dataset, dim_name, dim_data, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
+#     end
+# end
 
 #####
 ##### Dimension name generators
@@ -1146,11 +1210,7 @@ function initialize_nc_file(model,
             Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
             Dict("long_name" => "Time", "units" => "seconds")
 
-        # Create an unlimited dimension "time"
-        # Time should always be Float64 to be extra safe from rounding errors.
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
-        defDim(dataset, "time", Inf)
-        defVar(dataset, "time", Float64, ("time",), attrib=time_attrib)
+        create_time_dimension!(dataset)
 
         # Create spatial dimensions as variables whose dimensions are themselves.
         # Each should already have a default attribute.
