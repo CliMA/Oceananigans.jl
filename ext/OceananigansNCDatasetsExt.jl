@@ -684,7 +684,7 @@ materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
 function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
     grid_attrs, grid_dims = grid_attributes(grid)
 
-    sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first)
+    sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first) # Organizes attributes to make it more easily human-readable
     ds_grid = defGroup(ds, "grid_attributes"; attrib = sorted_grid_attrs)
     for (dim_name, dim_array) in grid_dims
         defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
