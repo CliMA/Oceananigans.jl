@@ -1,5 +1,8 @@
 abstract type CallableCoordinate end
 
+# To make Callable coordinates can be indexed just like arrays!
+Base.getindex(coord::CallableCoordinate, i) = coord(i)
+
 struct ExponentialCoordinate <: CallableCoordinate
     size :: Int
     left :: Float64
