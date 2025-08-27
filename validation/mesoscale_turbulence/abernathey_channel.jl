@@ -15,8 +15,8 @@ using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 using Oceananigans.Architectures: GPU
-#using CUDA
-#CUDA.device!(0)
+using CUDA
+CUDA.device!(0)
 
 
 const Lx = 1000kilometers # zonal domain length [m]
@@ -119,11 +119,11 @@ end
 u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = parameters)
 v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = parameters)
 
-u_immersed_drag = FluxBoundaryCondition(u_immersed_drag, discrete_form=true, parameters=parameters)
-v_immersed_drag = FluxBoundaryCondition(v_immersed_drag, discrete_form=true, parameters=parameters)
+u_immersed_drag_bc = FluxBoundaryCondition(u_immersed_drag, discrete_form=true, parameters=parameters)
+v_immersed_drag_bc = FluxBoundaryCondition(v_immersed_drag, discrete_form=true, parameters=parameters)
 
-u_immersed_bc = ImmersedBoundaryCondition(bottom=u_immersed_drag)
-v_immersed_bc = ImmersedBoundaryCondition(bottom=v_immersed_drag)
+u_immersed_bc = ImmersedBoundaryCondition(bottom=u_immersed_drag_bc)
+v_immersed_bc = ImmersedBoundaryCondition(bottom=v_immersed_drag_bc)
 
 b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
 
