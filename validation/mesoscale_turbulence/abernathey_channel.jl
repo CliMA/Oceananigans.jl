@@ -101,34 +101,13 @@ u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form = true, parameters =
 @inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds -p.μ * p.Lz * model_fields.u[i, j, 1]
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds -p.μ * p.Lz * model_fields.v[i, j, 1]
 
-# Handling bathymetry drag:
-@inline function u_immersed_drag(i, j, k, grid, clock, fields, p)
-    x = xnode(i, grid, Face())
-    y = ynode(j, grid, Center())
-    B = ridge_function(x, y)
-    return - p.μ * B * fields.u[i, j, k]
-end
-
-@inline function v_immersed_drag(i, j, k, grid, clock, fields, p)
-    x = xnode(i, grid, Center())
-    y = ynode(j, grid, Face())
-    B = ridge_function(x, y)
-    return - p.μ * B * fields.v[i, j, k]
-end
-
 u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = parameters)
 v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = parameters)
 
-u_immersed_drag_bc = FluxBoundaryCondition(u_immersed_drag, discrete_form=true, parameters=parameters)
-v_immersed_drag_bc = FluxBoundaryCondition(v_immersed_drag, discrete_form=true, parameters=parameters)
-
-u_immersed_bc = ImmersedBoundaryCondition(bottom=u_immersed_drag_bc)
-v_immersed_bc = ImmersedBoundaryCondition(bottom=v_immersed_drag_bc)
-
 b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
 
-u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc, immersed=u_immersed_bc)
-v_bcs = FieldBoundaryConditions(bottom = v_drag_bc, immersed=v_immersed_bc)
+u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 
 #####
 ##### Coriolis
@@ -248,6 +227,8 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 u, v, w = model.velocities
 b = model.tracers.b
+e = model.tracers.e
+η = model.free_surface.η
 
 ζ = Field(∂x(v) - ∂y(u))
 
@@ -263,7 +244,7 @@ w′ = w - W
 v′b′ = Field(Average(v′ * b′, dims = 1))
 w′b′ = Field(Average(w′ * b′, dims = 1))
 
-outputs = (; b, ζ, u, v, w)
+outputs = (; b, ζ, u, v, w, η, e)
 
 averaged_outputs = (; v′b′, w′b′, B)
 
@@ -327,7 +308,7 @@ y′ = yζ[j′]
 b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
 ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
 w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
-
+η_timeseries = FieldTimeSeries("abernathey_channel.jld2", "η", grid = grid)
 
 u_timeseries = FieldTimeSeries("abernathey_channel.jld2", "u", grid = grid)
 v_timeseries = FieldTimeSeries("abernathey_channel.jld2", "v", grid = grid)
@@ -479,3 +460,74 @@ anim2 = @animate for i in 1:length(u_timeseries.times)
 end
 
 mp4(anim2, "abernathey_channel_horizontal_velocities.mp4", fps = 8) #hide
+
+
+anim = @animate for i in 1:length(b_timeseries.times)
+    e = e_timeseries[i]
+    w = w_timeseries[i]
+    η = η_timeseries[i]
+
+    e_xy = e[:, :, grid.Nz]
+    w_xz = interior(w)[:, j′, :]
+    η_xy = η[:, :, 1]
+
+    @show emax = max(1e-9, maximum(abs, e_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
+    @show ηmax = max(1e-9, maximum(abs, η_xy))
+
+    elims = (-emax, emax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
+    ηlims = (-ηmax, ηmax) .* 0.8
+
+    elevels = vcat([-emax], range(elims[1], elims[2], length = 31), [emax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
+    ηlevels = vcat([-ηmax], range(ηlims[1], ηlims[2], length = 31), [ηmax])
+
+    xlims = (0, grid.Lx) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
+        xlabel = "x (km)",
+        ylabel = "z (m)",
+        aspectratio = 0.05,
+        linewidth = 0,
+        levels = wlevels,
+        clims = wlims,
+        xlims = xlims,
+        ylims = zlims,
+        color = :balance)
+
+    η_xy_plot = contourf(xc * 1e-3, yc * 1e-3, η_xy,
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = ηlevels,
+        clims = ηlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    e_xy_plot = contourf(xc * 1e-3, yc * 1e-3, e_xy,
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = elevels,
+        clims = elims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    η_xy_title = "η(x, y)"
+    e_xy_title = "e(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+        Plots.grid(1, 2)]
+
+    plot(w_xz_plot, η_xy_plot, e_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
+end
+
+mp4(anim, "abernathey_channel_sshe.mp4", fps = 8) #hide
