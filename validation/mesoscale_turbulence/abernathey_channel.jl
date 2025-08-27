@@ -26,8 +26,8 @@ const Ly = 2000kilometers # meridional domain length [m]
 architecture = GPU()
 
 # number of grid points
-Nx = 96
-Ny = 192
+Nx = 48 #96
+Ny = 96 #192
 Nz = 32
 
 # stretched grid
@@ -153,8 +153,8 @@ vertical_closure_CATKE = CATKEVerticalDiffusivity(minimum_tke=1e-7,
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
     free_surface = SplitExplicitFreeSurface(substeps=500),
-    momentum_advection = WENO(),
-    tracer_advection = WENO(),
+    momentum_advection = Centered(order=2), #WENO(),
+    tracer_advection = Centered(order=2), #WENO(),
     buoyancy = BuoyancyTracer(),
     coriolis = coriolis,
     closure = (horizontal_closure, vertical_closure, vertical_closure_CATKE),
@@ -179,7 +179,7 @@ set!(model, b = bᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 2000days
+stop_time = 6000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
