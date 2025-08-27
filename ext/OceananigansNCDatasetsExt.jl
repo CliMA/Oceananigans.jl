@@ -82,21 +82,7 @@ function validate_field_dimensions(ds, field::AbstractField, all_dims, name, dim
     dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
     spatial_dims = all_dims[1:end-(("time" in all_dims) ? 1 : 0)]
 
-    for (i, dim_name) in enumerate(spatial_dims)
-        expected_size = size(field)[i]
-        if dim_name ∉ keys(ds.dim)
-            # Create missing dimension
-            dim_data = nodes(field)[i]
-            defVar(ds, dim_name, dim_data, (dim_name,), attrib=dimension_attributes[dim_name])
-        else
-            # Validate existing dimension size
-            dataset_dim_size = length(ds[dim_name])
-            if dataset_dim_size != expected_size
-                throw(ArgumentError("Dimension '$dim_name' for field '$name' has size $dataset_dim_size " *
-                                    "in the dataset, but field requires size $expected_size"))
-            end
-        end
-    end
+    create_spatial_dimensions!(ds, spatial_dims, dimension_attributes)
 
     # Create time dimension if needed
     if "time" in all_dims && "time" ∉ keys(ds.dim)
@@ -133,11 +119,23 @@ function create_time_dimension!(dataset)
     defVar(dataset, "time", Float64, ("time",))
 end
 
-# function create_spatial_dimensions!(dataset, dims, attributes_dict; kwargs...)
-#     for (dim_name, dim_data) in dims
-#         defVar(dataset, dim_name, dim_data, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
-#     end
-# end
+function create_spatial_dimensions!(dataset, dims, attributes_dict; kwargs...)
+    for (i, dim_name) in enumerate(dims)
+        expected_size = size(field)[i]
+        if dim_name ∉ keys(ds.dim)
+            # Create missing dimension
+            dim_data = nodes(field)[i]
+            defVar(dataset, dim_name, dim_data, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
+        else
+            # Validate existing dimension size
+            dataset_dim_size = length(ds[dim_name])
+            if dataset_dim_size != expected_size
+                throw(ArgumentError("Dimension '$dim_name' for field '$name' has size $dataset_dim_size " *
+                                    "in the dataset, but field requires size $expected_size"))
+            end
+        end
+    end
+end
 
 #####
 ##### Dimension name generators
@@ -1218,6 +1216,7 @@ function initialize_nc_file(model,
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
                    deflatelevel=deflatelevel, attrib=output_attributes[dim_name])
         end
+        # create_spatial_dimensions!(dataset, dims; deflatelevel=1, attrib=output_attributes)
 
         time_independent_vars = Dict()
 
