@@ -41,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid_from_netcdf
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
 
 const c = Center()
 const f = Face()
@@ -706,14 +706,14 @@ function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)
     return ds
 end
 
-function reconstruct_grid_from_netcdf(filename::String)
+function reconstruct_grid(filename::String)
     ds = NCDataset(filename, "r")
-    grid = reconstruct_grid_from_netcdf(ds)
+    grid = reconstruct_grid(ds)
     close(ds)
     return grid
 end
 
-function reconstruct_grid_from_netcdf(ds)
+function reconstruct_grid(ds)
     # Read back the grid reconstruction metadata
     grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
     grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf

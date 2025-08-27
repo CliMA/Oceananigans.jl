@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: constructor_arguments, halo_size
 using NCDatasets
-using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid_from_netcdf
+using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
 
 #####
 ##### Grid reconstruction tests using constructor_arguments
@@ -263,7 +263,7 @@ function test_netcdf_grid_reconstruction(original_grid)
     close(ds)
 
     # Read back the grid reconstruction metadata
-    reconstructed_grid = reconstruct_grid_from_netcdf(filename)
+    reconstructed_grid = reconstruct_grid(filename)
 
     # Test that key properties match
     @test reconstructed_grid == original_grid # tests grid type, topology and face locations
