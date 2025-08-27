@@ -149,10 +149,10 @@ Base.summary(::ExponentialCoordinate) = "ExponentialCoordinate"
 function Base.show(io::IO, coord::ExponentialCoordinate)
     return print(io, summary(coord), '\n',
                  "├─ size: ", coord.size, '\n',
+                 "├─ faces: ", coord.faces, '\n',
                  "├─ left: ", coord.left, '\n',
                  "├─ right: ", coord.right, '\n',
                  "├─ scale: ", coord.scale, '\n',
-                 "├─ faces: ", coord.faces, '\n',
                  "└─ bias: :$(coord.bias)")
 end
 
