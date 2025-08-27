@@ -101,9 +101,9 @@ end
 #####
 
 """ Calculate the right-hand-side of the free surface displacement (``η``) equation. """
-@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args)
+@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, ztype, args)
     i, j = @index(Global, NTuple)
-    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
+    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, ztype, args...)
 end
 
 """
@@ -124,6 +124,7 @@ The tendency is called ``G_η`` and defined via
 ```
 """
 @inline function free_surface_tendency(i, j, grid,
+                                       vertical_coordinate,
                                        velocities,
                                        free_surface,
                                        tracers,
@@ -133,8 +134,26 @@ The tendency is called ``G_η`` and defined via
 
     k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    w_top = free_surface_vertical_velocity(i, j, k_top, grid, vertical_coordinate, velocities, free_surface)
 
-    return @inbounds velocities.w[i, j, k_top] + forcings.η(i, j, k_top, grid, clock, model_fields)
+    return w_top + forcings.η(i, j, k_top, grid, clock, model_fields)
+end
+
+@inline free_surface_vertical_velocity(i, j, k_top, grid, ztype, velocities, free_surface) = @inbounds velocities.w[i, j, k_top]
+
+@inline function free_surface_vertical_velocity(i, j, k_top, grid,
+                                                ::ZStarCoordinate, 
+                                                velocities,
+                                                free_surface)
+
+    u, v, _ = velocities
+    U, V = barotropic_velocities(free_surface)
+
+    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
+
+    return - δh_U
 end
 
 compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
@@ -154,7 +173,7 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     launch!(arch, grid, :xy,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
-            grid, args)
+            grid, model.vertical_coordinate, args)
 
     args = (model.clock,
             fields(model),
