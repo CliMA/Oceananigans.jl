@@ -120,10 +120,10 @@ end
     @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
 
-@kernel function _split_rk3_average_tracer_field!(c, grid, γⁿ, ζⁿ, c⁻)
+@kernel function _split_rk3_average_tracer_field!(c, grid, γⁿ, ζⁿ, σc⁻)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = ζⁿ * c⁻[i, j, k] / σᶜᶜⁿ + γⁿ * c[i, j, k]
+    @inbounds c[i, j, k] = ζⁿ * σc⁻[i, j, k] / σᶜᶜⁿ + γⁿ * c[i, j, k]
 end
 
 #####
