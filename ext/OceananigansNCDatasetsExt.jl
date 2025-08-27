@@ -57,7 +57,7 @@ function defVar(ds, name, field::AbstractField;
     all_dims = time_dependent ? (dims..., "time") : dims
 
     # Validate that all dimensions exist and match the field
-    validate_field_dimensions(ds, field, all_dims, name, dimension_name_generator)
+    validate_or_create_field_dimensions!(ds, field, all_dims, name, dimension_name_generator)
 
     defVar(ds, name, FT, all_dims; kwargs...)
 end
@@ -67,7 +67,7 @@ end
 #####
 
 """
-    validate_field_dimensions(ds, field::AbstractField, all_dims, name)
+    validate_or_create_field_dimensions!(ds, field::AbstractField, all_dims, name)
 
 Validates that all dimensions in `all_dims` exist in the NetCDF dataset `ds` and match
 the expected dimensions for the given `field`. Creates missing dimensions if needed.
@@ -78,11 +78,12 @@ Arguments:
 - `all_dims`: Tuple of dimension names to validate
 - `name`: Variable name (for error messages)
 """
-function validate_field_dimensions(ds, field::AbstractField, all_dims, name, dimension_name_generator)
+function validate_or_create_field_dimensions!(ds, field::AbstractField, all_dims, name, dimension_name_generator)
     dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
     spatial_dims = all_dims[1:end-(("time" in all_dims) ? 1 : 0)]
 
-    create_spatial_dimensions!(ds, spatial_dims, dimension_attributes)
+    spatial_dims_dict = Dict(dim_name => dim_data for (dim_name, dim_data) in zip(spatial_dims, nodes(field)))
+    create_spatial_dimensions!(ds, spatial_dims_dict, dimension_attributes; array_type=Array{eltype(field)})
 
     # Create time dimension if needed
     if "time" in all_dims && "time" ∉ keys(ds.dim)
@@ -119,19 +120,18 @@ function create_time_dimension!(dataset)
     defVar(dataset, "time", Float64, ("time",))
 end
 
-function create_spatial_dimensions!(dataset, dims, attributes_dict; kwargs...)
-    for (i, dim_name) in enumerate(dims)
-        expected_size = size(field)[i]
-        if dim_name ∉ keys(ds.dim)
+function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
+    for (i, (dim_name, dim_array)) in enumerate(dims)
+        if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
-            dim_data = nodes(field)[i]
-            defVar(dataset, dim_name, dim_data, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
+            defVar(dataset, dim_name, array_type(dim_array), (dim_name,), attrib=attributes_dict[dim_name], kwargs...)
         else
             # Validate existing dimension size
-            dataset_dim_size = length(ds[dim_name])
-            if dataset_dim_size != expected_size
-                throw(ArgumentError("Dimension '$dim_name' for field '$name' has size $dataset_dim_size " *
-                                    "in the dataset, but field requires size $expected_size"))
+            dataset_dim_length = length(dataset[dim_name])
+            expected_length = length(dim_array)
+            if dataset_dim_length != expected_length
+                throw(ArgumentError("Dimension '$dim_name' has size $dataset_dim_length " *
+                                    "in the dataset, but field requires size $expected_length"))
             end
         end
     end
