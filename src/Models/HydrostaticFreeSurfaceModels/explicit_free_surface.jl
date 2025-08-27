@@ -134,25 +134,18 @@ The tendency is called ``G_η`` and defined via
 
     k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
-    w_top = free_surface_vertical_velocity(i, j, k_top, grid, vertical_coordinate, velocities, free_surface)
+    w_top = free_surface_vertical_velocity(i, j, k_top, grid, vertical_coordinate, velocities)
 
     return w_top + forcings.η(i, j, k_top, grid, clock, model_fields)
 end
 
-@inline free_surface_vertical_velocity(i, j, k_top, grid, ztype, velocities, free_surface) = @inbounds velocities.w[i, j, k_top]
+@inline free_surface_vertical_velocity(i, j, k_top, grid, ztype, velocities) = @inbounds velocities.w[i, j, k_top]
 
-@inline function free_surface_vertical_velocity(i, j, k_top, grid,
-                                                ::ZStarCoordinate, 
-                                                velocities,
-                                                free_surface)
-
+@inline function free_surface_vertical_velocity(i, j, k_top, grid, ::ZStarCoordinate, velocities)
     u, v, _ = velocities
-    U, V = barotropic_velocities(free_surface)
-
-    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
-    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, u)
+    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
-
     return - δh_U
 end
 
