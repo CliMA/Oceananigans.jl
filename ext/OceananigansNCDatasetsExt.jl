@@ -57,7 +57,7 @@ function defVar(ds, name, field::AbstractField;
     all_dims = time_dependent ? (dims..., "time") : dims
 
     # Validate that all dimensions exist and match the field
-    validate_or_create_field_dimensions!(ds, field, all_dims, name, dimension_name_generator)
+    create_field_dimensions!(ds, field, all_dims, dimension_name_generator)
 
     defVar(ds, name, FT, all_dims; kwargs...)
 end
@@ -67,18 +67,18 @@ end
 #####
 
 """
-    validate_or_create_field_dimensions!(ds, field::AbstractField, all_dims, name)
+    create_field_dimensions!(ds, field::AbstractField, all_dims, dimension_name_generator)
 
-Validates that all dimensions in `all_dims` exist in the NetCDF dataset `ds` and match
-the expected dimensions for the given `field`. Creates missing dimensions if needed.
+Creates all dimensions for the given `field` in the NetCDF dataset `ds`. If the dimensions
+already exist, they are validated to match the expected dimensions for the given `field`.
 
 Arguments:
 - `ds`: NetCDF dataset
 - `field`: AbstractField being written  
-- `all_dims`: Tuple of dimension names to validate
-- `name`: Variable name (for error messages)
+- `all_dims`: Tuple of dimension names to create/validate
+- `dimension_name_generator`: Function to generate dimension names
 """
-function validate_or_create_field_dimensions!(ds, field::AbstractField, all_dims, name, dimension_name_generator)
+function create_field_dimensions!(ds, field::AbstractField, all_dims, dimension_name_generator)
     dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
     spatial_dims = all_dims[1:end-(("time" in all_dims) ? 1 : 0)]
 
@@ -113,11 +113,13 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
 end
 
 function create_time_dimension!(dataset)
-    # Create an unlimited dimension "time"
-    # Time should always be Float64 to be extra safe from rounding errors.
-    # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
-    defDim(dataset, "time", Inf)
-    defVar(dataset, "time", Float64, ("time",))
+    if "time" ∉ keys(dataset.dim)
+        # Create an unlimited dimension "time"
+        # Time should always be Float64 to be extra safe from rounding errors.
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
+        defDim(dataset, "time", Inf)
+        defVar(dataset, "time", Float64, ("time",))
+    end
 end
 
 function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
@@ -126,12 +128,9 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
             # Create missing dimension
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,), attrib=attributes_dict[dim_name], kwargs...)
         else
-            # Validate existing dimension size
-            dataset_dim_length = length(dataset[dim_name])
-            expected_length = length(dim_array)
-            if dataset_dim_length != expected_length
-                throw(ArgumentError("Dimension '$dim_name' has size $dataset_dim_length " *
-                                    "in the dataset, but field requires size $expected_length"))
+            # Validate existing dimension
+            if dataset[dim_name] != dim_array
+                throw(ArgumentError("Dimension '$dim_name' already exists in dataset but is different from expected."))
             end
         end
     end
