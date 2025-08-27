@@ -101,13 +101,34 @@ u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form = true, parameters =
 @inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds -p.μ * p.Lz * model_fields.u[i, j, 1]
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds -p.μ * p.Lz * model_fields.v[i, j, 1]
 
+# Handling bathymetry drag:
+@inline function u_immersed_drag(i, j, k, grid, clock, fields, p)
+    x = xnode(i, grid, Face())
+    y = ynode(j, grid, Center())
+    B = ridge_function(x, y)
+    return - p.μ * B * fields.u[i, j, k]
+end
+
+@inline function v_immersed_drag(i, j, k, grid, clock, fields, p)
+    x = xnode(i, grid, Center())
+    y = ynode(j, grid, Face())
+    B = ridge_function(x, y)
+    return - p.μ * B * fields.v[i, j, k]
+end
+
 u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = parameters)
 v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = parameters)
 
+u_immersed_drag = FluxBoundaryCondition(u_immersed_drag, discrete_form=true, parameters=parameters)
+v_immersed_drag = FluxBoundaryCondition(v_immersed_drag, discrete_form=true, parameters=parameters)
+
+u_immersed_bc = ImmersedBoundaryCondition(bottom=u_immersed_drag)
+v_immersed_bc = ImmersedBoundaryCondition(bottom=v_immersed_drag)
+
 b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
 
-u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
-v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
+u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc, immersed=u_immersed_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_drag_bc, immersed=v_immersed_bc)
 
 #####
 ##### Coriolis
