@@ -79,7 +79,7 @@ initialize_boundary_mass_flux(velocity, ::Nothing, side) = NamedTuple()
 initialize_boundary_mass_flux(velocity, bc, side) = NamedTuple()
 
 needs_mass_flux_correction(::IOBC) = false
-needs_mass_flux_correction(bc::OBC) = bc.classification.scheme !== nothing
+needs_mass_flux_correction(::OBC) = true
 needs_mass_flux_correction(::Nothing) = false
 needs_mass_flux_correction(bc) = false
 
