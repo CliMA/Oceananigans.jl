@@ -15,8 +15,8 @@ using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 using Oceananigans.Architectures: GPU
-using CUDA
-CUDA.device!(0)
+#using CUDA
+#CUDA.device!(0)
 
 
 const Lx = 1000kilometers # zonal domain length [m]
@@ -26,9 +26,11 @@ const Ly = 2000kilometers # meridional domain length [m]
 architecture = GPU()
 
 # number of grid points
-Nx = 48 #96
-Ny = 96 #192
+Nx = 96  # LowRes: 48
+Ny = 192 # LowRes: 96
 Nz = 32
+
+halo_size = 4 #3 for non-immersed grid
 
 # stretched grid
 k_center = collect(1:Nz)
@@ -39,13 +41,22 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-grid = RectilinearGrid(architecture,
+underlying_grid = RectilinearGrid(architecture,
     topology = (Periodic, Bounded, Bounded),
     size = (Nx, Ny, Nz),
-    halo = (3, 3, 3),
+    halo = (halo_size, halo_size, halo_size),
     x = (0, Lx),
     y = (0, Ly),
     z = (-Lz, 0))
+
+# full ridge function:
+function ridge_function(x, y)
+    zonal = (Lz+100)exp(-(x - Lx/2)^2/(1e6kilometers))
+    gap   = 1 - 0.5(tanh((y - (Ly/6))/1e5) - tanh((y - (Ly/2))/1e5))
+    return zonal * gap - Lz
+end
+
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(ridge_function))
 
 @info "Built a grid: $grid."
 
@@ -153,8 +164,8 @@ vertical_closure_CATKE = CATKEVerticalDiffusivity(minimum_tke=1e-7,
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
     free_surface = SplitExplicitFreeSurface(substeps=500),
-    momentum_advection = Centered(order=2), #WENO(),
-    tracer_advection = Centered(order=2), #WENO(),
+    momentum_advection = WENO(),
+    tracer_advection = WENO(),
     buoyancy = BuoyancyTracer(),
     coriolis = coriolis,
     closure = (horizontal_closure, vertical_closure, vertical_closure_CATKE),
@@ -179,7 +190,7 @@ set!(model, b = bᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 6000days
+stop_time = 1000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -276,7 +287,7 @@ using Plots
 grid = RectilinearGrid(CPU(),
     topology = (Periodic, Bounded, Bounded),
     size = (grid.Nx, grid.Ny, grid.Nz),
-    halo = (3, 3, 3),
+    halo = (halo_size, halo_size, halo_size),
     x = (0, grid.Lx),
     y = (0, grid.Ly),
     z = z_faces)
