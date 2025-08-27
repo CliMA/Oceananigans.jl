@@ -24,7 +24,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = SplitExplicitFreeSurface(grid; substeps = 10, gravitational_acceleration = 100))
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=10, gravitational_acceleration=100))
 
 g = model.free_surface.gravitational_acceleration
 
@@ -71,7 +71,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 run!(simulation)
 

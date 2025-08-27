@@ -7,6 +7,7 @@ using Statistics
 using Printf
 using LinearAlgebra, SparseArrays
 using Oceananigans.Solvers: constructors, unpack_constructors
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 using Oceananigans.Grids
 using GLMakie
 using JLD2
@@ -14,7 +15,10 @@ using JLD2
 function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:QuasiAdamsBashforth2)
 
     model = HydrostaticFreeSurfaceModel(; grid,
+                                          momentum_advection = nothing,
                                           coriolis=FPlane(f = 1e-4),
+                                          tracers = :c,
+                                          buoyancy = nothing,
                                           timestepper,
                                           free_surface)
 
@@ -25,13 +29,28 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     x₀ = grid.Lx / 4 # gaussian center
 
     vᴳ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+    Vᴳ(x, y) = grid.Lz * vᴳ(x, y, 1) 
 
     g  = model.free_surface.gravitational_acceleration
     η₀ = model.coriolis.f * U * L / g # geostrophic free surface amplitude
 
     ηᴳ(x, y, z) = 2 * η₀ * gaussian(x - x₀, L)
 
-    set!(model, v=vᴳ, η=ηᴳ)
+    set!(model, v=vᴳ, η=ηᴳ, c=1)
+    parent(model.grid.z.ηⁿ)   .=  parent(model.free_surface.η)
+    parent(model.grid.z.σᶜᶜⁿ) .= (parent(model.free_surface.η) .+ grid.Lz) ./ grid.Lz
+    parent(model.grid.z.σᶜᶜ⁻) .= (parent(model.free_surface.η) .+ grid.Lz) ./ grid.Lz
+    
+    if free_surface isa SplitExplicitFreeSurface
+        set!(model.free_surface.barotropic_velocities.V, Vᴳ)
+    end
+    
+    for i in 0:grid.Nx+1, j in 0:grid.Ny+1
+        z = model.grid.z
+        Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, j, grid, z.ηⁿ)
+    end
+
+    Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.η)
 
     stop_iteration=1000
 
@@ -42,10 +61,16 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
     uarr = Vector{Field}(undef, stop_iteration+1)
+    carr = Vector{Field}(undef, stop_iteration+1)
+    warr = [zeros(grid.Nx) for _ in 1:stop_iteration+1]
+    garr = [zeros(grid.Nx) for _ in 1:stop_iteration+1]
 
     save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.η)
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
     save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
+    save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
+    save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 2, 2]
+    save_g(sim) = garr[sim.model.clock.iteration+1] .= sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1]
 
     function progress_message(sim) 
         H = sum(sim.model.free_surface.η)
@@ -54,15 +79,19 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
     end
 
+    if grid isa MutableGridOfSomeKind
+        simulation.callbacks[:save_g] = Callback(save_g, IterationInterval(1))
+    end
 
     simulation.callbacks[:save_η]   = Callback(save_η, IterationInterval(1))
     simulation.callbacks[:save_v]   = Callback(save_v, IterationInterval(1))
     simulation.callbacks[:save_u]   = Callback(save_u, IterationInterval(1))
+    simulation.callbacks[:save_c]   = Callback(save_c, IterationInterval(1))
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
     run!(simulation)
 
-    return (η=ηarr, v=varr, u=uarr)
+    return (η=ηarr, v=varr, u=uarr, c=carr, w=warr, g=garr), model
 end
 
 Lh = 100kilometers
@@ -71,29 +100,35 @@ Lz = 400meters
 grid = RectilinearGrid(size = (80, 3, 1),
                        halo = (2, 2, 2),
                        x = (0, Lh), y = (0, Lh), 
-                       z = (-Lz, 0),  #MutableVerticalDiscretization((-Lz, 0)),
+                       z = MutableVerticalDiscretization((-Lz, 0)),
                        topology = (Periodic, Periodic, Bounded))
-
-bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters
-
-# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 explicit_free_surface = ExplicitFreeSurface()
 implicit_free_surface = ImplicitFreeSurface()
-splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=60)
+splitexplicit_free_surface = SplitExplicitFreeSurface(grid, substeps=120)
 
-seab2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid)
-serk3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid, :SplitRungeKutta3)
-# efab2 = geostrophic_adjustment_simulation(explicit_free_surface, grid)
-# efrk3 = geostrophic_adjustment_simulation(explicit_free_surface, grid, :SplitRungeKutta3)
-imab2 = geostrophic_adjustment_simulation(implicit_free_surface, grid)
+seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid)
+serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, grid, :SplitRungeKutta3)
+# efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, grid)
+# efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, grid, :SplitRungeKutta3)
+# imab2 = geostrophic_adjustment_simulation(implicit_free_surface, grid)
 # imrk3 = geostrophic_adjustment_simulation(implicit_free_surface, grid, :SplitRungeKutta3)
+
+import Oceananigans.Fields: interior
+interior(a::Array, idx...) = a
 
 function plot_variable(sims, var; 
                        filename="test.mp4",
-                       labels=nothing)
+                       labels=nothing,
+                       Nt=length(sims[1][var]))
     fig = Figure()
     ax  = Axis(fig[1, 1])
+
+    ylims = (0, 0)
+    for i in length(sims[1][var])
+        ylims = (min(ylims[1], minimum(interior(sims[1][var][i], :, 1, 1))),
+                 max(ylims[2], maximum(interior(sims[1][var][i], :, 1, 1))))
+    end
 
     iter = Observable(1)
     for (is, sim) in enumerate(sims)
@@ -107,8 +142,67 @@ function plot_variable(sims, var;
     end
 
     axislegend(ax; position=:rt)
+    ylims!(ax, ylims)
 
-    Nt = length(sims[1][var])
+    record(fig, filename, 1:Nt, framerate=15) do i
+        @info "Frame $i of $Nt"
+        iter[] = i
+    end
+end
+
+function plot_variable2(sims, var1, var2; 
+                       filename="test.mp4",
+                       labels=nothing,
+                        Nt = length(sims[1][var1]))
+
+    fig = Figure()
+    ax  = Axis(fig[1, 1])
+
+    iter = Observable(1)
+    for (is, sim) in enumerate(sims)
+        vi = @lift(interior(sim[var1][$iter], :, 1, 1))
+        v2 = @lift(interior(sim[var2][$iter], :, 1, 1))
+        if labels === nothing
+            label = "sim $is"
+        else
+            label = labels[is]
+        end
+        lines!(ax, vi; label)
+        lines!(ax, v2; label, linestyle = :dash)
+    end
+
+    axislegend(ax; position=:rt)
+
+    record(fig, filename, 1:Nt, framerate=15) do i
+        @info "Frame $i of $Nt"
+        iter[] = i
+    end
+end
+
+function plot_variable3(sims, var1, var2, var3; 
+                       filename="test.mp4",
+                       labels=nothing)
+    fig = Figure()
+    ax  = Axis(fig[1, 1])
+
+    iter = Observable(1)
+    for (is, sim) in enumerate(sims)
+        vi = @lift(interior(sim[var1][$iter], :, 1, 1))
+        v2 = @lift(interior(sim[var2][$iter], :, 1, 1))
+        v3 = @lift(interior(sim[var3][$iter], :, 1, 1))
+        if labels === nothing
+            label = "sim $is"
+        else
+            label = labels[is]
+        end
+        lines!(ax, vi; label)
+        lines!(ax, v2; label, linestyle = :dash)
+        lines!(ax, v3; label, linestyle = :dot)
+    end
+
+    axislegend(ax; position=:rt)
+
+    Nt = length(sims[1][var1])
 
     record(fig, filename, 1:Nt, framerate=15) do i
         @info "Frame $i of $Nt"
