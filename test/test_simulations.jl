@@ -259,6 +259,20 @@ function finalize!(infi::InitializedFinalized, sim)
     return nothing
 end
 
+function test_kernel_limit_bug(arch)
+    N = 8
+    underlying_grid = RectilinearGrid(arch, topology = (Bounded, Bounded, Bounded), size = (N, N, N), extent = (1, 1, 1))
+
+    immersed_bottom = GridFittedBottom(-1/2)
+    model = NonhydrostaticModel(grid = ImmersedBoundaryGrid(underlying_grid, immersed_bottom))
+    simulation = Simulation(model; Δt = 1, stop_time = 1)
+
+    wizard = TimeStepWizard(cfl=0.2)
+    wizard(simulation)
+
+    return true
+end
+
 @testset "Simulations" begin
     for arch in archs
         @info "Testing simulations [$(typeof(arch))]..."
@@ -303,5 +317,7 @@ end
         run_simulation_date_tests(arch, 0.0, 1.0, 0.3)
         run_simulation_date_tests(arch, DateTime(2020), DateTime(2021), 100days)
         run_simulation_date_tests(arch, TimeDate(2020), TimeDate(2021), 100days)
+
+        @test test_kernel_limit_bug(arch)
     end
 end
