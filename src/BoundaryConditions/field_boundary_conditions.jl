@@ -88,7 +88,7 @@ window_boundary_conditions(::Base.OneTo, left, right) = nothing, nothing
 window_boundary_conditions(::Colon,      left, right) = left, right
 
 # The only thing we need
-Adapt.adapt_structure(to, fbcs::FieldBoundaryConditions) = (kernels = bcs.kernels, Adapt.adapt(to, fbcs.ordered_bcs))
+Adapt.adapt_structure(to, fbcs::FieldBoundaryConditions) = (kernels = bcs.kernels, ordered_bcs = Adapt.adapt(to, fbcs.ordered_bcs))
 
 on_architecture(arch, fbcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(on_architecture(arch, fbcs.west),
