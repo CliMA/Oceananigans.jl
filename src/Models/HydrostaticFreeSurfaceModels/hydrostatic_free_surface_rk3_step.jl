@@ -148,6 +148,7 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         Ψⁿ = model_fields[name]
         if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
             launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+            fill_halo_regions!(Ψ⁻)
         else # Velocities and free surface are stored without the grid scaling
             parent(Ψ⁻) .= parent(Ψⁿ)
         end

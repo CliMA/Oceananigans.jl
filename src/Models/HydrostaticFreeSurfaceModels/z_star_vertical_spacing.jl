@@ -1,10 +1,38 @@
 using Oceananigans.Grids
 using Oceananigans.Grids: halo_size, topology, AbstractGrid
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+using Oceananigans.BoundaryConditions
 
 #####
 ##### Mutable-specific vertical spacings update
 #####
+
+function fill_grid_halos!(var, grid, loc)
+    bcs = FieldBoundaryConditions(grid, loc)
+    fill_halo_regions!(var, bcs, (:, :, :), loc, grid)
+    return nothing
+end
+
+function fill_grid_halo_regions!(grid::MutableGridOfSomeKind, ztype::ZStarCoordinate; kw...)
+    lcc = (Center(), Center(), Nothing())
+    lfc = (Face(),   Center(), Nothing())
+    lcf = (Center(), Face(),   Nothing())
+    lff = (Face(),   Face(),   Nothing())
+
+    bcscc = FieldBoundaryConditions(grid, lcc)
+    bcsfc = FieldBoundaryConditions(grid, lfc)
+    bcscf = FieldBoundaryConditions(grid, lcf)
+    bcsff = FieldBoundaryConditions(grid, lff)
+
+    fill_halo_regions!(grid.z.σᶜᶜⁿ, bcscc, (:, :, :), lcc, grid; kw...)
+    fill_halo_regions!(grid.z.σᶠᶜⁿ, bcsfc, (:, :, :), lfc, grid; kw...)
+    fill_halo_regions!(grid.z.σᶜᶠⁿ, bcscf, (:, :, :), lcf, grid; kw...)
+    fill_halo_regions!(grid.z.σᶠᶠⁿ, bcsff, (:, :, :), lff, grid; kw...)
+    fill_halo_regions!(grid.z.σᶜᶜ⁻, bcscc, (:, :, :), lcc, grid; kw...)
+    fill_halo_regions!(grid.z.∂t_σ, bcscc, (:, :, :), lcc, grid; kw...)
+
+    return nothing
+end
 
 # The easy case
 barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
@@ -14,21 +42,6 @@ barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback
 ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
-
-function zstar_params(grid::AbstractGrid)
-
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    Tx, Ty, _ = topology(grid)
-
-    xrange = params_range(Hx, Nx, Tx)
-    yrange = params_range(Hy, Ny, Ty)
-
-    return KernelParameters(xrange, yrange)
-end
-
-params_range(H, N, ::Type{Flat}) = 1:1
-params_range(H, N, T) = -H+2:N+H-1
 
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
 
@@ -44,10 +57,13 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordina
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
 
-    params = zstar_params(grid)
+    launch!(architecture(grid), grid, :xy, _ab2_update_grid_thickness!,  ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
 
-    launch!(architecture(grid), grid, params, _ab2_update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
+    fill_grid_halos!(ηⁿ, grid, (Center(), Center(), Nothing()))
+
+    launch!(architecture(grid), grid, :xy, _update_grid_scaling!, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, grid, ηⁿ)
+
+    fill_grid_halo_regions!(grid, ztype)
 
     return nothing
 end
@@ -56,7 +72,7 @@ end
 # Note!!! This η is different than the free surface coming from the barotropic step!!
 # This η is the one used to compute the vertical spacing.
 # TODO: The two different free surfaces need to be reconciled.
-@kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
+@kernel function _ab2_update_grid_thickness!(ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -67,15 +83,12 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
 
-    @inbounds ηⁿ[i, j, 1] -= Δt * (C₁ * δh_U - C₂ * Gⁿ[i, j, 1])
-    @inbounds Gⁿ[i, j, 1] = δh_U
-
-    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+    @inbounds ηⁿ[i, j, 1] -= Δt * (C₁ * δh_U + C₂ * Gⁿ[i, j, 1])
+    @inbounds Gⁿ[i, j, 1] = - δh_U
 end
 
 rk3_substep_grid!(grid, model, vertical_coordinate, Δt, γⁿ, ζⁿ) = nothing
-rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, ::Nothing, ::Nothing) =
-    rk3_substep_grid!(grid, model, ztype, Δt, one(grid), zero(grid))
+rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, ::Nothing, ::Nothing) = rk3_substep_grid!(grid, model, ztype, Δt, one(grid), zero(grid))
 
 function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, γⁿ, ζⁿ)
 
@@ -90,10 +103,14 @@ function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoord
 
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
-    params = zstar_params(grid)
 
-    launch!(architecture(grid), grid, params, _rk3_update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
+    launch!(architecture(grid), grid, :xy, _rk3_update_grid_thickness!, ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
+
+    fill_grid_halos!(ηⁿ, grid, (Center(), Center(), Nothing()))
+
+    launch!(architecture(grid), grid, :xy, _update_grid_scaling!, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, grid, ηⁿ)
+
+    fill_grid_halo_regions!(grid, ztype)
 
     return nothing
 end
@@ -102,7 +119,7 @@ end
 # Note!!! This η is different than the free surface coming from the barotropic step!!
 # This η is the one used to compute the vertical spacing.
 # TODO: The two different free surfaces need to be reconciled.
-@kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
+@kernel function _rk3_update_grid_thickness!(ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -111,11 +128,10 @@ end
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
 
     @inbounds ηⁿ[i, j, 1] = ζⁿ * ηⁿ⁻¹[i, j, 1] + γⁿ * (ηⁿ[i, j, 1] - Δt * δh_U)
-
-    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
 
-@inline function update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+@kernel function _update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, grid, ηⁿ)
+    i, j = @index(Global, NTuple)
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
@@ -153,11 +169,11 @@ function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZS
     u, v, _ = model.velocities
     ∂t_σ  = grid.z.∂t_σ
 
-    params = zstar_params(grid)
-
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, params, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    launch!(architecture(grid), grid, :xy, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+
+    fill_grid_halos!(∂t_σ, grid, (Center(), Center(), Nothing()))
 
     return nothing
 end
