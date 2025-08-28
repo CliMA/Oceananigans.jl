@@ -107,9 +107,7 @@ Grid topology for dimensions that are connected to other models or domains only 
 struct RightConnected <: AbstractTopology end
 
 topology_str(T) = string(T)
-topology_str(::Type{RightConnected}) = "RightConnected"
-topology_str(::Type{LeftConnected}) = "LeftConnected"
-topology_str(::Type{FullyConnected}) = "FullyConnected"
+topology_str(::Type{F}) where F = string(F)
 
 #####
 ##### Directions (for tilted domains)
