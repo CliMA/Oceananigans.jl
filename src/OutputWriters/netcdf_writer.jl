@@ -32,4 +32,4 @@ end
 
 function write_grid_reconstruction_data! end
 function materialize_from_netcdf end
-function reconstruct_grid_from_netcdf end
+function reconstruct_grid end
