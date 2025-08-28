@@ -38,12 +38,22 @@ function permute_boundary_conditions(bcs)
     end
 
     perm  = sortperm(bcs_array, lt=fill_first)
-    sides = sides[perm]
+    sides = tuple(sides[perm]...)
 
     boundary_conditions = Tuple(extract_bc(bcs, side) for side in sides)
 
     return sides, boundary_conditions
 end
+
+side_name(::West) = :west
+side_name(::East) = :east
+side_name(::South) = :south
+side_name(::North) = :north
+side_name(::Bottom) = :bottom
+side_name(::Top) = :top
+side_name(::WestAndEast) = :west_and_east
+side_name(::SouthAndNorth) = :south_and_north
+side_name(::BottomAndTop) = :bottom_and_top
 
 # Split direction in two distinct fill_halo! events in case of a communication boundary condition
 # (distributed DCBC), paired with a Flux, Value or Gradient boundary condition

@@ -40,9 +40,9 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 
     arch = architecture(grid)
     sides, ordered_bcs = permute_boundary_conditions(bcs)
-    sides = tuple(sides...)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
+    names = Tuple(side_name(side) for side in sides)
     kernels! = []
 
     for task in 1:length(sides)
@@ -58,7 +58,7 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 
     kernels! = tuple(kernels!...)
 
-    return kernels!, ordered_bcs
+    return NamedTuple{names}(kernels!), NamedTuple{names}(ordered_bcs)
 end
 
 @inline get_boundary_kernels(bcs::NoKernelFBC, data, grid, loc, indices) = fill_halo_kernels(bcs, data, grid, loc, indices)
