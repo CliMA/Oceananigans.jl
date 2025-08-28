@@ -220,6 +220,44 @@ end
     kwargs...
     ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
 
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+    @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}}),
+    seen,
+    mode::Reactant.TraceMode,
+    @nospecialize(track_numbers::Type),
+    @nospecialize(sharding),
+    @nospecialize(runtime)
+) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} 
+    TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
+    TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
+    TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
+    CZ2 = Reactant.traced_type_inner(CZ, seen, mode, track_numbers, sharding, runtime)
+    FX2 = Reactant.traced_type_inner(FX, seen, mode, track_numbers, sharding, runtime)
+    FY2 = Reactant.traced_type_inner(FY, seen, mode, track_numbers, sharding, runtime)
+    VX2 = Reactant.traced_type_inner(VX, seen, mode, track_numbers, sharding, runtime)
+    VY2 = Reactant.traced_type_inner(VY, seen, mode, track_numbers, sharding, runtime)
+    I2 = Reactant.traced_type_inner(I, seen, mode, track_numbers, sharding, runtime) # Does RectilinearGrid need I?
+
+    FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
+
+    for NF in (FX2, FY2, VX2, VY2)
+	if NF === Nothing
+	   continue
+	end
+	FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
+    end
+
+    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch, I}
+    return res
+end
+
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.Grids.RectilinearGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
 struct Fix1v2{F,T}
     f::F
     t::T

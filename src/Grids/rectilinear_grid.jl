@@ -1,11 +1,11 @@
-struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, I} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
-    Nx :: Int
-    Ny :: Int
-    Nz :: Int
-    Hx :: Int
-    Hy :: Int
-    Hz :: Int
+    Nx :: I
+    Ny :: I
+    Nz :: I
+    Hx :: I
+    Hy :: I
+    Hz :: I
     Lx :: FT
     Ly :: FT
     Lz :: FT
@@ -22,20 +22,20 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnde
     z     :: CZ
 end
 
-function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
+function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx::I, Ny::I, Nz::I, Hx::I, Hy::I, Hz::I,
                                      Lx :: FT, Ly :: FT, Lz :: FT,
                                      Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
                                       xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
                                      Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
                                       yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
                                       z    :: CZ) where {Arch, FT, TX, TY, TZ,
-                                                         FX, VX, FY, VY, CZ}
+                                                         FX, VX, FY, VY, CZ, I}
 
     return RectilinearGrid{FT, TX, TY, TZ,
-                           CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
-                                                     Hx, Hy, Hz, Lx, Ly, Lz,
-                                                     Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                     Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+                           CZ, FX, FY, VX, VY, Arch, I}(arch, Nx, Ny, Nz,
+                                                        Hx, Hy, Hz, Lx, Ly, Lz,
+                                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                        Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
 
 const RG = RectilinearGrid
