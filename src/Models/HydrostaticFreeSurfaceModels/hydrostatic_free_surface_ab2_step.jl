@@ -110,7 +110,7 @@ end
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
-@kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
+@kernel function _ab2_step_tracer_field!(c, grid, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
@@ -121,7 +121,7 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
-        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
+        ∂t_σc = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
+        c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * ∂t_σc) / σᶜᶜⁿ
     end
 end
