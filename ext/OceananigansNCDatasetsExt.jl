@@ -675,6 +675,7 @@ convert_for_netcdf(x::Number) = x
 convert_for_netcdf(x::Bool) = string(x)
 convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
 convert_for_netcdf(x) = string(x)
+convert_for_netcdf(::GPU) = "GPU()"
 
 materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
 materialize_from_netcdf(x::Number) = x
