@@ -8,11 +8,11 @@ using Printf
 
 z_faces = MutableVerticalDiscretization((-500, 0))
 
-grid = RectilinearGrid(size = (128, 5),
+grid = RectilinearGrid(size = (128, 100),
                           x = (0, 64kilometers),
                           z = z_faces,
                        halo = (6, 6),
-                   topology = (Bounded, Flat, Bounded))
+                   topology = (Periodic, Flat, Bounded))
 
 # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
 
@@ -22,41 +22,50 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing,
                                     tracers = (:b, :c),
-                                timestepper = :SplitRungeKutta3,
+                                # timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=10, gravitational_acceleration=100))
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=10)) # 
 
 g = model.free_surface.gravitational_acceleration
-
 bᵢ(x, z) = x < 32kilometers ? 0.06 : 0.01
 
 set!(model, b = bᵢ, c = 1)
 
-Δt = 10
+gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
+wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
+
+@show Δt = 0.1 * wave_propagation_time_scale
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 17hours)
+simulation = Simulation(model; Δt, stop_time = 20hours) #, stop_iteration=1000000) 
 
 Δz = zspacings(grid, Center(), Center(), Center())
 dz = Field(Δz)
+V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
 ∫b_init = sum(model.tracers.b * Δz) / sum(Δz)
 
 field_outputs = merge(model.velocities, model.tracers, (; Δz))
 
 simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
                                                          overwrite_existing = true,
-                                                         schedule = IterationInterval(100),
+                                                         schedule = IterationInterval(1000),
                                                          filename = "zstar_model")
 
 et1 = []
 et2 = []
+bav = []
+cav = []
+vav = []
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
     compute!(dz)
     ∫b = sum(model.tracers.b * dz) / sum(dz)
+    push!(bav, ∫b)
+    push!(cav, sum(model.tracers.c * dz) / sum(dz))
+    push!(vav, sum(V))
 
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
@@ -71,7 +80,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
 run!(simulation)
 
@@ -88,5 +97,6 @@ for t in 1:length(b.times)
   push!(drift, sum(dz[t] * b[t]) /  sum(dz[t]) - init)
 end
 
-using CairoMakie
+using GLMakie
+GLMakie.activate!()
 lines(drift)
