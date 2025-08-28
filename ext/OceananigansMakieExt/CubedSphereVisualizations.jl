@@ -8,8 +8,9 @@ using Oceananigans.Utils: getregion
 
 using ..Imaginocean
 
-export specify_colorrange, specify_colorrange_time_series, panelwise_visualization, geo_heatmap_visualization,
-    panelwise_visualization_animation, geo_heatmap_visualization_animation
+export specify_cubed_sphere_field_colorrange, specify_cubed_sphere_field_time_series_colorrange,
+    panelwise_visualization, geo_heatmap_visualization, panelwise_visualization_animation,
+    geo_heatmap_visualization_animation
 
 function compute_size_metrics(grid::ConformalCubedSphereGridOfSomeKind, field::CubedSphereField, ssh::Bool,
                               consider_all_levels::Bool, levels::UnitRange{Int}, read_parent_field_data::Bool)
@@ -47,13 +48,13 @@ function compute_vertical_index(grid::ConformalCubedSphereGridOfSomeKind, field:
     return k
 end
 
-function extract_field_time_series_array(grid, field_time_series;
-                                         with_halos::Bool = false,
-                                         ssh::Bool = false,
-                                         consider_all_levels::Bool = true,
-                                         levels::UnitRange{Int} = 1:1,
-                                         read_parent_field_data::Bool = false,
-                                         Δ::Int = 1)
+function extract_cubed_sphere_field_time_series_array(grid, field_time_series;
+                                                      with_halos::Bool = false,
+                                                      ssh::Bool = false,
+                                                      consider_all_levels::Bool = true,
+                                                      levels::UnitRange{Int} = 1:1,
+                                                      read_parent_field_data::Bool = false,
+                                                      Δ::Int = 1)
     Nx, Ny, Nz, hx, hy, hz, consider_all_levels, levels = (
         compute_size_metrics(grid, field_time_series[1], ssh, consider_all_levels, levels, read_parent_field_data))
     Hx, Hy, Hz = halo_size(grid)
@@ -121,13 +122,13 @@ function interpolate_cubed_sphere_field_to_cell_centers(grid, field, field_locat
     return interpolated_field
 end
 
-function specify_colorrange(grid, field;
-                            k::Int = 1,
-                            ssh::Bool = false,
-                            consider_all_levels::Bool = true,
-                            levels::UnitRange{Int} = k:k,
-                            read_parent_field_data::Bool = false,
-                            use_symmetric_colorrange::Bool = true)
+function specify_cubed_sphere_field_colorrange(grid, field;
+                                               k::Int = 1,
+                                               ssh::Bool = false,
+                                               consider_all_levels::Bool = true,
+                                               levels::UnitRange{Int} = k:k,
+                                               read_parent_field_data::Bool = false,
+                                               use_symmetric_colorrange::Bool = true)
     Nx, Ny, Nz, hx, hy, hz, consider_all_levels, levels = compute_size_metrics(
         grid, field, ssh, consider_all_levels, levels, read_parent_field_data)
     
@@ -149,16 +150,16 @@ function specify_colorrange(grid, field;
     return colorrange
 end
 
-function specify_colorrange_time_series(grid, field_time_series;
-                                        ssh::Bool = false,
-                                        consider_all_levels::Bool = true,
-                                        levels::UnitRange{Int} = 1:1,
-                                        read_parent_field_data::Bool = false,
-                                        Δ::Int = 1,
-                                        use_symmetric_colorrange::Bool = true)
+function specify_cubed_sphere_field_time_series_colorrange(grid, field_time_series;
+                                                           ssh::Bool = false,
+                                                           consider_all_levels::Bool = true,
+                                                           levels::UnitRange{Int} = 1:1,
+                                                           read_parent_field_data::Bool = false,
+                                                           Δ::Int = 1,
+                                                           use_symmetric_colorrange::Bool = true)
     field_time_series_array = (
-        extract_field_time_series_array(grid, field_time_series;
-                                        ssh, consider_all_levels, levels, read_parent_field_data, Δ))
+        extract_cubed_sphere_field_time_series_array(grid, field_time_series;
+                                                     ssh, consider_all_levels, levels, read_parent_field_data, Δ))
 
     field_maximum = maximum(field_time_series_array)
     field_minimum = minimum(field_time_series_array)
@@ -190,9 +191,9 @@ function panelwise_visualization(grid, field;
                    titlegap = 15, titlefont = :bold, xlabel = "Local x direction", ylabel = "Local y direction")
 
     if isnothing(colorrange)
-        colorrange = specify_colorrange(grid, field;
-                                        k, ssh, consider_all_levels, levels, read_parent_field_data,
-                                        use_symmetric_colorrange)
+        colorrange = specify_cubed_sphere_field_colorrange(grid, field;
+                                                           k, ssh, consider_all_levels, levels, read_parent_field_data,
+                                                           use_symmetric_colorrange)
     end
 
     colormap = something(colormap, use_symmetric_colorrange ? :balance : :amp)
@@ -266,9 +267,9 @@ function geo_heatmap_visualization(grid, field, field_location, title;
                                                                         read_parent_field_data)
 
     if isnothing(colorrange)
-        colorrange = specify_colorrange(grid, interpolated_field;
-                                        k, ssh, consider_all_levels, levels, read_parent_field_data,
-                                        use_symmetric_colorrange)
+        colorrange = specify_cubed_sphere_field_colorrange(grid, interpolated_field;
+                                                           k, ssh, consider_all_levels, levels, read_parent_field_data,
+                                                           use_symmetric_colorrange)
     end
 
     colormap = something(colormap, use_symmetric_colorrange ? :balance : :amp)
@@ -320,9 +321,9 @@ function panelwise_visualization_animation_Makie(grid, field_time_series;
                    titlegap = 15, titlefont = :bold, xlabel = "Local x direction", ylabel = "Local y direction")
 
     if isnothing(colorrange)
-        colorrange = specify_colorrange_time_series(grid, field_time_series;
-                                                    ssh, consider_all_levels, levels, read_parent_field_data, Δ,
-                                                    use_symmetric_colorrange)
+        colorrange = specify_cubed_sphere_field_time_series_colorrange(
+            grid, field_time_series;
+            ssh, consider_all_levels, levels, read_parent_field_data, Δ, use_symmetric_colorrange)
     end
 
     colormap = something(colormap, use_symmetric_colorrange ? :balance : :amp)
@@ -382,9 +383,9 @@ function panelwise_visualization_animation_frames(grid, field_time_series;
                    titlegap = 15, titlefont = :bold, xlabel = "Local x direction", ylabel = "Local y direction")
 
     if isnothing(colorrange)
-        colorrange = specify_colorrange_time_series(grid, field_time_series;
-                                                    ssh, consider_all_levels, levels, read_parent_field_data, Δ,
-                                                    use_symmetric_colorrange)
+        colorrange = specify_cubed_sphere_field_time_series_colorrange(
+            grid, field_time_series;
+            ssh, consider_all_levels, levels, read_parent_field_data, Δ, use_symmetric_colorrange)
     end
 
     colormap = something(colormap, use_symmetric_colorrange ? :balance : :amp)
@@ -477,9 +478,9 @@ function geo_heatmap_visualization_animation_Makie(grid, field_time_series, fiel
     prettytime = @lift prettytimes[$n]
 
     if isnothing(colorrange)
-        colorrange = specify_colorrange_time_series(grid, field_time_series;
-                                                    ssh, consider_all_levels, levels, read_parent_field_data, Δ,
-                                                    use_symmetric_colorrange)
+        colorrange = specify_cubed_sphere_field_time_series_colorrange(
+            grid, field_time_series;
+            ssh, consider_all_levels, levels, read_parent_field_data, Δ, use_symmetric_colorrange)
     end
 
     colormap = something(colormap, use_symmetric_colorrange ? :balance : :amp)
@@ -550,9 +551,9 @@ function geo_heatmap_visualization_animation_frames(grid, field_time_series, fie
                                                     filename::AbstractString = "filename",
                                                     format::AbstractString = ".png")
     if isnothing(colorrange)
-        colorrange = specify_colorrange_time_series(grid, field_time_series;
-                                                    ssh, consider_all_levels, levels, read_parent_field_data, Δ,
-                                                    use_symmetric_colorrange)
+        colorrange = specify_cubed_sphere_field_time_series_colorrange(
+            grid, field_time_series;
+            ssh, consider_all_levels, levels, read_parent_field_data, Δ, use_symmetric_colorrange)
     end
 
     colormap = something(colormap, use_symmetric_colorrange ? :balance : :amp)
