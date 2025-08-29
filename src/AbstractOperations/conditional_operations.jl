@@ -151,6 +151,11 @@ end
     return ifelse(conditioned, value, co.mask)
 end
 
+# Fallbacks for reductions
+for reduction! in (:sum!, :maximum!, :minimum!, :all!, :any!, :prod!)
+    @eval Base.$(reduction!)(f, int_r, co::NoConditionCO, kwargs...) = Base.$(reduction!)(f, int_r, co.operand; kwargs...)
+end
+
 # Conditions: general, nothing, array
 @inline evaluate_condition(condition, i, j, k, grid, args...) = condition(i, j, k, grid, args...)
 @inline evaluate_condition(::Nothing, i, j, k, grid, args...) = true
@@ -198,6 +203,7 @@ end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::NoConditionCO, args...) = conditional_length(c.operand, args...)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)
