@@ -462,11 +462,14 @@ end
 
 mp4(anim2, "abernathey_channel_horizontal_velocities.mp4", fps = 8) #hide
 
+@show typeof(model.tracers.e)
+@show typeof(model.free_surface.η)
 
 @show length(η_timeseries.times)
 @show length(e_timeseries.times)
 @show length(w_timeseries.times)
 
+i = length(η_timeseries.times)
 #anim3 = @animate for i in 1:1 #length(η_timeseries.times)
 e = e_timeseries[i]
 w = w_timeseries[i]
@@ -514,7 +517,7 @@ w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
 
 @show "Plotted w"
 
-η_xy_plot = contourf(xc * 1e-3, yc * 1e-3, η_xy,
+η_xy_plot = contourf(xw * 1e-3, yw * 1e-3, η_xy',
     xlabel = "x (km)",
     ylabel = "y (km)",
     aspectratio = :equal,
@@ -527,7 +530,7 @@ w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
 
 @show "Plotted η"
 
-e_xy_plot = contourf(xc * 1e-3, yc * 1e-3, e_xy,
+e_xy_plot = contourf(xc * 1e-3, yc * 1e-3, e_xy',
     xlabel = "x (km)",
     ylabel = "y (km)",
     aspectratio = :equal,
@@ -547,7 +550,7 @@ e_xy_title = "e(x, y)"
 layout = @layout [upper_slice_plot{0.2h}
     Plots.grid(1, 2)]
 
-plot(w_xz_plot, η_xy_plot, e_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
+plot(w_xz_plot, η_xy_plot, η_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
 
 savefig("abernathey_channel_sshe.png")
 
