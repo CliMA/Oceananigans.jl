@@ -31,26 +31,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
-    @apply_regionally mask_immersed_model_fields!(model, grid)
-
-    # Update possible FieldTimeSeries used in the model
-    @apply_regionally update_model_field_time_series!(model, model.clock)
-
-    # Update the boundary conditions
-    @apply_regionally update_boundary_conditions!(fields(model), model)
-
-    tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model); async=true)
-
     @apply_regionally compute_auxiliaries!(model)
-
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
-
-    [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
-
-    update_biogeochemical_state!(model.biogeochemistry, model)
-
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end
@@ -83,15 +64,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     P    = model.pressure.pHY′
     arch = architecture(grid)
 
-    # Update the vertical velocity to comply with the barotropic correction step
-    update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
-
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
-
-    # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
 
     return nothing
 end
