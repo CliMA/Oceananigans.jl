@@ -4,15 +4,19 @@ using NCDatasets
 
 using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
+using OrderedCollections: OrderedDict
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
+using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
-using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
+using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
+                          AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
+                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
+                          constructor_arguments
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -37,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
 
 const c = Center()
 const f = Face()
@@ -618,7 +622,7 @@ end
 ##### Gather grid reconstruction attributes (also used for FieldTimeSeries support)
 #####
 
-function grid_reconstruction_attributes(grid::RectilinearGrid)
+function grid_attributes(grid::RectilinearGrid)
     TX, TY, TZ = topology(grid)
 
     dims = Dict()
@@ -635,31 +639,10 @@ function grid_reconstruction_attributes(grid::RectilinearGrid)
                  "Hy" => grid.Hy,
                  "Hz" => grid.Hz)
 
-    if TX == Flat
-        attrs["x_spacing"] = "flat"
-    else
-        attrs["x_spacing"] = grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular"
-        dims["x_f"] = grid.xᶠᵃᵃ[1:grid.Nx+1]
-    end
-
-    if TY == Flat
-        attrs["y_spacing"] = "flat"
-    else
-        attrs["y_spacing"] = grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular"
-        dims["y_f"] = grid.yᵃᶠᵃ[1:grid.Ny+1]
-    end
-
-    if TZ == Flat
-        attrs["z_spacing"] = "flat"
-    else
-        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
-        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
-    end
-
     return attrs, dims
 end
 
-function grid_reconstruction_attributes(grid::LatitudeLongitudeGrid)
+function grid_attributes(grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
 
     dims = Dict()
@@ -676,50 +659,79 @@ function grid_reconstruction_attributes(grid::LatitudeLongitudeGrid)
                  "Hy" => grid.Hy,
                  "Hz" => grid.Hz)
 
-    if TX == Flat
-        attrs["λ_spacing"] = "flat"
-    else
-        attrs["λ_spacing"] = grid.Δλᶠᵃᵃ isa Number ? "regular" : "irregular"
-        dims["λ_f"] = grid.λᶠᵃᵃ[1:grid.Nx+1]
-    end
-
-    if TY == Flat
-        attrs["φ_spacing"] = "flat"
-    else
-        attrs["φ_spacing"] = grid.Δφᵃᶠᵃ isa Number ? "regular" : "irregular"
-        dims["φ_f"] = grid.φᵃᶠᵃ[1:grid.Ny+1]
-    end
-
-    if TZ == Flat
-        attrs["z_spacing"] = "flat"
-    else
-        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
-        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
-    end
-
     return attrs, dims
 end
 
-function grid_reconstruction_attributes(ibg::ImmersedBoundaryGrid)
-    attrs, dims = grid_reconstruction_attributes(ibg.underlying_grid)
-
+function grid_attributes(ibg::ImmersedBoundaryGrid)
+    attrs, dims = grid_attributes(ibg.underlying_grid)
     immersed_attrs = Dict("immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary))))
-
     attrs = merge(attrs, immersed_attrs)
-
     return attrs, dims
 end
 
-function write_grid_reconstruction_metadata!(ds, grid, indices, array_type, deflatelevel)
-    grid_attrs, grid_dims = grid_reconstruction_attributes(grid)
+# Using OrderedDict to preserve order of keys. Important for positional arguments.
+convert_for_netcdf(dict::AbstractDict) = OrderedDict{Symbol, Any}(key => convert_for_netcdf(value) for (key, value) in dict)
+convert_for_netcdf(x::Number) = x
+convert_for_netcdf(x::Bool) = string(x)
+convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
+convert_for_netcdf(x) = string(x)
+convert_for_netcdf(::GPU) = "GPU()"
 
-    ds_grid = defGroup(ds, "grid_reconstruction"; attrib = sort(collect(pairs(grid_attrs)), by=first))
+materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
+materialize_from_netcdf(x::Number) = x
+materialize_from_netcdf(x::Array) = Tuple(x)
+materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
 
+function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
+    grid_attrs, grid_dims = grid_attributes(grid)
+
+    sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first) # Organizes attributes to make it more easily human-readable
+    ds_grid = defGroup(ds, "grid_attributes"; attrib = sorted_grid_attrs)
     for (dim_name, dim_array) in grid_dims
         defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
     end
 
+    args, kwargs = constructor_arguments(grid)
+
+    # This is needed for now to prevent NetCDF from throwing an error, but precludes
+    # us from reconstructing immersed grids from NetCDF. This is a temporary fix.
+    :mask ∈ keys(args) && delete!(args, :mask)
+    :bottom_height ∈ keys(args) && delete!(args, :bottom_height)
+
+    args, kwargs = map(convert_for_netcdf, (args, kwargs))
+    args[:grid_type] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+
+    defGroup(ds, "grid_reconstruction_args"; attrib = args)
+    defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
+
     return ds
+end
+
+function reconstruct_grid(filename::String)
+    ds = NCDataset(filename, "r")
+    grid = reconstruct_grid(ds)
+    close(ds)
+    return grid
+end
+
+function reconstruct_grid(ds)
+    # Read back the grid reconstruction metadata
+    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+
+    # Pop out infomration about grid type and immersed boundary type from Dict
+    grid_type = pop!(grid_reconstruction_args, :grid_type)
+    is_immersed = haskey(grid_reconstruction_args, :immersed_boundary_type)
+    if is_immersed
+        ib_type = pop!(grid_reconstruction_args, :immersed_boundary_type)
+    end
+
+    # Reconstruct the grid which may or may not be an underlying grid to an ImmersedBoundaryGrid
+    maybe_underlying_grid = grid_type(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+
+    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary
+    grid = is_immersed ? ImmersedBoundaryGrid(maybe_underlying_grid, ib_type) : maybe_underlying_grid
+    return grid
 end
 
 #####
@@ -1127,7 +1139,7 @@ function initialize_nc_file(model,
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         # This metadata is to support `FieldTimeSeries`.
-        write_grid_reconstruction_metadata!(dataset, grid, indices, array_type, deflatelevel)
+        write_grid_reconstruction_data!(dataset, grid; array_type, deflatelevel)
 
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
