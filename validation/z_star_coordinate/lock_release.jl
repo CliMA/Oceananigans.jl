@@ -8,7 +8,7 @@ using Printf
 
 z_faces = MutableVerticalDiscretization((-500, 0))
 
-grid = RectilinearGrid(size = (128, 100),
+grid = RectilinearGrid(size = (128, 5),
                           x = (0, 64kilometers),
                           z = z_faces,
                        halo = (6, 6),
@@ -34,7 +34,7 @@ set!(model, b = bᵢ, c = 1)
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
-@show Δt = 0.1 * wave_propagation_time_scale
+@show Δt = 1 * wave_propagation_time_scale
 
 @info "the time step is $Δt"
 
