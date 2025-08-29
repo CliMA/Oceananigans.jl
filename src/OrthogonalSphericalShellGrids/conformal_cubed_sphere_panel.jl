@@ -792,9 +792,9 @@ import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜ�
 
 # Any corner
 @inline function on_corner(i, j, grid)
-    return on_south_west_corner(i, j, grid) ||
-           on_south_east_corner(i, j, grid) ||
-           on_north_east_corner(i, j, grid) ||
+    return on_south_west_corner(i, j, grid) |
+           on_south_east_corner(i, j, grid) |
+           on_north_east_corner(i, j, grid) |
            on_north_west_corner(i, j, grid)
 end
 
@@ -844,37 +844,6 @@ end
 end
 
 @inline function Γ₂ᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
-    ip = max(2 - grid.Hx, i)
-    jp = max(2 - grid.Hy, j)
-    if on_corner(i, j, grid)
-        (i1, j1), (i2, j2), (i3, j3), (i4, j4), (i5, j5), (i6, j6) = enclosing_vertex_indices(i, j, k, grid)
-        ip1, jp1 = max(2 - grid.Hx, i1), max(2 - grid.Hy, j1)
-        ip2, jp2 = max(2 - grid.Hx, i2), max(2 - grid.Hy, j2)
-        ip3, jp3 = max(2 - grid.Hx, i3), max(2 - grid.Hy, j3)
-        ip4, jp4 = max(2 - grid.Hx, i4), max(2 - grid.Hy, j4)
-        ip5, jp5 = max(2 - grid.Hx, i5), max(2 - grid.Hy, j5)
-        ip6, jp6 = max(2 - grid.Hx, i6), max(2 - grid.Hy, j6)
-        Γ1 = δxᶠᶠᶜ(ip1, jp1, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip1, jp1, k, grid, Δx_qᶠᶜᶜ, u)
-        Γ2 = δxᶠᶠᶜ(ip2, jp2, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip2, jp2, k, grid, Δx_qᶠᶜᶜ, u)
-        Γ3 = δxᶠᶠᶜ(ip3, jp3, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip3, jp3, k, grid, Δx_qᶠᶜᶜ, u)
-        Γ4 = δxᶠᶠᶜ(ip4, jp4, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip4, jp4, k, grid, Δx_qᶠᶜᶜ, u)
-        Γ5 = δxᶠᶠᶜ(ip5, jp5, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip5, jp5, k, grid, Δx_qᶠᶜᶜ, u)
-        Γ6 = δxᶠᶠᶜ(ip6, jp6, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip6, jp6, k, grid, Δx_qᶠᶜᶜ, u)
-        A1 = Azᶠᶠᶜ(ip1, jp1, k, grid)
-        A2 = Azᶠᶠᶜ(ip2, jp2, k, grid)
-        A3 = Azᶠᶠᶜ(ip3, jp3, k, grid)
-        A4 = Azᶠᶠᶜ(ip4, jp4, k, grid)
-        A5 = Azᶠᶠᶜ(ip5, jp5, k, grid)
-        A6 = Azᶠᶠᶜ(ip6, jp6, k, grid)
-        A  = Azᶠᶠᶜ(ip, jp, k, grid)
-        Γ = mean(Γ1/A1, Γ2/A2, Γ3/A3, Γ4/A4, Γ5/A5, Γ6/A6) * A
-    else
-        Γ = δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
-    end
-    return Γ
-end
-
-@inline function Γ₃ᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     if on_corner(i, j, grid)
