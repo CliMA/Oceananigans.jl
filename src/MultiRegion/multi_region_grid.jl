@@ -8,27 +8,23 @@ import Oceananigans.Grids: minimum_xspacing, minimum_yspacing, minimum_zspacing
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 import Oceananigans.DistributedComputations: reconstruct_global_grid
 
-struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, D, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
+struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     partition :: P
     connectivity :: C
     region_grids :: G
-    devices :: D
 
-    MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C,
-                                        region_grids::G, devices::D) where {FT, TX, TY, TZ, CZ, P, C, G, D, A} =
-        new{FT, TX, TY, TZ, CZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
+    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A}
+        return new{FT, TX, TY, TZ, CZ, P, C, G, A}(arch, partition, connectivity, region_grids)
+    end
 end
 
 const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid}
 
 const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, ImmersedMultiRegionGrid{FT, TX, TY, TZ}}
 
-@inline isregional(mrg::MultiRegionGrids)       = true
-@inline getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
-@inline switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
-@inline devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
-@inline sync_all_devices!(mrg::MultiRegionGrid) = sync_all_devices!(devices(mrg))
+@inline isregional(mrg::MultiRegionGrids) = true
+@inline regions(mrg::MultiRegionGrids) = 1:length(mrg.regional_grids)
 
 @inline  getregion(mrg::MultiRegionGrid, r) = _getregion(mrg.region_grids, r)
 @inline _getregion(mrg::MultiRegionGrid, r) =  getregion(mrg.region_grids, r)
@@ -48,11 +44,6 @@ minimum_yspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 minimum_zspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
     minimum(minimum_zspacing(grid[r], ℓx, ℓy, ℓz) for r in 1:number_of_regions(grid))
 
-@inline getdevice(mrg::ImmersedMultiRegionGrid, i)      = getdevice(mrg.underlying_grid.region_grids, i)
-@inline switch_device!(mrg::ImmersedMultiRegionGrid, i) = switch_device!(getdevice(mrg.underlying_grid, i))
-@inline devices(mrg::ImmersedMultiRegionGrid)           = devices(mrg.underlying_grid.region_grids)
-@inline sync_all_devices!(mrg::ImmersedMultiRegionGrid) = sync_all_devices!(devices(mrg.underlying_grid))
-
 @inline Base.length(mrg::MultiRegionGrid)         = Base.length(mrg.region_grids)
 @inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
 
@@ -61,11 +52,9 @@ default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=g_Earth) 
     SplitExplicitFreeSurface(; substeps=50, gravitational_acceleration)
 
 """
-    MultiRegionGrid(global_grid; partition = XPartition(2),
-                                 devices = nothing,
-                                 validate = true)
+    MultiRegionGrid(global_grid; partition = XPartition(2))
 
-Split a `global_grid` into different regions handled by `devices`.
+Split a `global_grid` into different regions.
 
 Positional Arguments
 ====================
@@ -78,13 +67,6 @@ Keyword Arguments
 - `partition`: the partitioning required. The implemented partitioning are `XPartition`
                (division along the ``x`` direction) and `YPartition` (division along
                the ``y`` direction).
-
-- `devices`: the devices to allocate memory on. If `nothing` is provided (default) then memorey is
-             allocated on the the `CPU`. For `GPU` computation it is possible to specify the total
-             number of GPUs or the specific GPUs to allocate memory on. The number of devices does
-             not need to match the number of regions.
-
-- `validate :: Boolean`: Whether to validate `devices`; defautl: `true`.
 
 Example
 =======
@@ -99,9 +81,7 @@ julia> grid = RectilinearGrid(size=(12, 12), extent=(1, 1), topology=(Bounded, B
 julia> multi_region_grid = MultiRegionGrid(grid, partition = XPartition(4))
 ```
 """
-function MultiRegionGrid(global_grid; partition = XPartition(2),
-                                      devices = nothing,
-                                      validate = true)
+function MultiRegionGrid(global_grid; partition = XPartition(2))
 
     @warn "MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!"
 
@@ -110,18 +90,12 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     end
 
     arch = architecture(global_grid)
-
-    if validate
-        devices = validate_devices(partition, arch, devices)
-        devices = assign_devices(arch, partition, devices)
-    end
-
-    connectivity = Connectivity(devices, partition, global_grid)
+    connectivity = Connectivity(partition, global_grid)
 
     global_grid  = on_architecture(CPU(), global_grid)
-    local_size   = MultiRegionObject(arch, partition_size(partition, global_grid), devices)
-    local_extent = MultiRegionObject(arch, partition_extent(partition, global_grid), devices)
-    local_topo   = MultiRegionObject(arch, partition_topology(partition, global_grid), devices)
+    local_size   = MultiRegionObject(partition_size(partition, global_grid))
+    local_extent = MultiRegionObject(partition_extent(partition, global_grid))
+    local_topo   = MultiRegionObject(partition_topology(partition, global_grid))
 
     global_topo  = topology(global_grid)
 
@@ -140,10 +114,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     # Propagate the vertical coordinate type in the `MultiRegionGrid`
     CZ = typeof(global_grid.z)
 
-    ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
-    maybe_enable_peer_access!(arch, devices)
-
-    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3], CZ}(arch, partition, connectivity, region_grids, devices)
+    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3], CZ}(arch, partition, connectivity, region_grids)
 end
 
 function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent, args...)
@@ -174,7 +145,6 @@ function reconstruct_global_grid(mrg::MultiRegionGrid)
     size   = reconstruct_size(mrg, mrg.partition)
     extent = reconstruct_extent(mrg, mrg.partition)
     topo   = topology(mrg)
-    switch_device!(mrg.devices[1])
     return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
 end
 
@@ -228,7 +198,6 @@ new_data(FT::DataType, mrg::MultiRegionGrids, args...) = construct_regionally(ne
 
 # This is kind of annoying but it is necessary to have compatible MultiRegion and Distributed
 function with_halo(new_halo, mrg::MultiRegionGrid)
-    devices   = mrg.devices
     partition = mrg.partition
     cpu_mrg   = on_architecture(CPU(), mrg)
 
@@ -236,13 +205,12 @@ function with_halo(new_halo, mrg::MultiRegionGrid)
     new_global  = with_halo(new_halo, global_grid)
     new_global  = on_architecture(architecture(mrg), new_global)
 
-    return MultiRegionGrid(new_global; partition, devices, validate = false)
+    return MultiRegionGrid(new_global; partition)
 end
 
-function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) where {FT, TX, TY, TZ, CZ}
-    new_grids = on_architecture(CPU(), mrg.region_grids)
-    devices   = Tuple(CPU() for i in 1:length(mrg))
-    return MultiRegionGrid{FT, TX, TY, TZ, CZ}(CPU(), mrg.partition, mrg.connectivity, new_grids, devices)
+function on_architecture(arch, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) where {FT, TX, TY, TZ, CZ}
+    new_grids = on_architecture(arch, mrg.region_grids)
+    return MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch, mrg.partition, mrg.connectivity, new_grids)
 end
 
 Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
@@ -252,8 +220,7 @@ Base.show(io::IO, mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} 
     print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
-              "├── connectivity: $(summary(mrg.connectivity)) \n",
-              "└── devices: $(devices(mrg))")
+              "└── connectivity: $(summary(mrg.connectivity))")
 
 function Base.:(==)(mrg₁::MultiRegionGrids, mrg₂::MultiRegionGrids)
     #check if grids are of the same type
@@ -286,4 +253,3 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(mrg::MRG, ::Val{:partition})              = getfield(mrg, :partition)
 @inline get_multi_property(mrg::MRG, ::Val{:connectivity})           = getfield(mrg, :connectivity)
 @inline get_multi_property(mrg::MRG, ::Val{:region_grids})           = getfield(mrg, :region_grids)
-@inline get_multi_property(mrg::MRG, ::Val{:devices})                = getfield(mrg, :devices)

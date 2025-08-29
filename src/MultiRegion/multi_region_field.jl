@@ -26,13 +26,8 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
-
 @inline isregional(f::GriddedMultiRegionField) = true
-@inline devices(f::GriddedMultiRegionField) = devices(f.grid)
-@inline sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid))
-
-@inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
-@inline getdevice(f::GriddedMultiRegionField, d) = getdevice(f.grid, d)
+@inline regions(f::GriddedMultiRegionField) = regions(f.grid)
 
 @inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(_getregion(f.func, r),
