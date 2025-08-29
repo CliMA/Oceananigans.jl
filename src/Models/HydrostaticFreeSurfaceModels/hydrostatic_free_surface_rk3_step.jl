@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_m
 
 import Oceananigans.TimeSteppers: split_rk3_substep!, _euler_substep_field!, _split_rk3_average_field!, cache_previous_fields!
 
-function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
+function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt) #, γⁿ, ζⁿ)
 
     grid         = model.grid
     timestepper  = model.timestepper
@@ -14,9 +14,9 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
 
     @apply_regionally begin
         scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
-        rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt, γⁿ, ζⁿ)
-        rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
-        rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
+        rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt, 1, 0)
+        rk3_substep_velocities!(model.velocities, model, Δt, 1, 0)
+        rk3_substep_tracers!(model.tracers, model, Δt, 1, 0)
     end
 
     # Full step for Implicit and Split-Explicit, substep for Explicit
@@ -42,7 +42,7 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
         velocity_field = velocities[name]
 
         launch!(architecture(grid), grid, :xyz,
-                _euler_substep_field!, velocity_field, convert(FT, Δt), Gⁿ)
+                _euler_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
@@ -52,10 +52,10 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
                        model.clock,
                        Δt)
 
-        if model.clock.stage > 1 
-            launch!(architecture(grid), grid, :xyz,
-                    _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
-        end
+        # if model.clock.stage > 1 
+        #     launch!(architecture(grid), grid, :xyz,
+        #             _split_rk3_average_field!, velocity_field, γⁿ, ζⁿ, Ψ⁻)
+        # end
     end
 
     return nothing
@@ -87,7 +87,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
             closure = model.closure
 
             launch!(architecture(grid), grid, :xyz,
-                    _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
+                    _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
 
             implicit_step!(c,
                            model.timestepper.implicit_solver,
@@ -97,10 +97,10 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                            model.clock,
                            Δt)
 
-            if model.clock.stage > 1 
-                launch!(architecture(grid), grid, :xyz,
-                        _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
-            end
+            # if model.clock.stage > 1 
+            #     launch!(architecture(grid), grid, :xyz,
+            #             _split_rk3_average_tracer_field!, c, grid, γⁿ, ζⁿ, Ψ⁻)
+            # end
         end
     end
 
@@ -113,17 +113,11 @@ end
 
 # σc is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
-@kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
+@kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
-end
-
-@kernel function _split_rk3_average_tracer_field!(c, grid, γⁿ, ζⁿ, σc⁻)
-    i, j, k = @index(Global, NTuple)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = ζⁿ * σc⁻[i, j, k] / σᶜᶜⁿ + γⁿ * c[i, j, k]
+    # σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = (Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end
 
 #####

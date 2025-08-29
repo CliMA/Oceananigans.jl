@@ -22,7 +22,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing,
                                     tracers = (:b, :c),
-                                # timestepper = :SplitRungeKutta3,
+                                timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
                                free_surface = SplitExplicitFreeSurface(grid; substeps=10)) # 
 
@@ -38,7 +38,7 @@ wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 20hours) #, stop_iteration=1000000) 
+simulation = Simulation(model; Δt, stop_time = 17hours) #, stop_iteration=1000000) 
 
 Δz = zspacings(grid, Center(), Center(), Center())
 dz = Field(Δz)
@@ -49,7 +49,7 @@ field_outputs = merge(model.velocities, model.tracers, (; Δz))
 
 simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
                                                          overwrite_existing = true,
-                                                         schedule = IterationInterval(1000),
+                                                         schedule = IterationInterval(100),
                                                          filename = "zstar_model")
 
 et1 = []
@@ -80,7 +80,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 run!(simulation)
 

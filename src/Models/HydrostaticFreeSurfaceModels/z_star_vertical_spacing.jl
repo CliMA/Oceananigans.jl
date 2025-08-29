@@ -127,7 +127,7 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
 
-    @inbounds ηⁿ[i, j, 1] = ζⁿ * ηⁿ⁻¹[i, j, 1] + γⁿ * (ηⁿ[i, j, 1] - Δt * δh_U)
+    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, 1] - Δt * δh_U
 end
 
 @kernel function _update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, grid, ηⁿ)

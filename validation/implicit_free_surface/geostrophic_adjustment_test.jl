@@ -44,12 +44,12 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     if free_surface isa SplitExplicitFreeSurface
         set!(model.free_surface.barotropic_velocities.V, Vᴳ)
     end
-    
-    for i in 0:grid.Nx+1, j in 0:grid.Ny+1
-        z = model.grid.z
-        Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, j, grid, z.ηⁿ)
-    end
 
+    z = model.grid.z
+    
+    Oceananigans.Utils.launch!(CPU(), grid, :xy, Oceananigans.Models.HydrostaticFreeSurfaceModels._update_grid_scaling!, z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, grid, z.ηⁿ)
+
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.fill_grid_halo_regions!(grid, model.vertical_coordinate)
     Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.η)
 
     stop_iteration=1000
@@ -111,8 +111,8 @@ splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=1
 
 seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
 serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
-efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
-efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+# efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
+# efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
 # imab2 = geostrophic_adjustment_simulation(implicit_free_surface, grid)
 # imrk3 = geostrophic_adjustment_simulation(implicit_free_surface, grid, :SplitRungeKutta3)
 

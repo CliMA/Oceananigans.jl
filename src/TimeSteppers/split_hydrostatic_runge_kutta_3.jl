@@ -8,10 +8,6 @@ Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-W
 time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
 """
 struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
-    γ² :: FT
-    γ³ :: FT
-    ζ² :: FT
-    ζ³ :: FT
     Gⁿ :: TG
     G⁻ :: TE # only needed for barotropic velocities in the barotropic step
     Ψ⁻ :: PF # prognostic state at the previous timestep
@@ -62,15 +58,9 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is and experimental.\n" *
           "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
 
-    γ² = 1 // 4
-    γ³ = 2 // 3
-
-    ζ² = 3 // 4
-    ζ³ = 1 // 3
-
     FT = eltype(grid)
 
-    return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, Ψ⁻, implicit_solver)
+    return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(Gⁿ, G⁻, Ψ⁻, implicit_solver)
 end
 
 function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; callbacks=[])
@@ -79,46 +69,43 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
 
-    γ² = model.timestepper.γ²
-    γ³ = model.timestepper.γ³
-
-    ζ² = model.timestepper.ζ²
-    ζ³ = model.timestepper.ζ³
-
     cache_previous_fields!(model)
 
     ####
     #### First stage
     ####
 
+    # First stage: n -> n + 1/3
     model.clock.stage = 1
 
     compute_flux_bc_tendencies!(model)
-    split_rk3_substep!(model, Δt, nothing, nothing)
-    compute_pressure_correction!(model, Δt)
-    make_pressure_correction!(model, Δt)
+    split_rk3_substep!(model, Δt / 3)
+    compute_pressure_correction!(model, Δt / 3)
+    make_pressure_correction!(model, Δt / 3)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
     #### Second stage
     ####
 
+    # Second stage: n -> n + 1/2
     model.clock.stage = 2
 
     compute_flux_bc_tendencies!(model)
-    split_rk3_substep!(model, Δt, γ², ζ²)
-    compute_pressure_correction!(model, Δt)
-    make_pressure_correction!(model, Δt)
+    split_rk3_substep!(model, Δt / 2)
+    compute_pressure_correction!(model, Δt / 2)
+    make_pressure_correction!(model, Δt / 2)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
     #### Third stage
     ####
 
+    # Third stage: n -> n + 1
     model.clock.stage = 3
 
     compute_flux_bc_tendencies!(model)
-    split_rk3_substep!(model, Δt, γ³, ζ³)
+    split_rk3_substep!(model, Δt)
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -130,9 +117,9 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     return nothing
 end
 
-@kernel function _euler_substep_field!(field, Δt, Gⁿ)
+@kernel function _euler_substep_field!(field, Δt, Gⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = field[i, j, k] + Δt * Gⁿ[i, j, k]
+    @inbounds field[i, j, k] = Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
 @kernel function _split_rk3_average_field!(field, γⁿ, ζⁿ, field⁻)
@@ -140,7 +127,7 @@ end
     @inbounds field[i, j, k] = ζⁿ * field⁻[i, j, k] + γⁿ * field[i, j, k]
 end
 
-function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
+function split_rk3_substep!(model, Δt)
 
     grid = model.grid
     FT   = eltype(grid)
@@ -148,7 +135,9 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
-        launch!(arch, grid, :xyz, _euler_substep_field!, field, convert(FT, Δt), model.timestepper.Gⁿ[i])
+        Ψ⁻ = model.timestepper.Ψ⁻[i]
+        Gⁿ = model.timestepper.Gⁿ[i]
+        launch!(arch, grid, :xyz, _euler_substep_field!, field, convert(FT, Δt), Gⁿ, Ψ⁻)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -160,10 +149,6 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        tracer_index,
                        model.clock,
                        Δt)
-
-        if model.clock.stage > 1 
-            launch!(arch, grid, :xyz, _split_rk3_average_field!, field, γⁿ, ζⁿ, model.timestepper.Ψ⁻[i])
-        end
     end
 end
 
