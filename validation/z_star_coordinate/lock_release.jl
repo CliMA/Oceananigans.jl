@@ -85,5 +85,5 @@ ax  = Axis(fig[1, 1], title = "Integral property conservation")
 lines!((vav .- vav[1]) ./ vav[1], label = "Volume anomaly")
 lines!((bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
 lines!((cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
-
+axislegend(ax, position=:lt)
 
