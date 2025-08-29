@@ -62,13 +62,13 @@ end
 #####
 
 const ZFBC = BoundaryCondition{Flux, Nothing}
-regularize_immersed_boundary_condition(ibc::ZFBC, ibg::GFIBG, args...) = ibc # keep it
+regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
 
-regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::GFIBG, loc, field_name, args...) =
+regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =
     regularize_immersed_boundary_condition(default.boundary_condition, ibg, loc, field_name, args...)
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
-function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::GFIBG, loc, field_name, args...)
+function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::IBG, loc, field_name, args...)
     ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
     regularize_immersed_boundary_condition(ibc, ibg, loc, field_name, args...)
 end
