@@ -190,7 +190,7 @@ set!(model, b = bᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 1000days
+stop_time = 10days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -309,6 +309,7 @@ b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
 ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
 w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
 η_timeseries = FieldTimeSeries("abernathey_channel.jld2", "η", grid = grid)
+e_timeseries = FieldTimeSeries("abernathey_channel.jld2", "e", grid = grid)
 
 u_timeseries = FieldTimeSeries("abernathey_channel.jld2", "u", grid = grid)
 v_timeseries = FieldTimeSeries("abernathey_channel.jld2", "v", grid = grid)
@@ -462,14 +463,27 @@ end
 mp4(anim2, "abernathey_channel_horizontal_velocities.mp4", fps = 8) #hide
 
 
-anim = @animate for i in 1:length(b_timeseries.times)
+@show length(η_timeseries.times)
+@show length(e_timeseries.times)
+@show length(w_timeseries.times)
+
+anim3 = @animate for i in 1:length(η_timeseries.times)
     e = e_timeseries[i]
     w = w_timeseries[i]
     η = η_timeseries[i]
 
-    e_xy = e[:, :, grid.Nz]
+    e_xy = interior(e)[:, :, grid.Nz]
     w_xz = interior(w)[:, j′, :]
-    η_xy = η[:, :, 1]
+    η_xy = interior(η)[:, :, 1]
+
+    @show size(interior(η))
+    @show size(η_xy)
+
+    @show size(interior(e))
+    @show size(e_xy)
+
+    @show size(interior(w))
+    @show size(w_xz)
 
     @show emax = max(1e-9, maximum(abs, e_xy))
     @show wmax = max(1e-9, maximum(abs, w_xz))
@@ -498,6 +512,8 @@ anim = @animate for i in 1:length(b_timeseries.times)
         ylims = zlims,
         color = :balance)
 
+    @show "Plotted w"
+
     η_xy_plot = contourf(xc * 1e-3, yc * 1e-3, η_xy,
         xlabel = "x (km)",
         ylabel = "y (km)",
@@ -508,6 +524,8 @@ anim = @animate for i in 1:length(b_timeseries.times)
         xlims = xlims,
         ylims = ylims,
         color = :balance)
+
+    @show "Plotted η"
 
     e_xy_plot = contourf(xc * 1e-3, yc * 1e-3, e_xy,
         xlabel = "x (km)",
@@ -520,6 +538,8 @@ anim = @animate for i in 1:length(b_timeseries.times)
         ylims = ylims,
         color = :balance)
 
+    @show "Plotted e"
+
     w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
     η_xy_title = "η(x, y)"
     e_xy_title = "e(x, y)"
@@ -528,6 +548,8 @@ anim = @animate for i in 1:length(b_timeseries.times)
         Plots.grid(1, 2)]
 
     plot(w_xz_plot, η_xy_plot, e_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
+
+    @show "All the plots"
 end
 
-mp4(anim, "abernathey_channel_sshe.mp4", fps = 8) #hide
+mp4(anim3, "abernathey_channel_sshe.mp4", fps = 8) #hide
