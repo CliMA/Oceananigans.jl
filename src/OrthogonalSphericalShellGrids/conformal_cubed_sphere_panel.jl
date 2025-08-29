@@ -819,7 +819,8 @@ The vertical circulation associated with horizontal velocities ``u`` and ``v``.
     return Γ
 end
 =#
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v;
+                      interpolate_vorticity::Bool = true)
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     if on_corner(i, j, grid)
@@ -848,7 +849,11 @@ end
         A5 = Azᶠᶠᶜ(ip5, jp5, k, grid)
         A6 = Azᶠᶠᶜ(ip6, jp6, k, grid)
         A = Azᶠᶠᶜ(ip, jp, k, grid)
-        Γ = (Γ1 + Γ2 + Γ3 + Γ4 + Γ5 + Γ6) / (A1 + A2 + A3 + A4 + A5 + A6) * A
+        if interpolate_vorticity
+            Γ = mean(Γ1/A1, Γ2/A2, Γ3/A3, Γ4/A4, Γ5/A5, Γ6/A6) * A
+        else
+            Γ = (Γ1 + Γ2 + Γ3 + Γ4 + Γ5 + Γ6) / (A1 + A2 + A3 + A4 + A5 + A6) * A
+        end
     else
         Γ = δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
     end
