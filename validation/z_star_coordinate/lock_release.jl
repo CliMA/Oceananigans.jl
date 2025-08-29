@@ -29,11 +29,12 @@ bᵢ(x, z) = x < 32kilometers ? 0.06 : 0.01
 
 set!(model, b = bᵢ, c = 1)
 
+# Same timestep as in the ilicak paper
 Δt = 1
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 17hours)
+simulation = Simulation(model; Δt, stop_time=17hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
@@ -73,14 +74,15 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
  
 fig = Figure()
 ax  = Axis(fig[1, 1], title = "Integral property conservation")
-lines!((vav .- vav[1]) ./ vav[1], label = "Volume anomaly")
-lines!((bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
-lines!((cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
+lines!(ax, (vav .- vav[1]) ./ vav[1], label = "Volume anomaly")
+lines!(ax, (bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
+lines!(ax, (cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
 axislegend(ax, position=:lt)
-
+ax  = Axis(fig[1, 2], title = "Final buoyancy field") 
+contourf!(ax, interior(model.tracers.b, :, 1, :))
