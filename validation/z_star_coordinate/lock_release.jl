@@ -12,9 +12,7 @@ grid = RectilinearGrid(size = (128, 5),
                           x = (0, 64kilometers),
                           z = z_faces,
                        halo = (6, 6),
-                   topology = (Periodic, Flat, Bounded))
-
-# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
+                   topology = (Bounded, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(; grid,
                          momentum_advection = WENO(order = 5),
@@ -38,12 +36,10 @@ wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 17hours) #, stop_iteration=1000000) 
+simulation = Simulation(model; Δt, stop_time = 17hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
-dz = Field(Δz)
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
-∫b_init = sum(model.tracers.b * Δz) / sum(Δz)
 
 field_outputs = merge(model.velocities, model.tracers, (; Δz))
 
@@ -54,23 +50,23 @@ simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
 
 et1 = []
 et2 = []
-bav = []
-cav = []
-vav = []
+
+# Initial conditions
+bav = [sum(model.tracers.b * V) / sum(V)]
+cav = [sum(model.tracers.c * V) / sum(V)]
+vav = [sum(V)]
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
-    compute!(dz)
-    ∫b = sum(model.tracers.b * dz) / sum(dz)
-    push!(bav, ∫b)
-    push!(cav, sum(model.tracers.c * dz) / sum(dz))
+    push!(bav, sum(model.tracers.b * V) / sum(V))
+    push!(cav, sum(model.tracers.c * V) / sum(V))
     push!(vav, sum(V))
 
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
     msg2 = @sprintf("extrema u: %.2e %.2e ",  maximum(u),  minimum(u))
-    msg3 = @sprintf("drift b: %6.3e ", ∫b - ∫b_init)
+    msg3 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
     msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
     @info msg0 * msg1 * msg2 * msg3 * msg4
 
@@ -83,20 +79,11 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 run!(simulation)
+ 
+fig = Figure()
+ax  = Axis(fig[1, 1], title = "Integral property conservation")
+lines!((vav .- vav[1]) ./ vav[1], label = "Volume anomaly")
+lines!((bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
+lines!((cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
 
-using Oceananigans.Fields: OneField
 
-# # Check tracer conservation
-b  = FieldTimeSeries("zstar_model.jld2", "b")
-dz = FieldTimeSeries("zstar_model.jld2", "Δz")
-
-init  = sum(dz[1] * b[1]) / sum(dz[1])
-drift = []
-
-for t in 1:length(b.times)
-  push!(drift, sum(dz[t] * b[t]) /  sum(dz[t]) - init)
-end
-
-using GLMakie
-GLMakie.activate!()
-lines(drift)
