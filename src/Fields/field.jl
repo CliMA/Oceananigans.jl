@@ -750,11 +750,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
+                Base.$(reduction!)(identity, parent(r), conditioned_c, init=false)
                 return @allowscalar first(r)
             else
+                Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
                 return r
             end
         end
