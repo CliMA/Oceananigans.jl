@@ -96,7 +96,7 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
                 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient(), val; kwargs...)
-                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open(nothing), val; kwargs...)
+  OpenBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(Open(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
                   ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
