@@ -6,6 +6,8 @@ using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
+import Oceananigans.Grids: constructor_arguments
+
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
 #####
@@ -155,6 +157,15 @@ YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Abstrac
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
+
+
+function constructor_arguments(grid::AGFBIBG)
+    args, kwargs = constructor_arguments(grid.underlying_grid)
+    args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,
+                            :immersed_condition => grid.immersed_boundary.immersed_condition,
+                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
+    return args, kwargs
+end
 
 function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
     return gfb1.bottom_height == gfb2.bottom_height && gfb1.immersed_condition == gfb2.immersed_condition
