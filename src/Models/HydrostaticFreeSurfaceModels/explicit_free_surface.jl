@@ -55,16 +55,10 @@ step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiA
 step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
     @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
 
-@inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
-@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
-@inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
-
 function explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
 
-    γⁿ, ζⁿ = rk3_coeffs(timestepper, Val(model.clock.stage))
-
     launch!(model.architecture, model.grid, :xy,
-            _explicit_rk3_step_free_surface!, free_surface.η, Δt, γⁿ, ζⁿ,
+            _explicit_rk3_step_free_surface!, free_surface.η, Δt, 
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
 
     return nothing
@@ -79,9 +73,9 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
 ##### Kernels
 #####
 
-@kernel function _explicit_rk3_step_free_surface!(η, Δt, γⁿ, ζⁿ, Gⁿ, η⁻, Nz)
+@kernel function _explicit_rk3_step_free_surface!(η, Δt, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
-    @inbounds η[i, j, Nz+1] = ζⁿ * η⁻[i, j, Nz+1] + γⁿ * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
+    @inbounds η[i, j, Nz+1] = η⁻[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1]
 end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)
