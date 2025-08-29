@@ -37,7 +37,7 @@ steps:
 
     command: |
       # Instantiate
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.add("CUDA"); Pkg.instantiate()'
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=benchmark --check-bounds=no -e 'using Pkg; Pkg.add(path="./"); Pkg.instantiate()'
 
       # List of benchmark groups
       BENCHMARK_GROUPS=(
@@ -54,7 +54,7 @@ steps:
         export BENCHMARK_GROUP
         OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
 
-        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=benchmark --check-bounds=no benchmark/benchmark_tests.jl
         $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
 
         # Remove generated output files
@@ -62,12 +62,17 @@ steps:
         rm \${OUTPUT_PREFIX}.sqlite
       done
 
+      # Unit tests (on CPU) using BenchmarkTools
+      export BENCHMARK_GROUP="model_stepping"
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=benchmark --check-bounds=no benchmark/benchmark_tests.jl > model_stepping.txt
+
     artifact_paths:
       - "periodic_output.txt"
       - "bounded_output.txt"
       - "periodic_cheap_advection_output.txt"
       - "bounded_cheap_advection_output.txt"
       - "immersed_output.txt"
+      - "model_stepping.txt"
     soft_fail:
       - exit_status: 3
 
@@ -114,3 +119,4 @@ steps:
       - "diff_periodic_cheap_advection_output.txt"
       - "diff_bounded_cheap_advection_output.txt"
       - "diff_immersed_output.txt"
+      - "diff_model_stepping.txt"
