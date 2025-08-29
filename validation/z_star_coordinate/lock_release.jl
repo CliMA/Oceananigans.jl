@@ -46,6 +46,7 @@ simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
                                                          schedule = IterationInterval(100),
                                                          filename = "zstar_model")
 
+# The two different estimates of the free-surface
 et1 = []
 et2 = []
 
