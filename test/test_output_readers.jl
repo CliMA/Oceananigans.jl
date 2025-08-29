@@ -495,9 +495,10 @@ end
             ds = FieldDataset(filepath3d, backend=Backend())
 
             @test ds isa FieldDataset
-            @test length(keys(ds.fields)) == 8
+            @test length(keys(ds)) == 8
 
             for var_str in ("u", "v", "w", "T", "S", "b", "ζ", "ke")
+                @test var_str in keys(ds)
                 @test ds[var_str] isa FieldTimeSeries
                 @test ds[var_str][1] isa Field
             end
