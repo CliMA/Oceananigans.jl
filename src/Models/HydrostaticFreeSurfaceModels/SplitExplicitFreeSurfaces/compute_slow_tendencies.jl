@@ -92,8 +92,6 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
 
     baroclinic_timestepper = model.timestepper
 
-    stage = model.clock.stage
-
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
     
     fields_to_fill = (GUⁿ, GVⁿ)
