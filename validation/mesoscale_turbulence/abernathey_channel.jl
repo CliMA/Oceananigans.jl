@@ -467,7 +467,7 @@ mp4(anim2, "abernathey_channel_horizontal_velocities.mp4", fps = 8) #hide
 @show length(e_timeseries.times)
 @show length(w_timeseries.times)
 
-anim3 = @animate for i in 1:length(η_timeseries.times)
+anim3 = @animate for i in 1:1 #length(η_timeseries.times)
     e = e_timeseries[i]
     w = w_timeseries[i]
     η = η_timeseries[i]
@@ -540,7 +540,7 @@ anim3 = @animate for i in 1:length(η_timeseries.times)
 
     @show "Plotted e"
 
-    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(w_timeseries.times[i]))
     η_xy_title = "η(x, y)"
     e_xy_title = "e(x, y)"
 
