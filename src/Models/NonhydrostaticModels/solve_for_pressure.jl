@@ -58,16 +58,21 @@ function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver
     return nothing
 end
 
-function compute_source_term!(solver::FourierTridiagonalPoissonSolver, Ũ)
+add_inhomogeneous_boundary_terms!(rhs, solver, grid, Ũ, Δt, g, η) = nothing
+
+function compute_source_term!(solver::FourierTridiagonalPoissonSolver, Ũ, Δt, g, η)
     rhs = solver.source_term
     arch = architecture(solver)
     grid = solver.grid
     tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Ũ)
+
+    add_inhomogeneous_boundary_terms!(rhs, solver, grid, Ũ, Δt, g, η)
+
     return nothing
 end
 
-function compute_source_term!(solver::FFTBasedPoissonSolver, Ũ)
+function compute_source_term!(solver::FFTBasedPoissonSolver, Ũ, Δt, g, η)
     rhs = solver.storage
     arch = architecture(solver)
     grid = solver.grid
@@ -80,13 +85,17 @@ end
 #####
 
 # Note that Δt is unused here.
-function solve_for_pressure!(pressure, solver, Δt, args...)
-    compute_source_term!(solver, args...)
+function solve_for_pressure!(pressure, solver, Ũ, Δt, g, η)
+    compute_source_term!(solver, Ũ, Δt, g, η)
+    # update_fourier_tridiagonal_solver!(solver, Ũ, Δt, g, η)
+        #=
+        D[i, j, Nz] = -(-1 / Δzᵃᵃᶠ(i, j, Nz, grid) *((-3 / (2*g*Δt^2) - 1 / Δzᵃᵃᶠ(i, j, Nz, grid))/(1 / Δzᵃᵃᶠ(i, j, Nz, grid) + 1 / (2*g*Δt^2)))) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+        =#
     solve!(pressure, solver)
     return pressure
 end
 
-function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, args...)
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Ũ, Δt, g, η)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)
@@ -95,7 +104,21 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, �
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, args...)
+    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Ũ)
+
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 
+# TODO: write a function to add the inhomogeneous boundary contributions to `rhs`
+# for a non-hydrostatic implicit free surface
+#=
+function add_inhomogeneous_boundary_terms!(rhs, solver, grid, Ũ, Δt, g, η)
+    launch!(arch, grid, :xy, _add_implicit_free_surface_source_term!, rhs, grid, Ũ, Δt, g, η)
+end
+
+function _add_implicit_free_surface_source_term(rhs, solver, grid, Ũ, Δt, g, η)
+    # modifies rhs of pressure solve surface boundary condition to allow for free surface
+    if k == grid.Nz && active
+        source_term -= ((η[i,j] + Δt * w[i, j, k+1])/(Δt^2 + Δzᶜᶜᶜ(i, j, k, grid) / (2*g))) * Δt
+    end
+=#
