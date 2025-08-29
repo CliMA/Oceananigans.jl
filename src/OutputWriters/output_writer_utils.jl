@@ -95,13 +95,15 @@ end
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
-        bc = getproperty(bcs, boundary)
-        file[address * "/$boundary/type"] = bc_str(bc)
+        if !(boundary == :kernels || boundary == :ordered_bcs) # Skip kernels and ordered_bcs.
+            bc = getproperty(bcs, boundary)
+            file[address * "/$boundary/type"] = bc_str(bc)
 
-        if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
-            file[address * "/$boundary/condition"] = missing
-        else
-            file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
+                file[address * "/$boundary/condition"] = missing
+            else
+                file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            end
         end
     end
 end
@@ -133,14 +135,21 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
+function remove_function_bcs(fbcs::FieldBoundaryConditions)
+    west     = has_reference(Function, fbcs.west)     ? missing : fbcs.west
+    east     = has_reference(Function, fbcs.east)     ? missing : fbcs.east
+    south    = has_reference(Function, fbcs.south)    ? missing : fbcs.south
+    north    = has_reference(Function, fbcs.north)    ? missing : fbcs.north
+    bottom   = has_reference(Function, fbcs.bottom)   ? missing : fbcs.bottom
+    top      = has_reference(Function, fbcs.top)      ? missing : fbcs.top
+    immersed = has_reference(Function, fbcs.immersed) ? missing : fbcs.immersed
+    new_fbcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    return new_fbcs
+end
+
 function serializeproperty!(file, address, fbcs::FieldBoundaryConditions)
-    # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
-    # rather than punting with `missing` instead.
-    if has_reference(Function, fbcs)
-        file[address] = missing
-    else
-        file[address] = on_architecture(CPU(), fbcs)
-    end
+    new_fbcs = remove_function_bcs(fbcs)
+    file[address] = on_architecture(CPU(), new_fbcs)
 end
 
 function serializeproperty!(file, address, f::Field)
@@ -182,6 +191,13 @@ has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 # Short circuit on fields.
 has_reference(T::Type{Function}, f::Field) =
     has_reference(T, f.data) || has_reference(T, f.boundary_conditions)
+
+# Short circuit on boundary conditions.
+has_reference(T::Type{Function}, bcs::FieldBoundaryConditions) =
+    has_reference(T, bcs.west) || has_reference(T, bcs.east) ||
+    has_reference(T, bcs.south) || has_reference(T, bcs.north) ||
+    has_reference(T, bcs.bottom) || has_reference(T, bcs.top) ||
+    has_reference(T, bcs.immersed)
 
 """
     has_reference(has_type, obj)

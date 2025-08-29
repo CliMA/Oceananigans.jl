@@ -343,5 +343,3 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
 
     return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
-
-

@@ -19,7 +19,7 @@ EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.AbstractOperations.m
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.prettytime), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
-EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.parent_size_and_offset), x...) = nothing
+EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_size_and_offset), x...) = nothing
 @inline EnzymeCore.EnzymeRules.inactive_type(v::Type{Oceananigans.Utils.KernelParameters}) = true
 
 @inline batch(::Val{1}, ::Type{T}) where T = T
