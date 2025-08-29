@@ -86,7 +86,7 @@ const PBC  = BoundaryCondition{<:Periodic}
 const OBC  = BoundaryCondition{<:Open}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
-const CBC  = BoundaryCondition{<:Combination}
+const CBC  = BoundaryCondition{<:Mixed}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
@@ -111,18 +111,18 @@ MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Mu
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 #####
-##### Support for CombinationBoundaryCondition (aka "Robin" boundary condition)
+##### Support for MixedBoundaryCondition (aka "Robin" boundary condition)
 #####
 
-struct CombinationCondition{A, B}
+struct MixedCondition{A, B}
     coefficient :: A
     combination :: B
 end
 
 """
-    CombinationBoundaryCondition(coefficient, combination=0; kwargs...)
+    MixedBoundaryCondition(coefficient, combination=0; kwargs...)
 
-Construct a `CombinationBoundaryCondition` representing the condition
+Construct a `MixedBoundaryCondition` representing the condition
 
 ```math
 \\partial_n c + a c = b
@@ -133,16 +133,16 @@ where ``a`` is the `coefficient` and ``b`` is the `combination`.
 See [`BoundaryCondition`](@ref) for information about the possible `kwargs`
 when using function `coefficient` and/or `combination`.
 """
-function CombinationBoundaryCondition(coefficient, combination=0;
+function MixedBoundaryCondition(coefficient, combination=0;
                                       parameters = nothing,
                                       discrete_form = false,
                                       field_dependencies = ())
 
     coefficient = materialize_condition(coefficient, parameters, discrete_form, field_dependencies)
     combination = materialize_condition(combination, parameters, discrete_form, field_dependencies)
-    condition = CombinationCondition(coefficient, combination)
+    condition = MixedCondition(coefficient, combination)
 
-    return BoundaryCondition(Combination(), condition)
+    return BoundaryCondition(Mixed(), condition)
 end
 
 # Support for various types of boundary conditions.

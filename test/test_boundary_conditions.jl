@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper
-using Oceananigans.BoundaryConditions: Combination, CombinationBoundaryCondition
+using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
@@ -66,7 +66,7 @@ end
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 
-        for C in (Value, Gradient, Flux, Combination, Value(), Gradient(), Flux(), Combination())
+        for C in (Value, Gradient, Flux, Mixed, Value(), Gradient(), Flux(), Mixed())
             @test can_instantiate_boundary_condition(integer_bc, C)
             @test can_instantiate_boundary_condition(irrational_bc, C)
             @test can_instantiate_boundary_condition(simple_function_bc, C)
@@ -298,14 +298,14 @@ end
         @test T_bcs.top    === one_bc
         @test T_bcs.bottom === one_bc
 
-        # Combination boundary conditions
+        # Mixed boundary conditions
         grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=bbb_topology)
         ϕ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
-                                        east = CombinationBoundaryCondition(simple_bc, simple_bc),
-                                        west = CombinationBoundaryCondition(1),
-                                        bottom = CombinationBoundaryCondition(2, π),
-                                        top = CombinationBoundaryCondition(3, 2π),
-                                        north = CombinationBoundaryCondition(simple_bc, simple_bc),
+                                        east = MixedBoundaryCondition(simple_bc, simple_bc),
+                                        west = MixedBoundaryCondition(1),
+                                        bottom = MixedBoundaryCondition(2, π),
+                                        top = MixedBoundaryCondition(3, 2π),
+                                        north = MixedBoundaryCondition(simple_bc, simple_bc),
                                         south = ValueBoundaryCondition(simple_bc))
 
         @test ϕ_bcs.east.condition.coefficient isa ContinuousBoundaryFunction

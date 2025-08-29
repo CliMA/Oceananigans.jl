@@ -50,12 +50,12 @@ boundary condition.
 struct Value <: AbstractBoundaryConditionClassification end
 
 """
-    struct Combination <: AbstractBoundaryConditionClassification
+    struct Mixed <: AbstractBoundaryConditionClassification
 
 A classification specifying a boundary condition that represents a linear combination of
 the field's gradient and value. Also called a Robin boundary condition.
 """
-struct Combination <: AbstractBoundaryConditionClassification end
+struct Mixed <: AbstractBoundaryConditionClassification end
 
 """
     struct Open <: AbstractBoundaryConditionClassification

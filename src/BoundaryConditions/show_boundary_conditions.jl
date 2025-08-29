@@ -9,7 +9,7 @@ bc_str(::PBC)                    = "Periodic"
 bc_str(::OBC{Open{MS}}) where MS = "Open{$MS}"
 bc_str(::VBC)                    = "Value"
 bc_str(::GBC)                    = "Gradient"
-bc_str(::CBC)                    = "Combination"
+bc_str(::CBC)                    = "Mixed"
 bc_str(::ZFBC)                   = "ZeroFlux"
 bc_str(::IBC)                    = "Impenetrable"
 bc_str(::DFBC)                   = "Default"
@@ -33,7 +33,7 @@ Base.summary(bc::DCBC)                    = string("DistributedBoundaryCondition
 Base.summary(bc::ZBC)                     = string("ZipperBoundaryCondition: ", prettysummary(bc.condition))
 
 function Base.summary(bc::CBC)
-    string("CombinationBoundaryCondition: ",
+    string("MixedBoundaryCondition: ",
            prettysummary(bc.condition.coefficient), " c + ",
            prettysummary(bc.condition.combination))
 end

@@ -212,10 +212,10 @@ end
 regularize_boundary_condition(condition::Number, grid, args...) = convert(eltype(grid), condition)
 regularize_boundary_condition(condition, grid, args...) = condition # fallback
 
-function regularize_boundary_condition(cc::CombinationCondition, grid, args...)
+function regularize_boundary_condition(cc::MixedCondition, grid, args...)
     coefficient = regularize_boundary_condition(cc.coefficient, grid, args...)
     combination = regularize_boundary_condition(cc.combination, grid, args...)
-    return CombinationCondition(coefficient, combination)
+    return MixedCondition(coefficient, combination)
 end
 
 """
