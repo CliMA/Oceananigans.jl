@@ -17,7 +17,7 @@ struct ExponentialCoordinate <: CallableCoordinate
 end
 
 # An exponential coordinate actually has faces
-Base.getindex(coord::ExponentialCoordinate, i) = coord.faces[i]
+Base.getindex(coord::ExponentialCoordinate, i) = @inbounds coord.faces[i]
 
 """
     ExponentialCoordinate(N::Int, left, right;
