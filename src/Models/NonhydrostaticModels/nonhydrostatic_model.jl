@@ -10,7 +10,7 @@ using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, Cen
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, time_discretization, implicit_diffusion_solver
@@ -29,7 +29,7 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 # but for now we use it only for hydrostatic pressure anomalies for now.
 struct DefaultHydrostaticPressureAnomaly end
 
-mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
+mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
                                    V, S, K, BG, P, BGC, AF, BM} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
@@ -41,6 +41,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
          stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
               forcing :: F        # Container for forcing functions defined by the user
               closure :: E        # Diffusive 'turbulence closure' for all model fields
+         free_surface :: FS       # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG       # Background velocity and tracer fields
             particles :: P        # Particle set for Lagrangian tracking
       biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
@@ -120,6 +121,7 @@ function NonhydrostaticModel(; grid,
                              stokes_drift = nothing,
                              forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
+                             free_surface = nothing,
                              boundary_conditions::NamedTuple = NamedTuple(),
                              tracers = (),
                              timestepper = :RungeKutta3,
@@ -207,6 +209,11 @@ function NonhydrostaticModel(; grid,
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
 
+    # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
+    if !isnothing(free_surface)
+        free_surface = materialize_free_surface(free_surface, velocities, grid)
+    end
+
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
@@ -235,7 +242,7 @@ function NonhydrostaticModel(; grid,
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
-                                forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
+                                forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
 
     update_state!(model; compute_tendencies = false)
