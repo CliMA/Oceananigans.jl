@@ -11,7 +11,7 @@ struct ExponentialCoordinate <: CallableCoordinate
     scale :: Float64
     bias :: Symbol
     function ExponentialCoordinate(size::Int, left::Number, right::Number, scale::Number, bias::Symbol)
-        faces = [construct_exponential_coordinate(i, size, left, right, scale, bias) for i in 1:size]
+        faces = [construct_exponential_coordinate(i, size, left, right, scale, bias) for i in 1:size+1]
         return new(size, faces, left, right, scale, bias)
     end
 end
