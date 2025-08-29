@@ -10,38 +10,9 @@ import Base: length
 ##### Multi Region Object
 #####
 
-struct MultiRegionObject{R, D, B}
+struct MultiRegionObject{R}
     regional_objects :: R
-    devices :: D
-    backend :: B
-
-    function MultiRegionObject(backend::KA.Backend, regional_objects...; devices=Tuple(CPU() for _ in regional_objects))
-        R = typeof(regional_objects)
-        D = typeof(devices)
-        B = typeof(backend)
-        return new{R, D, B}(regional_objects, devices, backend)
-    end
-
-    function MultiRegionObject(backend::KA.Backend, regional_objects::Tuple, devices::Tuple)
-        R = typeof(regional_objects)
-        D = typeof(devices)
-        B = typeof(backend)
-        return new{R, D, B}(regional_objects, devices, backend)
-    end
 end
-MultiRegionObject(arch::AbstractArchitecture, regional_objects...; devices=Tuple(CPU() for _ in regional_objects)) =
-    MultiRegionObject(device(arch), regional_objects...; devices=devices)
-MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple, devices::Tuple) =
-    MultiRegionObject(device(arch), regional_objects, devices)
-
-"""
-    MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple; devices)
-
-Return a MultiRegionObject
-"""
-MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple; devices=Tuple(CPU() for _ in regional_objects)) =
-    MultiRegionObject(arch, regional_objects, devices)
-
 
 #####
 ##### Convenience structs
@@ -58,18 +29,6 @@ end
 #####
 ##### Multi region functions
 #####
-@inline getbackend(mo::MultiRegionObject) = mo.backend
-@inline getdevice(a, i)                     = nothing
-@inline getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
-@inline getdevice(mo::MultiRegionObject, i) = mo.devices[i]
-
-@inline getdevice(a)               = nothing
-@inline getdevice(cu::OffsetArray) = getdevice(cu.parent)
-
-@inline switch_device!(a)                        = nothing
-@inline switch_device!(dev::Int)                 = device!(dev)
-@inline switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
-@inline switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 
 @inline getregion(a, i) = a
 @inline getregion(ref::Reference, i)        = ref.ref
@@ -104,13 +63,13 @@ end
 
 @inline isregional(t::Tuple{}) = false
 @inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-for func in [:isregional, :devices, :switch_device!]
+for func in [:isregional, :regions, :switch_device!]
     @eval begin
         @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
     end
 end
 
-@inline devices(mo::MultiRegionObject) = mo.devices
+@inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)
 
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
@@ -118,14 +77,7 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
-on_architecture(arch::CPU, mo::MultiRegionObject) = MultiRegionObject(arch, on_architecture(arch, mo.regional_objects))
-
-# TODO: Properly define on_architecture(::GPU, mo::MultiRegionObject) to handle cases where MultiRegionObject can be
-# distributed across different devices. Currently, the implementation assumes that all regional objects reside on a
-# single GPU.
-on_architecture(arch::GPU, mo::MultiRegionObject) =
-    MultiRegionObject(arch, on_architecture(arch, mo.regional_objects);
-                      devices = Tuple(device(arch) for i in 1:length(mo.regional_objects)))
+on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(on_architecture(arch, mo.regional_objects))
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
@@ -133,16 +85,12 @@ on_architecture(arch::GPU, mo::MultiRegionObject) =
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
-    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
-    devs = devices(devs)
+    R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
-
-    for (r, dev) in enumerate(devs)
+    for r in R
         switch_device!(dev)
         regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
-
-    sync_all_devices!(devs)
 
     return nothing
 end
@@ -158,51 +106,25 @@ end
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
-    devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
-    devs = devices(devs)
+    R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
-
-    # Dig out the backend since we don't have access to arch.
-    backend = nothing
-    for arg in args
-        if arg isa MultiRegionObject
-            backend = getbackend(arg)
-            break
-        end
-    end
-    if backend isa Nothing
-        backend = devs[1]
-    end
     # Evaluate regional_func on the device of that region and collect
     # return values
-    regional_return_values = Vector(undef, length(devs))
-    for (r, dev) in enumerate(devs)
-        switch_device!(dev)
+    regional_return_values = Vector(undef, length(R))
+    for r in R
         regional_return_values[r] = regional_func((getregion(arg, r) for arg in args)...;
                                                   (getregion(kwarg, r) for kwarg in kwargs)...)
     end
-    sync_all_devices!(devs)
 
     if Nreturns == 1
-        return MultiRegionObject(backend, Tuple(regional_return_values), devs)
+        return MultiRegionObject(Tuple(regional_return_values))
     else
-        return Tuple(MultiRegionObject(backend, Tuple(regional_return_values[r][i] for r in 1:length(devs)), devs) for i in 1:Nreturns)
-    end
-end
-
-@inline sync_all_devices!(grid::AbstractGrid)    = nothing
-@inline sync_all_devices!(mo::MultiRegionObject) = sync_all_devices!(devices(mo))
-
-@inline function sync_all_devices!(devices)
-    for dev in devices
-        switch_device!(dev)
-        sync_device!(dev)
+        return Tuple(MultiRegionObject(Tuple(regional_return_values[r][i] for r in 1:length(R))) for i in 1:Nreturns)
     end
 end
 
 @inline sync_device!(::Nothing)  = nothing
 @inline sync_device!(::CPU)      = nothing
-
 
 # TODO: The macro errors when there is a return and the function has (args...) in the
 # signature (example using a macro on `multi_region_boundary_conditions:L74)

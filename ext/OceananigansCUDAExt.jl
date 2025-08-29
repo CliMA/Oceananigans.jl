@@ -129,9 +129,6 @@ CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
 end
 
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()
-@inline UT.getdevice(cu::GPUVar, i)      = device(cu)
-@inline UT.getdevice(cu::GPUVar)         = device(cu)
-@inline UT.switch_device!(dev::CuDevice) = device!(dev)
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
 

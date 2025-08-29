@@ -27,13 +27,9 @@ using KernelAbstractions: @kernel, @index
 import Base: show, length, size
 
 import Oceananigans.Utils:
-                getdevice,
-                switch_device!,
-                devices,
                 isregional,
                 getregion,
-                _getregion,
-                sync_all_devices!
+                _getregion
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 

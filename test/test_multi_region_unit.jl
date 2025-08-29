@@ -1,8 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-devices(::CPU, num) = nothing
-devices(::GPU, num) = Tuple(0 for i in 1:num)
-
 # To be extended as we find new use cases
 @testset "Test @apply_regionally macro" begin
     a = 1
@@ -43,7 +40,7 @@ end
 
         for grid in grids, Partition in partition_types, region in regions
             @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
-            mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))
+            mrg = MultiRegionGrid(grid, partition = Partition(region))
 
             @test reconstruct_global_grid(mrg) == grid
 
@@ -68,7 +65,7 @@ end
             for immersed_boundary in immersed_boundaries
                 @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(Partition)s"
                 ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
-                mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))
+                mrg = MultiRegionGrid(grid, partition = Partition(region))
                 mribg = ImmersedBoundaryGrid(mrg, immersed_boundary)
 
                 @test reconstruct_global_grid(mribg) == ibg

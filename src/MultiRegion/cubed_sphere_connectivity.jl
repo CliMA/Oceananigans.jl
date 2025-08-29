@@ -21,9 +21,9 @@ struct CubedSphereConnectivity{C, R}
     rotations :: R
 end
 
-function CubedSphereConnectivity(arch::AbstractArchitecture, devices, partition::CubedSpherePartition, rotations::Tuple = default_rotations)
-    regions = MultiRegionObject(arch, Tuple(1:length(devices)), devices)
-    rotations = MultiRegionObject(arch, rotations, devices)
+function CubedSphereConnectivity(partition::CubedSpherePartition, rotations::Tuple = default_rotations)
+    regions = MultiRegionObject(Tuple(1:length(partition)))
+    rotations = MultiRegionObject(rotations)
     @apply_regionally connectivity = find_regional_connectivities(regions, partition)
 
     return CubedSphereConnectivity(connectivity, rotations)
@@ -260,21 +260,3 @@ function find_regional_connectivities(region, partition::CubedSpherePartition)
 end
 
 Base.summary(::CubedSphereConnectivity) = "CubedSphereConnectivity"
-
-#####
-##### Boundary-specific Utils
-#####
-
-"Trivial connectivities are East ↔ West, North ↔ South. Anything else is referred to as non-trivial."
-const NonTrivialConnectivity = Union{CubedSphereRegionalConnectivity{East, South}, CubedSphereRegionalConnectivity{East, North},
-                                     CubedSphereRegionalConnectivity{West, South}, CubedSphereRegionalConnectivity{West, North},
-                                     CubedSphereRegionalConnectivity{South, East}, CubedSphereRegionalConnectivity{South, West},
-                                     CubedSphereRegionalConnectivity{North, East}, CubedSphereRegionalConnectivity{North, West}}
-
-@inline flip_west_and_east_indices(buff, loc, conn) = buff
-@inline flip_west_and_east_indices(buff, ::Center, ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
-@inline flip_west_and_east_indices(buff, ::Face,   ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
-
-@inline flip_south_and_north_indices(buff, loc, conn) = buff
-@inline flip_south_and_north_indices(buff, ::Center, ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)
-@inline flip_south_and_north_indices(buff, ::Face,   ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)

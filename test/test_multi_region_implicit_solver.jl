@@ -2,13 +2,7 @@ include("dependencies_for_runtests.jl")
 
 function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
-    if architecture(grid) isa GPU
-        devices = (0, 0)
-    else
-        devices = nothing
-    end
-
-    mrg = MultiRegionGrid(grid, partition = XPartition(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = XPartition(regions))
 
     coriolis = FPlane(f = 1e-4)
 
