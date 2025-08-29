@@ -61,25 +61,17 @@ end
     return Gⁿ⁺¹
 end
 
-@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, stage)
+@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ)
     i, j = @index(Global, NTuple)
-    compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
-end
-
-@inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ)
     @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
     @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
-    return nothing
 end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::SplitRungeKutta3TimeStepper)
 
-    GU⁻ = timestepper.G⁻.U
-    GV⁻ = timestepper.G⁻.V
-
     active_cells_map = get_active_column_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
-            GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ; active_cells_map)
+            GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map)
 
     return nothing
 end
