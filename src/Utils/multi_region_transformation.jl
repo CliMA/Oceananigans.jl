@@ -29,19 +29,26 @@ struct MultiRegionObject{R, D, B}
         return new{R, D, B}(regional_objects, devices, backend)
     end
 end
+
 MultiRegionObject(arch::AbstractArchitecture, regional_objects...; devices=Tuple(CPU() for _ in regional_objects)) =
     MultiRegionObject(device(arch), regional_objects...; devices=devices)
+
 MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple, devices::Tuple) =
     MultiRegionObject(device(arch), regional_objects, devices)
 
 """
-    MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple; devices)
+    MultiRegionObject(arch::AbstractArchitecture,
+                      regional_objects::Tuple;
+                      devices = Tuple(CPU() for _ in regional_objects))
 
-Return a MultiRegionObject
+Return a MultiRegionObject with `devices`, which are all set to `CPU` by default.
 """
-MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple; devices=Tuple(CPU() for _ in regional_objects)) =
-    MultiRegionObject(arch, regional_objects, devices)
+function MultiRegionObject(arch::AbstractArchitecture,
+                           regional_objects::Tuple;
+                           devices = Tuple(CPU() for _ in regional_objects))
 
+    return MultiRegionObject(arch, regional_objects, devices)
+end
 
 #####
 ##### Convenience structs
@@ -58,7 +65,7 @@ end
 #####
 ##### Multi region functions
 #####
-@inline getbackend(mo::MultiRegionObject) = mo.backend
+@inline getbackend(mo::MultiRegionObject)   = mo.backend
 @inline getdevice(a, i)                     = nothing
 @inline getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
 @inline getdevice(mo::MultiRegionObject, i) = mo.devices[i]
@@ -160,7 +167,6 @@ end
 
     devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
     devs = devices(devs)
-
 
     # Dig out the backend since we don't have access to arch.
     backend = nothing
