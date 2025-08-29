@@ -134,9 +134,9 @@ See [`BoundaryCondition`](@ref) for information about the possible `kwargs`
 when using function `coefficient` and/or `combination`.
 """
 function MixedBoundaryCondition(coefficient, combination=0;
-                                      parameters = nothing,
-                                      discrete_form = false,
-                                      field_dependencies = ())
+                                parameters = nothing,
+                                discrete_form = false,
+                                field_dependencies = ())
 
     coefficient = materialize_condition(coefficient, parameters, discrete_form, field_dependencies)
     combination = materialize_condition(combination, parameters, discrete_form, field_dependencies)
