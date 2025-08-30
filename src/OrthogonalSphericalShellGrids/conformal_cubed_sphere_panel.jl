@@ -270,7 +270,6 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        non_uniform_conformal_mapping = false,
                                        spacing_type = "geometric",
                                        provided_conformal_mapping = nothing)
-
     radius = FT(radius)
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
