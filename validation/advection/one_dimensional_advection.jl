@@ -29,36 +29,49 @@ a = 0.5
     end
 end
 
-Δt_max = 1 * minimum_xspacing(grid)
+Δt_max = 0.5 * minimum_xspacing(grid)
 c_real = CenterField(grid)
 set!(c_real, c₀)
 
 # Change to test pure advection schemes
-advection = UpwindBiased(order=1)
+advection = WENO(order=7)
 
-model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2, advection, tracers=:c)
-model.timestepper.χ = -0.5
-set!(model, c=c₀, u=1)
-sim = Simulation(model, Δt=Δt_max, stop_time=10)
+model1 = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection, tracers=:c)
+set!(model1, c=c₀, u=1)
+sim1 = Simulation(model1, Δt=Δt_max, stop_time=10)
 
-sim.output_writers[:solution] = JLD2Writer(model, (; c = model.tracers.c);
-                                           filename="one_d_simulation.jld2",
-                                           schedule=IterationInterval(10),
-                                           overwrite_existing=true)
+model2 = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(u=1), timestepper=:SplitRungeKutta3, tracer_advection=advection, tracers=:c)
+set!(model2, c=c₀)
+sim2 = Simulation(model2, Δt=Δt_max, stop_time=10)
 
-run!(sim)
+sim1.output_writers[:solution] = JLD2Writer(model1, (; c = model1.tracers.c);
+                                            filename="one_d_simulation_NH.jld2",
+                                            schedule=IterationInterval(10),
+                                            overwrite_existing=true)
 
-c = FieldTimeSeries("one_d_simulation.jld2", "c")
+sim2.output_writers[:solution] = JLD2Writer(model2, (; c = model2.tracers.c);
+                                            filename="one_d_simulation_HF.jld2",
+                                            schedule=IterationInterval(10),
+                                            overwrite_existing=true)
+
+run!(sim1)
+run!(sim2)
+
+c1 = FieldTimeSeries("one_d_simulation_NH.jld2", "c")
+c2 = FieldTimeSeries("one_d_simulation_HF.jld2", "c")
 
 using GLMakie
 
 iter = Observable(1)
-Nt = length(c.times)
+Nt = length(c1.times)
 
 fig = Figure()
 ax = Axis(fig[1, 1], title="c", xlabel="x", ylabel="t")
-ci = @lift(c[$iter])
-lines!(ax, ci, color=:blue)
+c1i = @lift(interior(c1[$iter], :, 1, 1))
+c2i = @lift(interior(c2[$iter], :, 1, 1))
+lines!(ax, c1i, color=:blue, label = "RK3  (NonhydrostaticModel)")
+lines!(ax, c2i, color=:red,  label = "SRK3 (HydrostaticFreeSurfaceModel)")
+Legend(fig[0, 1], ax)
 
 GLMakie.record(fig, "one_d_simulation.mp4", 1:Nt) do i
     iter[] = i

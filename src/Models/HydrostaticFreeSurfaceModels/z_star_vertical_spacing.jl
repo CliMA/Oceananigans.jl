@@ -73,11 +73,9 @@ end
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
 
-rk3_substep_grid!(grid, model, vertical_coordinate, Δt, γⁿ, ζⁿ) = nothing
-rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, ::Nothing, ::Nothing) =
-    rk3_substep_grid!(grid, model, ztype, Δt, one(grid), zero(grid))
+rk3_substep_grid!(grid, model, vertical_coordinate, Δt) = nothing
 
-function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, γⁿ, ζⁿ)
+function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
 
     # Scalings and free surface
     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
@@ -93,7 +91,7 @@ function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoord
     params = zstar_params(grid)
 
     launch!(architecture(grid), grid, params, _rk3_update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
+            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, U, V, u, v)
 
     return nothing
 end
@@ -102,7 +100,7 @@ end
 # Note!!! This η is different than the free surface coming from the barotropic step!!
 # This η is the one used to compute the vertical spacing.
 # TODO: The two different free surfaces need to be reconciled.
-@kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, γⁿ, ζⁿ, U, V, u, v)
+@kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -110,7 +108,7 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
 
-    @inbounds ηⁿ[i, j, 1] = ζⁿ * ηⁿ⁻¹[i, j, 1] + γⁿ * (ηⁿ[i, j, 1] - Δt * δh_U)
+    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, 1] - Δt * δh_U
 
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end

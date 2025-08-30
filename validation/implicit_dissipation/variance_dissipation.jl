@@ -80,7 +80,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
     sim = Simulation(model; Δt, stop_time=10)
 
     ϵ = VarianceDissipation(:c, grid)
-    f = Oceananigans.Simulations.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
+    f = Oceananigans.Models.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
 
     outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
     add_callback!(sim, ϵ, IterationInterval(1))

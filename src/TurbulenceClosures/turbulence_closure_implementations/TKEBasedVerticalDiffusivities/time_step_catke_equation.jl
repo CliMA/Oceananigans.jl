@@ -4,7 +4,7 @@ using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
-using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!, _split_rk3_average_field!
+using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 
@@ -108,9 +108,9 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt
-    stage = model.clock.stage
-    γⁿ, ζⁿ = rk3_coeffs(model.timestepper, model.clock.stage)
+    β  = model.clock.stage == 1 ? model.timestepper.β¹ :
+         model.clock.stage == 2 ? model.timestepper.β² : 1
+    Δt = model.clock.last_Δt / β
 
     # Compute the linear implicit component of the RHS (diffusivities, L)...
     launch!(arch, grid, :xyz,
@@ -129,12 +129,7 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     implicit_step!(e, implicit_solver, closure,
                    diffusivity_fields, Val(tracer_index),
                    model.clock, Δt)
-
-    if model.clock.stage > 1
-        launch!(arch, grid, :xyz, 
-                _split_rk3_average_field!, e, γⁿ, ζⁿ, e⁻)
-    end
-
+                   
     return nothing
 end
 

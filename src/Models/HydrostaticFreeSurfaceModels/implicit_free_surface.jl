@@ -151,6 +151,12 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
+    parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
+    step_free_surface!(free_surface, model, nothing, Δt)
+    return nothing
+end
+
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
 
     foreach(mask_immersed_field!, velocities)

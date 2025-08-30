@@ -50,38 +50,32 @@ end
 #####
 
 step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) =
-    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, timestepper.χ)
+    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)
 
 step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
-    @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
+    @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
 
 @inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
 @inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
 @inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
 
-function explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
-
-    γⁿ, ζⁿ = rk3_coeffs(timestepper, Val(model.clock.stage))
-
+explicit_rk3_step_free_surface!(free_surface, model, Δt) = 
     launch!(model.architecture, model.grid, :xy,
-            _explicit_rk3_step_free_surface!, free_surface.η, Δt, γⁿ, ζⁿ,
+            _explicit_rk3_step_free_surface!, free_surface.η, Δt,
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
 
-    return nothing
-end
-
-explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
+explicit_ab2_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
-            _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
+            _explicit_ab2_step_free_surface!, free_surface.η, Δt, model.timestepper.χ,
             model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3))
 
 #####
 ##### Kernels
 #####
 
-@kernel function _explicit_rk3_step_free_surface!(η, Δt, γⁿ, ζⁿ, Gⁿ, η⁻, Nz)
+@kernel function _explicit_rk3_step_free_surface!(η, Δt, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
-    @inbounds η[i, j, Nz+1] = ζⁿ * η⁻[i, j, Nz+1] + γⁿ * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
+    @inbounds η[i, j, Nz+1] = η⁻[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1]
 end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)
@@ -101,9 +95,9 @@ end
 #####
 
 """ Calculate the right-hand-side of the free surface displacement (``η``) equation. """
-@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args)
+@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, ztype, args)
     i, j = @index(Global, NTuple)
-    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
+    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, ztype, args...)
 end
 
 """
@@ -124,6 +118,7 @@ The tendency is called ``G_η`` and defined via
 ```
 """
 @inline function free_surface_tendency(i, j, grid,
+                                       vertical_coordinate,
                                        velocities,
                                        free_surface,
                                        tracers,
@@ -133,8 +128,19 @@ The tendency is called ``G_η`` and defined via
 
     k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    w_top = free_surface_vertical_velocity(i, j, k_top, grid, vertical_coordinate, velocities)
 
-    return @inbounds velocities.w[i, j, k_top] + forcings.η(i, j, k_top, grid, clock, model_fields)
+    return w_top + forcings.η(i, j, k_top, grid, clock, model_fields)
+end
+
+@inline free_surface_vertical_velocity(i, j, k_top, grid, ztype, velocities) = @inbounds velocities.w[i, j, k_top]
+
+@inline function free_surface_vertical_velocity(i, j, k_top, grid, ::ZStarCoordinate, velocities)
+    u, v, _ = velocities
+    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, u)
+    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, v)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
+    return - δh_U
 end
 
 compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
@@ -154,7 +160,7 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     launch!(arch, grid, :xy,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
-            grid, args)
+            grid, model.vertical_coordinate, args)
 
     args = (model.clock,
             fields(model),

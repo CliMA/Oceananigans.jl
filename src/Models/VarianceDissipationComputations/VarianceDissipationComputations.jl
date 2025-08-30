@@ -4,7 +4,7 @@ export VarianceDissipation, flatten_dissipation_fields
 
 using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
-using Oceananigans.Grids: architecture
+using Oceananigans.Grids: architecture, AbstractGrid
 using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: Field, VelocityFields
