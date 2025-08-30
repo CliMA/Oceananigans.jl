@@ -790,22 +790,86 @@ import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜ�
 @inline on_north_east_corner(i, j, grid) = (i == grid.Nx+1) & (j == grid.Ny+1)
 @inline on_north_west_corner(i, j, grid) = (i == 1) & (j == grid.Ny+1)
 
+# Any corner
+@inline function on_corner(i, j, grid)
+    return on_south_west_corner(i, j, grid) |
+           on_south_east_corner(i, j, grid) |
+           on_north_east_corner(i, j, grid) |
+           on_north_west_corner(i, j, grid)
+end
+
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
-    Γᶠᶠᶜ(i, j, k, grid, u, v)
+    Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
 
-The vertical circulation associated with horizontal velocities ``u`` and ``v``.
+The vertical circulation associated with horizontal velocities ``u`` and ``v`` on a conformal cubed sphere grid
 """
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+
+Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v) =
+    Γ₁ᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+    
+@inline function Γ₁ᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, u, v) where FT
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
-               Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
+               convert(FT, 4/3) * (Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u)),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
-                      - Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u),
+                      convert(FT, 4/3) * (- Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u)),
                       δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
                      )
               )
+    return Γ
+end
+
+@inline function enclosing_vertex_indices(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind)
+    if on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
+        i1, j1 = i,     j - 1
+        i2, j2 = i + 1, j - 1
+        i3, j3 = i + 1, j
+        i4, j4 = i + 1, j + 1
+        i5, j5 = i,     j + 1
+        i6, j6 = i - 1, j - 1
+    elseif on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid)
+        i1, j1 = i,     j - 1
+        i2, j2 = i + 1, j - 1
+        i3, j3 = i,     j + 1
+        i4, j4 = i - 1, j + 1
+        i5, j5 = i - 1, j
+        i6, j6 = i - 1, j - 1
+    else
+        error("Not a corner index!")
+    end
+    return (i1, j1), (i2, j2), (i3, j3), (i4, j4), (i5, j5), (i6, j6)
+end
+
+@inline function Γ₂ᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+    ip = max(2 - grid.Hx, i)
+    jp = max(2 - grid.Hy, j)
+    if on_corner(i, j, grid)
+        (i1, j1), (i2, j2), (i3, j3), (i4, j4), (i5, j5), (i6, j6) = enclosing_vertex_indices(i, j, k, grid)
+        ip1, jp1 = max(2 - grid.Hx, i1), max(2 - grid.Hy, j1)
+        ip2, jp2 = max(2 - grid.Hx, i2), max(2 - grid.Hy, j2)
+        ip3, jp3 = max(2 - grid.Hx, i3), max(2 - grid.Hy, j3)
+        ip4, jp4 = max(2 - grid.Hx, i4), max(2 - grid.Hy, j4)
+        ip5, jp5 = max(2 - grid.Hx, i5), max(2 - grid.Hy, j5)
+        ip6, jp6 = max(2 - grid.Hx, i6), max(2 - grid.Hy, j6)
+        Γ1 = δxᶠᶠᶜ(ip1, jp1, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip1, jp1, k, grid, Δx_qᶠᶜᶜ, u)
+        Γ2 = δxᶠᶠᶜ(ip2, jp2, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip2, jp2, k, grid, Δx_qᶠᶜᶜ, u)
+        Γ3 = δxᶠᶠᶜ(ip3, jp3, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip3, jp3, k, grid, Δx_qᶠᶜᶜ, u)
+        Γ4 = δxᶠᶠᶜ(ip4, jp4, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip4, jp4, k, grid, Δx_qᶠᶜᶜ, u)
+        Γ5 = δxᶠᶠᶜ(ip5, jp5, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip5, jp5, k, grid, Δx_qᶠᶜᶜ, u)
+        Γ6 = δxᶠᶠᶜ(ip6, jp6, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip6, jp6, k, grid, Δx_qᶠᶜᶜ, u)
+        A1 = Azᶠᶠᶜ(ip1, jp1, k, grid)
+        A2 = Azᶠᶠᶜ(ip2, jp2, k, grid)
+        A3 = Azᶠᶠᶜ(ip3, jp3, k, grid)
+        A4 = Azᶠᶠᶜ(ip4, jp4, k, grid)
+        A5 = Azᶠᶠᶜ(ip5, jp5, k, grid)
+        A6 = Azᶠᶠᶜ(ip6, jp6, k, grid)
+        A  = Azᶠᶠᶜ(ip, jp, k, grid)
+        Γ = (Γ1 + Γ2 + Γ3 + Γ4 + Γ5 + Γ6) / (A1 + A2 + A3 + A4 + A5 + A6) * A
+    else
+        Γ = δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
+    end
     return Γ
 end
