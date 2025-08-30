@@ -145,6 +145,11 @@ function interior(mrf::MultiRegionField)
     return interior_mrf
 end
 
+function interior(mrf::MultiRegionField, I...)
+    @apply_regionally interior_mrf = interior(mrf, I...)
+    return interior_mrf
+end
+
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
 validate_indices(indices, loc, mrg::MultiRegionGrids) =
