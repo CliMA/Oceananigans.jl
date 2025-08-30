@@ -1,3 +1,4 @@
+using CubedSphere
 using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded
 using Oceananigans.Utils: KernelParameters
 using StaticArrays
@@ -56,23 +57,6 @@ function rotate_metrics!(grid, shifted_lat_lon_grid)
     parameters = KernelParameters(-Hx:Nx+Hx+1, -Hy:Ny+Hy+1)
     launch!(arch, grid, parameters, _rotate_metrics!, grid, shifted_lat_lon_grid)
     return nothing
-end
-
-# Convert from Spherical to Cartesian
-function spherical_to_cartesian(λ, φ, r=1)
-    x = r * cos(φ) * cos(λ)
-    y = r * cos(φ) * sin(λ)
-    z = r * sin(φ)
-    return SVector(x, y, z)
-end
-
-# Convert from Cartesian to Spherical
-function cartesian_to_spherical(X)
-    x, y, z = X
-    r = norm(X)
-    φ = asin(z / r)
-    λ = atan(y, x)
-    return λ, φ
 end
 
 # Rotation about x-axis by dλ (Change in Longitude)
