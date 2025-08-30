@@ -789,14 +789,6 @@ import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜ�
 @inline on_north_east_corner(i, j, grid) = (i == grid.Nx+1) & (j == grid.Ny+1)
 @inline on_north_west_corner(i, j, grid) = (i == 1) & (j == grid.Ny+1)
 
-# Any corner
-@inline function on_corner(i, j, grid)
-    return on_south_west_corner(i, j, grid) |
-           on_south_east_corner(i, j, grid) |
-           on_north_east_corner(i, j, grid) |
-           on_north_west_corner(i, j, grid)
-end
-
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
