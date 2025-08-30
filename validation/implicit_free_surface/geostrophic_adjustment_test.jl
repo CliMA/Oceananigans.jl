@@ -56,7 +56,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model; Δt = 1 * wave_propagation_time_scale, stop_iteration)
+    simulation = Simulation(model; Δt = 0.2 * wave_propagation_time_scale, stop_iteration)
 
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
@@ -107,19 +107,19 @@ Lz = 400meters
 grid = RectilinearGrid(size = (80, 3, 1),
                        halo = (2, 2, 2),
                        x = (0, Lh), y = (0, Lh), 
-                       z = MutableVerticalDiscretization((-Lz, 0)),
+                       z = (-Lz, 0), #MutableVerticalDiscretization((-Lz, 0)),
                        topology = (Periodic, Periodic, Bounded))
 
 explicit_free_surface = ExplicitFreeSurface()
-implicit_free_surface = ImplicitFreeSurface()
+implicit_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=120)
 
 seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
 serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
-# efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
-# efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
-# imab2, sim6 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid))
-# imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
+efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+imab2, sim6 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid))
+imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
 
 import Oceananigans.Fields: interior
 interior(a::Array, idx...) = a
