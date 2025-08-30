@@ -9,7 +9,7 @@ using Base: @propagate_inbounds
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
-import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, communication_buffers
 import Oceananigans.Diagnostics: hasnan
 
@@ -138,6 +138,16 @@ function compute!(comp::MultiRegionComputedField, time=nothing)
     fill_halo_regions!(comp)
 
     return comp
+end
+
+function interior(mrf::MultiRegionField)
+    @apply_regionally interior_mrf = interior(mrf)
+    return interior_mrf
+end
+
+function interior(mrf::MultiRegionField, I...)
+    @apply_regionally interior_mrf = interior(mrf, I...)
+    return interior_mrf
 end
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
