@@ -19,7 +19,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     old_halos = halo_size(getregion(grid, 1))
     Nsubsteps = calculate_substeps(free_surface.substepping)
 
-    extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
+    extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+2, grid.partition)
     extended_grid  = with_halo(extended_halos, grid)
 
     η = free_surface_displacement_field(velocities, free_surface, extended_grid)
