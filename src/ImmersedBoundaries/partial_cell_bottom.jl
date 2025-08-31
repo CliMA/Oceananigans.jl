@@ -5,7 +5,6 @@ using Printf
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
                                Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
-import Oceananigans.Grids: constructor_arguments
 
 #####
 ##### PartialCellBottom
@@ -208,14 +207,6 @@ VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶜᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
 @inline Δzᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
-
-function constructor_arguments(grid::PCBIBG)
-    args, kwargs = constructor_arguments(grid.underlying_grid)
-    args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,
-                            :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height,
-                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
-    return args, kwargs
-end
 
 function Base.:(==)(pcb1::PartialCellBottom, pcb2::PartialCellBottom)
     return pcb1.bottom_height == pcb2.bottom_height && pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height

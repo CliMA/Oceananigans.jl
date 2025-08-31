@@ -1,5 +1,4 @@
 using KernelAbstractions: @kernel, @index
-using OrderedCollections: OrderedDict
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
                              DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
@@ -360,7 +359,7 @@ end
 function constructor_arguments(grid::LatitudeLongitudeGrid)
     arch = architecture(grid)
     FT = eltype(grid)
-    args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
+    args = Dict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
     topo = topology(grid)
