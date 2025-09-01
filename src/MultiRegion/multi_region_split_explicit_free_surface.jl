@@ -9,7 +9,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extended_halos}, 
+                                  velocities, 
+                                  grid::MultiRegionGrids) where {extend_halos}
 
     free_surface.substepping isa FixedTimeStepSize &&
         throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialize SplitExplicitFreeSurface using substeps kwarg"))
@@ -19,8 +21,12 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     old_halos = halo_size(getregion(grid, 1))
     Nsubsteps = calculate_substeps(free_surface.substepping)
 
-    extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
-    extended_grid  = with_halo(extended_halos, grid)
+    if extend_halos
+        extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
+        extended_grid  = with_halo(extended_halos, grid)
+    else
+        extended_grid = grid
+    end
 
     η = free_surface_displacement_field(velocities, free_surface, extended_grid)
     η̅ = free_surface_displacement_field(velocities, free_surface, extended_grid)
@@ -44,18 +50,21 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     timestepper = materialize_timestepper(free_surface.timestepper, extended_grid, free_surface, velocities, u_bcs, v_bcs)
 
     # In a non-parallel grid we calculate only the interior
-    @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
-    @apply_regionally kernel_offsets = augmented_kernel_offsets(grid, grid.partition)
+    if extended_halos
+        @apply_regionally kernel_size       = augmented_kernel_size(grid, grid.partition)
+        @apply_regionally kernel_offsets    = augmented_kernel_offsets(grid, grid.partition)
+        @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
+    else
+        kernel_parameters = :xy
+    end
 
-    @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
-
-    return SplitExplicitFreeSurface(η,
-                                    barotropic_velocities,
-                                    filtered_state,
-                                    gravitational_acceleration,
-                                    kernel_parameters,
-                                    free_surface.substepping,
-                                    timestepper)
+    return SplitExplicitFreeSurface{extended_halos}(η,
+                                                    barotropic_velocities,
+                                                    filtered_state,
+                                                    gravitational_acceleration,
+                                                    kernel_parameters,
+                                                    free_surface.substepping,
+                                                    timestepper)
 end
 
 materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
