@@ -9,7 +9,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extended_halos}, 
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, 
                                   velocities, 
                                   grid::MultiRegionGrids) where {extend_halos}
 
@@ -50,7 +50,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extende
     timestepper = materialize_timestepper(free_surface.timestepper, extended_grid, free_surface, velocities, u_bcs, v_bcs)
 
     # In a non-parallel grid we calculate only the interior
-    if extended_halos
+    if extend_halos
         @apply_regionally kernel_size       = augmented_kernel_size(grid, grid.partition)
         @apply_regionally kernel_offsets    = augmented_kernel_offsets(grid, grid.partition)
         @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
@@ -58,13 +58,13 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extende
         kernel_parameters = :xy
     end
 
-    return SplitExplicitFreeSurface{extended_halos}(η,
-                                                    barotropic_velocities,
-                                                    filtered_state,
-                                                    gravitational_acceleration,
-                                                    kernel_parameters,
-                                                    free_surface.substepping,
-                                                    timestepper)
+    return SplitExplicitFreeSurface{extend_halos}(η,
+                                                  barotropic_velocities,
+                                                  filtered_state,
+                                                  gravitational_acceleration,
+                                                  kernel_parameters,
+                                                  free_surface.substepping,
+                                                  timestepper)
 end
 
 materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
