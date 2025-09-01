@@ -14,7 +14,7 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
 
     function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T) where {E, H, U, M, FT, K, S, T}
-        return SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T}(η, u, m, g, k, s, t)
+        return new{E, H, U, M, FT, K, S, T}(η, u, m, g, k, s, t)
     end
 end
 
