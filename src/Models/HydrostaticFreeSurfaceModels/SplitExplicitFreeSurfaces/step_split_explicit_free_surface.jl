@@ -13,8 +13,9 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
     k_top = grid.Nz+1
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
-    @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+
+    @inbounds η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+                                      δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 end
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, transport_weight,grid, Δτ,
@@ -61,8 +62,7 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_substeps(substepping::FTS, Δt) = max(MINIMUM_SUBSTEPS, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
-@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
-                                                                                        substeps, substepping.averaging_kernel)
+@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
 function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
@@ -79,8 +79,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!, nothing, nothing)
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!, nothing, nothing)
+    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
     η_args = (grid, Δτᴮ, η, U, V,
               timestepper)
@@ -122,7 +122,7 @@ end
 end
 
 #####
-##### SplitExplicitFreeSurface barotropic subcylicing
+##### SplitExplicitFreeSurface barotropic subcycling
 #####
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
@@ -147,7 +147,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # In case of an RK3 timestepper, reset also the free surface state for the last stage.
     @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
-    # Calculate the substepping parameterers
+    # Calculate the substepping parameters
     # barotropic time step as fraction of baroclinic step and averaging weights
     Nsubsteps = calculate_substeps(substepping, Δt)
     fractional_Δt, weights, transport_weights = calculate_adaptive_settings(substepping, Nsubsteps)
