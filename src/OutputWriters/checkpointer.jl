@@ -227,8 +227,13 @@ function set!(model, filepath::AbstractString)
 
         set_time_stepper!(model.timestepper, model.architecture, file, model_fields, addr)
 
-        if !isnothing(model.particles)
-            copyto!(model.particles.properties, file["$addr/particles"])
+        if hasproperty(model, :particles) && !isnothing(model.particles)
+            # Try restoring particles
+            if :particles ∈ keys(file[addr])
+                copyto!(model.particles.properties, file["$addr/particles"])
+            else
+                @warn "Particles does not exist in checkpoint and could not be restored."
+            end
         end
 
         checkpointed_clock = file["$addr/clock"]
