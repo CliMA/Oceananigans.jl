@@ -784,26 +784,28 @@ end
     Δφ = 20
     @inline ηᵢ(λ, φ, z) = η₀ * cosd(4λ) * exp(-φ^2 / 2Δφ^2)
     for FT in float_types
+        atol = FT == Float32 ? 1e-6 : 1e-12
+        rtol = FT == Float32 ? 1e-5 : 1e-10
         for arch in archs
-            for extend_halos in (false, true)
-                Nx, Ny, Nz = 18, 18, 9
+            Nx, Ny, Nz = 18, 18, 9
 
-                underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1),
-                                                           radius = R_Earth, horizontal_direction_halo = 6)
-                @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-                immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1),
+                                                       radius = R_Earth, horizontal_direction_halo = 6)
+            Hx, Hy, Hz = halo_size(underlying_grid)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-                grids = (underlying_grid, immersed_grid)
+            grids = (underlying_grid, immersed_grid)
 
-                for grid in grids
-                    if grid == underlying_grid
-                        @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                        suffix = "UG"
-                    else
-                        @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                        suffix = "IG"
-                    end
+            for grid in grids
+                suffix_1 = grid == underlying_grid ? "UG" : "IG"
+                grid_type = grid == underlying_grid ? "conformal cubed sphere grid" : "immersed boundary conformal cubed sphere grid"
 
+                η₁ = U₁ = V₁ = nothing
+                for extend_halos in (false, true)
+                    suffix_2 = extend_halos ? "_with_extended_halos" : "_without_extended_halos"
+                    halo_type = extend_halos ? "with extended halos" : "without extended halos"
+                    @info "  Testing simulation on $grid_type $halo_type [$FT, $(typeof(arch))]..."
                     model = HydrostaticFreeSurfaceModel(; grid,
                                                         momentum_advection = WENOVectorInvariant(FT; order=5),
                                                         tracer_advection = WENO(FT; order=5),
@@ -822,14 +824,14 @@ end
                     save_fields_interval = 2minute
                     checkpointer_interval = 4minutes
 
-                    filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
+                    filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix_1 * suffix_2
                     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                                             schedule = TimeInterval(checkpointer_interval),
                                                                             prefix = filename_checkpointer,
                                                                             overwrite_existing = true)
 
                     outputs = fields(model)
-                    filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
+                    filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix_1 * suffix_2
                     simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                     schedule = TimeInterval(save_fields_interval),
                                                                     filename = filename_output_writer,
@@ -841,25 +843,26 @@ end
                     @test time(simulation) == 10minutes
 
                     if !extend_halos
-                        η₁ = prognostic_fields(simulation.model).η
-                        U₁ = prognostic_fields(simulation.model).U
-                        V₁ = prognostic_fields(simulation.model).V
+                        η₁ = deepcopy(prognostic_fields(simulation.model).η)
+                        U₁ = deepcopy(prognostic_fields(simulation.model).U)
+                        V₁ = deepcopy(prognostic_fields(simulation.model).V)
                     else
-                        η₂ = prognostic_fields(simulation.model).η
-                        U₂ = prognostic_fields(simulation.model).U
-                        V₂ = prognostic_fields(simulation.model).V
-                    end
-
-                    for region in 1:number_of_regions(grid)
-                        @test getregion(η₂, region)[1:Nx, 1:Ny, Nz+1] ≈ getregion(η₁, region)[1:Nx, 1:Ny, Nz+1]
-                        @test getregion(U₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(U₁, region)[1:Nx, 1:Ny, 1]
-                        @test getregion(V₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(V₁, region)[1:Nx, 1:Ny, 1]
+                        η₂ = deepcopy(prognostic_fields(simulation.model).η)
+                        U₂ = deepcopy(prognostic_fields(simulation.model).U)
+                        V₂ = deepcopy(prognostic_fields(simulation.model).V)
+                        for region in 1:number_of_regions(grid)
+                            @test getregion(η₂, region)[1:Nx, 1:Ny, Nz+1] ≈ getregion(η₁, region)[1:Nx, 1:Ny, Nz+1] atol = atol rtol = rtol
+                            @test getregion(U₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(U₁, region)[1:Nx, 1:Ny, 1]    atol = atol rtol = rtol
+                            @test getregion(V₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(V₁, region)[1:Nx, 1:Ny, 1]    atol = atol rtol = rtol
+                        end
                     end
 
                     u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u")
                     v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v")
                     b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b")
-                    η_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "η")
+                    η_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "η";
+                                                   grid = on_architecture(CPU(),
+                                                                          simulation.model.free_surface.η.grid))
 
                     if grid == underlying_grid
                         @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
@@ -867,7 +870,7 @@ end
                         @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
                     end
 
-                    simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+                    simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
                     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                                             schedule = TimeInterval(checkpointer_interval),
@@ -888,7 +891,9 @@ end
                     u_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "u")
                     v_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "v")
                     b_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "b")
-                    η_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "η")
+                    η_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "η";
+                                                          grid = on_architecture(CPU(),
+                                                                                 simulation.model.free_surface.η.grid))
 
                     for region in 1:number_of_regions(grid)
                         @test getregion(u_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈

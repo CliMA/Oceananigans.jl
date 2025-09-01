@@ -331,7 +331,7 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
 
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
-    step_halo = Nsubsteps + 1
+    step_halo = Nsubsteps + 2
 
     Hx = TX() isa ConnectedTopology ? max(step_halo, old_halos[1]) : old_halos[1]
     Hy = TY() isa ConnectedTopology ? max(step_halo, old_halos[2]) : old_halos[2]

@@ -114,7 +114,8 @@ end
 end
 
 @kernel function _fill_cubed_sphere_center_center_field_corner_halo_regions!(field, Nc, Hc)
-    k = @index(Global, Linear)
+    k_NTuple = @index(Global, NTuple)
+    k = k_NTuple[1]
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -547,7 +548,8 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
 end
 
 @kernel function _fill_cubed_sphere_face_center_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k = @index(Global, Linear)
+    k_NTuple = @index(Global, NTuple)
+    k = k_NTuple[1]
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -579,7 +581,8 @@ end
 end
 
 @kernel function _fill_cubed_sphere_center_face_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k = @index(Global, Linear)
+    k_NTuple = @index(Global, NTuple)
+    k = k_NTuple[1]
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
