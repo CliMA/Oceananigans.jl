@@ -23,7 +23,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     Nsubsteps = calculate_substeps(substepping)
 
     if extend_halos
-        extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
+        extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+2, grid.partition)
         extended_grid  = with_halo(extended_halos, grid)
     else
         extended_grid = grid
