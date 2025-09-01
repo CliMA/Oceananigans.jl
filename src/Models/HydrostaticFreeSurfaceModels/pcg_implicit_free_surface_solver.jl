@@ -151,8 +151,8 @@ ImplicitFreeSurfaceOperation = typeof(implicit_free_surface_linear_operation!)
 end
 
 # Kernels that act on vertically integrated / surface quantities
-@inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, η) = @inbounds ∫ᶻ_Axᶠᶜᶜ[i, j, k] * ∂xᶠᶜᶠ(i, j, k, grid, η)
-@inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * ∂yᶜᶠᶠ(i, j, k, grid, η)
+@inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, Ax, η) = column_depthᶠᶜᵃ(i, j, grid) * Δyᶠᶜᶠ(i, j, k, grid) * ∂xᶠᶜᶠ(i, j, k, grid, η)
+@inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, Ay, η) = column_depthᶜᶠᵃ(i, j, grid) * Δxᶜᶠᶠ(i, j, k, grid) * ∂yᶜᶠᶠ(i, j, k, grid, η)
 
 """
     _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
