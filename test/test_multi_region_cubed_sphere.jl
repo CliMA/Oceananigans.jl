@@ -1,10 +1,12 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans: prognostic_fields
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Grids: φnode, λnode, halo_size, R_Earth
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
+using Oceananigans.MultiRegion: number_of_regions
 
 function get_range_of_indices(operation, index, Nx, Ny)
     if operation == :endpoint && index == :first
@@ -180,7 +182,7 @@ end
     for arch in archs
         @info "  Testing conformal cubed sphere grid from file [$(typeof(arch))]..."
 
-        # Read cs32 grid from file.
+        # read cs32 grid from file
         grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
 
         radius = first(grid_cs32).radius
@@ -192,7 +194,7 @@ end
         Hx !== Hy && error("Hx must be same as Hy")
         H = Hy
 
-        # Construct a ConformalCubedSphereGrid similar to cs32.
+        # construct a ConformalCubedSphereGrid similar to cs32
         grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius,
                                         horizontal_direction_halo = Hx, z_halo = Hz)
 
@@ -204,10 +206,10 @@ end
                 @test compare_grid_vars(getregion(grid, panel).φᶜᶜᵃ, getregion(grid_cs32, panel).φᶜᶜᵃ, N, H)
                 @test compare_grid_vars(getregion(grid, panel).λᶜᶜᵃ, getregion(grid_cs32, panel).λᶜᶜᵃ, N, H)
 
-                # Before we test, make sure we don't consider +180 and -180 longitudes as being "different".
+                # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
                 getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).λᶠᶠᵃ .≈ -180] .= 180
 
-                # If poles are included, they have the same longitude.
+                # and if poles are included, they have the same longitude.
                 same_longitude_at_poles!(grid, grid_cs32)
 
                 @test compare_grid_vars(getregion(grid, panel).φᶠᶠᵃ, getregion(grid_cs32, panel).φᶠᶠᵃ, N, H)
@@ -223,643 +225,687 @@ end
 panel_sizes = ((8, 8, 1), (9, 9, 2))
 
 @testset "Testing area metrics" begin
-    for FT in float_types, arch in archs, panel_size in panel_sizes, non_uniform_conformal_mapping in (false, true)
-        Nx, Ny, Nz = panel_size
-        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+    for FT in float_types
+        for arch in archs
+            for panel_size in panel_sizes
+                Nx, Ny, Nz = panel_size
 
-        @info "  Testing conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
+                grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1)
 
-        grid = ConformalCubedSphereGrid(arch, FT;
-                                        panel_size, z = (0, 1), radius = 1, non_uniform_conformal_mapping)
+                areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
 
-        areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
+                for region in 1:number_of_regions(grid)
+                    @allowscalar begin
+                        areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
+                        areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
+                        areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
+                        areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:Nx, 1:Ny])
+                    end
+                end
 
-        for region in 1:number_of_regions(grid)
-            @allowscalar begin
-                areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
-                areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
-                areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
-                areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:Nx, 1:Ny])
+                @test areaᶜᶜᵃ ≈ areaᶠᶜᵃ ≈ areaᶜᶠᵃ ≈ areaᶠᶠᵃ ≈ 4π * grid.radius^2
             end
         end
-
-        @test areaᶜᶜᵃ ≈ areaᶠᶜᵃ ≈ areaᶜᶠᵃ ≈ areaᶠᶠᵃ ≈ 4π * grid.radius^2
     end
 end
 
-@testset "Immersed conformal cubed sphere construction" begin
-    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
-        Nx, Ny, Nz = 9, 9, 9
-        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+@testset "Immersed cubed sphere construction" begin
+    for FT in float_types
+        for arch in archs
+            Nx, Ny, Nz = 9, 9, 9
 
-        @info "  Testing immersed conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
+            @info "  Testing immersed cubed sphere grid [$FT, $(typeof(arch))]..."
 
-        underlying_grid = ConformalCubedSphereGrid(arch, FT;
-                                                   panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1,
-                                                   non_uniform_conformal_mapping)
-        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        # Test that the grid is constructed correctly.
-        for panel in 1:6
-            grid = getregion(immersed_grid, panel)
+            # Test that the grid is constructed correctly
+            for panel in 1:6
+                grid = getregion(immersed_grid, panel)
 
-            if panel == 3 || panel == 6 # North and South panels should be completely immersed.
-                @test isempty(grid.interior_active_cells)
-            else # Other panels should have some active cells.
-                @test !isempty(grid.interior_active_cells)
+                if panel == 3 || panel == 6 # North and South panels should be completely immersed
+                    @test isempty(grid.interior_active_cells)
+                else # Other panels should have some active cells
+                    @test !isempty(grid.interior_active_cells)
+                end
             end
         end
     end
 end
 
 @testset "Testing conformal cubed sphere fill halos for tracers" begin
-    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
-        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
-        @info "  Testing fill halos for tracers [$FT, $(typeof(arch)), $cm]..."
+    for FT in float_types
+        for arch in archs
+            @info "  Testing fill halos for tracers [$FT, $(typeof(arch))]..."
 
-        Nx, Ny, Nz = 9, 9, 1
+            Nx, Ny, Nz = 9, 9, 1
 
-        underlying_grid = ConformalCubedSphereGrid(arch, FT;
-                                                   panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
-                                                   horizontal_direction_halo = 3, non_uniform_conformal_mapping)
-        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       horizontal_direction_halo = 3)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        grids = (underlying_grid, immersed_grid)
+            grids = (underlying_grid, immersed_grid)
 
-        for grid in grids
-            c = CenterField(grid)
+            for grid in grids
+                c = CenterField(grid)
 
-            region = Iterate(1:6)
-            @apply_regionally data = create_c_test_data(grid, region)
-            set!(c, data)
-            fill_halo_regions!(c)
+                region = Iterate(1:6)
+                @apply_regionally data = create_c_test_data(grid, region)
+                set!(c, data)
+                fill_halo_regions!(c)
 
-            Hx, Hy, Hz = halo_size(c.grid)
+                Hx, Hy, Hz = halo_size(c.grid)
 
-            west_indices  = 1:Hx, 1:Ny
-            south_indices = 1:Nx, 1:Hy
-            east_indices  = Nx-Hx+1:Nx, 1:Ny
-            north_indices = 1:Nx, Ny-Hy+1:Ny
+                west_indices  = 1:Hx, 1:Ny
+                south_indices = 1:Nx, 1:Hy
+                east_indices  = Nx-Hx+1:Nx, 1:Ny
+                north_indices = 1:Nx, Ny-Hy+1:Ny
 
-            # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            @allowscalar begin
-                switch_device!(grid, 1)
-                @test get_halo_data(getregion(c, 1), West())  == reverse(create_c_test_data(grid, 5)[north_indices...], dims=1)'
-                @test get_halo_data(getregion(c, 1), East())  ==         create_c_test_data(grid, 2)[west_indices...]
-                @test get_halo_data(getregion(c, 1), South()) ==         create_c_test_data(grid, 6)[north_indices...]
-                @test get_halo_data(getregion(c, 1), North()) == reverse(create_c_test_data(grid, 3)[west_indices...], dims=2)'
+                # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
+                @allowscalar begin
+                    switch_device!(grid, 1)
+                    @test get_halo_data(getregion(c, 1), West())  == reverse(create_c_test_data(grid, 5)[north_indices...], dims=1)'
+                    @test get_halo_data(getregion(c, 1), East())  ==         create_c_test_data(grid, 2)[west_indices...]
+                    @test get_halo_data(getregion(c, 1), South()) ==         create_c_test_data(grid, 6)[north_indices...]
+                    @test get_halo_data(getregion(c, 1), North()) == reverse(create_c_test_data(grid, 3)[west_indices...], dims=2)'
 
-                switch_device!(grid, 2)
-                @test get_halo_data(getregion(c, 2), West())  ==         create_c_test_data(grid, 1)[east_indices...]
-                @test get_halo_data(getregion(c, 2), East())  == reverse(create_c_test_data(grid, 4)[south_indices...], dims=1)'
-                @test get_halo_data(getregion(c, 2), South()) == reverse(create_c_test_data(grid, 6)[east_indices...], dims=2)'
-                @test get_halo_data(getregion(c, 2), North()) ==         create_c_test_data(grid, 3)[south_indices...]
+                    switch_device!(grid, 2)
+                    @test get_halo_data(getregion(c, 2), West())  ==         create_c_test_data(grid, 1)[east_indices...]
+                    @test get_halo_data(getregion(c, 2), East())  == reverse(create_c_test_data(grid, 4)[south_indices...], dims=1)'
+                    @test get_halo_data(getregion(c, 2), South()) == reverse(create_c_test_data(grid, 6)[east_indices...], dims=2)'
+                    @test get_halo_data(getregion(c, 2), North()) ==         create_c_test_data(grid, 3)[south_indices...]
 
-                switch_device!(grid, 3)
-                @test get_halo_data(getregion(c, 3), West())  == reverse(create_c_test_data(grid, 1)[north_indices...], dims=1)'
-                @test get_halo_data(getregion(c, 3), East())  ==         create_c_test_data(grid, 4)[west_indices...]
-                @test get_halo_data(getregion(c, 3), South()) ==         create_c_test_data(grid, 2)[north_indices...]
-                @test get_halo_data(getregion(c, 3), North()) == reverse(create_c_test_data(grid, 5)[west_indices...], dims=2)'
+                    switch_device!(grid, 3)
+                    @test get_halo_data(getregion(c, 3), West())  == reverse(create_c_test_data(grid, 1)[north_indices...], dims=1)'
+                    @test get_halo_data(getregion(c, 3), East())  ==         create_c_test_data(grid, 4)[west_indices...]
+                    @test get_halo_data(getregion(c, 3), South()) ==         create_c_test_data(grid, 2)[north_indices...]
+                    @test get_halo_data(getregion(c, 3), North()) == reverse(create_c_test_data(grid, 5)[west_indices...], dims=2)'
 
-                switch_device!(grid, 4)
-                @test get_halo_data(getregion(c, 4), West())  ==         create_c_test_data(grid, 3)[east_indices...]
-                @test get_halo_data(getregion(c, 4), East())  == reverse(create_c_test_data(grid, 6)[south_indices...], dims=1)'
-                @test get_halo_data(getregion(c, 4), South()) == reverse(create_c_test_data(grid, 2)[east_indices...], dims=2)'
-                @test get_halo_data(getregion(c, 4), North()) ==         create_c_test_data(grid, 5)[south_indices...]
+                    switch_device!(grid, 4)
+                    @test get_halo_data(getregion(c, 4), West())  ==         create_c_test_data(grid, 3)[east_indices...]
+                    @test get_halo_data(getregion(c, 4), East())  == reverse(create_c_test_data(grid, 6)[south_indices...], dims=1)'
+                    @test get_halo_data(getregion(c, 4), South()) == reverse(create_c_test_data(grid, 2)[east_indices...], dims=2)'
+                    @test get_halo_data(getregion(c, 4), North()) ==         create_c_test_data(grid, 5)[south_indices...]
 
-                switch_device!(grid, 5)
-                @test get_halo_data(getregion(c, 5), West())  == reverse(create_c_test_data(grid, 3)[north_indices...], dims=1)'
-                @test get_halo_data(getregion(c, 5), East())  ==         create_c_test_data(grid, 6)[west_indices...]
-                @test get_halo_data(getregion(c, 5), South()) ==         create_c_test_data(grid, 4)[north_indices...]
-                @test get_halo_data(getregion(c, 5), North()) == reverse(create_c_test_data(grid, 1)[west_indices...], dims=2)'
+                    switch_device!(grid, 5)
+                    @test get_halo_data(getregion(c, 5), West())  == reverse(create_c_test_data(grid, 3)[north_indices...], dims=1)'
+                    @test get_halo_data(getregion(c, 5), East())  ==         create_c_test_data(grid, 6)[west_indices...]
+                    @test get_halo_data(getregion(c, 5), South()) ==         create_c_test_data(grid, 4)[north_indices...]
+                    @test get_halo_data(getregion(c, 5), North()) == reverse(create_c_test_data(grid, 1)[west_indices...], dims=2)'
 
-                switch_device!(grid, 6)
-                @test get_halo_data(getregion(c, 6), West())  ==         create_c_test_data(grid, 5)[east_indices...]
-                @test get_halo_data(getregion(c, 6), East())  == reverse(create_c_test_data(grid, 2)[south_indices...], dims=1)'
-                @test get_halo_data(getregion(c, 6), South()) == reverse(create_c_test_data(grid, 4)[east_indices...], dims=2)'
-                @test get_halo_data(getregion(c, 6), North()) ==         create_c_test_data(grid, 1)[south_indices...]
-            end # CUDA.@allowscalar
+                    switch_device!(grid, 6)
+                    @test get_halo_data(getregion(c, 6), West())  ==         create_c_test_data(grid, 5)[east_indices...]
+                    @test get_halo_data(getregion(c, 6), East())  == reverse(create_c_test_data(grid, 2)[south_indices...], dims=1)'
+                    @test get_halo_data(getregion(c, 6), South()) == reverse(create_c_test_data(grid, 4)[east_indices...], dims=2)'
+                    @test get_halo_data(getregion(c, 6), North()) ==         create_c_test_data(grid, 1)[south_indices...]
+                end # CUDA.@allowscalar
+            end
         end
     end
 end
 
 @testset "Testing conformal cubed sphere fill halos for horizontal velocities" begin
-    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
-        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
-        @info "  Testing fill halos for horizontal velocities [$FT, $(typeof(arch)), $cm]..."
+    for FT in float_types
+        for arch in archs
+            @info "  Testing fill halos for horizontal velocities [$FT, $(typeof(arch))]..."
 
-        Nx, Ny, Nz = 9, 9, 1
+            Nx, Ny, Nz = 9, 9, 1
 
-        underlying_grid = ConformalCubedSphereGrid(arch, FT;
-                                                   panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
-                                                   horizontal_direction_halo = 3, non_uniform_conformal_mapping)
-        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       horizontal_direction_halo = 3)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        grids = (underlying_grid, immersed_grid)
+            grids = (underlying_grid, immersed_grid)
 
-        for grid in grids
-            u = XFaceField(grid)
-            v = YFaceField(grid)
+            for grid in grids
+                u = XFaceField(grid)
+                v = YFaceField(grid)
 
-            region = Iterate(1:6)
-            @apply_regionally u_data = create_u_test_data(grid, region)
-            @apply_regionally v_data = create_v_test_data(grid, region)
-            set!(u, u_data)
-            set!(v, v_data)
+                region = Iterate(1:6)
+                @apply_regionally u_data = create_u_test_data(grid, region)
+                @apply_regionally v_data = create_v_test_data(grid, region)
+                set!(u, u_data)
+                set!(v, v_data)
 
-            fill_halo_regions!((u, v); signed = true)
+                fill_halo_regions!((u, v); signed = true)
 
-            Hx, Hy, Hz = halo_size(u.grid)
+                Hx, Hy, Hz = halo_size(u.grid)
 
-            south_indices = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=nothing, index=:all)
-            east_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=nothing, index=:all)
-            north_indices = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=nothing, index=:all)
-            west_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=nothing, index=:all)
+                south_indices = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=nothing, index=:all)
+                east_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=nothing, index=:all)
+                north_indices = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=nothing, index=:all)
+                west_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=nothing, index=:all)
 
-            south_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:first)
-            south_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:last)
-            east_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:first)
-            east_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:last)
-            north_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:first)
-            north_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:last)
-            west_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:first)
-            west_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:last)
+                south_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:first)
+                south_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:last)
+                east_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:first)
+                east_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:last)
+                north_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:first)
+                north_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:last)
+                west_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:first)
+                west_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:last)
 
-            south_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:first)
-            south_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:last)
-            east_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:first)
-            east_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:last)
-            north_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:first)
-            north_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:last)
-            west_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:first)
-            west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
+                south_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:first)
+                south_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:last)
+                east_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:first)
+                east_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:last)
+                north_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:first)
+                north_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:last)
+                west_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:first)
+                west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
 
-            # Confirm that the zonal velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            @allowscalar begin
-                switch_device!(grid, 1)
+                # Confirm that the zonal velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
+                @allowscalar begin
+                    switch_device!(grid, 1)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(u, 1), West())  == reverse(create_v_test_data(grid, 5)[north_indices...], dims=1)'
-                @test get_halo_data(getregion(u, 1), East())  ==         create_u_test_data(grid, 2)[west_indices...]
-                @test get_halo_data(getregion(u, 1), South()) ==         create_u_test_data(grid, 6)[north_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(u, 1), West())  == reverse(create_v_test_data(grid, 5)[north_indices...], dims=1)'
+                    @test get_halo_data(getregion(u, 1), East())  ==         create_u_test_data(grid, 2)[west_indices...]
+                    @test get_halo_data(getregion(u, 1), South()) ==         create_u_test_data(grid, 6)[north_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(u, 1), North();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_v_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(u, 1), North();
-                                    operation=:endpoint,
-                                    index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_first...])
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(u, 1), North();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_v_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(u, 1), North();
+                                        operation=:endpoint,
+                                        index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_first...])
 
-                switch_device!(grid, 2)
+                    switch_device!(grid, 2)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(u, 2), West())  ==         create_u_test_data(grid, 1)[east_indices...]
-                @test get_halo_data(getregion(u, 2), East())  == reverse(create_v_test_data(grid, 4)[south_indices...], dims=1)'
-                @test get_halo_data(getregion(u, 2), North()) ==         create_u_test_data(grid, 3)[south_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(u, 2), West())  ==         create_u_test_data(grid, 1)[east_indices...]
+                    @test get_halo_data(getregion(u, 2), East())  == reverse(create_v_test_data(grid, 4)[south_indices...], dims=1)'
+                    @test get_halo_data(getregion(u, 2), North()) ==         create_u_test_data(grid, 3)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(u, 2), South();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(u, 2), South();
-                                    operation=:endpoint,
-                                    index=:first) == - create_v_test_data(grid, 1)[east_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(u, 2), South();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(u, 2), South();
+                                        operation=:endpoint,
+                                        index=:first) == - create_v_test_data(grid, 1)[east_indices_first...]
 
-                switch_device!(grid, 3)
+                    switch_device!(grid, 3)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(u, 3), West())  == reverse(create_v_test_data(grid, 1)[north_indices...], dims=1)'
-                @test get_halo_data(getregion(u, 3), East())  ==         create_u_test_data(grid, 4)[west_indices...]
-                @test get_halo_data(getregion(u, 3), South()) ==         create_u_test_data(grid, 2)[north_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(u, 3), West())  == reverse(create_v_test_data(grid, 1)[north_indices...], dims=1)'
+                    @test get_halo_data(getregion(u, 3), East())  ==         create_u_test_data(grid, 4)[west_indices...]
+                    @test get_halo_data(getregion(u, 3), South()) ==         create_u_test_data(grid, 2)[north_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(u, 3), North();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_v_test_data(grid, 5)[west_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(u, 3), North();
-                                    operation=:endpoint,
-                                    index=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_first...])
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(u, 3), North();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_v_test_data(grid, 5)[west_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(u, 3), North();
+                                        operation=:endpoint,
+                                        index=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_first...])
 
-                switch_device!(grid, 4)
+                    switch_device!(grid, 4)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(u, 4), West())  ==         create_u_test_data(grid, 3)[east_indices...]
-                @test get_halo_data(getregion(u, 4), East())  == reverse(create_v_test_data(grid, 6)[south_indices...], dims=1)'
-                @test get_halo_data(getregion(u, 4), North()) ==         create_u_test_data(grid, 5)[south_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(u, 4), West())  ==         create_u_test_data(grid, 3)[east_indices...]
+                    @test get_halo_data(getregion(u, 4), East())  == reverse(create_v_test_data(grid, 6)[south_indices...], dims=1)'
+                    @test get_halo_data(getregion(u, 4), North()) ==         create_u_test_data(grid, 5)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(u, 4), South();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(u, 4), South();
-                                    operation=:endpoint,
-                                    index=:first) == - create_v_test_data(grid, 3)[east_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(u, 4), South();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(u, 4), South();
+                                        operation=:endpoint,
+                                        index=:first) == - create_v_test_data(grid, 3)[east_indices_first...]
 
-                switch_device!(grid, 5)
+                    switch_device!(grid, 5)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(u, 5), West())  == reverse(create_v_test_data(grid, 3)[north_indices...], dims=1)'
-                @test get_halo_data(getregion(u, 5), East())  ==         create_u_test_data(grid, 6)[west_indices...]
-                @test get_halo_data(getregion(u, 5), South()) ==         create_u_test_data(grid, 4)[north_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(u, 5), West())  == reverse(create_v_test_data(grid, 3)[north_indices...], dims=1)'
+                    @test get_halo_data(getregion(u, 5), East())  ==         create_u_test_data(grid, 6)[west_indices...]
+                    @test get_halo_data(getregion(u, 5), South()) ==         create_u_test_data(grid, 4)[north_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(u, 5), North();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_v_test_data(grid, 1)[west_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(u, 5), North();
-                                    operation=:endpoint,
-                                    index=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_first...])
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(u, 5), North();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_v_test_data(grid, 1)[west_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(u, 5), North();
+                                        operation=:endpoint,
+                                        index=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_first...])
 
-                switch_device!(grid, 6)
+                    switch_device!(grid, 6)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(u, 6), West())  ==         create_u_test_data(grid, 5)[east_indices...]
-                @test get_halo_data(getregion(u, 6), East())  == reverse(create_v_test_data(grid, 2)[south_indices...], dims=1)'
-                @test get_halo_data(getregion(u, 6), North()) ==         create_u_test_data(grid, 1)[south_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(u, 6), West())  ==         create_u_test_data(grid, 5)[east_indices...]
+                    @test get_halo_data(getregion(u, 6), East())  == reverse(create_v_test_data(grid, 2)[south_indices...], dims=1)'
+                    @test get_halo_data(getregion(u, 6), North()) ==         create_u_test_data(grid, 1)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(u, 6), South();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_v_test_data(grid, 4)[east_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(u, 6), South();
-                                    operation=:endpoint,
-                                    index=:first) == - create_v_test_data(grid, 5)[east_indices_first...]
-            end # CUDA.@allowscalar
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(u, 6), South();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_v_test_data(grid, 4)[east_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(u, 6), South();
+                                        operation=:endpoint,
+                                        index=:first) == - create_v_test_data(grid, 5)[east_indices_first...]
+                end # CUDA.@allowscalar
 
-            # Confirm that the meridional velocity halos were filled according to connectivity described at
-            # ConformalCubedSphereGrid docstring.
-            @allowscalar begin
-                switch_device!(grid, 1)
+                # Confirm that the meridional velocity halos were filled according to connectivity described at
+                # ConformalCubedSphereGrid docstring.
+                @allowscalar begin
+                    switch_device!(grid, 1)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(v, 1), East())  ==         create_v_test_data(grid, 2)[west_indices...]
-                @test get_halo_data(getregion(v, 1), South()) ==         create_v_test_data(grid, 6)[north_indices...]
-                @test get_halo_data(getregion(v, 1), North()) == reverse(create_u_test_data(grid, 3)[west_indices...], dims=2)'
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(v, 1), East())  ==         create_v_test_data(grid, 2)[west_indices...]
+                    @test get_halo_data(getregion(v, 1), South()) ==         create_v_test_data(grid, 6)[north_indices...]
+                    @test get_halo_data(getregion(v, 1), North()) == reverse(create_u_test_data(grid, 3)[west_indices...], dims=2)'
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(v, 1), West();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 1), West();
-                                    operation=:endpoint,
-                                    index=:first) == - create_u_test_data(grid, 6)[north_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(v, 1), West();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(v, 1), West();
+                                        operation=:endpoint,
+                                        index=:first) == - create_u_test_data(grid, 6)[north_indices_first...]
 
-                switch_device!(grid, 2)
+                    switch_device!(grid, 2)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(v, 2), West())  ==         create_v_test_data(grid, 1)[east_indices...]
-                @test get_halo_data(getregion(v, 2), South()) == reverse(create_u_test_data(grid, 6)[east_indices...], dims=2)'
-                @test get_halo_data(getregion(v, 2), North()) ==         create_v_test_data(grid, 3)[south_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(v, 2), West())  ==         create_v_test_data(grid, 1)[east_indices...]
+                    @test get_halo_data(getregion(v, 2), South()) == reverse(create_u_test_data(grid, 6)[east_indices...], dims=2)'
+                    @test get_halo_data(getregion(v, 2), North()) ==         create_v_test_data(grid, 3)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(v, 2), East();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_u_test_data(grid, 4)[south_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 2), East();
-                                    operation=:endpoint,
-                                    index=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_first...])
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(v, 2), East();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_u_test_data(grid, 4)[south_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(v, 2), East();
+                                        operation=:endpoint,
+                                        index=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_first...])
 
-                switch_device!(grid, 3)
+                    switch_device!(grid, 3)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(v, 3), East())  ==         create_v_test_data(grid, 4)[west_indices...]
-                @test get_halo_data(getregion(v, 3), South()) ==         create_v_test_data(grid, 2)[north_indices...]
-                @test get_halo_data(getregion(v, 3), North()) == reverse(create_u_test_data(grid, 5)[west_indices...], dims=2)'
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(v, 3), East())  ==         create_v_test_data(grid, 4)[west_indices...]
+                    @test get_halo_data(getregion(v, 3), South()) ==         create_v_test_data(grid, 2)[north_indices...]
+                    @test get_halo_data(getregion(v, 3), North()) == reverse(create_u_test_data(grid, 5)[west_indices...], dims=2)'
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(v, 3), West();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 3), West();
-                                    operation=:endpoint,
-                                    index=:first) == - create_u_test_data(grid, 2)[north_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(v, 3), West();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(v, 3), West();
+                                        operation=:endpoint,
+                                        index=:first) == - create_u_test_data(grid, 2)[north_indices_first...]
 
-                switch_device!(grid, 4)
+                    switch_device!(grid, 4)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(v, 4), West())  ==         create_v_test_data(grid, 3)[east_indices...]
-                @test get_halo_data(getregion(v, 4), South()) == reverse(create_u_test_data(grid, 2)[east_indices...], dims=2)'
-                @test get_halo_data(getregion(v, 4), North()) ==         create_v_test_data(grid, 5)[south_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(v, 4), West())  ==         create_v_test_data(grid, 3)[east_indices...]
+                    @test get_halo_data(getregion(v, 4), South()) == reverse(create_u_test_data(grid, 2)[east_indices...], dims=2)'
+                    @test get_halo_data(getregion(v, 4), North()) ==         create_v_test_data(grid, 5)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(v, 4), East();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_u_test_data(grid, 6)[south_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 4), East();
-                                    operation=:endpoint,
-                                    index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_first...])
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(v, 4), East();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_u_test_data(grid, 6)[south_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(v, 4), East();
+                                        operation=:endpoint,
+                                        index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_first...])
 
-                switch_device!(grid, 5)
+                    switch_device!(grid, 5)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(v, 5), East())  ==         create_v_test_data(grid, 6)[west_indices...]
-                @test get_halo_data(getregion(v, 5), South()) ==         create_v_test_data(grid, 4)[north_indices...]
-                @test get_halo_data(getregion(v, 5), North()) == reverse(create_u_test_data(grid, 1)[west_indices...], dims=2)'
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(v, 5), East())  ==         create_v_test_data(grid, 6)[west_indices...]
+                    @test get_halo_data(getregion(v, 5), South()) ==         create_v_test_data(grid, 4)[north_indices...]
+                    @test get_halo_data(getregion(v, 5), North()) == reverse(create_u_test_data(grid, 1)[west_indices...], dims=2)'
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(v, 5), West();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 5), West();
-                                    operation=:endpoint,
-                                    index=:first) == - create_u_test_data(grid, 4)[north_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(v, 5), West();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(v, 5), West();
+                                        operation=:endpoint,
+                                        index=:first) == - create_u_test_data(grid, 4)[north_indices_first...]
 
-                switch_device!(grid, 6)
+                    switch_device!(grid, 6)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(v, 6), West())  ==         create_v_test_data(grid, 5)[east_indices...]
-                @test get_halo_data(getregion(v, 6), South()) == reverse(create_u_test_data(grid, 4)[east_indices...], dims=2)'
-                @test get_halo_data(getregion(v, 6), North()) ==         create_v_test_data(grid, 1)[south_indices...]
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(v, 6), West())  ==         create_v_test_data(grid, 5)[east_indices...]
+                    @test get_halo_data(getregion(v, 6), South()) == reverse(create_u_test_data(grid, 4)[east_indices...], dims=2)'
+                    @test get_halo_data(getregion(v, 6), North()) ==         create_v_test_data(grid, 1)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(v, 6), East();
-                                    operation=:subset,
-                                    index=:first) == - reverse(create_u_test_data(grid, 2)[south_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 6), East();
-                                    operation=:endpoint,
-                                    index=:first) == - reverse(create_v_test_data(grid, 4)[east_indices_first...])
-            end # CUDA.@allowscalar
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(v, 6), East();
+                                        operation=:subset,
+                                        index=:first) == - reverse(create_u_test_data(grid, 2)[south_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(v, 6), East();
+                                        operation=:endpoint,
+                                        index=:first) == - reverse(create_v_test_data(grid, 4)[east_indices_first...])
+                end # CUDA.@allowscalar
+            end
         end
     end
 end
 
 @testset "Testing conformal cubed sphere fill halos for Face-Face-Any field" begin
-    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
-        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
-        @info "  Testing fill halos for streamfunction [$FT, $(typeof(arch)), $cm]..."
+    for FT in float_types
+        for arch in archs
+            @info "  Testing fill halos for streamfunction [$FT, $(typeof(arch))]..."
 
-        Nx, Ny, Nz = 9, 9, 1
+            Nx, Ny, Nz = 9, 9, 1
 
-        underlying_grid = ConformalCubedSphereGrid(arch, FT;
-                                                   panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
-                                                   horizontal_direction_halo = 3, non_uniform_conformal_mapping)
-        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
 
-        grids = (underlying_grid, immersed_grid)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        for grid in grids
-            ψ = Field{Face, Face, Center}(grid)
+            grids = (underlying_grid, immersed_grid)
 
-            region = Iterate(1:6)
-            @apply_regionally data = create_ψ_test_data(grid, region)
-            set!(ψ, data)
+            for grid in grids
+                ψ = Field{Face, Face, Center}(grid)
 
-            fill_halo_regions!(ψ)
+                region = Iterate(1:6)
+                @apply_regionally data = create_ψ_test_data(grid, region)
+                set!(ψ, data)
 
-            Hx, Hy, Hz = halo_size(ψ.grid)
+                fill_halo_regions!(ψ)
 
-            south_indices = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=nothing, index=:all)
-            east_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=nothing, index=:all)
-            north_indices = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=nothing, index=:all)
-            west_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=nothing, index=:all)
+                Hx, Hy, Hz = halo_size(ψ.grid)
 
-            south_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:first)
-            south_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:last)
-            east_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:first)
-            east_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:last)
-            north_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:first)
-            north_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:last)
-            west_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:first)
-            west_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:last)
+                south_indices = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=nothing, index=:all)
+                east_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=nothing, index=:all)
+                north_indices = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=nothing, index=:all)
+                west_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=nothing, index=:all)
 
-            south_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:first)
-            south_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:last)
-            east_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:first)
-            east_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:last)
-            north_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:first)
-            north_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:last)
-            west_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:first)
-            west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
+                south_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:first)
+                south_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:endpoint, index=:last)
+                east_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:first)
+                east_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:endpoint, index=:last)
+                north_indices_first = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:first)
+                north_indices_last  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:endpoint, index=:last)
+                west_indices_first  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:first)
+                west_indices_last   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:endpoint, index=:last)
 
-            # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            @allowscalar begin
-                # Panel 1
-                switch_device!(grid, 1)
+                south_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:first)
+                south_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, South(); operation=:subset, index=:last)
+                east_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:first)
+                east_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=:subset, index=:last)
+                north_indices_subset_skip_first_index = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:first)
+                north_indices_subset_skip_last_index  = get_boundary_indices(Nx, Ny, Hx, Hy, North(); operation=:subset, index=:last)
+                west_indices_subset_skip_first_index  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:first)
+                west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
 
-                # Trivial halo checks with no off-set in index
-                @test get_halo_data(getregion(ψ, 1), East())  == create_ψ_test_data(grid, 2)[west_indices...]
-                @test get_halo_data(getregion(ψ, 1), South()) == create_ψ_test_data(grid, 6)[north_indices...]
+                # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
+                @allowscalar begin
+                    # Panel 1
+                    switch_device!(grid, 1)
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 1), North();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'
-                # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
+                    # Trivial halo checks with no off-set in index
+                    @test get_halo_data(getregion(ψ, 1), East())  == create_ψ_test_data(grid, 2)[west_indices...]
+                    @test get_halo_data(getregion(ψ, 1), South()) == create_ψ_test_data(grid, 6)[north_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 1), West();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 5)[north_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 1), West();
-                                    operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 6)[north_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 1), North();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'
+                    # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
-                switch_device!(grid, 2)
-                @test get_halo_data(getregion(ψ, 2), West())  == create_ψ_test_data(grid, 1)[east_indices...]
-                @test get_halo_data(getregion(ψ, 2), North()) == create_ψ_test_data(grid, 3)[south_indices...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 1), West();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 5)[north_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(ψ, 1), West();
+                                        operation=:endpoint,
+                                        index=:first) == create_ψ_test_data(grid, 6)[north_indices_first...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 2), East();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 4)[south_indices_subset_skip_first_index...], dims=1)'
-                # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
+                    switch_device!(grid, 2)
+                    @test get_halo_data(getregion(ψ, 2), West())  == create_ψ_test_data(grid, 1)[east_indices...]
+                    @test get_halo_data(getregion(ψ, 2), North()) == create_ψ_test_data(grid, 3)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 2), South();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 6)[east_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 2), South();
-                                    operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 1)[east_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 2), East();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 4)[south_indices_subset_skip_first_index...], dims=1)'
+                    # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
 
-                switch_device!(grid, 3)
-                @test get_halo_data(getregion(ψ, 3), East())  == create_ψ_test_data(grid, 4)[west_indices...]
-                @test get_halo_data(getregion(ψ, 3), South()) == create_ψ_test_data(grid, 2)[north_indices...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 2), South();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 6)[east_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(ψ, 2), South();
+                                        operation=:endpoint,
+                                        index=:first) == create_ψ_test_data(grid, 1)[east_indices_first...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 3), West();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 1)[north_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 3), West();
-                                    operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 2)[north_indices_first...]
+                    switch_device!(grid, 3)
+                    @test get_halo_data(getregion(ψ, 3), East())  == create_ψ_test_data(grid, 4)[west_indices...]
+                    @test get_halo_data(getregion(ψ, 3), South()) == create_ψ_test_data(grid, 2)[north_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 3), North();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 5)[west_indices_subset_skip_first_index...], dims=2)'
-                # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 3), West();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 1)[north_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(ψ, 3), West();
+                                        operation=:endpoint,
+                                        index=:first) == create_ψ_test_data(grid, 2)[north_indices_first...]
 
-                switch_device!(grid, 4)
-                @test get_halo_data(getregion(ψ, 4), West())  == create_ψ_test_data(grid, 3)[east_indices...]
-                @test get_halo_data(getregion(ψ, 4), North()) == create_ψ_test_data(grid, 5)[south_indices...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 3), North();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 5)[west_indices_subset_skip_first_index...], dims=2)'
+                    # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 4), East();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 6)[south_indices_subset_skip_first_index...], dims=1)'
-                # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
+                    switch_device!(grid, 4)
+                    @test get_halo_data(getregion(ψ, 4), West())  == create_ψ_test_data(grid, 3)[east_indices...]
+                    @test get_halo_data(getregion(ψ, 4), North()) == create_ψ_test_data(grid, 5)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 4), South();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 2)[east_indices_subset_skip_first_index...], dims=2)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 4), South();
-                                    operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 3)[east_indices_first...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 4), East();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 6)[south_indices_subset_skip_first_index...], dims=1)'
+                    # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
 
-                switch_device!(grid, 5)
-                @test get_halo_data(getregion(ψ, 5), East())  == create_ψ_test_data(grid, 6)[west_indices...]
-                @test get_halo_data(getregion(ψ, 5), South()) == create_ψ_test_data(grid, 4)[north_indices...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 4), South();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 2)[east_indices_subset_skip_first_index...], dims=2)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(ψ, 4), South();
+                                        operation=:endpoint,
+                                        index=:first) == create_ψ_test_data(grid, 3)[east_indices_first...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 5), West();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 3)[north_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 5), West();
-                                    operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 4)[north_indices_first...]
+                    switch_device!(grid, 5)
+                    @test get_halo_data(getregion(ψ, 5), East())  == create_ψ_test_data(grid, 6)[west_indices...]
+                    @test get_halo_data(getregion(ψ, 5), South()) == create_ψ_test_data(grid, 4)[north_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 5), North();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 1)[west_indices_subset_skip_first_index...], dims=2)'
-                # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 5), West();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 3)[north_indices_subset_skip_first_index...], dims=1)'
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(ψ, 5), West();
+                                        operation=:endpoint,
+                                        index=:first) == create_ψ_test_data(grid, 4)[north_indices_first...]
 
-                switch_device!(grid, 6)
-                @test get_halo_data(getregion(ψ, 6), West())  == create_ψ_test_data(grid, 5)[east_indices...]
-                @test get_halo_data(getregion(ψ, 6), North()) == create_ψ_test_data(grid, 1)[south_indices...]
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 5), North();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 1)[west_indices_subset_skip_first_index...], dims=2)'
+                    # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 6), East();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 2)[south_indices_subset_skip_first_index...], dims=1)'
-                # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
+                    switch_device!(grid, 6)
+                    @test get_halo_data(getregion(ψ, 6), West())  == create_ψ_test_data(grid, 5)[east_indices...]
+                    @test get_halo_data(getregion(ψ, 6), North()) == create_ψ_test_data(grid, 1)[south_indices...]
 
-                # Non-trivial halo checks with off-set in index
-                @test get_halo_data(getregion(ψ, 6), South();
-                                    operation=:subset,
-                                    index=:first) == reverse(create_ψ_test_data(grid, 4)[east_indices_subset_skip_first_index...], dims=2)'
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 6), East();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 2)[south_indices_subset_skip_first_index...], dims=1)'
+                    # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
 
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 6), South();
-                                    operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 5)[east_indices_first...]
-            end # CUDA.@allowscalar
+                    # Non-trivial halo checks with off-set in index
+                    @test get_halo_data(getregion(ψ, 6), South();
+                                        operation=:subset,
+                                        index=:first) == reverse(create_ψ_test_data(grid, 4)[east_indices_subset_skip_first_index...], dims=2)'
+
+                    # The index appearing on the LHS above is the index to be skipped.
+                    @test get_halo_data(getregion(ψ, 6), South();
+                                        operation=:endpoint,
+                                        index=:first) == create_ψ_test_data(grid, 5)[east_indices_first...]
+                end # CUDA.@allowscalar
+            end
         end
     end
 end
 
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
-    for non_uniform_conformal_mapping in (false, true)
-        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
-        for f in readdir(".")
-            if occursin(r"^cubed_sphere_(output|checkpointer)_.*\.jld2$", f)
-                rm(f; force=true)
-            end
+    for f in readdir(".")
+        if occursin(r"^cubed_sphere_(output|checkpointer)_.*\.jld2$", f)
+            rm(f; force=true)
         end
-        for FT in float_types, arch in archs
+    end
+    η₀ = 1e-6
+    Δφ = 20
+    @inline ηᵢ(λ, φ, z) = η₀ * cosd(4λ) * exp(-φ^2 / 2Δφ^2)
+    for FT in float_types
+        atol = FT == Float32 ? 1e-6 : 1e-12
+        rtol = FT == Float32 ? 1e-5 : 1e-10
+        for arch in archs
             Nx, Ny, Nz = 18, 18, 9
 
-            underlying_grid = ConformalCubedSphereGrid(arch, FT;
-                                                       panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
-                                                       horizontal_direction_halo = 6, non_uniform_conformal_mapping)
+            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1),
+                                                        radius = R_Earth, horizontal_direction_halo = 6)
+            Hx, Hy, Hz = halo_size(underlying_grid)
             @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom);
-                                                 active_cells_map = true)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             grids = (underlying_grid, immersed_grid)
 
             for grid in grids
-                if grid == underlying_grid
-                    @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
-                    suffix = "UG"
-                else
-                    @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
-                    suffix = "IG"
+                suffix_1 = grid == underlying_grid ? "UG" : "IG"
+                grid_type = grid == underlying_grid ? "conformal cubed sphere grid" : "immersed boundary conformal cubed sphere grid"
+
+                η₁ = U₁ = V₁ = nothing
+                for extend_halos in (false, true)
+                    suffix_2 = extend_halos ? "_with_extended_halos" : "_without_extended_halos"
+                    halo_type = extend_halos ? "with extended halos" : "without extended halos"
+                    @info "  Testing simulation on $grid_type $halo_type [$FT, $(typeof(arch))]..."
+                    model = HydrostaticFreeSurfaceModel(; grid,
+                                                        momentum_advection = WENOVectorInvariant(FT; order=5),
+                                                        tracer_advection = WENO(FT; order=5),
+                                                        free_surface = SplitExplicitFreeSurface(grid;
+                                                                                                substeps=12,
+                                                                                                extend_halos),
+                                                        coriolis = HydrostaticSphericalCoriolis(FT),
+                                                        tracers = :b,
+                                                        buoyancy = BuoyancyTracer())
+
+                    set!(model.free_surface.η, ηᵢ)
+                    fill_halo_regions!(model.free_surface.η)
+
+                    simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
+
+                    save_fields_interval = 2minute
+                    checkpointer_interval = 4minutes
+
+                    filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix_1 * suffix_2
+                    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                            schedule = TimeInterval(checkpointer_interval),
+                                                                            prefix = filename_checkpointer,
+                                                                            overwrite_existing = true)
+
+                    outputs = fields(model)
+                    filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix_1 * suffix_2
+                    simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                    schedule = TimeInterval(save_fields_interval),
+                                                                    filename = filename_output_writer,
+                                                                    verbose = false,
+                                                                    overwrite_existing = true)
+
+                    run!(simulation)
+                    @test iteration(simulation) == 10
+                    @test time(simulation) == 10minutes
+
+                    if !extend_halos
+                        η₁ = deepcopy(prognostic_fields(simulation.model).η)
+                        U₁ = deepcopy(prognostic_fields(simulation.model).U)
+                        V₁ = deepcopy(prognostic_fields(simulation.model).V)
+                    else
+                        η₂ = deepcopy(prognostic_fields(simulation.model).η)
+                        U₂ = deepcopy(prognostic_fields(simulation.model).U)
+                        V₂ = deepcopy(prognostic_fields(simulation.model).V)
+                        for region in 1:number_of_regions(grid)
+                            @test getregion(η₂, region)[1:Nx, 1:Ny, Nz+1] ≈ getregion(η₁, region)[1:Nx, 1:Ny, Nz+1] atol = atol rtol = rtol
+                            @test getregion(U₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(U₁, region)[1:Nx, 1:Ny, 1]    atol = atol rtol = rtol
+                            @test getregion(V₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(V₁, region)[1:Nx, 1:Ny, 1]    atol = atol rtol = rtol
+                        end
+                    end
+
+                    u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u")
+                    v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v")
+                    b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b")
+                    η_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "η";
+                                                   grid = on_architecture(CPU(),
+                                                                          simulation.model.free_surface.η.grid))
+
+                    if grid == underlying_grid
+                        @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    else
+                        @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    end
+
+                    simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
+
+                    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                            schedule = TimeInterval(checkpointer_interval),
+                                                                            prefix = filename_checkpointer,
+                                                                            overwrite_existing = true)
+
+                    simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                    schedule = TimeInterval(save_fields_interval),
+                                                                    filename = filename_output_writer,
+                                                                    verbose = false,
+                                                                    overwrite_existing = true)
+
+                    run!(simulation, pickup = true)
+
+                    @test iteration(simulation) == 10
+                    @test time(simulation) == 10minutes
+
+                    u_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "u")
+                    v_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "v")
+                    b_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "b")
+                    η_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "η";
+                                                          grid = on_architecture(CPU(),
+                                                                                 simulation.model.free_surface.η.grid))
+
+                    for region in 1:number_of_regions(grid)
+                        @test getregion(u_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
+                            getregion(u_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                        @test getregion(v_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
+                            getregion(v_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                        @test getregion(b_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
+                            getregion(b_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                        @test getregion(η_timeseries_pickup[end], region)[1:Nx, 1:Ny, Nz+1] ≈
+                            getregion(η_timeseries[end], region)[1:Nx, 1:Ny, Nz+1]
+                    end
                 end
-
-                model = HydrostaticFreeSurfaceModel(; grid,
-                                                    momentum_advection = WENOVectorInvariant(FT; order=5),
-                                                    tracer_advection = WENO(FT; order=5),
-                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=12),
-                                                    coriolis = HydrostaticSphericalCoriolis(FT),
-                                                    tracers = :b,
-                                                    buoyancy = BuoyancyTracer())
-
-                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
-
-                save_fields_interval = 2minute
-                checkpointer_interval = 4minutes
-
-                filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
-                simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                                        schedule = TimeInterval(checkpointer_interval),
-                                                                        prefix = filename_checkpointer,
-                                                                        overwrite_existing = true)
-
-                outputs = fields(model)
-                filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
-                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
-                                                                schedule = TimeInterval(save_fields_interval),
-                                                                filename = filename_output_writer,
-                                                                verbose = false,
-                                                                overwrite_existing = true)
-
-                run!(simulation)
-
-                @test iteration(simulation) == 10
-                @test time(simulation) == 10minutes
-
-                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
-
-                if grid == underlying_grid
-                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
-                else
-                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
-                end
-
-                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
-
-                simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                                        schedule = TimeInterval(checkpointer_interval),
-                                                                        prefix = filename_checkpointer,
-                                                                        overwrite_existing = true)
-
-                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
-                                                                schedule = TimeInterval(save_fields_interval),
-                                                                filename = filename_output_writer,
-                                                                verbose = false,
-                                                                overwrite_existing = true)
-
-                run!(simulation, pickup = true)
-
-                @test iteration(simulation) == 20
-                @test time(simulation) == 20minutes
-
-                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
             end
         end
     end
