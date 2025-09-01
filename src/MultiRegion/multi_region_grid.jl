@@ -35,6 +35,15 @@ const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, 
 @inline Base.lastindex(mrg::MultiRegionGrids) = length(mrg)
 number_of_regions(mrg::MultiRegionGrids) = lastindex(mrg)
 
+minimum_xspacing(grid::MultiRegionGrid) =
+    minimum(minimum_xspacing(grid[r]) for r in 1:number_of_regions(grid))
+
+minimum_yspacing(grid::MultiRegionGrid) =
+    minimum(minimum_yspacing(grid[r]) for r in 1:number_of_regions(grid))
+
+minimum_zspacing(grid::MultiRegionGrid) =
+    minimum(minimum_zspacing(grid[r]) for r in 1:number_of_regions(grid))
+
 minimum_xspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
     minimum(minimum_xspacing(grid[r], ℓx, ℓy, ℓz) for r in 1:number_of_regions(grid))
 
