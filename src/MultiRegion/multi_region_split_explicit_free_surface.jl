@@ -12,14 +12,15 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surfac
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, 
                                   velocities, 
                                   grid::MultiRegionGrids) where {extend_halos}
+    substepping = free_surface.substepping
 
-    free_surface.substepping isa FixedTimeStepSize &&
+    substepping isa FixedTimeStepSize &&
         throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialize SplitExplicitFreeSurface using substeps kwarg"))
 
     switch_device!(grid.devices[1])
 
     old_halos = halo_size(getregion(grid, 1))
-    Nsubsteps = calculate_substeps(free_surface.substepping)
+    Nsubsteps = calculate_substeps(substepping)
 
     if extend_halos
         extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
@@ -63,7 +64,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                                   filtered_state,
                                                   gravitational_acceleration,
                                                   kernel_parameters,
-                                                  free_surface.substepping,
+                                                  substepping,
                                                   timestepper)
 end
 
