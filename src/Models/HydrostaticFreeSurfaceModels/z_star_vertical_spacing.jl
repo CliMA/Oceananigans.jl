@@ -7,7 +7,9 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 #####
 
 # The easy case
-barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
+barotropic_velocities(free_surface::SplitExplicitFreeSurface) = 
+    (U = free_surface.barotropic_velocities.U, # filtered_state.Ũ, 
+     V = free_surface.barotropic_velocities.V) # filtered_state.Ṽ)
 
 # The "harder" case, barotropic velocities are computed on the fly
 barotropic_velocities(free_surface) = nothing, nothing

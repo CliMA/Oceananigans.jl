@@ -22,12 +22,12 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=20)) # 
+                               free_surface = ExplicitFreeSurface()) #ImplicitFreeSurface()) #SplitExplicitFreeSurface(grid; substeps=30)) # 
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
 
-set!(model, b = bᵢ, c = 1)
+set!(model, b = bᵢ, c = (x, z) -> 1 + rand() * 1e-6)
 
 # Same timestep as in the ilicak paper
 Δt = 1
@@ -62,15 +62,19 @@ function progress(sim)
     push!(cav, sum(model.tracers.c * V) / sum(V))
     push!(vav, sum(V))
 
+    Δη = maximum(abs, interior(model.free_surface.η, :, 1, 1) .- model.grid.z.ηⁿ[1:128, 1, 1])
+
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
-    msg2 = @sprintf("extrema u: %.2e %.2e ",  maximum(u),  minimum(u))
-    msg3 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
+    msg2 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
+    msg3 = @sprintf("max Δη: %6.3e ", Δη)
     msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
-    @info msg0 * msg1 * msg2 * msg3 * msg4
 
     push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
     push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))
+
+    @info msg0 * msg1 * msg2 * msg3 * msg4
+
 
     return nothing
 end

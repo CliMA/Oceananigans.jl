@@ -107,11 +107,11 @@ Lz = 400meters
 grid = RectilinearGrid(size = (80, 3, 1),
                        halo = (2, 2, 2),
                        x = (0, Lh), y = (0, Lh), 
-                       z = (-Lz, 0), #MutableVerticalDiscretization((-Lz, 0)),
+                       z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), # 
                        topology = (Periodic, Periodic, Bounded))
 
 explicit_free_surface = ExplicitFreeSurface()
-implicit_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+implicit_free_surface = ImplicitFreeSurface()
 splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=120)
 
 seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
