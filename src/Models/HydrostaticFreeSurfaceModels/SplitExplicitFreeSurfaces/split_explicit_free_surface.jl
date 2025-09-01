@@ -126,6 +126,9 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   timestepper)
 end
 
+# A free surface where halos are explicitly filled at each substep
+const FillHaloSplitExplicit = SplitExplicitFreeSurface{true}
+
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     FT = eltype(gravitational_acceleration)
