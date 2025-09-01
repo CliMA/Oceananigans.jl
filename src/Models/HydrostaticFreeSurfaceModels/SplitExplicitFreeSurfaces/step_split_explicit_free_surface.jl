@@ -79,14 +79,15 @@ function advance_barotropic_mode!(free_surface::FillHaloSplitExplicit, grid, GU�
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η, state.U, state.V
 
+    Nsubsteps = length(free_surface.substepping.averaging_weights)
     @unroll for substep in 1:Nsubsteps
         averaging_weight = weights[substep]
         fill_halo_regions!((U, V))
-        @apply_regionally launch!(arch, grid, parameters, _split_explicit_free_surface!, grid, Δτᴮ, η, U, V, timestepper)
+        @apply_regionally launch!(arch, grid, parameters, _split_explicit_free_surface!, grid, Δτᴮ, η, U, V,
+                                  timestepper)
         fill_halo_regions!(η)
-        @apply_regionally launch!(arch, grid, parameters, _split_explicit_barotropic_velocity!, grid, Δτᴮ, η, U, V,
-                                                                                                η̅, U̅, V̅, GUⁿ, GVⁿ, g,
-                                                                                                timestepper)
+        @apply_regionally launch!(arch, grid, parameters, _split_explicit_barotropic_velocity!, averaging_weight, grid,
+                                  Δτᴮ, η, U, V, η̅, U̅, V̅, GUⁿ, GVⁿ, g, timestepper)
     end
 
     return nothing

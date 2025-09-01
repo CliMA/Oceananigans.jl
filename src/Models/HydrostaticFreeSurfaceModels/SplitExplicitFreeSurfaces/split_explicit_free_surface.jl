@@ -24,6 +24,7 @@ end
                              substeps = nothing,
                              cfl = nothing,
                              fixed_Δt = nothing,
+                             extend_halos = true,
                              averaging_kernel = averaging_shape_function,
                              timestepper = ForwardBackwardScheme())
 
