@@ -1,10 +1,12 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans: prognostic_fields
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Grids: φnode, λnode, halo_size, R_Earth
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
+using Oceananigans.MultiRegion: number_of_regions
 
 function get_range_of_indices(operation, index, Nx, Ny)
     if operation == :endpoint && index == :first
@@ -778,85 +780,127 @@ end
             rm(f; force=true)
         end
     end
+    η₀ = 1e-6
+    Δφ = 20
+    @inline ηᵢ(λ, φ, z) = η₀ * cosd(4λ) * exp(-φ^2 / 2Δφ^2)
     for FT in float_types
         for arch in archs
-            Nx, Ny, Nz = 18, 18, 9
+            for extend_halos in (false, true)
+                Nx, Ny, Nz = 18, 18, 9
 
-            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
-                                                       horizontal_direction_halo = 6)
-            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+                underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1),
+                                                           radius = R_Earth, horizontal_direction_halo = 6)
+                @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+                immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-            grids = (underlying_grid, immersed_grid)
+                grids = (underlying_grid, immersed_grid)
 
-            for grid in grids
-                if grid == underlying_grid
-                    @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                    suffix = "UG"
-                else
-                    @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                    suffix = "IG"
+                for grid in grids
+                    if grid == underlying_grid
+                        @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                        suffix = "UG"
+                    else
+                        @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                        suffix = "IG"
+                    end
+
+                    model = HydrostaticFreeSurfaceModel(; grid,
+                                                        momentum_advection = WENOVectorInvariant(FT; order=5),
+                                                        tracer_advection = WENO(FT; order=5),
+                                                        free_surface = SplitExplicitFreeSurface(grid;
+                                                                                                substeps=12,
+                                                                                                extend_halos),
+                                                        coriolis = HydrostaticSphericalCoriolis(FT),
+                                                        tracers = :b,
+                                                        buoyancy = BuoyancyTracer())
+
+                    set!(model.free_surface.η, ηᵢ)
+                    fill_halo_regions!(model.free_surface.η)
+
+                    simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
+
+                    save_fields_interval = 2minute
+                    checkpointer_interval = 4minutes
+
+                    filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
+                    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                            schedule = TimeInterval(checkpointer_interval),
+                                                                            prefix = filename_checkpointer,
+                                                                            overwrite_existing = true)
+
+                    outputs = fields(model)
+                    filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
+                    simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                    schedule = TimeInterval(save_fields_interval),
+                                                                    filename = filename_output_writer,
+                                                                    verbose = false,
+                                                                    overwrite_existing = true)
+
+                    run!(simulation)
+                    @test iteration(simulation) == 10
+                    @test time(simulation) == 10minutes
+
+                    if !extend_halos
+                        η₁ = prognostic_fields(simulation.model).η
+                        U₁ = prognostic_fields(simulation.model).U
+                        V₁ = prognostic_fields(simulation.model).V
+                    else
+                        η₂ = prognostic_fields(simulation.model).η
+                        U₂ = prognostic_fields(simulation.model).U
+                        V₂ = prognostic_fields(simulation.model).V
+                    end
+
+                    for region in 1:number_of_regions(grid)
+                        @test getregion(η₂, region)[1:Nx, 1:Ny, Nz+1] ≈ getregion(η₁, region)[1:Nx, 1:Ny, Nz+1]
+                        @test getregion(U₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(U₁, region)[1:Nx, 1:Ny, 1]
+                        @test getregion(V₂, region)[1:Nx, 1:Ny, 1]    ≈ getregion(V₁, region)[1:Nx, 1:Ny, 1]
+                    end
+
+                    u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u")
+                    v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v")
+                    b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b")
+                    η_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "η")
+
+                    if grid == underlying_grid
+                        @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    else
+                        @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    end
+
+                    simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+
+                    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                            schedule = TimeInterval(checkpointer_interval),
+                                                                            prefix = filename_checkpointer,
+                                                                            overwrite_existing = true)
+
+                    simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                    schedule = TimeInterval(save_fields_interval),
+                                                                    filename = filename_output_writer,
+                                                                    verbose = false,
+                                                                    overwrite_existing = true)
+
+                    run!(simulation, pickup = true)
+
+                    @test iteration(simulation) == 10
+                    @test time(simulation) == 10minutes
+
+                    u_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "u")
+                    v_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "v")
+                    b_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "b")
+                    η_timeseries_pickup = FieldTimeSeries(filename_output_writer * ".jld2", "η")
+
+                    for region in 1:number_of_regions(grid)
+                        @test getregion(u_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
+                            getregion(u_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                        @test getregion(v_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
+                            getregion(v_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                        @test getregion(b_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
+                            getregion(b_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                        @test getregion(η_timeseries_pickup[end], region)[1:Nx, 1:Ny, Nz+1] ≈
+                            getregion(η_timeseries[end], region)[1:Nx, 1:Ny, Nz+1]
+                    end
                 end
-
-                model = HydrostaticFreeSurfaceModel(; grid,
-                                                    momentum_advection = WENOVectorInvariant(FT; order=5),
-                                                    tracer_advection = WENO(FT; order=5),
-                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=12),
-                                                    coriolis = HydrostaticSphericalCoriolis(FT),
-                                                    tracers = :b,
-                                                    buoyancy = BuoyancyTracer())
-
-                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
-
-                save_fields_interval = 2minute
-                checkpointer_interval = 4minutes
-
-                filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
-                simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                                        schedule = TimeInterval(checkpointer_interval),
-                                                                        prefix = filename_checkpointer,
-                                                                        overwrite_existing = true)
-
-                outputs = fields(model)
-                filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
-                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
-                                                                schedule = TimeInterval(save_fields_interval),
-                                                                filename = filename_output_writer,
-                                                                verbose = false,
-                                                                overwrite_existing = true)
-
-                run!(simulation)
-
-                @test iteration(simulation) == 10
-                @test time(simulation) == 10minutes
-
-                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
-
-                if grid == underlying_grid
-                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                else
-                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                end
-
-                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
-
-                simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                                        schedule = TimeInterval(checkpointer_interval),
-                                                                        prefix = filename_checkpointer,
-                                                                        overwrite_existing = true)
-
-                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
-                                                                schedule = TimeInterval(save_fields_interval),
-                                                                filename = filename_output_writer,
-                                                                verbose = false,
-                                                                overwrite_existing = true)
-
-                run!(simulation, pickup = true)
-
-                @test iteration(simulation) == 20
-                @test time(simulation) == 20minutes
-
-                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
             end
         end
     end
