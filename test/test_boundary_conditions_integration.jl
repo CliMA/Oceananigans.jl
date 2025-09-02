@@ -1,8 +1,6 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction,
-                                       FlatExtrapolationOpenBoundaryCondition,
-                                       PerturbationAdvectionOpenBoundaryCondition
                                        fill_halo_regions!
 
 using Oceananigans: prognostic_fields
@@ -107,62 +105,11 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
-left_febc(::Val{1}, grid, loc) = FieldBoundaryConditions(grid, loc, east = OpenBoundaryCondition(1),
-                                                                    west = FlatExtrapolationOpenBoundaryCondition())
 
-right_febc(::Val{1}, grid, loc) = FieldBoundaryConditions(grid, loc, west = OpenBoundaryCondition(1),
-                                                                     east = FlatExtrapolationOpenBoundaryCondition())
-
-left_febc(::Val{2}, grid, loc) = FieldBoundaryConditions(grid, loc, north = OpenBoundaryCondition(1),
-                                                                    south = FlatExtrapolationOpenBoundaryCondition())
-
-right_febc(::Val{2}, grid, loc) = FieldBoundaryConditions(grid, loc, south = OpenBoundaryCondition(1),
-                                                                     north = FlatExtrapolationOpenBoundaryCondition())
-
-left_febc(::Val{3}, grid, loc) = FieldBoundaryConditions(grid, loc, top = OpenBoundaryCondition(1),
-                                                                    bottom = FlatExtrapolationOpenBoundaryCondition())
-
-right_febc(::Val{3}, grid, loc) = FieldBoundaryConditions(grid, loc, bottom = OpenBoundaryCondition(1),
-                                                                     top = FlatExtrapolationOpenBoundaryCondition())
 
 end_position(::Val{1}, grid) = (grid.Nx+1, 1, 1)
 end_position(::Val{2}, grid) = (1, grid.Ny+1, 1)
 end_position(::Val{3}, grid) = (1, 1, grid.Nz+1)
-
-function test_flat_extrapolation_open_boundary_conditions(arch, FT)
-    clock = Clock(; time = zero(FT))
-
-    for orientation in 1:3
-        topology = tuple(map(n -> ifelse(n == orientation, Bounded, Flat), 1:3)...)
-
-        normal_location = tuple(map(n -> ifelse(n == orientation, Face, Center), 1:3)...)
-
-        grid = RectilinearGrid(arch, FT; topology, size = (16, ), x = (0, 1), y = (0, 1), z = (0, 1))
-
-        bcs1 = left_febc(Val(orientation), grid, normal_location)
-        bcs2 = right_febc(Val(orientation), grid, normal_location)
-
-        u1 = Field{normal_location...}(grid; boundary_conditions = bcs1)
-        u2 = Field{normal_location...}(grid; boundary_conditions = bcs2)
-
-        set!(u1, (X, ) -> 2-X)
-        set!(u2, (X, ) -> 1+X)
-
-        fill_halo_regions!(u1, clock, (); fill_open_bcs=false)
-        fill_halo_regions!(u2, clock, (); fill_open_bcs=false)
-
-        # we can stop the wall normal halos being filled after the pressure solve - this serves more as a test of the general OBC stuff
-        @test interior(u1, 1, 1, 1) .== 2
-        @test interior(u2, end_position(Val(orientation), grid)...) .== 2
-
-        fill_halo_regions!(u1, clock, ())
-        fill_halo_regions!(u2, clock, ())
-
-        # now they should be filled
-        @test interior(u1, 1, 1, 1) .≈ 1.8125
-        @test interior(u2, end_position(Val(orientation), grid)...) .≈ 1.8125
-    end
-end
 
 wall_normal_boundary_condition(::Val{1}, obc) = (; u = FieldBoundaryConditions(east = obc, west = obc))
 wall_normal_boundary_condition(::Val{2}, obc) = (; v = FieldBoundaryConditions(south = obc, north = obc))
@@ -182,7 +129,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
 
         grid = RectilinearGrid(arch, FT; topology, size = (4, ), x = (0, 4), y = (0, 4), z = (0, 4), halo = (1, ))
 
-        obc = PerturbationAdvectionOpenBoundaryCondition(-1, inflow_timescale = 10.0)
+        obc = OpenBoundaryCondition(-1, scheme = PerturbationAdvection(inflow_timescale = 10.0))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
         model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
@@ -195,7 +142,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         @test all(view(parent(u), :, :, :) .== -1)
         @test all(interior(u) .== -1)
 
-        obc = PerturbationAdvectionOpenBoundaryCondition((t) -> 0.1*t, inflow_timescale = 0.01, outflow_timescale = 0.5)
+        obc = OpenBoundaryCondition(t -> 0.1*t, scheme = PerturbationAdvection(inflow_timescale = 0.01, outflow_timescale = 0.5))
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
@@ -424,34 +371,16 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         for arch in archs, FT in (Float64,) #float_types
             A = typeof(arch)
             @info "  Testing open boundary conditions [$A, $FT]..."
-            test_flat_extrapolation_open_boundary_conditions(arch, FT)
             test_perturbation_advection_open_boundary_conditions(arch, FT)
 
-            # Only PerturbationAdvectionOpenBoundaryCondition
+            # Only PerturbationAdvection OpenBoundaryCondition
             U₀ = 1
             inflow_timescale = 1e-1
             outflow_timescale = Inf
 
-            u_bcs = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
-                                            east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
+            u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
+                                            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)))
             boundary_conditions = (; u = u_bcs)
-            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
-
-            # Only FlatExtrapolationOpenBoundaryCondition
-            u_bcs = FieldBoundaryConditions(west = FlatExtrapolationOpenBoundaryCondition(),
-                                            east = FlatExtrapolationOpenBoundaryCondition())
-            boundary_conditions = (; u = u_bcs)
-            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
-
-            # Mixed open boundary conditions
-            u_bcs = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale),
-                                            east = PerturbationAdvectionOpenBoundaryCondition(U₀; inflow_timescale, outflow_timescale))
-            v_bcs = FieldBoundaryConditions(south = FlatExtrapolationOpenBoundaryCondition(),
-                                            north = FlatExtrapolationOpenBoundaryCondition())
-            w_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(0),
-                                            top = OpenBoundaryCondition(0))
-
-            boundary_conditions = (; u = u_bcs, v = v_bcs, w = w_bcs)
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
         end
     end
