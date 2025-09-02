@@ -32,7 +32,8 @@ end
 
 function compute_buffer_tendency_contributions!(grid, arch, model)
     kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters)
     return nothing
 end
 
@@ -48,7 +49,10 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorI
 
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
-        !isnothing(map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+        if !isnothing(active_cells_map)
+            compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
+            compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
+        end
     end
 
     return nothing

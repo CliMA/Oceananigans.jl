@@ -33,7 +33,7 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
+                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
     architecture :: A           # Computer `Architecture` on which `Model` is run
     grid :: G                   # Grid of physical points on which `Model` is solved
@@ -47,6 +47,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     particles :: P              # Particle set for Lagrangian tracking
     biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
     velocities :: U             # Container for velocity fields `u`, `v`, and `w`
+    transport_velocities :: W   # Container for velocity fields used to transport tracers
     tracers :: C                # Container for tracer fields
     pressure :: Φ               # Container for hydrostatic pressure
     diffusivity_fields :: K     # Container for turbulent diffusivities
@@ -222,17 +223,24 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
+    transport_velocities = transport_velocity_fields(velocities, free_surface)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
-                                        free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
-                                        pressure, diffusivity_fields, timestepper, auxiliary_fields, vertical_coordinate)
+                                        free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities, 
+                                        tracers, pressure, diffusivity_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
     initialization_update_state!(model; compute_tendencies=false)
 
     return model
 end
+
+transport_velocity_fields(velocities, free_surface) = velocities
+transport_velocity_fields(velocities, ::SplitExplicitFreeSurface) = 
+    (u = similar(velocities.u), 
+     v = similar(velocities.v),
+     w = similar(velocities.w))
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 

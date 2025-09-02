@@ -30,8 +30,9 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     active_cells_map = get_active_cells_map(model.grid, Val(:interior))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
-    complete_communication_and_compute_buffer!(model, grid, arch)
+    # compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
+    # complete_communication_and_compute_buffer!(model, grid, arch)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
@@ -54,12 +55,10 @@ compute_free_surface_tendency!(grid, model, free_surface) = nothing
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
 
     arch = model.architecture
     grid = model.grid
-
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
@@ -75,7 +74,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
-                     model.velocities,
+                     model.transport_velocities,
                      model.free_surface,
                      model.tracers,
                      model.diffusivity_fields,

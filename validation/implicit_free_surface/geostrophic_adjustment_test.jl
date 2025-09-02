@@ -28,13 +28,13 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     L = grid.Lx / 40 # gaussian width
     x₀ = grid.Lx / 4 # gaussian center
 
-    vᴳ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
-    Vᴳ(x, y) = grid.Lz * vᴳ(x, y, 1) 
+    vᴳ(x, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+    Vᴳ(x) = grid.Lz * vᴳ(x, 1) 
 
     g  = model.free_surface.gravitational_acceleration
     η₀ = model.coriolis.f * U * L / g # geostrophic free surface amplitude
 
-    ηᴳ(x, y, z) = 2 * η₀ * gaussian(x - x₀, L)
+    ηᴳ(x, z) = 2 * η₀ * gaussian(x - x₀, L)
 
     set!(model, v=vᴳ, η=ηᴳ, c=1)
 
@@ -47,9 +47,12 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         z = model.grid.z
         Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.η)
         parent(z.ηⁿ)   .=  parent(model.free_surface.η)
-        for i in 0:grid.Nx+1, j in 0:grid.Ny+1
+        for i in -1:grid.Nx+2, j in -1:grid.Ny+2
             Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, j, grid, z.ηⁿ)
         end
+        @show parent(z.σᶜᶜ⁻)
+        @show size(parent(z.σᶜᶜ⁻)), size(parent(z.σᶜᶜⁿ))
+        parent(z.σᶜᶜ⁻) .= parent(z.σᶜᶜⁿ)
     end
         
     stop_iteration=1000
@@ -104,11 +107,11 @@ end
 Lh = 100kilometers
 Lz = 400meters
 
-grid = RectilinearGrid(size = (80, 3, 1),
-                       halo = (5, 3, 5),
-                       x = (0, Lh), y = (0, Lh), 
+grid = RectilinearGrid(size = (80, 1),
+                       halo = (5, 5),
+                       x = (0, Lh),
                        z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), #  
-                       topology = (Periodic, Periodic, Bounded))
+                       topology = (Periodic, Flat, Bounded))
 
 explicit_free_surface = ExplicitFreeSurface()
 implicit_free_surface = ImplicitFreeSurface()
@@ -127,10 +130,10 @@ interior(a::Array, idx...) = a
 function plot_variable(sims, var; 
                        filename="test.mp4",
                        labels=nothing,
-                       Nt=length(sims[1][var]))
+                       Nt=length(sims[1][var]),
+                       ylim = nothing)
     fig = Figure()
     ax  = Axis(fig[1, 1])
-
 
     iter = Observable(1)
     for (is, sim) in enumerate(sims)
@@ -144,6 +147,10 @@ function plot_variable(sims, var;
     end
 
     axislegend(ax; position=:rt)
+
+    if !isnothing(ylim)
+        ylims!(ax, ylim)
+    end
 
     record(fig, filename, 1:Nt, framerate=15) do i
         @info "Frame $i of $Nt"

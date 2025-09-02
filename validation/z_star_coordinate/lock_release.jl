@@ -5,6 +5,7 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
+using GLMakie
 
 z_faces = MutableVerticalDiscretization((-20, 0))
 
@@ -16,9 +17,8 @@ grid = RectilinearGrid(size = (128, 20),
 
 model = HydrostaticFreeSurfaceModel(; grid,
                          momentum_advection = WENO(order=5),
-                           tracer_advection = WENO(order=7),
+                           tracer_advection = WENO(order=5),
                                    buoyancy = BuoyancyTracer(),
-                                    closure = (VerticalScalarDiffusivity(ν=1e-4), HorizontalScalarDiffusivity(ν=1.0)),
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
@@ -71,7 +71,7 @@ function progress(sim)
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
     msg2 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
     msg3 = @sprintf("max Δη: %6.3e ", Δη)
-    msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
+    msg4 = @sprintf("extrema c: %.2e %.2e ", mxc[end]-1, mnc[end]-1)
 
     push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
     push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))

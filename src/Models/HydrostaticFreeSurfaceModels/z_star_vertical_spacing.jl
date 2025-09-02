@@ -7,10 +7,16 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 #####
 
 # The easy case
+barotropic_transport(free_surface::SplitExplicitFreeSurface) = 
+    (U = free_surface.filtered_state.Ũ, 
+     V = free_surface.filtered_state.Ṽ)
+
+# The easy case
 barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
 
 # The "harder" case, barotropic velocities are computed on the fly
 barotropic_velocities(free_surface) = nothing, nothing
+barotropic_transport(free_surface)  = nothing, nothing
 
 # Fallback
 ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
@@ -41,7 +47,7 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordina
     ηⁿ   = grid.z.ηⁿ
     Gⁿ   = ztype.storage
 
-    U, V = barotropic_velocities(model.free_surface)
+    U, V = barotropic_transport(model.free_surface)
     u, v, _ = model.velocities
 
     params = zstar_params(grid)
@@ -145,6 +151,9 @@ function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZS
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
     U, V = barotropic_velocities(model.free_surface)
+    fill_halo_regions!(U)
+    fill_halo_regions!(V)
+
     u, v, _ = model.velocities
     ∂t_σ  = grid.z.∂t_σ
 
@@ -170,27 +179,6 @@ end
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
 
     @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
-end
-
-# If U and V exist, we use them
-@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]
-@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, k]
-
-# If either U or V are not available, we compute them
-@inline function barotropic_U(i, j, k, grid, ::Nothing, u)
-    U = 0
-    for k in 1:size(grid, 3)
-        @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
-    end
-    return U
-end
-
-@inline function barotropic_V(i, j, k, grid, ::Nothing, v)
-    V = 0
-    for k in 1:size(grid, 3)
-        @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
-    end
-    return V
 end
 
 #####
