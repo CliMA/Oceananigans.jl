@@ -88,7 +88,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
-                                  averaging_kernel = averaging_shape_function,
+                                  averaging_kernel = cosine_averaging_kernel, # averaging_shape_function, #
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)
@@ -121,8 +121,8 @@ end
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     FT = eltype(gravitational_acceleration)
-    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
-    return FixedSubstepNumber(fractional_step_size, averaging_weights)
+    fractional_step_size, averaging_weights, transport_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+    return FixedSubstepNumber(fractional_step_size, averaging_weights, transport_weights)
 end
 
 # The substeps are calculated dynamically when a cfl without a fixed_Δt is provided
@@ -206,8 +206,10 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 
     U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
     V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
+    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
 
-    filtered_state = (η = η̅, U = U̅, V = V̅)
+    filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
     kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
@@ -225,9 +227,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 end
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
+@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.12)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
-
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
@@ -246,6 +247,7 @@ a fixed number of substeps with time step size of `fractional_step_size * Δt_ba
 struct FixedSubstepNumber{B, F}
     fractional_step_size :: B
     averaging_weights    :: F
+    transport_weights    :: F
 end
 
 function FixedTimeStepSize(grid;
@@ -267,18 +269,26 @@ function FixedTimeStepSize(grid;
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
-
+    M  = substeps ÷ 2
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    idx = searchsortedlast(averaging_weights, 0, rev=true)
-    substeps = idx
+    M★ = substeps
 
-    averaging_weights = averaging_weights[1:idx]
+    # Find the latest allowable weight
+    for i in substeps:-1:1
+        if averaging_weights[i] > 0
+            M★ = i
+            break
+        end
+    end
+
+    averaging_weights = averaging_weights[1:M★]
     averaging_weights ./= sum(averaging_weights)
+    transport_weights = [sum(averaging_weights[i:M★]) for i in 1:M★] ./ M
 
-    return Δτ, map(FT, tuple(averaging_weights...))
+    return Δτ, map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
@@ -299,7 +309,7 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
 
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
-    step_halo = Nsubsteps + 1
+    step_halo = Nsubsteps+2
 
     Hx = TX() isa ConnectedTopology ? max(step_halo, old_halos[1]) : old_halos[1]
     Hy = TY() isa ConnectedTopology ? max(step_halo, old_halos[2]) : old_halos[2]

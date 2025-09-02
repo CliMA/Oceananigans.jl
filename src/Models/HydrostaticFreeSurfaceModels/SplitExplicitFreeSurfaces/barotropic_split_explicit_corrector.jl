@@ -27,7 +27,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
     η     = free_surface.η
     U, V  = free_surface.barotropic_velocities
-    U̅, V̅  = state.U, state.V
+    U̅, V̅  = state.U̅, state.V̅
     arch  = architecture(grid)
 
     # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
