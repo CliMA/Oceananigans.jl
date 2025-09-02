@@ -23,6 +23,61 @@ function latitude_longitude_shift((λ₀, φ₀))
     return Δλ, Δφ
 end
 
+"""
+    RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
+                                 FT::DataType = Oceananigans.defaults.FloatType;
+                                 size,
+                                 north_pole,
+                                 longitude,
+                                 latitude,
+                                 z,
+                                 halo = (3, 3, 3),
+                                 radius = R_Earth,
+                                 topology = (Bounded, Bounded, Bounded))
+
+Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
+giving the longitude and latitude of the "grid north pole", which may differ from the
+geographic north pole at `(0, 90)`.
+
+Note that `longitude` and `latitude` are interpreted as applying to the grid _before_
+the pole is rotated.
+
+All other arguments are the same as for [`LatitudeLongitudeGrid`](@ref).
+
+Example
+=======
+
+```jldoctest rllg
+using Oceananigans
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
+
+size = (90, 40, 1)
+longitude = (0, 360)
+latitude = (-80, 80)
+z = (0, 1)
+grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(70, 55))
+
+# output
+90×40×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── centered at (λ, φ) = (146.656, 11.3134)
+├── longitude: Bounded  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
+├── latitude:  Bounded  extent 160.0 degrees variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
+└── z:         Bounded  z ∈ [0.0, 1.0]       regularly spaced with Δz=1.0
+```
+
+We can also make an ordinary LatitudeLongitudeGrid using `north_polar = (0, 90)`:
+
+```jldoctest rllg
+grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(0, 90))
+
+# output
+90×40×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── centered at (λ, φ) = (180.0, 0.0)
+├── longitude: Bounded  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
+├── latitude:  Bounded  extent 160.0 degrees variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
+└── z:         Bounded  z ∈ [0.0, 1.0]       regularly spaced with Δz=1.0
+```
+"""
 function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
                                       FT::DataType = Oceananigans.defaults.FloatType;
                                       size,
