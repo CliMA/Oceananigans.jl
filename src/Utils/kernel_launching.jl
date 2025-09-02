@@ -269,7 +269,7 @@ Keyword Arguments
 
     # Transform keyword arguments into arguments to be able to dispatch correctly 
     return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
-                                  reduced_dimensions = (),
+                                  reduced_dimensions,
                                   location = nothing)
 end
 

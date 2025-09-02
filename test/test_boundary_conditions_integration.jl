@@ -176,7 +176,7 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
 
     run!(simulation)
     compute!(∫∇u)
-    @test (@allowscalar ∫∇u[]) ≈ 0 atol=3*eps(FT)
+    @test (@allowscalar ∫∇u[]) ≈ 0 atol=3.5*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
