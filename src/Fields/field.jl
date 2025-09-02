@@ -442,7 +442,20 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
-==(a::Field, b::Field) = interior(a) == interior(b)
+
+function ==(a::Field, b::Field)
+    if architecture(a) == architecture(b)
+        return interior(a) == interior(b)
+    elseif architecture(a) isa CPU && architecture(b) isa GPU
+        b_cpu = on_architecture(CPU(), b)
+        return a == b_cpu
+    elseif architecture(b) isa CPU && architecture(a) isa GPU
+        a_cpu = on_architecture(CPU(), a)
+        return a_cpu == b
+    else
+        throw(ArgumentError("Unable to assess the equality of \n $(summary(a)) \n \n versus \n \n $(summary(b))"))
+    end
+end
 
 #####
 ##### Move Fields between architectures

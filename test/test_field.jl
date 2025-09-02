@@ -460,10 +460,14 @@ end
                 d = CenterField(cpu_grid)
                 set!(d, a)
                 @test parent(d) == Array(parent(a))
+                @test d == a
+                @test a == d
 
                 cpu_grid_with_smaller_halo = RectilinearGrid(CPU(), FT; halo=small_halo, size=sz, domain...)
                 e = CenterField(cpu_grid_with_smaller_halo)
                 set!(e, a)
+                @test e == a
+                @test a == e
                 @test Array(interior(e)) == Array(interior((a)))
             end
         end
