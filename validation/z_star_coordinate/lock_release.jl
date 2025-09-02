@@ -22,19 +22,18 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=20)) # 
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=40)) # 
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
-
-set!(model, b = bᵢ, c = 1)
+set!(model, b = bᵢ, c = (x, z) -> 1)
 
 # Same timestep as in the ilicak paper
-Δt = 1
+Δt = 100
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time=17hours)
+simulation = Simulation(model; Δt, stop_time=50hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
@@ -54,6 +53,8 @@ et2 = []
 bav = [sum(model.tracers.b * V) / sum(V)]
 cav = [sum(model.tracers.c * V) / sum(V)]
 vav = [sum(V)]
+mxc = [maximum(model.tracers.c)]
+mnc = [minimum(model.tracers.c)]
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
@@ -61,16 +62,21 @@ function progress(sim)
     push!(bav, sum(model.tracers.b * V) / sum(V))
     push!(cav, sum(model.tracers.c * V) / sum(V))
     push!(vav, sum(V))
+    push!(mxc, maximum(model.tracers.c))
+    push!(mnc, minimum(model.tracers.c))
+
+    Δη = maximum(abs, interior(model.free_surface.η, :, 1, 1) .- model.grid.z.ηⁿ[1:128, 1, 1])
 
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
-    msg2 = @sprintf("extrema u: %.2e %.2e ",  maximum(u),  minimum(u))
-    msg3 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
+    msg2 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
+    msg3 = @sprintf("max Δη: %6.3e ", Δη)
     msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
-    @info msg0 * msg1 * msg2 * msg3 * msg4
 
     push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
     push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))
+
+    @info msg0 * msg1 * msg2 * msg3 * msg4
 
     return nothing
 end
