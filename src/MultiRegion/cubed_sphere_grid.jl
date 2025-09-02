@@ -146,10 +146,11 @@ julia> using Oceananigans
 julia> using Oceananigans.MultiRegion: ConformalCubedSphereGrid
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
-ConformalCubedSphereGrid{Float64, Oceananigans.Grids.FullyConnected, Oceananigans.Grids.FullyConnected, Bounded} partitioned on CPU():
-├── grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, Oceananigans.Grids.FullyConnected, Oceananigans.Grids.FullyConnected, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── partitioning: CubedSpherePartition with (1 region in each panel)
-└── connectivity: CubedSphereConnectivity
+ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU():
+├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── partition: CubedSpherePartition with (1 region in each panel)
+├── connectivity: CubedSphereConnectivity
+└── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
 ```
 
 The connectivities of the regions of our grid are stored in `grid.connectivity`.
