@@ -88,7 +88,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
-                                  averaging_kernel = averaging_shape_function,
+                                  averaging_kernel = cosine_averaging_kernel, # averaging_shape_function, #
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)
@@ -227,9 +227,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 end
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
+@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.12)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
-
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
@@ -270,18 +269,24 @@ function FixedTimeStepSize(grid;
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
-
+    M  = substeps ÷ 2
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    idx = searchsortedlast(averaging_weights, 0, rev=true)
-    substeps = idx
+    M★ = substeps
 
-    averaging_weights = averaging_weights[1:idx]
+    # Find the latest allowable weight
+    for i in substeps:-1:1
+        if averaging_weights[i] > 0
+            M★ = i
+            break
+        end
+    end
+
+    averaging_weights = averaging_weights[1:M★]
     averaging_weights ./= sum(averaging_weights)
-    transport_weights = [sum(averaging_weights[idx:end]) for idx in 1:substeps]
-    transport_weights ./= sum(transport_weights)
+    transport_weights = [sum(averaging_weights[i:M★]) for i in 1:M★] ./ M
 
     return Δτ, map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
 end
