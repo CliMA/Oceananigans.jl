@@ -7,12 +7,17 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 #####
 
 # The easy case
+filtered_barotropic_velocities(free_surface::SplitExplicitFreeSurface) = 
+    (U = free_surface.filtered_state.Ũ, 
+     V = free_surface.filtered_state.Ṽ)
+
 barotropic_velocities(free_surface::SplitExplicitFreeSurface) = 
-    (U = free_surface.barotropic_velocities.U, # filtered_state.Ũ, 
-     V = free_surface.barotropic_velocities.V) # filtered_state.Ṽ)
+    (U = free_surface.barotropic_velocities.U, 
+     V = free_surface.barotropic_velocities.V) 
 
 # The "harder" case, barotropic velocities are computed on the fly
 barotropic_velocities(free_surface) = nothing, nothing
+filtered_barotropic_velocities(free_surface) = barotropic_velocities(free_surface)
 
 # Fallback
 ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
@@ -43,7 +48,7 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordina
     ηⁿ   = grid.z.ηⁿ
     Gⁿ   = ztype.storage
 
-    U, V = barotropic_velocities(model.free_surface)
+    U, V = filtered_barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
 
     params = zstar_params(grid)
@@ -114,6 +119,29 @@ end
 
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
+
+# rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt) = 
+#     launch!(architecture(grid), grid, zstar_params(grid), _rk3_update_grid_scaling!, model.free_surface.η, grid)
+
+# # Update η in the grid
+# # Note!!! This η is different than the free surface coming from the barotropic step!!
+# # This η is the one used to compute the vertical spacing.
+# # TODO: The two different free surfaces need to be reconciled.
+# @kernel function _rk3_update_grid_scaling!(ηⁿ⁺¹, grid)
+#     i, j = @index(Global, NTuple)
+#     kᴺ = size(grid, 3) + 1
+
+#     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
+#     σᶜᶜⁿ = grid.z.σᶜᶜⁿ
+#     σᶠᶜⁿ = grid.z.σᶠᶜⁿ
+#     σᶜᶠⁿ = grid.z.σᶜᶠⁿ
+#     σᶠᶠⁿ = grid.z.σᶠᶠⁿ
+#     ηⁿ   = grid.z.ηⁿ
+
+#     @inbounds ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, kᴺ]
+
+#     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+# end
 
 @inline function update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)

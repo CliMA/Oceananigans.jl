@@ -107,7 +107,7 @@ Lz = 400meters
 grid = RectilinearGrid(size = (80, 3, 1),
                        halo = (5, 3, 5),
                        x = (0, Lh), y = (0, Lh), 
-                       z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), # 
+                       z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), #  
                        topology = (Periodic, Periodic, Bounded))
 
 explicit_free_surface = ExplicitFreeSurface()
@@ -179,3 +179,14 @@ function plot_variable2(sims, var1, var2;
         iter[] = i
     end
 end
+
+# @inline dη_local(i, j, k, grid, U, V) = (Oceananigans.Operators.δxᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δy_qᶠᶜᶜ, U) + 
+#                                          Oceananigans.Operators.δyᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δx_qᶜᶠᶜ, V)) * 
+#                                          Oceananigans.Operators.Az⁻¹ᶜᶜᶜ(i, j, k, grid)
+
+# model = sim3
+# ηⁿ⁻¹ = deepcopy(model.free_surface.η)
+# time_step!(model, 10);
+# dη1 = (interior(model.free_surface.η, :, 1, 1) .- interior(ηⁿ⁻¹, :, 1, 1)) ./ 10
+# dη2 = interior(compute!(Field(KernelFunctionOperation{Center, Center, Nothing}(dη_local, grid, model.free_surface.filtered_state.Ũ, model.free_surface.filtered_state.Ṽ))),:, 1,1)
+# dη3 = interior(compute!(Field(KernelFunctionOperation{Center, Center, Nothing}(dη_local, grid, model.free_surface.barotropic_velocities.U, model.free_surface.barotropic_velocities.V))),:, 1,1)

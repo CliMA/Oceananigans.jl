@@ -20,21 +20,20 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = (VerticalScalarDiffusivity(ν=1e-4), HorizontalScalarDiffusivity(ν=1.0)),
                                     tracers = (:b, :c),
-                                timestepper = :QuasiAdamsBashforth2,
+                                timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=30)) # 
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=40)) # 
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
-model.timestepper.χ = -0.5
-set!(model, b = bᵢ, c = (x, z) -> 1 + rand() * 1e-6)
+set!(model, b = bᵢ, c = (x, z) -> 1)
 
 # Same timestep as in the ilicak paper
-Δt = 10
+Δt = 100
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time=17hours)
+simulation = Simulation(model; Δt, stop_time=50hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
@@ -54,6 +53,8 @@ et2 = []
 bav = [sum(model.tracers.b * V) / sum(V)]
 cav = [sum(model.tracers.c * V) / sum(V)]
 vav = [sum(V)]
+mxc = [maximum(model.tracers.c)]
+mnc = [minimum(model.tracers.c)]
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
@@ -61,6 +62,8 @@ function progress(sim)
     push!(bav, sum(model.tracers.b * V) / sum(V))
     push!(cav, sum(model.tracers.c * V) / sum(V))
     push!(vav, sum(V))
+    push!(mxc, maximum(model.tracers.c))
+    push!(mnc, minimum(model.tracers.c))
 
     Δη = maximum(abs, interior(model.free_surface.η, :, 1, 1) .- model.grid.z.ηⁿ[1:128, 1, 1])
 

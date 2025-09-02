@@ -175,7 +175,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         mask_immersed_field!(model.velocities.v)
     end
 
-    fill_halo_regions!((Ũ, Ṽ))
+    fill_halo_regions!((Ũ, Ṽ, η, U, V))
 
     return nothing
 end
