@@ -29,7 +29,7 @@ bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
 set!(model, b = bᵢ, c = (x, z) -> 1)
 
 # Same timestep as in the ilicak paper
-Δt = 100
+Δt = 20
 
 @info "the time step is $Δt"
 
