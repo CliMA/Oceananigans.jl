@@ -88,7 +88,6 @@ on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(on_architecture
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
     for r in R
-        switch_device!(dev)
         regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
 
