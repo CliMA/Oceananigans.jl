@@ -24,7 +24,7 @@ const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY,
 const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, ImmersedMultiRegionGrid{FT, TX, TY, TZ}}
 
 @inline isregional(mrg::MultiRegionGrids) = true
-@inline regions(mrg::MultiRegionGrids) = 1:length(mrg.regional_grids)
+@inline regions(mrg::MultiRegionGrids) = 1:length(mrg.region_grids)
 
 @inline  getregion(mrg::MultiRegionGrid, r) = _getregion(mrg.region_grids, r)
 @inline _getregion(mrg::MultiRegionGrid, r) =  getregion(mrg.region_grids, r)
