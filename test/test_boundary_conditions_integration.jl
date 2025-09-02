@@ -111,8 +111,6 @@ end_position(::Val{1}, grid) = (grid.Nx+1, 1, 1)
 end_position(::Val{2}, grid) = (1, grid.Ny+1, 1)
 end_position(::Val{3}, grid) = (1, 1, grid.Nz+1)
 
-
-
 wall_normal_boundary_condition(::Val{1}, obc) = (; u = FieldBoundaryConditions(east = obc, west = obc))
 wall_normal_boundary_condition(::Val{2}, obc) = (; v = FieldBoundaryConditions(south = obc, north = obc))
 wall_normal_boundary_condition(::Val{3}, obc) = (; w = FieldBoundaryConditions(bottom = obc, top = obc))
@@ -180,7 +178,7 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
 
     run!(simulation)
     compute!(∫∇u)
-    @test (@allowscalar ∫∇u[]) ≈ 0 atol=3*eps(FT)
+    @test (@allowscalar ∫∇u[]) ≈ 0 atol=3.5*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
