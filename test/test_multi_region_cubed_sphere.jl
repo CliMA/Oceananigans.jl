@@ -897,13 +897,13 @@ end
 
                     for region in 1:number_of_regions(grid)
                         @test getregion(u_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
-                            getregion(u_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                            getregion(u_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz] atol = atol rtol = rtol
                         @test getregion(v_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
-                            getregion(v_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                            getregion(v_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz] atol = atol rtol = rtol
                         @test getregion(b_timeseries_pickup[end], region)[1:Nx, 1:Ny, 1:Nz] ≈
-                            getregion(b_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz]
+                            getregion(b_timeseries[end], region)[1:Nx, 1:Ny, 1:Nz] atol = atol rtol = rtol
                         @test getregion(η_timeseries_pickup[end], region)[1:Nx, 1:Ny, Nz+1] ≈
-                            getregion(η_timeseries[end], region)[1:Nx, 1:Ny, Nz+1]
+                            getregion(η_timeseries[end], region)[1:Nx, 1:Ny, Nz+1] atol = atol rtol = rtol
                     end
                 end
             end
