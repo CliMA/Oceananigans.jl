@@ -790,7 +790,7 @@ end
             Nx, Ny, Nz = 18, 18, 9
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1),
-                                                        radius = R_Earth, horizontal_direction_halo = 6)
+                                                       radius = R_Earth, horizontal_direction_halo = 6)
             Hx, Hy, Hz = halo_size(underlying_grid)
             @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
