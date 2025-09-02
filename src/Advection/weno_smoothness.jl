@@ -92,8 +92,13 @@ for FT in fully_supported_float_types
         are zero. This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
         # 3rd order WENO, restricted to order 1 (does not matter the restriction order here)
-        @inline smoothness_coefficients(::WENO{2, <:Any, $FT}, red_order, ::Val{0}) = $(FT.(SS220))
-        @inline smoothness_coefficients(::WENO{2, <:Any, $FT}, red_order, ::Val{1}) = $(FT.(SS221))
+        @inline smoothness_coefficients(::WENO{2, <:Any, $FT}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(FT.(SS210)),   # Order 1
+                                       $(FT.(SS220)))   # Order 3
+
+        @inline smoothness_coefficients(::WENO{2, <:Any, $FT}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(FT.(SS20M)),   # Order 1
+                                       $(FT.(SS221)))   # Order 3
 
         # 5th order WENO, restricted to orders 3 and 1
         @inline smoothness_coefficients(::WENO{3, <:Any, $FT}, red_order, ::Val{0}) =

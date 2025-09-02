@@ -65,8 +65,13 @@ for FT in fully_supported_float_types
         Return the coefficients used to calculate the ....
         """
         # 3rd order WENO, restricted to order 1 (does not matter the restriction order here)
-        @inline reconstruction_coefficients(::WENO{2, $FT}, red_order, ::Val{0}) = $(FT.(RS220))
-        @inline reconstruction_coefficients(::WENO{2, $FT}, red_order, ::Val{1}) = $(FT.(RS221))
+        @inline reconstruction_coefficients(::WENO{2, $FT}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(FT.(RS210)),    # Order 1
+                                       $(FT.(RS220)))    # Order 3
+
+        @inline reconstruction_coefficients(::WENO{2, $FT}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(FT.(RS20M)),    # Order 1
+                                       $(FT.(RS221)))    # Order 3
 
         # 5th order WENO, restricted to orders 3 and 1
         @inline reconstruction_coefficients(::WENO{3, $FT}, red_order, ::Val{0}) = 
