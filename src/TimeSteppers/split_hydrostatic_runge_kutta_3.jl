@@ -38,7 +38,7 @@ Uᵐ⁺¹ = Uⁿ + Δt̃ * Gᵐ
 ```
 
 where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
-`Gᵐ` is the tendency at the ``m``-th substep, and constants `β¹ = 1/3`, `β² = 1/2`, `β³ = 1`.
+`Gᵐ` is the tendency at the ``m``-th substep, and constants `β¹ = 3`, `β² = 2`, `β³ = 1`.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
