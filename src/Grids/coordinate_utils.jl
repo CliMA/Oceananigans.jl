@@ -10,7 +10,7 @@ end
 
 """
     ExponentialDiscretization(N::Int, left, right;
-                              scale = (right-left)/5,
+                              scale = (right - left) / 5,
                               bias = :right)
 
 Return a one-dimensional discretization with `N` cells that are exponentially spaced
@@ -99,7 +99,7 @@ x = ExponentialDiscretization(N, l, r, bias=:left)
 ```
 """
 ExponentialDiscretization(size::Int, left, right;
-                          scale = (right-left)/5,
+                          scale = (right - left) / 5,
                           bias = :right) = ExponentialDiscretization(size, left, right, scale, bias)
 
 @inline rightbiased_exponential_mapping(x, l, r, h) = @. r - (r - l) * expm1((r - x) / h) / expm1((r - l) / h)
