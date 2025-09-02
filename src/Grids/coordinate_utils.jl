@@ -177,7 +177,7 @@ Apply linear stretching to `x` via
 """
 (stretching::LinearStretching)(x) = (1 + stretching.coefficient) * x
 
-struct ConstantToStretchedDiscretization{S, A} <: CallableDiscretization
+struct ReferenceToStretchedDiscretization{S, A} <: CallableDiscretization
     extent :: Float64
     bias :: Symbol
     bias_edge :: Float64
@@ -188,7 +188,7 @@ struct ConstantToStretchedDiscretization{S, A} <: CallableDiscretization
     stretching :: S
     faces :: A
 
-    function ConstantToStretchedDiscretization(extent,
+    function ReferenceToStretchedDiscretization(extent,
                                                bias,
                                                bias_edge,
                                                constant_spacing,
@@ -259,15 +259,15 @@ function compute_stretched_interfaces(; extent,
 end
 
 """
-    ConstantToStretchedDiscretization(; extent,
-                                      bias = :right,
-                                      bias_edge = 0,
-                                      constant_spacing = extent / 20,
-                                      constant_spacing_extent = 5 * constant_spacing,
-                                      maximum_stretching_extent = Inf,
-                                      maximum_spacing = Inf,
-                                      stretching = PowerLawStretching(1.02),
-                                      rounding_digits = 2)
+    ReferenceToStretchedDiscretization(; extent,
+                                       bias = :right,
+                                       bias_edge = 0,
+                                       constant_spacing = extent / 20,
+                                       constant_spacing_extent = 5 * constant_spacing,
+                                       maximum_stretching_extent = Inf,
+                                       maximum_spacing = Inf,
+                                       stretching = PowerLawStretching(1.02),
+                                       rounding_digits = 2)
 
 Return a one-dimensional coordinate that has `constant_spacing` over a `constant_spacing_extent`
 on the `bias`-side of the domain.
@@ -301,14 +301,14 @@ Examples
 * A vertical coordinate with constant 20-meter spacing at the top 110 meters.
   For that, we use the defaults `bias = :right` and `bias_edge = 0`.
 
-  ```jldoctest ConstantToStretchedDiscretization
+  ```jldoctest ReferenceToStretchedDiscretization
   using Oceananigans
 
-  z = ConstantToStretchedDiscretization(extent = 200,
-                                        constant_spacing = 25,
-                                        constant_spacing_extent = 90)
+  z = ReferenceToStretchedDiscretization(extent = 200,
+                                         constant_spacing = 25,
+                                         constant_spacing_extent = 90)
   # output
-  ConstantToStretchedDiscretization
+  ReferenceToStretchedDiscretization
   ├─ extent: 200.0
   ├─ bias: :right
   ├─ bias_edge: 0.0
@@ -322,7 +322,7 @@ Examples
 
   The `z` coordinate above has
 
-  ```jldoctest ConstantToStretchedDiscretization
+  ```jldoctest ReferenceToStretchedDiscretization
   N = length(z)
 
   # output
@@ -331,7 +331,7 @@ Examples
 
   cells. The coordinate's interfaces are:
 
-  ```jldoctest ConstantToStretchedDiscretization
+  ```jldoctest ReferenceToStretchedDiscretization
   z.faces
 
   # output
@@ -350,7 +350,7 @@ Examples
   The coordinate has an extent that is longer from what prescribed via the `extent`
   keyword argument, namely by:
 
-  ```jldoctest ConstantToStretchedDiscretization
+  ```jldoctest ReferenceToStretchedDiscretization
   (z.faces[end] - z.faces[1]) - z.extent
 
   # output
@@ -361,14 +361,14 @@ Examples
 * A coordinate that that has a 20-meter spacing for 50 meters at the left side of the domain.
   The left-most interface of the domain is at -50 meters and the coordinate extends for at least 250 meters.
 
-  ```jldoctest ConstantToStretchedDiscretization
+  ```jldoctest ReferenceToStretchedDiscretization
   using Oceananigans
 
-  x = ConstantToStretchedDiscretization(extent = 250,
-                                        bias = :left,
-                                        bias_edge = -50,
-                                        constant_spacing = 20,
-                                        constant_spacing_extent = 50)
+  x = ReferenceToStretchedDiscretization(extent = 250,
+                                         bias = :left,
+                                         bias_edge = -50,
+                                         constant_spacing = 20,
+                                         constant_spacing_extent = 50)
 
   x.faces
 
@@ -391,7 +391,7 @@ Examples
 
   that ends up with
 
-  ```jldoctest ConstantToStretchedDiscretization
+  ```jldoctest ReferenceToStretchedDiscretization
   length(x)
 
   # output
@@ -400,7 +400,7 @@ Examples
 
   cells that span a domain of:
 
-  ```jldoctest ConstantToStretchedDiscretization
+  ```jldoctest ReferenceToStretchedDiscretization
   x.faces[end] - x.faces[1]
 
   # output
@@ -408,34 +408,34 @@ Examples
   ```
   which is bigger than the desired `extent`.
 """
-function ConstantToStretchedDiscretization(; extent = 1000,
-                                           bias = :right,
-                                           bias_edge = 0,
-                                           constant_spacing = extent / 20,
-                                           constant_spacing_extent = 5 * constant_spacing,
-                                           maximum_stretching_extent = Inf,
-                                           maximum_spacing = Inf,
-                                           stretching = PowerLawStretching(1.02),
-                                           rounding_digits = 2)
+function ReferenceToStretchedDiscretization(; extent = 1000,
+                                            bias = :right,
+                                            bias_edge = 0,
+                                            constant_spacing = extent / 20,
+                                            constant_spacing_extent = 5 * constant_spacing,
+                                            maximum_stretching_extent = Inf,
+                                            maximum_spacing = Inf,
+                                            stretching = PowerLawStretching(1.02),
+                                            rounding_digits = 2)
 
-    return ConstantToStretchedDiscretization(extent,
-                                             bias,
-                                             bias_edge,
-                                             constant_spacing,
-                                             constant_spacing_extent,
-                                             maximum_stretching_extent,
-                                             maximum_spacing,
-                                             stretching;
-                                             rounding_digits)
+    return ReferenceToStretchedDiscretization(extent,
+                                              bias,
+                                              bias_edge,
+                                              constant_spacing,
+                                              constant_spacing_extent,
+                                              maximum_stretching_extent,
+                                              maximum_spacing,
+                                              stretching;
+                                              rounding_digits)
 end
 
-(dsrc::ConstantToStretchedDiscretization)(i) = dsrc.faces[i]
+(dsrc::ReferenceToStretchedDiscretization)(i) = @inbounds dsrc.faces[i]
 
-Base.length(dsrc::ConstantToStretchedDiscretization) = length(dsrc.faces)-1
+Base.length(dsrc::ReferenceToStretchedDiscretization) = length(dsrc.faces)-1
 
-Base.summary(::ConstantToStretchedDiscretization) = "ConstantToStretchedDiscretization"
+Base.summary(::ReferenceToStretchedDiscretization) = "ReferenceToStretchedDiscretization"
 
-function Base.show(io::IO, dscr::ConstantToStretchedDiscretization)
+function Base.show(io::IO, dscr::ReferenceToStretchedDiscretization)
     return print(io, summary(dscr), '\n',
                  "├─ extent: ", dscr.extent, '\n',
                  "├─ bias: :$(dscr.bias)", '\n',

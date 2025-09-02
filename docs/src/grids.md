@@ -715,9 +715,9 @@ and the number of cells.
 
 ### Constant-to-stretched-spacing discretization
 
-[`ConstantToStretchedDiscretization`](@ref) returns a discretization with constant spacing over some extent
-and beyond which the spacing increases with a prescribed stretching law; this allows a tighter control on the
-spacing at the biased edge.
+[`ReferenceToStretchedDiscretization`](@ref) returns a discretization with a constant reference spacing over
+some extent and beyond which the spacing increases with a prescribed stretching law; this allows a tighter
+control on the spacing at the biased edge.
 That is, we can prescribe a constant spacing over the top `surface_layer_height`  below which the grid spacing
 increases following a prescribed stretching law.
 The downside here is that neither the final discretization extent nor the total number of cells can be prescribed.
@@ -731,22 +731,22 @@ The three grids below have constant 30-meter spacing for the top 180 meters.
 We prescribe to all three a `extent = 800` meters and we apply power-law stretching for depths below 120 meters.
 The bigger the power-law stretching factor is, the further the last interface goes beyond the prescribed depth and/or with less total number of cells.
 
-```@setup ConstantToStretchedDiscretization
+```@setup ReferenceToStretchedDiscretization
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(fontsize=16))
 ```
 
-```@example ConstantToStretchedDiscretization
+```@example ReferenceToStretchedDiscretization
 bias = :right
 bias_edge = 0
 extent = 800
 constant_spacing = 25
 constant_spacing_extent = 160
 
-z = ConstantToStretchedDiscretization(; extent, bias, bias_edge,
-                                      constant_spacing, constant_spacing_extent,
-                                      stretching = PowerLawStretching(1.06))
+z = ReferenceToStretchedDiscretization(; extent, bias, bias_edge,
+                                       constant_spacing,  constant_spacing_extent,
+                                       stretching =  PowerLawStretching(1.06))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
@@ -774,9 +774,9 @@ hidedecorations!(axz1)
 hidespines!(axz1)
 
 
-z = ConstantToStretchedDiscretization(; extent, bias, bias_edge,
-                                      constant_spacing, constant_spacing_extent,
-                                      stretching = PowerLawStretching(1.03))
+z = ReferenceToStretchedDiscretization(; extent, bias, bias_edge,
+                                       constant_spacing,  constant_spacing_extent,
+                                       stretching =  PowerLawStretching(1.03))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
@@ -800,10 +800,10 @@ scatter!(axz2, 0 * zc, zc)
 hidedecorations!(axz2)
 hidespines!(axz2)
 
-z = ConstantToStretchedDiscretization(; extent, bias, bias_edge,
-                                      constant_spacing, constant_spacing_extent,
-                                      stretching = PowerLawStretching(1.03),
-                                      maximum_stretching_extent = 500)
+z = ReferenceToStretchedDiscretization(; extent, bias, bias_edge,
+                                       constant_spacing,  constant_spacing_extent,
+                                       stretching =  PowerLawStretching(1.03),
+                                       maximum_stretching_extent =  500)
 
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())

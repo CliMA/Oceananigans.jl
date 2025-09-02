@@ -862,11 +862,11 @@ end
                 end
             end
 
-            @info "  Testing ConstantToStretchedDiscretization..."
+            @info "  Testing ReferenceToStretchedDiscretization..."
             extent = 200
             constant_spacing = 25
             constant_spacing_extent = 90
-            z = ConstantToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             Nz = length(z)
 
@@ -892,7 +892,7 @@ end
             constant_spacing = 25.34
             constant_spacing_extent = Nz * constant_spacing
             extent = constant_spacing_extent
-            z = ConstantToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             @test length(z) == Nz
             @test length(z.faces) == Nz+1
