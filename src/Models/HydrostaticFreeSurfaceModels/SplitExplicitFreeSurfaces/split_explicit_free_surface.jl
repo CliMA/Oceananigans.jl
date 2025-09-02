@@ -2,7 +2,7 @@ using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Grids: with_halo
 import Oceananigans.Grids: on_architecture
 
-import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields, previous_hydrostatic_tendency_fields
+import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
@@ -71,8 +71,8 @@ Keyword Arguments
                       the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. By default, the averaging kernel described by [Shchepetkin2005](@citet)
-                      is used.
+                      `averaging_kernel > 0`. By default, the averaging kernel described by
+                      [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
   * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
@@ -81,7 +81,7 @@ Keyword Arguments
 References
 ==========
 
-Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
+Shchepetkin, A. F., and McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
 function SplitExplicitFreeSurface(grid = nothing;
                                   gravitational_acceleration = g_Earth,
@@ -174,18 +174,6 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     tracers = TracerFields(tracer_names, grid, bcs)
 
     return merge((u=u, v=v, U=U, V=V), tracers)
-end
-
-function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, grid, tracername, bcs)
-    U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
-    V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
-
-    free_surface_grid = free_surface.η.grid
-    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
-    η = free_surface_displacement_field(velocities, free_surface, grid)
-
-    return (; U=U, V=V, η=η)
 end
 
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}

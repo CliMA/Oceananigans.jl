@@ -45,6 +45,10 @@ end
             @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
             mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))
 
+            @test minimum_xspacing(mrg) == minimum(minimum_xspacing(mrg[r]) for r in 1:length(mrg.region_grids))
+            @test minimum_yspacing(mrg) == minimum(minimum_yspacing(mrg[r]) for r in 1:length(mrg.region_grids))
+            @test minimum_zspacing(mrg) == minimum(minimum_zspacing(mrg[r]) for r in 1:length(mrg.region_grids))
+
             @test reconstruct_global_grid(mrg) == grid
 
             for FieldType in [CenterField, XFaceField, YFaceField]

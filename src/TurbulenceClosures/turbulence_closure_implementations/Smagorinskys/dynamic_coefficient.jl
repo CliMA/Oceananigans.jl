@@ -39,7 +39,7 @@ const LagrangianAveragedDynamicSmagorinsky = Smagorinsky{<:Any, <:LagrangianAver
     DynamicCoefficient([FT=Float64;] averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
-according to the scale invariant procedure in [BouZeid05](@citet).
+according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
 
 `DynamicCoefficient` requires an `averaging` procedure, which can be a `LagrangianAveraging` (which
 averages fluid parcels along their Lagrangian trajectory) or a tuple of integers indicating
@@ -343,5 +343,3 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
 
     return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
-
-

@@ -147,9 +147,9 @@ julia> using Oceananigans
 julia> using Oceananigans.MultiRegion: ConformalCubedSphereGrid
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
-ConformalCubedSphereGrid{Float64, Oceananigans.Grids.FullyConnected, Oceananigans.Grids.FullyConnected, Bounded} partitioned on CPU():
-├── grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, Oceananigans.Grids.FullyConnected, Oceananigans.Grids.FullyConnected, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── partitioning: CubedSpherePartition with (1 region in each panel)
+ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU():
+├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── partition: CubedSpherePartition with (1 region in each panel)
 ├── connectivity: CubedSphereConnectivity
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
 ```
@@ -162,28 +162,28 @@ julia> using Oceananigans.MultiRegion: East, North, West, South
 
 julia> for region in 1:length(grid); println(grid.connectivity.connections[region].south); end
 CubedSphereRegionalConnectivity
-├── from: Oceananigans.MultiRegion.North side, region 6
-├── to:   Oceananigans.MultiRegion.South side, region 1
+├── from: Oceananigans.BoundaryConditions.North side, region 6
+├── to:   Oceananigans.BoundaryConditions.South side, region 1
 └── no rotation
 CubedSphereRegionalConnectivity
-├── from: Oceananigans.MultiRegion.East side, region 6
-├── to:   Oceananigans.MultiRegion.South side, region 2
+├── from: Oceananigans.BoundaryConditions.East side, region 6
+├── to:   Oceananigans.BoundaryConditions.South side, region 2
 └── counter-clockwise rotation ↺
 CubedSphereRegionalConnectivity
-├── from: Oceananigans.MultiRegion.North side, region 2
-├── to:   Oceananigans.MultiRegion.South side, region 3
+├── from: Oceananigans.BoundaryConditions.North side, region 2
+├── to:   Oceananigans.BoundaryConditions.South side, region 3
 └── no rotation
 CubedSphereRegionalConnectivity
-├── from: Oceananigans.MultiRegion.East side, region 2
-├── to:   Oceananigans.MultiRegion.South side, region 4
+├── from: Oceananigans.BoundaryConditions.East side, region 2
+├── to:   Oceananigans.BoundaryConditions.South side, region 4
 └── counter-clockwise rotation ↺
 CubedSphereRegionalConnectivity
-├── from: Oceananigans.MultiRegion.North side, region 4
-├── to:   Oceananigans.MultiRegion.South side, region 5
+├── from: Oceananigans.BoundaryConditions.North side, region 4
+├── to:   Oceananigans.BoundaryConditions.South side, region 5
 └── no rotation
 CubedSphereRegionalConnectivity
-├── from: Oceananigans.MultiRegion.East side, region 4
-├── to:   Oceananigans.MultiRegion.South side, region 6
+├── from: Oceananigans.BoundaryConditions.East side, region 4
+├── to:   Oceananigans.BoundaryConditions.South side, region 6
 └── counter-clockwise rotation ↺
 ```
 """
@@ -478,7 +478,8 @@ function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshap
     return immersed_nodes
 end
 
-function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT}) where FT
+    TX, TY, TZ = Oceananigans.Grids.topology_strs(grid)
     return string(size_summary(size(grid)),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")

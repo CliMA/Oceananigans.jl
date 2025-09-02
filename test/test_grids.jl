@@ -361,6 +361,44 @@ function test_grid_equality_over_architectures()
     return grid_cpu == grid_gpu
 end
 
+function test_immersed_boundary_grid_equality(arch)
+    underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+
+    ib1 = GridFittedBottom(-1/2)
+    ibg1 = ImmersedBoundaryGrid(underlying_grid, ib1)
+    @test ibg1 != underlying_grid
+    @test ibg1.underlying_grid != ibg1
+    @test ibg1 == ibg1
+
+    ibg2 = ImmersedBoundaryGrid(underlying_grid, ib1)
+    @test ibg1 == ibg2
+
+    ib2 = PartialCellBottom(-1/2)
+    ibg3 = ImmersedBoundaryGrid(underlying_grid, ib2)
+    ibg4 = ImmersedBoundaryGrid(underlying_grid, ib2)
+    ibg5 = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-1/2, minimum_fractional_cell_height=0.5))
+    @test ibg3 == ibg4
+    @test ibg3 != ibg1
+    @test ibg3 != ibg5
+
+    mask1 = zeros(Bool, 4, 4, 4)
+    mask1[2:3, 2:3, 2:3] .= true
+    ib3 = GridFittedBoundary(mask1)
+    ibg6 = ImmersedBoundaryGrid(underlying_grid, ib3)
+    ibg7 = ImmersedBoundaryGrid(underlying_grid, ib3)
+
+    mask2 = zeros(Bool, 4, 4, 4)
+    ib4 = GridFittedBoundary(mask2)
+    ibg8 = ImmersedBoundaryGrid(underlying_grid, ib4)
+    @test ibg6 != ibg8
+    @test ibg7 != ibg8
+
+    @test ibg1 != ibg3
+    @test ibg1 != ibg6
+
+    return true
+end
+
 #####
 ##### Vertically stretched grids
 #####
@@ -911,6 +949,7 @@ end
 
             for arch in archs
                 test_grid_equality(arch)
+                test_immersed_boundary_grid_equality(arch)
             end
 
             if CUDA.has_cuda()

@@ -39,6 +39,15 @@ const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, 
 @inline Base.lastindex(mrg::MultiRegionGrids) = length(mrg)
 number_of_regions(mrg::MultiRegionGrids) = lastindex(mrg)
 
+minimum_xspacing(grid::MultiRegionGrid) =
+    minimum(minimum_xspacing(grid[r]) for r in 1:number_of_regions(grid))
+
+minimum_yspacing(grid::MultiRegionGrid) =
+    minimum(minimum_yspacing(grid[r]) for r in 1:number_of_regions(grid))
+
+minimum_zspacing(grid::MultiRegionGrid) =
+    minimum(minimum_zspacing(grid[r]) for r in 1:number_of_regions(grid))
+
 minimum_xspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
     minimum(minimum_xspacing(grid[r], ℓx, ℓy, ℓz) for r in 1:number_of_regions(grid))
 
@@ -248,12 +257,14 @@ end
 Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
-Base.show(io::IO, mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
-              "├── grids: $(summary(mrg.region_grids[1])) \n",
-              "├── partitioning: $(summary(mrg.partition)) \n",
-              "├── connectivity: $(summary(mrg.connectivity)) \n",
-              "└── devices: $(devices(mrg))")
+function Base.show(io::IO, mrg::MultiRegionGrids{FT}) where FT
+    TX, TY, TZ = Oceananigans.Grids.topology_strs(mrg)
+    return print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
+                     "├── region_grids: $(summary(mrg.region_grids[1])) \n",
+                     "├── partition: $(summary(mrg.partition)) \n",
+                     "├── connectivity: $(summary(mrg.connectivity)) \n",
+                     "└── devices: $(devices(mrg))")
+end
 
 function Base.:(==)(mrg₁::MultiRegionGrids, mrg₂::MultiRegionGrids)
     #check if grids are of the same type
@@ -267,6 +278,9 @@ end
 
 size(mrg::MultiRegionGrids) = size(getregion(mrg, 1))
 halo_size(mrg::MultiRegionGrids) = halo_size(getregion(mrg, 1))
+
+size(mrg::MultiRegionGrids, loc::Tuple, indices::MultiRegionObject) =
+    size(getregion(mrg, 1), loc, getregion(indices, 1))
 
 ####
 #### Get property for `MultiRegionGrid` (gets the properties of region 1)

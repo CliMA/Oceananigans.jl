@@ -1,3 +1,4 @@
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
 #####
@@ -53,74 +54,18 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...;
-                            signed = true,  # This kwarg is active only for a `ConformalCubedSphereGrid`, here we discard it.
-                            kwargs...)
+function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
 
-    flattened = flattened_unique_values(maybe_nested_tuple)
-
-    # Look for grid within the flattened field tuple:
-    for f in flattened
-        if isdefined(f, :grid)
-            grid = f.grid
-            return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
-        end
-    end
-
-    return tupled_fill_halo_regions!(flattened, args...; kwargs...)
-end
-
-# Version where we find grid amongst ordinary fields:
-function tupled_fill_halo_regions!(fields, args...; kwargs...)
-
-    not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
-
-    if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
-        grid = first(not_reduced_fields).grid
-        fill_halo_regions!(map(data, not_reduced_fields),
-                           map(boundary_conditions, not_reduced_fields),
-                           default_indices(3),
-                           map(instantiated_location, not_reduced_fields),
-                           grid, args...; kwargs...)
+    for field in fields
+        fill_halo_regions!(field, args...; kwargs...)
     end
 
     return nothing
 end
 
-# Version where grid is provided:
-function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
-
-    not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
-
-    if !isempty(not_reduced_fields) # ie not reduced, and with default_indices
-        fill_halo_regions!(map(data, not_reduced_fields),
-                           map(boundary_conditions, not_reduced_fields),
-                           default_indices(3),
-                           map(instantiated_location, not_reduced_fields),
-                           grid, args...; kwargs...)
-    end
-
-    return nothing
-end
-
-# Helper function to create the tuple of ordinary fields:
-function fill_reduced_field_halos!(fields, args...; kwargs)
-
-    not_reduced_fields = Field[]
-    for f in fields
-        bcs = boundary_conditions(f)
-        if !isnothing(bcs)
-            if f isa ReducedField || !(f isa FullField)
-                # Windowed and reduced fields
-                fill_halo_regions!(f, args...; kwargs...)
-            else
-                push!(not_reduced_fields, f)
-            end
-        end
-    end
-
-    return tuple(not_reduced_fields...)
-end
+# This is a convenience function that allows `fill_halo_regions!` to be dispatched on the grid type.
+fill_halo_regions!(fields::NamedTuple, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
+fill_halo_regions!(fields::Tuple,      grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
 
 #####
 ##### Tracer names

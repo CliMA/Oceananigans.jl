@@ -107,7 +107,7 @@ inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = Oceananigans.Grids.topology_strs(grid)
 
     return string(size_summary(size(grid)),
                   " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
@@ -131,3 +131,10 @@ function on_architecture(arch, ibg::IBG)
 end
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
+
+function Base.:(==)(grid1::IBG, grid2::IBG)
+    equal_underlying_grids = grid1.underlying_grid == grid2.underlying_grid
+    equal_immersed_boundaries = grid1.immersed_boundary == grid2.immersed_boundary
+
+    return equal_underlying_grids && equal_immersed_boundaries
+end

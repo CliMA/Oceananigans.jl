@@ -3,7 +3,7 @@ include("dependencies_for_poisson_solvers.jl")
 
 using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner
 using Oceananigans.TimeSteppers: compute_pressure_correction!
-using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.Grids: XYZRegularRG
 using LinearAlgebra: norm
 using Random: seed!
 
@@ -167,21 +167,23 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_c
     return nothing
 end
 
-function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, preconditioner)
+function test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, preconditioner, immersed_bottom)
     preconditioner_name = typeof(preconditioner).name.wrapper
-    @info "  Testing CGSolver with ImmersedBoundaryGrid and open boundary conditions using $preconditioner_name..."
+    immersed_bottom_name = typeof(immersed_bottom).name.wrapper
+    underlying_grid_name = underlying_grid isa XYZRegularRG ? "regular grid" : "stretched grid"
+    @info "  Testing ConjugateGradientPoissonSolver + $preconditioner_name, on $underlying_grid_name with $immersed_bottom_name"
     seed!(198)  # For reproducible results
 
-    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-0.6))
-    cg_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=10)
+    grid = ImmersedBoundaryGrid(underlying_grid, immersed_bottom)
+    cg_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=100)
     @test cg_solver isa ConjugateGradientPoissonSolver
 
     # Test with open boundary conditions
     U = 1
     inflow_timescale = 1e-4
     outflow_timescale = Inf
-    u_boundaries = FieldBoundaryConditions(west = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale),
-                                           east = PerturbationAdvectionOpenBoundaryCondition(U; inflow_timescale, outflow_timescale))
+    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
+                                           east = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)))
 
     model = NonhydrostaticModel(grid = grid,
                                 boundary_conditions = (u = u_boundaries,),
@@ -194,7 +196,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries
     set!(model, u=u₀)
 
     @test norm(interior(model.velocities.u)) / grid.Nx < 1e2 # Test that u didn't blow up
-    @test all(interior(model.pressures.pNHS, :, 1, 1:grid.Nz÷3) .== 0) # Pressure is zero inside immersed boundary
+    @test all(interior(model.pressures.pNHS, :, :, 1) .== 0) # Pressure is zero inside immersed boundary (assumes the bottommost Center is immersed)
 
     # Test that pressure correction works with immersed boundaries
     Δt = 0.1 * minimum_zspacing(grid) / abs(U)
@@ -205,7 +207,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries
 
     @test final_pressure_norm >= 0  # Norm should be non-negative
     @test iterations > 0
-    @test iterations <= 10  # Should converge within max iterations
+    @test iterations <= model.pressure_solver.conjugate_gradient_solver.maxiter  # Should converge within max iterations
 
     # Test that model can advance in time without blowing up
     @test_nowarn time_step!(model, Δt)
@@ -270,9 +272,9 @@ end
         end
 
         # Test more than one underlying_grid
-        underlying_grids = Dict("regular grid"   => RectilinearGrid(arch, topology = (Bounded, Periodic, Bounded), size=(4, 4, 4), extent = (1, 1, 1)),
-                                "stretched grid" => RectilinearGrid(arch, topology = (Bounded, Bounded, Bounded), size=(4, 4, 4),
-                                                                    x = (0, 1), y = (0, 1), z = -1:0.25:0))
+        underlying_grids = Dict("regular grid"   => RectilinearGrid(arch, topology = (Bounded, Periodic, Bounded), size=(8, 4, 8), halo=(4, 4, 4), extent = (1, 1, 1)),
+                                "stretched grid" => RectilinearGrid(arch, topology = (Bounded, Bounded, Bounded), size=(8, 4, 8), halo=(4, 4, 4),
+                                                                    x = (0, 1), y = (0, 1), z = -1:0.125:0))
 
         for (underlying_grid_name, underlying_grid) in underlying_grids
             @testset "Conjugate gradient Poisson solver unit tests on a $underlying_grid_name [$(typeof(arch))]" begin
@@ -291,17 +293,30 @@ end
             end
         end
 
-        @testset "Conjugate gradient solver with ImmersedBoundaryGrid on a regular grid and open boundary conditions [$(typeof(arch))]" begin
-            underlying_grid = underlying_grids["regular grid"]
-            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner())
-            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, FFTBasedPoissonSolver(underlying_grid))
-            @test_broken test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, FourierTridiagonalPoissonSolver(underlying_grid))
+        @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a GridFittedBottom and open boundary conditions [$(typeof(arch))]" begin
+            bottom = GridFittedBottom(-0.6)
+            for (underlying_grid_name, underlying_grid) in underlying_grids
+                @info "  Testing $underlying_grid_name with different bottom types and open boundary conditions [$(typeof(arch))]..."
+                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
+                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+            end
         end
 
-        @testset "Conjugate gradient solver with ImmersedBoundaryGrid on a stretched grid and open boundary conditions [$(typeof(arch))]" begin
-            underlying_grid = underlying_grids["stretched grid"]
-            @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner())
-            @test test_conjugate_gradient_with_immersed_boundary_grid_and_open_boundaries(underlying_grid, FourierTridiagonalPoissonSolver(underlying_grid))
+        @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a PartialCellBottom and open boundary conditions [$(typeof(arch))]" begin
+            bottom = PartialCellBottom(-0.5)
+            for (underlying_grid_name, underlying_grid) in underlying_grids
+                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
+                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+            end
+        end
+
+        @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a sinusoidal GridFittedBottom and open boundary conditions [$(typeof(arch))]" begin
+            sinusoidal_bottom(x, y) = -0.8 + 0.1 * sin(2π * x) * cos(2π * y)
+            bottom = GridFittedBottom(sinusoidal_bottom)
+            for (underlying_grid_name, underlying_grid) in underlying_grids
+                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
+                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+            end
         end
     end
 end

@@ -29,6 +29,7 @@ struct MultiRegionObject{R, D, B}
         return new{R, D, B}(regional_objects, devices, backend)
     end
 end
+
 MultiRegionObject(arch::AbstractArchitecture, regional_objects...; devices=Tuple(CPU() for _ in regional_objects)) =
     MultiRegionObject(device(arch), regional_objects...; devices=devices)
 MultiRegionObject(arch::AbstractArchitecture, regional_objects::Tuple, devices::Tuple) =
@@ -136,7 +137,6 @@ on_architecture(arch::GPU, mo::MultiRegionObject) =
     devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
     devs = devices(devs)
 
-
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
         regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
@@ -161,7 +161,6 @@ end
     devs = isnothing(multi_region_args) ? multi_region_kwargs : multi_region_args
     devs = devices(devs)
 
-
     # Dig out the backend since we don't have access to arch.
     backend = nothing
     for arg in args
@@ -170,9 +169,11 @@ end
             break
         end
     end
+
     if backend isa Nothing
         backend = devs[1]
     end
+
     # Evaluate regional_func on the device of that region and collect
     # return values
     regional_return_values = Vector(undef, length(devs))
@@ -212,9 +213,8 @@ end
 
 Distributes locally the function calls in `expr`ession
 
-It calls [`apply_regionally!`](@ref) when the functions do not return anything.
-
-In case the function in `expr` returns something, `@apply_regionally` calls [`construct_regionally`](@ref).
+When the function call in `expr` does not return anything, then `apply_regionally!` method is used.
+When the function in `expr` returns something, the `construct_regionally` method is used.
 """
 macro apply_regionally(expr)
     if expr.head == :call
