@@ -105,7 +105,7 @@ Lh = 100kilometers
 Lz = 400meters
 
 grid = RectilinearGrid(size = (80, 3, 1),
-                       halo = (2, 2, 2),
+                       halo = (5, 3, 5),
                        x = (0, Lh), y = (0, Lh), 
                        z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), # 
                        topology = (Periodic, Periodic, Bounded))
@@ -116,10 +116,10 @@ splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=1
 
 seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
 serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
-efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
-efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
-imab2, sim6 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid))
-imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+# efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
+# efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+# imab2, sim6 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid))
+# imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
 
 import Oceananigans.Fields: interior
 interior(a::Array, idx...) = a

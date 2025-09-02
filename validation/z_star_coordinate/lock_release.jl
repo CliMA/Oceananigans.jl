@@ -20,17 +20,17 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = (VerticalScalarDiffusivity(ν=1e-4), HorizontalScalarDiffusivity(ν=1.0)),
                                     tracers = (:b, :c),
-                                timestepper = :SplitRungeKutta3,
+                                timestepper = :QuasiAdamsBashforth2,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = ExplicitFreeSurface()) #ImplicitFreeSurface()) #SplitExplicitFreeSurface(grid; substeps=30)) # 
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=30)) # 
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
-
+model.timestepper.χ = -0.5
 set!(model, b = bᵢ, c = (x, z) -> 1 + rand() * 1e-6)
 
 # Same timestep as in the ilicak paper
-Δt = 1
+Δt = 10
 
 @info "the time step is $Δt"
 
@@ -74,7 +74,6 @@ function progress(sim)
     push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))
 
     @info msg0 * msg1 * msg2 * msg3 * msg4
-
 
     return nothing
 end

@@ -7,46 +7,43 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 #
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
+@kernel function _split_explicit_barotropic_velocity!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, timestepper)
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz+1
 
-@kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
+    cache_previous_velocities!(timestepper, i, j, 1, U, V)
+
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+
+    # ∂τ(U) = - ∇η + G
+    @inbounds begin
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+    end
+end
+
+@kernel function _split_explicit_free_surface!(averaging_weight, transport_weight, grid, 
+                                               Δτ, η, U, V, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
-    @inbounds η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                      δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
-end
-
-@kernel function _split_explicit_barotropic_velocity!(averaging_weight, transport_weight,grid, Δτ,
-                                                      η, U, V,
-                                                      η̅, U̅, V̅, Ũ, Ṽ, 
-                                                      Gᵁ, Gⱽ, g,
-                                                      timestepper)
-    i, j = @index(Global, NTuple)
-    k_top = grid.Nz+1
-
-    cache_previous_velocities!(timestepper, i, j, 1, U)
-    cache_previous_velocities!(timestepper, i, j, 1, V)
-
-    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
-
     @inbounds begin
-        # ∂τ(U) = - ∇η + G
-        Uᵐ⁺¹ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        Vᵐ⁺¹ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+        η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+                                δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+
+        # Updating the velocities
+        Uᵐ⁺¹ = U[i, j, 1]
+        Vᵐ⁺¹ = V[i, j, 1]
 
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * Uᵐ⁺¹
-        V̅[i, j, 1]     += averaging_weight * Vᵐ⁺¹
-        Ũ[i, j, 1]     += transport_weight * Uᵐ⁺¹
-        Ṽ[i, j, 1]     += transport_weight * Vᵐ⁺¹
-
-        # Updating the velocities
-        U[i, j, 1] = Uᵐ⁺¹
-        V[i, j, 1] = Vᵐ⁺¹
+        U̅[i, j, 1] += averaging_weight * Uᵐ⁺¹
+        V̅[i, j, 1] += averaging_weight * Vᵐ⁺¹
+        Ũ[i, j, 1] += transport_weight * Uᵐ⁺¹
+        Ṽ[i, j, 1] += transport_weight * Vᵐ⁺¹
     end
 end
 
@@ -79,15 +76,11 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    η_args = (grid, Δτᴮ, η, U, V,
-              timestepper)
-
-    U_args = (grid, Δτᴮ, η, U, V,
-              η̅, U̅, V̅, Ũ, Ṽ, GUⁿ, GVⁿ, g,
-              timestepper)
+    U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Δτᴮ, η, U, V, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve η_args U_args begin
 
@@ -102,8 +95,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
             Base.@_inline_meta
             averaging_weight = weights[substep]
             transport_weight = transport_weights[substep]
-            free_surface_kernel!(converted_η_args...)
-            barotropic_velocity_kernel!(averaging_weight, transport_weight, converted_U_args...)
+            barotropic_velocity_kernel!(converted_U_args...)
+            free_surface_kernel!(averaging_weight, transport_weight, converted_η_args...)
         end
     end
 
