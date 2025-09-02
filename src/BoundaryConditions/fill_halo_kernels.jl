@@ -6,9 +6,10 @@ using Oceananigans.Utils: configure_kernel
                                           grid::AbstractGrid,
                                           loc, indices)
 
-Constructs preconfigured boundary condition kernels for a given data arraym, grid, 
-and the provided `FieldBoundaryConditions` object. Returns a new `FieldBoundaryConditions` object
-with the preconfigured kernels and ordered boundary conditions.
+Construct preconfigured boundary condition kernels for a given `data` array, `grid`, 
+and the provided `bcs` (a FieldBoundaryConditions` object).
+Return a new `FieldBoundaryConditions` object with the preconfigured kernels and
+ordered boundary conditions.
 """
 function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                                data::OffsetArray,
@@ -39,9 +40,9 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 
     arch = architecture(grid)
     sides, ordered_bcs = permute_boundary_conditions(bcs)
-    sides = tuple(sides...)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
+    names = Tuple(side_name(side) for side in sides)
     kernels! = []
 
     for task in 1:length(sides)
@@ -57,12 +58,11 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 
     kernels! = tuple(kernels!...)
 
-    return kernels!, ordered_bcs
+    return NamedTuple{names}(kernels!), NamedTuple{names}(ordered_bcs)
 end
 
 @inline get_boundary_kernels(bcs::NoKernelFBC, data, grid, loc, indices) = fill_halo_kernels(bcs, data, grid, loc, indices)
-@inline get_boundary_kernels(bcs::FieldBoundaryConditions, args...)      = bcs.kernels, bcs.ordered_bcs
-@inline get_boundary_kernels(bcs::GPUFieldBoundaryConditions, args...)   = bcs.kernels, bcs.ordered_bcs
+@inline get_boundary_kernels(bcs, args...) = bcs.kernels, bcs.ordered_bcs
 
 @inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
 
@@ -145,7 +145,7 @@ struct DistributedFillHalo{S}
 end
 
 for Side in (:WestAndEast, :SouthAndNorth, :BottomAndTop, :West, :East, :South, :North, :Bottom, :Top)
-    @eval fill_halo_kernel!(::$Side, bc::DCBC, grid, size, offset, data, reduced_dimensions) =  DistributedFillHalo($Side())
+    @eval fill_halo_kernel!(::$Side, bc::DCBC, grid, size, offset, data, reduced_dimensions) = DistributedFillHalo($Side())
 end
 
 #####
