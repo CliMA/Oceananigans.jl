@@ -29,7 +29,8 @@ import Base: show, length, size
 import Oceananigans.Utils:
                 isregional,
                 getregion,
-                _getregion
+                _getregion,
+                regions
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
