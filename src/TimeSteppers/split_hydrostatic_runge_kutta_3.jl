@@ -26,7 +26,7 @@ Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, and the previous state `Ψ⁻` can be modified
 via optional `kwargs`.
 
-The scheme is described by [Knoth and Wensch (2014)](@cite Knoth-Wensch-2014). In a nutshell,
+The scheme is described by [Knoth and Wensch (2014)](@cite knoth2014). In a nutshell,
 the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
 A barotropic velocity correction step is applied after at each substep.
 
