@@ -191,16 +191,12 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
-#####
-##### set! for checkpointer filepaths
-#####
 
-# Should this go in Models?
 """
     set!(model, filepath::AbstractString)
 
-Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
-`model.timestepper.G⁻` to checkpointed data stored at `filepath`.
+Set data in `prognostic_fields(model)` and `checkpointed_properties`
+to checkpointed data stored at `filepath`.
 """
 function set!(model, filepath::AbstractString)
     addr = checkpointer_address(model)
@@ -209,10 +205,6 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["$addr/grid"]
-
-        model.grid == checkpointed_grid ||
-            @warn "The grid associated with $filepath and model.grid are not the same!"
-
         model_fields = prognostic_fields(model)
 
         for name in keys(model_fields)
@@ -222,17 +214,6 @@ function set!(model, filepath::AbstractString)
                 @apply_regionally copyto!(parent(model_field), parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
-            end
-        end
-
-        set_time_stepper!(model.timestepper, model.architecture, file, model_fields, addr)
-
-        if hasproperty(model, :particles) && !isnothing(model.particles)
-            # Try restoring particles
-            if :particles ∈ keys(file[addr])
-                copyto!(model.particles.properties, file["$addr/particles"])
-            else
-                @warn "Particles does not exist in checkpoint and could not be restored."
             end
         end
 
@@ -246,33 +227,3 @@ function set!(model, filepath::AbstractString)
 
     return nothing
 end
-
-function set_time_stepper_tendencies!(timestepper, arch, file, model_fields, addr)
-    for name in propertynames(model_fields)
-        tendency_in_model = hasproperty(timestepper.Gⁿ, name)
-        tendency_in_checkpoint = string(name) ∈ keys(file["$addr/timestepper/Gⁿ"])
-        if tendency_in_model && tendency_in_checkpoint
-            # Tendency "n"
-            parent_data = on_architecture(arch, file["$addr/timestepper/Gⁿ/$name/data"])
-
-            tendencyⁿ_field = timestepper.Gⁿ[name]
-            @apply_regionally copyto!(parent(tendencyⁿ_field), parent_data)
-
-            # Tendency "n-1"
-            parent_data = on_architecture(arch, file["$addr/timestepper/G⁻/$name/data"])
-
-            tendency⁻_field = timestepper.G⁻[name]
-            @apply_regionally copyto!(parent(tendency⁻_field), parent_data)
-        elseif tendency_in_model && !tendency_in_checkpoint
-            @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
-        end
-    end
-
-    return nothing
-end
-
-# For self-starting timesteppers like RK3 we do nothing
-set_time_stepper!(timestepper, args...) = nothing
-
-set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
-    set_time_stepper_tendencies!(timestepper, args...)
