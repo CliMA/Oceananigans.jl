@@ -29,3 +29,7 @@ function NetCDFWriter(model, outputs; kw...)
     @warn "`using NCDatasets` is required (without erroring!) to use `NetCDFWriter`."
     throw(MethodError(NetCDFWriter, (model, outputs)))
 end
+
+function write_grid_reconstruction_data! end
+function materialize_from_netcdf end
+function reconstruct_grid end
