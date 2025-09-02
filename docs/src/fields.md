@@ -117,7 +117,6 @@ c = Field{Center, Center, Center}(grid)
 
 # output
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
@@ -304,8 +303,6 @@ fun_stuff(x, y, z) = 2x
 set!(c, fun_stuff)
 
 # output
-
-4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
