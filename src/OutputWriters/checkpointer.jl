@@ -191,6 +191,7 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
+# Fallback set! from filepath for a generic model 
 
 """
     set!(model, filepath::AbstractString)
