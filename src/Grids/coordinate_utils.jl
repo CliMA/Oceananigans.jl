@@ -189,14 +189,14 @@ struct ReferenceToStretchedDiscretization{S, A} <: CallableDiscretization
     faces :: A
 
     function ReferenceToStretchedDiscretization(extent,
-                                               bias,
-                                               bias_edge,
-                                               constant_spacing,
-                                               constant_spacing_extent,
-                                               maximum_stretching_extent,
-                                               maximum_spacing,
-                                               stretching;
-                                               rounding_digits=2)
+                                                bias,
+                                                bias_edge,
+                                                constant_spacing,
+                                                constant_spacing_extent,
+                                                maximum_stretching_extent,
+                                                maximum_spacing,
+                                                stretching;
+                                                rounding_digits=2)
 
         interfaces = compute_stretched_interfaces(; extent,
                                                   bias,
@@ -431,7 +431,7 @@ end
 
 (dsrc::ReferenceToStretchedDiscretization)(i) = @inbounds dsrc.faces[i]
 
-Base.length(dsrc::ReferenceToStretchedDiscretization) = length(dsrc.faces)-1
+Base.length(dsrc::ReferenceToStretchedDiscretization) = length(dsrc.faces) - 1
 
 Base.summary(::ReferenceToStretchedDiscretization) = "ReferenceToStretchedDiscretization"
 
