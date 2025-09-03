@@ -1,12 +1,12 @@
 env:
   JULIA_VERSION: "1.10.10"
-  JULIA_MINOR_VERSION: "1.10"
-  NAUTILUS_HOME: "/var/lib/buildkite-agent"
-  JULIA_DEPOT_PATH: "$NAUTILUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  BUILDKITE_HOME: "/var/lib/buildkite-agent"
+  JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia-oceananigans"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
+  OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
 
 agents:
   queue: "Oceananigans-nautilus"
@@ -14,30 +14,26 @@ with:
   coverage: false
 
 steps:
-  - label: "🏕️ initialize tartarus environment"
+  - label: "🏕️ initialize environment"
     key: "init"
     env:
-      JULIA_DEPOT_PATH: "$NAUTILUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
-      JULIA_BINDIR: "$NAUTILUS_HOME/julia-$JULIA_VERSION/bin"
     command: |
-      # Download julia binaries
-      wget -N -P $NAUTILUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
-      tar xf $NAUTILUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $NAUTILUS_HOME
-      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
-    agents:
-      queue: "Oceananigans-nautilus"
+      juliaup add $JULIA_VERSION
+
+      mkdir -p "$OCEANANIGANS_DIR"
+      rsync -a . "$OCEANANIGANS_DIR/"
+      cd "$OCEANANIGANS_DIR"
+
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     retry:
       automatic:
         - exit_status: 1
           limit: 1
 
-  - wait
-
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
-    agents:
-      queue: "Oceananigans-nautilus"
+    depends_on: "init"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -60,8 +56,8 @@ steps:
       echo $TEST_GROUP
 
       # Run tests
-      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
-        'using Pkg; Pkg.test()'
+      cd "$OCEANANIGANS_DIR"
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
 
     matrix:
       setup:
@@ -106,11 +102,15 @@ steps:
       JULIA_DEBUG: "Documenter"
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     command: |
-      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e \
+      cd "$OCEANANIGANS_DIR"
+      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
         'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl
-    agents:
-      queue: "Oceananigans-nautilus"
+      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+
+  #####
+  ##### Blocking wait on tests and documentation
+  #####
+
   - wait: ~
     continue_on_failure: true
 
@@ -119,6 +119,6 @@ steps:
   #####
 
   - label: "🧹 clean up environment"
-    command: "rm -rf $NAUTILUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    agents:
-      queue: "Oceananigans"
+    commands:
+      - "test -d $OCEANANIGANS_DIR && du -hs $OCEANANIGANS_DIR || true"
+      - "test -d $OCEANANIGANS_DIR && rm -rf $OCEANANIGANS_DIR || true"
