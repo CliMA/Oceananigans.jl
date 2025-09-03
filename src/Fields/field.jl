@@ -1,6 +1,7 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper, construct_boundary_conditions_kernels
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
+using Oceananigans.Architectures: convert_to_device
 
 using Adapt
 using LinearAlgebra
@@ -31,7 +32,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, I, D, T, B, S, F}(grid, data, bcs, indices, op, status, buffers)
+        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
     end
 end
 
@@ -442,7 +444,20 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
-==(a::Field, b::Field) = interior(a) == interior(b)
+
+function ==(a::Field, b::Field)
+    if architecture(a) == architecture(b)
+        return interior(a) == interior(b)
+    elseif architecture(a) isa CPU && architecture(b) isa GPU
+        b_cpu = on_architecture(CPU(), b)
+        return a == b_cpu
+    elseif architecture(b) isa CPU && architecture(a) isa GPU
+        a_cpu = on_architecture(CPU(), a)
+        return a_cpu == b
+    else
+        throw(ArgumentError("Unable to assess the equality of \n $(summary(a)) \n \n versus \n \n $(summary(b))"))
+    end
+end
 
 #####
 ##### Move Fields between architectures
@@ -804,18 +819,22 @@ end
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, args...; kwargs...)
-    reduced_dims = reduced_dimensions(field)
+function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
 
-    fill_halo_regions!(field.data,
-                       field.boundary_conditions,
-                       field.indices,
-                       instantiated_location(field),
-                       field.grid,
-                       args...;
-                       reduced_dimensions = reduced_dims,
-                       kwargs...)
+    arch = architecture(field.grid)
+    args = (field.data,
+            field.boundary_conditions,
+            field.indices,
+            instantiated_location(field),
+            field.grid,
+            positional_args...)
+    
+    # Manually convert args... to be 
+    # passed to the fill_halo_regions! function.
+    GC.@preserve args begin
+        converted_args = convert_to_device(arch, args)
+        fill_halo_regions!(converted_args...; kwargs...)
+    end
 
     return nothing
 end
-
