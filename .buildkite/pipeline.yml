@@ -48,7 +48,7 @@ steps:
         export TEST_ARCHITECTURE="GPU"
       fi
 
-      # Force IRFT runtime for Reactant (this can be moved to Project.toml on 1.11)
+      # Force IFRT runtime for Reactant (this can be moved to Project.toml on 1.11)
       touch LocalPreferences.toml
       echo "[Reactant]" >> LocalPreferences.toml
       echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
