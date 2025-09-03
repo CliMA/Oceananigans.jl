@@ -58,7 +58,24 @@ function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver
     return nothing
 end
 
-add_inhomogeneous_boundary_terms!(rhs, solver, grid, Ũ, Δt, g, η) = nothing
+add_inhomogeneous_boundary_terms!(rhs, grid, Ũ, Δt, ::Nothing, ::Nothing) = nothing
+
+@kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η)
+    i, j = @index(Global, NTuple)
+    k = grid.Nz
+
+    @inbounds begin
+        num = η[i, j, k+1] + Δt * w̃[i, j, k]
+        den = Δzᶜᶜᶜ(i, j, k, grid) * Δt^2 + Δzᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶠ(i, j, k, grid) / 2g
+        rhs[i, j, k] -= num / den
+    end
+end
+
+function add_inhomogeneous_boundary_terms!(rhs, grid, Ũ, Δt, g, η)
+    arch = grid.architecture
+    launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, Ũ.w, Δt, g, η)
+    return nothing
+end
 
 function compute_source_term!(solver::FourierTridiagonalPoissonSolver, Ũ, Δt, g, η)
     rhs = solver.source_term
@@ -67,7 +84,10 @@ function compute_source_term!(solver::FourierTridiagonalPoissonSolver, Ũ, Δt,
     tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Ũ)
 
-    add_inhomogeneous_boundary_terms!(rhs, solver, grid, Ũ, Δt, g, η)
+    # When g and η are given, we assume that we are using an implicit free surface
+    # formulation, and add the associated inhomgeneous terms on the top boundary which
+    # represent a Robin boundary condition on pressure.
+    add_inhomogeneous_boundary_terms!(rhs, grid, Ũ, Δt, g, η)
 
     return nothing
 end

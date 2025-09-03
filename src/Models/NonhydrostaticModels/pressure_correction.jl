@@ -13,7 +13,7 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     enforce_open_boundary_mass_conservation!(model, model.boundary_mass_fluxes)
 
-    if model.free_surface isa ImplicitFreeSurface
+    if !isnothing(model.free_surface) # isa ImplicitFreeSurface
         g = model.free_surface.gravitational_acceleration
         η = model.free_surface.η
     else
