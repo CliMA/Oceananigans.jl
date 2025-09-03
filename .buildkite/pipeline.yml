@@ -106,7 +106,6 @@ steps:
     agents:
       queue: "Oceananigans-nautilus"
     env:
-      JULIA_DEBUG: "Documenter"
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     command: |
       cd "$OCEANANIGANS_DIR"
