@@ -140,9 +140,9 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     CT = complex(eltype(grid))
     rhs = on_architecture(arch, zeros(CT, size(grid)...))
 
-    poisson_eigenvalues = (λ1, λ2)
+    eigenvalues = (λ1, λ2)
 
-    return FourierTridiagonalPoissonSolver(grid, tridiagonal_formulation, poisson_eigenvalues, btsolver,
+    return FourierTridiagonalPoissonSolver(grid, tridiagonal_formulation, eigenvalues, btsolver,
                                            rhs, sol_storage, buffer, transforms)
 end
 
