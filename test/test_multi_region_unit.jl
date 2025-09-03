@@ -7,12 +7,11 @@ include("dependencies_for_runtests.jl")
     @apply_regionally a = b + 1
 
     @test a == 3
-    arch = CPU()
-    a = MultiRegionObject(arch, (1, 2, 3))
-    b = MultiRegionObject(arch, (4, 5, 6))
+    a = MultiRegionObject((1, 2, 3))
+    b = MultiRegionObject((4, 5, 6))
 
     @apply_regionally a = b + 1
-    @test a == MultiRegionObject(arch, (5, 6, 7))
+    @test a == MultiRegionObject((5, 6, 7))
 end
 
 @testset "Testing multi region grids" begin

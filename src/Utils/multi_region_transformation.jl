@@ -63,7 +63,7 @@ end
 
 @inline isregional(t::Tuple{}) = false
 @inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-for func in [:isregional, :regions, :switch_device!]
+for func in [:isregional, :regions]
     @eval begin
         @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
     end
