@@ -35,25 +35,25 @@ end
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
-    architecture :: A           # Computer `Architecture` on which `Model` is run
-    grid :: G                   # Grid of physical points on which `Model` is solved
-    clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`
-    advection :: V              # Advection scheme for tracers
-    buoyancy :: B               # Set of parameters for buoyancy model
-    coriolis :: R               # Set of parameters for the background rotation rate of `Model`
-    free_surface :: S           # Free surface parameters and fields
-    forcing :: F                # Container for forcing functions defined by the user
-    closure :: E                # Diffusive 'turbulence closure' for all model fields
-    particles :: P              # Particle set for Lagrangian tracking
-    biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
-    velocities :: U             # Container for velocity fields `u`, `v`, and `w`
-    transport_velocities :: W   # Container for velocity fields used to transport tracers
-    tracers :: C                # Container for tracer fields
-    pressure :: Φ               # Container for hydrostatic pressure
-    diffusivity_fields :: K     # Container for turbulent diffusivities
-    timestepper :: TS           # Object containing timestepper fields and parameters
-    auxiliary_fields :: AF      # User-specified auxiliary fields for forcing functions and boundary conditions
-    vertical_coordinate :: Z    # Rulesets that define the time-evolution of the grid
+    architecture :: A          # Computer `Architecture` on which `Model` is run
+    grid :: G                  # Grid of physical points on which `Model` is solved
+    clock :: Clock{T}          # Tracks iteration number and simulation time of `Model`
+    advection :: V             # Advection scheme for tracers
+    buoyancy :: B              # Set of parameters for buoyancy model
+    coriolis :: R              # Set of parameters for the background rotation rate of `Model`
+    free_surface :: S          # Free surface parameters and fields
+    forcing :: F               # Container for forcing functions defined by the user
+    closure :: E               # Diffusive 'turbulence closure' for all model fields
+    particles :: P             # Particle set for Lagrangian tracking
+    biogeochemistry :: BGC     # Biogeochemistry for Oceananigans tracers
+    velocities :: U            # Container for velocity fields `u`, `v`, and `w`
+    transport_velocities :: W  # Container for velocity fields used to transport tracers
+    tracers :: C               # Container for tracer fields
+    pressure :: Φ              # Container for hydrostatic pressure
+    diffusivity_fields :: K    # Container for turbulent diffusivities
+    timestepper :: TS          # Object containing timestepper fields and parameters
+    auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
+    vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
 end
 
 default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
