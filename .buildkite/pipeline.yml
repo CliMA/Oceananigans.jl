@@ -1,14 +1,13 @@
 env:
   JULIA_VERSION: "1.10.10"
   JULIA_MINOR_VERSION: "1.10"
-  TARTARUS_HOME: "/storage5/buildkite-agent"
-  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  NAUTILUS_HOME: "/var/lib/buildkite-agent"
+  JULIA_DEPOT_PATH: "$NAUTILUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 24
-  JULIA_NUM_THREADS: 6
+  JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
-  CUDA_VISIBLE_DEVICES: "3" # Tartarus device for GPU testing
-  TMPDIR: "$TARTARUS_HOME/tmp"
+  TMPDIR: "$NAUTILUS_HOME/tmp"
 
 agents:
   queue: "Oceananigans-nautilus"
@@ -19,14 +18,14 @@ steps:
   - label: "🏕️ initialize tartarus environment"
     key: "init"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$NAUTILUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
-      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+      JULIA_BINDIR: "$NAUTILUS_HOME/julia-$JULIA_VERSION/bin"
     command: |
       # Download julia binaries
-      wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
-      tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      wget -N -P $NAUTILUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
+      tar xf $NAUTILUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $NAUTILUS_HOME
+      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
       queue: "Oceananigans-nautilus"
     retry:
@@ -46,7 +45,7 @@ steps:
         export CUDA_VISIBLE_DEVICES="-1"
         export TEST_ARCHITECTURE="CPU"
       else
-        export CUDA_VISIBLE_DEVICES="3"
+        export CUDA_VISIBLE_DEVICES="0"
         export TEST_ARCHITECTURE="GPU"
       fi
 
@@ -62,7 +61,7 @@ steps:
       echo $TEST_GROUP
 
       # Run tests
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
+      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
         'using Pkg; Pkg.test()'
 
     matrix:
@@ -106,11 +105,11 @@ steps:
   - label: "🦉 documentation"
     env:
       JULIA_DEBUG: "Documenter"
-      CUDA_VISIBLE_DEVICES: "1" # GPU for docs
+      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     command: |
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e \
+      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e \
         'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl
+      $NAUTILUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl
     agents:
       queue: "Oceananigans-nautilus"
   - wait: ~
@@ -121,6 +120,6 @@ steps:
   #####
 
   - label: "🧹 clean up environment"
-    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    command: "rm -rf $NAUTILUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: "Oceananigans"
