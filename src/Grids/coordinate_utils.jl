@@ -1,12 +1,24 @@
 abstract type CallableDiscretization end
 
+# Callable coordinates can be indexed just like arrays!
+Base.getindex(dsrc::CallableCoordinate, i) = dsrc(i)
+
 struct ExponentialDiscretization <: CallableDiscretization
     size :: Int
+    faces :: Vector{Float64}
     left :: Float64
     right :: Float64
     scale :: Float64
     bias :: Symbol
+
+    function ExponentialDiscretization(size::Int, left::Number, right::Number, scale::Number, bias::Symbol)
+        faces = [construct_exponential_coordinate(i, size, left, right, scale, bias) for i in 1:size+1]
+        return new(size, faces, left, right, scale, bias)
+    end
 end
+
+# An exponential coordinate actually has faces
+Base.getindex(dsrc::ExponentialDiscretization, i) = @inbounds dsrc.faces[i]
 
 """
     ExponentialDiscretization(N::Int, left, right;
@@ -47,6 +59,7 @@ x = ExponentialDiscretization(N, l, r)
 # output
 ExponentialDiscretization
 ├─ size: 10
+├─ faces: [-1000.0, -564.247649441104, -299.95048878528615, -139.64615757253702, -42.41666580727582, 16.55600197663209, 52.324733072619736, 74.0195651413529, 87.17814594835643, 95.15922864611028, 100.0]
 ├─ left: -1000.0
 ├─ right: 100.0
 ├─ scale: 220.0
@@ -106,16 +119,20 @@ ExponentialDiscretization(size::Int, left, right;
 @inline  leftbiased_exponential_mapping(x, l, r, h) = @. l + (r - l) * expm1((x - l) / h) / expm1((r - l) / h)
 
 function (dscr::ExponentialDiscretization)(i)
-    N, left, right, scale = dscr.size, dscr.left, dscr.right, dscr.scale
+    N, left, right, scale, bias = dscr.size, dscr.left, dscr.right, dscr.scale, dscr.bias
+    return construct_exponential_coordinate(i, N, left, right, scale, bias)
+end
+
+function construct_exponential_coordinate(i, N, left, right, scale, bias)
 
     # uniform coordinate
     Δ = (right - left) / N    # spacing
     ξᵢ = left + (i-1) * Δ     # interfaces
 
     # mapped coordinate
-    if dscr.bias === :right
+    if bias === :right
        xᵢ = rightbiased_exponential_mapping(ξᵢ, left, right, scale)
-    elseif dscr.bias === :left
+    elseif bias === :left
        xᵢ =  leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
@@ -133,8 +150,9 @@ Base.length(dscr::ExponentialDiscretization) = dscr.size
 Base.summary(::ExponentialDiscretization) = "ExponentialDiscretization"
 
 function Base.show(io::IO, dscr::ExponentialDiscretization)
-    return print(io, summary(dscr), '\n',
+    return print(io, summary(coord), '\n',
                  "├─ size: ", dscr.size, '\n',
+                 "├─ faces: ", dscr.faces, '\n',
                  "├─ left: ", dscr.left, '\n',
                  "├─ right: ", dscr.right, '\n',
                  "├─ scale: ", dscr.scale, '\n',

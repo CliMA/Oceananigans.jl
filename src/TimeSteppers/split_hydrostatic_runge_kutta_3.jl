@@ -46,7 +46,7 @@ The state at the first substep is taken to be the one that corresponds to the ``
 References
 ==========
 
-Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta Methods for the
+Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta methods for the
     compressible Euler equations. Monthly Weather Review, 142, 2067-2081,
     https://doi.org/10.1175/MWR-D-13-00068.1.
 """
