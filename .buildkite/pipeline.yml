@@ -7,7 +7,6 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
-  TMPDIR: "$NAUTILUS_HOME/tmp"
 
 agents:
   queue: "Oceananigans-nautilus"
