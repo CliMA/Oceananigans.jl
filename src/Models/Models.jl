@@ -116,9 +116,6 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  ShallowWaterModel}
 
 set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
-
-# Fallback. Models without clocks should extend this function.
-reset_clock!(model::AbstractModel) = reset!(model.clock)
     
 """
     possible_field_time_series(model::OceananigansModels)

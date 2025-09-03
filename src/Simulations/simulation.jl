@@ -1,7 +1,6 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
-using Oceananigans.Models: reset_clock!
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
 
 import Oceananigans.Utils: prettytime
@@ -193,6 +192,14 @@ function reset!(sim::Simulation)
     reset!(timestepper(sim.model))
     return nothing
 end
+
+# Fallback. Models without clocks should extend this function.
+"""
+    reset_clock!(model::AbstractModel)
+
+Reset `model.clock` to its initial state.
+"""
+reset_clock!(model::AbstractModel) = reset!(model.clock)
 
 #####
 ##### Default stop criteria callback functions
