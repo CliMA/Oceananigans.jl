@@ -16,6 +16,8 @@ with:
 steps:
   - label: "🏕️ initialize environment"
     key: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
     env:
       TEST_GROUP: "init"
     command: |
@@ -34,6 +36,8 @@ steps:
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
     depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -98,6 +102,8 @@ steps:
   #####
 
   - label: "🦉 documentation"
+    agents:
+      queue: "Oceananigans-nautilus"
     env:
       JULIA_DEBUG: "Documenter"
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
@@ -119,6 +125,8 @@ steps:
   #####
 
   - label: "🧹 clean up environment"
+    agents:
+      queue: "Oceananigans-nautilus"
     commands:
       - "test -d $OCEANANIGANS_DIR && du -hs $OCEANANIGANS_DIR || true"
       - "test -d $OCEANANIGANS_DIR && rm -rf $OCEANANIGANS_DIR || true"
