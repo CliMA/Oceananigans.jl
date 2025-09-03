@@ -18,6 +18,7 @@ const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation,
 Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
 
 @inline isregional(f::MultiRegionAbstractOperation) = true
+@inline regions(f::MultiRegionAbstractOperation) = regions(f.grid)
 
 for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :ConditionalOperation]
     @eval begin
