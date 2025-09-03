@@ -58,7 +58,7 @@ function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver
     return nothing
 end
 
-add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt)
+add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt) = nothing
 
 @kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η)
     i, j = @index(Global, NTuple)
@@ -126,7 +126,7 @@ function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
     launch!(arch, grid, :xyz, _update_fourier_tridiagonal_solver!, rhs, grid, Ũ, Δt, g, η, λx, λy)
 end
 
-@kernel _update_fourier_tridiagonal_solver!(rhs, grid, Ũ, Δt, g, η, λx, λy)
+@kernel function _update_fourier_tridiagonal_solver!(rhs, grid, Ũ, Δt, g, η, λx, λy)
     i, j, = @index(Global, NTuple)
     k = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz + 1, grid)
