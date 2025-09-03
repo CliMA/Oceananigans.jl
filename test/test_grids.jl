@@ -847,6 +847,11 @@ end
             xₗ = ExponentialCoordinate(Nx, l, r; scale, bias =:left)
             xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
 
+            for i in 1:Nx+1
+                @test xᵣ[i] == xᵣ(i)
+                @test xₗ[i] == xₗ(i)
+            end
+
             @test length(xₗ) == Nx
             @test xₗ(1) == l
             @test xₗ(Nx+1) == r
