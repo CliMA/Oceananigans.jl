@@ -256,6 +256,10 @@ end
 
         grid = bbb_grid
 
+        @test_throws ArgumentError FieldBoundaryConditions(grid, (Center, Center(), Center()))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, (Center(), Face, Center()))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, (Center(), Center(), Nothing))
+
         T_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                         east = ValueBoundaryCondition(simple_bc),
                                         west = ValueBoundaryCondition(simple_bc),
