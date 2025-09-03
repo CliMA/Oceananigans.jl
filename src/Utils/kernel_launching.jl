@@ -237,7 +237,9 @@ end
 end
 
 """
-    configure_kernel(arch, grid, workspec, kernel!, [active_cells_map=nothing, exclude_periphery=nothing];
+    configure_kernel(arch, grid, workspec, kernel!;
+                     active_cells_map = nothing,
+                     exclude_periphery = false;
                      reduced_dimensions = (),
                      location = nothing)
 
@@ -268,7 +270,7 @@ Keyword Arguments
                                   location = nothing)
 
     # Transform keyword arguments into arguments to be able to dispatch correctly 
-    return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
+    return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, Val(exclude_periphery);
                                   reduced_dimensions = (),
                                   location = nothing)
 end
