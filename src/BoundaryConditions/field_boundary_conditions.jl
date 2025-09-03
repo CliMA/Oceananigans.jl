@@ -6,11 +6,7 @@ using GPUArraysCore
 ##### Default boundary conditions
 #####
 
-struct DefaultBoundaryCondition{BC}
-    boundary_condition :: BC
-end
-
-DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
+struct DefaultBoundaryCondition end
 
 default_prognostic_bc(::Grids.Periodic, loc,      default)  = PeriodicBoundaryCondition()
 default_prognostic_bc(::FullyConnected, loc,      default)  = MultiRegionCommunicationBoundaryCondition()
@@ -127,14 +123,13 @@ and the topology in the boundary-normal direction is used:
  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
  - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCondition();
-                        west = DefaultBoundaryCondition(default_bounded_bc),
-                        east = DefaultBoundaryCondition(default_bounded_bc),
-                        south = DefaultBoundaryCondition(default_bounded_bc),
-                        north = DefaultBoundaryCondition(default_bounded_bc),
-                        bottom = DefaultBoundaryCondition(default_bounded_bc),
-                        top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
+FieldBoundaryConditions(; west = DefaultBoundaryCondition(),
+                          east = DefaultBoundaryCondition(),
+                          south = DefaultBoundaryCondition(),
+                          north = DefaultBoundaryCondition(),
+                          bottom = DefaultBoundaryCondition(),
+                          top = DefaultBoundaryCondition(),
+                          immersed = DefaultBoundaryCondition()) =
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
