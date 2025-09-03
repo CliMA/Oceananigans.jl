@@ -58,7 +58,8 @@ end
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
-@inline isregional(mrm::MultiRegionModel)   = true
+@inline isregional(mrm::MultiRegionModel) = true
+@inline regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
