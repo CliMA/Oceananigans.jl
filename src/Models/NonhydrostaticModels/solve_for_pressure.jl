@@ -58,41 +58,46 @@ function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver
     return nothing
 end
 
-add_inhomogeneous_boundary_terms!(rhs, grid, Ũ, Δt, ::Nothing, ::Nothing) = nothing
+add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt)
 
 @kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η)
     i, j = @index(Global, NTuple)
     k = grid.Nz
 
+    Δzᶜ = Δzᵃᵃᶜ(i, j, k, grid)
+    Δzᶠ = Δzᵃᵃᶠ(i, j, k, grid)
+
     @inbounds begin
         num = η[i, j, k+1] + Δt * w̃[i, j, k]
-        den = Δzᶜᶜᶜ(i, j, k, grid) * Δt^2 + Δzᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶠ(i, j, k, grid) / 2g
+        den = Δzᶜ * Δt^2 + Δzᶜ * Δzᶠ / 2g
         rhs[i, j, k] -= num / den
     end
 end
 
-function add_inhomogeneous_boundary_terms!(rhs, grid, Ũ, Δt, g, η)
+# function add_inhomogeneous_boundary_terms!(rhs, free_surface::ImplicitFreeSurface, grid, Ũ, Δt)
+function add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
+    g = free_surface.gravitational_acceleration
+    η = free_surface.η
     arch = grid.architecture
     launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, Ũ.w, Δt, g, η)
     return nothing
 end
 
-function compute_source_term!(solver::FourierTridiagonalPoissonSolver, Ũ, Δt, g, η)
+function compute_source_term!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt)
     rhs = solver.source_term
     arch = architecture(solver)
     grid = solver.grid
     tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Ũ)
 
-    # When g and η are given, we assume that we are using an implicit free surface
-    # formulation, and add the associated inhomgeneous terms on the top boundary which
-    # represent a Robin boundary condition on pressure.
-    add_inhomogeneous_boundary_terms!(rhs, grid, Ũ, Δt, g, η)
+    # Add the inhomgeneous terms on the top boundary associated with an implicit
+    # free surface formulation represneting a Robin boundary condition on pressure.
+    add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
 
     return nothing
 end
 
-function compute_source_term!(solver::FFTBasedPoissonSolver, Ũ, Δt, g, η)
+function compute_source_term!(solver::FFTBasedPoissonSolver, ::Nothing, Ũ, Δt)
     rhs = solver.storage
     arch = architecture(solver)
     grid = solver.grid
@@ -105,14 +110,30 @@ end
 #####
 
 # Note that Δt is unused here.
-function solve_for_pressure!(pressure, solver, Ũ, Δt, g, η)
-    compute_source_term!(solver, Ũ, Δt, g, η)
-    # update_fourier_tridiagonal_solver!(solver, Ũ, Δt, g, η)
-        #=
-        D[i, j, Nz] = -(-1 / Δzᵃᵃᶠ(i, j, Nz, grid) *((-3 / (2*g*Δt^2) - 1 / Δzᵃᵃᶠ(i, j, Nz, grid))/(1 / Δzᵃᵃᶠ(i, j, Nz, grid) + 1 / (2*g*Δt^2)))) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
-        =#
+function solve_for_pressure!(pressure, solver, free_surface, Ũ, Δt)
+    compute_source_term!(solver, free_surface, Ũ, Δt)
+    update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
     solve!(pressure, solver)
     return pressure
+end
+
+update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
+
+function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
+    g = free_surface.gravitational_acceleration
+    η = free_surface.η
+    λx, λy = solver.poisson_eigenvalues
+    launch!(arch, grid, :xyz, _update_fourier_tridiagonal_solver!, rhs, grid, Ũ, Δt, g, η, λx, λy)
+end
+
+@kernel _update_fourier_tridiagonal_solver!(rhs, grid, Ũ, Δt, g, η, λx, λy)
+    i, j, = @index(Global, NTuple)
+    k = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz + 1, grid)
+    Δzᶜ = Δzᵃᵃᶠ(i, j, Nz, grid)
+    num = 1 / Δzᶠ + 3 / (2g * Δt^2)
+    den = 1 / Δzᶠ + 1 / (2g * Δt^2)
+    @inbounds D[i, j, Nz] = 1 / Δzᶠ * num / den - Δzᶜ * (λx[i] + λy[j])
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Ũ, Δt, g, η)
