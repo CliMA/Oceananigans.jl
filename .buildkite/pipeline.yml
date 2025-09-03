@@ -102,6 +102,7 @@ steps:
   #####
 
   - label: "🦉 documentation"
+    depends_on: "init"
     agents:
       queue: "Oceananigans-nautilus"
     env:
