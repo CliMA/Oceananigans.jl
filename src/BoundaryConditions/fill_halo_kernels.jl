@@ -16,12 +16,27 @@ function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
                                                grid::AbstractGrid,
                                                loc, indices)
 
+    bcs = materialize_default_bcs(bcs, grid, loc)
     kernels!, ordered_bcs = fill_halo_kernels(bcs, data, grid, loc, indices)
     regularized_bcs = FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north,
                                               bcs.bottom, bcs.top, bcs.immersed,
                                               kernels!, ordered_bcs)
     return regularized_bcs
 end
+
+# Make sure we discard all the `DefaultBoundaryCondition`
+# in favor of boundary conditions that correspond to fill halo kernels
+materialize_default_bcs(bcs, grid, loc) = 
+    FieldBoundaryConditions(materialize_default_bc(bcs.west,    Val(:west),   grid, loc),
+                            materialize_default_bc(bcs.east,    Val(:east),   grid, loc),
+                            materialize_default_bc(bcs.south,   Val(:south),  grid, loc),
+                            materialize_default_bc(bcs.north,   Val(:north),  grid, loc),
+                            materialize_default_bc(bcs.bottom,  Val(:bottom), grid, loc),
+                            materialize_default_bc(bcs.top,     Val(:top),    grid, loc),
+                            bcs.immersed)
+    
+materialize_default_bc(bc, side, grid, loc) = bc
+materialize_default_bc(::DefaultBoundaryCondition, side, grid, loc) = default_auxiliary_bc(grid, side, loc)
 
 # If the bcs are nothing or missing... they remain nothing or missing
 construct_boundary_conditions_kernels(::Nothing, data, grid, loc, indices) = nothing
