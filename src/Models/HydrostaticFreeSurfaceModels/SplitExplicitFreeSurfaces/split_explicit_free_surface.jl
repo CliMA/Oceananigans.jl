@@ -88,7 +88,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
-                                  averaging_kernel = cosine_averaging_kernel, # averaging_shape_function, #
+                                  averaging_kernel = averaging_shape_function, # cosine_averaging_kernel, # 
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)
@@ -227,7 +227,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 end
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.12)) where FT
+@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT #0.12)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end

@@ -38,22 +38,13 @@ params_range(H, N, T) = -H+2:N+H-1
 
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
 
-    # Scalings and free surface
-    σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
-    σᶜᶜⁿ = grid.z.σᶜᶜⁿ
-    σᶠᶜⁿ = grid.z.σᶠᶜⁿ
-    σᶜᶠⁿ = grid.z.σᶜᶠⁿ
-    σᶠᶠⁿ = grid.z.σᶠᶠⁿ
-    ηⁿ   = grid.z.ηⁿ
-    Gⁿ   = ztype.storage
-
     U, V = barotropic_transport(model.free_surface)
+    Gⁿ   = ztype.storage
+   
     u, v, _ = model.velocities
-
-    params = zstar_params(grid)
-
-    launch!(architecture(grid), grid, params, _ab2_update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
+    
+    launch!(architecture(grid), grid, zstar_params(grid), _ab2_update_grid_scaling!, 
+            Gⁿ, grid, Δt, χ, U, V, u, v)
 
     return nothing
 end
@@ -62,9 +53,16 @@ end
 # Note!!! This η is different than the free surface coming from the barotropic step!!
 # This η is the one used to compute the vertical spacing.
 # TODO: The two different free surfaces need to be reconciled.
-@kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
+@kernel function _ab2_update_grid_scaling!(Gⁿ, grid, Δt, χ, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
+
+    σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
+    σᶜᶜⁿ = grid.z.σᶜᶜⁿ
+    σᶠᶜⁿ = grid.z.σᶠᶜⁿ
+    σᶜᶠⁿ = grid.z.σᶜᶠⁿ
+    σᶠᶠⁿ = grid.z.σᶠᶠⁿ
+    ηⁿ   = grid.z.ηⁿ
 
     C₁ = 3 * one(χ) / 2 + χ
     C₂ =     one(χ) / 2 + χ
@@ -83,18 +81,15 @@ rk3_substep_grid!(grid, model, vertical_coordinate, Δt) = nothing
 
 function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
 
-    # Scalings and free surface
-    σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
-    σᶜᶜⁿ = grid.z.σᶜᶜⁿ
-    σᶠᶜⁿ = grid.z.σᶠᶜⁿ
-    σᶜᶠⁿ = grid.z.σᶜᶠⁿ
-    σᶠᶠⁿ = grid.z.σᶠᶠⁿ
-    ηⁿ   = grid.z.ηⁿ
+    # fill_halo_regions!(model.free_surface.η)
+    # parent(grid.z.ηⁿ) .= parent(model.free_surface.η)
 
-    fill_halo_regions!(model.free_surface.η)
-    parent(ηⁿ) .= parent(model.free_surface.η)
+    U, V = barotropic_transport(model.free_surface)
+    u, v, _ = model.velocities
+    ηⁿ⁻¹    = ztype.storage
 
-    launch!(architecture(grid), grid, zstar_params(grid), _rk3_update_grid_scaling!, grid)
+    launch!(architecture(grid), grid, zstar_params(grid), _rk3_update_grid_scaling!, 
+            ηⁿ⁻¹, grid, Δt, U, V, u, v)
 
     return nothing
 end
@@ -103,7 +98,7 @@ end
 # Note!!! This η is different than the free surface coming from the barotropic step!!
 # This η is the one used to compute the vertical spacing.
 # TODO: The two different free surfaces need to be reconciled.
-@kernel function _rk3_update_grid_scaling!(grid)
+@kernel function _rk3_update_grid_scaling!(ηⁿ⁻¹, grid, Δt, U, V, u, v)
     i, j = @index(Global, NTuple)
     
     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
@@ -112,6 +107,12 @@ end
     σᶜᶠⁿ = grid.z.σᶜᶠⁿ
     σᶠᶠⁿ = grid.z.σᶠᶠⁿ
     ηⁿ   = grid.z.ηⁿ
+
+    δx_U = δxᶜᶜᶜ(i, j, 1, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δy_V = δyᶜᶜᶜ(i, j, 1, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, 1, grid)
+
+    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, 1] - Δt * δh_U
 
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
