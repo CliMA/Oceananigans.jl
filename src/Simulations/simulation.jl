@@ -1,4 +1,4 @@
-using Oceananigans: prognostic_fields
+using Oceananigans: prognostic_fields, AbstractModel
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
