@@ -11,7 +11,7 @@ env:
   TMPDIR: "$TARTARUS_HOME/tmp"
 
 agents:
-  queue: "Oceananigans"
+  queue: "Oceananigans-nautilus"
 with:
   coverage: false
 
