@@ -123,17 +123,20 @@ function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
     g = free_surface.gravitational_acceleration
     η = free_surface.η
     λx, λy = solver.poisson_eigenvalues
-    launch!(arch, grid, :xyz, _update_fourier_tridiagonal_solver!, rhs, grid, Ũ, Δt, g, η, λx, λy)
+    grid = solver.grid
+    arch = grid.architecture
+    diagonal = solver.batched_tridiagonal_solver.b
+    launch!(arch, grid, :xy, _update_fourier_tridiagonal_solver!, diagonal, grid, Ũ, Δt, g, η, λx, λy)
 end
 
-@kernel function _update_fourier_tridiagonal_solver!(rhs, grid, Ũ, Δt, g, η, λx, λy)
+@kernel function _update_fourier_tridiagonal_solver!(diagonal, grid, Ũ, Δt, g, η, λx, λy)
     i, j, = @index(Global, NTuple)
-    k = grid.Nz
+    Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz + 1, grid)
     Δzᶜ = Δzᵃᵃᶠ(i, j, Nz, grid)
     num = 1 / Δzᶠ + 3 / (2g * Δt^2)
     den = 1 / Δzᶠ + 1 / (2g * Δt^2)
-    @inbounds D[i, j, Nz] = 1 / Δzᶠ * num / den - Δzᶜ * (λx[i] + λy[j])
+    @inbounds diagonal[i, j, Nz] = 1 / Δzᶠ * num / den - Δzᶜ * (λx[i] + λy[j])
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Ũ, Δt, g, η)

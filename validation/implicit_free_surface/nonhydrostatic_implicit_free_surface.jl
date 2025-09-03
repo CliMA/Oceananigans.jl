@@ -2,9 +2,13 @@ using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 # using GLMakie
 
-grid = RectilinearGrid(size=(128, 32), halo=(4, 4), x=(-5, 5), z=(0, 1), topology=(Bounded, Flat, Bounded))
+Nz = 32
+Δz = 1 / Nz
+z = 0:Δz:1
+grid = RectilinearGrid(size=(128, Nz); halo=(4, 4), x=(-5, 5), z, topology=(Bounded, Flat, Bounded))
 free_surface = ImplicitFreeSurface(gravitational_acceleration=10)
 model = NonhydrostaticModel(; grid, free_surface)
+time_step!(model, 1)
 
 # mountain(x) = (x - 3) / 2
 # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
