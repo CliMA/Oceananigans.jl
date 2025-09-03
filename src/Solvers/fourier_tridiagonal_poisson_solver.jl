@@ -3,9 +3,10 @@ using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, s
 
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, F, B, R, S, β, T}
+struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
     tridiagonal_formulation :: F
+    poisson_eigenvalues :: Λ
     batched_tridiagonal_solver :: B
     source_term :: R
     storage :: S
@@ -139,7 +140,10 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     CT = complex(eltype(grid))
     rhs = on_architecture(arch, zeros(CT, size(grid)...))
 
-    return FourierTridiagonalPoissonSolver(grid, tridiagonal_formulation, btsolver, rhs, sol_storage, buffer, transforms)
+    poisson_eigenvalues = (λ1, λ2)
+
+    return FourierTridiagonalPoissonSolver(grid, tridiagonal_formulation, poisson_eigenvalues, btsolver,
+                                           rhs, sol_storage, buffer, transforms)
 end
 
 #####
