@@ -138,7 +138,7 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
-    FieldBoundaryConditions(grid, location, indices=(:, :, :);
+    FieldBoundaryConditions(grid, location::Tuple, indices=(:, :, :);
                             west     = default_auxiliary_bc(grid, boundary, loc),
                             east     = default_auxiliary_bc(grid, boundary, loc),
                             south    = default_auxiliary_bc(grid, boundary, loc),
@@ -148,7 +148,8 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
                             immersed = NoFluxBoundaryCondition())
 
 Return boundary conditions for auxiliary fields (fields whose values are
-derived from a model's prognostic fields) on `grid` and at `location`.
+derived from a model's prognostic fields) on `grid` and at `location`,
+which is a 3-tuple of either `Center()`, `Face()`, or `nothing`.
 
 Keyword arguments
 =================
@@ -171,7 +172,7 @@ and the topology in the boundary-normal direction is used:
 - `nothing` for `Bounded` directions and `Face`-located fields
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
+function FieldBoundaryConditions(grid::AbstractGrid, loc::Tuple, indices=(:, :, :);
                                  west     = default_auxiliary_bc(grid, Val(:west),   loc),
                                  east     = default_auxiliary_bc(grid, Val(:east),   loc),
                                  south    = default_auxiliary_bc(grid, Val(:south),  loc),
@@ -179,6 +180,14 @@ function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  bottom   = default_auxiliary_bc(grid, Val(:bottom), loc),
                                  top      = default_auxiliary_bc(grid, Val(:top),    loc),
                                  immersed = NoFluxBoundaryCondition())
+
+    for ℓ in loc
+        if !(ℓ isa Union{Nothing, Face, Center})
+            msg = string("Location $ℓ in $loc is not a valid location!", '\n',
+                         "Locations must be Center(), Face(), or nothing.")
+            throw(ArgumentError(msg))
+        end
+    end
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
