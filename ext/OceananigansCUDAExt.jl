@@ -56,6 +56,8 @@ Base.summary(::CUDAGPU) = "CUDAGPU"
 
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::Type{CuArray}) = CUDAGPU()
+AC.architecture(::CuDeviceArray) = CUDAGPU()
+AC.architecture(::Type{CuDeviceArray}) = CUDAGPU()
 AC.architecture(::CuSparseMatrixCSC) = CUDAGPU()
 AC.array_type(::AC.GPU{CUDABackend}) = CuArray
 

@@ -335,38 +335,37 @@ end
             end
         end
 
-        if arch isa GPU
-            @testset "FieldTimeSeries with CuArray boundary conditions [$(typeof(arch))]" begin
-                @info "  Testing FieldTimeSeries with CuArray boundary conditions..."
+        @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeries with Array boundary conditions..."
+            x = y = z = (0, 1)
+            grid = RectilinearGrid(arch; size=(1, 1, 1), x, y, z)
 
-                x = y = z = (0, 1)
-                grid = RectilinearGrid(GPU(); size=(1, 1, 1), x, y, z)
+            τx = on_architecture(arch, zeros(size(grid)...))
+            τy = Field{Center, Face, Nothing}(grid)
+            u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+            v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
+            model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
+            simulation = Simulation(model; Δt=1, stop_iteration=1)
 
-                τx = CuArray(zeros(size(grid)...))
-                τy = Field{Center, Face, Nothing}(grid)
-                u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
-                v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
-                model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
-                simulation = Simulation(model; Δt=1, stop_iteration=1)
+            filename = arch isa GPU ? "test_cuarray_bc.jld2" : "test_array_bc.jld2"
 
-                simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
-                                                              filename = "test_cuarray_bc.jld2",
-                                                              schedule=IterationInterval(1),
-                                                              overwrite_existing = true)
+            simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities;
+                                                          filename,
+                                                          schedule=IterationInterval(1),
+                                                          overwrite_existing = true)
 
-                run!(simulation)
+            run!(simulation)
 
-                ut = FieldTimeSeries("test_cuarray_bc.jld2", "u")
-                vt = FieldTimeSeries("test_cuarray_bc.jld2", "v")
-                @test ut.boundary_conditions.top.classification isa Flux
-                @test ut.boundary_conditions.top.condition isa Array
+            ut = FieldTimeSeries(filename, "u")
+            vt = FieldTimeSeries(filename, "v")
+            @test ut.boundary_conditions.top.classification isa Flux
+            @test ut.boundary_conditions.top.condition isa Array
 
-                τy_ow = vt.boundary_conditions.top.condition
-                @test τy_ow isa Field{Center, Face, Nothing}
-                @test architecture(τy_ow) isa CPU
-                @test parent(τy_ow) isa Array
-                rm("test_cuarray_bc.jld2")
-            end
+            τy_ow = vt.boundary_conditions.top.condition
+            @test τy_ow isa Field{Center, Face, Nothing}
+            @test architecture(τy_ow) isa CPU
+            @test parent(τy_ow) isa Array
+            rm(filename)
         end
     end
 
