@@ -47,7 +47,7 @@ default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology
 ##### Field boundary conditions
 #####
 
-mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
+mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I, K, O}
     west :: W
     east :: E
     south :: S
@@ -55,6 +55,17 @@ mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
     bottom :: B
     top :: T
     immersed :: I
+    kernels :: K # kernels used to fill halo regions
+    ordered_bcs :: O
+end
+
+const boundarynames = (:west, :east, :south, :north, :bottom, :top, :immersed)
+
+const NoKernelFBC = FieldBoundaryConditions{W, E, S, N, B, T, I, Nothing, Nothing} where {W, E, S, N, B, T, I}
+
+# Internal constructor that fills up computational details in the "auxiliaries" spot.
+function FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed, nothing, nothing)
 end
 
 function FieldBoundaryConditions(indices::Tuple, west, east, south, north, bottom, top, immersed)
@@ -66,7 +77,7 @@ function FieldBoundaryConditions(indices::Tuple, west, east, south, north, botto
 end
 
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
-    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in propertynames(bcs))...)
+    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in boundarynames)...)
 
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 FieldBoundaryConditions(indices::Tuple, ::Missing) = nothing
@@ -76,6 +87,9 @@ window_boundary_conditions(::UnitRange,  left, right) = nothing, nothing
 window_boundary_conditions(::Base.OneTo, left, right) = nothing, nothing
 window_boundary_conditions(::Colon,      left, right) = left, right
 
+# The only thing we need
+Adapt.adapt_structure(to, fbcs::FieldBoundaryConditions) = (kernels = fbcs.kernels, ordered_bcs = Adapt.adapt(to, fbcs.ordered_bcs))
+
 on_architecture(arch, fbcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(on_architecture(arch, fbcs.west),
                             on_architecture(arch, fbcs.east),
@@ -83,7 +97,9 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.north),
                             on_architecture(arch, fbcs.bottom),
                             on_architecture(arch, fbcs.top),
-                            on_architecture(arch, fbcs.immersed))
+                            on_architecture(arch, fbcs.immersed), 
+                            fbcs.kernels,
+                            on_architecture(arch, fbcs.ordered_bcs))
 
 """
     FieldBoundaryConditions(; kwargs...)
@@ -162,9 +178,10 @@ function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  north    = default_auxiliary_bc(grid, Val(:north),  loc),
                                  bottom   = default_auxiliary_bc(grid, Val(:bottom), loc),
                                  top      = default_auxiliary_bc(grid, Val(:top),    loc),
-                                 immersed = NoFluxBoundaryCondition())
+                                 immersed = DefaultBoundaryCondition())
 
-    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+    bcs = FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+    return regularize_field_boundary_conditions(bcs, grid, loc)
 end
 
 #####
@@ -173,9 +190,8 @@ end
 ##### TODO: this probably belongs in Oceananigans.Models
 #####
 
-# Friendly warning?
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
-    if !(ibc isa DefaultBoundaryCondition)
+    if !(ibc isa DefaultBoundaryCondition || isnothing(ibc))
         msg = """$field_name was assigned an immersed boundary condition
               $ibc,
               but this is not supported on
@@ -186,7 +202,7 @@ function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args
         @warn msg
     end
 
-    return NoFluxBoundaryCondition()
+    return nothing
 end
 
   regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
@@ -217,11 +233,9 @@ regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...)
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.
 
-!!! warn "No support for `ContinuousBoundaryFunction` for immersed boundary conditions"
-    Do not regularize immersed boundary conditions.
-
-    Currently, there is no support `ContinuousBoundaryFunction` for immersed boundary
-    conditions.
+!!! warn "Immersed `ContinuousBoundaryFunction` is unsupported"
+    `ContinuousBoundaryFunction` is not supported on immersed boundaries.
+    We therefore do not regularize the immersed boundary condition.
 """
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               grid::AbstractGrid,

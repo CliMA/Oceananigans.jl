@@ -1,6 +1,7 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper, construct_boundary_conditions_kernels
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
+using Oceananigans.Architectures: convert_to_device
 
 using Adapt
 using LinearAlgebra
@@ -31,7 +32,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, I, D, T, B, S, F}(grid, data, bcs, indices, op, status, buffers)
+        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
     end
 end
 
@@ -140,7 +142,7 @@ julia> ω = Field{Face, Face, Center}(grid)
 2×3×4 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -156,7 +158,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
@@ -167,7 +169,7 @@ julia> compute!(ωₛ)
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
@@ -298,7 +300,7 @@ julia> set!(c, rand(size(c)...))
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.972136, min=0.0149088, mean=0.626341
 
@@ -306,7 +308,7 @@ julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, 2:3, 1:2)
 └── data: 6×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -1:4, 2:3, 1:2) with eltype Float64 with indices -1:4×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
@@ -442,7 +444,20 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
-==(a::Field, b::Field) = interior(a) == interior(b)
+
+function ==(a::Field, b::Field)
+    if architecture(a) == architecture(b)
+        return interior(a) == interior(b)
+    elseif architecture(a) isa CPU && architecture(b) isa GPU
+        b_cpu = on_architecture(CPU(), b)
+        return a == b_cpu
+    elseif architecture(b) isa CPU && architecture(a) isa GPU
+        a_cpu = on_architecture(CPU(), a)
+        return a_cpu == b
+    else
+        throw(ArgumentError("Unable to assess the equality of \n $(summary(a)) \n \n versus \n \n $(summary(b))"))
+    end
+end
 
 #####
 ##### Move Fields between architectures
@@ -804,18 +819,22 @@ end
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, args...; kwargs...)
-    reduced_dims = reduced_dimensions(field)
+function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
 
-    fill_halo_regions!(field.data,
-                       field.boundary_conditions,
-                       field.indices,
-                       instantiated_location(field),
-                       field.grid,
-                       args...;
-                       reduced_dimensions = reduced_dims,
-                       kwargs...)
+    arch = architecture(field.grid)
+    args = (field.data,
+            field.boundary_conditions,
+            field.indices,
+            instantiated_location(field),
+            field.grid,
+            positional_args...)
+    
+    # Manually convert args... to be 
+    # passed to the fill_halo_regions! function.
+    GC.@preserve args begin
+        converted_args = convert_to_device(arch, args)
+        fill_halo_regions!(converted_args...; kwargs...)
+    end
 
     return nothing
 end
-

@@ -1,12 +1,23 @@
 abstract type CallableCoordinate end
 
+# Callable coordinates can be indexed just like arrays!
+Base.getindex(coord::CallableCoordinate, i) = coord(i)
+
 struct ExponentialCoordinate <: CallableCoordinate
     size :: Int
+    faces :: Vector{Float64}
     left :: Float64
     right :: Float64
     scale :: Float64
     bias :: Symbol
+    function ExponentialCoordinate(size::Int, left::Number, right::Number, scale::Number, bias::Symbol)
+        faces = [construct_exponential_coordinate(i, size, left, right, scale, bias) for i in 1:size+1]
+        return new(size, faces, left, right, scale, bias)
+    end
 end
+
+# An exponential coordinate actually has faces
+Base.getindex(coord::ExponentialCoordinate, i) = @inbounds coord.faces[i]
 
 """
     ExponentialCoordinate(N::Int, left, right;
@@ -46,6 +57,7 @@ x = ExponentialCoordinate(N, l, r)
 # output
 ExponentialCoordinate
 ├─ size: 10
+├─ faces: [-1000.0, -564.247649441104, -299.95048878528615, -139.64615757253702, -42.41666580727582, 16.55600197663209, 52.324733072619736, 74.0195651413529, 87.17814594835643, 95.15922864611028, 100.0]
 ├─ left: -1000.0
 ├─ right: 100.0
 ├─ scale: 220.0
@@ -106,15 +118,19 @@ ExponentialCoordinate(size::Int, left, right;
 
 function (coord::ExponentialCoordinate)(i)
     N, left, right, scale = coord.size, coord.left, coord.right, coord.scale
+    return construct_exponential_coordinate(i, N, left, right, scale, coord.bias)
+end
+
+function construct_exponential_coordinate(i, N, left, right, scale, bias)
 
     # uniform coordinate
     Δ = (right - left) / N    # spacing
     ξᵢ = left + (i-1) * Δ     # interfaces
 
     # mapped coordinate
-    if coord.bias === :right
+    if bias === :right
        xᵢ = rightbiased_exponential_mapping(ξᵢ, left, right, scale)
-    elseif coord.bias === :left
+    elseif bias === :left
        xᵢ =  leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
@@ -134,6 +150,7 @@ Base.summary(::ExponentialCoordinate) = "ExponentialCoordinate"
 function Base.show(io::IO, coord::ExponentialCoordinate)
     return print(io, summary(coord), '\n',
                  "├─ size: ", coord.size, '\n',
+                 "├─ faces: ", coord.faces, '\n',
                  "├─ left: ", coord.left, '\n',
                  "├─ right: ", coord.right, '\n',
                  "├─ scale: ", coord.scale, '\n',
