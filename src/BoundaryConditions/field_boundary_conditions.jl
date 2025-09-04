@@ -283,10 +283,6 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-# Fallbacks for `Nothing` and `Missing` boundary conditions
-regularize_field_boundary_conditions(::Nothing, args...) = nothing
-regularize_field_boundary_conditions(::Missing, args...) = missing
-
 # For nested NamedTuples of boundary conditions (eg diffusivity boundary conditions)
 function regularize_field_boundary_conditions(boundary_conditions::NamedTuple,
                                               grid::AbstractGrid,
