@@ -202,7 +202,7 @@ end
 
 # nothing and missing remain nothing and missing
 materialize_default_boundary_conditions(::Nothing, args...) = nothing
-materialize_default_boundary_conditions(::missing, args...) = missing
+materialize_default_boundary_conditions(::Missing, args...) = missing
 
 # Individual materialize
 materialize_default_boundary_condition(bc, args...) = bc # fallback
