@@ -200,6 +200,11 @@ function materialize_default_boundary_conditions(bcs::FieldBoundaryConditions,
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
+# nothing and missing remain nothing and missing
+materialize_default_boundary_conditions(::Nothing, args...) = nothing
+materialize_default_boundary_conditions(::missing, args...) = missing
+
+# Individual materialize
 materialize_default_boundary_condition(bc, args...) = bc # fallback
 materialize_default_boundary_condition(::DefaultBoundaryCondition, side, grid, loc) = default_auxiliary_bc(grid, side, loc)
 
