@@ -177,7 +177,7 @@ function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  immersed = DefaultBoundaryCondition())
 
     bcs = FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
-    return regularize_field_boundary_conditions(bcs, grid, loc)
+    return materialize_default_boundary_conditions(bcs, grid, loc)
 end
 
 #####
