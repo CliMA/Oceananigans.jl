@@ -11,7 +11,7 @@ using GPUArraysCore: @allowscalar
 
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc, regularize_field_boundary_conditions
+import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: mean, mean!
 import LinearAlgebra: dot, norm
 import Base: ==
@@ -99,7 +99,6 @@ validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
 
 # Common outer constructor for all field flavors that performs input validation
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
-    bcs = regularize_field_boundary_conditions(bcs, grid, loc)
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
