@@ -70,8 +70,18 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
+function update_vertical_velocities!(velocities, grid, model; w_parameters = w_kernel_parameters(grid),
+                                                              z_parameters = zstar_params(grid))
+
+    update_grid_vertical_velocity!(velocities, grid, model.vertical_coordinate; parameters = z_parameters)
+    compute_w_from_continuity!(velocities, architecture(grid), grid; parameters = w_parameters)
+    
+    return nothing
+end
+
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
                                                                   p_parameters = p_kernel_parameters(model.grid),
+                                                                  z_parameters = zstar_params(model.grid),
                                                                   κ_parameters = :xyz)
 
     grid        = model.grid
@@ -83,11 +93,10 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     P    = model.pressure.pHY′
     arch = architecture(grid)
 
-    # Update the vertical velocity to comply with the barotropic correction step
-    update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
+    # Update vertical velocities (grid and continuity)
+    update_vertical_velocities!(model.velocities, model.grid, model; w_parameters, z_parameters)
 
-    # Advance diagnostic quantities
-    compute_w_from_continuity!(model; parameters = w_parameters)
+    # Update pressure gradient
     update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
 
     # Update closure diffusivities

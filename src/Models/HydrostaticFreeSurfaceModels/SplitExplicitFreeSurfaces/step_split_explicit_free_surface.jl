@@ -198,42 +198,5 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
                 _compute_transport_velocities!, model.transport_velocities, model.velocities, model.grid, Ũ, Ṽ)
     end
 
-    params = zstar_params(model.grid)
-
-    # Update the time derivative of the vertical spacing,
-    # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(model.grid), model.grid, params, _update_grid_vertical_velocity!, model.grid.z.∂t_σ, model.grid, Ũ, Ṽ, nothing, nothing)
-    compute_w_from_continuity!(model.transport_velocities, architecture(model.grid), model.grid)
-
     return nothing
 end
-
-@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)
-    i, j = @index(Global, NTuple)
-    kᴺ = size(grid, 3)
-
-    hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
-
-    # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
-
-    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
-
-    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
-end
-
-function zstar_params(grid::AbstractGrid)
-
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    Tx, Ty, _ = topology(grid)
-
-    xrange = params_range(Hx, Nx, Tx)
-    yrange = params_range(Hy, Ny, Ty)
-
-    return KernelParameters(xrange, yrange)
-end
-
-params_range(H, N, ::Type{Flat}) = 1:1
-params_range(H, N, T) = -H+2:N+H-1

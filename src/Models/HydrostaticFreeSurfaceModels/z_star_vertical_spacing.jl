@@ -86,7 +86,7 @@ function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoord
 
     U, V = barotropic_transport(model.free_surface)
     u, v, _ = model.velocities
-    ηⁿ⁻¹    = ztype.storage
+    ηⁿ⁻¹    = model.free_surface.η # ztype.storage
 
     launch!(architecture(grid), grid, zstar_params(grid), _rk3_update_grid_scaling!, 
             ηⁿ⁻¹, grid, Δt, U, V, u, v)
@@ -112,7 +112,7 @@ end
     δy_V = δyᶜᶜᶜ(i, j, 1, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, 1, grid)
 
-    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, 1] - Δt * δh_U
+    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, 1] # - Δt * δh_U
 
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end
@@ -145,24 +145,19 @@ end
     end
 end
 
-update_grid_vertical_velocity!(model, grid, ztype) = nothing
+update_grid_vertical_velocity!(model, grid, ztype; kw...) = nothing
 
-function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZStarCoordinate)
+function update_grid_vertical_velocity!(velocities, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters = zstar_params(grid))
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
-    U, V = barotropic_velocities(model.free_surface)
-    fill_halo_regions!(U)
-    fill_halo_regions!(V)
-
-    u, v, _ = model.velocities
-    ∂t_σ  = grid.z.∂t_σ
-
-    params = zstar_params(grid)
+    U, V    = nothing, nothing #barotropic_velocities(model.free_surface)
+    u, v, _ = velocities
+    ∂t_σ    = grid.z.∂t_σ
 
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, params, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
 
     return nothing
 end
