@@ -34,7 +34,7 @@ struct BoundaryAdjacentMean{FF, BV}
     ├── boundary conditions: FieldBoundaryConditions
     │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
     └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-        └── max=0.980785, min=-0.980785, mean=1.10534e-16
+        └── max=0.980785, min=-0.980785, mean=-5.52808e-17
 
     julia> bam = BoundaryAdjacentMean(grid, :east)
     BoundaryAdjacentMean: (0.0)

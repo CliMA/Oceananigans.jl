@@ -17,6 +17,8 @@ struct TestParticle{T}
 end
 
 function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta3, velocities=nothing)
+    Arch = typeof(architecture(grid))
+
     if grid isa RectilinearGrid
         model = NonhydrostaticModel(; grid, timestepper, velocities, particles)
         set!(model, u=1, v=1)
@@ -27,18 +29,18 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
     end
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
-    jld2_filepath = "test_particles.jld2"
+    jld2_filepath = "test_particles_$Arch.jld2"
     sim.output_writers[:particles_jld2] = JLD2Writer(model, (; particles=model.particles),
-                                                     filename="test_particles", schedule=IterationInterval(1))
+                                                     filename=jld2_filepath, schedule=IterationInterval(1))
 
-    nc_filepath = "test_particles.nc"
+    nc_filepath = "test_particles_$Arch.nc"
     sim.output_writers[:particles_nc] = NetCDFWriter(model,
                                                      (; model.particles),
                                                      filename = nc_filepath,
                                                      schedule = IterationInterval(1))
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-                                                     dir=".", prefix="particles_checkpoint")
+                                                     dir=".", prefix="particles_checkpoint_$Arch")
 
     return sim, jld2_filepath, nc_filepath
 end
@@ -46,6 +48,7 @@ end
 function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAdamsBashforth)
 
     arch = architecture(grid)
+    Arch = typeof(arch)
 
     P = 10
 
@@ -71,7 +74,7 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
 
         rm(jld2_filepath)
         rm(nc_filepath)
-        rm("particles_checkpoint_iteration0.jld2")
+        rm("particles_checkpoint_$(Arch)_iteration0.jld2")
     end
 
     #####
@@ -137,22 +140,22 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
 
         sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
-        jld2_filepath = "test_particles.jld2"
+        jld2_filepath = "test_particles_$Arch.jld2"
         sim.output_writers[:particles_jld2] = JLD2Writer(model, (; particles=model.particles),
                                                          filename=jld2_filepath, schedule=IterationInterval(1))
 
-        nc_filepath = "test_particles.nc"
+        nc_filepath = "test_particles_$Arch.nc"
         sim.output_writers[:particles_nc] = NetCDFWriter(model,
                                                          (; particles = model.particles),
                                                          filename = nc_filepath,
                                                          schedule = IterationInterval(1))
 
         sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-                                                         dir=".", prefix="particles_checkpoint")
+                                                         dir=".", prefix="particles_checkpoint_$Arch")
 
         rm(jld2_filepath)
         rm(nc_filepath)
-        rm("particles_checkpoint_iteration1.jld2")
+        rm("particles_checkpoint_$(Arch)_iteration1.jld2")
     end
 
     sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles=lagrangian_particles, timestepper, velocities)
@@ -251,7 +254,7 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
     model.particles.properties.w .= 0
     model.particles.properties.s .= 0
 
-    set!(model, "particles_checkpoint_iteration1.jld2")
+    set!(model, "particles_checkpoint_$(Arch)_iteration1.jld2")
 
     x = convert(array_type(arch), model.particles.properties.x)
     y = convert(array_type(arch), model.particles.properties.y)
@@ -281,8 +284,8 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
     @test all(w .≈ 0)
     @test all(s .≈ √2)
 
-    rm("particles_checkpoint_iteration0.jld2")
-    rm("particles_checkpoint_iteration1.jld2")
+    rm("particles_checkpoint_$(Arch)_iteration0.jld2")
+    rm("particles_checkpoint_$(Arch)_iteration1.jld2")
 
     return nothing
 end
