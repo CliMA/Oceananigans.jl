@@ -5,11 +5,15 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
-using GLMakie
+# using GLMakie
 
+arch    = Distributed(CPU())
 z_faces = MutableVerticalDiscretization((-20, 0))
 
-grid = RectilinearGrid(size = (128, 20),
+@show arch
+
+grid = RectilinearGrid(arch; 
+                       size = (128, 20),
                           x = (0, 64kilometers),
                           z = z_faces,
                        halo = (6, 6),

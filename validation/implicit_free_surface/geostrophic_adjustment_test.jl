@@ -47,11 +47,9 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         z = model.grid.z
         Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.η)
         parent(z.ηⁿ)   .=  parent(model.free_surface.η)
-        for i in -1:grid.Nx+2, j in -1:grid.Ny+2
-            Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, j, grid, z.ηⁿ)
+        for i in -1:grid.Nx+2
+            Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, 1, grid, z.ηⁿ)
         end
-        @show parent(z.σᶜᶜ⁻)
-        @show size(parent(z.σᶜᶜ⁻)), size(parent(z.σᶜᶜⁿ))
         parent(z.σᶜᶜ⁻) .= parent(z.σᶜᶜⁿ)
     end
         
@@ -72,10 +70,10 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
     save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
     save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
-    save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 2, 2]
+    save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 1, 2]
     
     if grid isa MutableGridOfSomeKind
-        save_g(sim) = garr[sim.model.clock.iteration+1] .= sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1]
+        save_g(sim) = garr[sim.model.clock.iteration+1] .= sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 1, 1]
         simulation.callbacks[:save_g] = Callback(save_g, IterationInterval(1))
     end
 
@@ -86,7 +84,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
                         sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
 
         if grid isa MutableGridOfSomeKind
-                msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1] .- interior(sim.model.free_surface.η)))
+                msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 1, 1] .- interior(sim.model.free_surface.η)))
                 msg  = msg * msg2
         end
         
@@ -117,12 +115,12 @@ explicit_free_surface = ExplicitFreeSurface()
 implicit_free_surface = ImplicitFreeSurface()
 splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=120)
 
-seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
+# seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
 serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
 # efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
-# efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
 # imab2, sim6 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid))
-# imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
 
 import Oceananigans.Fields: interior
 interior(a::Array, idx...) = a

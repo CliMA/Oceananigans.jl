@@ -18,39 +18,39 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 # single column models.
 
 """
-    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true)
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
-they are called in the end. Finally, the tendencies for the new time-step are computed if
-`compute_tendencies = true`.
+they are called in the end. 
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-         update_state!(model, model.grid, callbacks; compute_tendencies)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) =  update_state!(model, model.grid, callbacks)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
-    @apply_regionally mask_immersed_model_fields!(model, grid)
+    arch = architecture(grid)
 
-    # Update possible FieldTimeSeries used in the model
-    @apply_regionally update_model_field_time_series!(model, model.clock)
-
-    # Update the boundary conditions
-    @apply_regionally update_boundary_conditions!(fields(model), model)
-
+    @apply_regionally begin
+        mask_immersed_model_fields!(model, grid)
+        update_model_field_time_series!(model, model.clock)
+        update_boundary_conditions!(fields(model), model)
+    end
+    
     # Fill the halos
     fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); async=true)
 
-    @apply_regionally compute_auxiliaries!(model)
+    w_parameters = w_kernel_parameters(model.grid)
+    p_parameters = p_kernel_parameters(model.grid)
+
+    update_vertical_velocities!(model.velocities, model.grid, model; parameters = w_parameters)
+    update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = p_parameters)
+    compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = :xyz)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
     update_biogeochemical_state!(model.biogeochemistry, model)
-
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end
@@ -70,37 +70,52 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function update_vertical_velocities!(velocities, grid, model; w_parameters = w_kernel_parameters(grid),
-                                                              z_parameters = zstar_params(grid))
+function update_vertical_velocities!(velocities, grid, model; parameters = w_kernel_parameters(grid))
 
-    update_grid_vertical_velocity!(velocities, grid, model.vertical_coordinate; parameters = z_parameters)
-    compute_w_from_continuity!(velocities, architecture(grid), grid; parameters = w_parameters)
+    update_grid_vertical_velocity!(velocities, grid, model.vertical_coordinate; parameters)
+    compute_w_from_continuity!(velocities, architecture(grid), grid; parameters)
     
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
-                                                                  p_parameters = p_kernel_parameters(model.grid),
-                                                                  z_parameters = zstar_params(model.grid),
-                                                                  κ_parameters = :xyz)
+compute_transport_velocities!(model, free_surface) = nothing
 
-    grid        = model.grid
-    closure     = model.closure
-    tracers     = model.tracers
-    diffusivity = model.diffusivity_fields
-    buoyancy    = model.buoyancy
+@kernel function _compute_transport_velocities!(velᵀ, vel, grid, Ũ, Ṽ)
+    i, j = @index(Global, NTuple)
+    
+    u,  v,  w  = vel
+    uᵀ, vᵀ, wᵀ = velᵀ
 
-    P    = model.pressure.pHY′
-    arch = architecture(grid)
+    Ub  = barotropic_U(i, j, 1, grid, nothing, u)
+    Vb  = barotropic_V(i, j, 1, grid, nothing, v)
+    hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+    hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    # Update vertical velocities (grid and continuity)
-    update_vertical_velocities!(model.velocities, model.grid, model; w_parameters, z_parameters)
+    for k in -2:size(grid, 3)+2
+        @inline uᵀ[i, j, k] = u[i, j, k] + (Ũ[i, j, k] - Ub) / hᶠᶜ
+        @inline vᵀ[i, j, k] = v[i, j, k] + (Ṽ[i, j, k] - Vb) / hᶜᶠ
+    end
+end
 
-    # Update pressure gradient
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
+function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+    grid = model.grid
+    Ũ = free_surface.filtered_state.Ũ
+    Ṽ = free_surface.filtered_state.Ṽ
 
-    # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
+    launch!(architecture(grid), grid, :xy,
+            _compute_transport_velocities!, model.transport_velocities, model.velocities, grid, Ũ, Ṽ)
+
+    # Fill barotropic stuff...
+    fill_halo_regions!(model.transport_velocities; async=true)
+    fill_halo_regions!(model.free_surface.barotropic_velocities; async=true)
+    fill_halo_regions!(model.free_surface.η; async=true)
+
+    # Update grid velocity and vertical transport velocity
+    update_vertical_velocities!(model.transport_velocities, model.grid, model)
+
+    # Do I need this???
+    mask_immersed_field!(model.transport_velocities.u)
+    mask_immersed_field!(model.transport_velocities.v)
 
     return nothing
 end

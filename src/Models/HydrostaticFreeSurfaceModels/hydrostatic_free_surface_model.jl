@@ -231,7 +231,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities, 
                                         tracers, pressure, diffusivity_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
-    initialization_update_state!(model; compute_tendencies=false)
+    initialization_update_state!(model)
 
     return model
 end

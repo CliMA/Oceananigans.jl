@@ -88,7 +88,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
-                                  averaging_kernel = averaging_shape_function, # cosine_averaging_kernel, # 
+                                  averaging_kernel = cosine_averaging_kernel, # averaging_shape_function, # 
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)

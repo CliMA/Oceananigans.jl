@@ -80,14 +80,10 @@ end
 rk3_substep_grid!(grid, model, vertical_coordinate, Δt) = nothing
 
 function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
-
-    # fill_halo_regions!(model.free_surface.η)
-    # parent(grid.z.ηⁿ) .= parent(model.free_surface.η)
-
     U, V = barotropic_transport(model.free_surface)
     u, v, _ = model.velocities
-    ηⁿ⁻¹    = model.free_surface.η # ztype.storage
-
+    ηⁿ⁻¹    = model.free_surface.η 
+    
     launch!(architecture(grid), grid, zstar_params(grid), _rk3_update_grid_scaling!, 
             ηⁿ⁻¹, grid, Δt, U, V, u, v)
 
@@ -112,7 +108,7 @@ end
     δy_V = δyᶜᶜᶜ(i, j, 1, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, 1, grid)
 
-    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, 1] # - Δt * δh_U
+    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, grid.Nz+1] # - Δt * δh_U
 
     update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
 end

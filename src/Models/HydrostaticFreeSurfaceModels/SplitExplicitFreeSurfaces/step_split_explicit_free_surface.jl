@@ -101,31 +101,14 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     return nothing
 end
 
-@kernel function _update_split_explicit_state!(η, U, V, grid, η̅, U̅, V̅)
+@kernel function _update_split_explicit_state!(η, U, V, grid, state)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
     @inbounds begin
-        η[i, j, k_top] = η̅[i, j, k_top]
-        U[i, j, 1]     = U̅[i, j, 1]
-        V[i, j, 1]     = V̅[i, j, 1]
-    end
-end
-
-@kernel function _compute_transport_velocities!(velᵀ, vel, grid, Ũ, Ṽ)
-    i, j = @index(Global, NTuple)
-    
-    u,  v,  w  = vel
-    uᵀ, vᵀ, wᵀ = velᵀ
-
-    Ub  = barotropic_U(i, j, 1, grid, nothing, u)
-    Vb  = barotropic_V(i, j, 1, grid, nothing, v)
-    hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
-    hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
-
-    for k in -2:size(grid, 3)+2
-        @inline uᵀ[i, j, k] = u[i, j, k] + (Ũ[i, j, k] - Ub) / hᶠᶜ
-        @inline vᵀ[i, j, k] = v[i, j, k] + (Ṽ[i, j, k] - Vb) / hᶜᶠ
+        η[i, j, k_top] = state.η̅[i, j, k_top]
+        U[i, j, 1]     = state.U̅[i, j, 1]
+        V[i, j, 1]     = state.V̅[i, j, 1]
     end
 end
 
@@ -151,10 +134,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
 
-    stage = model.clock.stage
-
     # Reset the filtered fields and the barotropic timestepper to zero. 
-    # In case of an RK3 timestepper, reset also the free surface state for the last stage.
     @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
     # Calculate the substepping parameters
@@ -174,11 +154,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     η = free_surface.η
     U = barotropic_velocities.U
     V = barotropic_velocities.V
-    η̅ = filtered_state.η̅
-    U̅ = filtered_state.U̅
-    V̅ = filtered_state.V̅
-    Ũ = filtered_state.Ũ
-    Ṽ = filtered_state.Ṽ
 
     # reset free surface averages
     @apply_regionally begin
@@ -188,14 +163,11 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
         launch!(architecture(free_surface_grid), free_surface_grid, :xy,
-                _update_split_explicit_state!, η, U, V, free_surface_grid, η̅, U̅, V̅)
+                _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
-
-        launch!(architecture(free_surface_grid), free_surface_grid, :xy,
-                _compute_transport_velocities!, model.transport_velocities, model.velocities, model.grid, Ũ, Ṽ)
     end
 
     return nothing
