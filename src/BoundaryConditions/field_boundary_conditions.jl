@@ -6,18 +6,14 @@ using GPUArraysCore
 ##### Default boundary conditions
 #####
 
-struct DefaultBoundaryCondition{BC}
-    boundary_condition :: BC
-end
-
-DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
+struct DefaultBoundaryCondition end
 
 default_prognostic_bc(::Grids.Periodic, loc,      default)  = PeriodicBoundaryCondition()
 default_prognostic_bc(::FullyConnected, loc,      default)  = MultiRegionCommunicationBoundaryCondition()
 default_prognostic_bc(::Flat,           loc,      default)  = nothing
-default_prognostic_bc(::Bounded,        ::Center, default)  = default.boundary_condition
-default_prognostic_bc(::LeftConnected,  ::Center, default)  = default.boundary_condition
-default_prognostic_bc(::RightConnected, ::Center, default)  = default.boundary_condition
+default_prognostic_bc(::Bounded,        ::Center, default)  = NoFluxBoundaryCondition()
+default_prognostic_bc(::LeftConnected,  ::Center, default)  = NoFluxBoundaryCondition()
+default_prognostic_bc(::RightConnected, ::Center, default)  = NoFluxBoundaryCondition()
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
 default_prognostic_bc(::Bounded,        ::Face, default) = ImpenetrableBoundaryCondition()
@@ -36,12 +32,13 @@ _default_auxiliary_bc(::Bounded, ::Face)        = nothing
 _default_auxiliary_bc(::RightConnected, ::Face) = nothing
 _default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
 
-default_auxiliary_bc(grid, ::Val{:east}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
-default_auxiliary_bc(grid, ::Val{:west}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
-default_auxiliary_bc(grid, ::Val{:south}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2])
-default_auxiliary_bc(grid, ::Val{:north}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2])
-default_auxiliary_bc(grid, ::Val{:bottom}, loc) = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
-default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
+default_auxiliary_bc(grid, ::Val{:east}, loc)     = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
+default_auxiliary_bc(grid, ::Val{:west}, loc)     = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
+default_auxiliary_bc(grid, ::Val{:south}, loc)    = _default_auxiliary_bc(topology(grid, 2)(), loc[2])
+default_auxiliary_bc(grid, ::Val{:north}, loc)    = _default_auxiliary_bc(topology(grid, 2)(), loc[2])
+default_auxiliary_bc(grid, ::Val{:bottom}, loc)   = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
+default_auxiliary_bc(grid, ::Val{:top}, loc)      = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
+default_auxiliary_bc(grid, ::Val{:immersed}, loc) = nothing
 
 #####
 ##### Field boundary conditions
@@ -127,14 +124,13 @@ and the topology in the boundary-normal direction is used:
  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
  - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCondition();
-                        west = DefaultBoundaryCondition(default_bounded_bc),
-                        east = DefaultBoundaryCondition(default_bounded_bc),
-                        south = DefaultBoundaryCondition(default_bounded_bc),
-                        north = DefaultBoundaryCondition(default_bounded_bc),
-                        bottom = DefaultBoundaryCondition(default_bounded_bc),
-                        top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
+FieldBoundaryConditions(; west = DefaultBoundaryCondition(),
+                          east = DefaultBoundaryCondition(),
+                          south = DefaultBoundaryCondition(),
+                          north = DefaultBoundaryCondition(),
+                          bottom = DefaultBoundaryCondition(),
+                          top = DefaultBoundaryCondition(),
+                          immersed = DefaultBoundaryCondition()) =
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
@@ -183,6 +179,29 @@ function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
     bcs = FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
     return regularize_field_boundary_conditions(bcs, grid, loc)
 end
+
+#####
+##### Boundary condition "materialization" (materializes a `DefaultBoundaryCondition` that is grid and location dependent)
+#####
+
+function materialize_default_boundary_conditions(bcs::FieldBoundaryConditions,
+                                                 grid::AbstractGrid,
+                                                 loc::Tuple)
+    
+    west   = materialize_default_boundary_condition(bcs.west,   Val(:west),   grid, loc)
+    east   = materialize_default_boundary_condition(bcs.east,   Val(:east),   grid, loc)
+    south  = materialize_default_boundary_condition(bcs.south,  Val(:south),  grid, loc)
+    north  = materialize_default_boundary_condition(bcs.north,  Val(:north),  grid, loc)
+    bottom = materialize_default_boundary_condition(bcs.bottom, Val(:bottom), grid, loc)
+    top    = materialize_default_boundary_condition(bcs.top,    Val(:top),    grid, loc)
+
+    immersed = materialize_default_boundary_condition(bcs.immersed, Val(:immersed), grid, loc)
+
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+end
+
+materialize_default_boundary_condition(bc, args...) = bc # fallback
+materialize_default_boundary_condition(::DefaultBoundaryCondition, side, grid, loc) = default_auxiliary_bc(grid, side, loc)
 
 #####
 ##### Boundary condition "regularization"

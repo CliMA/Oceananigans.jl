@@ -1,4 +1,5 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper, construct_boundary_conditions_kernels
+using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, construct_boundary_conditions_kernels
+using Oceananigans.BoundaryConditions: BoundaryCondition, materialize_default_boundary_conditions
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 using Oceananigans.Architectures: convert_to_device
@@ -100,7 +101,7 @@ validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
 # Common outer constructor for all field flavors that performs input validation
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
     @apply_regionally begin
-        bcs = regularize_field_boundary_conditions(bcs, grid, loc)
+        bcs = materialize_default_boundary_conditions(bcs, grid, loc)
         indices = validate_indices(indices, loc, grid)
         validate_field_data(loc, data, grid, indices)
         validate_boundary_conditions(loc, grid, bcs)

@@ -1,13 +1,15 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition,
                                        DefaultBoundaryCondition,
+                                       NoFluxBoundaryCondition,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
                                        VBC, GBC, FBC, Flux
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
-                                        bc_str,
-                                        update_boundary_condition!
+                                        update_boundary_condition!,
+                                        default_auxiliary_bc,
+                                        bc_str
 
 struct ImmersedBoundaryCondition{W, E, S, N, B, T}
     west :: W
@@ -96,6 +98,8 @@ Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondi
                                                                                      Adapt.adapt(to, bc.top))
 
 update_boundary_condition!(bc::ImmersedBoundaryCondition, args...) = nothing
+
+default_auxiliary_bc(::IBG, ::Val{:immersed}, loc) = NoFluxBoundaryCondition()
 
 #####
 ##### Alternative implementation for immersed flux divergence
