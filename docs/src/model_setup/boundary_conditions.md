@@ -57,7 +57,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── north: ValueBoundaryCondition: 0.0
 ├── bottom: ValueBoundaryCondition: 0.0
 ├── top: ValueBoundaryCondition: 0.0
-└── immersed: FluxBoundaryCondition: Nothing
+└── immersed: Nothing
 ```
 
 Boundary conditions are passed to `FieldBoundaryCondition` to build boundary conditions for each
@@ -86,7 +86,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── north: ValueBoundaryCondition: 0.0
 ├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
-└── immersed: FluxBoundaryCondition: Nothing
+└── immersed: Nothing
 
 julia> model.velocities.v.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
@@ -96,7 +96,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── north: OpenBoundaryCondition{Nothing}: Nothing
 ├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
-└── immersed: FluxBoundaryCondition: Nothing
+└── immersed: Nothing
 ```
 
 Now both `u` and `v` have `FluxBoundaryCondition(nothing)` at the `top` boundary, which is `Oceananigans` lingo
@@ -415,7 +415,7 @@ julia> model.velocities.u
 16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Value, top: Value, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Value, top: Value, immersed: Nothing
 └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 
@@ -423,7 +423,7 @@ julia> model.tracers.c
 16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Gradient, top: Value, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Gradient, top: Value, immersed: Nothing
 └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -470,7 +470,7 @@ model.velocities.w.boundary_conditions.immersed
 │     pressure_solver = ConjugateGradientPoissonSolver(grid)
 │
 │ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
-└ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:52
+└ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55
 ImmersedBoundaryCondition:
 ├── west: ValueBoundaryCondition: 0.0
 ├── east: ValueBoundaryCondition: 0.0
@@ -506,7 +506,7 @@ model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=veloc
 │     pressure_solver = ConjugateGradientPoissonSolver(grid)
 │
 │ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
-└ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:52
+└ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55
 NonhydrostaticModel{CPU, ImmersedBoundaryGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 32×32×16 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
