@@ -116,7 +116,7 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  ShallowWaterModel}
 
 set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
-    
+
 """
     possible_field_time_series(model::OceananigansModels)
 
