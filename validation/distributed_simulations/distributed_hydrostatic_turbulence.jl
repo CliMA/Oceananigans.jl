@@ -1,12 +1,13 @@
 using Oceananigans
 using MPI
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Printf
 using Statistics
 using Oceananigans.BoundaryConditions
 using Oceananigans.DistributedComputations
+using Oceananigans.Grids
 using Random
 using JLD2
+using GLMakie
 
 # Run with
 #
@@ -15,32 +16,34 @@ using JLD2
 # ```
 
 function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
-    grid = RectilinearGrid(arch; topology, size = (Nx, Ny, 10), extent=(4π, 4π, 0.5), halo=(8, 8, 8))
+    grid = RectilinearGrid(arch; 
+                           topology, 
+                           size=(Nx, Ny, 1), 
+                           x=(0, 4π),
+                           y=(0, 4π),
+                           z=MutableVerticalDiscretization((-0.5, 0)), 
+                           halo=(8, 8, 8))
 
-    bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
+    # bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
+    # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
+                                        momentum_advection = WENOVectorInvariant(),
                                         free_surface = SplitExplicitFreeSurface(grid, substeps=10),
                                         tracer_advection = WENO(),
+                                        timestepper = :SplitRungeKutta3,
                                         buoyancy = nothing,
                                         coriolis = FPlane(f = 1),
-                                        tracers = :c)
+                                        tracers = (:c, :constant))
 
     # Scale seed with rank to avoid symmetry
     local_rank = MPI.Comm_rank(arch.communicator)
     Random.seed!(1234 * (local_rank + 1))
-
-    set!(model, u = (x, y, z) -> 1-2rand(), v = (x, y, z) -> 1-2rand())
-
     mask(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
-    c = model.tracers.c
 
-    set!(c, mask)
+    set!(model, u=(x, y, z)->1-2rand(), v=(x, y, z)->1-2rand(), c=mask, constant=1)
 
     u, v, _ = model.velocities
-    # ζ = VerticalVorticityField(model)
     η = model.free_surface.η
     outputs = merge(model.velocities, model.tracers)
 
@@ -52,7 +55,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
     simulation.callbacks[:wizard]   = Callback(wizard,   IterationInterval(10))
 
-    filepath = "mpi_hydrostatic_turbulence_rank$(local_rank)"
+    filepath = "mpi_hydrostatic_turbulence"
     simulation.output_writers[:fields] =
         JLD2Writer(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
                    overwrite_existing=true)
@@ -62,8 +65,8 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     MPI.Barrier(arch.communicator)
 end
 
-Nx = 32
-Ny = 32
+Nx = 64
+Ny = 64
 
 arch = Distributed(CPU(), partition = Partition(2, 2))
 
@@ -73,8 +76,6 @@ run_simulation(Nx, Ny, arch)
 # Visualize the plane
 # Produce a video for variable `var`
 try
-    using GLMakie
-
     function visualize_simulation(var)
         iter = Observable(1)
 
@@ -108,6 +109,7 @@ try
         visualize_simulation("u")
         visualize_simulation("v")
         visualize_simulation("c")
+        visualize_simulation("constant")
     end
 catch err
     @info err

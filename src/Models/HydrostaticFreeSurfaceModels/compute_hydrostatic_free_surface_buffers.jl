@@ -1,11 +1,11 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
-                                                buffer_p_kernel_parameters,
                                                 buffer_κ_kernel_parameters,
+                                                buffer_w_kernel_parameters,
                                                 buffer_parameters
 
 const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
@@ -31,7 +31,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 
     update_vertical_velocities!(model.velocities, grid, model; parameters = w_parameters)
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = w_parameters)
-    compute_diffusivities!(model.diffusivity, model.closure, model; parameters = κ_parameters)
+    compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = κ_parameters)
     fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
 
     # parameters for communicating North / South / East / West side
@@ -70,7 +70,11 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    synchronize_communication!(model.transport_velocities.u)
+    # Iterate over the fields to clear _ALL_ possible architectures
+    for field in prognostic_fields(model)
+        synchronize_communication!(field)
+    end
+
     w_parameters = buffer_w_kernel_parameters(grid, arch)
     update_vertical_velocities!(model.transport_velocities, grid, model; parameters = w_parameters)
 
@@ -104,21 +108,3 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
 
     return nothing
 end
-
-# w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
-function buffer_w_kernel_parameters(grid, arch)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
-    # Offsets in tangential direction are == -1 to
-    # cover the required corners
-    param_west  = (-Hx+2:1,    0:Ny+1)
-    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
-    param_south = (0:Nx+1,     -Hy+2:1)
-    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
-
-    params = (param_west, param_east, param_south, param_north)
-
-    return buffer_parameters(params, grid, arch)
-end
-

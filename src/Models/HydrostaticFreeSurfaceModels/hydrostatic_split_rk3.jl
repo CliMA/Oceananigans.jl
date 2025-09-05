@@ -4,23 +4,30 @@ import Oceananigans.TimeSteppers: time_step!
 
     # Advancing free surface and barotropic transport velocities
     compute_momentum_tendencies!(model, callbacks)
+    fill_halo_regions!(prognostic_fields(model))
     compute_free_surface_tendency!(grid, model, model.free_surface)
+    fill_halo_regions!(prognostic_fields(model))
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
-
+    fill_halo_regions!(prognostic_fields(model))
+    
     # Computing z-dependent transport velocities
     compute_transport_velocities!(model, model.free_surface)
-
+    fill_halo_regions!(prognostic_fields(model))
+    
     # compute tracer tendencies
     compute_tracer_tendencies!(model)
-
+    fill_halo_regions!(prognostic_fields(model))
+    
     # Remember to scale tracers tendencies by stretching factor
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
-
+    fill_halo_regions!(prognostic_fields(model))
+    
     # Finally Substep! Advance grid, tracers, and momentum
     rk3_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
     rk3_substep_tracers!(model.tracers, model, Δτ)
     rk3_substep_velocities!(model.velocities, model, Δτ)
 
+    fill_halo_regions!(prognostic_fields(model))
     # Correct for the updated barotropic mode
     make_pressure_correction!(model, Δτ)
 

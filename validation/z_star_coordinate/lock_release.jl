@@ -4,13 +4,12 @@ using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation
+using Oceananigans.DistributedComputations
 using Printf
 # using GLMakie
 
-arch    = Distributed(CPU())
+arch    = CPU() #Distributed(CPU(); synchronized_communication=true)
 z_faces = MutableVerticalDiscretization((-20, 0))
-
-@show arch
 
 grid = RectilinearGrid(arch; 
                        size = (128, 20),
@@ -63,24 +62,27 @@ mnc = [minimum(model.tracers.c)]
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
+    Nx = size(grid, 1)
+
     push!(bav, sum(model.tracers.b * V) / sum(V))
     push!(cav, sum(model.tracers.c * V) / sum(V))
     push!(vav, sum(V))
     push!(mxc, maximum(model.tracers.c))
     push!(mnc, minimum(model.tracers.c))
 
-    Δη = maximum(abs, interior(model.free_surface.η, :, 1, 1) .- model.grid.z.ηⁿ[1:128, 1, 1])
+    Δη = maximum(abs, interior(model.free_surface.η, :, 1, 1) .- model.grid.z.ηⁿ[1:Nx, 1, 1])
 
-    msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
+    msgn = @sprintf("") #Rank: %d, ", arch.local_rank)
+    msg0 = @sprintf("Time: %s, ", prettytime(sim.model.clock.time))
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
     msg2 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
     msg3 = @sprintf("max Δη: %6.3e ", Δη)
     msg4 = @sprintf("extrema c: %.2e %.2e ", mxc[end]-1, mnc[end]-1)
 
     push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
-    push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))
+    push!(et2, deepcopy(model.grid.z.ηⁿ[1:Nx, 1, 1]))
 
-    @info msg0 * msg1 * msg2 * msg3 * msg4
+    @handshake @info msgn * msg0 * msg1 * msg2 * msg3 * msg4
 
     return nothing
 end
