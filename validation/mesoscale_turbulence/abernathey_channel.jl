@@ -78,7 +78,7 @@ parameters = (
     τ = 0.2 / ρ,                           # surface kinematic wind stress [m² s⁻²]
     μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
     ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
-    ΔT = 8                               # surface vertical temperature gradient
+    ΔT = 8,                              # surface vertical temperature gradient
     H = Lz,                              # domain depth [m]
     h = 1000.0,                          # exponential decay scale of stable stratification [m]
     y_sponge = 19 / 20 * Ly,               # southern boundary of sponge layer [m]
@@ -213,7 +213,7 @@ set!(model, T = Tᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 1000days
+stop_time = 10days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -273,7 +273,7 @@ w′ = w - W
 v′T′ = Field(Average(v′ * T′, dims = 1))
 w′T′ = Field(Average(w′ * T′, dims = 1))
 
-outputs = (; T, ζ, u, v, w, η, e) #, b)
+outputs = (; t, ζ, u, v, w, η, e) #, b)
 
 #averaged_outputs = (; v′b′, w′b′, B)
 
@@ -337,7 +337,7 @@ j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
 
 #b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
-T_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
+T_timeseries = FieldTimeSeries("abernathey_channel.jld2", "t", grid = grid)
 ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
 w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
 η_timeseries = FieldTimeSeries("abernathey_channel.jld2", "η", grid = grid)
