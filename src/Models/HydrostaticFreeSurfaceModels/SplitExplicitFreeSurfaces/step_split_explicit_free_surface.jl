@@ -76,8 +76,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η, state.U, state.V
 
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!, nothing, nothing)
+    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!, nothing, nothing)
 
     η_args = (grid, Δτᴮ, η, U, V,
               timestepper)
@@ -141,7 +141,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     # Reset the filtered fields and the barotropic timestepper to zero. 
     # In case of an RK3 timestepper, reset also the free surface state for the last stage.
-    @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
+    @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
     # Calculate the substepping parameterers
     # barotropic time step as fraction of baroclinic step and averaging weights
