@@ -250,20 +250,20 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 u, v, w = model.velocities
 #b = model.tracers.b
-t = model.tracers.T
+T = model.tracers.T
 e = model.tracers.e
 η = model.free_surface.η
 
 ζ = Field(∂x(v) - ∂y(u))
 
 #B = Field(Average(b, dims = 1))
-T = Field(Average(t, dims = 1))
-U = Field(Average(u, dims = 1))
-V = Field(Average(v, dims = 1))
-W = Field(Average(w, dims = 1))
+Tavg = Field(Average(T, dims = 1))
+U    = Field(Average(u, dims = 1))
+V    = Field(Average(v, dims = 1))
+W    = Field(Average(w, dims = 1))
 
 #b′ = b - B
-T′ = t - T
+T′ = T - Tavg
 v′ = v - V
 w′ = w - W
 
@@ -273,11 +273,11 @@ w′ = w - W
 v′T′ = Field(Average(v′ * T′, dims = 1))
 w′T′ = Field(Average(w′ * T′, dims = 1))
 
-outputs = (; t, ζ, u, v, w, η, e) #, b)
+outputs = (; T, ζ, u, v, w, η, e) #, b)
 
 #averaged_outputs = (; v′b′, w′b′, B)
 
-averaged_outputs = (; v′T′, w′T′, T)
+averaged_outputs = (; v′T′, w′T′, Tavg)
 
 #####
 ##### Build checkpointer and output writer
@@ -337,7 +337,7 @@ j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
 
 #b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
-T_timeseries = FieldTimeSeries("abernathey_channel.jld2", "t", grid = grid)
+T_timeseries = FieldTimeSeries("abernathey_channel.jld2", "T", grid = grid)
 ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
 w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
 η_timeseries = FieldTimeSeries("abernathey_channel.jld2", "η", grid = grid)
