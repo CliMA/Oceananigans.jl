@@ -213,7 +213,7 @@ set!(model, T = Tᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 10days
+stop_time = 1000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -357,7 +357,7 @@ anim = @animate for i in 1:length(T_timeseries.times)
     #b′ = interior(b) .- mean(b)
     T′ = interior(T) .- mean(T)
     #b_xy = b′[:, :, grid.Nz]
-    T_xy = b′[:, :, grid.Nz]
+    T_xy = T′[:, :, grid.Nz]
     ζ_xy = interior(ζ)[:, :, grid.Nz]
     ζ_xz = interior(ζ)[:, j′, :]
     w_xz = interior(w)[:, j′, :]
