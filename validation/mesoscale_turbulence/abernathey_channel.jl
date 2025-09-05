@@ -12,18 +12,25 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
-using Oceananigans.TurbulenceClosures: Horizontal, Vertical
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+
+using Oceananigans.Architectures: GPU
+using CUDA
+CUDA.device!(0)
+
 
 const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
 
 # Architecture
-architecture = CPU()
+architecture = GPU()
 
 # number of grid points
-Nx = 96
-Ny = 192
+Nx = 96  # LowRes: 48
+Ny = 192 # LowRes: 96
 Nz = 32
+
+halo_size = 4 #3 for non-immersed grid
 
 # stretched grid
 k_center = collect(1:Nz)
@@ -34,13 +41,22 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-grid = RectilinearGrid(architecture,
+underlying_grid = RectilinearGrid(architecture,
     topology = (Periodic, Bounded, Bounded),
     size = (Nx, Ny, Nz),
-    halo = (3, 3, 3),
+    halo = (halo_size, halo_size, halo_size),
     x = (0, Lx),
     y = (0, Ly),
     z = (-Lz, 0))
+
+# full ridge function:
+function ridge_function(x, y)
+    zonal = (Lz+100)exp(-(x - Lx/2)^2/(1e6kilometers))
+    gap   = 1 - 0.5(tanh((y - (Ly/6))/1e5) - tanh((y - (Ly/2))/1e5))
+    return zonal * gap - Lz
+end
+
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(ridge_function))
 
 @info "Built a grid: $grid."
 
@@ -68,7 +84,7 @@ parameters = (
 )
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
-    y = ynode(Center(), j, grid)
+    y = ynode(j, grid, Center())
     return ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0.0)
 end
 
@@ -76,7 +92,7 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form = true, pa
 
 
 @inline function u_stress(i, j, grid, clock, model_fields, p)
-    y = ynode(Center(), j, grid)
+    y = ynode(j, grid, Center())
     return -p.τ * sin(π * y / p.Ly)
 end
 
@@ -111,8 +127,8 @@ coriolis = BetaPlane(f₀ = f, β = β)
 
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
     timescale = p.λt
-    y = ynode(Center(), j, grid)
-    z = znode(Center(), k, grid)
+    y = ynode(j, grid, Center())
+    z = znode(k, grid, Center())
     target_b = initial_buoyancy(z, p)
     b = @inbounds model_fields.b[i, j, k]
 
@@ -131,8 +147,13 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-    convective_νz = 0.0)
+#convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
+#    convective_νz = 0.0)
+
+vertical_closure_CATKE = CATKEVerticalDiffusivity(minimum_tke=1e-7,
+                                                  maximum_tracer_diffusivity=0.3,
+                                                  maximum_viscosity=0.5)
+
 
 #####
 ##### Model building
@@ -142,13 +163,13 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
-    free_surface = ImplicitFreeSurface(),
-    momentum_advection = WENO(grid = grid),
-    tracer_advection = WENO(grid = grid),
+    free_surface = SplitExplicitFreeSurface(substeps=500),
+    momentum_advection = WENO(),
+    tracer_advection = WENO(),
     buoyancy = BuoyancyTracer(),
     coriolis = coriolis,
-    closure = (horizontal_closure, vertical_closure, convective_adjustment),
-    tracers = :b,
+    closure = (horizontal_closure, vertical_closure, vertical_closure_CATKE),
+    tracers = (:b, :e),
     boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
     forcing = (; b = Fb)
 )
@@ -169,7 +190,7 @@ set!(model, b = bᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 60days
+stop_time = 1000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -206,10 +227,13 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 u, v, w = model.velocities
 b = model.tracers.b
+e = model.tracers.e
+η = model.free_surface.η
 
 ζ = Field(∂x(v) - ∂y(u))
 
 B = Field(Average(b, dims = 1))
+U = Field(Average(u, dims = 1))
 V = Field(Average(v, dims = 1))
 W = Field(Average(w, dims = 1))
 
@@ -220,7 +244,7 @@ w′ = w - W
 v′b′ = Field(Average(v′ * b′, dims = 1))
 w′b′ = Field(Average(w′ * b′, dims = 1))
 
-outputs = (; b, ζ, w)
+outputs = (; b, ζ, u, v, w, η, e)
 
 averaged_outputs = (; v′b′, w′b′, B)
 
@@ -236,7 +260,6 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 simulation.output_writers[:fields] = JLD2Writer(model, outputs,
     schedule = TimeInterval(5days),
     filename = "abernathey_channel",
-    field_slicer = nothing,
     verbose = true,
     overwrite_existing = true)
 
@@ -248,30 +271,36 @@ simulation.output_writers[:averages] = JLD2Writer(model, averaged_outputs,
 
 @info "Running the simulation..."
 
+run!(simulation, pickup = false)
+#=
 try
     run!(simulation, pickup = false)
 catch err
     @info "run! threw an error! The error message is"
     showerror(stdout, err)
 end
-
+=#
 # #####
 # ##### Visualization
 # #####
 
 using Plots
 
-grid = RectilinearGrid(architecture = CPU(),
+grid = RectilinearGrid(CPU(),
     topology = (Periodic, Bounded, Bounded),
     size = (grid.Nx, grid.Ny, grid.Nz),
-    halo = (3, 3, 3),
+    halo = (halo_size, halo_size, halo_size),
     x = (0, grid.Lx),
     y = (0, grid.Ly),
     z = z_faces)
 
-xζ, yζ, zζ = nodes((Face, Face, Center), grid)
-xc, yc, zc = nodes((Center, Center, Center), grid)
-xw, yw, zw = nodes((Center, Center, Face), grid)
+xζ, yζ, zζ = nodes(grid, Face(), Face(), Center())
+xc, yc, zc = nodes(grid, Center(), Center(), Center())
+xw, yw, zw = nodes(grid, Center(), Center(), Face())
+
+
+xu, yu, zu = nodes(grid, Face(), Center(), Center())
+xv, yv, zv = nodes(grid, Center(), Face(), Center())
 
 j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
@@ -279,6 +308,11 @@ y′ = yζ[j′]
 b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
 ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
 w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
+η_timeseries = FieldTimeSeries("abernathey_channel.jld2", "η", grid = grid)
+e_timeseries = FieldTimeSeries("abernathey_channel.jld2", "e", grid = grid)
+
+u_timeseries = FieldTimeSeries("abernathey_channel.jld2", "u", grid = grid)
+v_timeseries = FieldTimeSeries("abernathey_channel.jld2", "v", grid = grid)
 
 @show b_timeseries
 
@@ -305,7 +339,7 @@ anim = @animate for i in 1:length(b_timeseries.times)
     ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length = 31), [ζmax])
     wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
 
-    xlims = (-grid.Lx / 2, grid.Lx / 2) .* 1e-3
+    xlims = (0, grid.Lx) .* 1e-3
     ylims = (0, grid.Ly) .* 1e-3
     zlims = (-grid.Lz, 0)
 
@@ -354,3 +388,678 @@ anim = @animate for i in 1:length(b_timeseries.times)
 end
 
 mp4(anim, "abernathey_channel.mp4", fps = 8) #hide
+
+
+anim2 = @animate for i in 1:length(u_timeseries.times)
+    u = u_timeseries[i]
+    v = v_timeseries[i]
+    w = w_timeseries[i]
+
+    u_xy = interior(u)[:, :, grid.Nz]
+    v_xy = interior(v)[:, :, grid.Nz]
+    ζ_xz = interior(ζ)[:, j′, :]
+    w_xz = interior(w)[:, j′, :]
+
+    @show umax = max(1e-9, maximum(abs, u_xy))
+    @show vmax = max(1e-9, maximum(abs, v_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
+
+    ulims = (-umax, umax) .* 0.8
+    vlims = (-vmax, vmax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
+
+    ulevels = vcat([-umax], range(ulims[1], ulims[2], length = 31), [umax])
+    vlevels = vcat([-vmax], range(vlims[1], vlims[2], length = 31), [vmax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
+
+    xlims = (0, grid.Lx) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
+        xlabel = "x (km)",
+        ylabel = "z (m)",
+        aspectratio = 0.05,
+        linewidth = 0,
+        levels = wlevels,
+        clims = wlims,
+        xlims = xlims,
+        ylims = zlims,
+        color = :balance)
+
+    u_xy_plot = contourf(xu * 1e-3, yu * 1e-3, u_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = ulevels,
+        clims = ulims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    v_xy_plot = contourf(xv * 1e-3, yv * 1e-3, v_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = vlevels,
+        clims = vlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    u_xz_title = @sprintf("u(x, z) at t = %s", prettytime(u_timeseries.times[i]))
+    u_xy_title = "u(x, y)"
+    v_xy_title = "v(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+        Plots.grid(1, 2)]
+
+    plot(w_xz_plot, u_xy_plot, v_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title u_xy_title v_xy_title])
+end
+
+mp4(anim2, "abernathey_channel_horizontal_velocities.mp4", fps = 8) #hide
+
+anim3 = @animate for i in 1:length(η_timeseries.times)
+    e = e_timeseries[i]
+    w = w_timeseries[i]
+    η = η_timeseries[i]
+
+    e_xy = interior(e)[:, :, grid.Nz]
+    w_xz = interior(w)[:, j′, :]
+    η_xy = interior(η)[:, :, 1]
+
+    @show emax = max(1e-9, maximum(abs, e_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
+    @show ηmax = max(1e-9, maximum(abs, η_xy))
+
+    elims = (-emax, emax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
+    ηlims = (-ηmax, ηmax) .* 0.8
+
+    elevels = vcat([-emax], range(elims[1], elims[2], length = 31), [emax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
+    ηlevels = vcat([-ηmax], range(ηlims[1], ηlims[2], length = 31), [ηmax])
+
+    xlims = (0, grid.Lx) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
+        xlabel = "x (km)",
+        ylabel = "z (m)",
+        aspectratio = 0.05,
+        linewidth = 0,
+        levels = wlevels,
+        clims = wlims,
+        xlims = xlims,
+        ylims = zlims,
+        color = :balance)
+
+    η_xy_plot = contourf(xw * 1e-3, yw * 1e-3, η_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = ηlevels,
+        clims = ηlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    e_xy_plot = contourf(xc * 1e-3, yc * 1e-3, e_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = elevels,
+        clims = elims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(w_timeseries.times[i]))
+    η_xy_title = "η(x, y)"
+    e_xy_title = "e(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+        Plots.grid(1, 2)]
+
+    plot(w_xz_plot, η_xy_plot, η_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
+end
+
+mp4(anim3, "abernathey_channel_sshe.mp4", fps = 8) #hide#using Pkg
+# pkg"add Oceananigans CairoMakie"
+using Oceananigans
+ENV["GKSwstype"] = "100"
+
+pushfirst!(LOAD_PATH, @__DIR__)
+
+using Printf
+using Statistics
+
+using Oceananigans
+using Oceananigans.Units
+using Oceananigans.OutputReaders: FieldTimeSeries
+using Oceananigans.Grids: xnode, ynode, znode
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+
+using Oceananigans.Architectures: GPU
+using CUDA
+CUDA.device!(0)
+
+
+const Lx = 1000kilometers # zonal domain length [m]
+const Ly = 2000kilometers # meridional domain length [m]
+
+# Architecture
+architecture = GPU()
+
+# number of grid points
+Nx = 96  # LowRes: 48
+Ny = 192 # LowRes: 96
+Nz = 32
+
+halo_size = 4 #3 for non-immersed grid
+
+# stretched grid
+k_center = collect(1:Nz)
+Δz_center = @. 10 * 1.104^(Nz - k_center)
+
+const Lz = sum(Δz_center)
+
+z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
+z_faces[Nz+1] = 0
+
+underlying_grid = RectilinearGrid(architecture,
+    topology = (Periodic, Bounded, Bounded),
+    size = (Nx, Ny, Nz),
+    halo = (halo_size, halo_size, halo_size),
+    x = (0, Lx),
+    y = (0, Ly),
+    z = (-Lz, 0))
+
+# full ridge function:
+function ridge_function(x, y)
+    zonal = (Lz+100)exp(-(x - Lx/2)^2/(1e6kilometers))
+    gap   = 1 - 0.5(tanh((y - (Ly/6))/1e5) - tanh((y - (Ly/2))/1e5))
+    return zonal * gap - Lz
+end
+
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(ridge_function))
+
+@info "Built a grid: $grid."
+
+#####
+##### Boundary conditions
+#####
+
+α = 2e-4     # [K⁻¹] thermal expansion coefficient
+g = 9.8061   # [m/s²] gravitational constant
+cᵖ = 3994.0   # [J/K]  heat capacity
+ρ = 999.8    # [kg/m³] reference density
+
+parameters = (
+    Ly = Ly,
+    Lz = Lz,
+    Qᵇ = 10 / (ρ * cᵖ) * α * g,            # buoyancy flux magnitude [m² s⁻³]
+    y_shutoff = 5 / 6 * Ly,                # shutoff location for buoyancy flux [m]
+    τ = 0.2 / ρ,                           # surface kinematic wind stress [m² s⁻²]
+    μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
+    ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
+    H = Lz,                              # domain depth [m]
+    h = 1000.0,                          # exponential decay scale of stable stratification [m]
+    y_sponge = 19 / 20 * Ly,               # southern boundary of sponge layer [m]
+    λt = 7.0days                         # relaxation time scale [s]
+)
+
+@inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
+    y = ynode(j, grid, Center())
+    return ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0.0)
+end
+
+buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form = true, parameters = parameters)
+
+
+@inline function u_stress(i, j, grid, clock, model_fields, p)
+    y = ynode(j, grid, Center())
+    return -p.τ * sin(π * y / p.Ly)
+end
+
+u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form = true, parameters = parameters)
+
+@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds -p.μ * p.Lz * model_fields.u[i, j, 1]
+@inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds -p.μ * p.Lz * model_fields.v[i, j, 1]
+
+u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = parameters)
+v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = parameters)
+
+b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
+
+u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
+
+#####
+##### Coriolis
+#####
+
+const f = -1e-4
+const β = 1e-11
+coriolis = BetaPlane(f₀ = f, β = β)
+
+#####
+##### Forcing and initial condition
+#####
+
+@inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
+@inline mask(y, p) = max(0.0, y - p.y_sponge) / (Ly - p.y_sponge)
+
+
+@inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
+    timescale = p.λt
+    y = ynode(j, grid, Center())
+    z = znode(k, grid, Center())
+    target_b = initial_buoyancy(z, p)
+    b = @inbounds model_fields.b[i, j, k]
+
+    return -1 / timescale * mask(y, p) * (b - target_b)
+end
+
+Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
+
+# closure
+
+κh = 0.5e-5 # [m²/s] horizontal diffusivity
+νh = 30.0   # [m²/s] horizontal viscocity
+κz = 0.5e-5 # [m²/s] vertical diffusivity
+νz = 3e-4   # [m²/s] vertical viscocity
+
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
+vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
+
+#convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
+#    convective_νz = 0.0)
+
+vertical_closure_CATKE = CATKEVerticalDiffusivity(minimum_tke=1e-7,
+                                                  maximum_tracer_diffusivity=0.3,
+                                                  maximum_viscosity=0.5)
+
+
+#####
+##### Model building
+#####
+
+@info "Building a model..."
+
+model = HydrostaticFreeSurfaceModel(
+    grid = grid,
+    free_surface = SplitExplicitFreeSurface(substeps=500),
+    momentum_advection = WENO(),
+    tracer_advection = WENO(),
+    buoyancy = BuoyancyTracer(),
+    coriolis = coriolis,
+    closure = (horizontal_closure, vertical_closure, vertical_closure_CATKE),
+    tracers = (:b, :e),
+    boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
+    forcing = (; b = Fb)
+)
+
+@info "Built $model."
+
+#####
+##### Initial conditions
+#####
+
+# resting initial condition
+ε(σ) = σ * randn()
+bᵢ(x, y, z) = parameters.ΔB * (exp(z / parameters.h) - exp(-Lz / parameters.h)) / (1 - exp(-Lz / parameters.h)) + ε(1e-8)
+
+set!(model, b = bᵢ)
+
+#####
+##### Simulation building
+#####
+Δt₀ = 5minutes
+stop_time = 10days
+
+simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
+
+# add timestep wizard callback
+# wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
+# simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+
+# add progress callback
+wall_clock = [time_ns()]
+
+function print_progress(sim)
+    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
+        100 * (sim.model.clock.time / sim.stop_time),
+        sim.model.clock.iteration,
+        prettytime(sim.model.clock.time),
+        prettytime(1e-9 * (time_ns() - wall_clock[1])),
+        maximum(abs, sim.model.velocities.u),
+        maximum(abs, sim.model.velocities.v),
+        maximum(abs, sim.model.velocities.w),
+        prettytime(sim.Δt))
+
+    wall_clock[1] = time_ns()
+
+    return nothing
+end
+
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+
+
+
+#####
+##### Diagnostics
+#####
+
+u, v, w = model.velocities
+b = model.tracers.b
+e = model.tracers.e
+η = model.free_surface.η
+
+ζ = Field(∂x(v) - ∂y(u))
+
+B = Field(Average(b, dims = 1))
+U = Field(Average(u, dims = 1))
+V = Field(Average(v, dims = 1))
+W = Field(Average(w, dims = 1))
+
+b′ = b - B
+v′ = v - V
+w′ = w - W
+
+v′b′ = Field(Average(v′ * b′, dims = 1))
+w′b′ = Field(Average(w′ * b′, dims = 1))
+
+outputs = (; b, ζ, u, v, w, η, e)
+
+averaged_outputs = (; v′b′, w′b′, B)
+
+#####
+##### Build checkpointer and output writer
+#####
+
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+    schedule = TimeInterval(100days),
+    prefix = "abernathey_channel",
+    overwrite_existing = true)
+
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+    schedule = TimeInterval(5days),
+    filename = "abernathey_channel",
+    verbose = true,
+    overwrite_existing = true)
+
+simulation.output_writers[:averages] = JLD2Writer(model, averaged_outputs,
+    schedule = AveragedTimeInterval(1days, window = 1days, stride = 1),
+    filename = "abernathey_channel_averages",
+    verbose = true,
+    overwrite_existing = true)
+
+@info "Running the simulation..."
+
+run!(simulation, pickup = false)
+#=
+try
+    run!(simulation, pickup = false)
+catch err
+    @info "run! threw an error! The error message is"
+    showerror(stdout, err)
+end
+=#
+# #####
+# ##### Visualization
+# #####
+
+using Plots
+
+grid = RectilinearGrid(CPU(),
+    topology = (Periodic, Bounded, Bounded),
+    size = (grid.Nx, grid.Ny, grid.Nz),
+    halo = (halo_size, halo_size, halo_size),
+    x = (0, grid.Lx),
+    y = (0, grid.Ly),
+    z = z_faces)
+
+xζ, yζ, zζ = nodes(grid, Face(), Face(), Center())
+xc, yc, zc = nodes(grid, Center(), Center(), Center())
+xw, yw, zw = nodes(grid, Center(), Center(), Face())
+
+
+xu, yu, zu = nodes(grid, Face(), Center(), Center())
+xv, yv, zv = nodes(grid, Center(), Face(), Center())
+
+j′ = round(Int, grid.Ny / 2)
+y′ = yζ[j′]
+
+b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
+ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
+w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
+η_timeseries = FieldTimeSeries("abernathey_channel.jld2", "η", grid = grid)
+e_timeseries = FieldTimeSeries("abernathey_channel.jld2", "e", grid = grid)
+
+u_timeseries = FieldTimeSeries("abernathey_channel.jld2", "u", grid = grid)
+v_timeseries = FieldTimeSeries("abernathey_channel.jld2", "v", grid = grid)
+
+@show b_timeseries
+
+anim = @animate for i in 1:length(b_timeseries.times)
+    b = b_timeseries[i]
+    ζ = ζ_timeseries[i]
+    w = w_timeseries[i]
+
+    b′ = interior(b) .- mean(b)
+    b_xy = b′[:, :, grid.Nz]
+    ζ_xy = interior(ζ)[:, :, grid.Nz]
+    ζ_xz = interior(ζ)[:, j′, :]
+    w_xz = interior(w)[:, j′, :]
+
+    @show bmax = max(1e-9, maximum(abs, b_xy))
+    @show ζmax = max(1e-9, maximum(abs, ζ_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
+
+    blims = (-bmax, bmax) .* 0.8
+    ζlims = (-ζmax, ζmax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
+
+    blevels = vcat([-bmax], range(blims[1], blims[2], length = 31), [bmax])
+    ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length = 31), [ζmax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
+
+    xlims = (0, grid.Lx) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
+        xlabel = "x (km)",
+        ylabel = "z (m)",
+        aspectratio = 0.05,
+        linewidth = 0,
+        levels = wlevels,
+        clims = wlims,
+        xlims = xlims,
+        ylims = zlims,
+        color = :balance)
+
+    ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = ζlevels,
+        clims = ζlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = blevels,
+        clims = blims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    ζ_xy_title = "ζ(x, y)"
+    b_xy_title = "b(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+        Plots.grid(1, 2)]
+
+    plot(w_xz_plot, ζ_xy_plot, b_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title b_xy_title])
+end
+
+mp4(anim, "abernathey_channel.mp4", fps = 8) #hide
+
+
+anim2 = @animate for i in 1:length(u_timeseries.times)
+    u = u_timeseries[i]
+    v = v_timeseries[i]
+    w = w_timeseries[i]
+
+    u_xy = interior(u)[:, :, grid.Nz]
+    v_xy = interior(v)[:, :, grid.Nz]
+    ζ_xz = interior(ζ)[:, j′, :]
+    w_xz = interior(w)[:, j′, :]
+
+    @show umax = max(1e-9, maximum(abs, u_xy))
+    @show vmax = max(1e-9, maximum(abs, v_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
+
+    ulims = (-umax, umax) .* 0.8
+    vlims = (-vmax, vmax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
+
+    ulevels = vcat([-umax], range(ulims[1], ulims[2], length = 31), [umax])
+    vlevels = vcat([-vmax], range(vlims[1], vlims[2], length = 31), [vmax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
+
+    xlims = (0, grid.Lx) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
+        xlabel = "x (km)",
+        ylabel = "z (m)",
+        aspectratio = 0.05,
+        linewidth = 0,
+        levels = wlevels,
+        clims = wlims,
+        xlims = xlims,
+        ylims = zlims,
+        color = :balance)
+
+    u_xy_plot = contourf(xu * 1e-3, yu * 1e-3, u_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = ulevels,
+        clims = ulims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    v_xy_plot = contourf(xv * 1e-3, yv * 1e-3, v_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = vlevels,
+        clims = vlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    u_xz_title = @sprintf("u(x, z) at t = %s", prettytime(u_timeseries.times[i]))
+    u_xy_title = "u(x, y)"
+    v_xy_title = "v(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+        Plots.grid(1, 2)]
+
+    plot(w_xz_plot, u_xy_plot, v_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title u_xy_title v_xy_title])
+end
+
+mp4(anim2, "abernathey_channel_horizontal_velocities.mp4", fps = 8) #hide
+
+anim3 = @animate for i in 1:length(η_timeseries.times)
+    e = e_timeseries[i]
+    w = w_timeseries[i]
+    η = η_timeseries[i]
+
+    e_xy = interior(e)[:, :, grid.Nz]
+    w_xz = interior(w)[:, j′, :]
+    η_xy = interior(η)[:, :, 1]
+
+    @show emax = max(1e-9, maximum(abs, e_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
+    @show ηmax = max(1e-9, maximum(abs, η_xy))
+
+    elims = (-emax, emax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
+    ηlims = (-ηmax, ηmax) .* 0.8
+
+    elevels = vcat([-emax], range(elims[1], elims[2], length = 31), [emax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
+    ηlevels = vcat([-ηmax], range(ηlims[1], ηlims[2], length = 31), [ηmax])
+
+    xlims = (0, grid.Lx) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
+        xlabel = "x (km)",
+        ylabel = "z (m)",
+        aspectratio = 0.05,
+        linewidth = 0,
+        levels = wlevels,
+        clims = wlims,
+        xlims = xlims,
+        ylims = zlims,
+        color = :balance)
+
+    η_xy_plot = contourf(xw * 1e-3, yw * 1e-3, η_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = ηlevels,
+        clims = ηlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    e_xy_plot = contourf(xc * 1e-3, yc * 1e-3, e_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = elevels,
+        clims = elims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
+
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(w_timeseries.times[i]))
+    η_xy_title = "η(x, y)"
+    e_xy_title = "e(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+        Plots.grid(1, 2)]
+
+    plot(w_xz_plot, η_xy_plot, η_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
+end
+
+mp4(anim3, "abernathey_channel_sshe.mp4", fps = 8) #hide
