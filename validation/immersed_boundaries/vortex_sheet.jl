@@ -9,6 +9,7 @@ using Oceananigans.Operators
 using Oceananigans.Grids: with_number_type
 using Printf
 using Statistics
+using CUDA
 
 const Nx = 400
 const Nz = 200

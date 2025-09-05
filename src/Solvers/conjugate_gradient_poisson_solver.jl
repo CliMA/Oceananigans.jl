@@ -100,8 +100,8 @@ is a common choice to remove this degree of freedom.
 """
 function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
-                                        reltol = sqrt(eps(grid)) * minimum_cell_volume(grid),
-                                        abstol = sqrt(eps(grid)) * minimum_cell_volume(grid),
+                                        reltol = min(100 * eps(grid), 100 * eps(grid) * minimum_cell_volume(grid)^2, sqrt(eps(grid))),
+                                        abstol = min(100 * eps(grid), sqrt(eps(grid))),
                                         enforce_gauge_condition! = enforce_zero_mean_gauge!,
                                         kw...)
 
