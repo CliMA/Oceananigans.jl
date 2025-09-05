@@ -73,10 +73,12 @@ parameters = (
     Ly = Ly,
     Lz = Lz,
     Qᵇ = 10 / (ρ * cᵖ) * α * g,            # buoyancy flux magnitude [m² s⁻³]
+    Qᵀ = 10 / (ρ * cᵖ),                    # temperature flux magnitude
     y_shutoff = 5 / 6 * Ly,                # shutoff location for buoyancy flux [m]
     τ = 0.2 / ρ,                           # surface kinematic wind stress [m² s⁻²]
     μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
     ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
+    ΔT = 8                               # surface vertical temperature gradient
     H = Lz,                              # domain depth [m]
     h = 1000.0,                          # exponential decay scale of stable stratification [m]
     y_sponge = 19 / 20 * Ly,               # southern boundary of sponge layer [m]
@@ -88,7 +90,13 @@ parameters = (
     return ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0.0)
 end
 
-buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form = true, parameters = parameters)
+@inline function temperature_flux(i, j, grid, clock, model_fields, p)
+    y = ynode(j, grid, Center())
+    return ifelse(y < p.y_shutoff, p.Qᵀ * cos(3π * y / p.Ly), 0.0)
+end
+
+buoyancy_flux_bc    = FluxBoundaryCondition(buoyancy_flux, discrete_form = true, parameters = parameters)
+temperature_flux_bc = FluxBoundaryCondition(temperature_flux, discrete_form = true, parameters = parameters)
 
 
 @inline function u_stress(i, j, grid, clock, model_fields, p)
@@ -105,6 +113,7 @@ u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = par
 v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = parameters)
 
 b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
+T_bcs = FieldBoundaryConditions(top = temperature_flux_bc)
 
 u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
@@ -121,8 +130,9 @@ coriolis = BetaPlane(f₀ = f, β = β)
 ##### Forcing and initial condition
 #####
 
-@inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
-@inline mask(y, p) = max(0.0, y - p.y_sponge) / (Ly - p.y_sponge)
+@inline initial_buoyancy(z, p)    = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
+@inline initial_temperature(z, p) = p.ΔT * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
+@inline mask(y, p)                = max(0.0, y - p.y_sponge) / (Ly - p.y_sponge)
 
 
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
@@ -135,7 +145,18 @@ coriolis = BetaPlane(f₀ = f, β = β)
     return -1 / timescale * mask(y, p) * (b - target_b)
 end
 
+@inline function temperature_relaxation(i, j, k, grid, clock, model_fields, p)
+    timescale = p.λt
+    y = ynode(j, grid, Center())
+    z = znode(k, grid, Center())
+    target_T = initial_temperature(z, p)
+    T = @inbounds model_fields.T[i, j, k]
+
+    return -1 / timescale * mask(y, p) * (T - target_T)
+end
+
 Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
+FT = Forcing(temperature_relaxation, discrete_form = true, parameters = parameters)
 
 # closure
 
@@ -166,12 +187,12 @@ model = HydrostaticFreeSurfaceModel(
     free_surface = SplitExplicitFreeSurface(substeps=500),
     momentum_advection = WENO(),
     tracer_advection = WENO(),
-    buoyancy = BuoyancyTracer(),
+    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(Oceananigans.defaults.FloatType),constant_salinity=35),
     coriolis = coriolis,
     closure = (horizontal_closure, vertical_closure, vertical_closure_CATKE),
-    tracers = (:b, :e),
-    boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
-    forcing = (; b = Fb)
+    tracers = (:T, :e),
+    boundary_conditions = (T = T_bcs, u = u_bcs, v = v_bcs),
+    forcing = (; T = FT)
 )
 
 @info "Built $model."
@@ -183,14 +204,16 @@ model = HydrostaticFreeSurfaceModel(
 # resting initial condition
 ε(σ) = σ * randn()
 bᵢ(x, y, z) = parameters.ΔB * (exp(z / parameters.h) - exp(-Lz / parameters.h)) / (1 - exp(-Lz / parameters.h)) + ε(1e-8)
+Tᵢ(x, y, z) = parameters.ΔT * (exp(z / parameters.h) - exp(-Lz / parameters.h)) / (1 - exp(-Lz / parameters.h)) + ε(1e-8)
 
-set!(model, b = bᵢ)
+#set!(model, b = bᵢ)
+set!(model, T = Tᵢ)
 
 #####
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 500days
+stop_time = 1000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -226,27 +249,35 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 #####
 
 u, v, w = model.velocities
-b = model.tracers.b
+#b = model.tracers.b
+t = model.tracers.T
 e = model.tracers.e
 η = model.free_surface.η
 
 ζ = Field(∂x(v) - ∂y(u))
 
-B = Field(Average(b, dims = 1))
+#B = Field(Average(b, dims = 1))
+T = Field(Average(t, dims = 1))
 U = Field(Average(u, dims = 1))
 V = Field(Average(v, dims = 1))
 W = Field(Average(w, dims = 1))
 
-b′ = b - B
+#b′ = b - B
+T′ = t - T
 v′ = v - V
 w′ = w - W
 
-v′b′ = Field(Average(v′ * b′, dims = 1))
-w′b′ = Field(Average(w′ * b′, dims = 1))
+#v′b′ = Field(Average(v′ * b′, dims = 1))
+#w′b′ = Field(Average(w′ * b′, dims = 1))
 
-outputs = (; b, ζ, u, v, w, η, e)
+v′T′ = Field(Average(v′ * T′, dims = 1))
+w′T′ = Field(Average(w′ * T′, dims = 1))
 
-averaged_outputs = (; v′b′, w′b′, B)
+outputs = (; T, ζ, u, v, w, η, e) #, b)
+
+#averaged_outputs = (; v′b′, w′b′, B)
+
+averaged_outputs = (; v′T′, w′T′, T)
 
 #####
 ##### Build checkpointer and output writer
@@ -305,7 +336,8 @@ xv, yv, zv = nodes(grid, Center(), Face(), Center())
 j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
 
-b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
+#b_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
+T_timeseries = FieldTimeSeries("abernathey_channel.jld2", "b", grid = grid)
 ζ_timeseries = FieldTimeSeries("abernathey_channel.jld2", "ζ", grid = grid)
 w_timeseries = FieldTimeSeries("abernathey_channel.jld2", "w", grid = grid)
 η_timeseries = FieldTimeSeries("abernathey_channel.jld2", "η", grid = grid)
@@ -314,28 +346,34 @@ e_timeseries = FieldTimeSeries("abernathey_channel.jld2", "e", grid = grid)
 u_timeseries = FieldTimeSeries("abernathey_channel.jld2", "u", grid = grid)
 v_timeseries = FieldTimeSeries("abernathey_channel.jld2", "v", grid = grid)
 
-@show b_timeseries
+@show T_timeseries
 
-anim = @animate for i in 1:length(b_timeseries.times)
-    b = b_timeseries[i]
+anim = @animate for i in 1:length(T_timeseries.times)
+    #b = b_timeseries[i]
+    T = T_timeseries[i]
     ζ = ζ_timeseries[i]
     w = w_timeseries[i]
 
-    b′ = interior(b) .- mean(b)
-    b_xy = b′[:, :, grid.Nz]
+    #b′ = interior(b) .- mean(b)
+    T′ = interior(T) .- mean(T)
+    #b_xy = b′[:, :, grid.Nz]
+    T_xy = b′[:, :, grid.Nz]
     ζ_xy = interior(ζ)[:, :, grid.Nz]
     ζ_xz = interior(ζ)[:, j′, :]
     w_xz = interior(w)[:, j′, :]
 
-    @show bmax = max(1e-9, maximum(abs, b_xy))
+    #@show bmax = max(1e-9, maximum(abs, b_xy))
+    @show Tmax = max(1e-9, maximum(abs, T_xy))
     @show ζmax = max(1e-9, maximum(abs, ζ_xy))
     @show wmax = max(1e-9, maximum(abs, w_xz))
 
-    blims = (-bmax, bmax) .* 0.8
+    #blims = (-bmax, bmax) .* 0.8
+    Tlims = (-Tmax, Tmax) .* 0.8
     ζlims = (-ζmax, ζmax) .* 0.8
     wlims = (-wmax, wmax) .* 0.8
 
-    blevels = vcat([-bmax], range(blims[1], blims[2], length = 31), [bmax])
+    #blevels = vcat([-bmax], range(blims[1], blims[2], length = 31), [bmax])
+    Tlevels = vcat([-Tmax], range(Tlims[1], Tlims[2], length = 31), [Tmax])
     ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length = 31), [ζmax])
     wlevels = vcat([-wmax], range(wlims[1], wlims[2], length = 31), [wmax])
 
@@ -364,7 +402,7 @@ anim = @animate for i in 1:length(b_timeseries.times)
         xlims = xlims,
         ylims = ylims,
         color = :balance)
-
+    #=
     b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy',
         xlabel = "x (km)",
         ylabel = "y (km)",
@@ -375,16 +413,28 @@ anim = @animate for i in 1:length(b_timeseries.times)
         xlims = xlims,
         ylims = ylims,
         color = :balance)
+    =#
+    T_xy_plot = contourf(xc * 1e-3, yc * 1e-3, T_xy',
+        xlabel = "x (km)",
+        ylabel = "y (km)",
+        aspectratio = :equal,
+        linewidth = 0,
+        levels = Tlevels,
+        clims = Tlims,
+        xlims = xlims,
+        ylims = ylims,
+        color = :balance)
 
     w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
     ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
     ζ_xy_title = "ζ(x, y)"
-    b_xy_title = "b(x, y)"
+    #b_xy_title = "b(x, y)"
+    T_xy_title = "T(x, y)"
 
     layout = @layout [upper_slice_plot{0.2h}
         Plots.grid(1, 2)]
 
-    plot(w_xz_plot, ζ_xy_plot, b_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title b_xy_title])
+    plot(w_xz_plot, ζ_xy_plot, T_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title T_xy_title])
 end
 
 mp4(anim, "abernathey_channel.mp4", fps = 8) #hide
