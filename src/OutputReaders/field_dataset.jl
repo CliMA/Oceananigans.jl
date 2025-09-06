@@ -58,6 +58,8 @@ end
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
 Base.getindex(fds::FieldDataset, i::Symbol) = Base.getindex(fds, string(i))
 
+Base.keys(fds::FieldDataset) = Base.keys(fds.fields)
+
 function Base.getproperty(fds::FieldDataset, name::Symbol)
     if name in propertynames(fds)
         return getfield(fds, name)
