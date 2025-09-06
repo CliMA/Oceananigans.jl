@@ -54,13 +54,12 @@ for T in Types
 end
 
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
-@inline devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
+@inline regions(pv::PrescribedVelocityFields)    = regions(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
-@inline isregional(mrm::MultiRegionModel)   = true
-@inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
-@inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
+@inline isregional(mrm::MultiRegionModel) = true
+@inline regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)

@@ -24,10 +24,9 @@ for reduction in reductions
                 FT   = eltype(first(mr.regional_objects))
                 loc  = location(first(mr.regional_objects))
                 validate_reduction_location!(loc, c.grid.partition)
-                mrg  = MultiRegionGrid{FT, loc[1], loc[2], loc[3]}(architecture(c), c.grid.partition,
-                                                                   MultiRegionObject(architecture(c), collect_grid(mr.regional_objects), devices(mr)), devices(mr))
-                data = MultiRegionObject(architecture(c), collect_data(mr.regional_objects), devices(mr))
-                bcs  = MultiRegionObject(architecture(c), collect_bcs(mr.regional_objects),  devices(mr))
+                mrg  = MultiRegionGrid{FT, loc[1], loc[2], loc[3]}(architecture(c), c.grid.partition, MultiRegionObject(collect_grid(mr.regional_objects)))
+                data = MultiRegionObject(collect_data(mr.regional_objects))
+                bcs  = MultiRegionObject(collect_bcs(mr.regional_objects))
                 return Field{loc[1], loc[2], loc[3]}(mrg, data, bcs, c.operand, c.status)
             end
         end

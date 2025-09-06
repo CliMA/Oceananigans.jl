@@ -54,10 +54,8 @@ end
 
 function convert_output(mo::MultiRegionObject, writer)
     array_type = writer.array_type
-    arch = architecture(array_type)
     converted = Tuple(convert(array_type, obj) for obj in mo.regional_objects)
-    devices = Tuple(CPU() for _ in mo.regional_objects)
-    return MultiRegionObject(arch, converted, devices)
+    return MultiRegionObject(converted)
 end
 
 function construct_output(csf::CubedSphereField{LX, LY, LZ},

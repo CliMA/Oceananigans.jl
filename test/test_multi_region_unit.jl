@@ -1,8 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-devices(::CPU, num) = nothing
-devices(::GPU, num) = Tuple(0 for i in 1:num)
-
 # To be extended as we find new use cases
 @testset "Test @apply_regionally macro" begin
     a = 1
@@ -10,12 +7,11 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
     @apply_regionally a = b + 1
 
     @test a == 3
-    arch = CPU()
-    a = MultiRegionObject(arch, (1, 2, 3))
-    b = MultiRegionObject(arch, (4, 5, 6))
+    a = MultiRegionObject((1, 2, 3))
+    b = MultiRegionObject((4, 5, 6))
 
     @apply_regionally a = b + 1
-    @test a == MultiRegionObject(arch, (5, 6, 7))
+    @test a == MultiRegionObject((5, 6, 7))
 end
 
 @testset "Testing multi region grids" begin
@@ -43,7 +39,7 @@ end
 
         for grid in grids, Partition in partition_types, region in regions
             @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
-            mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))
+            mrg = MultiRegionGrid(grid, partition = Partition(region))
 
             @test minimum_xspacing(mrg) == minimum(minimum_xspacing(mrg[r]) for r in 1:length(mrg.region_grids))
             @test minimum_yspacing(mrg) == minimum(minimum_yspacing(mrg[r]) for r in 1:length(mrg.region_grids))
@@ -72,7 +68,7 @@ end
             for immersed_boundary in immersed_boundaries
                 @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(Partition)s"
                 ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
-                mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))
+                mrg = MultiRegionGrid(grid, partition = Partition(region))
                 mribg = ImmersedBoundaryGrid(mrg, immersed_boundary)
 
                 @test reconstruct_global_grid(mribg) == ibg

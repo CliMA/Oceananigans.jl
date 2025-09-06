@@ -97,32 +97,11 @@ function (::MultiRegionFillHalo{<:WestAndEast})(c, westbc, eastbc, loc, grid, bu
     westsrc = getside(buffers[westbc.condition.from_rank], westbc.condition.from_side).send
     eastsrc = getside(buffers[eastbc.condition.from_rank], eastbc.condition.from_side).send
 
-    devicewest = getdevice(westsrc)
-    deviceeast = getdevice(eastsrc)
-
-    switch_device!(devicewest)
-    westsrc = flip_west_and_east_indices(westsrc, loc[1], westbc.condition)
-
-    switch_device!(deviceeast)
-    eastsrc = flip_west_and_east_indices(eastsrc, loc[1], eastbc.condition)
-
-    switch_device!(getdevice(c))
     device_copy_to!(westdst, westsrc)
     device_copy_to!(eastdst, eastsrc)
 
-    if loc[2] == Face() && westbc.condition isa NonTrivialConnectivity
-        Mx, My, _ = size(parent(c))
-        view(parent(c), 1:H, 2:My, :) .= view(westdst, :, 1:My-1, :)
-    else
-        view(parent(c), 1:H, :, :) .= westdst
-    end
-
-    if loc[2] == Face() && eastbc.condition isa NonTrivialConnectivity
-        Mx, My, _ = size(parent(c))
-        view(parent(c), N+1+H:N+2H, 2:My, :) .= view(eastdst, :, 1:My-1, :)
-    else
-        view(parent(c), N+H+1:N+2H, :, :) .= eastdst
-    end
+    view(parent(c), 1:H, :, :) .= westdst
+    view(parent(c), N+H+1:N+2H, :, :) .= eastdst
 
     return nothing
 end
@@ -137,35 +116,11 @@ function (::MultiRegionFillHalo{<:SouthAndNorth})(c, southbc, northbc, loc, grid
     southsrc = getside(buffers[southbc.condition.from_rank], southbc.condition.from_side).send
     northsrc = getside(buffers[northbc.condition.from_rank], northbc.condition.from_side).send
 
-    devicesouth = getdevice(southsrc)
-    devicenorth = getdevice(northsrc)
-
-    switch_device!(devicesouth)
-    southsrc = flip_south_and_north_indices(southsrc, loc[2], southbc.condition)
-
-    switch_device!(devicenorth)
-    northsrc = flip_south_and_north_indices(northsrc, loc[2], northbc.condition)
-
-    switch_device!(getdevice(c))
     device_copy_to!(southdst, southsrc)
     device_copy_to!(northdst, northsrc)
 
-    if loc[1] == Face() && southbc.condition isa NonTrivialConnectivity
-        Mx, My, _ = size(parent(c))
-        view(parent(c), 2:Mx, 1:H, :) .= view(southdst, 1:Mx-1, :, :)
-    else
-        view(parent(c), :, 1:H, :) .= southdst
-    end
-
-    if loc[1] == Face() && loc[2] == Face() && northbc.condition isa NonTrivialConnectivity
-        Mx, My, _ = size(parent(c))
-        view(parent(c), 2:Mx, N+H+1:N+2H, :) .= view(northdst, 1:Mx-1, :, :)
-    elseif loc[1] == Face() && loc[2] == Center() && northbc.condition isa NonTrivialConnectivity
-        Mx, My, _ = size(parent(c))
-        view(parent(c), :, N+H+1:N+2H, :) .= view(northdst, :, :, :)
-    else
-        view(parent(c), :, N+H+1:N+2H, :) .= northdst
-    end
+    view(parent(c), :, 1:H, :) .= southdst
+    view(parent(c), :, N+H+1:N+2H, :) .= northdst
 
     return nothing
 end
@@ -181,11 +136,6 @@ function (::MultiRegionFillHalo{<:West})(c, bc, loc, grid, buffers)
     dst = buffers[bc.condition.rank].west.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
 
-    dev = getdevice(src)
-    switch_device!(dev)
-    src = flip_west_and_east_indices(src, loc[1], bc.condition)
-
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), 1:H, :, :)
@@ -201,11 +151,6 @@ function (::MultiRegionFillHalo{<:East})(c, bc, loc, grid, buffers)
     dst = buffers[bc.condition.rank].east.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
 
-    dev = getdevice(src)
-    switch_device!(dev)
-    src = flip_west_and_east_indices(src, loc[1], bc.condition)
-
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), N+H+1:N+2H, :, :)
@@ -221,11 +166,6 @@ function (::MultiRegionFillHalo{<:South})(c, bc, loc, grid, buffers)
     dst = buffers[bc.condition.rank].south.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
 
-    dev = getdevice(src)
-    switch_device!(dev)
-    src = flip_south_and_north_indices(src, loc[2], bc.condition)
-
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), :, 1:H, :)
@@ -241,22 +181,11 @@ function (::MultiRegionFillHalo{<:North})(c, bc, loc, grid, buffers)
     dst = buffers[bc.condition.rank].north.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
 
-    dev = getdevice(src)
-    switch_device!(dev)
-    src = flip_south_and_north_indices(src, loc[2], bc.condition)
-
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p = view(parent(c), :, N+H+1:N+2H, :)
-
-    if loc[1] == Center()
-        p .= dst
-    elseif loc[1] == Face()
-        Mx, My, _ = size(p)
-        view(p, 2:My, :, :) .= view(dst, 1:My-1, :, :)
-    end
-
+    p .= dst
+    
     return nothing
 end
 

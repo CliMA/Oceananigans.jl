@@ -20,10 +20,9 @@ struct UnifiedImplicitFreeSurfaceSolver{S, R, T}
     storage :: T
 end
 
-architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
-    architecture(solver.preconditioned_conjugate_gradient_solver)
+architecture(solver::UnifiedImplicitFreeSurfaceSolver) = architecture(solver.unified_pcg_solver)
 
-function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravitational_acceleration::Number; multiple_devices = false)
+function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravitational_acceleration::Number)
 
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
@@ -40,7 +39,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravi
     fill_halo_regions!((Ax, Ay); signed=false)
 
     arch = architecture(mrg)
-    right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
+    right_hand_side = on_architecture(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
     storage = deepcopy(right_hand_side)
 
     # Set maximum iterations to Nx * Ny if not set
@@ -51,11 +50,10 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrids, settings, gravi
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
     reduced_dim = (false, false, true)
-    solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
-                                HeptadiagonalIterativeSolver(coeffs; reduced_dim,
-                                                             template = right_hand_side,
-                                                             grid,
-                                                             settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim,
+                                                  template = right_hand_side,
+                                                  grid,
+                                                  settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
 end
@@ -99,9 +97,6 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
     solver = implicit_free_surface_solver.unified_pcg_solver
     storage = implicit_free_surface_solver.storage
 
-    sync_all_devices!(η.grid.devices)
-
-    switch_device!(getdevice(solver.matrix_constructors[1]))
     solve!(storage, solver, rhs, Δt)
 
     arch = architecture(solver)
