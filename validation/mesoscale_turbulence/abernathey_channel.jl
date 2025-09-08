@@ -14,6 +14,8 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
+using SeawaterPolynomials
+
 using Oceananigans.Architectures: GPU
 using CUDA
 CUDA.device!(0)
@@ -187,7 +189,7 @@ model = HydrostaticFreeSurfaceModel(
     free_surface = SplitExplicitFreeSurface(substeps=500),
     momentum_advection = WENO(),
     tracer_advection = WENO(),
-    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(Oceananigans.defaults.FloatType),constant_salinity=35),
+    buoyancy = SeawaterBuoyancy(equation_of_state=SeawaterPolynomials.TEOS10EquationOfState(Oceananigans.defaults.FloatType),constant_salinity=35),
     coriolis = coriolis,
     closure = (horizontal_closure, vertical_closure, vertical_closure_CATKE),
     tracers = (:T, :e),
@@ -213,7 +215,7 @@ set!(model, T = Tᵢ)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 1000days
+stop_time = 5000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -577,7 +579,7 @@ anim3 = @animate for i in 1:length(η_timeseries.times)
     layout = @layout [upper_slice_plot{0.2h}
         Plots.grid(1, 2)]
 
-    plot(w_xz_plot, η_xy_plot, η_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
+    plot(w_xz_plot, η_xy_plot, e_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title η_xy_title e_xy_title])
 end
 
 mp4(anim3, "abernathey_channel_sshe.mp4", fps = 8)
