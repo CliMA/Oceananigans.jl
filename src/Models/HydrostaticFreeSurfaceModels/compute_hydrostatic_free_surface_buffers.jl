@@ -77,8 +77,6 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
 
     w_parameters = buffer_w_kernel_parameters(grid, arch)
     update_vertical_velocities!(model.transport_velocities, grid, model; parameters = w_parameters)
-
-    # parameters for communicating North / South / East / West side
     compute_tracer_buffer_contributions!(grid, arch, model)
 
     return nothing

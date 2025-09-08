@@ -66,7 +66,48 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
     return SplitRungeKutta3TimeStepper{FT, TG, PF, TI}(β¹, β², Gⁿ, Ψ⁻, implicit_solver)
 end
 
-@kernel function _euler_substep_field!(field, Δt, Gⁿ, Ψ⁻)
-    i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]
+cache_previous_fields!(model) = nothing
+
+function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; callbacks=[])
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
+
+    cache_previous_fields!(model)
+    β¹ = model.timestepper.β¹
+    β² = model.timestepper.β²
+
+    grid = model.grid
+    free_surface = model.free_surface
+
+    ####
+    #### First stage
+    ####
+
+    # First stage: n -> n + 1/3
+    model.clock.stage = 1
+    update_state!(model, callbacks)
+    rk3_substep!(model, free_surface, grid, Δt / β¹, callbacks)
+
+    ####
+    #### Second stage
+    ####
+
+    # Second stage: n -> n + 1/2
+    model.clock.stage = 2
+    update_state!(model, callbacks)
+    rk3_substep!(model, free_surface, grid, Δt / β², callbacks)
+
+    ####
+    #### Third stage
+    ####
+
+    # Third stage: n -> n + 1
+    model.clock.stage = 3
+    update_state!(model, callbacks)
+    rk3_substep!(model, free_surface, grid, Δt, callbacks)
+
+    # Finalize step
+    step_lagrangian_particles!(model, Δt)
+    tick!(model.clock, Δt)
+
+    return nothing
 end

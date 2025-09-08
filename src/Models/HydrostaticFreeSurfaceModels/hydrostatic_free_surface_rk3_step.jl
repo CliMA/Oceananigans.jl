@@ -2,24 +2,56 @@ using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
-import Oceananigans.TimeSteppers: split_rk3_substep!, _euler_substep_field!, cache_previous_fields!
+import Oceananigans.TimeSteppers: rk3_substep!, cache_previous_fields
 
-function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt)
+rk3_substep!(model, grid, Δτ, callbacks) = 
+    rk3_substep!(model, model.free_surface, grid, Δτ, callbacks)
 
-    grid         = model.grid
-    timestepper  = model.timestepper
-    free_surface = model.free_surface
+@inline function rk3_substep!(model, free_surface, grid, Δτ, callbacks)
 
-    compute_free_surface_tendency!(grid, model, free_surface)
-    step_free_surface!(free_surface, model, timestepper, Δt)
+    # Advancing free surface and barotropic transport velocities
+    compute_momentum_tendencies!(model, callbacks)
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
+    
+    # Computing z-dependent transport velocities
+    compute_transport_velocities!(model, model.free_surface)
+    
+    # compute tracer tendencies
+    compute_tracer_tendencies!(model)
+    
+    # Remember to scale tracers tendencies by stretching factor
+    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
+    
+    # Finally Substep! Advance grid, tracers, and momentum
+    rk3_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+    rk3_substep_tracers!(model.tracers, model, Δτ)
+    rk3_substep_velocities!(model.velocities, model, Δτ)
 
-    @apply_regionally begin
-        compute_hydrostatic_tracer_tendencies!(model, :xyz)
-        scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
-        rk3_substep_grid!(grid, model, model.vertical_coordinate, Δt)
-        rk3_substep_velocities!(model.velocities, model, Δt)
-        rk3_substep_tracers!(model.tracers, model, Δt)
-    end
+    # Correct for the updated barotropic mode
+    make_pressure_correction!(model, Δτ)
+
+    return nothing
+end
+
+@inline function rk3_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
+
+    # Computing tendencies...
+    compute_momentum_tendencies!(model, callbacks)
+    compute_tracer_tendencies!(model)
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+    
+    # Remember to scale tracers tendencies by stretching factor
+    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
+    
+    # Finally Substep! Advance grid, tracers, momentum and free surface
+    rk3_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+    rk3_substep_tracers!(model.tracers, model, Δτ)
+    rk3_substep_velocities!(model.velocities, model, Δτ)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
+
+    # Correct for the updated barotropic mode
+    make_pressure_correction!(model, Δτ)
 
     return nothing
 end
@@ -97,6 +129,12 @@ end
 #####
 ##### Tracer update in mutable vertical coordinates
 #####
+
+# Velocity evolution kernel
+@kernel function _euler_substep_field!(field, Δt, Gⁿ, Ψ⁻)
+    i, j, k = @index(Global, NTuple)
+    @inbounds field[i, j, k] = Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]
+end
 
 # σc is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.

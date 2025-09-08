@@ -8,6 +8,8 @@ using Oceananigans.Grids
 using Random
 using JLD2
 using GLMakie
+using MPI
+MPI.Init()
 
 # Run with
 #
@@ -37,7 +39,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
                                         tracers = (:c, :constant))
 
     # Scale seed with rank to avoid symmetry
-    local_rank = MPI.Comm_rank(arch.communicator)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     Random.seed!(1234 * (local_rank + 1))
     mask(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
 
@@ -47,7 +49,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     η = model.free_surface.η
     outputs = merge(model.velocities, model.tracers)
 
-    progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"
+    progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt), extrema c: $(extrema(model.tracers.constant) .- 1)"
     simulation = Simulation(model, Δt=0.02, stop_time=100.0)
 
     wizard = TimeStepWizard(cfl = 0.2, max_change = 1.1)
@@ -62,58 +64,54 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
 
     run!(simulation)
 
-    MPI.Barrier(arch.communicator)
+    MPI.Barrier(MPI.COMM_WORLD)
 end
 
 Nx = 64
 Ny = 64
 
-arch = Distributed(CPU(), partition = Partition(2, 2))
+ranks = 2
+arch  = Distributed(CPU(), partition = Partition(1, ranks))
 
-# Run the simulation
+# # Run the simulation
 run_simulation(Nx, Ny, arch)
 
 # Visualize the plane
 # Produce a video for variable `var`
-try
-    function visualize_simulation(var)
-        iter = Observable(1)
+function visualize_simulation(var)
+    iter = Observable(1)
 
-        v = Vector(undef, 4)
-        V = Vector(undef, 4)
-        x = Vector(undef, 4)
-        y = Vector(undef, 4)
+    v = Vector(undef, ranks)
+    V = Vector(undef, ranks)
+    x = Vector(undef, ranks)
+    y = Vector(undef, ranks)
 
-        for r in 1:4
-            v[r] = FieldTimeSeries("mpi_hydrostatic_turbulence_rank$(r-1).jld2", var)
-            nx, ny, _ = size(v[r])
-            V[r] = @lift(interior(v[r][$iter], 1:nx, 1:ny, 1))
+    for r in 1:ranks
+        v[r] = FieldTimeSeries("mpi_hydrostatic_turbulence_rank$(r-1).jld2", var)
+        nx, ny, _ = size(v[r])
+        V[r] = @lift(interior(v[r][$iter], 1:nx, 1:ny, 1))
 
-            x[r] = xnodes(v[r])
-            y[r] = ynodes(v[r])
-        end
-
-        fig = Figure()
-        ax = Axis(fig[1, 1])
-        for r in 1:4
-            heatmap!(ax, x[r], y[r], V[r], colorrange = (-1.0, 1.0))
-        end
-
-        GLMakie.record(fig, "hydrostatic_test_" * var * ".mp4", 1:length(v[1].times), framerate = 11) do i
-            @info "step $i";
-            iter[] = i;
-        end
+        x[r] = xnodes(v[r])
+        y[r] = ynodes(v[r])
     end
 
-    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-        visualize_simulation("u")
-        visualize_simulation("v")
-        visualize_simulation("c")
-        visualize_simulation("constant")
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    for r in 1:ranks
+        heatmap!(ax, x[r], y[r], V[r], colorrange=(-1.0, 1.0))
     end
-catch err
-    @info err
+
+    GLMakie.record(fig, "hydrostatic_test_" * var * ".mp4", 1:length(v[1].times), framerate = 11) do i
+        @info "step $i";
+        iter[] = i;
+    end
 end
 
-MPI.Barrier(arch.communicator)
+if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    # visualize_simulation("u")
+    # visualize_simulation("v")
+    # visualize_simulation("c")
+    visualize_simulation("constant")
+end
 
+MPI.Barrier(MPI.COMM_WORLD)
