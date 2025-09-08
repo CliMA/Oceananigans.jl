@@ -41,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, convert_for_netcdf, materialize_from_netcdf, reconstruct_grid
 
 const c = Center()
 const f = Face()
