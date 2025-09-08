@@ -669,8 +669,8 @@ function grid_attributes(ibg::ImmersedBoundaryGrid)
     return attrs, dims
 end
 
-# Using OrderedDict to preserve order of keys. Important for positional arguments.
-convert_for_netcdf(dict::AbstractDict) = OrderedDict{Symbol, Any}(key => convert_for_netcdf(value) for (key, value) in dict)
+# Using OrderedDict to preserve order of keys (important when saving positional arguments), and string(key) because that's what NetCDF supports as global_attributes.
+convert_for_netcdf(dict::AbstractDict) = OrderedDict(string(key) => convert_for_netcdf(value) for (key, value) in dict)
 convert_for_netcdf(x::Number) = x
 convert_for_netcdf(x::Bool) = string(x)
 convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
