@@ -78,10 +78,10 @@ function test_thermal_bubble_checkpointer_output(arch)
     return run_checkpointer_tests(true_model, test_model, Δt)
 end
 
-function test_hydrostatic_splash_checkpointer(grid, free_surface)
+function test_hydrostatic_splash_checkpointer(grid, free_surface, timestepper)
     # Create and run "true model"
     closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
-    true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
+    true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, timestepper, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
 
     ηᵢ(x, y, z) = 1e-1 * exp(-x^2 - y^2)
@@ -231,8 +231,9 @@ for arch in archs
                              ImplicitFreeSurface(gravitational_acceleration=1),
                              SplitExplicitFreeSurface(gravitational_acceleration=1, substeps=5),
                              SplitExplicitFreeSurface(grid; cfl=0.7, gravitational_acceleration=1)]
-
-            test_hydrostatic_splash_checkpointer(grid, free_surface)
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                test_hydrostatic_splash_checkpointer(grid, free_surface, timestepper)
+            end
         end
 
         run_checkpointer_cleanup_tests(arch)
