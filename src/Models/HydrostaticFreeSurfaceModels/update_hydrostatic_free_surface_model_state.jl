@@ -77,5 +77,3 @@ function update_vertical_velocities!(velocities, grid, model; parameters = w_ker
     
     return nothing
 end
-
-compute_transport_velocities!(model, free_surface) = nothing

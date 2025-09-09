@@ -50,6 +50,7 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
+compute_transport_velocities!(model, free_surface) = nothing    
 
 # If U and V exist, we use them
 @inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]

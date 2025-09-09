@@ -58,8 +58,8 @@ end
     i, j = @index(Global, NTuple)
     
     for k in 1:size(grid, 3)
-        @inline ũ[i, j, k] = u[i, j, k] + (Ũ[i, j, k] - U̅[i, j, k]) / column_depthᶠᶜᵃ(i, j, k, grid)
-        @inline ṽ[i, j, k] = v[i, j, k] + (Ṽ[i, j, k] - V̅[i, j, k]) / column_depthᶜᶠᵃ(i, j, k, grid)
+        @inline ũ[i, j, k] = u[i, j, k] + (Ũ[i, j, 1] - U̅[i, j, 1]) / column_depthᶠᶜᵃ(i, j, grid)
+        @inline ṽ[i, j, k] = v[i, j, k] + (Ṽ[i, j, 1] - V̅[i, j, 1]) / column_depthᶜᶠᵃ(i, j, grid)
     end
 end
 

@@ -64,7 +64,7 @@ rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δ
 @kernel function _rk3_update_grid_scaling!(ηⁿ⁺¹, grid)
     i, j = @index(Global, NTuple)
 
-    @inbounds z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
+    @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
     update_grid_scaling!(grid.z, i, j, grid)
 end
 
