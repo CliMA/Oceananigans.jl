@@ -21,7 +21,7 @@ bc_str(zbc::ZBC)                 = "Zipper($(zbc.condition))"
 ##### BoundaryCondition
 #####
 
-Base.summary(bc::DFBC)                    = string("DefaultBoundaryCondition (", summary(bc.boundary_condition), ")")
+Base.summary(bc::DFBC)                    = string("DefaultBoundaryCondition")
 Base.summary(bc::OBC{Open{MS}}) where MS  = string("OpenBoundaryCondition{$MS}: ", prettysummary(bc.condition))
 Base.summary(bc::IBC)                     = string("ImpenetrableBoundaryCondition")
 Base.summary(bc::FBC)                     = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
