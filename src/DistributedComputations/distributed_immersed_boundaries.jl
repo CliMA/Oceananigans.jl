@@ -152,13 +152,13 @@ function build_active_cells_map(grid::DistributedGrid, ib)
     south_halo_dependent_cells = ifelse(include_south, south_halo_dependent_cells, nothing)
     north_halo_dependent_cells = ifelse(include_north, north_halo_dependent_cells, nothing)
 
-    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
+    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx-Hx+1 : Nx-2Hx+1)
+    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny-Hy+1 : Ny-2Hy+1)
 
-    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx-1
+    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy-1
 
-    halo_independent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    halo_independent_cells = serially_build_active_cells_map(grid, ib; parameters=KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
     return (; halo_independent_cells,
               west_halo_dependent_cells,

@@ -42,25 +42,6 @@ A tuple of indices corresponding to the linear index.
 """
 @inline linear_index_to_tuple(idx, active_cells_map) = @inbounds active_cells_map[idx]
 
-#=
-@inline function linear_index_to_tuple(idx, active_cells_map::Tuple{<:Any, <:Any, <:Any})
-    @inbounds begin
-        i = active_cells_map[1][idx]
-        j = active_cells_map[2][idx]
-        k = active_cells_map[3][idx]
-    end
-    return i, j, k
-end
-
-@inline function linear_index_to_tuple(idx, active_cells_map::Tuple{<:Any, <:Any})
-    @inbounds begin
-        i = active_cells_map[1][idx]
-        j = active_cells_map[2][idx]
-    end
-    return i, j
-end
-=#
-
 @inline active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
 
 @kernel function _compute_active_cells!(active_cells_field, grid, ib)

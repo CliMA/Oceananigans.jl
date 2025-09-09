@@ -36,16 +36,14 @@ end
 #####
 
 function ab2_step_velocities!(velocities, model, Δt, χ)
+    Gⁿ = model.timestepper.Gⁿ
+    G⁻ = model.timestepper.G⁻
 
-    for (i, name) in enumerate((:u, :v))
-        Gⁿ = model.timestepper.Gⁿ[name]
-        G⁻ = model.timestepper.G⁻[name]
-        velocity_field = model.velocities[name]
+    launch!(model.architecture, model.grid, :xfyz, ab2_step_field!, velocities.u, Δt, χ, Gⁿ.u, G⁻.u)
+    launch!(model.architecture, model.grid, :xyfz, ab2_step_field!, velocities.v, Δt, χ, Gⁿ.v, G⁻.v)
 
-        launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
-
-        implicit_step!(velocity_field,
+    for velocity in (velocities.u, velocities.v)
+        implicit_step!(velocity,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.diffusivity_fields,

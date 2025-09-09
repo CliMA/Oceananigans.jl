@@ -28,9 +28,11 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # interior of the domain. The active cells map restricts the computation to the active cells in the
     # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
     active_cells_map = get_active_cells_map(model.grid, Val(:interior))
-    kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
+    tracer_parameters = tracer_interior_tendency_kernel_parameters(arch, grid)
+    momentum_parameters = momentum_interior_tendency_kernel_parameters(arch, grid)
 
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
+    compute_hydrostatic_free_surface_tendency_contributions!(model, tracer_parameters; active_cells_map)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, momentum_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
 
     for callback in callbacks
@@ -58,8 +60,6 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
 
     arch = model.architecture
     grid = model.grid
-
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
@@ -90,6 +90,41 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                 args;
                 active_cells_map)
     end
+
+    return nothing
+end
+
+function compute_hydrostatic_u_tendency!(model, velocities, kernel_parameters; active_cells_map=nothing)
+
+    grid = model.grid
+    arch = architecture(grid)
+
+    u_immersed_bc = immersed_boundary_condition(velocities.u)
+    v_immersed_bc = immersed_boundary_condition(velocities.v)
+
+    u_forcing = model.forcing.u
+    v_forcing = model.forcing.v
+
+    start_momentum_kernel_args = (model.advection.momentum,
+                                  model.coriolis,
+                                  model.closure)
+
+    end_momentum_kernel_args = (velocities,
+                                model.free_surface,
+                                model.tracers,
+                                model.buoyancy,
+                                model.diffusivity_fields,
+                                model.pressure.pHY′,
+                                model.auxiliary_fields,
+                                model.vertical_coordinate,
+                                model.clock)
+
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
+
+    launch!(arch, grid, kernel_parameters,
+            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
+            u_kernel_args; active_cells_map)
 
     return nothing
 end
@@ -127,7 +162,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
             u_kernel_args; active_cells_map)
 
-    launch!(arch, grid, kernel_parameters,
+    launch!(arch, grid, kernel_parameters[2],
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
             v_kernel_args; active_cells_map)
 

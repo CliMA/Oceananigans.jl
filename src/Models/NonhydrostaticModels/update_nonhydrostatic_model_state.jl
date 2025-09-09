@@ -19,6 +19,9 @@ they are called in the end.
 """
 function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
 
+    closure = model.closure
+    diffusivity = model.diffusivity_fields
+
     # Mask immersed tracers
     foreach(model.tracers) do tracer
         @apply_regionally mask_immersed_field!(tracer)
@@ -31,7 +34,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     update_boundary_conditions!(fields(model), model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.grid, model.clock, fields(model); fill_open_bcs=false, async=true)
+    fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); fill_open_bcs=false, async=true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
@@ -39,9 +42,11 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     end
 
     # Calculate diffusivities and hydrostatic pressure
-    @apply_regionally compute_auxiliaries!(model)
-
+    compute_diffusivities!(diffusivity, closure, model; parameters=:xyz)
     fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+
+    update_hydrostatic_pressure!(model)
+    fill_halo_regions!(model.pressures; async=true)
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
@@ -49,21 +54,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
+    compute_tendencies && @apply_regionally compute_tendencies!(model, callbacks)
 
-    return nothing
-end
-
-function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                          κ_parameters = tuple(:xyz))
-
-    closure = model.closure
-    diffusivity = model.diffusivity_fields
-
-    for (ppar, κpar) in zip(p_parameters, κ_parameters)
-        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
-        update_hydrostatic_pressure!(model; parameters = ppar)
-    end
     return nothing
 end

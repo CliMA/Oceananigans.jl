@@ -29,19 +29,17 @@ end
 #####
 
 function rk3_substep_velocities!(velocities, model, Δt)
-
     grid = model.grid
     FT = eltype(grid)
 
-    for name in (:u, :v)
-        Gⁿ = model.timestepper.Gⁿ[name]
-        Ψ⁻ = model.timestepper.Ψ⁻[name]
-        velocity_field = velocities[name]
+    Gⁿ = model.timestepper.Gⁿ
+    G⁻ = model.timestepper.G⁻
 
-        launch!(architecture(grid), grid, :xyz,
-                _euler_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻)
+    launch!(model.architecture, model.grid, :xfyz, _euler_substep_field!, velocities.u, convert(FT, Δt), Gⁿ.u, Ψ⁻.u)
+    launch!(model.architecture, model.grid, :xyfz, _euler_substep_field!, velocities.v, convert(FT, Δt), Gⁿ.v, Ψ⁻.v)
 
-        implicit_step!(velocity_field,
+    for velocity in (velocities.u, velocities.v)
+        implicit_step!(velocity,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.diffusivity_fields,

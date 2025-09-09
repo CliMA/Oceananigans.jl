@@ -209,12 +209,16 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 @inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
     Nx, Ny, Nz = size(grid)
-    Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
+
+    worksize = ifelse(workdims == :xyz,  (Nx,   Ny,   Nz),
+               ifelse(workdims == :xfyz, (Nx+1, Ny,   Nz),
+               ifelse(workdims == :xyfz, (Nx,   Ny+1, Nz),
+               ifelse(workdims == :xyzf, (Nx,   Ny,   Nz+1),
+               ifelse(workdims == :xy,   (Nx, Ny),
+               ifelse(workdims == :xz,   (Nx, Nz), (Ny, Nz)))))))
+
+    Wx, Wy, Wz = flatten_reduced_dimensions((Wx, Wy, Wz), reduced_dimensions) # this seems to be for halo filling
     workgroup = heuristic_workgroup(Wx, Wy, Wz)
-    
-    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-               ifelse(workdims == :xy, (Wx, Wy),
-               ifelse(workdims == :xz, (Wx, Wz), (Wy, Wz))))
 
     return StaticSize(workgroup), StaticSize(worksize)
 end

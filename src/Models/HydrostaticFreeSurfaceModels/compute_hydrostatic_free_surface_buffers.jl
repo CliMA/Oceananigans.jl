@@ -16,13 +16,10 @@ const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
 function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
+    parameters = buffer_tendency_kernel_parameters(grid, arch)
 
-    w_parameters = buffer_w_kernel_parameters(grid, arch)
-    p_parameters = buffer_p_kernel_parameters(grid, arch)
-    κ_parameters = buffer_κ_kernel_parameters(grid, model.closure, arch)
-
-    # We need new values for `w`, `p` and `κ`
-    compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
+    compute_diffusivities!(diffusivity, closure, model; parameters)
+    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
 
     # parameters for communicating North / South / East / West side
     compute_buffer_tendency_contributions!(grid, arch, model)
@@ -31,8 +28,9 @@ function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
 end
 
 function compute_buffer_tendency_contributions!(grid, arch, model)
-    kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+    parameters = buffer_tendency_kernel_parameters(grid, arch)
+    compute_hydrostatic_free_surface_tendency_contributions!(model, parameters; active_cells_map)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, (parameters, parameters); active_cells_map)
     return nothing
 end
 
@@ -48,26 +46,11 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorI
 
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
-        !isnothing(map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+        if !isnothing(active_cells_map) 
+            compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+            compute_hydrostatic_momentum_tendencies!(model, model.velocities, (:xyz, :xyz); active_cells_map)
+        end
     end
 
     return nothing
 end
-
-# w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
-function buffer_w_kernel_parameters(grid, arch)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
-    # Offsets in tangential direction are == -1 to
-    # cover the required corners
-    param_west  = (-Hx+2:1,    0:Ny+1)
-    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
-    param_south = (0:Nx+1,     -Hy+2:1)
-    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
-
-    params = (param_west, param_east, param_south, param_north)
-
-    return buffer_parameters(params, grid, arch)
-end
-
