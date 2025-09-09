@@ -70,8 +70,8 @@ end
 Nx = 64
 Ny = 64
 
-ranks = 2
-arch  = Distributed(CPU(), partition = Partition(1, ranks))
+ranks = 1
+arch  = CPU() # Distributed(CPU(), partition = Partition(1, ranks))
 
 # # Run the simulation
 run_simulation(Nx, Ny, arch)

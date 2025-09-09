@@ -5,7 +5,6 @@ using Oceananigans.DistributedComputations: Distributed, DistributedGrid, Asynch
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
                                                 buffer_κ_kernel_parameters,
-                                                buffer_w_kernel_parameters,
                                                 buffer_parameters
 
 const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
@@ -106,4 +105,21 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
     end
 
     return nothing
+end
+
+# w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
+function buffer_w_kernel_parameters(grid, arch)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    # Offsets in tangential direction are == -1 to
+    # cover the required corners
+    param_west  = (-Hx+2:1,    0:Ny+1)
+    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
+    param_south = (0:Nx+1,     -Hy+2:1)
+    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
+
+    params = (param_west, param_east, param_south, param_north)
+
+    return buffer_parameters(params, grid, arch)
 end
