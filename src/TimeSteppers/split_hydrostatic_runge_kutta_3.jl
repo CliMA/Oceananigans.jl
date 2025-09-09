@@ -74,9 +74,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     cache_previous_fields!(model)
     β¹ = model.timestepper.β¹
     β² = model.timestepper.β²
-
+    
     grid = model.grid
-    free_surface = model.free_surface
 
     ####
     #### First stage
@@ -85,7 +84,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     # First stage: n -> n + 1/3
     model.clock.stage = 1
     update_state!(model, callbacks)
-    rk3_substep!(model, free_surface, grid, Δt / β¹, callbacks)
+    rk3_substep!(model, grid, Δt / β¹, callbacks)
 
     ####
     #### Second stage
@@ -94,7 +93,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     # Second stage: n -> n + 1/2
     model.clock.stage = 2
     update_state!(model, callbacks)
-    rk3_substep!(model, free_surface, grid, Δt / β², callbacks)
+    rk3_substep!(model, grid, Δt / β², callbacks)
 
     ####
     #### Third stage
@@ -103,7 +102,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     # Third stage: n -> n + 1
     model.clock.stage = 3
     update_state!(model, callbacks)
-    rk3_substep!(model, free_surface, grid, Δt, callbacks)
+    rk3_substep!(model, grid, Δt, callbacks)
 
     # Finalize step
     step_lagrangian_particles!(model, Δt)

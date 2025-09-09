@@ -13,20 +13,11 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
                                        linear_index_to_tuple
 
-"""
-    compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
-
-Calculate the interior and boundary contributions to tendency terms without the
-contribution from non-hydrostatic pressure.
-"""
 function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     grid = model.grid
     arch = architecture(grid)
 
-    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain. The active cells map restricts the computation to the active cells in the
-    # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
     active_cells_map = get_active_cells_map(model.grid, Val(:interior))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
@@ -38,8 +29,6 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
         callback.callsite isa TendencyCallsite && callback(model)
     end
 
-    update_tendencies!(model.biogeochemistry, model)
-
     return nothing
 end
 
@@ -48,16 +37,14 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
-    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain. The active cells map restricts the computation to the active cells in the
-    # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
     active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
-    # compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
     compute_tracer_flux_bcs!(model)
+
+    update_tendencies!(model.biogeochemistry, model)
 
     return nothing
 end

@@ -54,4 +54,34 @@ end
     end
 end
 
+@kernel function _compute_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+    i, j = @index(Global, NTuple)
+    
+    for k in 1:size(grid, 3)
+        @inline ũ[i, j, k] = u[i, j, k] + (Ũ[i, j, k] - U̅[i, j, k]) / column_depthᶠᶜᵃ(i, j, k, grid)
+        @inline ṽ[i, j, k] = v[i, j, k] + (Ṽ[i, j, k] - V̅[i, j, k]) / column_depthᶜᶠᵃ(i, j, k, grid)
+    end
+end
 
+function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+    grid = model.grid
+    u, v, _ = model.velocities
+    ũ, ṽ, _ = model.transport_velocities
+    Ũ = free_surface.filtered_state.Ũ
+    Ṽ = free_surface.filtered_state.Ṽ
+    U̅ = free_surface.filtered_state.U̅
+    V̅ = free_surface.filtered_state.V̅
+
+    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+
+    launch!(architecture(grid), grid, :xy,
+            _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+
+    # Fill barotropic stuff...
+    fill_halo_regions!((ũ, ṽ); async=true)
+    
+    # Update grid velocity and vertical transport velocity
+    update_vertical_velocities!(model.transport_velocities, model.grid, model)
+
+    return nothing
+end

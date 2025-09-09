@@ -7,6 +7,17 @@ import Oceananigans.TimeSteppers: rk3_substep!, cache_previous_fields
 rk3_substep!(model, grid, Δτ, callbacks) = 
     rk3_substep!(model, model.free_surface, grid, Δτ, callbacks)
 
+# RK3 substep for hydrostatic free surface models, it differs in the order of operations
+# depending on the type of free surface (implicit or explicit)
+#
+# For explicit free surfaces (`ExplicitFreeSurface` and `SplitExplicitFreeSurface`), we first
+# compute the free surface that depends on the momentum baroclinic tendencies,
+# then we advance grid, momentum and tracers.
+# 
+# For implicit free surfaces (`ImplicitFreeSurface`), we first advance grid and tracers,
+# we then use a predictor-corrector approach to advance momentum, in which we first
+# advance momentum neglecting the free surface contribution, then, after the computation of
+# the new free surface, we correct momentum to account for the updated free surface.
 @inline function rk3_substep!(model, free_surface, grid, Δτ, callbacks)
 
     # Advancing free surface and barotropic transport velocities
@@ -171,10 +182,10 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         end
     end
 
-    if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
-        # We need to cache the surface height somewhere!
-        parent(model.vertical_coordinate.storage) .= parent(model.grid.z.ηⁿ)
-    end
+    cache_grid_state!(model.vertical_coordinate, grid, model.free_surface)
 
     return nothing
 end
+
+cache_grid_state!(ztype, grid, free_surface) = nothing
+cache_grid_state!(ztype::ZStarCoordinate, grid, ::ImplicitFreeSurface) = parent(ztype.storage) .= parent(grid.z.ηⁿ)

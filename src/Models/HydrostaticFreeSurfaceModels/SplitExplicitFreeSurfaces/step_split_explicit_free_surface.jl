@@ -116,8 +116,6 @@ end
 ##### SplitExplicitFreeSurface barotropic subcycling
 #####
 
-using ..HydrostaticFreeSurfaceModels: compute_w_from_continuity!
-
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
 
     # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
@@ -169,6 +167,9 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
     end
+
+    fill_halo_regions!(barotropic_velocities; async=true)
+    fill_halo_regions!(η; async=true)
 
     return nothing
 end

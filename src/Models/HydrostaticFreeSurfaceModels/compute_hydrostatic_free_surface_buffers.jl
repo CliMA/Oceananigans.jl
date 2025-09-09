@@ -76,7 +76,7 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     end
 
     w_parameters = buffer_w_kernel_parameters(grid, arch)
-    update_vertical_velocities!(model.transport_velocities, grid, model; parameters = w_parameters)
+    update_vertical_velocities!(model.transport_velocities, grid, model; parameters=w_parameters)
     compute_tracer_buffer_contributions!(grid, arch, model)
 
     return nothing
@@ -100,8 +100,9 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
 
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
-        !isnothing(active_cells_map) &&
+        if !isnothing(active_cells_map)
             compute_hydrostatic_tracer_tendencies!(model, :xyz; active_cells_map)
+        end
     end
 
     return nothing
