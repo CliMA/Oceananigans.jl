@@ -837,15 +837,15 @@ end
     end
 
     @testset "Coordinate utils" begin
-        @info "  Testing ExponentialCoordinate..."
+        @info "  Testing ExponentialDiscretization..."
 
         for arch in archs
             Nx = 10
             l, r = -1000, 100
             scale = (r - l) / 5
 
-            xₗ = ExponentialCoordinate(Nx, l, r; scale, bias =:left)
-            xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
+            xₗ = ExponentialDiscretization(Nx, l, r; scale, bias =:left)
+            xᵣ = ExponentialDiscretization(Nx, l, r; scale, bias =:right)
 
             for i in 1:Nx+1
                 @test xᵣ[i] == xᵣ(i)
@@ -867,11 +867,11 @@ end
                 end
             end
 
-            @info "  Testing ConstantToStretchedCoordinate..."
+            @info "  Testing ReferenceToStretchedDiscretization..."
             extent = 200
             constant_spacing = 25
             constant_spacing_extent = 90
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             Nz = length(z)
 
@@ -897,7 +897,7 @@ end
             constant_spacing = 25.34
             constant_spacing_extent = Nz * constant_spacing
             extent = constant_spacing_extent
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             @test length(z) == Nz
             @test length(z.faces) == Nz+1
