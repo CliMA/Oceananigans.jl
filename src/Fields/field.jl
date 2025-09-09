@@ -54,9 +54,11 @@ function validate_field_data(loc, data, grid, indices)
     return nothing
 end
 
-validate_boundary_condition_location(bc, ::Center, side) = nothing                         # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing, MCBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                 # its nothing or nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
+
+const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
@@ -142,7 +144,7 @@ julia> ω = Field{Face, Face, Center}(grid)
 2×3×4 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -158,7 +160,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
@@ -169,7 +171,7 @@ julia> compute!(ωₛ)
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
@@ -300,7 +302,7 @@ julia> set!(c, rand(size(c)...))
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.972136, min=0.0149088, mean=0.626341
 
@@ -308,7 +310,7 @@ julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, 2:3, 1:2)
 └── data: 6×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -1:4, 2:3, 1:2) with eltype Float64 with indices -1:4×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
