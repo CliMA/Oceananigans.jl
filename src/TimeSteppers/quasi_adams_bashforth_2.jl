@@ -76,9 +76,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
-    # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies=true)
-
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
     #   * We detect that this is the "first" time-step, which means we
@@ -96,15 +93,11 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     ab2_timestepper.χ = χ
 
     # Full step for tracers, fractional step for velocities.
-    compute_flux_bc_tendencies!(model)
-    ab2_step!(model, Δt)
+    update_state!(model, callbacks)
+    ab2_step!(model, Δt, callbacks)
 
     tick!(model.clock, Δt)
 
-    compute_pressure_correction!(model, Δt)
-    @apply_regionally correct_velocities_and_cache_previous_tendencies!(model, Δt)
-
-    update_state!(model, callbacks; compute_tendencies=true)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value

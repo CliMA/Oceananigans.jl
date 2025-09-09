@@ -238,9 +238,9 @@ end
 
 transport_velocity_fields(velocities, free_surface) = velocities
 transport_velocity_fields(velocities, ::SplitExplicitFreeSurface) = 
-    (u = similar(velocities.u), 
-     v = similar(velocities.v),
-     w = similar(velocities.w))
+    (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions), 
+     v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
+     w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 

@@ -33,7 +33,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
                                         momentum_advection = WENOVectorInvariant(),
                                         free_surface = SplitExplicitFreeSurface(grid, substeps=10),
                                         tracer_advection = WENO(),
-                                        timestepper = :SplitRungeKutta3,
+                                        # timestepper = :SplitRungeKutta3,
                                         buoyancy = nothing,
                                         coriolis = FPlane(f = 1),
                                         tracers = (:c, :constant))
@@ -45,9 +45,13 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
 
     set!(model, u=(x, y, z)->1-2rand(), v=(x, y, z)->1-2rand(), c=mask, constant=1)
 
+    U, V = model.free_surface.barotropic_velocities
+    set!(U, model.velocities.u * 0.5)
+    set!(V, model.velocities.v * 0.5)
+
     u, v, _ = model.velocities
     η = model.free_surface.η
-    outputs = merge(model.velocities, model.tracers)
+    outputs = merge(model.velocities, model.tracers, (η=η, U=U, V=V))
 
     progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt), extrema c: $(extrema(model.tracers.constant) .- 1)"
     simulation = Simulation(model, Δt=0.02, stop_time=100.0)
@@ -70,8 +74,8 @@ end
 Nx = 64
 Ny = 64
 
-ranks = 1
-arch  = CPU() # Distributed(CPU(), partition = Partition(1, ranks))
+ranks = 2
+arch  = Distributed(CPU(), partition = Partition(1, ranks))
 
 # # Run the simulation
 run_simulation(Nx, Ny, arch)
@@ -98,7 +102,7 @@ function visualize_simulation(var)
     fig = Figure()
     ax = Axis(fig[1, 1])
     for r in 1:ranks
-        heatmap!(ax, x[r], y[r], V[r], colorrange=(-1.0, 1.0))
+        heatmap!(ax, x[r], y[r], V[r])
     end
 
     GLMakie.record(fig, "hydrostatic_test_" * var * ".mp4", 1:length(v[1].times), framerate = 11) do i
@@ -108,9 +112,11 @@ function visualize_simulation(var)
 end
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-    # visualize_simulation("u")
-    # visualize_simulation("v")
-    # visualize_simulation("c")
+    visualize_simulation("u")
+    visualize_simulation("v")
+    visualize_simulation("c")
+    # visualize_simulation("U")
+    # visualize_simulation("V")
     visualize_simulation("constant")
 end
 
