@@ -695,11 +695,11 @@ function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)
 
     # This is needed for now to prevent NetCDF from throwing an error, but precludes
     # us from reconstructing immersed grids from NetCDF. This is a temporary fix.
-    :mask ∈ keys(args) && delete!(args, :mask)
-    :bottom_height ∈ keys(args) && delete!(args, :bottom_height)
+    "mask" ∈ keys(args) && delete!(args, "mask")
+    "bottom_height" ∈ keys(args) && delete!(args, "bottom_height")
 
     args, kwargs = map(convert_for_netcdf, (args, kwargs))
-    args[:grid_type] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+    args["grid_type"] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
 
     defGroup(ds, "grid_reconstruction_args"; attrib = args)
     defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
