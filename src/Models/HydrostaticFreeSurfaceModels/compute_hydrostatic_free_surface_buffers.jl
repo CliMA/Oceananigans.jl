@@ -57,8 +57,9 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
 
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
-        !isnothing(active_cells_map) &&
+        if isnothing(active_cells_map) 
             compute_hydrostatic_momentum_tendencies!(model, model.velocities, :xyz; active_cells_map)
+        end
     end
 
     return nothing
@@ -112,12 +113,15 @@ function buffer_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
+    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(0, Nx+1)
+    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(0, Ny+1)
+
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    param_west  = (-Hx+2:1,    0:Ny+1)
-    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
-    param_south = (0:Nx+1,     -Hy+2:1)
-    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
+    param_west  = (-Hx+2:1,    yside)
+    param_east  = (Nx:Nx+Hx-1, yside)
+    param_south = (xside,     -Hy+2:1)
+    param_north = (xside,     Ny:Ny+Hy-1)
 
     params = (param_west, param_east, param_south, param_north)
 
