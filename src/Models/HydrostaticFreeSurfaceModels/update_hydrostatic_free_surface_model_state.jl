@@ -42,7 +42,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     w_parameters = w_kernel_parameters(model.grid)
     p_parameters = p_kernel_parameters(model.grid)
 
-    update_vertical_velocities!(model.velocities, model.grid, model; parameters = w_parameters)
+    update_vertical_velocities!(model.velocities, model.grid, model; parameters = w_parameters)    
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = p_parameters)
     compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = :xyz)
 
@@ -67,13 +67,5 @@ function mask_immersed_model_fields!(model, grid)
     end
     mask_immersed_field_xy!(η, k=size(grid, 3)+1)
 
-    return nothing
-end
-
-function update_vertical_velocities!(velocities, grid, model; parameters = w_kernel_parameters(grid))
-
-    update_grid_vertical_velocity!(velocities, grid, model.vertical_coordinate; parameters)
-    compute_w_from_continuity!(velocities, architecture(grid), grid; parameters)
-    
     return nothing
 end

@@ -15,7 +15,8 @@ using Oceananigans.ImmersedBoundaries
 using Oceananigans.Grids: AbstractGrid, topology
 using Oceananigans.ImmersedBoundaries: linear_index_to_tuple, mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
-                                                        free_surface_displacement_field
+                                                        free_surface_displacement_field,
+                                                        update_vertical_velocities!
 
 using Adapt
 using Base

@@ -57,13 +57,14 @@ end
 end
 
 rk3_substep_grid!(grid, model, vertical_coordinate, Δt) = nothing
-rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt) = 
+function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)  
     launch!(architecture(grid), grid, w_kernel_parameters(grid), _rk3_update_grid_scaling!, model.free_surface.η, grid)
+    # fill_halo_regions!(ztype)
+end
 
 # Update η in the grid
 @kernel function _rk3_update_grid_scaling!(ηⁿ⁺¹, grid)
-    i, j = @index(Global, NTuple)
-
+    i, j = @index(Global, NTuple) 
     @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
     update_grid_scaling!(grid.z, i, j, grid)
 end

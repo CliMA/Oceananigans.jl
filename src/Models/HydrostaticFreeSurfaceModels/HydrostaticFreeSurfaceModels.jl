@@ -19,6 +19,7 @@ import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: on_architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
@@ -26,11 +27,42 @@ abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
 
-struct ZStarCoordinate{CC}
+fill_halo_regions!(ztype::ZCoordinate; kwargs...) = nothing
+
+struct ZStarCoordinate{CC, FC, CF, FF, H}
     storage :: CC # Storage space used in different ways by different timestepping schemes.
+    σᶜᶜⁿ :: CC
+    σᶠᶜⁿ :: FC
+    σᶜᶠⁿ :: CF
+    σᶠᶠⁿ :: FF
+    σᶜᶜ⁻ :: CC
+    ∂t_σ :: CC
+    ηⁿ   :: H
 end
 
-ZStarCoordinate(grid::AbstractGrid) = ZStarCoordinate(Field{Center, Center, Nothing}(grid))
+function ZStarCoordinate(grid::AbstractGrid)
+    storage = Field{Center, Center, Nothing}(grid)
+    σᶜᶜⁿ    = Field{Center, Center, Nothing}(grid; data=grid.z.σᶜᶜⁿ)
+    σᶠᶜⁿ    = Field{Face,   Center, Nothing}(grid; data=grid.z.σᶠᶜⁿ)
+    σᶜᶠⁿ    = Field{Center, Face,   Nothing}(grid; data=grid.z.σᶜᶠⁿ)
+    σᶠᶠⁿ    = Field{Face,   Face,   Nothing}(grid; data=grid.z.σᶠᶠⁿ)
+    σᶜᶜ⁻    = Field{Center, Center, Nothing}(grid; data=grid.z.σᶜᶜ⁻)
+    ∂t_σ    = Field{Center, Center, Nothing}(grid; data=grid.z.∂t_σ)
+    ηⁿ      = Field{Center, Center, Nothing}(grid; data=grid.z.ηⁿ  )
+    return ZStarCoordinate(storage, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ, ηⁿ)
+end
+
+function fill_halo_regions!(ztype::ZStarCoordinate; kwargs...)
+    fill_halo_regions!(ztype.storage; kwargs...)
+    fill_halo_regions!(ztype.σᶜᶜⁿ; kwargs...)
+    fill_halo_regions!(ztype.σᶠᶜⁿ; kwargs...)
+    fill_halo_regions!(ztype.σᶜᶠⁿ; kwargs...)
+    fill_halo_regions!(ztype.σᶠᶠⁿ; kwargs...)
+    fill_halo_regions!(ztype.σᶜᶜ⁻; kwargs...)
+    fill_halo_regions!(ztype.∂t_σ; kwargs...)
+    fill_halo_regions!(ztype.ηⁿ; kwargs...)
+    return nothing
+end
 
 Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
 Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
