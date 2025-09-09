@@ -38,7 +38,7 @@ solid_body_geostrophic_height(φ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(φ)^
 function run_solid_body_rotation(; architecture = CPU(),
                                    Nx = 90,
                                    Ny = 30,
-                                   dev = nothing,
+                                   regions = 1,
                                    coriolis_scheme = VectorInvariantEnstrophyConserving())
 
     # A spherical domain
@@ -49,11 +49,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                  longitude = (-180, 180),
                                  z = (-1, 0))
 
-    if dev isa Nothing
-        mrg = grid
-    else
-        mrg = MultiRegionGrid(grid, partition = XPartition(length(dev)), devices = dev)
-    end
+    mrg = MultiRegionGrid(grid, partition = XPartition(length(regions)))
 
     @show mrg
 
