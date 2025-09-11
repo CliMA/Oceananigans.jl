@@ -36,6 +36,18 @@ function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, ve
 end
 
 #####
+##### Tendency fields
+#####
+
+function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
+    tracers = TracerFields(tracer_names, grid, bcs)
+    return merge((u=u, v=v, η=η), tracers)
+end
+
+#####
 ##### Kernel functions for HydrostaticFreeSurfaceModel
 #####
 
@@ -60,10 +72,6 @@ function step_free_surface!(free_surface::ExplicitFreeSurface, model, timesteppe
     fill_halo_regions!(free_surface.η; async=true)
     return nothing
 end
-
-@inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
-@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
-@inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
 
 explicit_rk3_step_free_surface!(free_surface, model, Δt) = 
     launch!(model.architecture, model.grid, :xy,

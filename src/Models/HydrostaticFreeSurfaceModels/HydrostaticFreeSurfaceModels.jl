@@ -106,6 +106,7 @@ end
 end
 
 include("compute_w_from_continuity.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # No free surface
 include("nothing_free_surface.jl")
@@ -113,18 +114,16 @@ include("nothing_free_surface.jl")
 # Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
 
+# Split-Explicit free-surface solver functionality
+include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
+using .SplitExplicitFreeSurfaces
+
 # Implicit free-surface solver functionality
 include("implicit_free_surface_utils.jl")
-include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
-include("hydrostatic_free_surface_field_tuples.jl")
-
-# Split-Explicit free-surface solver functionality
-include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-using .SplitExplicitFreeSurfaces
 
 # ZStarCoordinate implementation
 include("z_star_vertical_spacing.jl")

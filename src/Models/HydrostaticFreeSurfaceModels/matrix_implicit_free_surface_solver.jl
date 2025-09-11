@@ -45,7 +45,8 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+    sum!(∫ᶻ_Axᶠᶜᶜ, Operators.Ax)
+    sum!(∫ᶻ_Ayᶜᶠᶜ, Operators.Ay)
 
     arch = architecture(grid)
     right_hand_side = on_architecture(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations

@@ -19,24 +19,14 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) =
 barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
-# Fallback
-ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
 ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) =
-    launch!(architecture(grid), grid, w_kernel_parameters(grid), _ab2_update_grid_scaling!, model.free_surface.η, grid)
+    launch!(architecture(grid), grid, w_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
 
-# Update η in the grid
-@kernel function _ab2_update_grid_scaling!(ηⁿ⁺¹, grid)
-    i, j = @index(Global, NTuple) 
-    @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
-    update_grid_scaling!(grid.z, i, j, grid)
-end
-
-rk3_substep_grid!(grid, model, ztype, Δt) = nothing
 rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt) =
-    launch!(architecture(grid), grid, w_kernel_parameters(grid), _rk3_update_grid_scaling!, model.free_surface.η, grid)
-    
+    launch!(architecture(grid), grid, w_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+
 # Update η in the grid
-@kernel function _rk3_update_grid_scaling!(ηⁿ⁺¹, grid)
+@kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
     i, j = @index(Global, NTuple) 
     @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
     update_grid_scaling!(grid.z, i, j, grid)
@@ -69,8 +59,6 @@ end
         z.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
     end
 end
-
-update_grid_vertical_velocity!(velocities, model, grid, ztype; kw...) = nothing
 
 function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters=w_kernel_parameters(grid))
 

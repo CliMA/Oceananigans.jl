@@ -10,6 +10,9 @@ function update_vertical_velocities!(velocities, grid, model; parameters = w_ker
     return nothing
 end
 
+# A Fallback to be extended for specific ztypes and grid types
+update_grid_vertical_velocity!(velocities, model, grid, ztype; kw...) = nothing
+
 """
     compute_w_from_continuity!(model)
 

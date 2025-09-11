@@ -36,6 +36,13 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
 end
 
 #####
+##### Step grid
+#####
+
+# A Fallback to be extended for specific ztypes and grid types
+ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
+
+#####
 ##### Step velocities
 #####
 

@@ -57,11 +57,7 @@ end
 
 # Mask immersed fields
 function mask_immersed_model_fields!(model, grid)
-    foreach(model.velocities) do field
-        mask_immersed_field!(field)
-    end
-    foreach(model.tracers) do field
-        mask_immersed_field!(field)
-    end
+    foreach(mask_immersed_field!, model.velocities)
+    foreach(mask_immersed_field!, model.tracers)
     return nothing
 end

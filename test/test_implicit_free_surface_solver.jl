@@ -9,7 +9,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
     MatrixImplicitFreeSurfaceSolver,
-    compute_vertically_integrated_lateral_areas!,
     step_free_surface!,
     implicit_free_surface_linear_operation!
 
@@ -76,7 +75,8 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+    sum!(∫ᶻ_Axᶠᶜᶜ, Operators.Ax)
+    sum!(∫ᶻ_Ayᶜᶠᶜ, Operators.Ay)
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
     left_hand_side = ZFaceField(grid, indices = (:, :, grid.Nz + 1))

@@ -7,6 +7,8 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!
+
 using Adapt
 
 struct ImplicitFreeSurface{E, G, B, I, M, S} <: AbstractFreeSurface{E, G}
@@ -134,7 +136,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     # Compute right hand side of implicit free surface equation
-    @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
+    @apply_regionally local_compute_integrated_variables!(∫ᶻQ, model.velocities, arch)
     fill_halo_regions!(∫ᶻQ)
 
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
@@ -157,12 +159,15 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
+function local_compute_integrated_variables!(∫ᶻQ, velocities, arch)
+    u, v, _ = velocities
+    U, V = ∫ᶻQ
 
+    grid = u.grid
+
+    # Compute barotropic volume flux. 
     foreach(mask_immersed_field!, velocities)
-
-    # Compute barotropic volume flux. Blocking.
-    compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
+    compute_barotropic_mode!(U, V, grid, u, v)
 
     return nothing
 end
