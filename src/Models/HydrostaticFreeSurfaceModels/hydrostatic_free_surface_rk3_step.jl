@@ -12,7 +12,8 @@ rk3_substep!(model::HydrostaticFreeSurfaceModel, grid, Δτ, callbacks) =
 #
 # For explicit free surfaces (`ExplicitFreeSurface` and `SplitExplicitFreeSurface`), we first
 # compute the free surface that depends on the momentum baroclinic tendencies,
-# then we advance grid, momentum and tracers.
+# then we advance grid, momentum and tracers. The last step is to reconcile the baroclinic and
+# the barotropic modes by applying a pressure correction to momentum.
 # 
 # For implicit free surfaces (`ImplicitFreeSurface`), we first advance grid and tracers,
 # we then use a predictor-corrector approach to advance momentum, in which we first
@@ -34,7 +35,7 @@ rk3_substep!(model::HydrostaticFreeSurfaceModel, grid, Δτ, callbacks) =
     # Remember to scale tracers tendencies by stretching factor
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
     
-    # Finally Substep! Advance grid, tracers, and momentum
+    # Finally Substep! Advance grid, tracers, and (predictor) momentum
     rk3_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
     rk3_substep_tracers!(model.tracers, model, Δτ)
     rk3_substep_velocities!(model.velocities, model, Δτ)
@@ -55,10 +56,12 @@ end
     # Remember to scale tracers tendencies by stretching factor
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
     
-    # Finally Substep! Advance grid, tracers, momentum and free surface
+    # Finally Substep! Advance grid, tracers, (predictor) momentum 
     rk3_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
     rk3_substep_tracers!(model.tracers, model, Δτ)
     rk3_substep_velocities!(model.velocities, model, Δτ)
+
+    # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
 
     # Correct for the updated barotropic mode

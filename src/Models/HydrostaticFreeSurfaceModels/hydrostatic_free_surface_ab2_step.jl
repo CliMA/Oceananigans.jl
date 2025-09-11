@@ -17,23 +17,19 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
 
     # Advancing free surface and barotropic transport velocities
     compute_momentum_tendencies!(model, callbacks)
-    compute_free_surface_tendency!(grid, model, model.free_surface)
-    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-
-    # Computing z-dependent transport velocities
     compute_transport_velocities!(model, model.free_surface)
-    
-    # compute tracer tendencies
     compute_tracer_tendencies!(model)
-    
-    # Remember to scale tracers tendencies by stretching factor
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
-    
+
     # Finally Substep! Advance grid, tracers, and momentum
     ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
 
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+    
     make_pressure_correction!(model, Δt)
     cache_previous_tendencies!(model)
 
