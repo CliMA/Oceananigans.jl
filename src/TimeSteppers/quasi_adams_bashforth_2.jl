@@ -92,7 +92,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
-    # Full step for tracers, fractional step for velocities.
+    cache_previous_tendencies!(model)
     update_state!(model, callbacks)
     ab2_step!(model, Δt, callbacks)
 
@@ -103,12 +103,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
 
-    return nothing
-end
-
-function correct_velocities_and_cache_previous_tendencies!(model, Δt)
-    make_pressure_correction!(model, Δt)
-    cache_previous_tendencies!(model)
     return nothing
 end
 

@@ -31,7 +31,6 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
     
     make_pressure_correction!(model, Δt)
-    cache_previous_tendencies!(model)
 
     return nothing
 end
