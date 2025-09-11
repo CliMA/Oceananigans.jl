@@ -33,7 +33,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
                                         momentum_advection = WENOVectorInvariant(),
                                         free_surface = SplitExplicitFreeSurface(grid, substeps=10),
                                         tracer_advection = WENO(),
-                                        # timestepper = :SplitRungeKutta3,
+                                        timestepper = :SplitRungeKutta3,
                                         buoyancy = nothing,
                                         coriolis = FPlane(f = 1),
                                         tracers = (:c, :constant))
