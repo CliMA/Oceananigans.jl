@@ -37,7 +37,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     end
     
     # Fill the halos
-    fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); async=true)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.grid, model.clock, fields(model); async=true)
 
     w_parameters = w_kernel_parameters(model.grid)
     p_parameters = p_kernel_parameters(model.grid)
@@ -57,15 +57,11 @@ end
 
 # Mask immersed fields
 function mask_immersed_model_fields!(model, grid)
-    η = displacement(model.free_surface)
-    fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
-
-    foreach(fields_to_mask) do field
-        if field !== η
-            mask_immersed_field!(field)
-        end
+    foreach(model.velocities) do field
+        mask_immersed_field!(field)
     end
-    mask_immersed_field_xy!(η, k=size(grid, 3)+1)
-
+    foreach(model.tracers) do field
+        mask_immersed_field!(field)
+    end
     return nothing
 end

@@ -77,6 +77,9 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     launch!(architecture(grid), grid, :xy,
             _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
 
+    mask_immersed_field!(ũ)
+    mask_immersed_field!(ṽ)
+
     # Fill barotropic stuff...
     fill_halo_regions!((ũ, ṽ); async=true)
     

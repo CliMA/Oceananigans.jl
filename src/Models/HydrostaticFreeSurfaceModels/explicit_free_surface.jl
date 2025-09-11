@@ -49,11 +49,17 @@ end
 ##### Time stepping
 #####
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) =
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) 
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)
+    fill_halo_regions!(free_surface.η; async=true)
+    return nothing
+end
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
     @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
+    fill_halo_regions!(free_surface.η; async=true)
+    return nothing
+end
 
 @inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
 @inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
