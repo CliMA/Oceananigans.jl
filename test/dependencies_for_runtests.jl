@@ -14,6 +14,8 @@ using MPI
 using Adapt
 using GPUArraysCore
 using CUDA
+using CondaPkg
+using PythonCall
 
 MPI.Initialized() || MPI.Init()
 
