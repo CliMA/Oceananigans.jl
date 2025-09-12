@@ -1,13 +1,14 @@
 module OceananigansPythonCallExt
 
-using Oceananigans
 using PythonCall
 using CondaPkg
 using SparseArrays
 
+using Oceananigans
+using Oceananigans.Grids: λnodes, φnodes, Center, Face
+using Oceananigans.Architectures: on_architecture, CPU
+
 import Oceananigans.Fields: regridding_weights
-import Oceananigans.Grids: λnodes, φnodes, Center, Face
-import Oceananigans.Architectures: on_architecture, CPU
 
 """
     add_package(package_name, channel="conda-forge"; verbose=true)
@@ -19,7 +20,7 @@ Return a NamedTuple containing package information if successful.
 function add_package(name, channel="conda-forge"; verbose=true)
     verbose && @info "Installing $(name)..."
     CondaPkg.add(name; channel)
-    @show pkg = CondaPkg.which(name)
+    pkg = CondaPkg.which(name)
     verbose && @info "... $name has been installed at $(pkg)."
     return pkg
 end
