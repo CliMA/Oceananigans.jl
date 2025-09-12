@@ -53,10 +53,8 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     set_simple_divergent_velocity!(model)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    acronym = "PCG"
-
     η = model.free_surface.η
-    @info "    " * acronym * " implicit free surface solver test, norm(η_" * lowercase(acronym) * "): $(norm(η)), maximum(abs, η_" * lowercase(acronym) * "): $(maximum(abs, η))"
+    @info "PCG implicit free surface solver test, norm(η_pcg): $(norm(η)), maximum(abs, η_pcg): $(maximum(abs, η))"
 
     # Extract right hand side "truth"
     right_hand_side = model.free_surface.implicit_step_solver.right_hand_side
