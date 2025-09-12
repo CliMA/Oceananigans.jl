@@ -1,6 +1,6 @@
 module Diagnostics
 
-export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
+export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL, regrid_tracers!, regridder_weights
 
 using Oceananigans
 using Oceananigans.Operators
@@ -18,5 +18,6 @@ function cell_diffusion_timescale end
 include("state_checker.jl")
 include("nan_checker.jl")
 include("cfl.jl")
+include("regridder.jl")
 
 end # module
