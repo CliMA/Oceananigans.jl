@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using CondaPkg  # sets up environment
 using PythonCall
-using CondaPkg
 
 @testset "PythonCall extension" begin
     tg = TripolarGrid(size=(360, 170, 1), z=(0, 1))

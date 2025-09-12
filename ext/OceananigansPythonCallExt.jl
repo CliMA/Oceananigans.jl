@@ -1,7 +1,7 @@
 module OceananigansPythonCallExt
 
+using CondaPkg  # sets up environment
 using PythonCall
-using CondaPkg
 using SparseArrays
 
 using Oceananigans
