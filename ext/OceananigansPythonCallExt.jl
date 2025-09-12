@@ -13,33 +13,46 @@ import Oceananigans.Fields: regridding_weights
 """
     add_package(package_name, channel="conda-forge"; verbose=true)
 
-Install `package_name` with `CondaPkg.add` from `channel`, printing
-a few messages if `verbose == true`.
-Return a NamedTuple containing package information if successful.
+Install the Conda package `name` from `channel` using `CondaPkg.add`.
+
+If `verbose` is true, log progress messages.
+
+Returns a `NamedTuple` with package information (`name`, `version`, `channel`)
+if successful, or `nothing` if installation could not be verified.
 """
-function add_package(name, channel="conda-forge"; verbose=true)
-    verbose && @info "Installing $(name)..."
+function add_package(name; channel="conda-forge", verbose=true)
+    verbose && @info "Installing $name from $channel..."
     CondaPkg.add(name; channel)
-    pkg = CondaPkg.which(name)
-    verbose && @info "... $name has been installed at $(pkg)."
-    return pkg
+
+    status = CondaPkg.status()
+    if haskey(status, name)
+        version = status[name].version
+        verbose && @info "... $name $version installed."
+        return (name=name, version=version, channel=channel)
+    else
+        verbose && @warn "$name was added but not found in CondaPkg.status()"
+        return nothing
+    end
 end
 
 """
-    add_import_pkg(package_name, channel="conda-forge")
+    add_import_pkg(name; channel="conda-forge", verbose=true)
 
-Import and return `package_name` with `PythonCall.pyimport`,
-installing it with `add_package` if it is not found.
+Ensure that the Python package `name` is available through PythonCall.
+
+Attempts to `pyimport(name)`. If import fails, installs the package via
+[`add_package`](@ref) from `channel`, then retries the import.
+
+Returns the imported Python module object on success.
 """
-function add_import_pkg(name, channel="conda-forge")
-    pkg = try
-        pyimport(name)
-    catch
-        add_package(name, channel)
-        pyimport(name)
+function add_import_pkg(name; channel="conda-forge", verbose=true)
+    try
+        return pyimport(name)
+    catch e
+        verbose && @warn "Python package $name not found, installing..."
+        add_package(name; channel, verbose)
+        return pyimport(name)  # may still throw if package is broken
     end
-
-    return pkg
 end
 
 x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
