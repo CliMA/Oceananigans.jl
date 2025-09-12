@@ -1,5 +1,6 @@
 module OceananigansPythonCallExt
 
+using Oceananigans
 using PythonCall
 using CondaPkg
 using SparseArrays
@@ -54,8 +55,7 @@ function coordinate_data_arrays(λ, φ)
     φ_da = xarray.DataArray(
         φ',
         dims=["y", "x"],
-        coords= Dict(
-            "lat" => (["y", "x"], φ'),
+        coords= Dict( "lat" => (["y", "x"], φ'),
             "lon" => (["y", "x"], λ')
         ),
         name="latitude"
@@ -65,73 +65,73 @@ function coordinate_data_arrays(λ, φ)
 end
 =#
 
+x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
+y_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny) |> Array
+x_node_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx, 1:Ny) |> Array
+
+x_vertex_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx+1) |> Array
+y_vertex_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny+1) |> Array
+x_vertex_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx+1, 1:Ny+1) |> Array
+
+y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
+y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
+
+
 function regridding_weights(dst_field, src_field; method="conservative")
 
+    ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
+    @assert ℓx isa Center
+    @assert ℓy isa Center
+
+    dst_grid = dst_field.grid
+    src_grid = src_field.grid
+
     # Extract center coordinates from both fields
-    λᵈ = λnodes(dst_field)
-    φᵈ = φnodes(dst_field)
-    λˢ = λnodes(src_field)
-    φˢ = φnodes(src_field)
+    λᵈ = λnodes(dst_grid, Center(), Center(), ℓz, with_halos=true)
+    φᵈ = φnodes(dst_grid, Center(), Center(), ℓz, with_halos=true)
+    λˢ = λnodes(src_grid, Center(), Center(), ℓz, with_halos=true)
+    φˢ = φnodes(src_grid, Center(), Center(), ℓz, with_halos=true)
 
-    # Extract boundary coordinates
-    dst_loc = Oceananigans.Fields.instantiated_location(dst_field)
-    src_loc = Oceananigans.Fields.instantiated_location(src_field)
-    flipped_dst_loc = (flip(dst_loc[1]), flip(dst_loc[2]), dst_loc[3])
-    flipped_src_loc = (flip(src_loc[1]), flip(src_loc[2]), src_loc[3])
+    # Extract cell vertices
+    λvᵈ = λnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
+    φvᵈ = φnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
+    λvˢ = λnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
+    φvˢ = φnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
 
-    λᵈᵇ = λnodes(dst_field.grid, flipped_dst_loc...)
-    φᵈᵇ = φnodes(dst_field.grid, flipped_dst_loc...)
-    λˢᵇ = λnodes(src_field.grid, flipped_src_loc...)
-    φˢᵇ = φnodes(src_field.grid, flipped_src_loc...)
+    @show size(λᵈ)
+    @show size(λˢ)
+    @show size(λvᵈ)
+    @show size(λvˢ)
 
     # Ensure coordinates are on CPU
-    λᵈ = on_architecture(CPU(), λᵈ)
-    φᵈ = on_architecture(CPU(), φᵈ)
-    λˢ = on_architecture(CPU(), λˢ)
-    φˢ = on_architecture(CPU(), φˢ)
+    Nˢx, Nˢy, Nˢz = size(src_field)
+    Nᵈx, Nᵈy, Nᵈz = size(dst_field)
 
-    λᵈᵇ = on_architecture(CPU(), λᵈᵇ)
-    φᵈᵇ = on_architecture(CPU(), φᵈᵇ)
-    λˢᵇ = on_architecture(CPU(), λˢᵇ)
-    φˢᵇ = on_architecture(CPU(), φˢᵇ)
+    λᵈ = x_node_array(λᵈ, Nᵈx, Nᵈy)
+    φᵈ = y_node_array(φᵈ, Nᵈx, Nᵈy)
+    λˢ = x_node_array(λˢ, Nˢx, Nˢy)
+    φˢ = y_node_array(φˢ, Nˢx, Nˢy)
 
-    #=
-    # Convert 1D coordinates to 2D if needed
-    if ndims(λᵈ) == 1
-        λᵈ = repeat(λᵈ, 1, size(φᵈ, 1))
-        φᵈ = repeat(φᵈ, size(λᵈ, 1), 1)
-        λᵈᵇ = repeat(λᵈᵇ, 1, size(φᵈᵇ, 1))
-        φᵈᵇ = repeat(φᵈᵇ, size(λᵈᵇ, 1), 1)
-    end
-
-    if ndims(λˢ) == 1
-        λˢ = repeat(λˢ, 1, size(φˢ, 1))
-        φˢ = repeat(φˢ, size(λˢ, 1), 1)
-        λˢᵇ = repeat(λˢᵇ, 1, size(φˢᵇ, 1))
-        φˢᵇ = repeat(φˢᵇ, size(λˢᵇ, 1), 1)
-    end
-    =#
-
-    # λᵈx,  φᵈx  = coordinate_data_arrays(λᵈ, φᵈ)
-    # λˢx,  φˢx  = coordinate_data_arrays(λˢ, φˢ)
-    # λᵈᵇx, φᵈᵇx = coordinate_data_arrays(λᵈᵇ, φᵈᵇ)
-    # λˢᵇx, φˢᵇx = coordinate_data_arrays(λˢᵇ, φˢᵇ)
+    λvᵈ = x_vertex_array(λvᵈ, Nᵈx, Nᵈy)
+    φvᵈ = y_vertex_array(φvᵈ, Nᵈx, Nᵈy)
+    λvˢ = x_vertex_array(λvˢ, Nˢx, Nˢy)
+    φvˢ = y_vertex_array(φvˢ, Nˢx, Nˢy)
 
     dst_coordinates = Dict("lat"   => λᵈ, 
                            "lon"   => φᵈ,
-                           "lat_b" => λᵈᵇ,
-                           "lon_b" => φᵈᵇ)
+                           "lat_b" => λvᵈ,
+                           "lon_b" => φvᵈ)
         
-
     src_coordinates = Dict("lat"   => λˢ, 
                            "lon"   => φˢ,
-                           "lat_b" => λˢᵇ,
-                           "lon_b" => φˢᵇ)
+                           "lat_b" => λvˢ,
+                           "lon_b" => φvˢ)
         
+    periodic = Oceananigans.Grids.topology(dst_field.grid, 3) === Periodic
     xesmf = add_import_pkg("xesmf")
-    regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method)
+    regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
     
-    return nothing
+    return regridder
 end
 
 end # module
