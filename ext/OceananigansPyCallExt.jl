@@ -52,9 +52,9 @@ function compute_regridding_weights(to_field, from_field, method::String = "cons
     vals = Float64.(coo[:data])
 
     shape = Tuple(Int.(coo[:shape]))
-    W = sparse(rows, cols, vals, shape[1], shape[2])
+    weights = sparse(rows, cols, vals, shape[1], shape[2])
 
-    return W
+    return weights
 end
 
 const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
@@ -149,32 +149,5 @@ function structured_coordinate_dataset(lat, lon, lat_b, lon_b)
                 "lon_b" => ds_lon_b))
     )
 end
-
-
-"""
-    regrid_tracers!(src::Field, dst::Field, W::SparseMatrixCSC)
-Regrid the `src` field onto the `dst` field using the provided weights `W`.
-The function assumes that the vertical grid (z) of both fields is the same.
-"""
-
-function regrid_tracers!(dst::Field, W::SparseMatrixCSC, src::Field)
-
-    @assert dst.grid.z.cᵃᵃᶜ[1:dst.grid.Nz] == src.grid.z.cᵃᵃᶜ[1:src.grid.Nz] "Source and destination grids must have exactly the same vertical grid (z)."
-
-    # Perform regridding
-    for k in 1:dst.grid.Nz
-        # Flatten the source field for regridding
-        src_flat = vec(collect(interior(src))[:,:,k])  # shape (ncell, 1)
-
-        # Regrid the source field to the destination grid
-        # LinearAlgebra.mul!(vec(interior(dst, :, :, k)), W, vec(interior(src, :, :, k)))
-        dst_vec = reshape(W * src_flat, dst.grid.Nx, dst.grid.Ny)
-
-        # # Fill the destination field with the regridded values
-        interior(dst)[:,:,k] .= dst_vec
-    end
-    return nothing
-end
-
 
 end # module
