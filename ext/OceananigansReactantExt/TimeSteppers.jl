@@ -35,8 +35,8 @@ function Clock(::ReactantGrid)
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
     stage = 0 #ConcreteRNumber(0)
-    last_Δt = zero(FT)
-    last_stage_Δt = zero(FT)
+    last_Δt = convert(FT, Inf)
+    last_stage_Δt = convert(FT, Inf)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
@@ -47,8 +47,8 @@ function Clock(grid::ShardedGrid)
     t = ConcreteRNumber(zero(FT), sharding=replicate)
     iter = ConcreteRNumber(0, sharding=replicate)
     stage = 0 #ConcreteRNumber(0)
-    last_Δt = zero(FT)
-    last_stage_Δt = zero(FT)
+    last_Δt = convert(FT, Inf)
+    last_stage_Δt = convert(FT, Inf)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
