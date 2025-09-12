@@ -89,15 +89,6 @@ end
 
 @inline AC.unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 
-@inline AC.constructors(::AC.GPU{CUDABackend}, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
-@inline AC.constructors(::AC.CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
-@inline AC.constructors(::AC.GPU{CUDABackend}, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
-
-@inline AC.arch_sparse_matrix(::AC.GPU{CUDABackend}, constr::Tuple) = CuSparseMatrixCSC(constr...)
-@inline AC.arch_sparse_matrix(::AC.CPU, A::CuSparseMatrixCSC)   = SparseMatrixCSC(AC.constructors(AC.CPU(), A)...)
-@inline AC.arch_sparse_matrix(::AC.GPU{CUDABackend}, A::SparseMatrixCSC)     = CuSparseMatrixCSC(AC.constructors(AC.GPU(), A)...)
-@inline AC.arch_sparse_matrix(::AC.GPU{CUDABackend}, A::CuSparseMatrixCSC) = A
-
 @inline AC.convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
