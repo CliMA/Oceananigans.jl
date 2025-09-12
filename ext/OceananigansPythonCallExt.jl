@@ -38,33 +38,6 @@ flip(::Center) = Face()
 flip(::Face) = Center()
 flip(::Nothing) = nothing
 
-#=
-function coordinate_data_arrays(λ, φ)
-    xarray = add_import_pkg("xarray")
-
-    λ_da = xarray.DataArray(
-        λ',
-        dims=["y", "x"],
-        coords= Dict(
-            "lat" => (["y", "x"], φ'),
-            "lon" => (["y", "x"], λ')
-        ),
-        name="longitude"
-    )
-
-    φ_da = xarray.DataArray(
-        φ',
-        dims=["y", "x"],
-        coords= Dict( "lat" => (["y", "x"], φ'),
-            "lon" => (["y", "x"], λ')
-        ),
-        name="latitude"
-    )
-
-    return λ_da, φ_da
-end
-=#
-
 x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
 y_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny) |> Array
 x_node_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx, 1:Ny) |> Array
@@ -75,7 +48,6 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx+1, 1:Ny+1) |> Array
 
 y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
-
 
 function regridding_weights(dst_field, src_field; method="conservative")
 
@@ -97,11 +69,6 @@ function regridding_weights(dst_field, src_field; method="conservative")
     φvᵈ = φnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
     λvˢ = λnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
     φvˢ = φnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
-
-    @show size(λᵈ)
-    @show size(λˢ)
-    @show size(λvᵈ)
-    @show size(λvˢ)
 
     # Ensure coordinates are on CPU
     Nˢx, Nˢy, Nˢz = size(src_field)
@@ -127,11 +94,23 @@ function regridding_weights(dst_field, src_field; method="conservative")
                            "lat_b" => λvˢ,
                            "lon_b" => φvˢ)
         
-    periodic = Oceananigans.Grids.topology(dst_field.grid, 3) === Periodic
+    periodic = Oceananigans.Grids.topology(dst_field.grid, 1) === Periodic
     xesmf = add_import_pkg("xesmf")
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
+
+        # Move back to Julia
+    # Convert the regridder weights to a Julia sparse matrix
+    FT = eltype(dst_grid)
+    coords = regridder.weights.data
+    shape  = pyconvert(Tuple{Int, Int}, coords.shape)
+    vals   = pyconvert(Array{FT}, coords.data)
+    coords = pyconvert(Array{FT}, coords.coords)
+    rows = coords[1, :] .+ 1
+    cols = coords[2, :] .+ 1
+
+    weights = sparse(rows, cols, vals, shape[1], shape[2])
     
-    return regridder
+    return weights
 end
 
 end # module
