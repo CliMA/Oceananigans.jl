@@ -1,11 +1,12 @@
 using Adapt
-using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size, rnode
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
+
+import Oceananigans.Grids: constructor_arguments
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
@@ -36,11 +37,10 @@ Return a bottom immersed boundary.
 Keyword Arguments
 =================
 
-
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
 
-* `immersed_condition`: Determine whether the part of the domain that is 
+* `immersed_condition`: Determine whether the part of the domain that is
                         immersed are all the cell centers that lie below
                         `bottom_height` (`CenterImmersedCondition()`; default)
                         or all the cell faces that lie below `bottom_height`
@@ -72,7 +72,7 @@ Base.summary(ib::GridFittedBottom{<:Function}) = @sprintf("GridFittedBottom(%s)"
 
 function Base.show(io::IO, ib::GridFittedBottom)
     print(io, summary(ib), '\n')
-    print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
+    print(io, "└── bottom_height: ", prettysummary(ib.bottom_height), '\n')
 end
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
@@ -91,8 +91,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 """
     materialize_immersed_boundary(grid, ib)
 
-Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`. 
-If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of 
+Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`.
+If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of
 top-most interface of the last ``immersed`` cell in the column. If `ib` is a `GridFittedBoundary`,
 `ib.mask` is a field of booleans that indicates whether a cell is immersed or not.
 """
@@ -105,7 +105,7 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     return new_ib
 end
 
-compute_numerical_bottom_height!(bottom_field, grid, ib) = 
+compute_numerical_bottom_height!(bottom_field, grid, ib) =
     launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
@@ -144,7 +144,7 @@ end
 
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
+@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
@@ -157,3 +157,16 @@ YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Abstrac
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
+
+
+function constructor_arguments(grid::AGFBIBG)
+    args, kwargs = constructor_arguments(grid.underlying_grid)
+    args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,
+                            :immersed_condition => grid.immersed_boundary.immersed_condition,
+                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
+    return args, kwargs
+end
+
+function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
+    return gfb1.bottom_height == gfb2.bottom_height && gfb1.immersed_condition == gfb2.immersed_condition
+end

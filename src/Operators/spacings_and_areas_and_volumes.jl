@@ -34,14 +34,13 @@ The operators in this file fall into three categories:
 ##### Spacings!!
 #####
 #####
-
 # This metaprogramming loop defines all possible combinations of locations for spacings.
 # The general 2D and 3D spacings are reconducted to their one - dimensional counterparts.
-# Grids that do not have a specific one - dimensional spacing for a given location need to 
+# Grids that do not have a specific one - dimensional spacing for a given location need to
 # extend these functions (for example, LatitudeLongitudeGrid).
 
 # Calling a non existing function (for example Δxᶜᵃᶜ on an OrthogonalSphericalShellGrid) will throw an error because
-# the associated one - dimensional function is not defined. 
+# the associated one - dimensional function is not defined.
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δxˡᵃᵃ = Symbol(:Δx, L1, :ᵃ, :ᵃ)
     Δyᵃˡᵃ = Symbol(:Δy, :ᵃ, L1, :ᵃ)
@@ -63,7 +62,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δλˡᵃˡ = Symbol(:Δλ, L1, :ᵃ, L2)
     Δφᵃˡˡ = Symbol(:Δφ, :ᵃ, L1, L2)
     Δrᵃˡˡ = Symbol(:Δr, :ᵃ, L2, L1)
-    
+
     @eval @inline $Δxˡˡᵃ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
     @eval @inline $Δxˡᵃˡ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
 
@@ -72,7 +71,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
 
     @eval @inline $Δzˡᵃˡ(i, j, k, grid) = $Δzᵃᵃˡ(i, j, k, grid)
     @eval @inline $Δzᵃˡˡ(i, j, k, grid) = $Δzᵃᵃˡ(i, j, k, grid)
-        
+
     @eval @inline $Δλˡˡᵃ(i, j, k, grid) = $Δλˡᵃᵃ(i, j, k, grid)
     @eval @inline $Δλˡᵃˡ(i, j, k, grid) = $Δλˡᵃᵃ(i, j, k, grid)
 
@@ -89,7 +88,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         Δλˡˡˡ = Symbol(:Δλ, L1, L2, L3)
         Δφˡˡˡ = Symbol(:Δφ, L2, L1, L3)
         Δrˡˡˡ = Symbol(:Δr, L2, L3, L1)
-    
+
         @eval @inline $Δxˡˡˡ(i, j, k, grid) = $Δxˡˡᵃ(i, j, k, grid)
         @eval @inline $Δyˡˡˡ(i, j, k, grid) = $Δyˡˡᵃ(i, j, k, grid)
         @eval @inline $Δzˡˡˡ(i, j, k, grid) = $Δzˡᵃˡ(i, j, k, grid)
@@ -110,6 +109,8 @@ end
 @inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 @inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
+@inline Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = permutedims(Base.stack(collect(Base.stack(collect(getspacing(k, grid.z.Δᵃᵃᶜ) for _ in j)) for _ in i)), (3,2,1)) # one part
+
 @inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 #####
@@ -123,10 +124,14 @@ end
 #####
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶠᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(Base.stack(collect(Δxᶠᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 @inline Δxᶜᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(Base.stack(collect(Δxᶜᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 
 @inline Δyᵃᶠᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶠᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δyᵃᶜᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::RG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 
 ### XRegularRG
 
@@ -139,19 +144,23 @@ end
 @inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
-##### 
+#####
 ##### LatitudeLongitude Grids (define both precomputed and non-precomputed metrics)
 #####
 
 ### Curvilinear spacings
 
 @inline Δλᶜᵃᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δλᶜᵃᵃ[i]
+@inline Δλᶜᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Base.stack(collect(Δλᶜᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 @inline Δλᶠᵃᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δλᶠᵃᵃ[i]
+@inline Δλᶠᵃᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Base.stack(collect(Δλᶠᵃᵃ(i, 1, 1, grid) for _ in j)) for _ in k))
 @inline Δλᶜᵃᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δλᶜᵃᵃ
 @inline Δλᶠᵃᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δλᶠᵃᵃ
 
 @inline Δφᵃᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δφᵃᶜᵃ[j]
+@inline Δφᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δφᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δφᵃᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δφᵃᶠᵃ[j]
+@inline Δφᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δφᵃᶠᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δφᵃᶜᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δφᵃᶜᵃ
 @inline Δφᵃᶠᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δφᵃᶠᵃ
 
@@ -160,9 +169,15 @@ end
 ### Precomputed metrics
 
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
+@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGY) = Base.stack(collect(Base.stack(collect(Base.stack(collect(Δyᵃᶜᵃ(1, 1, 1, grid) for _ in i)) for _ in j)) for _ in k)) # other part
+
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
+@inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGY) = Base.stack(collect(Base.stack(collect(Base.stack(collect(Δyᵃᶠᵃ(1, 1, 1, grid) for _ in i)) for _ in j)) for _ in k))
+
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶠᶜᵃ[j]
+#@inline Δyᵃᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶜᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶜᶠᵃ[j]
+#@inline Δyᵃᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(collect(transpose(Base.stack(collect(Δyᵃᶠᵃ(1, j, 1, grid) for _ in i)))) for _ in k))
 
 ### On-the-fly metrics
 
@@ -184,9 +199,17 @@ end
 ### Pre computed metrics
 
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶜᶠᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶠᶜᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶠᶠᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLG) = Base.stack(collect(Δxᶜᶜᵃ(i, j, 1, grid) for _ in k))
+
 
 ### XRegularLLG with pre computed metrics
 
@@ -194,6 +217,14 @@ end
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶜᶠᵃ[j]
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶠᵃ[j]
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶜᶜᵃ[j]
+
+for sym in (:Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δxᶜᶜᵃ)
+    @eval @inline function $sym(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGX)
+	  x = $sym(1, j, 1, grid)
+	  Base.Broadcast.materialize(Base.Broadcast.Broadcasted(Base.Broadcast.BroadcastStyle(typeof(x)), Base.identity, (Base.Broadcast.Extruded(x, (false, true,false), (1,1,1)),), (Base.axes(i, 1), Base.axes(j, 2), Base.axes(k, 3))))
+    end
+end
+
 
 ### On-the-fly metrics
 
@@ -261,7 +292,7 @@ end
 # We do the same thing as for the spacings: define general areas and then specialize for each grid.
 # Areas need to be at least 2D so we use the respective 2D spacings to define them.
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
-    
+
     Δxˡˡᵃ = Symbol(:Δx, L1, L2, :ᵃ)
     Δxˡᵃˡ = Symbol(:Δx, L1, :ᵃ, L2)
     Δyˡˡᵃ = Symbol(:Δy, L1, L2, :ᵃ)
@@ -290,10 +321,12 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         Axˡˡˡ = Symbol(:Ax, L1, L2, L3)
         Ayˡˡˡ = Symbol(:Ay, L1, L2, L3)
         Azˡˡˡ = Symbol(:Az, L1, L2, L3)
-    
+
         @eval begin
             @inline $Axˡˡˡ(i, j, k, grid) = $Δyˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
+            @inline $Axˡˡˡ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = $Δyˡˡˡ(i, j, k, grid) .* $Δzˡˡˡ(i, j, k, grid)
             @inline $Ayˡˡˡ(i, j, k, grid) = $Δxˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
+            @inline $Ayˡˡˡ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid) = $Δxˡˡˡ(i, j, k, grid) .* $Δzˡˡˡ(i, j, k, grid)
 
             # For the moment the horizontal area is independent of `z`. This might change if
             # we want to implement deep atmospheres where Az is a function of z
@@ -301,7 +334,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         end
     end
 end
-   
+
 ####
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
@@ -365,10 +398,13 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :λ, :φ, :z, :r)
                 func   = Symbol(:Δ, dir)
                 metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe))
+                rcp_func   = Symbol(:Δ, dir, :⁻¹)
+                rcp_metric = Symbol(:Δ, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
-                    export $metric
+                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
+                    export $metric, $rcp_metric
                 end
             end
 
@@ -376,18 +412,24 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :z)
                 func   = Symbol(:A, dir)
                 metric = Symbol(:A, dir, location_code(LXe, LYe, LZe))
+                rcp_func   = Symbol(:A, dir, :⁻¹)
+                rcp_metric = Symbol(:A, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
-                    export $metric
+                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
+                    export $metric, $rcp_metric
                 end
             end
 
             # General volume function
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
+            rcp_volume_function = Symbol(:V⁻¹, location_code(LXe, LYe, LZe))
+
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
-                export $volume_function
+                @inline rcp_volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                export $volume_function, $rcp_volume_function
             end
         end
     end

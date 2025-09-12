@@ -42,19 +42,19 @@ Return an implicit free-surface solver. The implicit free-surface equation is
 
 where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is depth, ``g`` is
 the gravitational acceleration, ``Δt`` is the time step, ``𝛁_h`` is the horizontal gradient operator,
-and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e., 
+and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e.,
 
 ```math
 𝐐_⋆ = \\int_{-H}^0 𝐮_⋆ \\, 𝖽 z ,
 ```
 
-where 
+where
 
 ```math
 𝐮_⋆ = 𝐮^n + \\int_{t_n}^{t_{n+1}} 𝐆ᵤ \\, 𝖽t .
 ```
 
-This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but 
+This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but
 other solvers can be invoked in special cases.
 
 If ``H`` is constant, we divide through out to obtain
@@ -81,7 +81,7 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
                         nothing, nothing, nothing, nothing)
 
 on_architecture(to, free_surface::ImplicitFreeSurface) =
-    ImplicitFreeSurface(on_architecture(to, free_surface.η), 
+    ImplicitFreeSurface(on_architecture(to, free_surface.η),
                         on_architecture(to, free_surface.gravitational_acceleration),
                         on_architecture(to, free_surface.barotropic_volume_flux),
                         on_architecture(to, free_surface.implicit_step_solver),
@@ -94,8 +94,8 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
-    barotropic_x_volume_flux = Field((Face, Center, Nothing), grid)
-    barotropic_y_volume_flux = Field((Center, Face, Nothing), grid)
+    barotropic_x_volume_flux = Field{Face, Center, Nothing}(grid)
+    barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     user_solver_method = free_surface.solver_method # could be = :Default
@@ -147,6 +147,12 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
 
     fill_halo_regions!(η)
 
+    return nothing
+end
+
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
+    parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
+    step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
 end
 

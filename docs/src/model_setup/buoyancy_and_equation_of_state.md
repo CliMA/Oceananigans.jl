@@ -63,8 +63,9 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: Nothing
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme: 
-│   └── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+├── advection scheme:
+│   └── momentum: VectorInvariant
+├── vertical_coordinate: ZCoordinate
 └── coriolis: Nothing
 ```
 
@@ -98,8 +99,9 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   ├── momentum: VectorInvariant
 │   └── b: Centered(order=2)
+├── vertical_coordinate: ZCoordinate
 └── coriolis: Nothing
 ```
 
@@ -111,7 +113,7 @@ salinity ``S``. The relationship between ``T``, ``S``, the geopotential height, 
 perturbation from a reference value is called the `equation_of_state`.
 
 Specifying `buoyancy = SeawaterBuoyancy()` returns a buoyancy model with a linear equation of state,
-[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (in 
+[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (in
 S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tracers:
 
 ```jldoctest buoyancy
@@ -139,9 +141,10 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   ├── momentum: VectorInvariant
 │   ├── T: Centered(order=2)
 │   └── S: Centered(order=2)
+├── vertical_coordinate: ZCoordinate
 └── coriolis: Nothing
 ```
 
@@ -192,7 +195,7 @@ julia> eos = RoquetEquationOfState(:Freezing)
 BoussinesqEquationOfState{Float64}:
 ├── seawater_polynomial: SecondOrderSeawaterPolynomial{Float64}
 └── reference_density: 1024.6
-    
+
 julia> eos.seawater_polynomial # the density anomaly
 ρ' = 0.7718 Sᴬ - 0.0491 Θ - 0.005027 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² + 0.0 Sᴬ Z + 0.0 Sᴬ Θ
 
@@ -246,4 +249,3 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── buoyancy: BuoyancyTracer with ĝ = (0.0, 0.707107, 0.707107)
 └── coriolis: Nothing
 ```
-

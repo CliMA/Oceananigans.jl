@@ -8,7 +8,7 @@ struct IsopycnalSkewSymmetricDiffusivity{TD, A, K, S, M, L, N} <: AbstractTurbul
                κ_symmetric :: S
           isopycnal_tensor :: M
              slope_limiter :: L
-    
+
     function IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew :: K,
                                                          κ_symmetric :: S,
                                                          isopycnal_tensor :: I,
@@ -42,9 +42,9 @@ const issd_coefficient_loc = (Center(), Center(), Face())
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
 for calculating the isopycnal slopes, and (optionally) applying a `slope_limiter` to the
-calculated isopycnal slope values. The skew fluxes can be computed using either the `AdvectiveFormulation` 
+calculated isopycnal slope values. The skew fluxes can be computed using either the `AdvectiveFormulation`
 or the `DiffusiveFormulation`.
-    
+
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
@@ -70,7 +70,7 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeD
                                                                         slope_limiter)
 end
 
-IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
+IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:DiffusiveFormulation, N}
@@ -102,7 +102,7 @@ end
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
-        diffusivities = (; ϵ_R₃₃ = Field((Center, Center, Face), grid))
+        diffusivities = (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
     else
         diffusivities = NamedFieldTuple()
     end
@@ -131,7 +131,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; par
     return nothing
 end
 
-@kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy) 
+@kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
 
     closure = getclosure(i, j, closure)
@@ -151,7 +151,7 @@ struct FluxTapering{FT}
 end
 
 """
-    taper_factor(i, j, k, grid, closure, tracers, buoyancy) 
+    taper_factor(i, j, k, grid, closure, tracers, buoyancy)
 
 Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
 that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
@@ -159,6 +159,7 @@ faces involved in the isopycnal slope tensor calculation. The minimum value of t
 
 References
 ==========
+
 R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
 """
@@ -172,7 +173,7 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
 end
 
 @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    
+
     by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
@@ -199,14 +200,14 @@ end
 end
 
 @inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
-    
+
     bz = max(bz, slope_model.minimum_bz)
-    
+
     slope_x = - bx / bz
     slope_y = - by / bz
-   
+
     # in case of a stable buoyancy gradient (bz > 0), the slope is set to zero
-    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2) 
+    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2)
 
     return min(one(grid), slope_limiter.max_slope^2 / slope²)
 end
@@ -247,7 +248,7 @@ end
     R₁₁ = one(grid)
     R₁₂ = zero(grid)
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
-    
+
     ϵ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, fields, buoyancy)
 
     return  - ϵ * ( κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
@@ -308,7 +309,7 @@ end
     κ_symmetric_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), c, κ_symmetricᶜᶜᶠ, closure, buoyancy, fields)
 
     ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, fields, buoyancy)
-    
+
     return - ϵ * κ_symmetric_∂z_c - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
                                          (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
@@ -316,7 +317,7 @@ end
 @inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
     R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    
+
     ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
     return ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
@@ -356,4 +357,4 @@ Base.show(io::IO, closure::ISSD) =
     print(io, "IsopycnalSkewSymmetricDiffusivity: " *
               "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
               "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
-              
+

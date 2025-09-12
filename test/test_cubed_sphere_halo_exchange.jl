@@ -38,14 +38,14 @@ for arch in archs
             j_digits(n) = digits(abs(Int(n)))[1:2] |> undigits
 
             for (face_number, field_face) in enumerate(faces(field))
-                for i in 1:field_face.grid.Nx, j in 1:field_face.grid.Ny
-                    CUDA.@allowscalar field_face[i, j, 1] = parse(Int, @sprintf("%d%02d%02d", face_number, i, j))
+                for j in 1:field_face.grid.Ny, i in 1:field_face.grid.Nx,
+                    @allowscalar field_face[i, j, 1] = parse(Int, @sprintf("%d%02d%02d", face_number, i, j))
                 end
             end
 
             fill_halo_regions!(field)
 
-            CUDA.allowscalar(true)
+            allowscalar(true)
 
             @testset "Source and destination faces are correct" begin
                 for (face_number, field_face) in enumerate(faces(field))
@@ -374,7 +374,7 @@ for arch in archs
 end
 
 for arch in archs
-     
+
     # These tests cause an undefined `Bound Access Error` on GPU's CI with the new CUDA version.
     # The error is not reproducible neither on Tartarus nor on Sverdrup.
     # These are excised for the moment (PR #2253) as Cubed sphere will be reworked
@@ -402,14 +402,14 @@ for arch in archs
             j_digits(n) = digits(abs(Int(n)))[1:2] |> undigits
 
             for (face_number, u_field_face) in enumerate(faces(u_field))
-                for i in 1:u_field_face.grid.Nx+1, j in 1:u_field_face.grid.Ny
-                    CUDA.@allowscalar u_field_face[i, j, 1] = parse(Int, @sprintf("%d%d%02d%02d", U_DIGIT, face_number, i, j))
+                for j in 1:u_field_face.grid.Ny, i in 1:u_field_face.grid.Nx+1
+                    @allowscalar u_field_face[i, j, 1] = parse(Int, @sprintf("%d%d%02d%02d", U_DIGIT, face_number, i, j))
                 end
             end
 
             for (face_number, v_field_face) in enumerate(faces(v_field))
-                for i in 1:v_field_face.grid.Nx, j in 1:v_field_face.grid.Ny+1
-                    CUDA.@allowscalar v_field_face[i, j, 1] = parse(Int, @sprintf("%d%d%02d%02d", V_DIGIT, face_number, i, j))
+                for j in 1:v_field_face.grid.Ny+1, i in 1:v_field_face.grid.Nx
+                    @allowscalar v_field_face[i, j, 1] = parse(Int, @sprintf("%d%d%02d%02d", V_DIGIT, face_number, i, j))
                 end
             end
 

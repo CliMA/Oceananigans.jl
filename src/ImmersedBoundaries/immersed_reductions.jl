@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, OneField, indices
+using Oceananigans.Fields: AbstractField, OneField, indices, instantiated_location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
@@ -36,7 +36,7 @@ validate_condition(cond::NotImmersed{<:AbstractArray}, ::OneField) = cond
 validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) =
     validate_condition(cond.condition, operand)
 
-"Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `NotImmersed` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, ni::NotImmersed) = NotImmersed(Adapt.adapt(to, ni.condition))
 
 # ImmersedField
@@ -70,7 +70,7 @@ end
                                     grid::ImmersedBoundaryGrid,
                                     co::ConditionalOperation) #, args...)
 
-    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    ℓx, ℓy, ℓz = instantiated_location(co)
     immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed
 end
@@ -80,13 +80,13 @@ end
                                     grid::ImmersedBoundaryGrid,
                                     co::ConditionalOperation, args...)
 
-    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    ℓx, ℓy, ℓz = instantiated_location(co)
     immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
 end
 
 @inline function evaluate_condition(condition::NotImmersed, i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg, co::ConditionalOperation, args...)
-    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    ℓx, ℓy, ℓz = instantiated_location(co)
     immersed = immersed_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz) .| inactive_node(i, j, k, ibg, ℓx, ℓy, ℓz)
     return Base.broadcast(!, immersed) .& evaluate_condition(condition.func, i, j, k, ibg, args...)
 end
@@ -108,7 +108,7 @@ Base.show(io::IO, nic::NotImmersedColumn) = print(io, Base.summary(nic))
 
 NotImmersedColumn(immersed_column) = NotImmersedColumn(immersed_column, nothing)
 
-"Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `NotImmersed` to work on the GPU via KernelAbstractions."
 function Adapt.adapt_structure(to, nic::NotImmersedColumn)
     return NotImmersedColumn(Adapt.adapt(to, nic.immersed_column),
                              Adapt.adapt(to, nic.condition))

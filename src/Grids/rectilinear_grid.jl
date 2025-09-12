@@ -1,3 +1,5 @@
+using OrderedCollections: OrderedDict
+
 struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
@@ -30,7 +32,7 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                       yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
                                       z    :: CZ) where {Arch, FT, TX, TY, TZ,
                                                          FX, VX, FY, VY, CZ}
-                                                    
+
     return RectilinearGrid{FT, TX, TY, TZ,
                            CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
                                                      Hx, Hy, Hz, Lx, Ly, Lz,
@@ -101,15 +103,17 @@ Keyword arguments
 
 - `x`, `y`, and `z`: Each of `x, y, z` are either (i) 2-tuples that specify the end points of the domain
                      in their respect directions (in which case scalar values may be used in `Flat`
-                     directions), or (ii) arrays or functions of the corresponding indices `i`, `j`, or `k`
+                     directions), (ii) arrays that specify the locations of cell faces in the `x`-, `y`-,
+                     or `z`-direction, or (iii) functions of the corresponding indices `i`, `j`, or `k`
                      that specify the locations of cell faces in the `x`-, `y`-, or `z`-direction, respectively.
                      For example, to prescribe the cell faces in `z` we need to provide a function that takes
                      `k` as argument and returns the location of the faces for indices `k = 1` through `k = Nz + 1`,
                      where `Nz` is the `size` of the stretched `z` dimension.
 
-**Note**: _Either_ `extent`, or _all_ of `x`, `y`, and `z` must be specified.
+  !!! note "Physical extent of grid"
+      _Either_ `extent`, or _all_ of `x`, `y`, and `z` must be specified.
 
-- `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
+- `halo`: A tuple of integers that specifies the size of the halo region, that is the number of cells surrounding
           the physical interior for each non-`Flat` direction. The default is 3 halo cells in every direction.
 
 The physical extent of the domain can be specified either via `x`, `y`, and `z` keyword arguments
@@ -127,23 +131,25 @@ Make sure to specify the desired `FT` if not using `Float64`.
 Grid properties
 ===============
 
+- `architecture`: The grid's architecture.
+
 - `(Nx, Ny, Nz) :: Int`: Number of physical points in the ``(x, y, z)``-direction.
 
 - `(Hx, Hy, Hz) :: Int`: Number of halo points in the ``(x, y, z)``-direction.
 
 - `(Lx, Ly, Lz) :: FT`: Physical extent of the grid in the ``(x, y, z)``-direction.
 
-- `(Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δzᵃᵃᶜ)`: Spacings in the ``(x, y, z)``-directions between the cell faces.
-                           These are the lengths in ``x``, ``y``, and ``z`` of `Center` cells and are
-                           defined at `Center` locations.
+- `(Δxᶜᵃᵃ, Δyᵃᶜᵃ, z.Δcᵃᵃᶜ)`: Spacings in the ``(x, y, z)``-directions between the cell faces.
+                             These are the lengths in ``x``, ``y``, and ``z`` of `Center` cells and are
+                             defined at `Center` locations.
 
-- `(Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ)`: Spacings in the ``(x, y, z)``-directions between the cell centers.
-                           These are the lengths in ``x``, ``y``, and ``z`` of `Face` cells and are
-                           defined at `Face` locations.
+- `(Δxᶠᵃᵃ, Δyᵃᶠᵃ, z.Δcᵃᵃᶠ)`: Spacings in the ``(x, y, z)``-directions between the cell centers.
+                             These are the lengths in ``x``, ``y``, and ``z`` of `Face` cells and are
+                             defined at `Face` locations.
 
-- `(xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ)`: ``(x, y, z)`` coordinates of cell `Center`s.
+- `(xᶜᵃᵃ, yᵃᶜᵃ, z.cᵃᵃᶜ)`: ``(x, y, z)`` coordinates of cell `Center`s.
 
-- `(xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)`: ``(x, y, z)`` coordinates of cell `Face`s.
+- `(xᶠᵃᵃ, yᵃᶠᵃ, z.cᵃᵃᶠ)`: ``(x, y, z)`` coordinates of cell `Face`s.
 
 Examples
 ========
@@ -151,9 +157,11 @@ Examples
 * A grid with the default `Float64` type:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
+grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
 
-julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
+# output
+
 32×32×32 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.03125
 ├── Periodic y ∈ [0.0, 2.0)  regularly spaced with Δy=0.0625
@@ -163,9 +171,11 @@ julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
 * A grid with `Float32` type:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
+grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
 
-julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
+# output
+
 32×32×16 RectilinearGrid{Float32, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 8.0)          regularly spaced with Δx=0.25
 ├── Periodic y ∈ [-10.0, 10.0)       regularly spaced with Δy=0.625
@@ -175,9 +185,11 @@ julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10),
 * A two-dimenisional, horizontally-periodic grid:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
+grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
 
-julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
+# output
+
 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
 ├── Periodic x ∈ [3.60072e-17, 6.28319) regularly spaced with Δx=0.19635
 ├── Periodic y ∈ [7.20145e-17, 12.5664) regularly spaced with Δy=0.392699
@@ -187,9 +199,11 @@ julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Period
 * A one-dimensional "column" grid:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
+grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
-julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
+# output
+
 1×1×256 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
@@ -199,19 +213,20 @@ julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bound
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
 
-julia> σ = 1.1; # stretching factor
+σ = 1.1 # stretching factor
+Nz = 24 # vertical resolution
+Lz = 32 # depth (m)
 
-julia> Nz = 24; # vertical resolution
+hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
-julia> Lz = 32; # depth (m)
+grid = RectilinearGrid(size = (32, 32, Nz),
+                       x = (0, 64), y = (0, 64),
+                       z = hyperbolically_spaced_faces)
 
-julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
+# output
 
-julia> grid = RectilinearGrid(size = (32, 32, Nz),
-                              x = (0, 64), y = (0, 64),
-                              z = hyperbolically_spaced_faces)
 32×32×24 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 64.0)   regularly spaced with Δx=2.0
 ├── Periodic y ∈ [0.0, 64.0)   regularly spaced with Δy=2.0
@@ -222,23 +237,24 @@ julia> grid = RectilinearGrid(size = (32, 32, Nz),
   in ``y``, and cell interfaces hyperbolically stretched in ``z`` near the top:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
 
-julia> Nx, Ny, Nz = 32, 30, 24;
+Nx, Ny, Nz = 32, 30, 24
+Lx, Ly, Lz = 200, 100, 32 # (m)
 
-julia> Lx, Ly, Lz = 200, 100, 32; # (m)
+chebychev_nodes(j) = - Ly/2 * cos(π * (j - 1) / Ny)
 
-julia> chebychev_nodes(j) = - Ly/2 * cos(π * (j - 1) / Ny);
+σ = 1.1 # stretching factor
+hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
-julia> σ = 1.1; # stretching factor
+grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                       topology = (Periodic, Bounded, Bounded),
+                       x = (0, Lx),
+                       y = chebychev_nodes,
+                       z = hyperbolically_spaced_faces)
 
-julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
+# output
 
-julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
-                              topology = (Periodic, Bounded, Bounded),
-                              x = (0, Lx),
-                              y = chebychev_nodes,
-                              z = hyperbolically_spaced_faces)
 32×30×24 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 200.0)  regularly spaced with Δx=6.25
 ├── Bounded  y ∈ [-50.0, 50.0] variably spaced with min(Δy)=0.273905, max(Δy)=5.22642
@@ -299,7 +315,7 @@ RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
 
 function Base.summary(grid::RectilinearGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = topology_strs(grid)
 
     return string(size_summary(size(grid)),
                   " RectilinearGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
@@ -373,7 +389,9 @@ cpu_face_constructor_y(grid::YRegularRG) = y_domain(grid)
 function constructor_arguments(grid::RectilinearGrid)
     arch = architecture(grid)
     FT = eltype(grid)
-    args = Dict(:architecture => arch, :number_type => eltype(grid))
+
+    # We use OrderedDict to preserve order of keys. Important for positional arguments since we wanna be able to splat them.
+    args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
     topo = topology(grid)
@@ -426,7 +444,7 @@ function with_halo(halo, grid::RectilinearGrid)
     halo = pop_flat_elements(halo, topology(grid))
     kwargs[:halo] = halo
     arch = args[:architecture]
-    FT = args[:number_type]    
+    FT = args[:number_type]
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
@@ -468,7 +486,7 @@ rname(::RG) = :z
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
     y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos) 
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
@@ -493,13 +511,10 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     return (x, y, z)
 end
 
-const F = Face
-const C = Center
-
-@inline xnodes(grid::RG, ℓx::F; with_halos=false) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
-@inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline xnodes(grid::RG, ℓx::F; with_halos=false) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # convenience
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)

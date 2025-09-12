@@ -4,54 +4,51 @@ using Random
 using Oceananigans
 using Oceananigans.Units
 using GLMakie
-
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
+using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: FluxTapering
 
 gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
 
-# Architecture
-architecture = CPU()
-
 # Domain
+Ly = 1000kilometers  # north-south extent [m]
 Lz = 1kilometers     # depth [m]
 Ny = 20
 Nz = 20
-save_fields_interval = 1hour
+save_fields_interval = 0.5day
 stop_time = 30days
-Δt = 20minutes
+Δt = 10minutes
 
-grid = LatitudeLongitudeGrid(architecture;
-                             topology = (Bounded, Bounded, Bounded),
-                             size = (Ny, Ny, Nz), 
-                             longitude = (-5, 5),
-                             latitude = (40, 50),
-                             z = (-Lz, 0),
-                             halo = (3, 3, 3))
+grid = RectilinearGrid(architecture;
+                       topology = (Bounded, Bounded, Bounded),
+                       size = (Ny, Ny, Nz),
+                       x = (-Ly/2, Ly/2),
+                       y = (-Ly/2, Ly/2),
+                       z = (-Lz, 0),
+                       halo = (3, 3, 3))
 
-coriolis = HydrostaticSphericalCoriolis()
+coriolis = FPlane(latitude = -45)
 
-Δy = 1000kilometers / Ny
-@show κh = νh = Δy^4 / 10days
-vertical_closure = VerticalScalarDiffusivity(ν=1e-2, κ=1e-4)
-horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νh)
+gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
+triad_closure = TriadIsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(),
+                                                       κ_skew = 0,
+                                                       κ_symmetric = 1e3,
+                                                       slope_limiter = gerdes_koberle_willebrand_tapering)
 
-gerdes_koberle_willebrand_tapering = FluxTapering(1e-1)
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1e3,
-                                                                κ_symmetric = (b=0, c=1e3),
-                                                                slope_limiter = gerdes_koberle_willebrand_tapering)
-
-closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
+cox_closure = IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(),
+                                                κ_skew = 0,
+                                                κ_symmetric = 1e3,
+                                                slope_limiter = gerdes_koberle_willebrand_tapering)
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+                                    closure = triad_closure,
                                     buoyancy = BuoyancyTracer(),
-                                    closure = closures,
                                     tracers = (:b, :c),
-                                    momentum_advection = VectorInvariant(),
-                                    tracer_advection = WENO(),
+                                    momentum_advection = WENO(order=5),
+                                    tracer_advection = WENO(order=5),
                                     free_surface = ImplicitFreeSurface())
 
 @info "Built $model."
@@ -65,24 +62,24 @@ y < y₀           => ramp = 0
 y₀ < y < y₀ + Δy => ramp = y / Δy
 y > y₀ + Δy      => ramp = 1
 """
-function ramp(λ, y, Δ)
-    gradient == "x" && return min(max(0, λ / Δ + 1/2), 1)
-    gradient == "y" && return min(max(0, (y - 45) / Δ + 1/2), 1)
+function ramp(x, y, Δ)
+    gradient == "x" && return min(max(0, x / Δ + 1/2), 1)
+    gradient == "y" && return min(max(0, y / Δ + 1/2), 1)
 end
 
 # Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-Δy = 1 # degree
+Δy = 100kilometers
 Δz = 100
 
-Δc = 100kilometers * 2Δy
-Δb = 100kilometers * Δy * M²
+Δc = 2Δy
+Δb = Δy * M²
 ϵb = 1e-2 * Δb # noise amplitude
 
-bᵢ(λ, y, z) = N² * z + Δb * ramp(λ, y, Δy)
-cᵢ(λ, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
+bᵢ(x, y, z) = N² * z + Δb * ramp(x, y, Δy)
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
 set!(model, b=bᵢ, c=cᵢ)
 
@@ -92,35 +89,30 @@ set!(model, b=bᵢ, c=cᵢ)
 
 simulation = Simulation(model; Δt, stop_time)
 
-# add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=Δt)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+wall_clock = Ref(time_ns())
 
-# add progress callback
-wall_clock = [time_ns()]
-
-function print_progress(sim)
+function progress(sim)
     @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
             100 * (sim.model.clock.time / sim.stop_time),
             sim.model.clock.iteration,
             prettytime(sim.model.clock.time),
-            prettytime(1e-9 * (time_ns() - wall_clock[1])),
+            prettytime(1e-9 * (time_ns() - wall_clock[])),
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
             prettytime(sim.Δt))
 
-    wall_clock[1] = time_ns()
+    wall_clock[] = time_ns()
     
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+add_callback!(simulation, progress, IterationInterval(10))
 
 simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
                                                 schedule = TimeInterval(save_fields_interval),
                                                 filename = filename * "_fields",
-                                                overwrite_existing = true)
+                                                verwrite_existing = true)
 
 @info "Running the simulation..."
 
@@ -141,7 +133,10 @@ bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
 
 # Build coordinates, rescaling the vertical coordinate
-x, y, z = nodes((Center, Center, Center), grid)
+x, y, z = nodes(bt)
+
+zscale = 1
+z = z .* zscale
 
 #####
 ##### Plot buoyancy...
@@ -162,11 +157,11 @@ end
 
 @show min_c = 0
 @show max_c = 1
-@show max_u = 4 * maximum(abs, un(Nt))
+@show max_u = maximum(abs, un(Nt))
 min_u = - max_u
 
-axu = Axis(fig[2, 1], xlabel="$gradient (deg)", ylabel="z (m)", title="Zonal velocity")
-axc = Axis(fig[3, 1], xlabel="$gradient (deg)", ylabel="z (m)", title="Tracer concentration")
+axu = Axis(fig[2, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Zonal velocity")
+axc = Axis(fig[3, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Tracer concentration")
 slider = Slider(fig[4, 1:2], range=1:Nt, startvalue=1)
 n = slider.value
 
@@ -174,12 +169,12 @@ u = @lift un($n)
 b = @lift bn($n)
 c = @lift cn($n)
 
-hm = heatmap!(axu, y, z, u, colorrange=(min_u, max_u), colormap=:balance)
-contour!(axu, y, z, b, levels = 25, color=:black, linewidth=2)
+hm = heatmap!(axu, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
+contour!(axu, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[2, 2], hm)
 
-hm = heatmap!(axc, y, z, c, colorrange=(0, 0.5), colormap=:speed)
-contour!(axc, y, z, b, levels = 25, color=:black, linewidth=2)
+hm = heatmap!(axc, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:speed)
+contour!(axc, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[3, 2], hm)
 
 title_str = @lift "Baroclinic adjustment with GM at t = " * prettytime(times[$n])

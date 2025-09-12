@@ -37,31 +37,31 @@ has_active_z_columns(::NoActiveZColumnsIBG) = false
                          active_cells_map=false, active_z_columns=active_cells_map)
 
 Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or `active_z_columns` are `true`,
-the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the 
+the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the
 interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
                               active_cells_map::Bool=false,
-                              active_z_columns::Bool=active_cells_map) 
+                              active_z_columns::Bool=active_cells_map)
 
     materialized_ib = materialize_immersed_boundary(grid, ib)
-    
+
     # Create the cells map on the CPU, then switch it to the GPU
-    interior_active_cells = if active_cells_map
-        build_active_cells_map(grid, materialized_ib)
+    if active_cells_map
+        @apply_regionally interior_active_cells = build_active_cells_map(grid, materialized_ib)
     else
-        nothing
+        interior_active_cells = nothing
     end
 
-    active_z_columns = if active_z_columns
-        build_active_z_columns(grid, materialized_ib) 
+     if active_z_columns
+        @apply_regionally active_z_columns = build_active_z_columns(grid, materialized_ib)
     else
-        nothing
+        active_z_columns = nothing
     end
-    
+
     TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, 
-                                            materialized_ib, 
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid,
+                                            materialized_ib,
                                             interior_active_cells,
                                             active_z_columns)
 end
@@ -78,7 +78,7 @@ end
 const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
-@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :underlying_grid), property)
+@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getproperty(getfield(ibg, :underlying_grid), property)
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})      = getfield(ibg, :immersed_boundary)
 @inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})        = getfield(ibg, :underlying_grid)
 @inline get_ibg_property(ibg::IBG, ::Val{:interior_active_cells})  = getfield(ibg, :interior_active_cells)
@@ -107,7 +107,7 @@ inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = Oceananigans.Grids.topology_strs(grid)
 
     return string(size_summary(size(grid)),
                   " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
@@ -131,3 +131,10 @@ function on_architecture(arch, ibg::IBG)
 end
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
+
+function Base.:(==)(grid1::IBG, grid2::IBG)
+    equal_underlying_grids = grid1.underlying_grid == grid2.underlying_grid
+    equal_immersed_boundaries = grid1.immersed_boundary == grid2.immersed_boundary
+
+    return equal_underlying_grids && equal_immersed_boundaries
+end

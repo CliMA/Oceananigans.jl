@@ -3,20 +3,20 @@ indices(f::Field, i=default_indices(3)) = f.indices
 indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
 indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
-function interior_x_indices(f::Field) 
-    loc = map(instantiate, location(f))
+function interior_x_indices(f::Field)
+    loc = instantiated_location(f)
     interior_indices = interior_x_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[1])
 end
 
-function interior_y_indices(f::Field) 
-    loc = map(instantiate, location(f))
+function interior_y_indices(f::Field)
+    loc = instantiated_location(f)
     interior_indices = interior_y_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[2])
 end
 
-function interior_z_indices(f::Field) 
-    loc = map(instantiate, location(f))
+function interior_z_indices(f::Field)
+    loc = instantiated_location(f)
     interior_indices = interior_z_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[3])
 end
@@ -49,9 +49,9 @@ end
 function compute_index_intersection(to_idx::AbstractUnitRange, from_idx::AbstractUnitRange, to_loc, from_loc)
     shifted_idx = restrict_index_on_location(from_idx, from_loc, to_loc)
     validate_shifted_index(shifted_idx)
-    
+
     range_intersection = UnitRange(max(first(shifted_idx), first(to_idx)), min(last(shifted_idx), last(to_idx)))
-    
+
     # Check validity of the intersection index range
     first(range_intersection) > last(range_intersection) &&
         throw(ArgumentError("Indices $(from_idx) and $(to_idx) interpolated from $(from_loc) to $(to_loc) do not intersect!"))
@@ -61,9 +61,9 @@ end
 
 # Compute the intersection of two index ranges where the location is the same
 function compute_index_intersection(to_idx::AbstractUnitRange, from_idx::AbstractUnitRange)
-    range_intersection = UnitRange(max(first(from_idx), first(to_idx)), 
+    range_intersection = UnitRange(max(first(from_idx), first(to_idx)),
                                    min(last(from_idx), last(to_idx)))
-    
+
     # Check validity of the intersection index range
     first(range_intersection) > last(range_intersection) &&
         throw(ArgumentError("Indices $(from_idx) and $(to_idx) do not intersect!"))

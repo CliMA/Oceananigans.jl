@@ -3,18 +3,9 @@
 #####
 
 # Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
-    ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-end
 
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    idx = @index(Global, Linear)
-    i, j = linear_index_to_tuple(idx, active_cells_map)
-    ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-end
-
-@inline function ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     locU = (Face(), Center(), Center())
     locV = (Center(), Face(), Center())
 
@@ -27,11 +18,11 @@ end
     end
 end
 
-@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ) 
+@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ)
     C₁ = 3 * one(grid) / 2 + χ
     C₂ =     one(grid) / 2 + χ
 
-    # multiply G⁻ by false if C₂ is zero to 
+    # multiply G⁻ by false if C₂ is zero to
     # prevent propagationg possible NaNs
     not_euler = C₂ != 0
 
@@ -41,15 +32,14 @@ end
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
-                                                 timestepper::QuasiAdamsBashforth2TimeStepper, stage)
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper)
     active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
     Gv⁻ = timestepper.G⁻.v
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
-            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; active_cells_map)
+            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; active_cells_map)
 
     return nothing
 end
@@ -62,64 +52,29 @@ end
     immersed = peripheral_node(i, j, 1, grid, ℓx, ℓy, ℓz)
 
     Gⁿ⁺¹ = Δz(i, j, 1, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, 1])
-    
-    @inbounds for k in 2:grid.Nz	
+
+    @inbounds for k in 2:grid.Nz
         immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
         Gⁿ⁺¹    += Δz(i, j, k, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, k])
     end
-    
+
     return Gⁿ⁺¹
 end
 
-@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage)
-    idx = @index(Global, Linear)
-    i, j = linear_index_to_tuple(idx, active_cells_map)
-    compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
-end
-
-@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, ::Nothing, Guⁿ, Gvⁿ, stage)
+@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ)
     i, j = @index(Global, NTuple)
-    compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
-end
-
-@inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{1})
     @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
     @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
-
-    @inbounds GU⁻[i, j, 1] = GUⁿ[i, j, 1]
-    @inbounds GV⁻[i, j, 1] = GVⁿ[i, j, 1]
 end
 
-@inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{2})
-    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
-    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
-
-    @inbounds GU⁻[i, j, 1] = (GUⁿ[i, j, 1] + GU⁻[i, j, 1]) / 6
-    @inbounds GV⁻[i, j, 1] = (GVⁿ[i, j, 1] + GV⁻[i, j, 1]) / 6
-end
-
-@inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{3})
-    FT = eltype(GUⁿ)
-
-    GUi = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
-    GVi = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
-
-    @inbounds GUⁿ[i, j, 1] = 2 * GUi / 3 + GU⁻[i, j, 1]
-    @inbounds GVⁿ[i, j, 1] = 2 * GVi / 3 + GV⁻[i, j, 1]
-end
-
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
-                                                 timestepper::SplitRungeKutta3TimeStepper, stage)
-
-    GU⁻ = timestepper.G⁻.U
-    GV⁻ = timestepper.G⁻.V
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::SplitRungeKutta3TimeStepper)
 
     active_cells_map = get_active_column_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
-            GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage; active_cells_map)
+            GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map)
 
     return nothing
-end 
+end
 
 #####
 ##### Free surface setup
@@ -127,7 +82,7 @@ end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface)
+function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
 
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
@@ -135,18 +90,12 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 
-    barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
+
+    @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
     
-    stage = model.clock.stage
-
-    @apply_regionally begin
-        compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper, Val(stage))
-        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
-    end
-
     fields_to_fill = (GUⁿ, GVⁿ)
-    fill_halo_regions!(fields_to_fill; async = true)
+    fill_halo_regions!(fields_to_fill; async=true)
 
     return nothing
 end

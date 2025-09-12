@@ -37,7 +37,6 @@ using CairoMakie
 
 u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
-compute!(ζ)
 
 heatmap(ζ, axis=(; aspect=1))
 ```
@@ -48,7 +47,6 @@ A few more time-steps, and it's starting to get a little diffuse!
 simulation.stop_iteration += 400
 run!(simulation)
 
-compute!(ζ)
 heatmap(ζ, axis=(; aspect=1))
 ```
 
@@ -67,6 +65,7 @@ CairoMakie.activate!(type = "png")
 ```@example gpu
 using Oceananigans
 using CairoMakie
+using CUDA
 
 grid = RectilinearGrid(GPU(),
                        size = (1024, 1024),
@@ -87,7 +86,6 @@ run!(simulation)
 
 u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
-compute!(ζ)
 
 fig = Figure(size=(1200, 600))
 axζ = Axis(fig[1, 1], aspect=1, title="vorticity")

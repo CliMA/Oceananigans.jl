@@ -2,11 +2,12 @@ module HydrostaticFreeSurfaceModels
 
 export
     HydrostaticFreeSurfaceModel,
-    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
-    PrescribedVelocityFields, ZStar, ZCoordinate
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
+using Adapt
 
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
@@ -24,7 +25,18 @@ using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashfort
 abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
-struct ZStar end
+
+struct ZStarCoordinate{CC}
+    storage :: CC # Storage space used in different ways by different timestepping schemes.
+end
+
+ZStarCoordinate(grid::AbstractGrid) = ZStarCoordinate(Field{Center, Center, Nothing}(grid))
+
+Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
+Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
+
+Adapt.adapt_structure(to, coord::ZStarCoordinate) = ZStarCoordinate(Adapt.adapt(to, coord.storage))
+on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -53,17 +65,16 @@ include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-
 using .SplitExplicitFreeSurfaces
 
-# ZStar implementation
+# ZStarCoordinate implementation
 include("z_star_vertical_spacing.jl")
 
 # Hydrostatic model implementation
-include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
@@ -80,8 +91,8 @@ cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_ti
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) = 
-    merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), 
+@inline fields(model::HydrostaticFreeSurfaceModel) =
+    merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
           model.auxiliary_fields,
           biogeochemical_auxiliary_fields(model.biogeochemistry))
 
@@ -91,7 +102,7 @@ constructor_field_names(user_velocities, user_tracers, user_free_surface, auxili
     tuple(velocity_names(user_velocities)...,
           tracernames(user_tracers)...,
           free_surface_names(user_free_surface, user_velocities, grid)...,
-          keys(auxiliary_fields)..., 
+          keys(auxiliary_fields)...,
           keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """
@@ -134,6 +145,7 @@ include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
+include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk3_step.jl")

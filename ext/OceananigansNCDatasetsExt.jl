@@ -4,21 +4,24 @@ using NCDatasets
 
 using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
-
-using Oceananigans.Fields
+using OrderedCollections: OrderedDict
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization
-using Oceananigans.Grids: topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location
+using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary
-using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
-using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+using Oceananigans.Fields
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location
+using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
+                          AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
+                          topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
+                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
+                          constructor_arguments
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
+using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+using Oceananigans.TimeSteppers: float_or_date_time
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
+                          versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using SeawaterPolynomials: BoussinesqEquationOfState
 
 using Oceananigans.OutputWriters:
@@ -38,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
 
 const c = Center()
 const f = Face()
@@ -60,7 +63,7 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
     else
         inds = validate_index(inds, ℓ, T, N, H)
         inds = restrict_to_interior(inds, ℓ, T, N)
-        return collect(view(ξ, inds))
+        return collect(ξ[inds])
     end
 end
 
@@ -360,34 +363,36 @@ gather_grid_metrics(grid::ImmersedBoundaryGrid, args...) =
 # TODO: Proper masks for 2D models?
 flat_loc(T, L) = T == Flat ? nothing : L
 
-# For Immersed Boundary Grids (IBG) with a Grid Fitted Bottom (GFB)
-function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
-    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
+
+# For Immersed Boundary Grids (IBG) with either a Grid Fitted Bottom (GFB) or a Partial Cell Bottom (PCB)
+function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator)
+    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
     return Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
+                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
 end
 
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
 # For Immersed Boundary Grids (IBG) with a Grid Fitted Boundary (also GFB!)
 function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator)
-    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("immersed_boundary_mask" => Field(grid.immersed_boundary.mask; indices),
-                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
+    return Dict("peripheral_nodes" => Field(grid.immersed_boundary.mask; indices),
+                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
 end
 
 #####
@@ -617,7 +622,7 @@ end
 ##### Gather grid reconstruction attributes (also used for FieldTimeSeries support)
 #####
 
-function grid_reconstruction_attributes(grid::RectilinearGrid)
+function grid_attributes(grid::RectilinearGrid)
     TX, TY, TZ = topology(grid)
 
     dims = Dict()
@@ -634,31 +639,10 @@ function grid_reconstruction_attributes(grid::RectilinearGrid)
                  "Hy" => grid.Hy,
                  "Hz" => grid.Hz)
 
-    if TX == Flat
-        attrs["x_spacing"] = "flat"
-    else
-        attrs["x_spacing"] = grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular"
-        dims["x_f"] = grid.xᶠᵃᵃ[1:grid.Nx+1]
-    end
-
-    if TY == Flat
-        attrs["y_spacing"] = "flat"
-    else
-        attrs["y_spacing"] = grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular"
-        dims["y_f"] = grid.yᵃᶠᵃ[1:grid.Ny+1]
-    end
-
-    if TZ == Flat
-        attrs["z_spacing"] = "flat"
-    else
-        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
-        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
-    end
-
     return attrs, dims
 end
 
-function grid_reconstruction_attributes(grid::LatitudeLongitudeGrid)
+function grid_attributes(grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
 
     dims = Dict()
@@ -675,50 +659,79 @@ function grid_reconstruction_attributes(grid::LatitudeLongitudeGrid)
                  "Hy" => grid.Hy,
                  "Hz" => grid.Hz)
 
-    if TX == Flat
-        attrs["λ_spacing"] = "flat"
-    else
-        attrs["λ_spacing"] = grid.Δλᶠᵃᵃ isa Number ? "regular" : "irregular"
-        dims["λ_f"] = grid.λᶠᵃᵃ[1:grid.Nx+1]
-    end
-
-    if TY == Flat
-        attrs["φ_spacing"] = "flat"
-    else
-        attrs["φ_spacing"] = grid.Δφᵃᶠᵃ isa Number ? "regular" : "irregular"
-        dims["φ_f"] = grid.φᵃᶠᵃ[1:grid.Ny+1]
-    end
-
-    if TZ == Flat
-        attrs["z_spacing"] = "flat"
-    else
-        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
-        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
-    end
-
     return attrs, dims
 end
 
-function grid_reconstruction_attributes(ibg::ImmersedBoundaryGrid)
-    attrs, dims = grid_reconstruction_attributes(ibg.underlying_grid)
-
+function grid_attributes(ibg::ImmersedBoundaryGrid)
+    attrs, dims = grid_attributes(ibg.underlying_grid)
     immersed_attrs = Dict("immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary))))
-
     attrs = merge(attrs, immersed_attrs)
-
     return attrs, dims
 end
 
-function write_grid_reconstruction_metadata!(ds, grid, indices, array_type, deflatelevel)
-    grid_attrs, grid_dims = grid_reconstruction_attributes(grid)
+# Using OrderedDict to preserve order of keys. Important for positional arguments.
+convert_for_netcdf(dict::AbstractDict) = OrderedDict{Symbol, Any}(key => convert_for_netcdf(value) for (key, value) in dict)
+convert_for_netcdf(x::Number) = x
+convert_for_netcdf(x::Bool) = string(x)
+convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
+convert_for_netcdf(x) = string(x)
+convert_for_netcdf(::GPU) = "GPU()"
 
-    ds_grid = defGroup(ds, "grid_reconstruction"; attrib = sort(collect(pairs(grid_attrs)), by=first))
+materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
+materialize_from_netcdf(x::Number) = x
+materialize_from_netcdf(x::Array) = Tuple(x)
+materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
 
+function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
+    grid_attrs, grid_dims = grid_attributes(grid)
+
+    sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first) # Organizes attributes to make it more easily human-readable
+    ds_grid = defGroup(ds, "grid_attributes"; attrib = sorted_grid_attrs)
     for (dim_name, dim_array) in grid_dims
         defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
     end
 
+    args, kwargs = constructor_arguments(grid)
+
+    # This is needed for now to prevent NetCDF from throwing an error, but precludes
+    # us from reconstructing immersed grids from NetCDF. This is a temporary fix.
+    :mask ∈ keys(args) && delete!(args, :mask)
+    :bottom_height ∈ keys(args) && delete!(args, :bottom_height)
+
+    args, kwargs = map(convert_for_netcdf, (args, kwargs))
+    args[:grid_type] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+
+    defGroup(ds, "grid_reconstruction_args"; attrib = args)
+    defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
+
     return ds
+end
+
+function reconstruct_grid(filename::String)
+    ds = NCDataset(filename, "r")
+    grid = reconstruct_grid(ds)
+    close(ds)
+    return grid
+end
+
+function reconstruct_grid(ds)
+    # Read back the grid reconstruction metadata
+    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+
+    # Pop out infomration about grid type and immersed boundary type from Dict
+    grid_type = pop!(grid_reconstruction_args, :grid_type)
+    is_immersed = haskey(grid_reconstruction_args, :immersed_boundary_type)
+    if is_immersed
+        ib_type = pop!(grid_reconstruction_args, :immersed_boundary_type)
+    end
+
+    # Reconstruct the grid which may or may not be an underlying grid to an ImmersedBoundaryGrid
+    maybe_underlying_grid = grid_type(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
+
+    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary
+    grid = is_immersed ? ImmersedBoundaryGrid(maybe_underlying_grid, ib_type) : maybe_underlying_grid
+    return grid
 end
 
 #####
@@ -1008,6 +1021,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
     filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)
+
+    schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
     if isnothing(overwrite_existing)
@@ -1124,7 +1139,7 @@ function initialize_nc_file(model,
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         # This metadata is to support `FieldTimeSeries`.
-        write_grid_reconstruction_metadata!(dataset, grid, indices, array_type, deflatelevel)
+        write_grid_reconstruction_data!(dataset, grid; array_type, deflatelevel)
 
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
@@ -1397,7 +1412,7 @@ function Base.show(io::IO, ow::NetCDFWriter)
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "└── array type: ", show_array_type(ow.array_type), "\n",
+              "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))
 end
@@ -1436,4 +1451,5 @@ end
 #####
 
 ext(::Type{NetCDFWriter}) = ".nc"
+
 end # module

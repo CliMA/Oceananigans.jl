@@ -14,7 +14,7 @@ struct RightBoundary end
 
 A wrapper for the user-defined boundary condition function `func` at location
 `X, Y, Z`. `I` denotes the boundary-normal index (`I=1` at western boundaries,
-`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the 
+`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the
 user-defined function, parameters, field dependencies, indices of the field dependencies
 in `model_fields`, and interpolation operators for interpolating `model_fields` to the
 location at which the boundary condition is applied.
@@ -44,6 +44,8 @@ struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
 end
 
 location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
+
+destantiate(t::T) where T = T
 
 #####
 ##### "Regularization" for NonhydrostaticModel setup
@@ -77,7 +79,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
     boundary_func = bc.condition
 
     # Set boundary-normal location to Nothing:
-    LX, LY, LZ = Tuple(i == dim ? Nothing : loc[i] for i = 1:3)
+    LX, LY, LZ = Tuple(i == dim ? Nothing : destantiate(loc[i]) for i = 1:3)
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
@@ -116,15 +118,14 @@ end
 @inline z_boundary_node(i, j, k, grid::YFlatGrid,  ℓx, ℓy) = tuple(ξnode(i, j, k, grid, ℓx, nothing, Face()))
 @inline z_boundary_node(i, j, k, grid::XYFlatGrid, ℓx, ℓy) = tuple()
 
-const XBoundaryFunction{LY, LZ, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{Nothing, LY, LZ, S}} where {LY, LZ, S}
-const YBoundaryFunction{LX, LZ, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, Nothing, LZ, S}} where {LX, LZ, S}
-const ZBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, LY, Nothing, S}} where {LX, LY, S}
+const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{Nothing, LY, LZ, S} where {LY, LZ, S}
+const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, Nothing, LZ, S} where {LX, LZ, S}
+const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, Nothing, S} where {LX, LY, S}
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
-@inline function getbc(bc::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer,
+@inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer,
                        grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
 
-    cbf = bc.condition
     i, i′ = domain_boundary_indices(S(), grid.Nx)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = x_boundary_node(i′, j, k, grid, LY(), LZ())
@@ -133,10 +134,9 @@ const ZBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBounda
 end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
-@inline function getbc(bc::YBoundaryFunction{LX, LZ, S}, i::Integer, k::Integer,
+@inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, k::Integer,
                        grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
 
-    cbf = bc.condition
     j, j′ = domain_boundary_indices(S(), grid.Ny)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = y_boundary_node(i, j′, k, grid, LX(), LZ())
@@ -145,10 +145,9 @@ end
 end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
-@inline function getbc(bc::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer,
+@inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer,
                        grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
 
-    cbf = bc.condition
     k, k′ = domain_boundary_indices(S(), grid.Nz)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = z_boundary_node(i, j, k′, grid, LX(), LY())
@@ -161,10 +160,9 @@ end
 #####
 
 # Return ContinuousBoundaryFunction on the east or west interface of a cell adjacent to an immersed boundary
-@inline function getbc(bc::XBoundaryFunction{LY, LZ, S}, i::Integer, j::Integer, k::Integer,
+@inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, i::Integer, j::Integer, k::Integer,
                        grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
 
-    cbf = bc.condition
     i′ = cell_boundary_index(S(), i)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = node(i′, j, k, grid, Face(), LY(), LZ())
@@ -173,10 +171,9 @@ end
 end
 
 # Return ContinuousBoundaryFunction on the south or north interface of a cell adjacent to an immersed boundary
-@inline function getbc(bc::YBoundaryFunction{LX, LZ, S}, i::Integer, j::Integer, k::Integer,
+@inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, j::Integer, k::Integer,
                        grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
 
-    cbf = bc.condition
     j′ = cell_boundary_index(S(), j)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = node(i, j′, k, grid, LX(), Face(), LZ())
@@ -185,10 +182,9 @@ end
 end
 
 # Return ContinuousBoundaryFunction on the bottom or top interface of a cell adjacent to an immersed boundary
-@inline function getbc(bc::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, k::Integer,
+@inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, k::Integer,
                        grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
 
-    cbf = bc.condition
     k′ = cell_boundary_index(S(), k)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = node(i, j, k′, grid, LX(), LY(), Face())
@@ -210,7 +206,7 @@ function Base.summary(bf::ContinuousBoundaryFunction)
 end
 
 prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
-    
+
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
     ContinuousBoundaryFunction{LX, LY, LZ, S}(Adapt.adapt(to, bf.func),
                                               Adapt.adapt(to, bf.parameters),

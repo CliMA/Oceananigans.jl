@@ -135,21 +135,19 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
 
     ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should have increasing values."))
 
-    # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
+    # Validate the length of ξ: error is ξ is too short, error if ξ is too long.
     Nξ = length(ξ)
     N⁺¹ = N + 1
     if Nξ < N⁺¹
         throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $(N)!"))
     elseif Nξ > N⁺¹
-        msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
-              "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
-        @warn msg
+        throw(ArgumentError("length($dir) = $Nξ has too many interfaces for the dimension size $(N)!"))
     end
 
     return ξ
 end
 
-function validate_dimension_specification(T, ξ::Function, dir, N, FT)
+function validate_dimension_specification(T, ξ::Union{Function, CallableCoordinate}, dir, N, FT)
     ξ(N) ≥ ξ(1) || throw(ArgumentError("$dir should have increasing values."))
     return ξ
 end
@@ -209,3 +207,14 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 validate_indices(indices, loc, topo, sz, halo_sz) =
     map(validate_index, indices, map(instantiate, loc), map(instantiate, topo), sz, halo_sz)
 
+# Heuristic for a 3-tuple of indices
+function validate_indices(indices::Tuple{<:Any, <:Any, <:Any}, loc, Topo, sz, halo_sz)
+
+    @inbounds begin
+        i = validate_index(indices[1], instantiate(loc[1]), instantiate(Topo[1]), sz[1], halo_sz[1])
+        j = validate_index(indices[2], instantiate(loc[2]), instantiate(Topo[2]), sz[2], halo_sz[2])
+        k = validate_index(indices[3], instantiate(loc[3]), instantiate(Topo[3]), sz[3], halo_sz[3])
+    end
+
+    return (i, j, k)
+end

@@ -16,7 +16,7 @@ using MPI
 # tmpi 4 julia --project
 #
 # then later:
-# 
+#
 # julia> include("test_distributed_hydrostatic_model.jl")
 
 MPI.Initialized() || MPI.Init()
@@ -25,7 +25,7 @@ using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
-function Δ_min(grid) 
+function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
     Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx_min, Δy_min)
@@ -68,7 +68,7 @@ function rotation_with_shear_test(grid, closure=nothing)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
-    Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
+    Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz)
     Δt = all_reduce(min, Δt_local, architecture(grid))
 
     for _ in 1:10
@@ -79,17 +79,17 @@ function rotation_with_shear_test(grid, closure=nothing)
 end
 
 Nx = 32
-Ny = 32 
+Ny = 32
 
 for arch in archs
 
-    # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N 
+    # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N
     # which would lead to different advection schemes for partitioned and non-partitioned grids.
     # `Fractional` is, however, tested in regression tests where the horizontal dimensions are larger.
     valid_x_partition = !(arch.partition.x isa Fractional)
     valid_y_partition = !(arch.partition.y isa Fractional)
     valid_z_partition = !(arch.partition.z isa Fractional)
-    
+
     if valid_x_partition & valid_y_partition & valid_z_partition
         @testset "Testing distributed solid body rotation" begin
             underlying_grid = LatitudeLongitudeGrid(arch,
@@ -153,6 +153,10 @@ for arch in archs
             arch    = synchronized(arch)
             closure = CATKEVerticalDiffusivity()
 
+            if arch.local_rank == 0
+                @info "  Testing CATKE with $(ranks(arch)) ranks"
+            end
+
             # "s" for "serial" computation, "p" for parallel
             ms = rotation_with_shear_test(global_underlying_grid, closure)
             mp = rotation_with_shear_test(underlying_grid, closure)
@@ -188,4 +192,3 @@ for arch in archs
         end
     end
 end
-

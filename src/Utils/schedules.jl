@@ -27,12 +27,6 @@ end
 ##### TimeInterval
 #####
 
-"""
-    struct TimeInterval <: AbstractSchedule
-
-Callable `TimeInterval` schedule for periodic output or diagnostic evaluation
-according to `model.clock.time`.
-"""
 mutable struct TimeInterval{FT} <: AbstractSchedule
     interval :: FT
     first_actuation_time :: FT
@@ -100,10 +94,10 @@ end
 """
     IterationInterval(interval; offset=0)
 
-Return a callable `IterationInterval` that "actuates" (schedules output or callback execution)
+Return a callable `IterationInterval` that "actuates" (i.e., schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
 
-For example, 
+For example,
 
 * `IterationInterval(100)` actuates at iterations `[100, 200, 300, ...]`.
 * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
@@ -163,8 +157,8 @@ end
 """
     SpecifiedTimes(times)
 
-Return a callable `TimeInterval` that "actuates" (schedules output or callback execution)
-whenever the model's clock equals the specified values in `times`. For example, 
+Return a `schedule::SpecifiedTimes` that "actuates" (i.e., schedules output or callback execution)
+whenever the model's clock equals the specified values in `times`. For example,
 
 * `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
 
@@ -303,3 +297,9 @@ Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")
 
+const StatefulSchedules = Union{TimeInterval, SpecifiedTimes, ConsecutiveIterations}
+
+materialize_schedule(s) = s
+materialize_schedule(ss::StatefulSchedules) = deepcopy(ss) # required to reuse a pre-defined schedule with a state
+materialize_schedule(or::OrSchedule) = OrSchedule(Tuple(materialize_schedule(s) for s in or.schedules))
+materialize_schedule(and::AndSchedule) = AndSchedule(Tuple(materialize_schedule(s) for s in and.schedules))

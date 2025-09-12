@@ -63,16 +63,13 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     v = wrap_prescribed_field(Center, Face, Center, velocities.v, grid; clock, parameters)
     w = wrap_prescribed_field(Center, Center, Face, velocities.w, grid; clock, parameters)
 
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
+    fill_halo_regions!((u, v))
     fill_halo_regions!(w)
-    prescribed_velocities = (; u, v, w)
-    @apply_regionally replace_horizontal_vector_halos!(prescribed_velocities, grid)
 
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) = 
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) = 
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
@@ -94,7 +91,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
-step_free_surface!(::Nothing, model, timestepper, Δt) = nothing 
+step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
@@ -111,7 +108,7 @@ materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFie
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
-apply_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
+compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
@@ -131,7 +128,6 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end
