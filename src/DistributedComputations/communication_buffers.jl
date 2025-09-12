@@ -294,7 +294,6 @@ recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAnd
 for dir in (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
     _fill_send_buffer! = Symbol(:_fill_, dir, :_send_buffer!)
     _recv_from_buffer! = Symbol(:_recv_from_, dir, :_buffer!)
-
     @eval $_fill_send_buffer!(c, ::Nothing, args...) = nothing
     @eval $_recv_from_buffer!(c, ::Nothing, args...) = nothing
 end
