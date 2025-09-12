@@ -20,22 +20,25 @@ to the `to_field` using the specified regridding method.
 xESMF exposes five different regridding algorithms from the ESMF library, specified
 with the `method` keyword argument:
 
-bilinear: ESMF.RegridMethod.BILINEAR
-conservative: ESMF.RegridMethod.CONSERVE
-conservative_normed: ESMF.RegridMethod.CONSERVE
-patch: ESMF.RegridMethod.PATCH
-nearest_s2d: ESMF.RegridMethod.NEAREST_STOD
-nearest_d2s: ESMF.RegridMethod.NEAREST_DTOS
+- `"bilinear"`: ESMF.RegridMethod.BILINEAR
+- `"conservative"`: ESMF.RegridMethod.CONSERVE
+- `"conservative_normed"`: ESMF.RegridMethod.CONSERVE
+- `"patch"`: ESMF.RegridMethod.PATCH
+- `"nearest_s2d"`: ESMF.RegridMethod.NEAREST_STOD
+- `"nearest_d2s"`: ESMF.RegridMethod.NEAREST_DTOS
 
-where conservative_normed is just the conservative method with the normalization set to ESMF.NormType.FRACAREA instead of the default norm_type=ESMF.NormType.DSTAREA.
-For more information, see the xESMF documentation: https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+where `conservative_normed` is just the conservative method with the normalization set
+to `ESMF.NormType.FRACAREA` instead of the default `norm_type=ESMF.NormType.DSTAREA`.
+
+For more information, refer to the xESMF documentation at:
+> https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
 """
 function compute_regridding_weights(to_field, from_field, method::String = "conservative")
 
     # Create source and destination fields
 
-    src_ds = coordinate_dataset(source_field.grid)
-    dst_ds = coordinate_dataset(destination_field.grid)
+    src_ds = coordinate_dataset(from_field.grid)
+    dst_ds = coordinate_dataset(to_field.grid)
 
     regridder = get_xesmf().Regridder(src_ds, dst_ds, method, periodic=PyObject(true))
 
