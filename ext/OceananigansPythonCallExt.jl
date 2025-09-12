@@ -90,69 +90,7 @@ function regridding_weights(dst_field, src_field; method="conservative")
     # Create regridder and extract weights
     regridder = xesmf.Regridder(src_ds, dst_ds, method, periodic=pytrue)
     
-    # Convert weights to Julia sparse matrix
-    coo = regridder.weights.data
-    coords = coo[:coords]
-    rows = coords[1,:] .+ 1
-    cols = coords[2,:] .+ 1
-    vals = Float64.(coo[:data])
-    shape = Tuple(Int.(coo[:shape]))
-    
-    return sparse(rows, cols, vals, shape[1], shape[2])
-end
-
-function structured_coordinate_dataset(lat, lon, lat_b, lon_b, numpy, xarray)
-    # Convert to numpy arrays
-    lat = numpy.array(lat)
-    lon = numpy.array(lon)
-    lat_b = numpy.array(lat_b)
-    lon_b = numpy.array(lon_b)
-
-    # Create DataArrays
-    ds_lat = xarray.DataArray(
-        lat',
-        dims=["y", "x"],
-        coords=Dict(
-            "lat" => (["y", "x"], lat'),
-            "lon" => (["y", "x"], lon')
-        ),
-        name="latitude"
-    )
-
-    ds_lon = xarray.DataArray(
-        lon',
-        dims=["y", "x"],
-        coords=Dict(
-            "lat" => (["y", "x"], lat'),
-            "lon" => (["y", "x"], lon')
-        ),
-        name="longitude"
-    )
-
-    ds_lat_b = xarray.DataArray(
-        lat_b',
-        dims=["y_b", "x_b"],
-        coords=Dict(
-            "lat_b" => (["y_b", "x_b"], lat_b'),
-            "lon_b" => (["y_b", "x_b"], lon_b')
-        )
-    )
-
-    ds_lon_b = xarray.DataArray(
-        lon_b',
-        dims=["y_b", "x_b"],
-        coords=Dict(
-            "lat_b" => (["y_b", "x_b"], lat_b'),
-            "lon_b" => (["y_b", "x_b"], lon_b')
-        )
-    )
-
-    return xarray.Dataset(Dict(
-        "lat" => ds_lat,
-        "lon" => ds_lon,
-        "lat_b" => ds_lat_b,
-        "lon_b" => ds_lon_b
-    ))
+    return nothing
 end
 
 end # module
