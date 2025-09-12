@@ -10,10 +10,11 @@ import Oceananigans.Grids: λnodes, φnodes, Center, Face
 import Oceananigans.Architectures: on_architecture, CPU
 
 """
-    install_xesmf()
+    add_package(package_name, channel="conda-forge"; verbose=true)
 
-Install the xesmf package using CondaPkg.
-Returns a NamedTuple containing package information if successful.
+Install `package_name` with `CondaPkg.add` from `channel`, printing
+a few messages if `verbose == true`.
+Return a NamedTuple containing package information if successful.
 """
 function add_package(name, channel="conda-forge"; verbose=true)
     verbose && @info "Installing $(name)..."
@@ -23,6 +24,12 @@ function add_package(name, channel="conda-forge"; verbose=true)
     return pkg
 end
 
+"""
+    add_import_pkg(package_name, channel="conda-forge")
+
+Import and return `package_name` with `PythonCall.pyimport`,
+installing it with `add_package` if it is not found.
+"""
 function add_import_pkg(name, channel="conda-forge")
     pkg = try
         pyimport(name)
