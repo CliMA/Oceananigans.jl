@@ -1,4 +1,3 @@
-using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
@@ -11,14 +10,14 @@ using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, Trac
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
+using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
-import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
+import Oceananigans.Models: total_velocities, timestepper
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -27,7 +26,7 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 function default_vertical_coordinate(grid)
     if grid.z isa MutableVerticalDiscretization
-        return ZStar()
+        return ZStarCoordinate(grid)
     else
         return ZCoordinate()
     end
@@ -113,9 +112,10 @@ Keyword arguments
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
-  - `vertical_coordinate`: Algorithm for grid evolution: ZStar() or ZCoordinate().
-                           Default: ZStar() for grids with MutableVerticalDiscretization;
-                           ZCoordinate() otherwise.
+  - `vertical_coordinate`: Algorithm for grid evolution: `ZStarCoordinate()` or `ZCoordinate(grid)`.
+                           Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
+                           for grids with `MutableVerticalDiscretization` otherwise returns
+                           `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock(grid),
@@ -140,8 +140,8 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStar)
-        error("The grid does not support ZStar vertical coordinates. Use a `MutableVerticalDiscretization` to allow the use of ZStar (see `MutableVerticalDiscretization`).")
+    if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStarCoordinate)
+        error("The grid does not support ZStarCoordinate vertical coordinates. Use a `MutableVerticalDiscretization` to allow the use of ZStarCoordinate (see `MutableVerticalDiscretization`).")
     end
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
@@ -222,6 +222,8 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
+
+    !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,

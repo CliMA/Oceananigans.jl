@@ -84,6 +84,7 @@ const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
 
+const NoFluxBoundaryCondition = ZFBC
 const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:DistributedCommunication}
 
 # More readable BC constructors for the public API.
@@ -96,11 +97,11 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
                 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient(), val; kwargs...)
-                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open(nothing), val; kwargs...)
+  OpenBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(Open(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
                   ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
-    
+
 # Support for various types of boundary conditions.
 #
 # Notes:
@@ -144,11 +145,6 @@ validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side) =
 
 validate_boundary_condition_architecture(condition, arch, bc, side) = nothing
 validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
-validate_boundary_condition_architecture(::CuArray, ::GPU, bc, side) = nothing
-
-validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
 validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
-

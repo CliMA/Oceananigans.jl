@@ -103,6 +103,10 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
+
+1. Shikanian, A. and Parfenyev, V. (2025) [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.48550/arXiv.2508.13590), _arXiv preprint_, arXiv:2508.13590. DOI: [10.48550/arXiv.2508.13590](https://doi.org/10.48550/arXiv.2508.13590)
+
 1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R. and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2504.15308)
 
 1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2025) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.48550/arXiv.2503.12845), _arXiv preprint_, arXiv:2503.12845 (submitted to the Journal of Physical Oceanography). DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2503.12845)
@@ -111,23 +115,23 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Bisits, J. I., Zika, J. D. and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)
 
-1. Whitley V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_. In press. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
+1. Whitley V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_, **55(6)**, 645-661. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
 
-1. Chor, T. and Wenegrat, J. (2025). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.1175/JPO-D-24-0139.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0139.1](https://doi.org/10.1175/JPO-D-24-0139.1)
+1. Chor, T. and Wenegrat, J. (2025). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.1175/JPO-D-24-0139.1), _Journal of Physical Oceanography_, **55(6)**, 737–759. DOI: [10.1175/JPO-D-24-0139.1](https://doi.org/10.1175/JPO-D-24-0139.1)
 
 1. Silvestri, S., Wagner, G. L., Constantinou, N. C., Hill, C., Campin, J.-M., Souza, A., Bishnu, S., Churavy, V., Marshall, J., and Ferrari, R. (2025) [A GPU-based ocean dynamical core for routine mesoscale-resolving climate simulations](https://doi.org/10.1029/2024MS004465), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2024MS004465. DOI: [10.1029/2024MS004465](https://doi.org/10.1029/2024MS004465)
 
 1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.1029/2024MS004522), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2024MS004522. DOI: [10.1029/2024MS004522](https://doi.org/10.1029/2024MS004522)
 
-1. Atkinson, E., McWilliams, J., and Grisouard, N. (2024) [Near-inertial echoes of ageostrophic instability in submesoscale filaments](https://doi.org/10.48550/arXiv.2407.16059), _arXiv preprint_, arXiv:2407.16059. DOI: [10.48550/arXiv.2407.16059](https://doi.org/10.48550/arXiv.2407.16059)
+1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2025). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.21105/jcon.00148), _The Proceedings of the JuliaCon Conferences_, **7(67)**, 148. DOI: [10.21105/jcon.00148](https://doi.org/10.21105/jcon.00148)
+
+1. Atkinson, E., McWilliams, J., and Grisouard, N. (2025) [Near-inertial echoes of ageostrophic instability in submesoscale filaments](https://doi.org/10.1017/jfm.2025.10348), _Journal of Fluid Mechanics_, **1015**, A17. DOI: [10.1017/jfm.2025.10348](https://doi.org/10.1017/jfm.2025.10348)
 
 1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
 
 1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
 
-1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
-
-1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2024). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.48550/arXiv.2403.15632), _arXiv_, arXiv:2403.15632. DOI: [10.48550/arXiv.2403.15632](https://doi.org/10.48550/arXiv.2403.15632)
+1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1), _Journal of Physical Oceanography_, **54(12)**, 2419–2430. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
 
 1. Strong-Wright J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
 

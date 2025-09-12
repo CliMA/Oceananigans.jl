@@ -21,9 +21,9 @@ struct CubedSphereConnectivity{C, R}
     rotations :: R
 end
 
-function CubedSphereConnectivity(devices, partition::CubedSpherePartition, rotations::Tuple = default_rotations)
-    regions = MultiRegionObject(Tuple(1:length(devices)), devices)
-    rotations = MultiRegionObject(rotations, devices)
+function CubedSphereConnectivity(partition::CubedSpherePartition, rotations::Tuple = default_rotations)
+    regions = MultiRegionObject(Tuple(1:length(partition)))
+    rotations = MultiRegionObject(rotations)
     @apply_regionally connectivity = find_regional_connectivities(regions, partition)
 
     return CubedSphereConnectivity(connectivity, rotations)
@@ -56,7 +56,7 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
         CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing)
 
     Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
-    `from_side :: AbstractRegionSide` → `side :: AbstractRegionSide`. The rotation of
+    `from_side` → `side`. The rotation of
     the adjacent region relative to the host region is prescribed via `rotation` argument
     (default `rotation=nothing`).
 
@@ -73,8 +73,8 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
 
     julia> CubedSphereRegionalConnectivity(1, 2, East(), West())
     CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.MultiRegion.West side, region 2
-    ├── to:   Oceananigans.MultiRegion.East side, region 1
+    ├── from: Oceananigans.BoundaryConditions.West side, region 2
+    ├── to:   Oceananigans.BoundaryConditions.East side, region 1
     └── no rotation
     ```
 
@@ -84,8 +84,8 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     ```jldoctest cubedsphereconnectivity
     julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())
     CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.MultiRegion.East side, region 3
-    ├── to:   Oceananigans.MultiRegion.North side, region 1
+    ├── from: Oceananigans.BoundaryConditions.East side, region 3
+    ├── to:   Oceananigans.BoundaryConditions.North side, region 1
     └── counter-clockwise rotation ↺
     ```
     """
@@ -260,21 +260,3 @@ function find_regional_connectivities(region, partition::CubedSpherePartition)
 end
 
 Base.summary(::CubedSphereConnectivity) = "CubedSphereConnectivity"
-
-#####
-##### Boundary-specific Utils
-#####
-
-"Trivial connectivities are East ↔ West, North ↔ South. Anything else is referred to as non-trivial."
-const NonTrivialConnectivity = Union{CubedSphereRegionalConnectivity{East, South}, CubedSphereRegionalConnectivity{East, North},
-                                     CubedSphereRegionalConnectivity{West, South}, CubedSphereRegionalConnectivity{West, North},
-                                     CubedSphereRegionalConnectivity{South, East}, CubedSphereRegionalConnectivity{South, West},
-                                     CubedSphereRegionalConnectivity{North, East}, CubedSphereRegionalConnectivity{North, West}}
-
-@inline flip_west_and_east_indices(buff, loc, conn) = buff
-@inline flip_west_and_east_indices(buff, ::Center, ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
-@inline flip_west_and_east_indices(buff, ::Face,   ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
-
-@inline flip_south_and_north_indices(buff, loc, conn) = buff
-@inline flip_south_and_north_indices(buff, ::Center, ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)
-@inline flip_south_and_north_indices(buff, ::Face,   ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)

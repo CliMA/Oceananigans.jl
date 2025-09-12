@@ -1,4 +1,5 @@
 using KernelAbstractions: @kernel, @index
+using OrderedCollections: OrderedDict
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
                              DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
@@ -102,7 +103,7 @@ const YNonRegularLLG = LLGSpacing{<:Any, <:Any, <:Any, <:AbstractArray, <:Abstra
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
 """
-    LatitudeLongitudeGrid([architecture = CPU(), FT = Float64];
+    LatitudeLongitudeGrid([architecture = CPU(), FT = Oceananigans.defaults.FloatType];
                           size,
                           longitude,
                           latitude,
@@ -132,7 +133,7 @@ Keyword arguments
   Each is either a:
   1. 2-tuple that specify the end points of the domain,
   2. one-dimensional array specifying the cell interface locations, or
-  3. a single-argument function that takes an index and returns cell interface location.
+  3. single-argument function that takes an index and returns cell interface location.
 
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
 
@@ -172,21 +173,21 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
 * A bounded spherical sector with cell interfaces stretched hyperbolically near the top:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
 
-julia> σ = 1.1; # stretching factor
+σ = 1.1 # stretching factor
+Nz = 24 # vertical resolution
+Lz = 1000 # depth (m)
+hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
-julia> Nz = 24; # vertical resolution
+grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
+                             longitude = (-180, 180),
+                             latitude = (-20, 20),
+                             z = hyperbolically_spaced_faces,
+                             topology = (Bounded, Bounded, Bounded))
 
-julia> Lz = 1000; # depth (m)
+# output
 
-julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
-
-julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
-                                    longitude = (-180, 180),
-                                    latitude = (-20, 20),
-                                    z = hyperbolically_spaced_faces,
-                                    topology = (Bounded, Bounded, Bounded))
 36×34×24 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── longitude: Bounded  λ ∈ [-180.0, 180.0] regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-20.0, 20.0]   regularly spaced with Δφ=1.17647
@@ -315,7 +316,7 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = topology_strs(grid)
     metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
 
     return string(size_summary(size(grid)),
@@ -359,7 +360,7 @@ end
 function constructor_arguments(grid::LatitudeLongitudeGrid)
     arch = architecture(grid)
     FT = eltype(grid)
-    args = Dict(:architecture => arch, :number_type => eltype(grid))
+    args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
     topo = topology(grid)
@@ -651,10 +652,10 @@ end
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
-@inline λnodes(grid::LLG, ℓx::F; with_halos=false) = _property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline λnodes(grid::LLG, ℓx::C; with_halos=false) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline φnodes(grid::LLG, ℓy::F; with_halos=false) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
-@inline φnodes(grid::LLG, ℓy::C; with_halos=false) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline λnodes(grid::LLG, ℓx::F; with_halos=false) = _property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline λnodes(grid::LLG, ℓx::C; with_halos=false) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline φnodes(grid::LLG, ℓy::F; with_halos=false) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline φnodes(grid::LLG, ℓy::C; with_halos=false) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)
@@ -683,7 +684,7 @@ spherical Earth geometry. The longitudes are computed approximately using the la
 The vertical coordinate and architecture are inherited from the input grid.
 
 Keyword Arguments
-================ 
+================
 - `radius`: The radius of the sphere, defaults to Earth's mean radius (≈ 6371 km)
 - `origin`: Tuple of (longitude, latitude) in degrees specifying the origin of the rectilinear grid
 """
@@ -691,7 +692,7 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth
     arch = architecture(rectilinear_grid)
     Hx, Hy, Hz = halo_size(rectilinear_grid)
     Nx, Ny, Nz = size(rectilinear_grid)
-	
+
     λ₀, φ₀ = origin
 
     TX, TY, TZ = topology(rectilinear_grid)
@@ -709,11 +710,11 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth
 
     xᶠ = on_architecture(CPU(), xᶠ)
     yᶠ = on_architecture(CPU(), yᶠ)
-    
+
     # Convert y coordinates to latitudes
     R = radius
     φᶠ = @. φ₀ + 180 / π * yᶠ / R
-    
+
     # Convert x to longitude, using the origin as a reference
     λᶠ = @. λ₀ + 180 / π * xᶠ / (R * cosd(φ₀))
 

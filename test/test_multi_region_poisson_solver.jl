@@ -13,12 +13,7 @@ end
 
 function run_identity_operator_test(grid)
     arch = architecture(grid)
-
-    if arch isa GPU
-        mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = (0, 0))
-    else
-        mrg = MultiRegionGrid(grid, partition = XPartition(2))
-    end
+    mrg = MultiRegionGrid(grid, partition = XPartition(2))
 
     N = size(grid)
     M = prod(N)
@@ -76,7 +71,7 @@ function run_poisson_equation_test(grid)
     arch = architecture(grid)
 
     if arch isa GPU
-        mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = (0, 0))
+        mrg = MultiRegionGrid(grid, partition = XPartition(2))
     else
         mrg = MultiRegionGrid(grid, partition = XPartition(2))
     end
@@ -113,7 +108,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ_solution = CenterField(grid)
     compute_∇²!(∇²ϕ_solution, ϕ_solution, arch, grid)
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test all(interior(∇²ϕ_solution) .≈ interior(∇²ϕ))
         @test all(interior(ϕ_solution)   .≈ interior(ϕ_truth))
     end

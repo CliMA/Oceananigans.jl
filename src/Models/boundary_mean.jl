@@ -1,4 +1,4 @@
-using Adapt, CUDA
+using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
 using Oceananigans.Fields: Center, Face
 using Oceananigans.AbstractOperations: GridMetricOperation, Ax, Ay, Az
@@ -32,9 +32,9 @@ struct BoundaryAdjacentMean{FF, BV}
     16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
     ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
     ├── boundary conditions: FieldBoundaryConditions
-    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
     └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-        └── max=0.980785, min=-0.980785, mean=1.10534e-16
+        └── max=0.980785, min=-0.980785, mean=-5.52808e-17
 
     julia> bam = BoundaryAdjacentMean(grid, :east)
     BoundaryAdjacentMean: (0.0)
@@ -98,12 +98,12 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     # get the total flux
     sum!(bam.flux_field, u * An)
 
-    bam.value[] = CUDA.@allowscalar bam.flux_field[iB, jB, kB]
+    bam.value[] = @allowscalar bam.flux_field[iB, jB, kB]
 
     # get the normalizing area
     sum!(bam.flux_field, An)
 
-    bam.value[] /= CUDA.@allowscalar bam.flux_field[iB, jB, kB]
+    bam.value[] /= @allowscalar bam.flux_field[iB, jB, kB]
 
     return nothing
 end

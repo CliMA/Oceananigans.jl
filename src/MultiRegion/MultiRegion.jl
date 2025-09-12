@@ -2,7 +2,6 @@ module MultiRegion
 
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
-export AbstractRegionSide, East, West, North, South
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
 using Oceananigans
@@ -14,7 +13,6 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 
 using Adapt
-using CUDA
 using DocStringExtensions
 using OffsetArrays
 
@@ -22,31 +20,22 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: Reference, Iterate, getnamewrapper
 using Oceananigans.Grids: AbstractUnderlyingGrid
 
+import KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 
 import Base: show, length, size
 
 import Oceananigans.Utils:
-                getdevice,
-                switch_device!,
-                devices,
                 isregional,
                 getregion,
                 _getregion,
-                sync_all_devices!
+                regions
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
 
 abstract type AbstractConnectivity end
-
-abstract type AbstractRegionSide end
-
-struct West <: AbstractRegionSide end
-struct East <: AbstractRegionSide end
-struct North <: AbstractRegionSide end
-struct South <: AbstractRegionSide end
 
 struct XPartition{N} <: AbstractPartition
     div :: N
