@@ -297,8 +297,6 @@ for dir in (:west, :east, :south, :north, :southwest, :southeast, :northwest, :n
 
     @eval $_fill_send_buffer!(c, ::Nothing, args...) = nothing
     @eval $_recv_from_buffer!(c, ::Nothing, args...) = nothing
-    @eval $_fill_send_buffer!(c, ::Nothing, args...) = nothing
-    @eval $_recv_from_buffer!(c, ::Nothing, args...) = nothing
 end
 
 #####
