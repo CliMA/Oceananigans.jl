@@ -41,10 +41,6 @@ function add_import_pkg(name, channel="conda-forge")
     return pkg
 end
 
-flip(::Center) = Face()
-flip(::Face) = Center()
-flip(::Nothing) = nothing
-
 x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
 y_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny) |> Array
 x_node_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx, 1:Ny) |> Array
@@ -59,6 +55,8 @@ y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
 function regridding_weights(dst_field, src_field; method="conservative")
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
+
+    # We only support regridding between centered fields.
     @assert ℓx isa Center
     @assert ℓy isa Center
 
@@ -77,7 +75,7 @@ function regridding_weights(dst_field, src_field; method="conservative")
     λvˢ = λnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
     φvˢ = φnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
 
-    # Ensure coordinates are on CPU
+    # Build data structures expected by xESMF.
     Nˢx, Nˢy, Nˢz = size(src_field)
     Nᵈx, Nᵈy, Nᵈz = size(dst_field)
 
