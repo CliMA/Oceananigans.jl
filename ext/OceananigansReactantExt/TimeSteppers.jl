@@ -15,7 +15,8 @@ using Oceananigans.TimeSteppers:
     compute_pressure_correction!,
     correct_velocities_and_cache_previous_tendencies!,
     step_lagrangian_particles!,
-    QuasiAdamsBashforth2TimeStepper
+    QuasiAdamsBashforth2TimeStepper,
+    compute_flux_bc_tendencies!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
@@ -86,6 +87,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     ab2_timestepper.χ = χ
 
     # Full step for tracers, fractional step for velocities.
+    compute_flux_bc_tendencies!(model)
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)
