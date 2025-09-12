@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryCondition
 using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
-using Oceananigans.Grids: halo_size, size
+using Oceananigans.Grids: halo_size, size, topology
 using Oceananigans.Utils: launch!
 
 using Adapt
@@ -70,7 +70,10 @@ CommunicationBuffers(grid, data, ::Nothing) = nothing
 
 # OneDBuffers are associated with partitioning without corner passing,
 # therefore the "corner zones" are communicated within the one-dimensional pass.
-const OneDBuffers = CommunicationBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing, <:Nothing, <:Nothing}
+struct OneDBuffer{B}
+    send :: B
+    recv :: B
+end
 
 x_communication_buffer(arch, grid, data, H, bc) = nothing
 y_communication_buffer(arch, grid, data, H, bc) = nothing
@@ -79,20 +82,34 @@ y_communication_buffer(arch, grid, data, H, bc) = nothing
 #### X and Y communication buffers
 ####
 
-function x_communication_buffer(arch::Distributed, grid, data, H, ::DCBC) 
-    # Either we pass corners or it is a 1D parallelization in x
-    size_y = arch.ranks[2] == 1 ? size(parent(data), 2) : size(grid, 2)
-    return (send = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))),
-            recv = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))))
+# Either we pass corners or it is a 1D parallelization in x, note that, even for 2D parallelizations, we need a 
+# buffer that includes the corners (i.e. a OneDBuffer) if we are at the edge of the domain in y since we are not
+# passing corners in that case
+function x_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY}, data, H, ::DCBC) where {FT, TX, TY}
+    if (arch.ranks[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
+        return OneDBuffer(on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))),
+                          on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))
+    else
+        return (send = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))),
+                recv = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))))
+    end
 end
 
-function y_communication_buffer(arch::Distributed, grid, data, H, ::DCBC)
-    # Either we pass corners or it is a 1D parallelization in y
-    size_x = arch.ranks[1] == 1 ? size(parent(data), 1) : size(grid, 1)
-    return (send = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))),
-            recv = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))))
+# Either we pass corners or it is a 1D parallelization in y, note that, even for 2D parallelizations, we need a 
+# buffer that includes the corners (i.e. a OneDBuffer) if we are at the edge of the domain in x since we are not
+# passing corners in that case
+function y_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY}, data, H, ::DCBC) where {FT, TX, TY}
+    # Either we pass corners or it is a 1D parallelization in y    
+    if (arch.ranks[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
+        return OneDBuffer(on_architecture(arch, zeros(FT, size(parent(data), 1), H, size(parent(data), 3))),
+                          on_architecture(arch, zeros(FT, size(parent(data), 1), H, size(parent(data), 3))))
+    else
+        return (send = on_architecture(arch, zeros(FT, size(grid, 1), H, size(parent(data), 3))),
+                recv = on_architecture(arch, zeros(FT, size(grid, 1), H, size(parent(data), 3))))
+    end
 end
 
+# Never pass corners in a MCBC.
 x_communication_buffer(arch, grid, data, H, ::MCBC) = 
            (send = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
@@ -110,29 +127,12 @@ corner_communication_buffer(arch, grid, data, Hx, Hy, xedge, yedge) = nothing
 
 # Disambiguation
 corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
-
-# Could be either a 1D parallelization or a `RightConnected` or `LeftConnected` topology in the first
-# case we do not need to pass corners, in the second case we do.
-function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, ::Nothing, yedge)
-    if arch.ranks[1] == 1
-        return nothing
-    else
-        return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
-                recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
-    end
-end
-
-# Could be either a 1D parallelization or a `RightConnected` or `LeftConnected` topology in the first
-# case we do not need to pass corners, in the second case we do.
-function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, ::Nothing) 
-    if arch.ranks[2] == 1
-        return nothing
-    else
-        return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
-                recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
-    end
-end
-
+corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, ::Nothing, yedge) = nothing
+corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, ::Nothing) = nothing
+    
+# Do not need disctinction between one or two dimensional partitioning since they are 
+# uniquely defined and only used in the two-dimensional partitioning case, in all other cases
+# they are equal to `nothing`
 function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, yedge)
     return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
@@ -147,15 +147,15 @@ function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     _fill_west_send_buffer!(parent(c), buff, buff.west,  Hx, Hy, Nx, Ny)
-     _fill_east_send_buffer!(parent(c), buff, buff.east,  Hx, Hy, Nx, Ny)
-    _fill_south_send_buffer!(parent(c), buff, buff.south, Hx, Hy, Nx, Ny)
-    _fill_north_send_buffer!(parent(c), buff, buff.north, Hx, Hy, Nx, Ny)
+     _fill_west_send_buffer!(parent(c), buff.west,  Hx, Hy, Nx, Ny)
+     _fill_east_send_buffer!(parent(c), buff.east,  Hx, Hy, Nx, Ny)
+    _fill_south_send_buffer!(parent(c), buff.south, Hx, Hy, Nx, Ny)
+    _fill_north_send_buffer!(parent(c), buff.north, Hx, Hy, Nx, Ny)
 
-    _fill_southwest_send_buffer!(parent(c), buff, buff.southwest, Hx, Hy, Nx, Ny)
-    _fill_southeast_send_buffer!(parent(c), buff, buff.southeast, Hx, Hy, Nx, Ny)
-    _fill_northwest_send_buffer!(parent(c), buff, buff.northwest, Hx, Hy, Nx, Ny)
-    _fill_northeast_send_buffer!(parent(c), buff, buff.northeast, Hx, Hy, Nx, Ny)
+    _fill_southwest_send_buffer!(parent(c), buff.southwest, Hx, Hy, Nx, Ny)
+    _fill_southeast_send_buffer!(parent(c), buff.southeast, Hx, Hy, Nx, Ny)
+    _fill_northwest_send_buffer!(parent(c), buff.northwest, Hx, Hy, Nx, Ny)
+    _fill_northeast_send_buffer!(parent(c), buff.northeast, Hx, Hy, Nx, Ny)
 
     return nothing
 end
@@ -167,10 +167,10 @@ function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-    _fill_southwest_send_buffer!(parent(c), buff, buff.southwest, Hx, Hy, Nx, Ny)
-    _fill_southeast_send_buffer!(parent(c), buff, buff.southeast, Hx, Hy, Nx, Ny)
-    _fill_northwest_send_buffer!(parent(c), buff, buff.northwest, Hx, Hy, Nx, Ny)
-    _fill_northeast_send_buffer!(parent(c), buff, buff.northeast, Hx, Hy, Nx, Ny)
+    _fill_southwest_send_buffer!(parent(c), buff.southwest, Hx, Hy, Nx, Ny)
+    _fill_southeast_send_buffer!(parent(c), buff.southeast, Hx, Hy, Nx, Ny)
+    _fill_northwest_send_buffer!(parent(c), buff.northwest, Hx, Hy, Nx, Ny)
+    _fill_northeast_send_buffer!(parent(c), buff.northeast, Hx, Hy, Nx, Ny)
 
     return nothing
 end
@@ -180,13 +180,13 @@ end
 #####
 
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::West) = 
-    _fill_west_send_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _fill_west_send_buffer!(parent(c), buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::East) = 
-    _fill_east_send_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _fill_east_send_buffer!(parent(c), buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::South) = 
-    _fill_south_send_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _fill_south_send_buffer!(parent(c), buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::North) = 
-    _fill_north_send_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _fill_north_send_buffer!(parent(c), buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Bottom) = nothing
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Top) = nothing
 
@@ -198,16 +198,16 @@ function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     _fill_west_send_buffer!(parent(c), buff, buff.west,  Hx, Hy, Nx, Ny)
-     _fill_east_send_buffer!(parent(c), buff, buff.east,  Hx, Hy, Nx, Ny)
+     _fill_west_send_buffer!(parent(c), buff.west,  Hx, Hy, Nx, Ny)
+     _fill_east_send_buffer!(parent(c), buff.east,  Hx, Hy, Nx, Ny)
 end
 
 function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::SouthAndNorth)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-    _fill_south_send_buffer!(parent(c), buff, buff.south, Hx, Hy, Nx, Ny)
-    _fill_north_send_buffer!(parent(c), buff, buff.north, Hx, Hy, Nx, Ny)
+    _fill_south_send_buffer!(parent(c), buff.south, Hx, Hy, Nx, Ny)
+    _fill_north_send_buffer!(parent(c), buff.north, Hx, Hy, Nx, Ny)
 end
 
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAndTop) = nothing
@@ -221,15 +221,15 @@ function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     _recv_from_west_buffer!(parent(c), buff, buff.west,  Hx, Hy, Nx, Ny)
-     _recv_from_east_buffer!(parent(c), buff, buff.east,  Hx, Hy, Nx, Ny)
-    _recv_from_south_buffer!(parent(c), buff, buff.south, Hx, Hy, Nx, Ny)
-    _recv_from_north_buffer!(parent(c), buff, buff.north, Hx, Hy, Nx, Ny)
+     _recv_from_west_buffer!(parent(c), buff.west,  Hx, Hy, Nx, Ny)
+     _recv_from_east_buffer!(parent(c), buff.east,  Hx, Hy, Nx, Ny)
+    _recv_from_south_buffer!(parent(c), buff.south, Hx, Hy, Nx, Ny)
+    _recv_from_north_buffer!(parent(c), buff.north, Hx, Hy, Nx, Ny)
 
-   _recv_from_southwest_buffer!(parent(c), buff, buff.southwest, Hx, Hy, Nx, Ny)
-   _recv_from_southeast_buffer!(parent(c), buff, buff.southeast, Hx, Hy, Nx, Ny)
-   _recv_from_northwest_buffer!(parent(c), buff, buff.northwest, Hx, Hy, Nx, Ny)
-   _recv_from_northeast_buffer!(parent(c), buff, buff.northeast, Hx, Hy, Nx, Ny)
+   _recv_from_southwest_buffer!(parent(c), buff.southwest, Hx, Hy, Nx, Ny)
+   _recv_from_southeast_buffer!(parent(c), buff.southeast, Hx, Hy, Nx, Ny)
+   _recv_from_northwest_buffer!(parent(c), buff.northwest, Hx, Hy, Nx, Ny)
+   _recv_from_northeast_buffer!(parent(c), buff.northeast, Hx, Hy, Nx, Ny)
 
    return nothing
 end
@@ -238,10 +238,10 @@ function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-   _recv_from_southwest_buffer!(parent(c), buff, buff.southwest, Hx, Hy, Nx, Ny)
-   _recv_from_southeast_buffer!(parent(c), buff, buff.southeast, Hx, Hy, Nx, Ny)
-   _recv_from_northwest_buffer!(parent(c), buff, buff.northwest, Hx, Hy, Nx, Ny)
-   _recv_from_northeast_buffer!(parent(c), buff, buff.northeast, Hx, Hy, Nx, Ny)
+   _recv_from_southwest_buffer!(parent(c), buff.southwest, Hx, Hy, Nx, Ny)
+   _recv_from_southeast_buffer!(parent(c), buff.southeast, Hx, Hy, Nx, Ny)
+   _recv_from_northwest_buffer!(parent(c), buff.northwest, Hx, Hy, Nx, Ny)
+   _recv_from_northeast_buffer!(parent(c), buff.northeast, Hx, Hy, Nx, Ny)
 
    return nothing
 end
@@ -251,13 +251,13 @@ end
 #####
 
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::West) = 
-    _recv_from_west_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _recv_from_west_buffer!(parent(c), buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::East) = 
-    _recv_from_east_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _recv_from_east_buffer!(parent(c), buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::South) = 
-    _recv_from_south_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _recv_from_south_buffer!(parent(c), buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::North) = 
-    _recv_from_north_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+    _recv_from_north_buffer!(parent(c), buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Bottom) = nothing
 recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Top) = nothing
 
@@ -269,8 +269,8 @@ function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-    _recv_from_west_buffer!(parent(c), buff, buff.west, Hx, Hy, Nx, Ny)
-    _recv_from_east_buffer!(parent(c), buff, buff.east, Hx, Hy, Nx, Ny)
+    _recv_from_west_buffer!(parent(c), buff.west, Hx, Hy, Nx, Ny)
+    _recv_from_east_buffer!(parent(c), buff.east, Hx, Hy, Nx, Ny)
 
     return nothing
 end
@@ -279,8 +279,8 @@ function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-   _recv_from_south_buffer!(parent(c), buff, buff.south, Hx, Hy, Nx, Ny)
-   _recv_from_north_buffer!(parent(c), buff, buff.north, Hx, Hy, Nx, Ny)
+   _recv_from_south_buffer!(parent(c), buff.south, Hx, Hy, Nx, Ny)
+   _recv_from_north_buffer!(parent(c), buff.north, Hx, Hy, Nx, Ny)
 
    return nothing
 end
@@ -295,47 +295,47 @@ for dir in (:west, :east, :south, :north, :southwest, :southeast, :northwest, :n
     _fill_send_buffer! = Symbol(:_fill_, dir, :_send_buffer!)
     _recv_from_buffer! = Symbol(:_recv_from_, dir, :_buffer!)
 
-    @eval $_fill_send_buffer!(c, b, ::Nothing, args...) = nothing
-    @eval $_recv_from_buffer!(c, b, ::Nothing, args...) = nothing
-    @eval $_fill_send_buffer!(c, ::OneDBuffers, ::Nothing, args...) = nothing
-    @eval $_recv_from_buffer!(c, ::OneDBuffers, ::Nothing, args...) = nothing
+    @eval $_fill_send_buffer!(c, ::Nothing, args...) = nothing
+    @eval $_recv_from_buffer!(c, ::Nothing, args...) = nothing
+    @eval $_fill_send_buffer!(c, ::Nothing, args...) = nothing
+    @eval $_recv_from_buffer!(c, ::Nothing, args...) = nothing
 end
 
 #####
 ##### 1D Parallelizations (cover corners with 1 MPI pass)
 #####
 
- _fill_west_send_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   :, :)
- _fill_east_send_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, :, :)
-_fill_south_send_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Hy:2Hy,  :)
-_fill_north_send_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Ny:Ny+Hy, :)
+ _fill_west_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   :, :)
+ _fill_east_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, :, :)
+_fill_south_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Hy:2Hy,  :)
+_fill_north_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Ny:Ny+Hy, :)
 
- _recv_from_west_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           :,     :) .= buff.recv
- _recv_from_east_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, :,     :) .= buff.recv
-_recv_from_south_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = view(c, :,     1:Hy,           :) .= buff.recv
-_recv_from_north_buffer!(c, ::OneDBuffers, buff, Hx, Hy, Nx, Ny) = view(c, :,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           :,     :) .= buff.recv
+ _recv_from_east_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, :,     :) .= buff.recv
+_recv_from_south_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1:Hy,           :) .= buff.recv
+_recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
 #####
 ##### 2D Parallelizations (explicitly send corners)
 #####
 
- _fill_west_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:Ny+Hy, :)
- _fill_east_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:Ny+Hy, :)
-_fill_south_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Hy:2Hy,  :)
-_fill_north_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Ny:Ny+Hy, :)
+ _fill_west_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:Ny+Hy, :)
+ _fill_east_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:Ny+Hy, :)
+_fill_south_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Hy:2Hy,  :)
+_fill_north_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
- _recv_from_west_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Hy:Ny+Hy,     :) .= buff.recv
- _recv_from_east_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :) .= buff.recv
-_recv_from_south_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1:Hy,           :) .= buff.recv
-_recv_from_north_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Hy:Ny+Hy,     :) .= buff.recv
+ _recv_from_east_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :) .= buff.recv
+_recv_from_south_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1:Hy,           :) .= buff.recv
+_recv_from_north_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-_fill_southwest_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:2Hy,   :)
-_fill_southeast_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:2Hy,   :)
-_fill_northwest_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Ny:Ny+Hy, :)
-_fill_northeast_send_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Ny:Ny+Hy, :)
+_fill_southwest_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:2Hy,   :)
+_fill_southeast_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:2Hy,   :)
+_fill_northwest_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Ny:Ny+Hy, :)
+_fill_northeast_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
-_recv_from_southwest_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1:Hy,           :) .= buff.recv
-_recv_from_southeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
-_recv_from_northwest_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-_recv_from_northeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+_recv_from_southwest_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1:Hy,           :) .= buff.recv
+_recv_from_southeast_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
+_recv_from_northwest_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+_recv_from_northeast_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
