@@ -52,6 +52,22 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx+1, 1:Ny+1) |> Array
 y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
 
+"""
+regridder_weights!(source_field, destination_field; method = "conservative")
+
+Regrid the `source_field` onto the `destination_field` using the specified method.
+xESMF exposes five different regridding algorithms from the ESMF library, specified with the `method` keyword argument:
+
+bilinear: ESMF.RegridMethod.BILINEAR
+conservative: ESMF.RegridMethod.CONSERVE
+conservative_normed: ESMF.RegridMethod.CONSERVE
+patch: ESMF.RegridMethod.PATCH
+nearest_s2d: ESMF.RegridMethod.NEAREST_STOD
+nearest_d2s: ESMF.RegridMethod.NEAREST_DTOS
+
+where conservative_normed is just the conservative method with the normalization set to ESMF.NormType.FRACAREA instead of the default norm_type=ESMF.NormType.DSTAREA.
+For more information, see the xESMF documentation: https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+"""
 function regridding_weights(dst_field, src_field; method="conservative")
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
