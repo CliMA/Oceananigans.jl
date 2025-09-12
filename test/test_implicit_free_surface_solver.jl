@@ -8,7 +8,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
-    MatrixImplicitFreeSurfaceSolver,
     compute_vertically_integrated_lateral_areas!,
     step_free_surface!,
     implicit_free_surface_linear_operation!
