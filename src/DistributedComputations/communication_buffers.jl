@@ -75,16 +75,20 @@ struct OneDBuffer{B}
     recv :: B
 end
 
-x_communication_buffer(arch, grid, data, H, bc) = nothing
-y_communication_buffer(arch, grid, data, H, bc) = nothing
+# We never need to access buffers on the GPU!
+Adapt.adapt_structure(to, buff::OneDBuffer) = nothing
 
 ####
 #### X and Y communication buffers
 ####
 
+# Fallback
+x_communication_buffer(arch, grid, data, H, bc) = nothing
+y_communication_buffer(arch, grid, data, H, bc) = nothing
+
 # Either we pass corners or it is a 1D parallelization in x, note that, even for 2D parallelizations, we need a 
 # buffer that includes the corners (i.e. a OneDBuffer) if we are at the edge of the domain in y since we are not
-# passing corners in that case
+# passing all the corners in that case
 function x_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY}, data, H, ::DCBC) where {FT, TX, TY}
     if (arch.ranks[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
         return OneDBuffer(on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))),
@@ -95,11 +99,11 @@ function x_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY
     end
 end
 
-# Either we pass corners or it is a 1D parallelization in y, note that, even for 2D parallelizations, we need a 
+# Either we pass corners or it is a 1D parallelization in y. Note that, even for 2D parallelizations, we need a 
 # buffer that includes the corners (i.e. a OneDBuffer) if we are at the edge of the domain in x since we are not
-# passing corners in that case
+# passing all the corners in that case
 function y_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY}, data, H, ::DCBC) where {FT, TX, TY}
-    # Either we pass corners or it is a 1D parallelization in y    
+    # Either we pass corners or it is a 1D parallelization in y
     if (arch.ranks[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
         return OneDBuffer(on_architecture(arch, zeros(FT, size(parent(data), 1), H, size(parent(data), 3))),
                           on_architecture(arch, zeros(FT, size(parent(data), 1), H, size(parent(data), 3))))
@@ -313,7 +317,7 @@ _recv_from_south_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1
 _recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
 #####
-##### 2D Parallelizations (explicitly send corners)
+##### 2D Parallelizations (explicitly send all corners)
 #####
 
  _fill_west_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:Ny+Hy, :)
