@@ -1,10 +1,11 @@
-module OceananigansPyCallExt
+module OceananigansPythonCallExt
 
 using Oceananigans
 using Oceananigans.Fields: location, ReducedField
 using Oceananigans.Grids: AbstractGrid
 
-using PyCall
+using PythonCall
+using CondaPkg
 using SparseArrays
 using LinearAlgebra
 
@@ -55,6 +56,12 @@ function compute_regridding_weights(to_field, from_field, method::String = "cons
     weights = sparse(rows, cols, vals, shape[1], shape[2])
 
     return weights
+end
+
+function install_package(package)
+    @info "Installing the $package package..."
+    CondaPkg.add(package; channel = "conda-forge")
+    return nothing
 end
 
 # Import and store as constants for submodules
