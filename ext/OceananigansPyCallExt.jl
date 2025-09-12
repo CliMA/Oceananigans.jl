@@ -40,7 +40,8 @@ function compute_regridding_weights(to_field, from_field, method::String = "cons
     src_ds = coordinate_dataset(from_field.grid)
     dst_ds = coordinate_dataset(to_field.grid)
 
-    regridder = get_xesmf().Regridder(src_ds, dst_ds, method, periodic=PyObject(true))
+    xesmf = pyimport("xesmf")
+    regridder = xesmf.Regridder(src_ds, dst_ds, method, periodic=PyObject(true))
 
     # Move back to Julia
     # Convert the regridder weights to a Julia sparse matrix
@@ -59,20 +60,6 @@ end
 const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 const SomeLatitudeLongitudeGrid = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
 const TripolarOrLatLonGrid = Union{SomeTripolarGrid, SomeLatitudeLongitudeGrid}
-
-# Import and store as constants for submodules
-function get_np()
-    return pyimport("numpy")
-end
-
-function get_xesmf()
-    return pyimport("xesmf")
-end
-
-function get_xr()
-    return pyimport("xarray")
-end
-
 
 function two_dimensionalize(lat::AbstractVector, lon::AbstractVector)
     Nx = length(lon)
@@ -107,8 +94,8 @@ function coordinate_dataset(grid::SomeTripolarGrid)
 end
 
 function structured_coordinate_dataset(lat, lon, lat_b, lon_b)
-    numpy  = get_np()
-    xarray = get_xr()
+    numpy = pyimport("numpy")
+    xarray = xarray("xarray")
 
     lat = numpy.array(lat)
     lon = numpy.array(lon)
