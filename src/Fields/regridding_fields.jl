@@ -9,6 +9,8 @@ using Base: ForwardOrdering
 const f = Face()
 const c = Center()
 
+function regridding_weights end
+
 """
     regrid!(a, b)
 

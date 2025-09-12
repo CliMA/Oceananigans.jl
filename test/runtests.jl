@@ -231,7 +231,7 @@ CUDA.allowscalar() do
         end
     end
 
-    
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -281,10 +281,16 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for PythonCall extension
+    if group == :pythoncall || group == :all
+        @testset "PythonCall extension tests" begin
+            include("test_pythoncall_regridder.jl")
+        end
+    end
+
     if group == :convergence
         include("test_convergence.jl")
     end
 end
 
 end #CUDA.allowscalar()
-
