@@ -1,10 +1,10 @@
 agents:
-  queue: new-central
+  queue: central
   slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues
   modules: climacommon/2024_10_10
 
 env:
-  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default:"
   OPENBLAS_NUM_THREADS: 1
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 8
