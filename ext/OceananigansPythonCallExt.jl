@@ -1,7 +1,7 @@
 module OceananigansPythonCallExt
 
-using CondaPkg  # sets up environment
 using PythonCall
+using CondaPkg
 using SparseArrays
 
 using Oceananigans
@@ -13,46 +13,33 @@ import Oceananigans.Fields: regridding_weights
 """
     add_package(package_name, channel="conda-forge"; verbose=true)
 
-Install the Conda package `name` from `channel` using `CondaPkg.add`.
-
-If `verbose` is true, log progress messages.
-
-Returns a `NamedTuple` with package information (`name`, `version`, `channel`)
-if successful, or `nothing` if installation could not be verified.
+Install `package_name` with `CondaPkg.add` from `channel`, printing
+a few messages if `verbose == true`.
+Return a NamedTuple containing package information if successful.
 """
-function add_package(name; channel="conda-forge", verbose=true)
-    verbose && @info "Installing $name from $channel..."
+function add_package(name, channel="conda-forge"; verbose=true)
+    verbose && @info "Installing $(name)..."
     CondaPkg.add(name; channel)
-
-    status = CondaPkg.status()
-    if haskey(status, name)
-        version = status[name].version
-        verbose && @info "... $name $version installed."
-        return (name=name, version=version, channel=channel)
-    else
-        verbose && @warn "$name was added but not found in CondaPkg.status()"
-        return nothing
-    end
+    pkg = CondaPkg.which(name)
+    verbose && @info "... $name has been installed at $(pkg)."
+    return pkg
 end
 
 """
-    add_import_pkg(name; channel="conda-forge", verbose=true)
+    add_import_pkg(package_name, channel="conda-forge")
 
-Ensure that the Python package `name` is available through PythonCall.
-
-Attempts to `pyimport(name)`. If import fails, installs the package via
-[`add_package`](@ref) from `channel`, then retries the import.
-
-Returns the imported Python module object on success.
+Import and return `package_name` with `PythonCall.pyimport`,
+installing it with `add_package` if it is not found.
 """
-function add_import_pkg(name; channel="conda-forge", verbose=true)
-    try
-        return pyimport(name)
-    catch e
-        verbose && @warn "Python package $name not found, installing..."
-        add_package(name; channel, verbose)
-        return pyimport(name)  # may still throw if package is broken
+function add_import_pkg(name, channel="conda-forge")
+    pkg = try
+        pyimport(name)
+    catch
+        add_package(name, channel)
+        pyimport(name)
     end
+
+    return pkg
 end
 
 x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
