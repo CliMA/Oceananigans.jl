@@ -254,8 +254,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 
     elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
         from = arch.local_rank
-        # Search the rank to send to
-        to = arch.connectivity.north
+        to   = arch.connectivity.north
         halo_communication = ZipperHaloCommunicationRanks(sign; from, to)
         DistributedCommunicationBoundaryCondition(halo_communication)
 
@@ -264,9 +263,8 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 
     end
 
-    bottom = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
-    top =    regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
-
+    bottom   = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
+    top      = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
     immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)

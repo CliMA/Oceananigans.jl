@@ -115,12 +115,12 @@ end
 
 # Never pass corners in a MCBC.
 x_communication_buffer(arch, grid, data, H, ::MCBC) = 
-           (send = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
-            recv = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
+           OneDBuffer(on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
+                      on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
 
 y_communication_buffer(arch, grid, data, H, ::MCBC) = 
-           (send = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
-            recv = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
+           OneDBuffer(on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
+                      on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
 
 #####
 ##### Corner communication buffers
