@@ -37,6 +37,7 @@ flip(::Center) = Face()
 flip(::Face) = Center()
 flip(::Nothing) = nothing
 
+#=
 function coordinate_data_arrays(λ, φ)
     xarray = add_import_pkg("xarray")
 
@@ -62,6 +63,7 @@ function coordinate_data_arrays(λ, φ)
 
     return λ_da, φ_da
 end
+=#
 
 function regridding_weights(dst_field, src_field; method="conservative")
 
