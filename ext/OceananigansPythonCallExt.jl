@@ -53,20 +53,26 @@ y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
 
 """
-regridder_weights!(source_field, destination_field; method = "conservative")
+    regridding_weights(dst_field, src_field; method="conservative")
 
-Regrid the `source_field` onto the `destination_field` using the specified method.
-xESMF exposes five different regridding algorithms from the ESMF library, specified with the `method` keyword argument:
+Return the regridding weights from `src_field` to `dst_field` using the specified `method`.
+The regridding weights are obtained via xESMF Python package. xESMF exposes five different
+regridding algorithms from the ESMF library, specified with the `method` keyword argument:
 
-bilinear: ESMF.RegridMethod.BILINEAR
-conservative: ESMF.RegridMethod.CONSERVE
-conservative_normed: ESMF.RegridMethod.CONSERVE
-patch: ESMF.RegridMethod.PATCH
-nearest_s2d: ESMF.RegridMethod.NEAREST_STOD
-nearest_d2s: ESMF.RegridMethod.NEAREST_DTOS
+* `"bilinear"`: ESMF.RegridMethod.BILINEAR
+* `"conservative"`: ESMF.RegridMethod.CONSERVE
+* `"conservative_normed"`: ESMF.RegridMethod.CONSERVE
+* `"patch"`: ESMF.RegridMethod.PATCH
+* `"nearest_s2d"`: ESMF.RegridMethod.NEAREST_STOD
+* `"nearest_d2s"`: ESMF.RegridMethod.NEAREST_DTOS
 
-where conservative_normed is just the conservative method with the normalization set to ESMF.NormType.FRACAREA instead of the default norm_type=ESMF.NormType.DSTAREA.
-For more information, see the xESMF documentation: https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+where `conservative_normed` is just the conservative method with the normalization set to
+`ESMF.NormType.FRACAREA` instead of the default `norm_type = ESMF.NormType.DSTAREA`.
+
+For more information, see the xESMF documentation at:
+
+> https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+
 """
 function regridding_weights(dst_field, src_field; method="conservative")
 
@@ -117,10 +123,11 @@ function regridding_weights(dst_field, src_field; method="conservative")
                            "lon_b" => φvˢ)
 
     periodic = Oceananigans.Grids.topology(dst_field.grid, 1) === Periodic
+
     xesmf = add_import_pkg("xesmf")
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
 
-        # Move back to Julia
+    # Move back to Julia
     # Convert the regridder weights to a Julia sparse matrix
     FT = eltype(dst_grid)
     coords = regridder.weights.data
