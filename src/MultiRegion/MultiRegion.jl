@@ -26,13 +26,10 @@ using KernelAbstractions: @kernel, @index
 import Base: show, length, size
 
 import Oceananigans.Utils:
-                getdevice,
-                switch_device!,
-                devices,
                 isregional,
                 getregion,
                 _getregion,
-                sync_all_devices!
+                regions
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
@@ -78,7 +75,6 @@ include("multi_region_field.jl")
 include("multi_region_abstract_operations.jl")
 include("multi_region_boundary_conditions.jl")
 include("multi_region_reductions.jl")
-include("unified_implicit_free_surface_solver.jl")
 include("multi_region_split_explicit_free_surface.jl")
 include("multi_region_models.jl")
 include("multi_region_output_writers.jl")

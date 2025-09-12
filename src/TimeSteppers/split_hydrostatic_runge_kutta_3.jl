@@ -46,7 +46,7 @@ The state at the first substep is taken to be the one that corresponds to the ``
 References
 ==========
 
-Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta Methods for the
+Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta methods for the
     compressible Euler equations. Monthly Weather Review, 142, 2067-2081,
     https://doi.org/10.1175/MWR-D-13-00068.1.
 """
@@ -56,7 +56,7 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      Ψ⁻::PF = map(similar, prognostic_fields),
                                      kwargs...) where {TI, TG, PF}
 
-    @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is and experimental.\n" *
+    @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is experimental.\n" *
           "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
 
     FT = eltype(grid)

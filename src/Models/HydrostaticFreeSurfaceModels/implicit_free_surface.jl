@@ -70,11 +70,10 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 
 `solver_method` can be either of:
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
-* `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
 * `:PreconditionedConjugateGradient` for [`ConjugateGradientSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
-otherwise the `:HeptadiagonalIterativeSolver`.
+otherwise the `:PreconditionedConjugateGradient`.
 """
 ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
     ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
@@ -117,7 +116,7 @@ build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravita
     build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
 build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
-    build_implicit_step_solver(Val(:HeptadiagonalIterativeSolver), grid, settings, gravitational_acceleration)
+    build_implicit_step_solver(Val(:PreconditionedConjugateGradient), grid, settings, gravitational_acceleration)
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
