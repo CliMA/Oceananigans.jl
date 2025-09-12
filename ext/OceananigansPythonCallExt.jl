@@ -75,6 +75,7 @@ function regridding_weights(dst_field, src_field; method="conservative")
     # We only support regridding between centered fields.
     @assert ℓx isa Center
     @assert ℓy isa Center
+    @assert (ℓx, ℓy, ℓz) == Oceananigans.Fields.instantiated_location(dst_field)
 
     dst_grid = dst_field.grid
     src_grid = src_field.grid
