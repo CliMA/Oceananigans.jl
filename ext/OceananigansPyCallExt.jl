@@ -40,7 +40,7 @@ function compute_regridding_weights(to_field, from_field, method::String = "cons
     src_ds = coordinate_dataset(from_field.grid)
     dst_ds = coordinate_dataset(to_field.grid)
 
-    xesmf = pyimport("xesmf")
+    xesmf = get_package("xesmf")
     regridder = xesmf.Regridder(src_ds, dst_ds, method, periodic=PyObject(true))
 
     # Move back to Julia
@@ -56,6 +56,17 @@ function compute_regridding_weights(to_field, from_field, method::String = "cons
 
     return weights
 end
+
+# Import and store as constants for submodules
+function get_package(package)
+    try
+        return pyimport(package)
+    catch
+        install_package(package)
+        return pyimport(package)
+    end
+end
+
 
 const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 const SomeLatitudeLongitudeGrid = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
@@ -94,8 +105,8 @@ function coordinate_dataset(grid::SomeTripolarGrid)
 end
 
 function structured_coordinate_dataset(lat, lon, lat_b, lon_b)
-    numpy = pyimport("numpy")
-    xarray = xarray("xarray")
+    numpy = get_package("numpy")
+    xarray = get_package("xarray")
 
     lat = numpy.array(lat)
     lon = numpy.array(lon)
