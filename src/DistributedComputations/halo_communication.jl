@@ -156,23 +156,6 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     !isnothing(reqnw) && push!(requests, reqnw...)
     !isnothing(reqne) && push!(requests, reqne...)
 
-    @handshake begin
-        @info "New one"
-        @info arch.local_rank 
-        @info reqsw
-        @info reqse
-        @info reqnw
-        @info reqne
-        @info arch.connectivity.southwest
-        @info arch.connectivity.southeast
-        @info arch.connectivity.northwest
-        @info arch.connectivity.northeast
-        @info !isnothing(buffers.southwest) ? size(buffers.southwest.recv) : "nothing"
-        @info !isnothing(buffers.southeast) ? size(buffers.southeast.recv) : "nothing"
-        @info !isnothing(buffers.northwest) ? size(buffers.northwest.recv) : "nothing"
-        @info !isnothing(buffers.northeast) ? size(buffers.northeast.recv) : "nothing"
-    end
-
     pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, Val(:corners))
 
     return nothing
