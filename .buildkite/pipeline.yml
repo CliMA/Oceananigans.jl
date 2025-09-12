@@ -71,7 +71,6 @@ steps:
           - "👻 abstract_operations"
           - "🕊 poisson_solvers_1"
           - "🦖 poisson_solvers_2"
-          - "🌷 matrix_poisson_solvers"
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
           - "🦀 time_stepping_1"
