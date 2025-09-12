@@ -19,7 +19,7 @@ Return a NamedTuple containing package information if successful.
 function add_package(name, channel="conda-forge"; verbose=true)
     verbose && @info "Installing $(name)..."
     CondaPkg.add(name; channel)
-    pkg = CondaPkg.which(name)
+    @show pkg = CondaPkg.which(name)
     verbose && @info "... $name has been installed at $(pkg)."
     return pkg
 end
@@ -106,16 +106,16 @@ function regridding_weights(dst_field, src_field; method="conservative")
     λvˢ = x_vertex_array(λvˢ, Nˢx, Nˢy)
     φvˢ = y_vertex_array(φvˢ, Nˢx, Nˢy)
 
-    dst_coordinates = Dict("lat"   => λᵈ, 
+    dst_coordinates = Dict("lat"   => λᵈ,
                            "lon"   => φᵈ,
                            "lat_b" => λvᵈ,
                            "lon_b" => φvᵈ)
-        
-    src_coordinates = Dict("lat"   => λˢ, 
+
+    src_coordinates = Dict("lat"   => λˢ,
                            "lon"   => φˢ,
                            "lat_b" => λvˢ,
                            "lon_b" => φvˢ)
-        
+
     periodic = Oceananigans.Grids.topology(dst_field.grid, 1) === Periodic
     xesmf = add_import_pkg("xesmf")
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
@@ -131,7 +131,7 @@ function regridding_weights(dst_field, src_field; method="conservative")
     cols = coords[2, :] .+ 1
 
     weights = sparse(rows, cols, vals, shape[1], shape[2])
-    
+
     return weights
 end
 
