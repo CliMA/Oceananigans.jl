@@ -232,9 +232,9 @@ end
 
 import Base: isapprox    
 
-function isapprox(a::MultiRegionField, b::MultiRegionField)
+function isapprox(a::MultiRegionField, b::MultiRegionField; kw...)
     if regions(a) == regions(b)
-        return all(a[r] ≈ b[r] for r in regions(a))
+        return all(isapprox(a[r], b[r]; kw...) for r in regions(a))
     else
         return false
     end
