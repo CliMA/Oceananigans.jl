@@ -105,42 +105,42 @@ end
 
 @inline function _west_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δx(index_left(i, LX), j, k, ibg, LX, LY, LZ)
-    κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
+    κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock, fields)
     ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _east_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δx(index_right(i, LX), j, k, ibg, LX, LY, LZ)
-    κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
+    κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock, fields)
     ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _south_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δy(i, index_left(j, LY), k, ibg, LX, LY, LZ)
-    κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
+    κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock, fields)
     ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _north_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δy(i, index_right(j, LY), k, ibg, LX, LY, LZ)
-    κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
+    κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock, fields)
     ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _bottom_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δz(i, j, index_left(k, LZ), ibg, LX, LY, LZ)
-    κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock)
+    κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock, fields)
     ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _top_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δz(i, j, index_right(k, LZ), ibg, LX, LY, LZ)
-    κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock)
+    κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock, fields)
     ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end

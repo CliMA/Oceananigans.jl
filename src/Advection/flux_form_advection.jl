@@ -46,18 +46,18 @@ Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} =
                              Adapt.adapt(to, scheme.y),
                              Adapt.adapt(to, scheme.z))
 
-@inline _advective_tracer_flux_x(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_tracer_flux_x(i, j, k, grid, advection.x, args...)
-@inline _advective_tracer_flux_y(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_tracer_flux_y(i, j, k, grid, advection.y, args...)
-@inline _advective_tracer_flux_z(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_tracer_flux_z(i, j, k, grid, advection.z, args...)
+@inline _advective_tracer_flux_x(i, j, k, grid, scheme::FluxFormAdvection, U, c) = _advective_tracer_flux_x(i, j, k, grid, scheme.x, U, c)
+@inline _advective_tracer_flux_y(i, j, k, grid, scheme::FluxFormAdvection, V, c) = _advective_tracer_flux_y(i, j, k, grid, scheme.y, V, c)
+@inline _advective_tracer_flux_z(i, j, k, grid, scheme::FluxFormAdvection, W, c) = _advective_tracer_flux_z(i, j, k, grid, scheme.z, W, c)
 
-@inline _advective_momentum_flux_Uu(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Uu(i, j, k, grid, advection.x, args...)
-@inline _advective_momentum_flux_Vu(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Vu(i, j, k, grid, advection.y, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Wu(i, j, k, grid, advection.z, args...)
+@inline _advective_momentum_flux_Uu(i, j, k, grid, scheme::FluxFormAdvection, U, u) = _advective_momentum_flux_Uu(i, j, k, grid, scheme.x, U, u)
+@inline _advective_momentum_flux_Vu(i, j, k, grid, scheme::FluxFormAdvection, V, u) = _advective_momentum_flux_Vu(i, j, k, grid, scheme.y, V, u)
+@inline _advective_momentum_flux_Wu(i, j, k, grid, scheme::FluxFormAdvection, W, u) = _advective_momentum_flux_Wu(i, j, k, grid, scheme.z, W, u)
 
-@inline _advective_momentum_flux_Uv(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Uv(i, j, k, grid, advection.x, args...)
-@inline _advective_momentum_flux_Vv(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Vv(i, j, k, grid, advection.y, args...)
-@inline _advective_momentum_flux_Wv(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Wv(i, j, k, grid, advection.z, args...)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, scheme::FluxFormAdvection, U, v) = _advective_momentum_flux_Uv(i, j, k, grid, scheme.x, U, v)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, scheme::FluxFormAdvection, V, v) = _advective_momentum_flux_Vv(i, j, k, grid, scheme.y, V, v)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, scheme::FluxFormAdvection, W, v) = _advective_momentum_flux_Wv(i, j, k, grid, scheme.z, W, v)
 
-@inline _advective_momentum_flux_Uw(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Uw(i, j, k, grid, advection.x, args...)
-@inline _advective_momentum_flux_Vw(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Vw(i, j, k, grid, advection.y, args...)
-@inline _advective_momentum_flux_Ww(i, j, k, grid, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Ww(i, j, k, grid, advection.z, args...)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, scheme::FluxFormAdvection, U, w) = _advective_momentum_flux_Uw(i, j, k, grid, scheme.x, U, w)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, scheme::FluxFormAdvection, V, w) = _advective_momentum_flux_Vw(i, j, k, grid, scheme.y, V, w)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, scheme::FluxFormAdvection, W, w) = _advective_momentum_flux_Ww(i, j, k, grid, scheme.z, W, w)
