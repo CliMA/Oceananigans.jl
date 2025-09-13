@@ -785,13 +785,22 @@ end
                 run!(simulation)
 
                 u2 = deepcopy(model.velocities.u)
+                v2 = deepcopy(model.velocities.v)
+                w2 = deepcopy(model.velocities.w)
+                b2 = deepcopy(model.tracers.b)
                 simulation.stop_iteration = 10
 
                 @test iteration(simulation) == 10
                 @test time(simulation) == 10minutes
 
-                ut = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
-                @test ut[2] == u2
+                ut = FieldTimeSeries(filename_output_writer * ".jld2", "u")
+                vt = FieldTimeSeries(filename_output_writer * ".jld2", "v")
+                wt = FieldTimeSeries(filename_output_writer * ".jld2", "w")
+                bt = FieldTimeSeries(filename_output_writer * ".jld2", "b")
+                @test parent(ut[2]) == Array(parent(u2))
+                @test parent(vt[2]) == Array(parent(v2))
+                @test parent(wt[2]) == Array(parent(w2))
+                @test parent(bt[2]) == Array(parent(b2))
 
                 if grid == underlying_grid
                     @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
@@ -817,7 +826,14 @@ end
                 @test iteration(simulation) == 20
                 @test time(simulation) == 20minutes
 
-                ut = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+                ut = FieldTimeSeries(filename_output_writer * ".jld2", "u")
+                vt = FieldTimeSeries(filename_output_writer * ".jld2", "v")
+                wt = FieldTimeSeries(filename_output_writer * ".jld2", "w")
+                bt = FieldTimeSeries(filename_output_writer * ".jld2", "b")
+                @test parent(ut[end]) == Array(parent(model.velocities.u))
+                @test parent(vt[end]) == Array(parent(model.velocities.v))
+                @test parent(wt[end]) == Array(parent(model.velocities.w))
+                @test parent(bt[end]) == Array(parent(model.tracers.b))
             end
         end
     end
