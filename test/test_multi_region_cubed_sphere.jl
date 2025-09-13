@@ -250,9 +250,10 @@ end
 @testset "Immersed cubed sphere construction" begin
     for FT in float_types
         for arch in archs
+            A = typeof(arch)
             Nx, Ny, Nz = 9, 9, 9
 
-            @info "  Testing immersed cubed sphere grid [$FT, $(typeof(arch))]..."
+            @info "  Testing immersed cubed sphere grid [$FT, $A]..."
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1)
             @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
@@ -275,7 +276,8 @@ end
 @testset "Testing conformal cubed sphere fill halos for tracers" begin
     for FT in float_types
         for arch in archs
-            @info "  Testing fill halos for tracers [$FT, $(typeof(arch))]..."
+            A = typeof(arch)
+            @info "  Testing fill halos for tracers [$FT, $A]..."
 
             Nx, Ny, Nz = 9, 9, 1
 
@@ -341,7 +343,8 @@ end
 @testset "Testing conformal cubed sphere fill halos for horizontal velocities" begin
     for FT in float_types
         for arch in archs
-            @info "  Testing fill halos for horizontal velocities [$FT, $(typeof(arch))]..."
+            A = typeof(arch)
+            @info "  Testing fill halos for horizontal velocities [$FT, $A]..."
 
             Nx, Ny, Nz = 9, 9, 1
 
@@ -571,7 +574,8 @@ end
 @testset "Testing conformal cubed sphere fill halos for Face-Face-Any field" begin
     for FT in float_types
         for arch in archs
-            @info "  Testing fill halos for streamfunction [$FT, $(typeof(arch))]..."
+            A = typeof(arch)
+            @info "  Testing fill halos for streamfunction [$FT, $A]..."
 
             Nx, Ny, Nz = 9, 9, 1
 
@@ -738,22 +742,24 @@ end
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
     for FT in float_types
         for arch in archs
+            A = typeof(arch)
+
             Nx, Ny, Nz = 18, 18, 9
-
-            underlying_grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+            underlying_grid = ConformalCubedSphereGrid(arch, FT;
+                                                       panel_size = (Nx, Ny, Nz),
+                                                       z = (0, 1),
+                                                       radius = 1,
                                                        horizontal_direction_halo = 6)
-            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
-            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map=true)
             grids = (underlying_grid, immersed_grid)
 
             for grid in grids
                 if grid == underlying_grid
                     suffix = "UG"
-                    A = typeof(arch)
                     @info "  Testing simulation on conformal cubed sphere grid [$FT, $A]..."
                 else
-                    A = typeof(arch)
                     suffix = "IG"
                     @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $A]..."
                 end
@@ -766,57 +772,90 @@ end
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer())
 
-                simulation = Simulation(model, Δt=1minute, stop_iteration=2)
+                ϵ(x, y, z) = rand()
+                N² = (1 / 3600)^2
+                bᵢ(x, y, z) = N² * z + N² * 1e-6 * ϵ(x, y, z)
+                uᵢ(x, y, z) = 1e-9 * ϵ(x, y, z)
+                set!(model, b=bᵢ, u=uᵢ, v=uᵢ)    
 
-                filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * suffix
+                Δt = 1e-3
+                stop_iteration = 10
+                simulation = Simulation(model; Δt, stop_iteration)
+
+                filename_checkpointer = "cubed_sphere_checkpointer_$(FT)_$(A)_" * suffix
                 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                                         schedule = IterationInterval(4),
                                                                         prefix = filename_checkpointer,
                                                                         overwrite_existing = true)
 
                 outputs = fields(model)
-                filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * suffix
+                filename_output_writer = "cubed_sphere_output_$(FT)_$(A)_" * suffix
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                 schedule = IterationInterval(2),
                                                                 filename = filename_output_writer,
                                                                 verbose = false,
                                                                 overwrite_existing = true)
 
-                run!(simulation)
-
-                if arch isa GPU
-                    u2 = on_architecture(CPU(), model.velocities.u)
-                    v2 = on_architecture(CPU(), model.velocities.v)
-                    w2 = on_architecture(CPU(), model.velocities.w)
-                    b2 = on_architecture(CPU(), model.tracers.b)
-                else
-                    u2 = deepcopy(model.velocities.u)
-                    v2 = deepcopy(model.velocities.v)
-                    w2 = deepcopy(model.velocities.w)
-                    b2 = deepcopy(model.tracers.b)
+                u2, v2, w2, b2 = nothing, nothing, nothing, nothing
+                function save_at_2(simulation)
+                    arch = simulation.model.grid.architecture
+                    if iteration(simulation) == 2
+                        if arch isa GPU
+                            u2 = on_architecture(CPU(), model.velocities.u)
+                            v2 = on_architecture(CPU(), model.velocities.v)
+                            w2 = on_architecture(CPU(), model.velocities.w)
+                            b2 = on_architecture(CPU(), model.tracers.b)
+                        else
+                            u2 = deepcopy(model.velocities.u)
+                            v2 = deepcopy(model.velocities.v)
+                            w2 = deepcopy(model.velocities.w)
+                            b2 = deepcopy(model.tracers.b)
+                        end
+                    end
                 end
 
-                simulation.stop_iteration = 10
+                add_callback!(simulation, save_at_2)
+                run!(simulation)
 
-                @test iteration(simulation) == 10
-                @test time(simulation) == 10minutes
+                @test iteration(simulation) == stop_iteration
+                @test time(simulation) ≈ stop_iteration * Δt
 
                 ut = FieldTimeSeries(filename_output_writer * ".jld2", "u")
                 vt = FieldTimeSeries(filename_output_writer * ".jld2", "v")
                 wt = FieldTimeSeries(filename_output_writer * ".jld2", "w")
                 bt = FieldTimeSeries(filename_output_writer * ".jld2", "b")
+
+                @show @which ==(ut[end], uN)
                 @test ut[2] == u2
                 @test vt[2] == v2
                 @test wt[2] == w2
                 @test bt[2] == b2
 
-                if grid == underlying_grid
-                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                if arch isa GPU
+                    uN = on_architecture(CPU(), model.velocities.u)
+                    vN = on_architecture(CPU(), model.velocities.v)
+                    wN = on_architecture(CPU(), model.velocities.w)
+                    bN = on_architecture(CPU(), model.tracers.b)
                 else
-                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
+                    uN = model.velocities.u
+                    vN = model.velocities.v
+                    wN = model.velocities.w
+                    bN = model.tracers.b
                 end
 
-                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+                @test ut[end] == uN
+                @test vt[end] == vN
+                @test wt[end] == wN
+                @test bt[end] == bN
+
+                if grid == underlying_grid
+                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $A]..."
+                else
+                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $A]..."
+                end
+
+                new_stop_iteration = stop_iteration + 10
+                simulation = Simulation(model; Δt, stop_iteration=new_stop_iteration)
 
                 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                                         schedule = IterationInterval(4),
@@ -831,8 +870,8 @@ end
 
                 run!(simulation, pickup=true)
 
-                @test iteration(simulation) == 20
-                @test time(simulation) == 20minutes
+                @test iteration(simulation) == new_stop_iteration
+                @test time(simulation) == new_stop_iteration * Δt
 
                 ut = FieldTimeSeries(filename_output_writer * ".jld2", "u")
                 vt = FieldTimeSeries(filename_output_writer * ".jld2", "v")
