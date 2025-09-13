@@ -825,7 +825,6 @@ end
                 wt = FieldTimeSeries(filename_output_writer * ".jld2", "w")
                 bt = FieldTimeSeries(filename_output_writer * ".jld2", "b")
 
-                @show @which ==(ut[end], uN)
                 @test ut[2] == u2
                 @test vt[2] == v2
                 @test wt[2] == w2
