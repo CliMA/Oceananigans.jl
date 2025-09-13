@@ -219,3 +219,23 @@ ynodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) =
 # Convenience
 @propagate_inbounds Base.getindex(mrf::MultiRegionField, r::Int) = getregion(mrf, r)
 @propagate_inbounds Base.lastindex(mrf::MultiRegionField) = lastindex(mrf.grid)
+
+import Base: ==
+
+function ==(a::MultiRegionField, b::MultiRegionField)
+    if regions(a) == regions(b)
+        return all(a[r] == b[r] for r in regions(a))
+    else
+        return false
+    end
+end
+
+import Base: isapprox    
+
+function isapprox(a::MultiRegionField, b::MultiRegionField)
+    if regions(a) == regions(b)
+        return all(a[r] ≈ b[r] for r in regions(a))
+    else
+        return false
+    end
+end
