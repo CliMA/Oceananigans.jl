@@ -231,7 +231,6 @@ CUDA.allowscalar() do
         end
     end
 
-    
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
