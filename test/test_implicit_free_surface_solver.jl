@@ -8,7 +8,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
-    MatrixImplicitFreeSurfaceSolver,
     compute_vertically_integrated_lateral_areas!,
     step_free_surface!,
     implicit_free_surface_linear_operation!
@@ -54,10 +53,8 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     set_simple_divergent_velocity!(model)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    acronym = free_surface.solver_method == :HeptadiagonalIterativeSolver ? "Matrix" : "PCG"
-
     η = model.free_surface.η
-    @info "    " * acronym * " implicit free surface solver test, norm(η_" * lowercase(acronym) * "): $(norm(η)), maximum(abs, η_" * lowercase(acronym) * "): $(maximum(abs, η))"
+    @info "PCG implicit free surface solver test, norm(η_pcg): $(norm(η)), maximum(abs, η_pcg): $(maximum(abs, η))"
 
     # Extract right hand side "truth"
     right_hand_side = model.free_surface.implicit_step_solver.right_hand_side
@@ -138,17 +135,10 @@ end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
 
-        mat_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
-                                               tolerance=1e-15, maximum_iterations=128^2)
-
         pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                abstol=1e-15, reltol=0, maxiter=128^2)
 
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
-
-        mat_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
-                                                momentum_advection = nothing,
-                                                free_surface = mat_free_surface)
 
         pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
@@ -160,37 +150,30 @@ end
 
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
-        @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
 
         Δt₁ = 900
         Δt₂ = 920.0
-
-        for m in (mat_model, pcg_model, fft_model)
+        
+        for m in (pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₂)
         end
 
-        mat_η = mat_model.free_surface.η
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
-
-        mat_η_cpu = Array(interior(mat_η))
+     
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))
 
-        Δη_mat = mat_η_cpu .- fft_η_cpu
         Δη_pcg = pcg_η_cpu .- fft_η_cpu
 
         @info "FFT/PCG/MAT implicit free surface solver comparison:"
-        @info "    maximum(abs, η_mat - η_fft): $(maximum(abs, Δη_mat))"
         @info "    maximum(abs, η_pcg - η_fft): $(maximum(abs, Δη_pcg))"
-        @info "    maximum(abs, η_mat): $(maximum(abs, mat_η_cpu))"
         @info "    maximum(abs, η_pcg): $(maximum(abs, pcg_η_cpu))"
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
-        @test all(isapprox.(Δη_mat, 0, atol=1e-15))
         @test all(isapprox.(Δη_pcg, 0, atol=1e-15))
     end
 end

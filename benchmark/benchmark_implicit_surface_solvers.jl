@@ -67,8 +67,6 @@ for N in 10:10:250
 
     implicit_free_surface_solvers = (:FastFourierTransform,
                                      :PreconditionedConjugateGradient,
-                                     :HeptadiagonalIterativeSolver,
-                                     :HeptadiagonalIterativeSolver_withMGpreconditioner,
                                      :PreconditionedConjugateGradient_withFFTpreconditioner,
                                     )
 
@@ -87,8 +85,6 @@ for N in 10:10:250
         if implicit_free_surface_solver == :PreconditionedConjugateGradient_withFFTpreconditioner
             fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner, reltol=sqrt(eps(eltype(grid))), abstol=0)
-        elseif implicit_free_surface_solver == :HeptadiagonalIterativeSolver
-            free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver, tolerance=sqrt(eps(eltype(grid))))
         else
             free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver, reltol=sqrt(eps(eltype(grid))), abstol=0)
         end

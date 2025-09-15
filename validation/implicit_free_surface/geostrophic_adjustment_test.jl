@@ -6,7 +6,6 @@ using Oceananigans.MultiRegion
 using Statistics
 using Printf
 using LinearAlgebra, SparseArrays
-using Oceananigans.Solvers: constructors, unpack_constructors
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 using Oceananigans.Grids
 using GLMakie
@@ -111,7 +110,7 @@ grid = RectilinearGrid(size = (80, 3, 1),
                        topology = (Periodic, Periodic, Bounded))
 
 explicit_free_surface = ExplicitFreeSurface()
-implicit_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+implicit_free_surface = ImplicitFreeSurface()
 splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=120)
 
 seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
