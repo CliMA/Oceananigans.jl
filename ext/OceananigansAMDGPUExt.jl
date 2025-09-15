@@ -1,9 +1,10 @@
 module OceananigansAMDGPUExt
 
 using Oceananigans
-using InteractiveUtils
 using AMDGPU, AMDGPU.rocSPARSE, AMDGPU.rocFFT
+
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+using InteractiveUtils
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
 
@@ -14,10 +15,10 @@ import Oceananigans.Fields as FD
 import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
-import SparseArrays: SparseMatrixCSC
+import Oceananigans.DistributedComputations: Distributed
 import KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds,
                            __validindex, CompilerMetadata
-import Oceananigans.DistributedComputations: Distributed
+import SparseArrays: SparseMatrixCSC
 
 const GPUVar = Union{ROCArray, Ptr}
 
