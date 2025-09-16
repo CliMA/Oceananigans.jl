@@ -37,7 +37,7 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
                                           buoyancy,
                                           closure,
                                           free_surface,
-                                          tracers = (:T, :S, :e))
+                                          tracers = (:T, :S))
 
     @info "Model is built"
 

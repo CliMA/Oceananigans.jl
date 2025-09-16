@@ -17,7 +17,6 @@ function time_step_hydrostatic_model_works(grid;
                                            velocities = nothing)
 
     buoyancy = BuoyancyTracer()
-    closure isa CATKEVerticalDiffusivity && push!(tracers, :e)
 
     model = HydrostaticFreeSurfaceModel(; grid, coriolis, tracers, velocities, buoyancy,
                                         momentum_advection, tracer_advection, free_surface, closure)
@@ -68,7 +67,7 @@ function time_step_hydrostatic_model_with_catke_works(arch, FT)
     model = HydrostaticFreeSurfaceModel(;
         grid,
         buoyancy = BuoyancyTracer(),
-        tracers = (:b, :e),
+        tracers = (:b,),
         closure = CATKEVerticalDiffusivity(FT)
     )
 

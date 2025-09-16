@@ -139,6 +139,9 @@ function with_tracers(tracer_names, closure::FlavorOfCATKE)
     return closure
 end
 
+# Required tracer names for CATKE
+closure_required_tracers(::FlavorOfCATKE) = (:e,)
+
 # For tuples of closures, we need to know _which_ closure is CATKE.
 # Here we take a "simple" approach that sorts the tuple so CATKE is first.
 # This is not sustainable though if multiple closures require this.

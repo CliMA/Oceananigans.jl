@@ -13,7 +13,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
-using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver, closure_required_tracers
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
@@ -149,6 +149,32 @@ function HydrostaticFreeSurfaceModel(; grid,
     biogeochemical_fields = biogeochemical_auxiliary_fields(biogeochemistry)
     tracers, biogeochemical_fields = validate_biogeochemistry(tracers, biogeochemical_fields, biogeochemistry, grid, clock)
 
+    # Automatically append closure-required tracers and disallow users from specifying them explicitly
+    begin
+        user_tracer_names = tracernames(tracers)
+        extra_tracers = closure_required_tracers(closure)
+
+        # If user specified any closure-required tracer, throw an error
+        if any(t -> t in user_tracer_names, extra_tracers)
+            bad = Tuple(t for t in extra_tracers if t in user_tracer_names)
+            throw(ArgumentError("Do not include closure tracers $(bad). These are automatically added for the specified closure."))
+        end
+
+        # Append closure-required tracers to user tracers
+        if !isempty(extra_tracers)
+            if tracers isa NamedTuple
+                # Preserve user-provided fields; add placeholders for closure tracers
+                appended_names = Tuple((user_tracer_names..., extra_tracers...))
+                appended_fields = Tuple(getfield(tracers, n) for n in user_tracer_names)
+                # For closure-added tracers, create dummy CenterField now; BCs are regularized later
+                extra_fields = Tuple(CenterField(grid) for _ in extra_tracers)
+                tracers = NamedTuple{appended_names}((appended_fields..., extra_fields...))
+            else
+                tracers = Tuple((user_tracer_names..., extra_tracers...))
+            end
+        end
+    end
+
     # Reduce the advection order in directions that do not have enough grid points
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
@@ -259,4 +285,3 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
-
