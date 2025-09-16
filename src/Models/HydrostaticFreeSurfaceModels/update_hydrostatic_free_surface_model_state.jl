@@ -60,8 +60,9 @@ function mask_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
-    foreach(fields_to_mask) do field
-        if field !== η
+    foreach(keys(fields_to_mask)) do key
+        if key != :η
+            field = @inbounds fields_to_mask[key]
             mask_immersed_field!(field)
         end
     end
