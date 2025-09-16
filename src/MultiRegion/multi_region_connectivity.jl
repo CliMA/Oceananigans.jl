@@ -1,13 +1,13 @@
 using Oceananigans.Grids: topology
 
 """
-    struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
+    struct RegionalConnectivity{S, FS} <: AbstractConnectivity
 
 The connectivity among various regions in a multi-region partition.
 
 $(TYPEDFIELDS)
 """
-struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
+struct RegionalConnectivity{S, FS} <: AbstractConnectivity
     "the current region rank"
          rank :: Int
     "the region from which boundary condition comes from"
@@ -18,9 +18,9 @@ struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <
     from_side :: FS
 end
 
-function Connectivity(devices, partition::Union{XPartition, YPartition}, global_grid::AbstractGrid)
+function Connectivity(partition::Union{XPartition, YPartition}, global_grid::AbstractGrid)
     arch = architecture(global_grid)
-    regions = MultiRegionObject(arch, Tuple(1:length(devices)), devices)
+    regions = MultiRegionObject(Tuple(1:length(partition)))
     @apply_regionally connectivity = find_regional_connectivities(regions, partition, global_grid)
     return connectivity
 end

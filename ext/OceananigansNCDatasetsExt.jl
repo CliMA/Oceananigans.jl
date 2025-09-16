@@ -41,7 +41,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
+import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, convert_for_netcdf, materialize_from_netcdf, reconstruct_grid
 
 const c = Center()
 const f = Face()
@@ -669,8 +669,8 @@ function grid_attributes(ibg::ImmersedBoundaryGrid)
     return attrs, dims
 end
 
-# Using OrderedDict to preserve order of keys. Important for positional arguments.
-convert_for_netcdf(dict::AbstractDict) = OrderedDict{Symbol, Any}(key => convert_for_netcdf(value) for (key, value) in dict)
+# Using OrderedDict to preserve order of keys (important when saving positional arguments), and string(key) because that's what NetCDF supports as global_attributes.
+convert_for_netcdf(dict::AbstractDict) = OrderedDict(string(key) => convert_for_netcdf(value) for (key, value) in dict)
 convert_for_netcdf(x::Number) = x
 convert_for_netcdf(x::Bool) = string(x)
 convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
@@ -699,7 +699,7 @@ function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)
     :bottom_height ∈ keys(args) && delete!(args, :bottom_height)
 
     args, kwargs = map(convert_for_netcdf, (args, kwargs))
-    args[:grid_type] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+    args["grid_type"] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
 
     defGroup(ds, "grid_reconstruction_args"; attrib = args)
     defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)

@@ -67,15 +67,6 @@ end
 
 @inline AC.unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
 
-@inline AC.constructors(::AC.GPU{ROCBackend}, A::SparseMatrixCSC) = (ROCArray(A.colptr), ROCArray(A.rowval), ROCArray(A.nzval),  (A.m, A.n))
-@inline AC.constructors(::AC.CPU, A::ROCSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
-@inline AC.constructors(::AC.GPU{ROCBackend}, A::ROCSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
-
-@inline AC.arch_sparse_matrix(::AC.GPU{ROCBackend}, constr::Tuple) = ROCSparseMatrixCSC(constr...)
-@inline AC.arch_sparse_matrix(::AC.CPU, A::ROCSparseMatrixCSC)   = SparseMatrixCSC(AC.constructors(AC.CPU(), A)...)
-@inline AC.arch_sparse_matrix(::AC.GPU{ROCBackend}, A::SparseMatrixCSC)     = ROCSparseMatrixCSC(AC.constructors(AC.GPU(), A)...)
-@inline AC.arch_sparse_matrix(::AC.GPU{ROCBackend}, A::ROCSparseMatrixCSC) = A
-
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
 
@@ -106,8 +97,6 @@ AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompiler
     end
 end
 
-@inline UT.getdevice(roc::GPUVar, i)  = device(roc)
-@inline UT.getdevice(roc::GPUVar)     = device(roc)
 @inline UT.sync_device!(::ROCGPU)     = AMDGPU.synchronize()
 @inline UT.sync_device!(::ROCBackend) = AMDGPU.synchronize()
 

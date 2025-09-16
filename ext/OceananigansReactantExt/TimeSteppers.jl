@@ -15,7 +15,8 @@ using Oceananigans.TimeSteppers:
     compute_pressure_correction!,
     correct_velocities_and_cache_previous_tendencies!,
     step_lagrangian_particles!,
-    QuasiAdamsBashforth2TimeStepper
+    QuasiAdamsBashforth2TimeStepper,
+    compute_flux_bc_tendencies!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
@@ -34,8 +35,8 @@ function Clock(::ReactantGrid)
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
     stage = 0 #ConcreteRNumber(0)
-    last_Δt = zero(FT)
-    last_stage_Δt = zero(FT)
+    last_Δt = convert(FT, Inf)
+    last_stage_Δt = convert(FT, Inf)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
@@ -46,8 +47,8 @@ function Clock(grid::ShardedGrid)
     t = ConcreteRNumber(zero(FT), sharding=replicate)
     iter = ConcreteRNumber(0, sharding=replicate)
     stage = 0 #ConcreteRNumber(0)
-    last_Δt = zero(FT)
-    last_stage_Δt = zero(FT)
+    last_Δt = convert(FT, Inf)
+    last_stage_Δt = convert(FT, Inf)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
@@ -86,6 +87,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     ab2_timestepper.χ = χ
 
     # Full step for tracers, fractional step for velocities.
+    compute_flux_bc_tendencies!(model)
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)

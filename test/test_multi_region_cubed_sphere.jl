@@ -303,37 +303,31 @@ end
 
                 # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
                 @allowscalar begin
-                    switch_device!(grid, 1)
                     @test get_halo_data(getregion(c, 1), West())  == reverse(create_c_test_data(grid, 5)[north_indices...], dims=1)'
                     @test get_halo_data(getregion(c, 1), East())  ==         create_c_test_data(grid, 2)[west_indices...]
                     @test get_halo_data(getregion(c, 1), South()) ==         create_c_test_data(grid, 6)[north_indices...]
                     @test get_halo_data(getregion(c, 1), North()) == reverse(create_c_test_data(grid, 3)[west_indices...], dims=2)'
 
-                    switch_device!(grid, 2)
                     @test get_halo_data(getregion(c, 2), West())  ==         create_c_test_data(grid, 1)[east_indices...]
                     @test get_halo_data(getregion(c, 2), East())  == reverse(create_c_test_data(grid, 4)[south_indices...], dims=1)'
                     @test get_halo_data(getregion(c, 2), South()) == reverse(create_c_test_data(grid, 6)[east_indices...], dims=2)'
                     @test get_halo_data(getregion(c, 2), North()) ==         create_c_test_data(grid, 3)[south_indices...]
 
-                    switch_device!(grid, 3)
                     @test get_halo_data(getregion(c, 3), West())  == reverse(create_c_test_data(grid, 1)[north_indices...], dims=1)'
                     @test get_halo_data(getregion(c, 3), East())  ==         create_c_test_data(grid, 4)[west_indices...]
                     @test get_halo_data(getregion(c, 3), South()) ==         create_c_test_data(grid, 2)[north_indices...]
                     @test get_halo_data(getregion(c, 3), North()) == reverse(create_c_test_data(grid, 5)[west_indices...], dims=2)'
 
-                    switch_device!(grid, 4)
                     @test get_halo_data(getregion(c, 4), West())  ==         create_c_test_data(grid, 3)[east_indices...]
                     @test get_halo_data(getregion(c, 4), East())  == reverse(create_c_test_data(grid, 6)[south_indices...], dims=1)'
                     @test get_halo_data(getregion(c, 4), South()) == reverse(create_c_test_data(grid, 2)[east_indices...], dims=2)'
                     @test get_halo_data(getregion(c, 4), North()) ==         create_c_test_data(grid, 5)[south_indices...]
 
-                    switch_device!(grid, 5)
                     @test get_halo_data(getregion(c, 5), West())  == reverse(create_c_test_data(grid, 3)[north_indices...], dims=1)'
                     @test get_halo_data(getregion(c, 5), East())  ==         create_c_test_data(grid, 6)[west_indices...]
                     @test get_halo_data(getregion(c, 5), South()) ==         create_c_test_data(grid, 4)[north_indices...]
                     @test get_halo_data(getregion(c, 5), North()) == reverse(create_c_test_data(grid, 1)[west_indices...], dims=2)'
 
-                    switch_device!(grid, 6)
                     @test get_halo_data(getregion(c, 6), West())  ==         create_c_test_data(grid, 5)[east_indices...]
                     @test get_halo_data(getregion(c, 6), East())  == reverse(create_c_test_data(grid, 2)[south_indices...], dims=1)'
                     @test get_halo_data(getregion(c, 6), South()) == reverse(create_c_test_data(grid, 4)[east_indices...], dims=2)'
@@ -397,8 +391,6 @@ end
 
                 # Confirm that the zonal velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
                 @allowscalar begin
-                    switch_device!(grid, 1)
-
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(u, 1), West())  == reverse(create_v_test_data(grid, 5)[north_indices...], dims=1)'
                     @test get_halo_data(getregion(u, 1), East())  ==         create_u_test_data(grid, 2)[west_indices...]
@@ -412,8 +404,6 @@ end
                     @test get_halo_data(getregion(u, 1), North();
                                         operation=:endpoint,
                                         index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_first...])
-
-                    switch_device!(grid, 2)
 
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(u, 2), West())  ==         create_u_test_data(grid, 1)[east_indices...]
@@ -429,8 +419,6 @@ end
                                         operation=:endpoint,
                                         index=:first) == - create_v_test_data(grid, 1)[east_indices_first...]
 
-                    switch_device!(grid, 3)
-
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(u, 3), West())  == reverse(create_v_test_data(grid, 1)[north_indices...], dims=1)'
                     @test get_halo_data(getregion(u, 3), East())  ==         create_u_test_data(grid, 4)[west_indices...]
@@ -444,8 +432,6 @@ end
                     @test get_halo_data(getregion(u, 3), North();
                                         operation=:endpoint,
                                         index=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_first...])
-
-                    switch_device!(grid, 4)
 
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(u, 4), West())  ==         create_u_test_data(grid, 3)[east_indices...]
@@ -461,8 +447,6 @@ end
                                         operation=:endpoint,
                                         index=:first) == - create_v_test_data(grid, 3)[east_indices_first...]
 
-                    switch_device!(grid, 5)
-
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(u, 5), West())  == reverse(create_v_test_data(grid, 3)[north_indices...], dims=1)'
                     @test get_halo_data(getregion(u, 5), East())  ==         create_u_test_data(grid, 6)[west_indices...]
@@ -476,8 +460,6 @@ end
                     @test get_halo_data(getregion(u, 5), North();
                                         operation=:endpoint,
                                         index=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_first...])
-
-                    switch_device!(grid, 6)
 
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(u, 6), West())  ==         create_u_test_data(grid, 5)[east_indices...]
@@ -497,8 +479,6 @@ end
                 # Confirm that the meridional velocity halos were filled according to connectivity described at
                 # ConformalCubedSphereGrid docstring.
                 @allowscalar begin
-                    switch_device!(grid, 1)
-
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(v, 1), East())  ==         create_v_test_data(grid, 2)[west_indices...]
                     @test get_halo_data(getregion(v, 1), South()) ==         create_v_test_data(grid, 6)[north_indices...]
@@ -512,8 +492,6 @@ end
                     @test get_halo_data(getregion(v, 1), West();
                                         operation=:endpoint,
                                         index=:first) == - create_u_test_data(grid, 6)[north_indices_first...]
-
-                    switch_device!(grid, 2)
 
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(v, 2), West())  ==         create_v_test_data(grid, 1)[east_indices...]
@@ -529,8 +507,6 @@ end
                                         operation=:endpoint,
                                         index=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_first...])
 
-                    switch_device!(grid, 3)
-
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(v, 3), East())  ==         create_v_test_data(grid, 4)[west_indices...]
                     @test get_halo_data(getregion(v, 3), South()) ==         create_v_test_data(grid, 2)[north_indices...]
@@ -544,8 +520,6 @@ end
                     @test get_halo_data(getregion(v, 3), West();
                                         operation=:endpoint,
                                         index=:first) == - create_u_test_data(grid, 2)[north_indices_first...]
-
-                    switch_device!(grid, 4)
 
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(v, 4), West())  ==         create_v_test_data(grid, 3)[east_indices...]
@@ -561,8 +535,6 @@ end
                                         operation=:endpoint,
                                         index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_first...])
 
-                    switch_device!(grid, 5)
-
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(v, 5), East())  ==         create_v_test_data(grid, 6)[west_indices...]
                     @test get_halo_data(getregion(v, 5), South()) ==         create_v_test_data(grid, 4)[north_indices...]
@@ -576,8 +548,6 @@ end
                     @test get_halo_data(getregion(v, 5), West();
                                         operation=:endpoint,
                                         index=:first) == - create_u_test_data(grid, 4)[north_indices_first...]
-
-                    switch_device!(grid, 6)
 
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(v, 6), West())  ==         create_v_test_data(grid, 5)[east_indices...]
@@ -650,8 +620,6 @@ end
                 # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
                 @allowscalar begin
                     # Panel 1
-                    switch_device!(grid, 1)
-
                     # Trivial halo checks with no off-set in index
                     @test get_halo_data(getregion(ψ, 1), East())  == create_ψ_test_data(grid, 2)[west_indices...]
                     @test get_halo_data(getregion(ψ, 1), South()) == create_ψ_test_data(grid, 6)[north_indices...]
@@ -671,7 +639,6 @@ end
                                         operation=:endpoint,
                                         index=:first) == create_ψ_test_data(grid, 6)[north_indices_first...]
 
-                    switch_device!(grid, 2)
                     @test get_halo_data(getregion(ψ, 2), West())  == create_ψ_test_data(grid, 1)[east_indices...]
                     @test get_halo_data(getregion(ψ, 2), North()) == create_ψ_test_data(grid, 3)[south_indices...]
 
@@ -690,7 +657,6 @@ end
                                         operation=:endpoint,
                                         index=:first) == create_ψ_test_data(grid, 1)[east_indices_first...]
 
-                    switch_device!(grid, 3)
                     @test get_halo_data(getregion(ψ, 3), East())  == create_ψ_test_data(grid, 4)[west_indices...]
                     @test get_halo_data(getregion(ψ, 3), South()) == create_ψ_test_data(grid, 2)[north_indices...]
 
@@ -709,7 +675,6 @@ end
                                         index=:first) == reverse(create_ψ_test_data(grid, 5)[west_indices_subset_skip_first_index...], dims=2)'
                     # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
-                    switch_device!(grid, 4)
                     @test get_halo_data(getregion(ψ, 4), West())  == create_ψ_test_data(grid, 3)[east_indices...]
                     @test get_halo_data(getregion(ψ, 4), North()) == create_ψ_test_data(grid, 5)[south_indices...]
 
@@ -728,7 +693,6 @@ end
                                         operation=:endpoint,
                                         index=:first) == create_ψ_test_data(grid, 3)[east_indices_first...]
 
-                    switch_device!(grid, 5)
                     @test get_halo_data(getregion(ψ, 5), East())  == create_ψ_test_data(grid, 6)[west_indices...]
                     @test get_halo_data(getregion(ψ, 5), South()) == create_ψ_test_data(grid, 4)[north_indices...]
 
@@ -747,7 +711,6 @@ end
                                         index=:first) == reverse(create_ψ_test_data(grid, 1)[west_indices_subset_skip_first_index...], dims=2)'
                     # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
-                    switch_device!(grid, 6)
                     @test get_halo_data(getregion(ψ, 6), West())  == create_ψ_test_data(grid, 5)[east_indices...]
                     @test get_halo_data(getregion(ψ, 6), North()) == create_ψ_test_data(grid, 1)[south_indices...]
 
@@ -773,11 +736,6 @@ end
 end
 
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
-    for f in readdir(".")
-        if occursin(r"^cubed_sphere_(output|checkpointer)_.*\.jld2$", f)
-            rm(f; force=true)
-        end
-    end
     for FT in float_types
         for arch in archs
             Nx, Ny, Nz = 18, 18, 9

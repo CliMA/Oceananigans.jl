@@ -2,18 +2,15 @@ using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
-    SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
+    SplitRungeKutta3TimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
 """
-struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
-    γ² :: FT
-    γ³ :: FT
-    ζ² :: FT
-    ζ³ :: FT
+struct SplitRungeKutta3TimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
+    β¹ :: FT
+    β² :: FT
     Gⁿ :: TG
-    G⁻ :: TE # only needed for barotropic velocities in the barotropic step
     Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
@@ -22,26 +19,26 @@ end
     SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                 implicit_solver::TI = nothing,
                                 Gⁿ::TG = map(similar, prognostic_fields),
-                                Ψ⁻::PF = map(similar, prognostic_fields)
-                                G⁻::TE = nothing) where {TI, TG, PF, TE}
+                                Ψ⁻::PF = map(similar, prognostic_fields),
+                                kwargs...) where {TI, TG, PF}
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified
+The tendency fields `Gⁿ` and `G⁻`, and the previous state `Ψ⁻` can be modified
 via optional `kwargs`.
 
-The scheme is described by [Lan et al. (2022)](@cite Lan2022). In a nutshell,
+The scheme is described by [Knoth and Wensch (2014)](@cite knoth2014). In a nutshell,
 the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
 A barotropic velocity correction step is applied after at each substep.
 
-The state `U` after each substep `m` is
+The state `U` after each substep `m` is equivalent to an Euler step with a modified time step:
 
 ```julia
-Uᵐ⁺¹ = ζᵐ * Uⁿ + γᵐ * (Uᵐ + Δt * Gᵐ)
+Δt̃   = Δt / βᵐ
+Uᵐ⁺¹ = Uⁿ + Δt̃ * Gᵐ
 ```
 
 where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
-`Gᵐ` is the tendency at the ``m``-th substep, and constants `γ¹ = 1`, `γ² = 1/4`, `γ³ = 1/3`,
-`ζ¹ = 0`, `ζ² = 3/4`, and `ζ³ = 1/3`.
+`Gᵐ` is the tendency at the ``m``-th substep, and constants `β¹ = 3`, `β² = 2`, `β³ = 1`.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
@@ -49,28 +46,24 @@ The state at the first substep is taken to be the one that corresponds to the ``
 References
 ==========
 
-Lan, R., Ju, L., Wanh, Z., Gunzburger, M., and Jones, P. (2022). High-order multirate explicit
-    time-stepping schemes for the baroclinic-barotropic split dynamics in primitive equations.
-    Journal of Computational Physics, 457, 111050.
+Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta methods for the
+    compressible Euler equations. Monthly Weather Review, 142, 2067-2081,
+    https://doi.org/10.1175/MWR-D-13-00068.1.
 """
 function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
                                      Gⁿ::TG = map(similar, prognostic_fields),
                                      Ψ⁻::PF = map(similar, prognostic_fields),
-                                     G⁻::TE = nothing) where {TI, TG, PF, TE}
+                                     kwargs...) where {TI, TG, PF}
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is experimental.\n" *
           "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
 
-    γ² = 1 // 4
-    γ³ = 2 // 3
-
-    ζ² = 3 // 4
-    ζ³ = 1 // 3
-
     FT = eltype(grid)
+    β¹ = 3
+    β² = 2
 
-    return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, Ψ⁻, implicit_solver)
+    return SplitRungeKutta3TimeStepper{FT, TG, PF, TI}(β¹, β², Gⁿ, Ψ⁻, implicit_solver)
 end
 
 function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; callbacks=[])
@@ -79,46 +72,45 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
 
-    γ² = model.timestepper.γ²
-    γ³ = model.timestepper.γ³
-
-    ζ² = model.timestepper.ζ²
-    ζ³ = model.timestepper.ζ³
-
     cache_previous_fields!(model)
+    β¹ = model.timestepper.β¹
+    β² = model.timestepper.β²
 
     ####
     #### First stage
     ####
 
+    # First stage: n -> n + 1/3
     model.clock.stage = 1
 
     compute_flux_bc_tendencies!(model)
-    split_rk3_substep!(model, Δt, nothing, nothing)
-    compute_pressure_correction!(model, Δt)
-    make_pressure_correction!(model, Δt)
+    split_rk3_substep!(model, Δt / β¹)
+    compute_pressure_correction!(model, Δt / β¹)
+    make_pressure_correction!(model, Δt / β¹)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
     #### Second stage
     ####
 
+    # Second stage: n -> n + 1/2
     model.clock.stage = 2
 
     compute_flux_bc_tendencies!(model)
-    split_rk3_substep!(model, Δt, γ², ζ²)
-    compute_pressure_correction!(model, Δt)
-    make_pressure_correction!(model, Δt)
+    split_rk3_substep!(model, Δt / β²)
+    compute_pressure_correction!(model, Δt / β²)
+    make_pressure_correction!(model, Δt / β²)
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
     #### Third stage
     ####
 
+    # Third stage: n -> n + 1
     model.clock.stage = 3
 
     compute_flux_bc_tendencies!(model)
-    split_rk3_substep!(model, Δt, γ³, ζ³)
+    split_rk3_substep!(model, Δt)
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -130,17 +122,12 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     return nothing
 end
 
-@kernel function _euler_substep_field!(field, Δt, Gⁿ)
+@kernel function _euler_substep_field!(field, Δt, Gⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = field[i, j, k] + Δt * Gⁿ[i, j, k]
+    @inbounds field[i, j, k] = Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
-@kernel function _split_rk3_average_field!(field, γⁿ, ζⁿ, field⁻)
-    i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = ζⁿ * field⁻[i, j, k] + γⁿ * field[i, j, k]
-end
-
-function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
+function split_rk3_substep!(model, Δt)
 
     grid = model.grid
     FT   = eltype(grid)
@@ -148,7 +135,9 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
-        launch!(arch, grid, :xyz, _euler_substep_field!, field, convert(FT, Δt), model.timestepper.Gⁿ[i])
+        Ψ⁻ = model.timestepper.Ψ⁻[i]
+        Gⁿ = model.timestepper.Gⁿ[i]
+        launch!(arch, grid, :xyz, _euler_substep_field!, field, convert(FT, Δt), Gⁿ, Ψ⁻)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -160,10 +149,6 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        tracer_index,
                        model.clock,
                        Δt)
-
-        if model.clock.stage > 1 
-            launch!(arch, grid, :xyz, _split_rk3_average_field!, field, γⁿ, ζⁿ, model.timestepper.Ψ⁻[i])
-        end
     end
 end
 
