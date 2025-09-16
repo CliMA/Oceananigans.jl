@@ -4,6 +4,7 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: Centered, adapt_advection_order
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
+using Oceananigans.BoundaryConditions: MixedBoundaryCondition
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
@@ -130,7 +131,7 @@ function NonhydrostaticModel(; grid,
                              biogeochemistry::AbstractBGCOrNothing = nothing,
                              velocities = nothing,
                              hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                             nonhydrostatic_pressure = CenterField(grid),
+                             nonhydrostatic_pressure = nothing,
                              diffusivity_fields = nothing,
                              pressure_solver = nothing,
                              auxiliary_fields = NamedTuple())
@@ -138,6 +139,20 @@ function NonhydrostaticModel(; grid,
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    if isnothing(nonhydrostatic_pressure)
+        if isnothing(free_surface)
+            nonhydrostatic_pressure = CenterField(grid)
+        else
+        # elseif free_surface isa ImplicitFreeSurface
+            # Use a MixedBoundaryCondition for the top bc for pressure
+            coefficient = Ref(zero(grid))
+            combination = Field{Center, Center, Nothing}(grid)
+            top_bc = MixedBoundaryCondition(coefficient, combination)
+            pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
+            nonhydrostatic_pressure = CenterField(grid; boundary_conditions=pressure_bcs)
+        end
+    end
 
     # Validate pressure fields
     nonhydrostatic_pressure isa Field{Center, Center, Center} ||
