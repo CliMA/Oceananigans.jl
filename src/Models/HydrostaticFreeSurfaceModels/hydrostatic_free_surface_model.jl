@@ -155,10 +155,12 @@ function HydrostaticFreeSurfaceModel(; grid,
     user_tracer_names = tracernames(tracers)
     closure_tracer_names = closure_required_tracers(closure)
 
-    # If user specified any closure-required tracer, throw an error
+    # Throw an error in case of a conflict between user-specified tracers and any other tracers.
     if any(name ∈ user_tracer_names for name in closure_tracer_names)
-        msg = string("The tracers names $(closure_tracer_names) are reserved for the auxiliary tracers", '\n',
-                     "associated with $(summary(closure)), and cannot be specified explicitly.")
+        msg = string("The tracer names $(user_tracer_names) overlap with the closure auxiliary", '\n',
+                     "tracer names $(closure_tracer_names) associated with $(summary(closure)).", '\n',
+                     "The names $(closure_tracer_names) cannot be specified explicitly", '\n',
+                     "or be the names of biogeochemical tracers.")
         throw(ArgumentError(msg))
     elseif tracers isa NamedTuple
         closure_tracer_fields = Tuple(CenterField(grid) for _ in closure_tracer_names)
