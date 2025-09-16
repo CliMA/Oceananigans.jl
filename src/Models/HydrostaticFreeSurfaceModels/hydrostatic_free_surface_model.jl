@@ -150,29 +150,17 @@ function HydrostaticFreeSurfaceModel(; grid,
     tracers, biogeochemical_fields = validate_biogeochemistry(tracers, biogeochemical_fields, biogeochemistry, grid, clock)
 
     # Automatically append closure-required tracers and disallow users from specifying them explicitly
-    begin
-        user_tracer_names = tracernames(tracers)
-        extra_tracers = closure_required_tracers(closure)
+    user_tracer_names = tracernames(tracers)
+    extra_tracers = closure_required_tracers(closure)
 
-        # If user specified any closure-required tracer, throw an error
-        if any(t -> t in user_tracer_names, extra_tracers)
-            bad = Tuple(t for t in extra_tracers if t in user_tracer_names)
-            throw(ArgumentError("Do not include closure tracers $(bad). These are automatically added for the specified closure."))
-        end
-
-        # Append closure-required tracers to user tracers
-        if !isempty(extra_tracers)
-            if tracers isa NamedTuple
-                # Preserve user-provided fields; add placeholders for closure tracers
-                appended_names = Tuple((user_tracer_names..., extra_tracers...))
-                appended_fields = Tuple(getfield(tracers, n) for n in user_tracer_names)
-                # For closure-added tracers, create dummy CenterField now; BCs are regularized later
-                extra_fields = Tuple(CenterField(grid) for _ in extra_tracers)
-                tracers = NamedTuple{appended_names}((appended_fields..., extra_fields...))
-            else
-                tracers = Tuple((user_tracer_names..., extra_tracers...))
-            end
-        end
+    # If user specified any closure-required tracer, throw an error
+    # TODO: support NamedTuple tracers in situations with closure auxiliary tracers
+    if any(t -> t in user_tracer_names, extra_tracers) && !(tracers isa NamedTuple)
+        msg = string("The tracers names $(extra_tracers) are reserved for the auxiliary tracers", '\n',
+                     "associated with $(summary(closure)), and cannot be specified explicitly.")
+        throw(ArgumentError(msg))
+    else
+        tracers = tuple(user_tracer_names..., extra_tracers...)
     end
 
     # Reduce the advection order in directions that do not have enough grid points

@@ -36,10 +36,7 @@ export
     ∂ⱼ_τ₂ⱼ,
     ∂ⱼ_τ₃ⱼ,
 
-    cell_diffusion_timescale
-
-    ,
-    # Interface for models to query required tracer names for closures
+    cell_diffusion_timescale,
     closure_required_tracers
 
 using KernelAbstractions
