@@ -209,7 +209,6 @@ function run_time_step_with_catke_tests(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
 
-    # These should work now (:e is auto-appended)
     @test HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=:b) isa HydrostaticFreeSurfaceModel
     @test HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=(:b, :E)) isa HydrostaticFreeSurfaceModel
 
