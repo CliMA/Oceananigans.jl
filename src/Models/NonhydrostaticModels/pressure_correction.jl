@@ -10,21 +10,8 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
-
     enforce_open_boundary_mass_conservation!(model, model.boundary_mass_fluxes)
-
-    #=
-    if !isnothing(model.free_surface) # isa ImplicitFreeSurface
-        g = model.free_surface.gravitational_acceleration
-        η = model.free_surface.η
-    else
-        g = nothing
-        η = nothing
-    end
-    =#
-    
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, model.free_surface, model.velocities, Δt)
-
     fill_halo_regions!(model.pressures.pNHS)
 
     return nothing

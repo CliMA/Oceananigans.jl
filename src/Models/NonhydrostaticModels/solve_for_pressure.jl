@@ -62,15 +62,13 @@ add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt) = nothing
 
 @kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η)
     i, j = @index(Global, NTuple)
-    k = grid.Nz
-
-    Δzᶜ = Δzᵃᵃᶜ(i, j, k, grid)
-    Δzᶠ = Δzᵃᵃᶠ(i, j, k, grid)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
 
     @inbounds begin
-        num = η[i, j, k+1] + Δt * w̃[i, j, k]
-        den = Δzᶜ * Δt^2 + Δzᶜ * Δzᶠ / 2g
-        rhs[i, j, k] -= num / den
+        num = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        den = Δt^2 + Δzᶠ / 2g
+        rhs[i, j, Nz] -= num / den
     end
 end
 
@@ -132,11 +130,10 @@ end
 @kernel function _update_fourier_tridiagonal_solver!(diagonal, grid, Ũ, Δt, g, η, λx, λy)
     i, j, = @index(Global, NTuple)
     Nz = grid.Nz
-    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz + 1, grid)
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     Δzᶜ = Δzᵃᵃᶠ(i, j, Nz, grid)
-    num = 1 / Δzᶠ + 3 / (2g * Δt^2)
-    den = 1 / Δzᶠ + 1 / (2g * Δt^2)
-    @inbounds diagonal[i, j, Nz] = 1 / Δzᶠ * num / den - Δzᶜ * (λx[i] + λy[j])
+    den = g * Δt^2 + Δzᶠ / 2
+    @inbounds diagonal[i, j, Nz] = - 1 / den - Δzᶜ * (λx[i] + λy[j])
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Ũ, Δt, g, η)
