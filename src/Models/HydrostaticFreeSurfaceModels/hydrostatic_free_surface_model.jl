@@ -153,16 +153,19 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Automatically append closure-required tracers and disallow users from specifying them explicitly
     user_tracer_names = tracernames(tracers)
-    extra_tracers = closure_required_tracers(closure)
+    closure_tracer_names = closure_required_tracers(closure)
 
     # If user specified any closure-required tracer, throw an error
-    # TODO: support NamedTuple tracers in situations with closure auxiliary tracers
-    if any(t -> t in user_tracer_names, extra_tracers) && !(tracers isa NamedTuple)
-        msg = string("The tracers names $(extra_tracers) are reserved for the auxiliary tracers", '\n',
+    if any(name ∈ user_tracer_names for name in closure_tracer_names)
+        msg = string("The tracers names $(closure_tracer_names) are reserved for the auxiliary tracers", '\n',
                      "associated with $(summary(closure)), and cannot be specified explicitly.")
         throw(ArgumentError(msg))
+    elseif tracers isa NamedTuple
+        closure_tracer_fields = Tuple(CenterField(grid) for _ in closure_tracer_names)
+        closure_tracers = NamedTuple{closure_tracer_names}(closure_tracer_fields)
+        tracers = merge(tracers, closure_tracers)
     else
-        tracers = tuple(user_tracer_names..., extra_tracers...)
+        tracers = tuple(user_tracer_names..., closure_tracer_names...)
     end
 
     # Reduce the advection order in directions that do not have enough grid points
