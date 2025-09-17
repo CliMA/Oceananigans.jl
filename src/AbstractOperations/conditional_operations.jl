@@ -159,6 +159,7 @@ end
 @inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 
 @inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
 @inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
@@ -170,6 +171,7 @@ end
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
+
 
 @inline materialize_condition!(c::ConditionalOperation) = set!(c.operand, c)
 
