@@ -793,7 +793,7 @@ function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask =
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
     n = conditional_length(operand, dims)
-    r ./= n
+    parent(r) ./= n
     return r
 end
 
@@ -804,7 +804,7 @@ function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     n = conditional_length(condition_operand(f, a, condition, mask), dims)
-    r ./= n
+    parent(r) ./= n
     return r
 end
 
