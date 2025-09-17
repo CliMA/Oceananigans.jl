@@ -197,6 +197,8 @@ end
 end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
+@inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
+@inline conditional_length(c::ConditionalOperation, ::NTuple{3}) = conditional_length(c)
 @inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
