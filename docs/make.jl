@@ -26,9 +26,12 @@ Distributed.addprocs(2)
     bib = CitationBibliography(bib_filepath, style=:authoryear)
 
     #####
-    ##### Generate examples
+    ##### Generate examples (disabled for fast local builds)
     #####
 
+    #=  For LiveServer or quick docs iteration, we skip executing literated examples.
+    #   Re-enable this block to regenerate docs/src/literated/*.md from examples/.
+    #
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
@@ -48,10 +51,10 @@ Distributed.addprocs(2)
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
+    =#
 end
 
-@info string("Executing the examples using ", Distributed.nprocs(), " processes")
-
+#=  Re-enable for examples build
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -63,6 +66,7 @@ Distributed.pmap(1:length(example_scripts)) do n
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
     end
 end
+=#
 
 Distributed.rmprocs()
 
@@ -70,6 +74,7 @@ Distributed.rmprocs()
 ##### Organize page hierarchies
 #####
 
+#=  Examples section is disabled for fast local builds.
 example_pages = [
     "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
     "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
@@ -84,28 +89,24 @@ example_pages = [
     "Horizontal convection"            => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
 ]
+=#
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md",
-    "Architecture" => "model_setup/architecture.md",
-    "Number type" => "model_setup/number_type.md",
-    "Grid" => "model_setup/legacy_grids.md",
-    "Clock" => "model_setup/clock.md",
-    "Coriolis (rotation)" => "model_setup/coriolis.md",
-    "Tracers" => "model_setup/tracers.md",
-    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
-    "Boundary conditions" => "model_setup/boundary_conditions.md",
-    "Forcing functions" => "model_setup/forcing_functions.md",
-    "Background fields" => "model_setup/background_fields.md",
-    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
-    "Lagrangian particles" => "model_setup/lagrangian_particles.md",
-    "Diagnostics" => "model_setup/diagnostics.md",
-    "Callbacks" => "model_setup/callbacks.md",
-    "Output writers" => "model_setup/output_writers.md",
-    "Checkpointing" => "model_setup/checkpointing.md",
+    # "Setting initial conditions" => "model_setup/setting_initial_conditions.md",
+    # "Coriolis (rotation)" => "model_setup/coriolis.md",
+    # "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
+    # "Boundary conditions" => "model_setup/boundary_conditions.md",
+    # "Forcing functions" => "model_setup/forcing_functions.md",
+    # "Background fields" => "model_setup/background_fields.md",
+    # "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
+    # "Lagrangian particles" => "model_setup/lagrangian_particles.md",
+    # "Callbacks" => "model_setup/callbacks.md",
+    # "Output writers" => "model_setup/output_writers.md",
+    # "Checkpointing" => "model_setup/checkpointing.md",
 ]
 
+#=
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
@@ -144,29 +145,29 @@ appendix_pages = [
     "Library" => "appendix/library.md",
     "Function index" => "appendix/function_index.md"
 ]
+    =#
 
 pages = [
     "Home" => "index.md",
-    "Quick start" => "quick_start.md",
-    "Examples" => example_pages,
-    "Grids" => "grids.md",
-    "Fields" => "fields.md",
-    "Operations" => "operations.md",
-    "Models" => "models.md",
+    # "Quick start" => "quick_start.md",
+    # # "Examples" => example_pages,   # disabled for fast local builds
+    # "Grids" => "grids.md",
+    # "Fields" => "fields.md",
+    # "Operations" => "operations.md",
     # TODO:
     #   - Develop the following three tutorials on reductions, simulations, and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
     # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
     # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Model setup (legacy)" => model_setup_pages,
-    "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
-    "Gallery" => "gallery.md",
-    "References" => "references.md",
-    "Appendix" => appendix_pages
+    "Models" => model_setup_pages,
+    # "Physics" => physics_pages,
+    # "Numerical implementation" => numerical_pages,
+    # "Simulation tips" => "simulation_tips.md",
+    # "Contributor's guide" => "contributing.md",
+    # "Gallery" => "gallery.md",
+    # "References" => "references.md",
+    # "Appendix" => appendix_pages
 ]
 
 #####
@@ -181,16 +182,21 @@ format = Documenter.HTML(collapselevel = 1,
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
+OceananigansNCDatasetsExt = if isdefined(Base, :get_extension)
+    Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt)
+else
+    Oceananigans.OceananigansNCDatasetsExt
+end
+
 makedocs(sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format = format,
          pages = pages,
          plugins = [bib],
-         modules = [Oceananigans,
-                    isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt],
+         modules = [Oceananigans, OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
          draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
+         doctest = false,       # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
