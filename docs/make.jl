@@ -152,10 +152,10 @@ pages = [
     "Grids" => "grids.md",
     "Fields" => "fields.md",
     "Operations" => "operations.md",
+    "Scans" => "scans.md",
     # TODO:
-    #   - Develop the following three tutorials on reductions, simulations, and post-processing
+    #   - Develop tutorials on simulations and post-processing.
     #   - Refactor the model setup pages and make them more tutorial-like.
-    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
     # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
     "Model setup (legacy)" => model_setup_pages,
