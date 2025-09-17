@@ -15,9 +15,9 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundar
 
 import ..OceananigansReactantExt: deconcretize
 import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-import Oceananigans.Grids: total_length, offset_data
+import Oceananigans.Grids: total_length, offset_data, active_cell, rnode
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
-import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
+import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary, immersed_cell
 
 const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
 
@@ -87,6 +87,33 @@ function offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::
     end
 
     return OffsetArray(underlying_data, ii..., extra_ii...)
+end
+
+# Special version of active cell for ReactantImmersedBoundaryGrid that ignores negation:
+@inline active_cell(i, j, k, ibg::ReactantImmersedBoundaryGrid) = not_immersed_cell(i, j, k, ibg) & active_cell(i, j, k, ibg.underlying_grid)
+
+# Preserving the structure in the source code:
+@inline not_immersed_cell(i, j, k, grid::ReactantImmersedBoundaryGrid) =
+    not_immersed_cell(i, j, k, grid.underlying_grid, grid.immersed_boundary)
+
+# We won't handle cases with flat topology here:
+@inline not_immersed_cell(i, j, k, grid, ib) = _not_immersed_cell(i, j, k, grid, ib)
+
+@inline function _not_immersed_cell(i, j, k, underlying_grid::ReactantGrid, ib::GridFittedBottom)
+    # We use `rnode` for the `immersed_cell` because we do not want to have
+    # wetting or drying that could happen for a moving grid if we use znode
+    z  = rnode(i, j, k, underlying_grid, Center(), Center(), Center())
+    zb = @inbounds ib.bottom_height[i, j, 1]
+    return z > zb
+end
+
+@inline function _not_immersed_cell(i, j, k::AbstractArray, underlying_grid::ReactantGrid, ib::GridFittedBottom)
+    # We use `rnode` for the `immersed_cell` because we do not want to have
+    # wetting or drying that could happen for a moving grid if we use znode
+    z  = rnode(i, j, k, underlying_grid, Center(), Center(), Center())
+    zb = @inbounds ib.bottom_height[i, j, 1]
+    zb = Base.stack(collect(zb for _ in k))
+    return z .> zb
 end
 
 end # module

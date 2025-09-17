@@ -39,6 +39,9 @@ using .Simulations
 include("OutputReaders.jl")
 using .OutputReaders
 
+include("Operators.jl")
+using .Operators
+
 #####
 ##### Telling Reactant how to construct types
 #####
