@@ -1,8 +1,9 @@
 module OutputReaders
 
 import Oceananigans.OutputReaders: find_time_index
+using Reactant: TracedStepRangeLen
 
-@inline function find_time_index(times::Reactant.TracedStepRangeLen, t)
+@inline function find_time_index(times::TracedStepRangeLen, t)
     n₂ = searchsortedfirst(times, t)
 
     Nt = length(times)
