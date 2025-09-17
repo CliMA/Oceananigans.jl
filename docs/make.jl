@@ -152,6 +152,7 @@ pages = [
     "Grids" => "grids.md",
     "Fields" => "fields.md",
     "Operations" => "operations.md",
+    "Models" => "models.md",
     # TODO:
     #   - Develop the following three tutorials on reductions, simulations, and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
