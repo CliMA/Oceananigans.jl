@@ -13,7 +13,7 @@ using Oceananigans.BoundaryConditions:
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
 
-@inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
+@inline bc_str(::MultiRegionObject) = "MultiRegionObject"
 
 @inline function fill_halo_regions!(fields::NamedTuple, grid::ConformalCubedSphereGridOfSomeKind, args...; kwargs...)
     u = haskey(fields, :u) ? fields.u : nothing
