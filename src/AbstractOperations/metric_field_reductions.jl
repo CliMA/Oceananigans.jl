@@ -23,8 +23,20 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 ##### Metric reductions
 #####
 
-struct Averaging <: AbstractReducing end
+struct Averaging{L} <: AbstractReducing
+    length :: L
+end
+
+
 const Average = Scan{<:Averaging}
+const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
+
+function average!(avg::AveragedField, operand; dims=:)
+    sum!(avg, operand; dims)
+    parent(avg) ./= parent(s.type.length)
+    return avg
+end
+
 Base.summary(r::Average) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 
 """
@@ -55,11 +67,14 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         L = sum(metric; condition, mask, dims)
 
         # Construct summand of the Average
-        L⁻¹_field_dx = field * dx / L
+        # L⁻¹_field_dx = field * dx / L
+        # operand = condition_operand(L⁻¹_field_dx, condition, mask)
+        # return Scan(Averaging(), sum!, operand, dims)
 
-        operand = condition_operand(L⁻¹_field_dx, condition, mask)
-
-        return Scan(Averaging(), sum!, operand, dims)
+        field_dx = field * dx
+        operand = condition_operand(field_dx, condition, mask)
+        averaging = Averaging(L)
+        return Scan(averaging, average!, operand, dims)
     end
 end
 
