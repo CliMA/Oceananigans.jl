@@ -1,37 +1,6 @@
 using Oceananigans.Grids: xnode, ynode, total_length
 using GPUArraysCore: @allowscalar
 
-"""
-    lat_lon_to_cartesian(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to
-cartesian coordinates `(x, y, z)` on the unit sphere.
-"""
-lat_lon_to_cartesian(longitude, latitude) = (lat_lon_to_x(longitude, latitude),
-                                             lat_lon_to_y(longitude, latitude),
-                                             lat_lon_to_z(longitude, latitude))
-
-"""
-    lat_lon_to_x(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to cartesian `x` on the unit sphere.
-"""
-lat_lon_to_x(longitude, latitude) = cosd(longitude) * cosd(latitude)
-
-"""
-    lat_lon_to_y(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to cartesian `y` on the unit sphere.
-"""
-lat_lon_to_y(longitude, latitude) = sind(longitude) * cosd(latitude)
-
-"""
-    lat_lon_to_z(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to cartesian `z` on the unit sphere.
-"""
-lat_lon_to_z(longitude, latitude) = sind(latitude)
-
 longitude_in_same_window(λ₁, λ₂) = mod(λ₁ - λ₂ + 180, 360) + λ₂ - 180
 
 flip_location(::Center) = Face()
