@@ -719,20 +719,16 @@ const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
 @inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
 
-@inline conditional_length(c::AbstractField)        = length(c)
+@inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
 @inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
-
-@inline function conditional_length(c::AbstractField, dims::NTuple{1})
-    N = size(c)
-    d = dims[1]
-    return N[d]
-end
+@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
+@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
 
 @inline function conditional_length(c::AbstractField, dims::NTuple{2})
     N = size(c)
     d1, d2 = dims
-    return N[d1] * N[d1]
+    return N[d1] * N[d2]
 end
 
 # Allocating and in-place reductions
