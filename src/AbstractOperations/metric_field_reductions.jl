@@ -56,7 +56,7 @@ Return `Reduction` representing a spatial average of `field` over `dims`.
 Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 
 Over dimensions of variable spacing, `field` is multiplied by the
-appropriate "averaging metric" (length, area or volume for 1D, 2D or 3D averages),
+appropriate "averaging metric" (length, area or volume for 1D, 2D, or 3D averages),
 and divided by the sum of the metric over the averaging region.
 
 See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
