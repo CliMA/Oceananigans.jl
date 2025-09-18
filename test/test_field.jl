@@ -69,6 +69,7 @@ function run_field_reduction_tests(grid)
     η_vals = f.(nodes(η, reshape=true)...)
 
     # Convert to CuArray if needed.
+    arch = architecture(grid)
     u_vals = on_architecture(arch, u_vals)
     v_vals = on_architecture(arch, v_vals)
     w_vals = on_architecture(arch, w_vals)
