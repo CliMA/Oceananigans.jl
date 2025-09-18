@@ -45,45 +45,50 @@ function correct_field_value_was_set(grid, FieldType, val::Number)
     return all(interior(f) .≈ val * on_architecture(arch, ones(size(f))))
 end
 
-function run_field_reduction_tests(FT, arch)
-    N = 8
-    topo = (Bounded, Bounded, Bounded)
-    grid = RectilinearGrid(arch, FT, topology=topo, size=(N, N, N), x=(-1, 1), y=(0, 2π), z=(-1, 1))
-
+function run_field_reduction_tests(grid)
     u = XFaceField(grid)
     v = YFaceField(grid)
     w = ZFaceField(grid)
     c = CenterField(grid)
+    η = Field{Center, Center, Nothing}(grid)
 
     f(x, y, z) = 1 + exp(x) * sin(y) * tanh(z)
 
-    ϕs = (u, v, w, c)
+    ϕs = [u, v, w, c]
     [set!(ϕ, f) for ϕ in ϕs]
+
+    z_top = znodes(grid, Face())[end]
+    set!(η, (x, y) -> f(x, y, z_top))
+    push!(ϕs, η)
+    ϕs = Tuple(ϕs)
 
     u_vals = f.(nodes(u, reshape=true)...)
     v_vals = f.(nodes(v, reshape=true)...)
     w_vals = f.(nodes(w, reshape=true)...)
     c_vals = f.(nodes(c, reshape=true)...)
+    η_vals = f.(nodes(η, reshape=true)...)
 
     # Convert to CuArray if needed.
     u_vals = on_architecture(arch, u_vals)
     v_vals = on_architecture(arch, v_vals)
     w_vals = on_architecture(arch, w_vals)
     c_vals = on_architecture(arch, c_vals)
+    η_vals = on_architecture(arch, η_vals)
 
-    ϕs_vals = (u_vals, v_vals, w_vals, c_vals)
+    ϕs_vals = (u_vals, v_vals, w_vals, c_vals, η_vals)
 
     dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3), (1, 2, 3))
 
     for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
+        @show ϕ
 
         ε = eps(eltype(ϕ_vals)) * 10 * maximum(maximum.(ϕs_vals))
-        @info "    Testing field reductions with tolerance $ε..."
+        @info "      Testing field reductions with tolerance $ε..."
 
         @test @allowscalar all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
         # Important to make sure no CUDA scalar operations occur!
-        CUDA.allowscalar(false)
+        GPUArraysCore.allowscalar(false)
 
         @test minimum(ϕ) ≈ minimum(ϕ_vals) atol=ε
         @test maximum(ϕ) ≈ maximum(ϕ_vals) atol=ε
@@ -477,7 +482,23 @@ end
         @info "  Testing field reductions..."
 
         for arch in archs, FT in float_types
-            run_field_reduction_tests(FT, arch)
+            N = 8
+            topo = (Bounded, Bounded, Bounded)
+            size = (N, N, N)
+            y = (0, 2π)
+            z = (-1, 1)
+
+            x = (-1, 1)
+            regular_grid = RectilinearGrid(arch, FT; topology=topo, size, x, y, z)
+
+            x = on_architecture(arch, Array(range(-1, stop=1, length=N+1)))
+            variably_spaced_grid = RectilinearGrid(arch, FT; topology=topo, size, x, y, z)
+
+            for (name, grid) in [(:regular_grid => regular_grid),
+                                 (:variably_spaced_grid => variably_spaced_grid)]
+                @info "    on a $name..."
+                run_field_reduction_tests(grid)
+            end
         end
 
         for arch in archs, FT in float_types
