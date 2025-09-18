@@ -104,9 +104,9 @@ end
 end
 
 # Single closure version
-@inline closure_turbulent_velocity(clo, K, val_tracer_name) = nothing
-@inline closure_turbulent_velocity(::NoSkewAdvectionISSD, K, val_tracer_name) = nothing
-@inline closure_turbulent_velocity(::SkewAdvectionISSD, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
+@inline closure_auxiliary_velocity(clo, K, val_tracer_name) = nothing
+@inline closure_auxiliary_velocity(::NoSkewAdvectionISSD, K, val_tracer_name) = nothing
+@inline closure_auxiliary_velocity(::SkewAdvectionISSD, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
 # 2-tuple closure
 @inline select_velocities(::Nothing, U) = U
@@ -128,26 +128,26 @@ end
 
 # Handle tuple of closures.
 # Assumption: there is only one ISSD closure in the tuple of closures.
-@inline closure_turbulent_velocity(closures::Tuple{<:Any}, Ks, val_tracer_name) =
-            closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name)
+@inline closure_auxiliary_velocity(closures::Tuple{<:Any}, Ks, val_tracer_name) =
+            closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name)
 
-@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) =
-    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name))
+@inline closure_auxiliary_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) =
+    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name))
 
-@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any, <:Any}, Ks, val_tracer_name) =
-    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name),
-                      closure_turbulent_velocity(closures[3], Ks[3], val_tracer_name))
+@inline closure_auxiliary_velocity(closures::Tuple{<:Any, <:Any, <:Any}, Ks, val_tracer_name) =
+    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
+                      closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name))
 
-@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, val_tracer_name) =
-    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name),
-                      closure_turbulent_velocity(closures[3], Ks[3], val_tracer_name),
-                      closure_turbulent_velocity(closures[4], Ks[4], val_tracer_name))
+@inline closure_auxiliary_velocity(closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, val_tracer_name) =
+    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
+                      closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name),
+                      closure_auxiliary_velocity(closures[4], Ks[4], val_tracer_name))
 
-@inline closure_turbulent_velocity(closures::Tuple, Ks, val_tracer_name) =
-    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
-                      closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name),
-                      closure_turbulent_velocity(closures[3], Ks[3], val_tracer_name),
-                      closure_turbulent_velocity(closures[4:end], Ks[4:end], val_tracer_name))
+@inline closure_auxiliary_velocity(closures::Tuple, Ks, val_tracer_name) =
+    select_velocities(closure_auxiliary_velocity(closures[1], Ks[1], val_tracer_name),
+                      closure_auxiliary_velocity(closures[2], Ks[2], val_tracer_name),
+                      closure_auxiliary_velocity(closures[3], Ks[3], val_tracer_name),
+                      closure_auxiliary_velocity(closures[4:end], Ks[4:end], val_tracer_name))

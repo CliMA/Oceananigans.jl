@@ -9,7 +9,7 @@ using Base: @propagate_inbounds
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
-import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, communication_buffers
 import Oceananigans.Diagnostics: hasnan
 
@@ -26,13 +26,8 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
-
 @inline isregional(f::GriddedMultiRegionField) = true
-@inline devices(f::GriddedMultiRegionField) = devices(f.grid)
-@inline sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid))
-
-@inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
-@inline getdevice(f::GriddedMultiRegionField, d) = getdevice(f.grid, d)
+@inline regions(f::GriddedMultiRegionField) = regions(f.grid)
 
 @inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(_getregion(f.func, r),
@@ -138,6 +133,16 @@ function compute!(comp::MultiRegionComputedField, time=nothing)
     fill_halo_regions!(comp)
 
     return comp
+end
+
+function interior(mrf::MultiRegionField)
+    @apply_regionally interior_mrf = interior(mrf)
+    return interior_mrf
+end
+
+function interior(mrf::MultiRegionField, I...)
+    @apply_regionally interior_mrf = interior(mrf, I...)
+    return interior_mrf
 end
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
