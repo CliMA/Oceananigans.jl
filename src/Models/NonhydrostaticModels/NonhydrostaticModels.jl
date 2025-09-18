@@ -36,9 +36,8 @@ nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver
 nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver) =
     FourierTridiagonalPoissonSolver(grid)
 
-# A LatitudeLongitudeGrid cannot use an FFT-based solver, we use a conjugate gradient solver instead.
-nonhydrostatic_pressure_solver(arch, grid::LatitudeLongitudeGrid) = 
-    ConjugateGradientPoissonSolver(grid)
+# fallback
+nonhydrostatic_pressure_solver(arch, grid) = ConjugateGradientPoissonSolver(grid)
 
 const IBGWithFFTSolver = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
 
@@ -57,11 +56,6 @@ function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver)
 
     return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid)
 end
-
-# fallback
-nonhydrostatic_pressure_solver(arch, grid) =
-    error("None of the implemented pressure solvers for NonhydrostaticModel \
-          are supported on $(summary(grid)).")
 
 nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architecture(grid), grid)
 

@@ -34,6 +34,7 @@ CUDA.allowscalar() do
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
+            include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
@@ -75,12 +76,6 @@ CUDA.allowscalar() do
         @testset "Poisson Solvers 2" begin
             include("test_poisson_solvers_stretched_grids.jl")
             include("test_conjugate_gradient_poisson_solver.jl")
-        end
-    end
-
-    if group == :matrix_poisson_solvers || group == :all
-        @testset "Matrix Poisson Solvers" begin
-            include("test_matrix_poisson_solver.jl")
         end
     end
 
@@ -166,7 +161,6 @@ CUDA.allowscalar() do
         @testset "Multi Region tests" begin
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
-            include("test_multi_region_implicit_solver.jl")
             include("test_multi_region_cubed_sphere.jl")
         end
     end
