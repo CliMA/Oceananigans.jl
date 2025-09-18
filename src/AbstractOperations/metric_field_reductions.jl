@@ -2,7 +2,7 @@ using Statistics: mean!, sum!
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
-using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing
+using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing, AbstractAccumulating
 using Oceananigans.Fields: excise_nothing_dims
 
 #####
