@@ -720,10 +720,10 @@ const Identity = typeof(Base.identity)
 @inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField) = length(c)
-@inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
-@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
 @inline conditional_length(c::AbstractField, d::Int) = size(c, d)
 @inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
+@inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
+@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
 
 @inline function conditional_length(c::AbstractField, dims::NTuple{2})
     N = size(c)
@@ -803,8 +803,12 @@ end
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
-    n = conditional_length(operand, dims)
-    parent(r) ./= n
+    L = conditional_length(operand, dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
@@ -814,8 +818,12 @@ Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mea
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    n = conditional_length(condition_operand(f, a, condition, mask), dims)
-    parent(r) ./= n
+    L = conditional_length(condition_operand(f, a, condition, mask), dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
