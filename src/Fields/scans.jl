@@ -38,6 +38,9 @@ Base.summary(s::Scan) = string(summary(s.type), " ",
                                " over dims ", s.dims,
                                " of ", summary(s.operand))
 
+excise_nothing_dims(::Colon, loc) = excise_nothing_dims((1, 2, 3), loc)
+excise_nothing_dims(dims, loc) = filter(d -> loc[d] != Nothing, dims)
+
 function Field(scan::Scan;
                data = nothing,
                indices = indices(scan.operand),
@@ -47,6 +50,7 @@ function Field(scan::Scan;
     operand = scan.operand
     grid = operand.grid
     LX, LY, LZ = loc = instantiated_location(scan)
+    dims = excise_nothing_dims(scan.dims, loc)
     indices = scan_indices(scan.type, indices; dims=scan.dims)
 
     if isnothing(data)
