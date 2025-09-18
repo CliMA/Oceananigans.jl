@@ -33,26 +33,41 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        version: ['1.10']
+        os: [ubuntu-latest]
+        arch: [x64]
     steps:
       - run: |
           touch LocalPreferences.toml
-
           echo "[Reactant]" >> LocalPreferences.toml
           echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
-
-          cat LocalPreferences.toml     
+          cat LocalPreferences.toml
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+
+      # Force CubedSphere to PR #41 branch for PR runs
+      - name: Override CubedSphere to PR #41 branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          julia --color=yes --project=. -e '
+            using Pkg
+            Pkg.activate(".")
+            # Cleanly replace any existing source (idempotent)
+            try Pkg.rm("CubedSphere"); catch; end
+            # Use the PR branch (swap rev for a commit SHA for extra safety)
+            Pkg.add(PackageSpec(
+              url="https://github.com/CliMA/CubedSphere.jl",
+              rev="sb/non-uniform-conformal-mapping",
+            ))
+            Pkg.resolve()
+            Pkg.instantiate()
+            Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)
+          '
+
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
@@ -67,12 +82,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        version: ['1.10']
+        os: [ubuntu-latest]
+        arch: [x64]
     steps:
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
@@ -80,6 +92,23 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+
+      - name: Override CubedSphere to PR #41 branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          julia --color=yes --project=. -e '
+            using Pkg
+            Pkg.activate(".")
+            try Pkg.rm("CubedSphere"); catch; end
+            Pkg.add(PackageSpec(
+              url="https://github.com/CliMA/CubedSphere.jl",
+              rev="sb/non-uniform-conformal-mapping",
+            ))
+            Pkg.resolve()
+            Pkg.instantiate()
+            Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)
+          '
+
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
@@ -92,12 +121,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        version: ['1.10']
+        os: [ubuntu-latest]
+        arch: [x64]
     steps:
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
@@ -105,6 +131,23 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+
+      - name: Override CubedSphere to PR #41 branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          julia --color=yes --project=. -e '
+            using Pkg
+            Pkg.activate(".")
+            try Pkg.rm("CubedSphere"); catch; end
+            Pkg.add(PackageSpec(
+              url="https://github.com/CliMA/CubedSphere.jl",
+              rev="sb/non-uniform-conformal-mapping",
+            ))
+            Pkg.resolve()
+            Pkg.instantiate()
+            Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)
+          '
+
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
@@ -117,12 +160,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        version: ['1.10']
+        os: [ubuntu-latest]
+        arch: [x64]
     steps:
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
@@ -130,6 +170,23 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+
+      - name: Override CubedSphere to PR #41 branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          julia --color=yes --project=. -e '
+            using Pkg
+            Pkg.activate(".")
+            try Pkg.rm("CubedSphere"); catch; end
+            Pkg.add(PackageSpec(
+              url="https://github.com/CliMA/CubedSphere.jl",
+              rev="sb/non-uniform-conformal-mapping",
+            ))
+            Pkg.resolve()
+            Pkg.instantiate()
+            Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)
+          '
+
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
@@ -142,12 +199,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-        os:
-          - macos-latest
-        arch:
-          - arm64
+        version: ['1.10']
+        os: [macos-latest]
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
@@ -155,8 +209,24 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+
+      - name: Override CubedSphere to PR #41 branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          julia --color=yes --project=. -e '
+            using Pkg
+            Pkg.activate(".")
+            try Pkg.rm("CubedSphere"); catch; end
+            Pkg.add(PackageSpec(
+              url="https://github.com/CliMA/CubedSphere.jl",
+              rev="sb/non-uniform-conformal-mapping",
+            ))
+            Pkg.resolve()
+            Pkg.instantiate()
+            Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)
+          '
+
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
           TEST_GROUP: "metal"
-
