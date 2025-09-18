@@ -112,11 +112,11 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 end
 
                 for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === mean!
+                    @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
                 for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === mean!
+                    @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
                 for f in (Tcx, Tcy, Tcz, wcx, wcy, wcz, ζcx, ζcy, ζcz)
@@ -133,13 +133,13 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
 
                 # Different behavior for regular grid z vs not.
                 if grid === regular_grid
-                    @test Txyz.operand.scan! === mean!
-                    @test wxyz.operand.scan! === mean!
+                    @test Txyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test wxyz.operand.scan! === Oceananigans.AbstractOperations.average!
                     @test Txyz.operand.operand === T
                     @test wxyz.operand.operand === w
                 else
-                    @test Txyz.operand.scan! === sum!
-                    @test wxyz.operand.scan! === sum!
+                    @test Txyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test wxyz.operand.scan! === Oceananigans.AbstractOperations.average!
                     @test Txyz.operand.operand isa BinaryOperation
                     @test wxyz.operand.operand isa BinaryOperation
                 end
@@ -306,7 +306,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 c = CenterField(grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
-                    C = Field(Average(c, dims=dims))
+                    C = Field(Average(c; dims))
 
                     @test !isnothing(C.status)
 

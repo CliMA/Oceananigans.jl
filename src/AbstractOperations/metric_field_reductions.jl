@@ -31,16 +31,17 @@ end
 const Average = Scan{<:Averaging}
 const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
 
-function average!(avg::AveragedField, operand; dims=:)
-    sum!(avg, operand; dims)
+function average!(avg::AveragedField, operand)
+    sum!(avg, operand)
+    averaging = avg.operand.type
 
-    V = if s.type.volume isa Field
-        parent(s.type.volume)
+    V = if averaging.volume isa Field
+        interior(averaging.volume)
     else
-        s.type.volume
+        averaging.volume
     end
 
-    parent(avg) ./= V
+    interior(avg) ./= V
 
     return avg
 end
@@ -69,7 +70,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         operand = condition_operand(field, condition, mask)
         N = conditional_length(operand, dims)
         averaging = Averaging(N)
-        return Scan(averaging, sum!, operand, dims)
+        return Scan(averaging, average!, operand, dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
         dx = reduction_grid_metric(dims)
