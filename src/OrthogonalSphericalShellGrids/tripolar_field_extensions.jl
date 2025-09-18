@@ -9,7 +9,6 @@ using Oceananigans.ImmersedBoundaries
 
 import Oceananigans.BoundaryConditions: default_auxiliary_bc, regularize_field_boundary_conditions
 import Oceananigans.Grids: x_domain, y_domain
-import Oceananigans.Fields: tupled_fill_halo_regions!
 
 # A tripolar grid is always between 0 and 360 in longitude
 # and always caps at the north pole (90°N)
@@ -49,10 +48,3 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = ZipperBoundaryCondition(1)
-
-# Not sure this is needed, but it is here for now
-function tupled_fill_halo_regions!(full_fields, grid::TripolarGridOfSomeKind, args...; kwargs...)
-    for field in full_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
-end
