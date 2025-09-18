@@ -25,9 +25,6 @@ steps:
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
 
-      # Force CubedSphere to PR #41 branch (or replace rev with exact SHA)
-      julia --color=yes --project=. -e 'using Pkg; println("Active project before activate: ", Base.active_project()); Pkg.activate("."); println("Active project after activate: ", Base.active_project()); try Pkg.rm("CubedSphere"); catch e; @info("Pkg.rm(CubedSphere) skipped", e); end; Pkg.add(PackageSpec(name="CubedSphere", url="https://github.com/CliMA/CubedSphere.jl", rev="sb/non-uniform-conformal-mapping")); Pkg.resolve(); Pkg.instantiate(); deps = Pkg.dependencies(); cs = first(filter(x -> last(x).name == "CubedSphere", collect(deps))); println("\n--- CubedSphere manifest entry ---"); println(cs); println("----------------------------------\n"); Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)'
-      # Now run init tests
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     retry:
       automatic:
@@ -57,13 +54,11 @@ steps:
 
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
-      export TEST_GROUP="\${{group#* }}"
+      export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
 
       # Run tests
       cd "$OCEANANIGANS_DIR"
-      # Force CubedSphere branch before tests
-      julia --color=yes --project=. -e 'using Pkg; println("Active project before activate: ", Base.active_project()); Pkg.activate("."); println("Active project after activate: ", Base.active_project()); try Pkg.rm("CubedSphere"); catch e; @info("Pkg.rm(CubedSphere) skipped", e); end; Pkg.add(PackageSpec(name="CubedSphere", url="https://github.com/CliMA/CubedSphere.jl", rev="sb/non-uniform-conformal-mapping")); Pkg.resolve(); Pkg.instantiate(); deps = Pkg.dependencies(); cs = first(filter(x -> last(x).name == "CubedSphere", collect(deps))); println("\n--- CubedSphere manifest entry ---"); println(cs); println("----------------------------------\n"); Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)'
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
 
     matrix:
@@ -111,9 +106,8 @@ steps:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     command: |
       cd "$OCEANANIGANS_DIR"
-      # Force CubedSphere in docs environment too
-      julia --color=yes --project=docs/ -e 'using Pkg; println("Active project before activate: ", Base.active_project()); Pkg.activate("docs"); println("Active project after activate: ", Base.active_project()); try Pkg.rm("CubedSphere"); catch e; @info("Pkg.rm(CubedSphere) skipped", e); end; Pkg.add(PackageSpec(name="CubedSphere", url="https://github.com/CliMA/CubedSphere.jl", rev="sb/non-uniform-conformal-mapping")); Pkg.resolve(); Pkg.instantiate(); deps = Pkg.dependencies(); cs = first(filter(x -> last(x).name == "CubedSphere", collect(deps))); println("\n--- CubedSphere (docs) manifest entry ---"); println(cs); println("----------------------------------\n"); Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)'
-      julia +$JULIA_VERSION --color=yes --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
+        'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
 
   #####
