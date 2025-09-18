@@ -12,7 +12,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 
 using Random
-using CUDA: @allowscalar
+using GPUArraysCore: @allowscalar
 
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
@@ -81,14 +81,12 @@ function run_field_reduction_tests(grid)
     dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3), (1, 2, 3))
 
     for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
-        @show ϕ
-
-        ε = eps(eltype(ϕ_vals)) * 10 * maximum(maximum.(ϕs_vals))
+        ε = eps(eltype(grid)) * 10 * maximum(maximum.(ϕs_vals))
         @info "      Testing field reductions with tolerance $ε..."
 
         @test @allowscalar all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
-        # Important to make sure no CUDA scalar operations occur!
+        # Important to make sure no scalar operations occur on GPU!
         GPUArraysCore.allowscalar(false)
 
         @test minimum(ϕ) ≈ minimum(ϕ_vals) atol=ε
@@ -480,9 +478,8 @@ end
     end
 
     @testset "Field reductions" begin
-        @info "  Testing field reductions..."
-
         for arch in archs, FT in float_types
+            @info "  Testing field reductions [$(typeof(arch)), $FT]..."
             N = 8
             topo = (Bounded, Bounded, Bounded)
             size = (N, N, N)
@@ -497,7 +494,7 @@ end
 
             for (name, grid) in [(:regular_grid => regular_grid),
                                  (:variably_spaced_grid => variably_spaced_grid)]
-                @info "    on a $name..."
+                @info "    Testing field reductions on a $name..."
                 run_field_reduction_tests(grid)
             end
         end
