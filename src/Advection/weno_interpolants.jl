@@ -271,10 +271,6 @@ The ``α`` values are normalized before returning
     # Normalization factor
     Σα⁻¹ =  1 / sum(α)
 
-    if ψ == ((13347.383416681412, 13347.383378362596), (2702.331550537131, 13347.383416681412))
-        @show scheme, red_order, β, τ, α, Σα⁻¹, α .* Σα⁻¹
-    end
-
     return α .* Σα⁻¹
 end
 
@@ -448,10 +444,6 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
             ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
             ψₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
             ω = biased_weno_weights(ψₛ, grid, scheme, red_order, bias, VI, args...)
-
-            # if i == 11 && j == 10 && VI.func == divergence_smoothness
-            #     @show red_order, ψₜ, ψₛ, ω
-            # end
             return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
     end
