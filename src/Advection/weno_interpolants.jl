@@ -197,7 +197,7 @@ while for `buffer == 4` unrolls into
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer)) + ϵ 
+    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds ϵ + @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer)) 
 end
 
 @inline function smoothness_indicator(ψ, scheme, red_order, val_stencil) 
@@ -237,8 +237,8 @@ end
 
 for buffer in advection_buffers[1:end]
     @eval begin
-        @inline  beta_sum(scheme::WENO{$buffer}, β₁, β₂) = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
-        @inline beta_loop(scheme::WENO{$buffer}, red_order, ψ) = @inbounds @fastmath $(metaprogrammed_beta_loop(buffer))
+        @inline  beta_sum(scheme::WENO{$buffer}, β₁, β₂) = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline beta_loop(scheme::WENO{$buffer}, red_order, ψ) = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, FT2}, red_order, β, τ) where {FT, FT2} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
@@ -263,12 +263,18 @@ where
 The ``α`` values are normalized before returning
 """
 @inline function biased_weno_weights(ψ, grid, scheme::WENO, red_order, args...) 
+    
     β = beta_loop(scheme, red_order, ψ)
     τ = global_smoothness_indicator(β, red_order)
     α = zweno_alpha_loop(scheme, red_order, β, τ)
     
     # Normalization factor
     Σα⁻¹ =  1 / sum(α)
+
+    if ψ == ((13347.383416681412, 13347.383378362596), (2702.331550537131, 13347.383416681412))
+        @show scheme, red_order, β, τ, α, Σα⁻¹, α .* Σα⁻¹
+    end
+
     return α .* Σα⁻¹
 end
 
@@ -442,6 +448,10 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
             ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
             ψₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
             ω = biased_weno_weights(ψₛ, grid, scheme, red_order, bias, VI, args...)
+
+            # if i == 11 && j == 10 && VI.func == divergence_smoothness
+            #     @show red_order, ψₜ, ψₛ, ω
+            # end
             return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
     end
