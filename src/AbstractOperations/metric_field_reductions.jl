@@ -23,8 +23,8 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 ##### Metric reductions
 #####
 
-struct Averaging{L} <: AbstractReducing
-    length :: L
+struct Averaging{V} <: AbstractReducing
+    volume :: V
 end
 
 
@@ -33,7 +33,15 @@ const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
 
 function average!(avg::AveragedField, operand; dims=:)
     sum!(avg, operand; dims)
-    parent(avg) ./= parent(s.type.length)
+
+    V = if s.type.volume isa Field
+        parent(s.type.volume)
+    else
+        s.type.volume
+    end
+
+    parent(avg) ./= V
+
     return avg
 end
 
@@ -47,8 +55,8 @@ Return `Reduction` representing a spatial average of `field` over `dims`.
 Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 
 Over dimensions of variable spacing, `field` is multiplied by the
-appropriate grid length, area or volume, and divided by the total
-spatial extent of the interval.
+appropriate "averaging metric" (length, area or volume for 1D, 2D or 3D averages),
+and divided by the sum of the metric over the averaging region.
 
 See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
 for information and examples using `condition` and `mask` kwargs.
@@ -57,23 +65,28 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
 
     if all(d in regular_dimensions(field.grid) for d in dims)
-        # Dimensions being reduced are regular; just use mean!
+        # Dimensions being reduced are regular, so we don't need to involve the grid metrics
         operand = condition_operand(field, condition, mask)
-        return Scan(Averaging(), mean!, operand, dims)
+        N = conditional_length(operand, dims)
+        averaging = Averaging(N)
+        return Scan(averaging, sum!, operand, dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
         dx = reduction_grid_metric(dims)
         metric = GridMetricOperation(location(field), dx, field.grid)
-        L = sum(metric; condition, mask, dims)
+        volume = sum(metric; condition, mask, dims)
 
         # Construct summand of the Average
-        # L⁻¹_field_dx = field * dx / L
-        # operand = condition_operand(L⁻¹_field_dx, condition, mask)
+        # V⁻¹_field_dx = field * dx / volume
+        # operand = condition_operand(V⁻¹_field_dx, condition, mask)
         # return Scan(Averaging(), sum!, operand, dims)
 
         field_dx = field * dx
         operand = condition_operand(field_dx, condition, mask)
-        averaging = Averaging(L)
+
+        metric = GridMetricOperation(location(field), dx, field.grid)
+        volume = sum(metric; condition, mask, dims)
+        averaging = Averaging(volume)
         return Scan(averaging, average!, operand, dims)
     end
 end
