@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations: cooperative_waitall!,
                                             loc_id,
                                             DCBCT
 
-using Oceananigans.Fields: location
+using Oceananigans.Fields: location, instantiated_location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
@@ -103,9 +103,7 @@ function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:D
     recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
     north_bc = field.boundary_conditions.north
-    instantiated_location = map(instantiate, location(field))
-
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location)
+    switch_north_halos!(field, north_bc, field.grid, instantiated_location(field))
 
     return nothing
 end
