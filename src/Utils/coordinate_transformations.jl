@@ -120,12 +120,12 @@ function get_cartesian_nodes_and_vertices(grid::Union{LatitudeLongitudeGrid, Ort
     for j in axes(λ, 2), i in axes(λ, 1)
         x[i, j] = lat_lon_to_x(φ[i, j], λ[i, j])
         y[i, j] = lat_lon_to_y(φ[i, j], λ[i, j])
-        z[i, j] = lat_lon_to_z(φ[i, j], λ[i, j])
+        z[i, j] = lat_lon_to_z(φ[i, j])
 
         for vertex in 1:4
             xvertices[vertex, i, j] = lat_lon_to_x(φvertices[vertex, i, j], λvertices[vertex, i, j])
             yvertices[vertex, i, j] = lat_lon_to_y(φvertices[vertex, i, j], λvertices[vertex, i, j])
-            zvertices[vertex, i, j] = lat_lon_to_z(φvertices[vertex, i, j], λvertices[vertex, i, j])
+            zvertices[vertex, i, j] = lat_lon_to_z(φvertices[vertex, i, j])
         end
     end
 
