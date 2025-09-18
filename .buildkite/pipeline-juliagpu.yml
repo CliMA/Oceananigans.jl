@@ -13,11 +13,11 @@ steps:
     plugins:
       - JuliaCI/julia#v1:
           version: "{{matrix.version}}"
-      # - JuliaCI/julia-coverage#v1:
-      #     codecov: true
     command: |
-      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      # Force CubedSphere branch once per job before running tests
+      julia --color=yes --project=. -e 'using Pkg; println("Active project before activate: ", Base.active_project()); Pkg.activate("."); println("Active project after activate: ", Base.active_project()); try Pkg.rm("CubedSphere"); catch e; @info("Pkg.rm(CubedSphere) skipped", e); end; Pkg.add(PackageSpec(name="CubedSphere", url="https://github.com/CliMA/CubedSphere.jl", rev="sb/non-uniform-conformal-mapping")); Pkg.resolve(); Pkg.instantiate(); deps = Pkg.dependencies(); cs = first(filter(x -> last(x).name == "CubedSphere", collect(deps))); println("\n--- CubedSphere manifest entry ---"); println(cs); println("----------------------------------\n"); Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)'
 
+      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
       TEST_GROUP=amdgpu julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
     agents:
       queue: "juliagpu"
@@ -25,7 +25,6 @@ steps:
     timeout_in_minutes: 30
     soft_fail:
       - exit_status: 3
-
 
   - label: "🦖 oneAPI extension tests - Julia {{matrix.version}}"
     matrix:
@@ -35,11 +34,11 @@ steps:
     plugins:
       - JuliaCI/julia#v1:
           version: "{{matrix.version}}"
-      # - JuliaCI/julia-coverage#v1:
-      #     codecov: true
     command: |
-      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      # Force CubedSphere branch once per job before running tests
+      julia --color=yes --project=. -e 'using Pkg; println("Active project before activate: ", Base.active_project()); Pkg.activate("."); println("Active project after activate: ", Base.active_project()); try Pkg.rm("CubedSphere"); catch e; @info("Pkg.rm(CubedSphere) skipped", e); end; Pkg.add(PackageSpec(name="CubedSphere", url="https://github.com/CliMA/CubedSphere.jl", rev="sb/non-uniform-conformal-mapping")); Pkg.resolve(); Pkg.instantiate(); deps = Pkg.dependencies(); cs = first(filter(x -> last(x).name == "CubedSphere", collect(deps))); println("\n--- CubedSphere manifest entry ---"); println(cs); println("----------------------------------\n"); Pkg.status(; mode=Pkg.PKGMODE_MANIFEST)'
 
+      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
       TEST_GROUP=oneapi julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
     agents:
       queue: "juliagpu"
