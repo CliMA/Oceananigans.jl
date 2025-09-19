@@ -16,7 +16,7 @@ using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, loca
 using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
+                          parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
                           constructor_arguments
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
