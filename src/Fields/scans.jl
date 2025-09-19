@@ -4,6 +4,10 @@ using KernelAbstractions: @kernel, @index
 ##### "Scans" of AbstractField.
 #####
 
+filter_nothing_dims(::Colon, loc) = filter_nothing_dims((1, 2, 3), loc)
+filter_nothing_dims(dims, loc) = filter(d -> !isnothing(loc[d]), dims)
+filter_nothing_dims(dim::Int, loc) = filter_nothing_dims(tuple(dim), loc)
+
 """
     Scan{T, R, O, D}
 
@@ -38,10 +42,6 @@ Base.summary(s::Scan) = string(summary(s.type), " ",
                                " over dims ", s.dims,
                                " of ", summary(s.operand))
 
-excise_nothing_dims(dims, loc) = filter(d -> loc[d] != Nothing, dims)
-excise_nothing_dims(::Colon, loc) = excise_nothing_dims((1, 2, 3), loc)
-excise_nothing_dims(d::Int, loc) = excise_nothing_dims(Tuple(d), loc)
-
 function Field(scan::Scan;
                data = nothing,
                indices = indices(scan.operand),
@@ -51,8 +51,8 @@ function Field(scan::Scan;
     operand = scan.operand
     grid = operand.grid
     LX, LY, LZ = loc = instantiated_location(scan)
-    dims = excise_nothing_dims(scan.dims, loc)
-    indices = scan_indices(scan.type, indices; dims=scan.dims)
+    dims = filter_nothing_dims(scan.dims, loc)
+    indices = scan_indices(scan.type, indices; dims)
 
     if isnothing(data)
         data = new_data(grid, loc, indices)

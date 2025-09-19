@@ -24,10 +24,18 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                                           x=(0, 2), y=(0, 2), z=[0, 1, 2],
                                           topology = (Periodic, Periodic, Bounded))
 
+        xz_regular_grid = RectilinearGrid(arch, size=(2, 2, 2),
+                                          x=(0, 2), y=[0, 1, 2], z=(0, 2),
+                                          topology = (Periodic, Periodic, Bounded))
+
         @testset "Averaged and integrated fields [$arch_str]" begin
             @info "  Testing averaged and integrated Fields [$arch_str]"
 
-            for grid in (regular_grid, xy_regular_grid)
+            for (name, grid) in [(:regular_grid => regular_grid),
+                                 (:xy_regular_grid => xy_regular_grid),
+                                 (:xz_regular_grid => xz_regular_grid)]
+
+                @info "    Testing averaged and integrated Fields on $name..."
 
                 Nx, Ny, Nz = size(grid)
 
@@ -89,16 +97,18 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @compute ζry = Field(CumulativeIntegral(ζ, dims=2, reverse=true))
                 @compute ζrz = Field(CumulativeIntegral(ζ, dims=3, reverse=true))
 
-                for T′ in (Tx, Txy)
-                    @test T′.operand.operand === T
-                end
+                if name ∈ (:regular_grid, :xy_regular_grid)
+                    for T′ in (Tx, Txy)
+                        @test T′.operand.operand === T
+                    end
 
-                for w′ in (wx, wxy)
-                    @test w′.operand.operand === w
-                end
+                    for w′ in (wx, wxy)
+                        @test w′.operand.operand === w
+                    end
 
-                for ζ′ in (ζx, ζxy)
-                    @test ζ′.operand.operand === ζ
+                    for ζ′ in (ζx, ζxy)
+                        @test ζ′.operand.operand === ζ
+                    end
                 end
 
                 for f in (wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
