@@ -54,13 +54,26 @@ on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
 indices(::GridMetricOperation) = default_indices(3)
 
 """
-    GridMetricOperation(L, metric, grid)
+    GridMetricOperation(loc, metric, grid)
 
-Instance of `GridMetricOperation` that generates `BinaryOperation`s between `AbstractField`s
-and the metric `metric` at the same location as the `AbstractField`.
+Instance of `GridMetricOperation` that generates `BinaryOperation` of the `metric`
+at `loc`ation of the `grid`.
 
 Example
 =======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.AbstractOperations: Ax, GridMetricOperation
+
+julia> Axᶠᶜᶜ = GridMetricOperation((Face, Center, Center), Ax, RectilinearGrid(size=(2, 2, 3), extent=(1, 2, 3)))
+Axᶠᶜᶜ at (Face, Center, Center)
+├── grid: 2×2×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×2×3 halo
+└── tree:
+    Axᶠᶜᶜ at (Face, Center, Center)
+```
+
 ```jldoctest
 julia> using Oceananigans
 
@@ -76,7 +89,8 @@ julia> c_dz[1, 1, 1]
 3.0
 ```
 """
-GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
+GridMetricOperation(loc, metric, grid) =
+    GridMetricOperation{loc[1], loc[2], loc[3]}(metric_function(loc, metric), grid)
 
 #####
 ##### Spacings
