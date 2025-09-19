@@ -193,7 +193,7 @@ initialize!(model::AbstractModel) = nothing
 """
     $SIGNATURES
 
-Returns the sum of all velocities defined on the model (background + prognostic, where applicable).
+Returns the sum of the user-prescribed background + prognostic velocities, where applicable.
 """
 total_velocities(model::AbstractModel) = nothing
 
