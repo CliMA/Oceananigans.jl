@@ -8,6 +8,8 @@ export
     Clock,
     tendencies
 
+using DocStringExtensions
+
 using KernelAbstractions
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
 using Oceananigans.Architectures: device
@@ -29,7 +31,10 @@ function compute_flux_bc_tendencies! end
 
 Defines initialization routines for the first call to `update_state!` after initialization. Defaults to invoking `update_state!(model; kw...)`.
 """
-initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
+function initialization_update_state!(model::AbstractModel; kw...) 
+    initialize!(model)
+    update_state!(model; kw...) # fallback
+end
 
 compute_pressure_correction!(model, Δt) = nothing
 make_pressure_correction!(model, Δt) = nothing
