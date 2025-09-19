@@ -489,7 +489,7 @@ end
             x = (-1, 1)
             regular_grid = RectilinearGrid(arch, FT; topology=topo, size, x, y, z)
 
-            x = on_architecture(arch, Array(range(-1, stop=1, length=N+1)))
+            x = range(-1, stop=1, length=N+1)
             variably_spaced_grid = RectilinearGrid(arch, FT; topology=topo, size, x, y, z)
 
             for (name, grid) in [(:regular_grid => regular_grid),

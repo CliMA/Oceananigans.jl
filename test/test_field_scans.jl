@@ -48,7 +48,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 set!(w, trilinear)
                 set!(ζ, trilinear)
 
-                z_top = znodes(grid, Face())[end]
+                z_top = Oceananigans.Grids.znode(grid.Nz+1, grid, Face())
                 set!(η, (x, y) -> trilinear(x, y, z_top))
 
                 @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
@@ -176,6 +176,9 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test @allowscalar wxyz[1, 1, 1] ≈ 3
                 @test interior_array(wxy, 1, 1, :) ≈ [2, 3, 4]
                 @test interior_array(wx, 1, :, :) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+
+                @test @allowscalar ηxyz[1, 1, 1] ≈ 4
+                @test @allowscalar Ηxyz[1, 1, 1] ≈ 16
 
                 averages_1d  = (Tx, wx, ζx)
                 integrals_1d = (Θx, Wx, Zx)
