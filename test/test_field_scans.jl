@@ -280,7 +280,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
         end
 
         @testset "Allocating reductions [$arch_str]" begin
-            @info "  Testing allocating reductions"
+            @info "  Testing allocating reductions [$arch_str]"
 
             grid = RectilinearGrid(arch, size = (2, 2, 2),
                                    x = (0, 2), y = (0, 2), z = (0, 2),
