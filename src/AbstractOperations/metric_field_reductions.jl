@@ -2,8 +2,8 @@ using Statistics: mean!, sum!
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
-using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing
-using Oceananigans.Fields: excise_nothing_dims
+using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
+using Oceananigans.Fields: filter_nothing_dims, instantiated_location
 
 #####
 ##### Metric inference
@@ -27,7 +27,6 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 struct Averaging{V} <: AbstractReducing
     volume :: V
 end
-
 
 const Average = Scan{<:Averaging}
 const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
@@ -65,7 +64,7 @@ for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dims = excise_nothing_dims(dims, location(field))
+    dims = filter_nothing_dims(dims, instantiated_location(field))
 
     if all(d in regular_dimensions(field.grid) for d in dims)
         # Dimensions being reduced are regular, so we don't need to involve the grid metrics
@@ -144,7 +143,7 @@ julia> ∫f[1, 1, 1]
 """
 function Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dims = excise_nothing_dims(dims, location(field))
+    dims = filter_nothing_dims(dims, instantiated_location(field))
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
     return Scan(Integrating(), sum!, operand, dims)
@@ -206,7 +205,6 @@ julia> C[1, 1, 8]
 """
 function CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
     dims ∈ (1, 2, 3) || throw(ArgumentError("CumulativeIntegral only supports dims=1, 2, or 3."))
-    dims = excise_nothing_dims(dims, location(field))
     maybe_reverse_cumsum = reverse ? reverse_cumsum! : cumsum!
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
