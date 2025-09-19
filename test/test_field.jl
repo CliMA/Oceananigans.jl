@@ -494,7 +494,7 @@ end
 
             for (name, grid) in [(:regular_grid => regular_grid),
                                  (:variably_spaced_grid => variably_spaced_grid)]
-                @info "    Testing field reductions on a $name..."
+                @info "    Testing field reductions on $name..."
                 run_field_reduction_tests(grid)
             end
         end
@@ -560,9 +560,8 @@ end
     end
 
     @testset "Field interpolation" begin
-        @info "  Testing field interpolation..."
-
         for arch in archs, FT in float_types
+            @info "  Testing field interpolation [$(typeof(arch)), $FT]..."
             reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
 
             # Choose points z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
