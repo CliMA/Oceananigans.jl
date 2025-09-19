@@ -2,7 +2,7 @@ module Models
 
 import Oceananigans
 
-import Oceananigans: initialization_update_state!
+import Oceananigans.TimeSteppers: initialization_update_state!
 import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos, FixedSubstepNumber
 import Oceananigans: initialize!
 

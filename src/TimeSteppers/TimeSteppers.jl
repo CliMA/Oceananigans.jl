@@ -24,6 +24,13 @@ function update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
 
+"""
+    $SIGNATURES
+
+Defines initialization routines for the first call to `update_state!` after initialization. Defaults to invoking `update_state!(model; kw...)`.
+"""
+initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
+
 compute_pressure_correction!(model, Δt) = nothing
 make_pressure_correction!(model, Δt) = nothing
 

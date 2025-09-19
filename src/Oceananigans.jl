@@ -204,13 +204,6 @@ Returns the `TimeStepper` used by the given `model`.
 timestepper(model::AbstractModel) = model.timestepper
 
 """
-    $SIGNATURES
-
-Defines initialization routines for the first call to `update_state!` after initialization. Defaults to invoking `update_state!(model; kw...)`.
-"""
-initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
-
-"""
     Base.time(model::AbstractModel) 
 
 Returns the current `time` from the given `model.clock`.
