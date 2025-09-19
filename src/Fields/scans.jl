@@ -38,8 +38,9 @@ Base.summary(s::Scan) = string(summary(s.type), " ",
                                " over dims ", s.dims,
                                " of ", summary(s.operand))
 
-excise_nothing_dims(::Colon, loc) = excise_nothing_dims((1, 2, 3), loc)
 excise_nothing_dims(dims, loc) = filter(d -> loc[d] != Nothing, dims)
+excise_nothing_dims(::Colon, loc) = excise_nothing_dims((1, 2, 3), loc)
+excise_nothing_dims(d::Int, loc) = excise_nothing_dims(Tuple(d), loc)
 
 function Field(scan::Scan;
                data = nothing,
