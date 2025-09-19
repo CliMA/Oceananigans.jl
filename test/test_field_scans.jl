@@ -42,10 +42,14 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 w = ZFaceField(grid)
                 T = CenterField(grid)
                 ζ = Field{Face, Face, Face}(grid)
+                η = Field{Center, Center, Nothing}(grid)
 
                 set!(T, trilinear)
                 set!(w, trilinear)
                 set!(ζ, trilinear)
+
+                z_top = znodes(grid, Face())[end]
+                set!(η, (x, y) -> trilinear(x, y, z_top))
 
                 @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
 
@@ -76,6 +80,12 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @compute Zxyz = Field(Integral(ζ, dims=(1, 2, 3)))
                 @compute Zxy = Field(Integral(ζ, dims=(1, 2)))
                 @compute Zx = Field(Integral(ζ, dims=1))
+
+                @compute ηxyz = Field(Average(η))
+                @compute Ηxyz = Field(Integral(η))
+
+                @test Field(Average(η)) == Field(Average(η, dims=(1, 2, 3)))
+                @test Field(Integral(η)) == Field(Integral(η, dims=(1, 2, 3)))
 
                 @compute Tcx = Field(CumulativeIntegral(T, dims=1))
                 @compute Tcy = Field(CumulativeIntegral(T, dims=2))
@@ -111,7 +121,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                     end
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
                     @test f.operand isa Reduction
                 end
 
@@ -121,11 +131,13 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                     @test f.operand isa Accumulation
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy)
                     @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
+                @test Ηxyz.operand.scan! === Oceananigans.AbstractOperations.sum!
+
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy)
                     @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
@@ -136,10 +148,6 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 for f in (Trx, Try, Trz, wrx, wry, wrz, ζrx, ζry, ζrz)
                     @test f.operand.scan! === reverse_cumsum!
                 end
-
-                @test Txyz.operand isa Reduction
-                @test wxyz.operand isa Reduction
-                @test ζxyz.operand isa Reduction
 
                 # Different behavior for regular grid z vs not.
                 if grid === regular_grid
