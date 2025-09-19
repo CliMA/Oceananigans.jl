@@ -48,7 +48,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 set!(w, trilinear)
                 set!(ζ, trilinear)
 
-                z_top = Oceananigans.Grids.znode(grid.Nz+1, grid, Face())
+                z_top = @allowscalar Oceananigans.Grids.znode(grid.Nz+1, grid, Face())
                 set!(η, (x, y) -> trilinear(x, y, z_top))
 
                 @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
