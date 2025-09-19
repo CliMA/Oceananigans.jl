@@ -1,6 +1,6 @@
 agents:
   queue: new-central
-  slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues 
+  slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues
   modules: climacommon/2024_10_10
 
 env:
@@ -41,7 +41,7 @@ steps:
       slurm_ntasks: 4
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🐲 gpu distributed unit tests"
@@ -57,7 +57,7 @@ steps:
       slurm_gpus_per_task: 1
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🦾 cpu distributed solvers tests"
@@ -71,7 +71,7 @@ steps:
       slurm_ntasks: 4
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🛸 gpu distributed solvers tests"
@@ -87,7 +87,7 @@ steps:
       slurm_gpus_per_task: 1
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🤺 cpu distributed hydrostatic model tests"
@@ -97,12 +97,13 @@ steps:
       TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    timeout_in_minutes: 1440
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🦏 gpu distributed hydrostatic model tests"
@@ -112,13 +113,14 @@ steps:
       TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    timeout_in_minutes: 1440
     agents:
-      slurm_mem: 80G # Apparently the GPU tests require more memory
+      slurm_mem: 100G # Apparently the GPU tests require more memory
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🦍 cpu distributed nonhydrostatic regression"
@@ -133,7 +135,7 @@ steps:
       slurm_ntasks: 4
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🕺 gpu distributed nonhydrostatic regression"
@@ -149,7 +151,7 @@ steps:
       slurm_gpus_per_task: 1
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - wait
@@ -159,4 +161,3 @@ steps:
       - "build_history staging"
     artifact_paths:
       - "build_history.html"
-

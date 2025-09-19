@@ -70,7 +70,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 c₁ = 1
                 c₂ = 3
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     interior(fine_1d_stretched_c)[1] = c₁
                     interior(fine_1d_stretched_c)[2] = c₂
                 end
@@ -78,13 +78,13 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 # Coarse-graining
                 regrid!(coarse_1d_regular_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(coarse_1d_regular_c)[1] ≈ ℓ/L * c₁ + (1 - ℓ/L) * c₂
                 end
 
                 regrid!(fine_1d_regular_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(fine_1d_regular_c)[1] ≈ ℓ/(L/2) * c₁ + (1 - ℓ/(L/2)) * c₂
                     @test interior(fine_1d_regular_c)[2] ≈ c₂
                 end
@@ -92,7 +92,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 # Fine-graining
                 regrid!(very_fine_1d_stretched_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(very_fine_1d_stretched_c)[1] ≈ c₁
                     @test interior(very_fine_1d_stretched_c)[2] ≈ (ℓ - 0.2)/0.4 * c₁ + (0.6 - ℓ)/0.4 * c₂
                     @test interior(very_fine_1d_stretched_c)[3] ≈ c₂
@@ -100,7 +100,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
 
                 regrid!(super_fine_1d_stretched_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(super_fine_1d_stretched_c)[1] ≈ c₁
                     @test interior(super_fine_1d_stretched_c)[2] ≈ c₁
                     @test interior(super_fine_1d_stretched_c)[3] ≈ (ℓ - 0.3)/0.35 * c₁ + (0.65 - ℓ)/0.35 * c₂
@@ -109,7 +109,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
 
                 regrid!(super_fine_1d_regular_c, fine_1d_stretched_c)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(super_fine_1d_regular_c)[1] ≈ c₁
                     @test interior(super_fine_1d_regular_c)[2] ≈ c₁
                     @test interior(super_fine_1d_regular_c)[3] ≈ (3 - ℓ/(L/5)) * c₂ + (-2 + ℓ/(L/5)) * c₁
@@ -138,7 +138,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
 
                 regrid!(super_fine_from_reduction_regular_c, fine_stretched_c_mean_xy)
 
-                CUDA.@allowscalar begin
+                @allowscalar begin
                     @test interior(super_fine_from_reduction_regular_c)[1] ≈ c₁
                     @test interior(super_fine_from_reduction_regular_c)[2] ≈ c₁
                     @test interior(super_fine_from_reduction_regular_c)[3] ≈ (3 - ℓ/(L/5)) * c₂ + (-2 + ℓ/(L/5)) * c₁

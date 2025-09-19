@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
-using Oceananigans.Fields: FunctionField, data_summary, AbstractField
+using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
@@ -7,11 +7,11 @@ using Oceananigans.OutputWriters: output_indices
 using Base: @propagate_inbounds
 
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
-import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
-import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, communication_buffers
-import Oceananigans.Models: hasnan
+import Oceananigans.Diagnostics: hasnan
 
 import Base: fill!, axes
 
@@ -25,14 +25,9 @@ const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMult
 const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:GriddedMultiRegionFieldTuple}
 
 # Utils
-Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
-
+Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
 @inline isregional(f::GriddedMultiRegionField) = true
-@inline devices(f::GriddedMultiRegionField) = devices(f.grid)
-@inline sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid))
-
-@inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
-@inline getdevice(f::GriddedMultiRegionField, d) = getdevice(f.grid, d)
+@inline regions(f::GriddedMultiRegionField) = regions(f.grid)
 
 @inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(_getregion(f.func, r),
@@ -74,7 +69,7 @@ function reconstruct_global_field(mrf::MultiRegionField)
     # TODO: Is this correct? Shall we reconstruct a global field on the architecture of the grid?
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
-    global_field = Field(location(mrf), global_grid; indices)
+    global_field = Field(instantiated_location(mrf), global_grid; indices)
 
     data = construct_regionally(interior, mrf)
     data = construct_regionally(Array, data)
@@ -140,9 +135,19 @@ function compute!(comp::MultiRegionComputedField, time=nothing)
     return comp
 end
 
+function interior(mrf::MultiRegionField)
+    @apply_regionally interior_mrf = interior(mrf)
+    return interior_mrf
+end
+
+function interior(mrf::MultiRegionField, I...)
+    @apply_regionally interior_mrf = interior(mrf, I...)
+    return interior_mrf
+end
+
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
-validate_indices(indices, loc, mrg::MultiRegionGrid) =
+validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
 communication_buffers(grid::MultiRegionGrid, data, bcs) =
@@ -151,8 +156,8 @@ communication_buffers(grid::MultiRegionGrid, data, bcs) =
 communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
 communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
-FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
-    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
+CommunicationBuffers(grid::MultiRegionGrids, args...; kwargs...) =
+    construct_regionally(CommunicationBuffers, grid, args...; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               mrg::MultiRegionGrids,
@@ -172,12 +177,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 function inject_regional_bcs(grid, connectivity, loc, indices;   
-                             west = default_auxiliary_bc(grid, Val(:west),   loc),
-                             east = default_auxiliary_bc(grid, Val(:east),   loc),
-                             south = default_auxiliary_bc(grid, Val(:south),  loc),
-                             north = default_auxiliary_bc(grid, Val(:north),  loc),
-                             bottom = default_auxiliary_bc(grid, Val(:bottom), loc),
-                             top = default_auxiliary_bc(grid, Val(:top),    loc),
+                             west = default_auxiliary_bc(grid, Val(:west), loc),
+                             east = default_auxiliary_bc(grid, Val(:east), loc),
+                             south = default_auxiliary_bc(grid, Val(:south), loc),
+                             north = default_auxiliary_bc(grid, Val(:north), loc),
+                             bottom = default_auxiliary_bc(grid, Val(:bottom),loc),
+                             top = default_auxiliary_bc(grid, Val(:top), loc),
                              immersed = NoFluxBoundaryCondition())
 
     west  = inject_west_boundary(connectivity, west)
@@ -187,6 +192,9 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
+
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
+    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function Base.show(io::IO, field::MultiRegionField)
     bcs = getregion(field, 1).boundary_conditions

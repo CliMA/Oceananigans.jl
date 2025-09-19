@@ -43,7 +43,8 @@ end
     end
 end
 
-@kernel function _cache_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid, clo, K, b, c, c_id, clk, fields) 
+# QAB2 Implementation
+@kernel function _cache_diffusive_fluxes!(Vⁿ, Vⁿ⁻¹, grid::AbstractGrid, clo, K, b, c, c_id, clk, fields) 
     i, j, k = @index(Global, NTuple)
 
     Vⁿ⁻¹.x[i, j, k] = Vⁿ.x[i, j, k] 
@@ -54,39 +55,46 @@ end
     Vⁿ.y[i, j, k] = zero(grid)
     Vⁿ.z[i, j, k] = zero(grid)
 
-    compute_diffusive_fluxes!(Vⁿ, 1, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
 end
 
-@kernel function _cache_diffusive_fluxes!(Vⁿ, grid, ::Val{3}, ℂ, clo, K, b, c, c_id, clk, fields) 
+# RK3 Implementation for the last substep
+@kernel function _cache_diffusive_fluxes!(Vⁿ, grid::AbstractGrid, clo, K, b, c, c_id, clk, fields) 
     i, j, k = @index(Global, NTuple)    
 
     Vⁿ.x[i, j, k] = zero(grid)
     Vⁿ.y[i, j, k] = zero(grid)
     Vⁿ.z[i, j, k] = zero(grid)
 
-    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
 end
 
-@kernel function _cache_diffusive_fluxes!(Vⁿ, grid, substep, ℂ, clo, K, b, c, c_id, clk, fields) 
-    i, j, k = @index(Global, NTuple)    
-    compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields) 
+# Deal with tuples of closures and diffusivities
+@inline compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo::Tuple{<:Any}, K, args...) = 
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[1], K[1], args...)
+
+@inline function compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo::Tuple{<:Any, <:Any}, K, args...) 
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[1], K[1], args...)
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[2], K[2], args...)
+    return nothing
 end
 
-@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo::Tuple, K::Tuple, args...)
-    for n in eachindex(clo)
-        compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo[n], K[n], args...)
-    end
+@inline function compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo::Tuple, K, args...) 
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[1], K[1], args...)
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[2], K[2], args...)
+    compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[3:end], K[3:end], args...)
+    return nothing
 end
 
-compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, ::Nothing, K, b, c, c_id, clk, fields) = nothing
+compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, ::Nothing, K, b, c, c_id, clk, fields) = nothing
 
 const etd = ExplicitTimeDiscretization()
 
-@inline function compute_diffusive_fluxes!(Vⁿ, ℂ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
+@inline function compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
     @inbounds begin
-        Vⁿ.x[i, j, k] += _diffusive_flux_x(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c) * ℂ
-        Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c) * ℂ
-        Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f) * ℂ
+        Vⁿ.x[i, j, k] += _diffusive_flux_x(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Axᶠᶜᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, f, c, c)
+        Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c)
+        Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, etd, clo, K, c_id, c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f)
     end
     return nothing
 end

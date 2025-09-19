@@ -14,7 +14,7 @@ function test_transpose(grid_points, ranks, topo, child_arch)
     arch = Distributed(child_arch, partition=Partition(ranks...))
     grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
-    loc = (Center, Center, Center)
+    loc = (Center(), Center(), Center())
     ϕ = Field(loc, grid, ComplexF64)
     Φ = TransposableField(ϕ)
 

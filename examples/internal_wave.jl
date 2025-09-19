@@ -135,7 +135,7 @@ run!(simulation)
 # and make a Figure and an Axis for the animation,
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24))
+set_theme!(Theme(fontsize = 20))
 
 fig = Figure(size = (600, 600))
 
@@ -147,7 +147,7 @@ nothing #hide
 # Next, we load `w` data with `FieldTimeSeries` of `w` and make contour
 # plots of vertical velocity. We use Makie's `Observable` to animate the data.
 # To dive into how `Observable`s work, refer to
-# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 

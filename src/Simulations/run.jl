@@ -155,7 +155,6 @@ function time_step!(sim::Simulation)
     end
 
     for callback in values(sim.callbacks)
-        initialize!(callback, sim)
         callback.callsite isa TimeStepCallsite && callback.schedule(sim.model) && callback(sim)
     end
 
@@ -220,6 +219,10 @@ function initialize!(sim::Simulation)
 
     for activity in scheduled_activities
         initialize!(activity.schedule, sim.model)
+    end
+
+    for callback in values(sim.callbacks)
+        initialize!(callback, sim)
     end
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration

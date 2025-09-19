@@ -25,32 +25,32 @@ import Oceananigans.Operators:
 @inline conditional_δx_f(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i,   j, k, ibg, c, ℓy, ℓz) |
                                                                           immersed_inactive_node(i-1, j, k, ibg, c, ℓy, ℓz),
                                                                           zero(ibg),
-                                                                          δx(i, j, k, ibg.underlying_grid, args...))
+                                                                          δx(i, j, k, ibg, args...))
 
 @inline conditional_δx_c(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i,   j, k, ibg, f, ℓy, ℓz) |
                                                                           immersed_inactive_node(i+1, j, k, ibg, f, ℓy, ℓz),
                                                                           zero(ibg),
-                                                                          δx(i, j, k, ibg.underlying_grid, args...))
+                                                                          δx(i, j, k, ibg, args...))
 
 @inline conditional_δy_f(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j,   k, ibg, ℓx, c, ℓz) |
                                                                           immersed_inactive_node(i, j-1, k, ibg, ℓx, c, ℓz),
                                                                           zero(ibg),
-                                                                          δy(i, j, k, ibg.underlying_grid, args...))
+                                                                          δy(i, j, k, ibg, args...))
 
 @inline conditional_δy_c(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j,   k, ibg, ℓx, f, ℓz) |
                                                                           immersed_inactive_node(i, j+1, k, ibg, ℓx, f, ℓz),
                                                                           zero(ibg),
-                                                                          δy(i, j, k, ibg.underlying_grid, args...))
+                                                                          δy(i, j, k, ibg, args...))
 
 @inline conditional_δz_f(ℓx, ℓy, i, j, k, ibg::IBG, δz, args...) = ifelse(immersed_inactive_node(i, j, k,   ibg, ℓx, ℓy, c) |
                                                                           immersed_inactive_node(i, j, k-1, ibg, ℓx, ℓy, c),
                                                                           zero(ibg),
-                                                                          δz(i, j, k, ibg.underlying_grid, args...))
+                                                                          δz(i, j, k, ibg, args...))
 
 @inline conditional_δz_c(ℓx, ℓy, i, j, k, ibg::IBG, δz, args...) = ifelse(immersed_inactive_node(i, j, k,   ibg, ℓx, ℓy, f) |
                                                                           immersed_inactive_node(i, j, k+1, ibg, ℓx, ℓy, f),
                                                                           zero(ibg),
-                                                                          δz(i, j, k, ibg.underlying_grid, args...))
+                                                                          δz(i, j, k, ibg, args...))
 
 @inline translate_loc(a) = a == :ᶠ ? :f : :c
 
@@ -60,6 +60,14 @@ for (d, ξ) in enumerate((:x, :y, :z))
         δξ             = Symbol(:δ, ξ, ℓx, ℓy, ℓz)
         loc            = translate_loc.((ℓx, ℓy, ℓz))
         conditional_δξ = Symbol(:conditional_δ, ξ, :_, loc[d])
+        
+        if ξ == :x
+            δξᵃ = Symbol(:δ, ξ, ℓx, :ᵃ, :ᵃ)
+        elseif ξ == :y
+            δξᵃ = Symbol(:δ, ξ, :ᵃ, ℓy, :ᵃ)
+        else
+            δξᵃ = Symbol(:δ, ξ, :ᵃ, :ᵃ, ℓz)
+        end
 
         # `other_locs` contains locations in the two "other" directions not being differenced
         other_locs = []
@@ -70,8 +78,8 @@ for (d, ξ) in enumerate((:x, :y, :z))
         end
 
         @eval begin
-            @inline $δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξ, args...)
-            @inline $δξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξ, f::Function, args...)
+            @inline $δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, args...)
+            @inline $δξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, f, args...)
        end
     end
 end

@@ -8,10 +8,12 @@ using Oceananigans.Architectures: cpu_architecture
 iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 
 function find_time_index(time::Number, file_times, Δt)
-    # Accommodate round-off discrepancies between the FTS times and file times
+    # We introduce an additional absolute tolerance to accomodate
+    # time values very close to zero, for which a relative tolerance will not work
     # (see https://github.com/CliMA/Oceananigans.jl/pull/4505)
-    ϵ = 100 * eps(eltype(file_times))
-    return findfirst(t -> isapprox(t, time, atol=ϵ*Δt), file_times)
+    ϵa = 100 * eps(Δt)
+    ϵr = sqrt(eps(eltype(file_times))) # The default relative tolerance used by `isapprox` when atol == 0
+    return findfirst(t -> isapprox(t, time; atol=ϵa, rtol=ϵr), file_times)
 end
 
 find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)
@@ -48,7 +50,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
             file_iter = file_iterations[file_index]
 
             # Note: use the CPU for this step
-            field_n = Field(location(fts), path, name, file_iter,
+            field_n = Field(instantiated_location(fts), path, name, file_iter,
                             grid = on_architecture(CPU(), fts.grid),
                             architecture = cpu_architecture(arch),
                             indices = fts.indices,

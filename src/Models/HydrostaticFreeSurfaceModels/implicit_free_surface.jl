@@ -68,11 +68,10 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 
 `solver_method` can be either of:
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
-* `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
 * `:PreconditionedConjugateGradient` for [`ConjugateGradientSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
-otherwise the `:HeptadiagonalIterativeSolver`.
+otherwise the `:PreconditionedConjugateGradient`.
 """
 ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
     ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
@@ -95,8 +94,8 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
-    barotropic_x_volume_flux = Field((Face, Center, Nothing), grid)
-    barotropic_y_volume_flux = Field((Center, Face, Nothing), grid)
+    barotropic_x_volume_flux = Field{Face, Center, Nothing}(grid)
+    barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     user_solver_method = free_surface.solver_method # could be = :Default
@@ -115,7 +114,7 @@ build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravita
     build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
 build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
-    build_implicit_step_solver(Val(:HeptadiagonalIterativeSolver), grid, settings, gravitational_acceleration)
+    build_implicit_step_solver(Val(:PreconditionedConjugateGradient), grid, settings, gravitational_acceleration)
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
@@ -148,6 +147,12 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
 
     fill_halo_regions!(η)
 
+    return nothing
+end
+
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
+    parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
+    step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
 end
 

@@ -151,11 +151,11 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test Txyz.operand.dims === (1, 2, 3)
                 @test wxyz.operand.dims === (1, 2, 3)
 
-                @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3
+                @test @allowscalar Txyz[1, 1, 1] ≈ 3
                 @test interior_array(Txy, 1, 1, :) ≈ [2.5, 3.5]
                 @test interior_array(Tx, 1, :, :) ≈ [[2, 3] [3, 4]]
 
-                @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 3
+                @test @allowscalar wxyz[1, 1, 1] ≈ 3
                 @test interior_array(wxy, 1, 1, :) ≈ [2, 3, 4]
                 @test interior_array(wx, 1, :, :) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
 
@@ -194,19 +194,19 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test interior_array(wry, 1, :, 1) ≈ [3, 2]
                 @test interior_array(wrz, 1, 1, :) ≈ [6, 5, 3]
 
-                @compute Txyz = CUDA.@allowscalar Field(Average(T, condition=T.>3))
-                @compute Txy = CUDA.@allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
-                @compute Tx = CUDA.@allowscalar Field(Average(T, dims=1, condition=T.>2))
+                @compute Txyz = @allowscalar Field(Average(T, condition=T.>3))
+                @compute Txy = @allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
+                @compute Tx = @allowscalar Field(Average(T, dims=1, condition=T.>2))
 
-                @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3.75
+                @test @allowscalar Txyz[1, 1, 1] ≈ 3.75
                 @test interior_array(Txy, 1, 1, :) ≈ [3.5, 11.5/3]
                 @test interior_array(Tx, 1, :, :) ≈ [[2.5, 3] [3, 4]]
 
-                @compute wxyz = CUDA.@allowscalar Field(Average(w, condition=w.>3))
-                @compute wxy = CUDA.@allowscalar Field(Average(w, dims=(1, 2), condition=w.>2))
-                @compute wx = CUDA.@allowscalar Field(Average(w, dims=1, condition=w.>1))
+                @compute wxyz = @allowscalar Field(Average(w, condition=w.>3))
+                @compute wxy = @allowscalar Field(Average(w, dims=(1, 2), condition=w.>2))
+                @compute wx = @allowscalar Field(Average(w, dims=1, condition=w.>1))
 
-                @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 4.25
+                @test @allowscalar wxyz[1, 1, 1] ≈ 4.25
                 @test interior_array(wxy, 1, 1, :) ≈ [3, 10/3, 4]
                 @test interior_array(wx, 1, :, :) ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
 
@@ -281,11 +281,11 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             @compute wx = Field(Average(w, dims=1))
 
             # Mean
-            @test CUDA.@allowscalar Txyz[1, 1, 1] == mean(T)
+            @test @allowscalar Txyz[1, 1, 1] == mean(T)
             @test interior(Txy) == interior(mean(T, dims=(1, 2)))
             @test interior(Tx) == interior(mean(T, dims=1))
 
-            @test CUDA.@allowscalar wxyz[1, 1, 1] == mean(w)
+            @test @allowscalar wxyz[1, 1, 1] == mean(w)
             @test interior(wxy) == interior(mean(w, dims=(1, 2)))
             @test interior(wx) == interior(mean(w, dims=1))
 
@@ -333,13 +333,13 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : 0))
-            c = Field((Center, Center, Nothing), grid)
+            c = Field{Center, Center, Nothing}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[1]
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : -0.4))
-            c = Field((Center, Center, Nothing), grid)
+            c = Field{Center, Center, Nothing}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[3]
@@ -347,7 +347,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             underlying_grid = RectilinearGrid(arch, size = (1, 1, 8), extent=(1, 1, 1))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -3/4))
-            c = Field((Center, Center, Center), grid)
+            c = Field{Center, Center, Center}(grid)
 
             set!(c, (x, y, z) -> -z)
             @test maximum(c) == Array(interior(c))[1, 1, 3]
@@ -376,10 +376,12 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             c = CenterField(grid)
             set!(c, (x, y, z) -> x + y + z)
 
-            max_c² = Field(Reduction(maximum, c^2, dims=3))
+            max_c² = Field(Reduction(maximum!, c^2, dims=3))
             ∫max_c² = Integral(max_c², dims=(1, 2))
-            compute!(∫max_c²)
             @test ∫max_c² isa Reduction
+            ∫max_c²_field = Field(∫max_c²)
+            @test ∫max_c²_field isa Field
+            @test ∫max_c²_field.operand === ∫max_c²
 
             @info "  Testing conditional reductions of immersed Fields [$(typeof(arch))]"
 

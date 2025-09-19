@@ -11,6 +11,7 @@ export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
 export MutableVerticalDiscretization
+export ExponentialCoordinate, ConstantToStretchedCoordinate, PowerLawStretching, LinearStretching
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
@@ -23,9 +24,8 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
-using CUDA
-using CUDA: has_cuda
 using Adapt
+using GPUArraysCore
 using OffsetArrays
 using Printf
 
@@ -106,6 +106,11 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
+topology_str(T) = string(T)
+topology_str(::Type{RightConnected}) = "RightConnected"
+topology_str(::Type{LeftConnected}) = "LeftConnected"
+topology_str(::Type{FullyConnected}) = "FullyConnected"
+
 #####
 ##### Directions (for tilted domains)
 #####
@@ -118,9 +123,13 @@ struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
+const F = Face
+const C = Center
+
 include("abstract_grid.jl")
 include("vertical_discretization.jl")
 include("grid_utils.jl")
+include("coordinate_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")
 include("new_data.jl")

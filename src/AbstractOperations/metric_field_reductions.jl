@@ -43,7 +43,6 @@ for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dx = reduction_grid_metric(dims)
 
     if all(d in regular_dimensions(field.grid) for d in dims)
         # Dimensions being reduced are regular; just use mean!
@@ -51,6 +50,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         return Scan(Averaging(), mean!, operand, dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
+        dx = reduction_grid_metric(dims)
         metric = GridMetricOperation(location(field), dx, field.grid)
         L = sum(metric; condition, mask, dims)
 
@@ -94,7 +94,7 @@ julia> set!(f, (x, y, z) -> x * y * z)
 8×8×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.823975, min=0.000244141, mean=0.125
 
@@ -150,7 +150,7 @@ julia> set!(c, z -> z)
 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 1×1×14 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:11) with eltype Float64 with indices 1:1×1:1×-2:11
     └── max=0.9375, min=0.0625, mean=0.5
 
