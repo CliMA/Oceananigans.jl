@@ -24,6 +24,8 @@ using Oceananigans.Fields
 using Oceananigans.Grids: unpack_grid, inactive_cell
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 
+import Oceananigans: iteration
+
 """
     ω(M, k)
 

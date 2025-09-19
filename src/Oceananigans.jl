@@ -85,7 +85,7 @@ export
     PressureField, fields, ZCoordinate, ZStarCoordinate,
 
     # Model interface
-    iteration, architecture, initialize!, timesteppper, initialization_update_state!,
+    iteration, timesteppper,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
@@ -181,13 +181,6 @@ abstract type AbstractModel{TS, A} end
 Returns the current iteration of the `model.clock`.
 """
 iteration(model::AbstractModel) = model.clock.iteration
-
-"""
-    $SIGNATURES
-
-Returns the device architecture defined by the underlying model `grid`.
-"""
-architecture(model::AbstractModel) = model.grid.architecture
 
 """
     $SIGNATURES

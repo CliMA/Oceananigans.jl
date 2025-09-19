@@ -10,6 +10,8 @@ export
     BoundaryConditionOperation, ForcingOperation,
     seawater_density
 
+using DocStringExtensions
+
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
@@ -19,11 +21,16 @@ using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
 using Oceananigans.Utils: Time
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, timestepper, iteration
 import Oceananigans.Architectures: architecture
-import Oceananigans.Solvers: iteration
-import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: reset!, set_clock!
+
+"""
+    $SIGNATURES
+
+Returns the device architecture defined by the underlying model `grid`.
+"""
+architecture(model::AbstractModel) = model.grid.architecture
 
 """
     $SIGNATURES
