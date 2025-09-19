@@ -33,8 +33,8 @@ function metric_function(loc, metric)
 end
 
 struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ, G, T}
-          metric :: M
-            grid :: G
+    metric :: M
+    grid :: G
     function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G) where {LX, LY, LZ, M, G}
         T = eltype(grid)
         return new{LX, LY, LZ, G, T, M}(metric, grid)
@@ -56,8 +56,8 @@ indices(::GridMetricOperation) = default_indices(3)
 """
     GridMetricOperation(L, metric, grid)
 
-Instance of `GridMetricOperation` that generates `BinaryOperation`s between `AbstractField`s and the metric `metric`
-at the same location as the `AbstractField`.
+Instance of `GridMetricOperation` that generates `BinaryOperation`s between `AbstractField`s
+and the metric `metric` at the same location as the `AbstractField`.
 
 Example
 =======
