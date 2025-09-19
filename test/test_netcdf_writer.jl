@@ -2736,24 +2736,39 @@ function test_netcdf_single_field_defvar()
     isfile(filepath) && rm(filepath)
 
     ds = NCDataset(filepath, "c")
-    defVar(ds, "c", c, attrib=Dict("long_name" => "Center field", "units" => "kg/m³"))
+    c_long_name = "Center field"
+    c_units = "kg/m³"
+    defVar(ds, "c", c, attrib=Dict("long_name" => c_long_name, "units" => c_units))
 
     # Write an abstract operation
     c² = c^2
-    defVar(ds, "c²", c², attrib=Dict("long_name" => "Center field squared"))
+    c²_long_name = "Center field squared"
+    defVar(ds, "c²", c², attrib=Dict("long_name" => c²_long_name))
 
     # Write a reduction
     c̄ = Average(c, dims=3)
-    defVar(ds, "c̄", c̄, attrib=Dict("long_name" => "Average center field", "units" => "kg/m²"))
+    c̄_long_name = "Average center field"
+    c̄_units = "kg/m³"
+    defVar(ds, "c̄", c̄, attrib=Dict("long_name" => c̄_long_name, "units" => c̄_units))
 
     close(ds)
     ds = NCDataset(filepath, "r")
+
     @test "c" ∈ keys(ds)
     @test all(ds["c"] .== interior(c))
-    @test ds["c"].attrib["long_name"] == "Center field"
-    @test ds["c"].attrib["units"] == "kg/m³"
-    close(ds)
+    @test ds["c"].attrib["long_name"] == c_long_name
+    @test ds["c"].attrib["units"] == c_units
 
+    @test "c²" ∈ keys(ds)
+    @test all(ds["c²"] .== interior(c²))
+    @test ds["c²"].attrib["long_name"] == c²_long_name
+
+    @test "c̄" ∈ keys(ds)
+    @test all(ds["c̄"] .== interior(Field(c̄)))
+    @test ds["c̄"].attrib["long_name"] == c̄_long_name
+    @test ds["c̄"].attrib["units"] == c̄_units
+
+    close(ds)
     rm(filepath)
 
     return nothing
