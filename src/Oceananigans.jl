@@ -218,13 +218,6 @@ Defines initialization routines for the first call to `update_state!` after init
 initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
 
 """
-    $SIGNATURES
-
-Updates all `FieldTimeSeries` fields defined on the given `model. The default implementation assumes that the `model` that does not contain any `FieldTimeSeries` and returns `nothing`.
-"""
-update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
-
-"""
     Base.time(model::AbstractModel) 
 
 Returns the current `time` from the given `model.clock`.
