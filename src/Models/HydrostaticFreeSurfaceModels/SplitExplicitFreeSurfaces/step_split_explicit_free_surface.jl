@@ -28,15 +28,17 @@ using ..HydrostaticFreeSurfaceModels: barotropic_U, barotropic_V
     end
 end
 
-@kernel function _split_explicit_free_surface!(averaging_weight, grid, Δτ, η, U, V, η̅, U̅, V̅,timestepper)
+@kernel function _split_explicit_free_surface!(averaging_weight, grid, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
+    δh_U = (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid) 
+
     @inbounds begin
-        η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+        η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
 
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
@@ -59,7 +61,7 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
-function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
     η           = free_surface.η
@@ -78,7 +80,7 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Δτᴮ, η, U, V, η̅, U̅, V̅, timestepper)
+    η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve η_args U_args begin
 
@@ -152,11 +154,12 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     η = free_surface.η
     U = barotropic_velocities.U
     V = barotropic_velocities.V
+    F = model.forcing.η
 
     # reset free surface averages
     @apply_regionally begin
         # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, transport_weights, Val(Nsubsteps))
+        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
