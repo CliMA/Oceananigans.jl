@@ -2779,84 +2779,41 @@ function test_netcdf_field_dimension_validation()
     c = CenterField(grid)
 
     # Test 1: Successful validation with proper dimensions
-    filepath_success = "test_dimension_validation_success.nc"
-    isfile(filepath_success) && rm(filepath_success)
+    filepath = "test_dimension_validation_success.nc"
+    isfile(filepath) && rm(filepath)
 
     # Create NetCDF file with proper dimensions
-    ds = NCDataset(filepath_success, "c")
+    ds = NCDataset(filepath, "c")
 
     # Define dimensions first
-    defDim(ds, "x_caa", 4)
-    defDim(ds, "y_aca", 4)
-    defDim(ds, "z_aac", 4)
-    defVar(ds, "x_caa", Float64, ("x_caa",))
-    defVar(ds, "y_aca", Float64, ("y_aca",))
-    defVar(ds, "z_aac", Float64, ("z_aac",))
+    defVar(ds, "x_caa", xnodes(grid, Center()), ("x_caa",))
+    # We "forget" to define the y dimension. Should work regardless
+    defVar(ds, "z_aac", znodes(grid, Center()), ("z_aac",))
 
-    # This should succeed
+    # Write variable to disk after dimensions are created and match the
     defVar(ds, "c", c, time_dependent=false)
+    @test ds["x_caa"][:] == xnodes(grid, Center())
+    @test ds["y_aca"][:] == ynodes(grid, Center())
+    @test ds["z_aac"][:] == znodes(grid, Center())
 
     close(ds)
-    rm(filepath_success)
+    rm(filepath)
 
-    # Test 2: Missing dimension should throw error
-    filepath_missing = "test_dimension_validation_missing.nc"
-    isfile(filepath_missing) && rm(filepath_missing)
-
-    ds_missing = NCDataset(filepath_missing, "c")
-
-    # Define only some dimensions
-    defDim(ds_missing, "x_caa", 4)
-    defDim(ds_missing, "y_aca", 4)
-    defVar(ds_missing, "x_caa", Float64, ("x_caa",))
-    defVar(ds_missing, "y_aca", Float64, ("y_aca",))
-    # Note: z_aac dimension is missing
-
-    @test_throws ArgumentError defVar(ds_missing, "c", c, time_dependent=false)
-
-    close(ds_missing)
-    rm(filepath_missing)
-
-    # Test 3: Wrong dimension size should throw error
+    # Test that wrong dimension should throw error
     filepath_wrong_size = "test_dimension_validation_wrong_size.nc"
     isfile(filepath_wrong_size) && rm(filepath_wrong_size)
 
     ds_wrong = NCDataset(filepath_wrong_size, "c")
 
     # Define dimensions with wrong sizes
-    defDim(ds_wrong, "x_caa", 4)
-    defDim(ds_wrong, "y_aca", 4)
-    defDim(ds_wrong, "z_aac", 8)  # Wrong size! Should be 4
-    defVar(ds_wrong, "x_caa", Float64, ("x_caa",))
-    defVar(ds_wrong, "y_aca", Float64, ("y_aca",))
-    defVar(ds_wrong, "z_aac", Float64, ("z_aac",))
+    defVar(ds_wrong, "x_caa", xnodes(grid, Center()), ("x_caa",))
+    defVar(ds_wrong, "y_aca", ynodes(grid, Center()), ("y_aca",))
+    defVar(ds_wrong, "z_aac", znodes(grid, Face()), ("z_aac",)) # ⚠ wrongly write faces instead of center
 
-    @test_throws ArgumentError defVar(ds_wrong, "c", c, time_dependent=false)
+    @test_throws ArgumentError defVar(ds_wrong, "c", c)
 
     close(ds_wrong)
     rm(filepath_wrong_size)
-
-    # Test 4: Test with time-dependent field
-    filepath_time = "test_dimension_validation_time.nc"
-    isfile(filepath_time) && rm(filepath_time)
-
-    ds_time = NCDataset(filepath_time, "c")
-
-    # Define dimensions including time
-    defDim(ds_time, "x_caa", 4)
-    defDim(ds_time, "y_aca", 4)
-    defDim(ds_time, "z_aac", 4)
-    defDim(ds_time, "time", Inf)
-    defVar(ds_time, "x_caa", Float64, ("x_caa",))
-    defVar(ds_time, "y_aca", Float64, ("y_aca",))
-    defVar(ds_time, "z_aac", Float64, ("z_aac",))
-    defVar(ds_time, "time", Float64, ("time",))
-
-    # This should succeed
-    defVar(ds_time, "c", c, time_dependent=true)
-
-    close(ds_time)
-    rm(filepath_time)
 
     return nothing
 end
@@ -2912,6 +2869,6 @@ for arch in archs
         test_netcdf_buoyancy_force(arch)
 
         test_netcdf_single_field_defvar()
-        # test_netcdf_field_dimension_validation()
+        test_netcdf_field_dimension_validation()
     end
 end
