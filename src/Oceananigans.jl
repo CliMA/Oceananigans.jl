@@ -168,8 +168,7 @@ Abstract supertype for models.
 
 Models are required to have the following fields:
   - `model.clock::Clock`
-  - `model.architecture`
-  - `model.timestepper` with `timestepper.G⁻` and `timestepper.Gⁿ`
+  - `model.grid::AbstractGrid`
 """
 abstract type AbstractModel{TS, A} end
 
@@ -185,14 +184,16 @@ iteration(model::AbstractModel) = model.clock.iteration
 """
     $SIGNATURES
 
-TODO: what does this method do in addition to the constructor?
+Ensures consistency between internal variables in the AbstractModel and user-specified
+initial conditions provided by the user via `set(::AbstractModel; kwargs...)`.
+Default implementation does nothing.
 """
 initialize!(model::AbstractModel) = nothing
 
 """
     $SIGNATURES
 
-TODO
+Returns the sum of all velocities defined on the model (background + prognostic, where applicable).
 """
 total_velocities(model::AbstractModel) = nothing
 
