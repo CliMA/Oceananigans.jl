@@ -18,8 +18,8 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
+import Oceananigans: total_velocities, timestepper
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities, timestepper
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}

@@ -16,8 +16,7 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_dif
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: initialize!
-import Oceananigans.Models: total_velocities, timestepper
+import Oceananigans: initialize!, total_velocities, timestepper
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 

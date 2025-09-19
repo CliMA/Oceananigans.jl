@@ -84,6 +84,9 @@ export
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
 
+    # Model interface
+    iteration, architecture, initialize!, timesteppper, initialization_update_state!,
+
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis, PrescribedVelocityFields,
@@ -92,7 +95,7 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, iteration,
+    Simulation, run!, Callback, add_callback!,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
@@ -162,8 +165,78 @@ const defaults = Defaults()
     AbstractModel
 
 Abstract supertype for models.
+
+Models are required to have the following fields:
+  - `model.clock::Clock`
+  - `model.architecture`
+  - `model.timestepper` with `timestepper.G⁻` and `timestepper.Gⁿ`
 """
 abstract type AbstractModel{TS, A} end
+
+# Method interface for AbstractModel
+
+"""
+    $SIGNATURES
+
+Returns the current iteration of the `model.clock`.
+"""
+iteration(model::AbstractModel) = model.clock.iteration
+
+"""
+    $SIGNATURES
+
+Returns the device architecture defined by the underlying model `grid`.
+"""
+architecture(model::AbstractModel) = model.grid.architecture
+
+"""
+    $SIGNATURES
+
+TODO: what does this method do in addition to the constructor?
+"""
+initialize!(model::AbstractModel) = nothing
+
+"""
+    $SIGNATURES
+
+TODO
+"""
+total_velocities(model::AbstractModel) = nothing
+
+"""
+    $SIGNATURES
+
+Returns the `TimeStepper` used by the given `model`.
+"""
+timestepper(model::AbstractModel) = model.timestepper
+
+"""
+    $SIGNATURES
+
+Defines initialization routines for the first call to `update_state!` after initialization. Defaults to invoking `update_state!(model; kw...)`.
+"""
+initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
+
+"""
+    $SIGNATURES
+
+Updates all `FieldTimeSeries` fields defined on the given `model. The default implementation assumes that the `model` that does not contain any `FieldTimeSeries` and returns `nothing`.
+"""
+update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
+
+"""
+    Base.time(model::AbstractModel) 
+
+Returns the current `time` from the given `model.clock`.
+"""
+Base.time(model::AbstractModel) = model.clock.time
+
+"""
+    Base.eltype(model::AbstractModel)
+
+Returns the numeric `eltype` of `model.grid` and all associated `Field`s.
+"""
+Base.eltype(model::AbstractModel) = eltype(model.grid)
 
 """
     AbstractDiagnostic

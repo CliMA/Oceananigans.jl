@@ -25,27 +25,6 @@ import Oceananigans.Solvers: iteration
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: reset!, set_clock!
 
-# A prototype interface for AbstractModel.
-#
-# TODO: decide if we like this.
-#
-# We assume that model has some properties, eg:
-#   - model.clock::Clock
-#   - model.architecture.
-#   - model.timestepper with timestepper.G⁻ and timestepper.Gⁿ :spiral_eyes:
-
-iteration(model::AbstractModel) = model.clock.iteration
-Base.time(model::AbstractModel) = model.clock.time
-Base.eltype(model::AbstractModel) = eltype(model.grid)
-architecture(model::AbstractModel) = model.grid.architecture
-initialize!(model::AbstractModel) = nothing
-total_velocities(model::AbstractModel) = nothing
-timestepper(model::AbstractModel) = model.timestepper
-initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
-
-# Fallback for any abstract model that does not contain `FieldTimeSeries`es
-update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
-
 #####
 ##### Model-building utilities
 #####
