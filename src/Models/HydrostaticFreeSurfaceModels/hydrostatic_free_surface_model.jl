@@ -12,12 +12,12 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection, extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper, update_state!, initialization_update_state!
+using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper, timestepper, update_state!, initialization_update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: initialize!, total_velocities, timestepper
+import Oceananigans: initialize!, total_velocities
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 

@@ -5,6 +5,7 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKutta3TimeStepper,
     time_step!,
+    timestepper,
     Clock,
     tendencies
 
@@ -35,6 +36,13 @@ function initialization_update_state!(model::AbstractModel; kw...)
     initialize!(model)
     update_state!(model; kw...) # fallback
 end
+
+"""
+    $SIGNATURES
+
+Returns the `TimeStepper` used by the given `model`.
+"""
+timestepper(model::AbstractModel) = model.timestepper
 
 compute_pressure_correction!(model, Δt) = nothing
 make_pressure_correction!(model, Δt) = nothing

@@ -20,7 +20,7 @@ using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.TimeSteppers: timestepper, step_lagrangian_particles!
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG)
     global_grid = reconstruct_global_grid(local_grid)

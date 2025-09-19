@@ -198,13 +198,6 @@ Returns the sum of all velocities defined on the model (background + prognostic,
 total_velocities(model::AbstractModel) = nothing
 
 """
-    $SIGNATURES
-
-Returns the `TimeStepper` used by the given `model`.
-"""
-timestepper(model::AbstractModel) = model.timestepper
-
-"""
     Base.time(model::AbstractModel) 
 
 Returns the current `time` from the given `model.clock`.
