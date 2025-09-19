@@ -84,6 +84,9 @@ export
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
 
+    # Model interface
+    iteration, timesteppper,
+
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis, PrescribedVelocityFields,
@@ -92,7 +95,7 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, iteration,
+    Simulation, run!, Callback, add_callback!,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
@@ -162,8 +165,51 @@ const defaults = Defaults()
     AbstractModel
 
 Abstract supertype for models.
+
+Models are required to have the following fields:
+  - `model.clock::Clock`
+  - `model.grid::AbstractGrid`
 """
 abstract type AbstractModel{TS, A} end
+
+# Method interface for AbstractModel
+
+"""
+    $SIGNATURES
+
+Returns the current iteration of the `model.clock`.
+"""
+iteration(model::AbstractModel) = model.clock.iteration
+
+"""
+    $SIGNATURES
+
+Ensures consistency between internal variables in the AbstractModel and user-specified
+initial conditions provided by the user via `set(::AbstractModel; kwargs...)`.
+Default implementation does nothing.
+"""
+initialize!(model::AbstractModel) = nothing
+
+"""
+    $SIGNATURES
+
+Returns the sum of the user-prescribed background + prognostic velocities, where applicable.
+"""
+total_velocities(model::AbstractModel) = nothing
+
+"""
+    Base.time(model::AbstractModel) 
+
+Returns the current `time` from the given `model.clock`.
+"""
+Base.time(model::AbstractModel) = model.clock.time
+
+"""
+    Base.eltype(model::AbstractModel)
+
+Returns the numeric `eltype` of `model.grid` and all associated `Field`s.
+"""
+Base.eltype(model::AbstractModel) = eltype(model.grid)
 
 """
     AbstractDiagnostic

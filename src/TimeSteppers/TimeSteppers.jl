@@ -5,8 +5,11 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKutta3TimeStepper,
     time_step!,
+    timestepper,
     Clock,
     tendencies
+
+using DocStringExtensions
 
 using KernelAbstractions
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
@@ -23,6 +26,23 @@ abstract type AbstractTimeStepper end
 function update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
+
+"""
+    $SIGNATURES
+
+Defines initialization routines for the first call to `update_state!` after initialization. Defaults to invoking `update_state!(model; kw...)`.
+"""
+function initialization_update_state!(model::AbstractModel; kw...) 
+    initialize!(model)
+    update_state!(model; kw...) # fallback
+end
+
+"""
+    $SIGNATURES
+
+Returns the `TimeStepper` used by the given `model`.
+"""
+timestepper(model::AbstractModel) = model.timestepper
 
 compute_pressure_correction!(model, Δt) = nothing
 make_pressure_correction!(model, Δt) = nothing
