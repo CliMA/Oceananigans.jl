@@ -56,8 +56,11 @@ model = NonhydrostaticModel(; grid, advection, buoyancy,
                             forcing = (; c=c_forcing))
 ```
 
-1. Specify the discrete equations to solve: physics options (buoyancy, Coriolis, free surface), numerical methods (advection schemes, closures), and configuration like forcing and boundary conditions. These are primarily set via keyword arguments when constructing a model, and many parameters can be adjusted later.
-2. Hold the simulation state: prognostic state (velocities, tracers, pressure/free surface) and diagnostic/auxiliary fields. Every model pairs with `set!(model; kwargs...)` to update state any time. This is typically used for initial conditions, but can also be used to change state mid‑simulation.
+1. Specify the discrete equations to solve: physics options (buoyancy, Coriolis, free surface), numerical methods (advection schemes, closures), and configuration like forcing and boundary conditions.
+   These are primarily set via keyword arguments when constructing a model, and many parameters can be adjusted later.
+2. Hold the simulation state: prognostic state (velocities, tracers, pressure/free surface) and diagnostic/auxiliary fields.
+   Every model pairs with `set!(model; kwargs...)` to update state any time.
+   This is typically used for initial conditions, but can also be used to change state mid‑simulation.
 
 You can advance a model with `time_step!(model, Δt)`. However, we generally recommend using `Simulation` to manage time stepping, output, and adaptive time steps. See Quick start for a compact example.
 
