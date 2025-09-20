@@ -2,13 +2,13 @@
 
 Oceananigans serves two mature models: [NonhydrostaticModel](@ref), which solves the Navier-Stokes equations
 under the Boussinesq approximation _without_ making the hydrostatic approximation, and [HydrostaticFreeSurfaceModel](@ref),
-which solves the hydrostatic or ``primitive'' Boussinesq equations with a "free" surface on the top boundary.
+which solves the hydrostatic or "primitive" Boussinesq equations with a "free" surface on the top boundary.
 A third, experimental [ShallowWaterModel](@ref) solves the shallow water equations.
 
 The NonhydrostaticModel is primarily used for large eddy simulations on [RectilinearGrid](@ref) with grid spacings of O(1 m), but can also be used for idealized classroom problems (e.g. two-dimensional turbulence) and direct numerical simulation.
 HydrostaticFreeSurfaceModel, on the other hand, derives its purpose at larger scales --- typically for regional to global simulations with grid spacings of O(30 m) and up, on [RectilinearGrid](@ref),
 [LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
-and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref).
+and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
 
 ## Whence Models?
 
@@ -98,7 +98,7 @@ nh, hy
 (NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0), HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0))
 ```
 
-Both models create velocity fields and time‑steppers; tracer sets start empty unless specified.
+Both models create velocity fields and time‑steppers; the tracer sets start empty unless specified.
 
 ## Discrete Equations: Key Ingredients
 
@@ -145,11 +145,13 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ```
 
 Notes
-- Advection: `WENO()` is a robust, high‑order upwind method for momentum and tracers.
+- Advection: [`WENO()`](@ref WENO) is a robust, high‑order upwind method for momentum and tracers.
 - Buoyancy: `SeawaterBuoyancy()` activates Boussinesq buoyancy with a linear equation of state and gravity; it requires `:T` and `:S` tracers.
-- Closure: `ScalarDiffusivity` sets molecular or eddy viscosities/diffusivities. See Turbulence closures for alternatives like `SmagorinskyLilly()` or `AnisotropicMinimumDissipation()`.
-- Forcing: `Forcing` functions can depend on `x, y, z, t` and parameters; see Forcing functions for field‑dependent and discrete forms.
-- Boundary conditions: Here we add surface wind stress via a `FluxBoundaryCondition` on `u`. See Boundary conditions for Value/Flux/Gradient forms and more patterns.
+- Closure: `ScalarDiffusivity` sets molecular or eddy viscosities/diffusivities.
+  See [Turbulence closures](@ref turbulence_closures) for alternatives like `SmagorinskyLilly()` or `AnisotropicMinimumDissipation()`.
+- Forcing: `Forcing` functions can depend on `x, y, z, t` and parameters; see [Forcing functions](@ref forcing_functions) for field‑dependent and discrete forms.
+- Boundary conditions: Here we add surface wind stress via a `FluxBoundaryCondition` on `u`.
+  See [Boundary conditions](@ref model_step_bcs) for Value/Flux/Gradient forms and more patterns.
 
 ### HydrostaticFreeSurfaceModel: momentum vs tracer advection, buoyancy, closure, surface stress
 
@@ -259,7 +261,7 @@ model.clock.time > 0
 true
 ```
 
-But for real simulations we recommend `Simulation` for running, output, and adaptive `Δt`. See Quick start and the Examples gallery for complete workflows, including Kelvin–Helmholtz instability and wind‑driven mixed layers.
+But for real simulations we recommend `Simulation` for running, output, and adaptive `Δt`. See [Quick start](@ref quick_start) and the Examples gallery for complete workflows, including Kelvin–Helmholtz instability and wind‑driven mixed layers.
 
 ## Where to go next
 
