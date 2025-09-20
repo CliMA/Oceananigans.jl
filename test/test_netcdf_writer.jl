@@ -33,7 +33,6 @@ function test_datetime_netcdf_output(arch)
                                                       filename = filepath,
                                                       schedule = IterationInterval(1),
                                                       include_grid_metrics = false)
-
     run!(simulation)
 
     ds = NCDataset(filepath)

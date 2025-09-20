@@ -116,13 +116,13 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
     end
 end
 
-function create_time_dimension!(dataset)
+function create_time_dimension!(dataset; attrib=nothing)
     if "time" ∉ keys(dataset.dim)
         # Create an unlimited dimension "time"
         # Time should always be Float64 to be extra safe from rounding errors.
         # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", Float64, ("time",))
+        defVar(dataset, "time", Float64, ("time",), attrib=attrib)
     end
 end
 
@@ -1219,7 +1219,7 @@ function initialize_nc_file(model,
             Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
             Dict("long_name" => "Time", "units" => "seconds")
 
-        create_time_dimension!(dataset)
+        create_time_dimension!(dataset, attrib=time_attrib)
 
         # Create spatial dimensions as variables whose dimensions are themselves.
         # Each should already have a default attribute.
