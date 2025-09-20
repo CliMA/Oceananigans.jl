@@ -33,7 +33,6 @@ function test_datetime_netcdf_output(arch)
                                                       filename = filepath,
                                                       schedule = IterationInterval(1),
                                                       include_grid_metrics = false)
-
     run!(simulation)
 
     ds = NCDataset(filepath)
@@ -2726,6 +2725,98 @@ function test_netcdf_buoyancy_force(arch)
     return nothing
 end
 
+function test_netcdf_single_field_defvar()
+    N = 4
+    grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
+    c = CenterField(grid)
+    set!(c, (x, y, z) -> x + y + z)
+
+    filepath = "test_single_field_defvar.nc"
+    isfile(filepath) && rm(filepath)
+
+    ds = NCDataset(filepath, "c")
+    c_long_name = "Center field"
+    c_units = "kg/m³"
+    defVar(ds, "c", c, attrib=Dict("long_name" => c_long_name, "units" => c_units))
+
+    # Write an abstract operation
+    c² = c^2
+    c²_long_name = "Center field squared"
+    defVar(ds, "c²", c², attrib=Dict("long_name" => c²_long_name))
+
+    # Write a reduction
+    c̄ = Average(c, dims=3)
+    c̄_long_name = "Average center field"
+    c̄_units = "kg/m³"
+    defVar(ds, "c̄", c̄, attrib=Dict("long_name" => c̄_long_name, "units" => c̄_units))
+
+    close(ds)
+    ds = NCDataset(filepath, "r")
+
+    @test "c" ∈ keys(ds)
+    @test all(ds["c"] .== interior(c))
+    @test ds["c"].attrib["long_name"] == c_long_name
+    @test ds["c"].attrib["units"] == c_units
+
+    @test "c²" ∈ keys(ds)
+    @test all(ds["c²"] .== interior(c²))
+    @test ds["c²"].attrib["long_name"] == c²_long_name
+
+    @test "c̄" ∈ keys(ds)
+    @test all(ds["c̄"] .== interior(Field(c̄)))
+    @test ds["c̄"].attrib["long_name"] == c̄_long_name
+    @test ds["c̄"].attrib["units"] == c̄_units
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
+function test_netcdf_field_dimension_validation()
+    grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+    c = CenterField(grid)
+
+    # Test 1: Successful validation with proper dimensions
+    filepath = "test_dimension_validation_success.nc"
+    isfile(filepath) && rm(filepath)
+
+    # Create NetCDF file with proper dimensions
+    ds = NCDataset(filepath, "c")
+
+    # Define dimensions first
+    defVar(ds, "x_caa", xnodes(grid, Center()), ("x_caa",))
+    # We "forget" to define the y dimension. Should work regardless
+    defVar(ds, "z_aac", znodes(grid, Center()), ("z_aac",))
+
+    # Write variable to disk after dimensions are created and match the
+    defVar(ds, "c", c, time_dependent=false)
+    @test ds["x_caa"][:] == xnodes(grid, Center())
+    @test ds["y_aca"][:] == ynodes(grid, Center())
+    @test ds["z_aac"][:] == znodes(grid, Center())
+
+    close(ds)
+    rm(filepath)
+
+    # Test that wrong dimension should throw error
+    filepath_wrong_size = "test_dimension_validation_wrong_size.nc"
+    isfile(filepath_wrong_size) && rm(filepath_wrong_size)
+
+    ds_wrong = NCDataset(filepath_wrong_size, "c")
+
+    # Define dimensions with wrong sizes
+    defVar(ds_wrong, "x_caa", xnodes(grid, Center()), ("x_caa",))
+    defVar(ds_wrong, "y_aca", ynodes(grid, Center()), ("y_aca",))
+    defVar(ds_wrong, "z_aac", znodes(grid, Face()), ("z_aac",)) # ⚠ wrongly write faces instead of center
+
+    @test_throws ArgumentError defVar(ds_wrong, "c", c)
+
+    close(ds_wrong)
+    rm(filepath_wrong_size)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2775,5 +2866,8 @@ for arch in archs
         test_netcdf_free_surface_mixed_output(arch)
 
         test_netcdf_buoyancy_force(arch)
+
+        test_netcdf_single_field_defvar()
+        test_netcdf_field_dimension_validation()
     end
 end
