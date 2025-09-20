@@ -6,9 +6,9 @@ which solves the hydrostatic or ``primitive'' Boussinesq equations with a "free"
 A third, experimental [ShallowWaterModel](@ref) solves the shallow water equations.
 
 The NonhydrostaticModel is primarily used for large eddy simulations on [RectilinearGrid](@ref) with grid spacings of O(1 m), but can also be used for idealized classroom problems (e.g. two-dimensional turbulence) and direct numerical simulation.
-HydrostaticFreeSurfaceModel, on the other hand, derives its purpose at larger scales --- typically for regional to global simulations with grid spacings 30 m and up, on [RectilinearGrid](@ref),
-[LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref), and other [OrthogonalSphericalShellGrid](@ref)s
-such as [RotatedLatitudeLongitudeGrid](@ref).
+HydrostaticFreeSurfaceModel, on the other hand, derives its purpose at larger scales --- typically for regional to global simulations with grid spacings of O(30 m) and up, on [RectilinearGrid](@ref),
+[LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
+and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref).
 
 ## Whence Models?
 
@@ -56,10 +56,13 @@ model = NonhydrostaticModel(; grid, advection, buoyancy,
                             forcing = (; c=c_forcing))
 ```
 
-1. Specify the discrete equations to solve: physics options (buoyancy, Coriolis, free surface), numerical methods (advection schemes, closures), and configuration like forcing and boundary conditions. These are primarily set via keyword arguments when constructing a model, and many parameters can be adjusted later.
-2. Hold the simulation state: prognostic state (velocities, tracers, pressure/free surface) and diagnostic/auxiliary fields. Every model pairs with `set!(model; kwargs...)` to update state any time. This is typically used for initial conditions, but can also be used to change state mid‑simulation.
+1. Specify the discrete equations to solve: physics options (buoyancy, Coriolis, free surface), numerical methods (advection schemes, closures), and configuration like forcing and boundary conditions.
+   These are primarily set via keyword arguments when constructing a model, and many parameters can be adjusted later.
+2. Hold the simulation state: prognostic state (velocities, tracers, pressure/free surface) and diagnostic/auxiliary fields.
+   Every model pairs with `set!(model; kwargs...)` to update state any time.
+   This is typically used for initial conditions, but can also be used to change state mid‑simulation.
 
-You can advance a model with `time_step!(model, Δt)`. However, we generally recommend using `Simulation` to manage time stepping, output, and adaptive time steps. See Quick start for a compact example.
+You can advance a model with `time_step!(model, Δt)`. However, we generally recommend using `Simulation` to manage time stepping, output, and adaptive time steps. See the [Quick start](@ref quick_start) for a compact example.
 
 ## Two Model Flavors
 
@@ -180,13 +183,17 @@ model
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ```
 
-Notes
-- Momentum advection defaults to `VectorInvariant()`; tracer advection defaults to `Centered(order=2)`. You can choose schemes independently.
-- Hydrostatic models include a free surface; the default is an implicit free surface on regular rectilinear grids. See the Hydrostatic physics page for details and generalized vertical coordinates.
+**Notes**
+
+- Momentum advection defaults to `VectorInvariant()`; tracer advection defaults to `Centered(order=2)`.
+  Users may choose schemes independently.
+- Hydrostatic models include a free surface; the default is an implicit free surface on regular rectilinear grids.
+  See the [Hydrostatic physics page](@ref hydrostatic_free_surface_model) for details and generalized vertical coordinates.
 
 ## State: Initial conditions and updates with `set!`
 
-All models support `set!(model; kwargs...)` to initialize or update fields. `kwargs` can be arrays or functions of `(x, y, z)`.
+All models support `set!(model; kwargs...)` to initialize or update fields.
+`kwargs` can be arrays or functions of `(x, y, z)`.
 
 ### Nonhydrostatic initial condition (shear and stratification)
 
