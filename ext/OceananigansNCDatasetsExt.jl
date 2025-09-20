@@ -126,11 +126,21 @@ function create_time_dimension!(dataset; attrib=nothing)
     end
 end
 
+
+"""
+    create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
+
+Create spatial dimensions in the NetCDF dataset and define corresponding variables to store
+their coordinate values. Each dimension variable has itself as its sole dimension (e.g., the
+`x` variable has dimension `x`). The dimensions are created if they don't exist, and validated
+against provided arrays if they do exist. An error is thrown if the dimension already exists
+but is different from the provided array.
+"""
 function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
     for (i, (dim_name, dim_array)) in enumerate(dims)
         if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
-            defVar(dataset, dim_name, array_type(dim_array), (dim_name,), attrib=attributes_dict[dim_name], kwargs...)
+            defVar(dataset, dim_name, array_type(dim_array), (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
         else
             # Validate existing dimension
             if dataset[dim_name] != dim_array
@@ -1220,14 +1230,7 @@ function initialize_nc_file(model,
             Dict("long_name" => "Time", "units" => "seconds")
 
         create_time_dimension!(dataset, attrib=time_attrib)
-
-        # Create spatial dimensions as variables whose dimensions are themselves.
-        # Each should already have a default attribute.
-        for (dim_name, dim_array) in dims
-            defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   deflatelevel=deflatelevel, attrib=output_attributes[dim_name])
-        end
-        # create_spatial_dimensions!(dataset, dims; deflatelevel=1, attrib=output_attributes)
+        create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, array_type)
 
         time_independent_vars = Dict()
 
