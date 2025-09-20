@@ -1,4 +1,4 @@
-# Setting initial conditions
+# [Setting initial conditions](@id set_initial_conditions)
 
 Initial conditions are imposed after model construction. This can be easily done using
 the [`set!`](@ref) functionality that allows the setting of initial conditions using
