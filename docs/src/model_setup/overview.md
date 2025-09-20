@@ -62,7 +62,9 @@ model = NonhydrostaticModel(; grid, advection, buoyancy,
    Every model pairs with `set!(model; kwargs...)` to update state any time.
    This is typically used for initial conditions, but can also be used to change state mid‑simulation.
 
-You can advance a model with `time_step!(model, Δt)`. However, we generally recommend using `Simulation` to manage time stepping, output, and adaptive time steps. See the [Quick start](@ref quick_start) for a compact example.
+We can advance a model in time with `time_step!(model, Δt)`.
+However, we generally recommend using `Simulation` to manage time stepping (including adaptive time steps) and the output.
+See the [Quick start](@ref quick_start) for a compact example.
 
 ## Two Model Flavors
 
