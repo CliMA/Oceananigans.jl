@@ -2817,6 +2817,68 @@ function test_netcdf_field_dimension_validation()
     return nothing
 end
 
+function test_netcdf_multiple_grids_defvar()
+    # Create two different grids with different sizes
+    grid1 = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+    grid2 = RectilinearGrid(size=(6, 8, 5), extent=(2, 3, 1.5))
+
+    # Create fields on each grid
+    c1 = CenterField(grid1)
+    c2 = CenterField(grid2)
+
+    # Set different values for each field
+    set!(c1, (x, y, z) -> x + y + z)
+    set!(c2, (x, y, z) -> 2 * (x^2 + y^2 + z^2))
+
+    filepath = "test_multiple_grids_defvar.nc"
+    isfile(filepath) && rm(filepath)
+
+    # Open NetCDF file for writing
+    ds = NCDataset(filepath, "c")
+
+    # Define variables from grid1 (4x4x4)
+    suffixed_dim_name_grid1(args...) = trilocation_dim_name(args...) * "_grid1"
+    defVar(ds, "c1", c1, attrib=Dict("long_name" => "Field from grid 1"), dimension_name_generator=suffixed_dim_name_grid1)
+
+    # Define variables from grid2 (6x8x5) - this should create new dimension names
+    suffixed_dim_name_grid2(args...) = trilocation_dim_name(args...) * "_grid2"
+    defVar(ds, "c2", c2, attrib=Dict("long_name" => "Field from grid 2"), dimension_name_generator=suffixed_dim_name_grid2)
+
+    close(ds)
+
+    # Verify the file was created correctly
+    ds = NCDataset(filepath, "r")
+
+    # Check that both fields are present
+    @test "c1" ∈ keys(ds)
+    @test "c2" ∈ keys(ds)
+
+    # Check dimensions for grid1 fields (4x4x4)
+    @test size(ds["c1"]) == (4, 4, 4)
+
+    # Check dimensions for grid2 field (6x8x5)
+    @test size(ds["c2"]) == (6, 8, 5)
+
+    # Check that the coordinate variables were created with appropriate names
+    # Grid1 coordinates (default names)
+    @test "x_caa_grid1" ∈ keys(ds)
+    @test "y_aca_grid1" ∈ keys(ds)
+    @test "z_aac_grid1" ∈ keys(ds)
+
+    @test "x_caa_grid2" ∈ keys(ds)
+    @test "y_aca_grid2" ∈ keys(ds)
+    @test "z_aac_grid2" ∈ keys(ds)
+
+    # Check that data values match
+    @test all(ds["c1"] .== interior(c1))
+    @test all(ds["c2"] .== interior(c2))
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2869,5 +2931,6 @@ for arch in archs
 
         test_netcdf_single_field_defvar()
         test_netcdf_field_dimension_validation()
+        test_netcdf_multiple_grids_defvar()
     end
 end
