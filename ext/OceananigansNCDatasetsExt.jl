@@ -42,12 +42,22 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, convert_for_netcdf, materialize_from_netcdf, reconstruct_grid, trilocation_dim_name, loc2letter, trilocation_location_string, suffixed_dim_name_generator
+import Oceananigans.OutputWriters:
+    NetCDFWriter,
+    write_grid_reconstruction_data!,
+    convert_for_netcdf,
+    materialize_from_netcdf,
+    reconstruct_grid,
+    trilocation_dim_name
 
 const c = Center()
 const f = Face()
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
+
+#####
+##### Extend defVar to be able to write fields to NetCDF directly
+#####
 
 defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
@@ -62,7 +72,6 @@ function defVar(ds, name, field::AbstractField;
 
     # Validate that all dimensions exist and match the field
     create_field_dimensions!(ds, field, all_dims, dimension_name_generator)
-
     defVar(ds, name, FT, all_dims; kwargs...)
 end
 
@@ -149,49 +158,6 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
         end
     end
 end
-
-#####
-##### Specialized dimension name generators for specific grid types
-#####
-
-# Override loc2letter for specific types
-loc2letter(::Face, full=true) = "f"
-loc2letter(::Center, full=true) = "c"
-loc2letter(::Nothing, full=true) = full ? "a" : ""
-
-# Specialized suffixed_dim_name_generator for StaticVerticalDiscretization
-suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
-
-# Specialized trilocation_location_string for specific grid types
-trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * "aa"
-trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "a" * loc2letter(LY) * "a"
-
-trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
-trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
-
-trilocation_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
-trilocation_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
-trilocation_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
-
-# Specialized trilocation_dim_name for ImmersedBoundaryGrid
-trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocation_dim_name(var_name, grid.underlying_grid, args...)
-
-# Minimal location string functions (for other dimension name generators)
-minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX, false)
-minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY, false)
-
-minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX, false) * loc2letter(LY, false)
-minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX, false) * loc2letter(LY, false)
-
-minimal_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = minimal_location_string(grid.z, LX, LY, LZ, dim)
-minimal_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = loc2letter(LZ, false)
-minimal_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX, false) * loc2letter(LY, false) * loc2letter(LZ, false)
-
-minimal_dim_name(var_name, grid, LX, LY, LZ, dim) =
-    suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=minimal_location_string(grid, LX, LY, LZ, dim))
-
-minimal_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = minimal_dim_name(var_name, grid.underlying_grid, args...)
-
 
 #####
 ##### Gathering of grid dimensions
@@ -476,8 +442,8 @@ function field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid, dim
     LΛ, LΦ, LZ = location(field)
 
     λ_dim_name = dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    φ_dim_name = dim_name_generator("φ",  grid, nothing, LΦ(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z",         grid, nothing, nothing, LZ(), Val(:z))
+    φ_dim_name = dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
+    z_dim_name = dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     λ_dim_name = isempty(λ_dim_name) ? tuple() : tuple(λ_dim_name)
     φ_dim_name = isempty(φ_dim_name) ? tuple() : tuple(φ_dim_name)

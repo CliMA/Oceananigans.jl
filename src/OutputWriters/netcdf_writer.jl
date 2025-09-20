@@ -4,79 +4,65 @@
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
-using Oceananigans.Grids: topology, Flat
+using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 #####
 ##### Dimension name generators
 #####
 
-"""
-    suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim; connector="_", location_letters)
-
-Generate dimension names by suffixing the variable name with location letters.
-"""
-function suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim; connector="_", location_letters)
-    # Check if topology is Flat for the given dimension
-    topo = topology(grid)
-
-    if dim == Val(:x)
-        TX = topo[1]
-        if TX == Flat || isnothing(LX)
-            return ""
-        else
-            return "$(var_name)" * connector * location_letters
-        end
-    elseif dim == Val(:y)
-        TY = topo[2]
-        if TY == Flat || isnothing(LY)
-            return ""
-        else
-            return "$(var_name)" * connector * location_letters
-        end
-    elseif dim == Val(:z)
-        TZ = topo[3]
-        if TZ == Flat || isnothing(LZ)
-            return ""
-        else
-            return "$(var_name)" * connector * location_letters
-        end
+function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX}, LX, LY, LZ, dim::Val{:x}; connector="_", location_letters) where {FT, TX}
+    if TX == Flat || isnothing(LX)
+        return ""
+    else
+        return "$(var_name)" * connector * location_letters
     end
-
-    return "$(var_name)" * connector * location_letters
 end
 
-# Special case for StaticVerticalDiscretization (will be overridden in extension)
-function suffixed_dim_name_generator(var_name, coordinate, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters)
-    return var_name * connector * location_letters
+function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY}, LX, LY, LZ, dim::Val{:y}; connector="_", location_letters) where {FT, TX, TY}
+    if TY == Flat || isnothing(LY)
+        return ""
+    else
+        return "$(var_name)" * connector * location_letters
+    end
 end
 
-"""
-    loc2letter(location, full=true)
-
-Convert location types to letter representations.
-"""
-loc2letter(::Any, full=true) = full ? "a" : ""
-
-"""
-    trilocation_location_string(grid, LX, LY, LZ, dim)
-
-Generate location strings for trilocation naming convention.
-"""
-function trilocation_location_string(grid, LX, LY, LZ, dim)
-    # Default implementation - will be overridden in extension for specific grid types
-    return loc2letter(LX, true) * loc2letter(LY, true) * loc2letter(LZ, true)
+function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ}, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) where {FT, TX, TY, TZ}
+    if TZ == Flat || isnothing(LZ)
+        return ""
+    else
+        return "$(var_name)" * connector * location_letters
+    end
 end
 
-"""
-    trilocation_dim_name(var_name, grid, LX, LY, LZ, dim)
+suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
 
-Generate dimension names using trilocation naming convention.
-This is the default dimension name generator for NetCDF output.
-"""
+loc2letter(::Face, full=true) = "f"
+loc2letter(::Center, full=true) = "c"
+loc2letter(::Nothing, full=true) = full ? "a" : ""
+
+minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX, false)
+minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY, false)
+
+minimal_dim_name(var_name, grid, LX, LY, LZ, dim) =
+minimal_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = minimal_dim_name(var_name, grid.underlying_grid, args...)
+
+trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * "aa"
+trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "a" * loc2letter(LY) * "a"
+
+trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
+trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
+
+trilocation_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
+trilocation_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
+trilocation_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+
 trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
     suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=trilocation_location_string(grid, LX, LY, LZ, dim))
 
-trilocation_dim_name(var_name, grid, args...) = trilocation_dim_name(var_name, grid, args...)
+trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocation_dim_name(var_name, grid.underlying_grid, args...)
+
+
 
 mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     grid :: G
