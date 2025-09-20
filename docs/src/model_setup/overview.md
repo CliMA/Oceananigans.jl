@@ -70,7 +70,7 @@ See the [Quick start](@ref quick_start) for a compact example.
 
 Oceananigans provides multiple models. This tutorial focuses on two:
 
-- `NonhydrostaticModel`: Solves Boussinesq, incompressible Navier–Stokes with nonhydrostatic pressure.
+- `NonhydrostaticModel`: Solves Boussinesq, incompressible Navier–Stokes equations with nonhydrostatic pressure.
 - `HydrostaticFreeSurfaceModel`: Solves Boussinesq equations under the hydrostatic approximation, with a prognostic free surface.
 
 For the governing equations and details, see Physics pages for the [`NonhydrostaticModel`](@ref) and the [`HydrostaticFreeSurfaceModel`](@ref hydrostatic_free_surface_model).
@@ -79,6 +79,17 @@ For the governing equations and details, see Physics pages for the [`Nonhydrosta
 
 The docstrings below summarize the main constructor options. Later sections show compact examples.
 
+```@docs
+NonhydrostaticModel
+```
+
+```@docs
+HydrostaticFreeSurfaceModel
+```
+
+```@docs
+ShallowWaterModel
+```
 
 ## Minimal Examples
 
@@ -197,7 +208,10 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ## State: Initial conditions and updates with `set!`
 
 All models support `set!(model; kwargs...)` to initialize or update fields.
-`kwargs` can be arrays or functions of `(x, y, z)`.
+`kwargs` can be:
+- constant values,
+- arrays, or
+- functions of the grid's extrinsic coordinates, e.g., `(x, y, z)`.
 
 ### Nonhydrostatic initial condition (shear and stratification)
 
@@ -242,6 +256,12 @@ model.free_surface.η
 # output
 Field{Center, Center, Nothing} on RectilinearGrid on CPU
 ```
+
+!!! tip "Divergence-free velocity fields"
+    Note that as part of the time-stepping algorithm, the velocity field is made
+    divergence-free at every time step. So if a model is not initialized with a
+    divergence-free velocity field, it may change on the first time step. As a result
+    tracers may not be conserved up to machine precision at the first time step.
 
 ## Stepping and Simulations
 
