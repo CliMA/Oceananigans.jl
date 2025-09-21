@@ -281,10 +281,10 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for PythonCall extension
-    if group == :pythoncall || group == :all
-        @testset "PythonCall extension tests" begin
-            include("test_pythoncall_regridder.jl")
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
         end
     end
 

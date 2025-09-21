@@ -161,8 +161,8 @@ jobs:
           TEST_GROUP: "metal"
 
 
-  pythoncall:
-    name: PythonCall - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+  xesmf:
+    name: XESMF - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -188,4 +188,4 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
-          TEST_GROUP: "pythoncall"
+          TEST_GROUP: "xesmf"

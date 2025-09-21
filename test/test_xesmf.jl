@@ -1,9 +1,8 @@
 include("dependencies_for_runtests.jl")
 
-using CondaPkg  # sets up environment
-using PythonCall
+using XESMF
 
-@testset "PythonCall extension" begin
+@testset "XESMF extension" begin
     tg = TripolarGrid(size=(360, 170, 1), z=(0, 1))
     ll = LatitudeLongitudeGrid(size=(360, 180, 1), longitude=(0, 360), latitude=(-90, 90), z=(0, 1))
 
