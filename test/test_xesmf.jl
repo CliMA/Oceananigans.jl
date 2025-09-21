@@ -4,37 +4,54 @@ using XESMF
 using SparseArrays
 using LinearAlgebra
 
-@testset "XESMF extension" begin
-    Nz = 2
-    z = (-1, 0)
-    southernmost_latitude = -30
-    radius = 3.4
+function regrid_conservatively!(dst_field, weights, src_field)
+    @assert src_field.grid.Nz == dst_field.grid.Nz
 
-    ll = LatitudeLongitudeGrid(; size=(360, 180, Nz),
-                               longitude=(0, 360),
-                               latitude=(southernmost_latitude, 90),
-                               z, radius)
-
-    tg = TripolarGrid(; size=(360, 170, Nz), z, southernmost_latitude, radius)
-
-    cll = CenterField(ll)
-    ctg = CenterField(tg)
-
-    set!(cll, 1)
-
-    # ∫ cll dA = 3πR²
-    @show Field(Integral(cll, dims=(1, 2)))[1, 1, Nz]
-    @test Field(Integral(cll, dims=(1, 2)))[1, 1, Nz] ≈ 3π * radius^2
-
-    W = Oceananigans.Fields.regridding_weights(ctg, cll)
-
-    @test W isa SparseMatrixCSC
-
-    for k in 1:Nz
-        LinearAlgebra.mul!(vec(interior(ctg, :, :, k)), W, vec(interior(cll, :, :, k)))
+    for k in 1:src_field.grid.Nz
+        LinearAlgebra.mul!(vec(interior(dst_field, :, :, k)), weights, vec(interior(src_field, :, :, k)))
     end
 
-    # ∫ ctg dA = ∫ cll dA
-    @show Field(Integral(ctg, dims=(1, 2)))[1, 1, Nz]
-    @test Field(Integral(ctg, dims=(1, 2)))[1, 1, Nz] ≈ 3π * radius^2
+    return nothing
+end
+
+z = (-1, 0)
+southernmost_latitude = -30
+radius = 1
+
+llg_coarse = LatitudeLongitudeGrid(; size=(24, 24, Nz),
+                                   longitude=(0, 360),
+                                   latitude=(southernmost_latitude, 90),
+                                   z, radius)
+
+llg_fine = LatitudeLongitudeGrid(; size=(360, 180, 1),
+                                 longitude=(0, 360),
+                                 latitude=(southernmost_latitude, 90),
+                                 z, radius)
+
+tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude, radius)
+
+@testset "XESMF extension" begin
+
+    for (src_grid, dst_grid) in ((llg_coarse, llg_fine),
+                                 (llg_fine, llg_coarse),
+                                 (llg_coarse, tg))
+
+        @info "  Regridding from $(nameof(typeof(src_grid))) to $(nameof(typeof(dst_grid)))"
+
+        src_field = CenterField(src_grid)
+        dst_field = CenterField(dst_grid)
+
+        set!(src_field, 1)
+
+        # ∫ src_field dA = 3πR²
+        @test Field(Integral(src_field, dims=(1, 2)))[1, 1, 1] ≈ 3π * radius^2
+
+        W = Oceananigans.Fields.regridding_weights(dst_field, src_field)
+        @test W isa SparseMatrixCSC
+
+        regrid_conservatively!(dst_field, W, src_field)
+
+        # ∫ dst_field dA = ∫ src_field dA
+        @test Field(Integral(dst_field, dims=(1, 2)))[1, 1, 1] ≈ Field(Integral(src_field, dims=(1, 2)))[1, 1, 1]
+    end
 end
