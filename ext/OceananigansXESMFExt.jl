@@ -22,33 +22,10 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx+1, 1:Ny+1) |> Array
 y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
 
-"""
-    regridding_weights(dst_field, src_field; method="conservative")
-
-Return the regridding weights from `src_field` to `dst_field` using the specified `method`.
-The regridding weights are obtained via xESMF Python package. xESMF exposes five different
-regridding algorithms from the ESMF library, specified with the `method` keyword argument:
-
-* `"bilinear"`: ESMF.RegridMethod.BILINEAR
-* `"conservative"`: ESMF.RegridMethod.CONSERVE
-* `"conservative_normed"`: ESMF.RegridMethod.CONSERVE
-* `"patch"`: ESMF.RegridMethod.PATCH
-* `"nearest_s2d"`: ESMF.RegridMethod.NEAREST_STOD
-* `"nearest_d2s"`: ESMF.RegridMethod.NEAREST_DTOS
-
-where `conservative_normed` is just the conservative method with the normalization set to
-`ESMF.NormType.FRACAREA` instead of the default `norm_type = ESMF.NormType.DSTAREA`.
-
-For more information, see the xESMF documentation at:
-
-> https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
-
-"""
-function regridding_weights(dst_field, src_field; method="conservative")
-
+function extract_xesmf_coordinates_structure(dst_field, src_field)
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
 
-    # We only support regridding between centered fields.
+    # We only support regridding between centered fields
     @assert ℓx isa Center
     @assert ℓy isa Center
     @assert (ℓx, ℓy, ℓz) == Oceananigans.Fields.instantiated_location(dst_field)
@@ -68,7 +45,7 @@ function regridding_weights(dst_field, src_field; method="conservative")
     λvˢ = λnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
     φvˢ = φnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
 
-    # Build data structures expected by xESMF.
+    # Build data structures expected by xESMF
     Nˢx, Nˢy, Nˢz = size(src_field)
     Nᵈx, Nᵈy, Nᵈz = size(dst_field)
 
@@ -82,15 +59,45 @@ function regridding_weights(dst_field, src_field; method="conservative")
     λvˢ = x_vertex_array(λvˢ, Nˢx, Nˢy)
     φvˢ = y_vertex_array(φvˢ, Nˢx, Nˢy)
 
-    dst_coordinates = Dict("lat"   => λᵈ,
-                           "lon"   => φᵈ,
-                           "lat_b" => λvᵈ,
-                           "lon_b" => φvᵈ)
+    dst_coordinates = Dict("lat"   => φᵈ,  # φ is latitude
+                           "lon"   => λᵈ,  # λ is longitude
+                           "lat_b" => φvᵈ,
+                           "lon_b" => λvᵈ)
 
-    src_coordinates = Dict("lat"   => λˢ,
-                           "lon"   => φˢ,
-                           "lat_b" => λvˢ,
-                           "lon_b" => φvˢ)
+    src_coordinates = Dict("lat"   => φˢ,  # φ is latitude
+                           "lon"   => λˢ,  # λ is longitude
+                           "lat_b" => φvˢ,
+                           "lon_b" => λvˢ)
+
+    return dst_coordinates, src_coordinates
+end
+
+"""
+    regridding_weights(dst_field, src_field; method="conservative")
+
+Return the sparse matrix of containing the regridding weights from
+`src_field` to`dst_field` using the specified `method`.
+The regridding weights are obtained via xESMF Python package.
+xESMF exposes five different regridding algorithms from the ESMF library,
+specified with the `method` keyword argument:
+
+* `"bilinear"`: `ESMF.RegridMethod.BILINEAR`
+* `"conservative"`: `ESMF.RegridMethod.CONSERVE`
+* `"conservative_normed"`: `ESMF.RegridMethod.CONSERVE`
+* `"patch"`: `ESMF.RegridMethod.PATCH`
+* `"nearest_s2d"`: `ESMF.RegridMethod.NEAREST_STOD`
+* `"nearest_d2s"`: `ESMF.RegridMethod.NEAREST_DTOS`
+
+where `conservative_normed` is just the conservative method with the normalization set to
+`ESMF.NormType.FRACAREA` instead of the default `norm_type = ESMF.NormType.DSTAREA`.
+
+For more information, see the Python xESMF documentation at:
+
+> https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+"""
+function regridding_weights(dst_field, src_field; method="conservative")
+
+    dst_coordinates, src_coordinates = extract_xesmf_coordinates_structure(dst_field, src_field)
 
     periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? PythonCall.pybuiltins.True : pybuiltins.False
 
