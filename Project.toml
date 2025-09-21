@@ -103,7 +103,7 @@ StaticArrays = "1"
 Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6, 0.7"
 TimesDates = "0.3"
-XESMF = "0.1"
+XESMF = "0.1.1"
 julia = "1.9"
 oneAPI = "2.0.1"
 

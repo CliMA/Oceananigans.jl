@@ -94,7 +94,7 @@ function regridding_weights(dst_field, src_field; method="conservative")
 
     periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? PythonCall.pybuiltins.True : pybuiltins.False
 
-    xesmf = XESMF.pyimport("xesmf")
+    xesmf = XESMF.xesmf
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
 
     # Move back to Julia
