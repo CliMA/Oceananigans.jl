@@ -1,6 +1,7 @@
 module OceananigansXESMFExt
 
 using XESMF
+using PythonCall
 using SparseArrays
 
 using Oceananigans
@@ -91,9 +92,9 @@ function regridding_weights(dst_field, src_field; method="conservative")
                            "lat_b" => λvˢ,
                            "lon_b" => φvˢ)
 
-    periodic = Oceananigans.Grids.topology(dst_field.grid, 1) === Periodic
+    periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? PythonCall.pybuiltins.True : pybuiltins.False
 
-    xesmf = add_import_pkg("xesmf")
+    xesmf = XESMF.pyimport("xesmf")
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
 
     # Move back to Julia
