@@ -153,7 +153,9 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
         else
             # Validate existing dimension
             if dataset[dim_name] != dim_array
-                throw(ArgumentError("Dimension '$dim_name' already exists in dataset but is different from expected."))
+                throw(ArgumentError("Dimension '$dim_name' already exists in dataset but is different from expected.\n" *
+                                    "  Actual:   $(dataset[dim_name]) (length=$(length(dataset[dim_name])))\n" *
+                                    "  Expected: $(dim_array) (length=$(length(dim_array)))"))
             end
         end
     end
