@@ -59,7 +59,7 @@ OceananigansMetalExt = "Metal"
 OceananigansNCDatasetsExt = "NCDatasets"
 OceananigansOneAPIExt = "oneAPI"
 OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
-OceananigansXESMFExt = ["XESMF"]
+OceananigansXESMFExt = ["XESMF", "PythonCall"]
 
 [compat]
 AMDGPU = "1.3.6, 2"
