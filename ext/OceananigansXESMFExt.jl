@@ -3,13 +3,11 @@ module OceananigansXESMFExt
 using XESMF
 using PythonCall
 using SparseArrays
-
 using Oceananigans
 using Oceananigans.Grids: λnodes, φnodes, Center, Face
 using Oceananigans.Architectures: on_architecture, CPU
 
 import Oceananigans.Fields: regridding_weights
-
 
 x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
 y_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny) |> Array
@@ -23,6 +21,8 @@ y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
 
 function extract_xesmf_coordinates_structure(dst_field, src_field)
+
+    ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
 
     dst_grid = dst_field.grid
     src_grid = src_field.grid
