@@ -1,10 +1,10 @@
 include("dependencies_for_runtests.jl")
 
 using XESMF
+using SparseArrays
 using LinearAlgebra
 
 @testset "XESMF extension" begin
-
     Nz = 2
     z = (-1, 0)
     southernmost_latitude = -30
@@ -23,6 +23,7 @@ using LinearAlgebra
     set!(cll, 1)
 
     # ∫ cll dA = 3πR²
+    @show Field(Integral(cll, dims=(1, 2)))[1, 1, Nz]
     @test Field(Integral(cll, dims=(1, 2)))[1, 1, Nz] ≈ 3π * radius^2
 
     W = Oceananigans.Fields.regridding_weights(ctg, cll)
@@ -34,5 +35,6 @@ using LinearAlgebra
     end
 
     # ∫ ctg dA = ∫ cll dA
+    @show Field(Integral(ctg, dims=(1, 2)))[1, 1, Nz]
     @test Field(Integral(ctg, dims=(1, 2)))[1, 1, Nz] ≈ 3π * radius^2
 end
