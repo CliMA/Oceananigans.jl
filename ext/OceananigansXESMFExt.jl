@@ -1,7 +1,6 @@
-module OceananigansPythonCallExt
+module OceananigansXESMFExt
 
-using PythonCall
-using CondaPkg
+using XESMF
 using SparseArrays
 
 using Oceananigans
@@ -10,37 +9,6 @@ using Oceananigans.Architectures: on_architecture, CPU
 
 import Oceananigans.Fields: regridding_weights
 
-"""
-    add_package(package_name, channel="conda-forge"; verbose=true)
-
-Install `package_name` with `CondaPkg.add` from `channel`, printing
-a few messages if `verbose == true`.
-Return a NamedTuple containing package information if successful.
-"""
-function add_package(name, channel="conda-forge"; verbose=true)
-    verbose && @info "Installing $(name)..."
-    CondaPkg.add(name; channel)
-    pkg = CondaPkg.which(name)
-    verbose && @info "... $name has been installed at $(pkg)."
-    return pkg
-end
-
-"""
-    add_import_pkg(package_name, channel="conda-forge")
-
-Import and return `package_name` with `PythonCall.pyimport`,
-installing it with `add_package` if it is not found.
-"""
-function add_import_pkg(name, channel="conda-forge")
-    pkg = try
-        pyimport(name)
-    catch
-        add_package(name, channel)
-        pyimport(name)
-    end
-
-    return pkg
-end
 
 x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
 y_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny) |> Array
