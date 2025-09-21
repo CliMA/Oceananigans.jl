@@ -23,12 +23,6 @@ y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
 
 function extract_xesmf_coordinates_structure(dst_field, src_field)
-    ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
-
-    # We only support regridding between centered fields
-    @assert ℓx isa Center
-    @assert ℓy isa Center
-    @assert (ℓx, ℓy, ℓz) == Oceananigans.Fields.instantiated_location(dst_field)
 
     dst_grid = dst_field.grid
     src_grid = src_field.grid
@@ -96,6 +90,13 @@ For more information, see the Python xESMF documentation at:
 > https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
 """
 function regridding_weights(dst_field, src_field; method="conservative")
+
+    ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
+
+    # We only support regridding between centered fields
+    @assert ℓx isa Center
+    @assert ℓy isa Center
+    @assert (ℓx, ℓy, ℓz) == Oceananigans.Fields.instantiated_location(dst_field)
 
     dst_coordinates, src_coordinates = extract_xesmf_coordinates_structure(dst_field, src_field)
 
