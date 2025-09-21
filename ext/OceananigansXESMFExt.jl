@@ -97,17 +97,7 @@ function regridding_weights(dst_field, src_field; method="conservative")
     xesmf = XESMF.xesmf
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
 
-    # Move back to Julia
-    # Convert the regridder weights to a Julia sparse matrix
-    FT = eltype(dst_grid)
-    coords = regridder.weights.data
-    shape  = pyconvert(Tuple{Int, Int}, coords.shape)
-    vals   = pyconvert(Array{FT}, coords.data)
-    coords = pyconvert(Array{FT}, coords.coords)
-    rows = coords[1, :] .+ 1
-    cols = coords[2, :] .+ 1
-
-    weights = sparse(rows, cols, vals, shape[1], shape[2])
+    weights = XESMF.sparse_regridder_weights(regridder)
 
     return weights
 end
