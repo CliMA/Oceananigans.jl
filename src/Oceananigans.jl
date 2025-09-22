@@ -200,14 +200,14 @@ total_velocities(model::AbstractModel) = nothing
 """
     Base.time(model::AbstractModel) 
 
-Returns the current `time` from the given `model.clock`.
+Return the current `time` from the `model.clock`.
 """
 Base.time(model::AbstractModel) = model.clock.time
 
 """
     Base.eltype(model::AbstractModel)
 
-Returns the numeric `eltype` of `model.grid` and all associated `Field`s.
+Return the numeric `eltype` of the `model.grid` and all associated `Field`s.
 """
 Base.eltype(model::AbstractModel) = eltype(model.grid)
 
