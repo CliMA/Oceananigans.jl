@@ -177,7 +177,7 @@ abstract type AbstractModel{TS, A} end
 """
     $SIGNATURES
 
-Returns the current iteration of the `model.clock`.
+Return the current iteration of the `model.clock`.
 """
 iteration(model::AbstractModel) = model.clock.iteration
 
