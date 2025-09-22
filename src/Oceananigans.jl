@@ -184,8 +184,8 @@ iteration(model::AbstractModel) = model.clock.iteration
 """
     $SIGNATURES
 
-Ensures consistency between internal variables in the AbstractModel and user-specified
-initial conditions provided by the user via `set(::AbstractModel; kwargs...)`.
+Ensure consistency between internal variables in the `AbstractModel` and user-specified
+initial conditions provided by via `set(::AbstractModel; kwargs...)`.
 Default implementation does nothing.
 """
 initialize!(model::AbstractModel) = nothing
