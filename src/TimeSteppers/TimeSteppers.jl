@@ -30,7 +30,8 @@ function compute_flux_bc_tendencies! end
 """
     $SIGNATURES
 
-Defines initialization routines for the first call to `update_state!` after initialization. Defaults to invoking `update_state!(model; kw...)`.
+Define initialization routines for the first call to `update_state!` after initialization.
+Defaults to invoking `update_state!(model; kw...)`.
 """
 function initialization_update_state!(model::AbstractModel; kw...) 
     initialize!(model)
