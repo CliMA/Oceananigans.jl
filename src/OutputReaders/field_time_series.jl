@@ -249,7 +249,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         if times isa AbstractArray
             # Try to convert to a lighter-weight range for efficiency
             time_range = range(first(times), last(times), length=length(times))
-            if isapprox(time_range, times) 
+            if isapprox(time_range, times)
                 times = time_range
             end
 
@@ -728,7 +728,7 @@ function interior(fts::FieldTimeSeries)
     Topo = topology(fts.grid)
     ℓx, ℓy, ℓz = instantiated_location(fts)
     𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
-    
+
     Nx, Ny, Nz = size(fts.grid)
     Hx, Hy, Hz = halo_size(fts.grid)
     ix, iy, iz = fts.indices
