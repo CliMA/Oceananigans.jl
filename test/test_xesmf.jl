@@ -52,6 +52,6 @@ tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude, radius)
         regrid_conservatively!(dst_field, W, src_field)
 
         # ∫ dst_field dA = ∫ src_field dA
-        @test Field(Integral(dst_field, dims=(1, 2)))[1, 1, 1] ≈ Field(Integral(src_field, dims=(1, 2)))[1, 1, 1]
+        @test first(Field(Integral(dst_field, dims=(1, 2)))) ≈ first(Field(Integral(src_field, dims=(1, 2))))
     end
 end
