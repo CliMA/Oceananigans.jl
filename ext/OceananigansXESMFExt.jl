@@ -9,13 +9,21 @@ using Oceananigans.Architectures: on_architecture, CPU
 
 import Oceananigans.Fields: regridding_weights
 
-x_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx) |> Array
-y_node_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny) |> Array
-x_node_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx, 1:Ny) |> Array
+function x_node_array(x::AbstractVector, Nx, Ny)
+    return Array(repeat(view(x, 1:Nx), 1, Ny))'
+end
+function  y_node_array(x::AbstractVector, Nx, Ny)
+    return Array(repeat(view(x, 1:Ny)', Nx, 1))'
+end
+x_node_array(x::AbstractMatrix, Nx, Ny) = Array(view(x, 1:Nx, 1:Ny))'
 
-x_vertex_array(x::AbstractVector, Nx, Ny) = view(x, 1:Nx+1) |> Array
-y_vertex_array(x::AbstractVector, Nx, Ny) = view(x, 1:Ny+1) |> Array
-x_vertex_array(x::AbstractMatrix, Nx, Ny) = view(x, 1:Nx+1, 1:Ny+1) |> Array
+function x_vertex_array(x::AbstractVector, Nx, Ny)
+    return Array(repeat(view(x, 1:Nx+1), 1, Ny+1))'
+end
+function y_vertex_array(x::AbstractVector, Nx, Ny)
+    return Array(repeat(view(x, 1:Ny+1)', Nx+1, 1))'
+end
+x_vertex_array(x::AbstractMatrix, Nx, Ny) = Array(view(x, 1:Nx+1, 1:Ny+1))'
 
 y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
