@@ -24,20 +24,32 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                                           x=(0, 2), y=(0, 2), z=[0, 1, 2],
                                           topology = (Periodic, Periodic, Bounded))
 
+        xz_regular_grid = RectilinearGrid(arch, size=(2, 2, 2),
+                                          x=(0, 2), y=[0, 1, 2], z=(0, 2),
+                                          topology = (Periodic, Periodic, Bounded))
+
         @testset "Averaged and integrated fields [$arch_str]" begin
             @info "  Testing averaged and integrated Fields [$arch_str]"
 
-            for grid in (regular_grid, xy_regular_grid)
+            for (name, grid) in [(:regular_grid => regular_grid),
+                                 (:xy_regular_grid => xy_regular_grid),
+                                 (:xz_regular_grid => xz_regular_grid)]
+
+                @info "    Testing averaged and integrated Fields on $name..."
 
                 Nx, Ny, Nz = size(grid)
 
                 w = ZFaceField(grid)
                 T = CenterField(grid)
                 ζ = Field{Face, Face, Face}(grid)
+                η = Field{Center, Center, Nothing}(grid)
 
                 set!(T, trilinear)
                 set!(w, trilinear)
                 set!(ζ, trilinear)
+
+                z_top = @allowscalar Oceananigans.Grids.znode(grid.Nz+1, grid, Face())
+                set!(η, (x, y) -> trilinear(x, y, z_top))
 
                 @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
 
@@ -69,6 +81,12 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @compute Zxy = Field(Integral(ζ, dims=(1, 2)))
                 @compute Zx = Field(Integral(ζ, dims=1))
 
+                @compute ηxyz = Field(Average(η))
+                @compute Ηxyz = Field(Integral(η))
+
+                @test Field(Average(η)) == Field(Average(η, dims=(1, 2, 3)))
+                @test Field(Integral(η)) == Field(Integral(η, dims=(1, 2, 3)))
+
                 @compute Tcx = Field(CumulativeIntegral(T, dims=1))
                 @compute Tcy = Field(CumulativeIntegral(T, dims=2))
                 @compute Tcz = Field(CumulativeIntegral(T, dims=3))
@@ -89,28 +107,21 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @compute ζry = Field(CumulativeIntegral(ζ, dims=2, reverse=true))
                 @compute ζrz = Field(CumulativeIntegral(ζ, dims=3, reverse=true))
 
-                for T′ in (Tx, Txy)
-                    @test T′.operand.operand.a.a === T
-                    @test T′.operand.operand.a.b isa GridMetricOperation
-                    @test T′.operand.operand.b.operand isa Integral
-                    @test T′.operand.operand.b.operand.operand isa BinaryOperation
+                if name ∈ (:regular_grid, :xy_regular_grid)
+                    for T′ in (Tx, Txy)
+                        @test T′.operand.operand === T
+                    end
+
+                    for w′ in (wx, wxy)
+                        @test w′.operand.operand === w
+                    end
+
+                    for ζ′ in (ζx, ζxy)
+                        @test ζ′.operand.operand === ζ
+                    end
                 end
 
-                for w′ in (wx, wxy)
-                    @test w′.operand.operand.a.a === w
-                    @test w′.operand.operand.a.b isa GridMetricOperation
-                    @test w′.operand.operand.b.operand isa Integral
-                    @test w′.operand.operand.b.operand.operand isa BinaryOperation
-                end
-
-                for ζ′ in (ζx, ζxy)
-                    @test ζ′.operand.operand.a.a === ζ
-                    @test ζ′.operand.operand.a.b isa GridMetricOperation
-                    @test ζ′.operand.operand.b.operand isa Integral
-                    @test ζ′.operand.operand.b.operand.operand isa BinaryOperation
-                end
-
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
                     @test f.operand isa Reduction
                 end
 
@@ -120,12 +131,14 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                     @test f.operand isa Accumulation
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === sum!
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy)
+                    @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === sum!
+                @test Ηxyz.operand.scan! === Oceananigans.AbstractOperations.sum!
+
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy)
+                    @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
                 for f in (Tcx, Tcy, Tcz, wcx, wcy, wcz, ζcx, ζcy, ζcz)
@@ -136,9 +149,18 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                     @test f.operand.scan! === reverse_cumsum!
                 end
 
-                @test Txyz.operand isa Reduction
-                @test wxyz.operand isa Reduction
-                @test ζxyz.operand isa Reduction
+                # Different behavior for regular grid z vs not.
+                if grid === regular_grid
+                    @test Txyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test wxyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test Txyz.operand.operand === T
+                    @test wxyz.operand.operand === w
+                else
+                    @test Txyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test wxyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test Txyz.operand.operand isa BinaryOperation
+                    @test wxyz.operand.operand isa BinaryOperation
+                end
 
                 @test Tx.operand.dims === tuple(1)
                 @test wx.operand.dims === tuple(1)
@@ -154,6 +176,9 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test @allowscalar wxyz[1, 1, 1] ≈ 3
                 @test interior_array(wxy, 1, 1, :) ≈ [2, 3, 4]
                 @test interior_array(wx, 1, :, :) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+
+                @test @allowscalar ηxyz[1, 1, 1] ≈ 4
+                @test @allowscalar Ηxyz[1, 1, 1] ≈ 16
 
                 averages_1d  = (Tx, wx, ζx)
                 integrals_1d = (Θx, Wx, Zx)
@@ -255,7 +280,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
         end
 
         @testset "Allocating reductions [$arch_str]" begin
-            @info "  Testing allocating reductions"
+            @info "  Testing allocating reductions [$arch_str]"
 
             grid = RectilinearGrid(arch, size = (2, 2, 2),
                                    x = (0, 2), y = (0, 2), z = (0, 2),
@@ -302,7 +327,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 c = CenterField(grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
-                    C = Field(Average(c, dims=dims))
+                    C = Field(Average(c; dims))
 
                     @test !isnothing(C.status)
 

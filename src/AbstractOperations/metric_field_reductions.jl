@@ -2,7 +2,8 @@ using Statistics: sum!
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
-using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing, AbstractAccumulating
+using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
+using Oceananigans.Fields: filter_nothing_dims, instantiated_location
 
 #####
 ##### Metric inference
@@ -23,8 +24,28 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 ##### Metric reductions
 #####
 
-struct Averaging <: AbstractReducing end
+struct Averaging{V} <: AbstractReducing
+    volume :: V
+end
+
 const Average = Scan{<:Averaging}
+const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
+
+function average!(avg::AveragedField, operand)
+    sum!(avg, operand)
+    averaging = avg.operand.type
+
+    V = if averaging.volume isa Field
+        interior(averaging.volume)
+    else
+        averaging.volume
+    end
+
+    interior(avg) ./= V
+
+    return avg
+end
+
 Base.summary(r::Average) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 
 """
@@ -35,21 +56,41 @@ Return `Reduction` representing a spatial average of `field` over `dims`.
 Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 
 Over dimensions of variable spacing, `field` is multiplied by the
-appropriate grid length, area or volume, and divided by the total
-spatial extent of the interval.
+appropriate "averaging metric" (length, area or volume for 1D, 2D, or 3D averages),
+and divided by the sum of the metric over the averaging region.
 
 See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
 for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dx = reduction_grid_metric(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(field))
 
-    field_ones = Field(instantiated_location(field), field.grid); set!(field_ones, 1)
-    ∫dx = Integral(field_ones; dims, condition, mask) |> Field
+    if all(d in regular_dimensions(field.grid) for d in dims)
+        # Dimensions being reduced are regular, so we don't need to involve the grid metrics
+        operand = condition_operand(field, condition, mask)
+        N = conditional_length(operand, dims)
+        averaging = Averaging(N)
+        return Scan(averaging, average!, operand, dims)
+    else
+        # Compute "size" (length, area, or volume) of averaging region
+        dx = reduction_grid_metric(dims)
+        metric = GridMetricOperation(location(field), dx, field.grid)
+        volume = sum(metric; condition, mask, dims)
 
-    operand = condition_operand(field * dx / ∫dx, condition, mask)
-    return Scan(Averaging(), sum!, operand, dims)
+        # Construct summand of the Average
+        # V⁻¹_field_dx = field * dx / volume
+        # operand = condition_operand(V⁻¹_field_dx, condition, mask)
+        # return Scan(Averaging(), sum!, operand, dims)
+
+        field_dx = field * dx
+        operand = condition_operand(field_dx, condition, mask)
+
+        metric = GridMetricOperation(location(field), dx, field.grid)
+        volume = sum(metric; condition, mask, dims)
+        averaging = Averaging(volume)
+        return Scan(averaging, average!, operand, dims)
+    end
 end
 
 struct Integrating <: AbstractReducing end
@@ -102,6 +143,7 @@ julia> ∫f[1, 1, 1]
 """
 function Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(field))
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
     return Scan(Integrating(), sum!, operand, dims)
