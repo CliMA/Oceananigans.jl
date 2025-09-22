@@ -35,7 +35,8 @@ architecture(model::AbstractModel) = model.grid.architecture
 """
     $SIGNATURES
 
-Updates all `FieldTimeSeries` fields defined on the given `model. The default implementation assumes that the `model` that does not contain any `FieldTimeSeries` and returns `nothing`.
+Update all `FieldTimeSeries` fields defined on the given `model.
+The default implementation assumes that the `model` that does not contain any `FieldTimeSeries` and returns `nothing`.
 """
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
 
