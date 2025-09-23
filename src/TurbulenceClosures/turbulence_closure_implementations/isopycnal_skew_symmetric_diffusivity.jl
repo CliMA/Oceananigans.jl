@@ -109,7 +109,10 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
 
     if A() isa AdvectiveFormulation && !(closure.κ_skew isa Nothing)
         U = VelocityFields(grid)
-        diffusivities = merge(diffusivities, U)
+        Ψx = Field{Face, Center, Face}(grid)
+        Ψy = Field{Center, Face, Face}(grid)
+        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+        diffusivities = merge(diffusivities, U, (; Ψx, Ψy, implicit_solver))
     end
 
     return diffusivities
@@ -122,9 +125,10 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; par
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    launch!(arch, grid, parameters,
-            compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
-
+    if !(closure isa NoDiffusionISSD)
+        launch!(arch, grid, parameters,
+                compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+    end
 
     compute_eddy_velocities!(diffusivities, closure, model; parameters)
 
@@ -135,8 +139,7 @@ end
     i, j, k, = @index(Global, NTuple)
 
     closure = getclosure(i, j, closure)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor) 
     ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
     @inbounds ϵ_R₃₃[i, j, k] = ϵ * R₃₃
@@ -169,7 +172,7 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
     ϵᶜᶠᶜ = tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
     ϵᶜᶜᶠ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
-    return min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ)
+    return min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ) 
 end
 
 @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
@@ -316,10 +319,8 @@ end
 
 @inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-
-    ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-
+    R₃₃  = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    ϵ    = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)\
     return ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
 end
 
@@ -331,6 +332,9 @@ end
     ϵ_R₃₃ = @inbounds K.ϵ_R₃₃[i, j, k] # tapered 33 component of rotation tensor
     return ϵ_R₃₃ * κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
 end
+
+νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfISSD, K, args...) = zero(grid)
+νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfISSD, K, args...) = zero(grid)
 
 @inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
 @inline viscous_flux_uy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)

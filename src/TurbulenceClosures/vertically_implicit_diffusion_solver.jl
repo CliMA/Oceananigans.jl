@@ -36,6 +36,9 @@ const F = Face
 @inline κzᶜᶜᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
 
 # Vertical momentum diffusivities: u, v, w
+@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo, K, id, clock) = νzᶠᶜᶜ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, f, c, c)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo, K, id, clock) = νzᶜᶠᶜ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, f, c)
+
 @inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, f, c, f)
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clock) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, f, f)
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, c, c)

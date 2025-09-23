@@ -37,7 +37,6 @@ stop_time = 5years
 stop_time = 70 days
 Δt₀ = 5minutes
 
-
 # stretched grid
 
 # we implement here a linearly streched grid in which the top grid cell has Δzₜₒₚ

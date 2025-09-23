@@ -91,10 +91,16 @@ const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
-@inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, args...)     = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
-@inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
-@inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
-@inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
+@inline function νᶠᶜᶜ(i, j, k, grid, closure::ASD, K, args...) 
+    # @show closure, K, viscosity_location(closure), viscosity(closure, K)
+    νᶠᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
+end
+
+@inline νᶜᶠᶜ(i, j, k, grid, closure::ASD, K, args...) = νᶜᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
+@inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, args...) = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
+@inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, args...) = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
+@inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, args...) = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
+@inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, args...) = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
 
 @inline κᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, args...) = κᶜᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), args...)
 @inline κᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, args...) = κᶠᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), args...)
@@ -102,10 +108,15 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶜᶜᶠ(i, j, k, grid, closure::ASD, K, id, args...) = κᶜᶜᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), args...)
 
 # Vertical and horizontal diffusivity
-@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, args...)     = νᶜᶜᶜ(i, j, k, grid, closure, K, args...)
-@inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶠᶜ(i, j, k, grid, closure, K, args...)
-@inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶜᶠ(i, j, k, grid, closure, K, args...)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶜᶠᶠ(i, j, k, grid, closure, K, args...)
+@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, args...)
+@inline νzᶠᶜᶜ(i, j, k, grid, closure::ASD, K, args...) = νᶠᶜᶜ(i, j, k, grid, closure, K, args...)
+@inline νzᶜᶠᶜ(i, j, k, grid, closure::ASD, K, args...) = νᶜᶠᶜ(i, j, k, grid, closure, K, args...)
+@inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, args...)
+@inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, args...)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, args...)
+
+@inline νzᶠᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶠᶜᶜ(i, j, k, grid, closure, K, args...)
+@inline νzᶜᶠᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶜᶠᶜ(i, j, k, grid, closure, K, args...)
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶜᶜᶜ(i, j, k, grid, closure, K, args...)
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶠᶠᶜ(i, j, k, grid, closure, K, args...)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, ::Nothing, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, args...)
@@ -284,6 +295,8 @@ end
 #####
 
 # Number
+@inline νᶠᶜᶜ(i, j, k, grid, loc, ν::Number, args...) = ν
+@inline νᶜᶠᶜ(i, j, k, grid, loc, ν::Number, args...) = ν
 @inline νᶜᶜᶜ(i, j, k, grid, loc, ν::Number, args...) = ν
 @inline νᶠᶜᶠ(i, j, k, grid, loc, ν::Number, args...) = ν
 @inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Number, args...) = ν
@@ -298,6 +311,8 @@ end
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
+@inline νᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ν)
+@inline νᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
 @inline νᶜᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = @inbounds ν[i, j, k]
 @inline νᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = ℑxzᶠᵃᶠ(i, j, k, grid, ν)
 @inline νᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = ℑyzᵃᶠᶠ(i, j, k, grid, ν)
@@ -312,6 +327,8 @@ const Lᶜᶜᶜ = Tuple{Center, Center, Center}
 
 # Array / Field at `Center, Center, Face`
 const Lᶜᶜᶠ = Tuple{Center, Center, Face}
+@inline νᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑxzᶠᵃᶜ(i, j, k, grid, ν)
+@inline νᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑyzᵃᶠᶜ(i, j, k, grid, ν)
 @inline νᶜᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ν)
 @inline νᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ν)
 @inline νᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
