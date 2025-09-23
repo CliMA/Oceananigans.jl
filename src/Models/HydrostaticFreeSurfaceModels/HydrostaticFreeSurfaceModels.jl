@@ -116,7 +116,6 @@ include("explicit_free_surface.jl")
 
 # Implicit free-surface solver functionality
 include("implicit_free_surface_utils.jl")
-include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
