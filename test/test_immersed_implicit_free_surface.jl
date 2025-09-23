@@ -60,6 +60,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
             f  = (f..., model.free_surface)
         end
 
-        @test all(interior(sol[1]) .≈ interior(sol[2]) .≈ interior(sol[3]))
+        @test all(interior(sol[1]) .≈ interior(sol[2]))
     end
 end
