@@ -54,9 +54,11 @@ function validate_field_data(loc, data, grid, indices)
     return nothing
 end
 
-validate_boundary_condition_location(bc, ::Center, side) = nothing                         # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing, MCBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                 # its nothing or nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
+
+const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
@@ -711,12 +713,23 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 """
 @inline condition_operand(op::AbstractField, condition, mask) = condition_operand(nothing, op, condition, mask)
 
-# Do NOT condition if condition=nothing.
+# Do NOT condition if condition=nothing or for identity functions
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
+const Identity = typeof(Base.identity)
+@inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
 @inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
 
-@inline conditional_length(c::AbstractField)        = length(c)
-@inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+@inline conditional_length(c::AbstractField) = length(c)
+@inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
+@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
+@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
+@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
+
+@inline function conditional_length(c::AbstractField, dims::NTuple{2})
+    N = size(c)
+    d1, d2 = dims
+    return N[d1] * N[d2]
+end
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
@@ -790,8 +803,12 @@ end
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
-    n = conditional_length(operand, dims)
-    r ./= n
+    L = conditional_length(operand, dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
@@ -801,8 +818,12 @@ Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mea
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    n = conditional_length(condition_operand(f, a, condition, mask), dims)
-    r ./= n
+    L = conditional_length(condition_operand(f, a, condition, mask), dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
