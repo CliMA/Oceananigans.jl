@@ -2,19 +2,89 @@ using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
-using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode
+using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode, total_length
+using LinearAlgebra
 
 using Base: ForwardOrdering
 
 const f = Face()
 const c = Center()
 
-function regridding_weights end
+struct Regridder{A, S, V, G1, G2}
+    architecture :: A
+    weights :: S
+    src_grid :: G1
+    dst_grid :: G2
+    src_temp :: V
+    dst_temp :: V
+end
+
+Base.summary(::Regridder) = "Regridder"
+
+function Base.show(io::IO, r::Regridder)
+    arch = typeof(r.architecture)
+
+    print(io, summary(r), " on $arch:", '\n')
+    print(io, "├── src_grid: ", summary(r.src_grid), '\n')
+    print(io, "├── dst_grid: ", summary(r.dst_grid), '\n')
+    print(io, "├── weights: ", summary(r.weights), '\n')
+    print(io, "├── src_temp: ", summary(r.src_temp), '\n')
+    print(io, "└── dst_temp: ", summary(r.dst_temp))
+end
 
 """
-    regrid!(a, b)
+    regrid!(dst_field, r::Regridder, src_field)
 
-Regrid field `b` onto the grid of field `a`.
+Regrid `src_field` onto the grid of field `dst_field` using the regrider `r`.
+
+Example
+=======
+
+```@example
+using Oceananigans
+using XESMF
+
+z = (-1, 0)
+
+tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude = -80)
+
+llg = LatitudeLongitudeGrid(; size=(360, 180, 1), z,
+                            longitude=(0, 360), latitude=(-82, 90))
+
+src_field = CenterField(tg)
+dst_field = CenterField(llg)
+
+λ₀, φ₀ = 150, 30.  # degrees
+width = 12         # degrees
+set!(src_field, (λ, φ, z) -> exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2))
+
+regridder = Oceananigans.Fields.Regridder(dst_field, src_field, method="conservative")
+
+regrid!(dst_field, regridder, src_field)
+
+first(Field(Integral(dst_field, dims=(1, 2))))
+```
+"""
+function regrid!(dst_field, r::Regridder, src_field)
+    Nz = size(src_field.grid)[3]
+    topo_z = topology(src_field)[3]()
+    ℓz = location(src_field)[3]()
+
+    dst_temp, W, src_temp = r.dst_temp, r.weights, r.src_temp
+
+    for k in 1:total_length(ℓz, topo_z, Nz)
+        src_temp .= vec(interior(src_field, :, :, k))
+        LinearAlgebra.mul!(dst_temp, W, src_temp)
+        vec(interior(dst_field, :, :, k)) .= dst_temp
+    end
+
+    return nothing
+end
+
+"""
+    regrid!(dst_field, src_field)
+
+Regrid `src_field` onto the grid of `dst_field`.
 
 Example
 =======
@@ -46,7 +116,8 @@ output_field[1, 1, :]
  0.0
 ```
 """
-regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
+regrid!(dst_field, src_field) =
+    regrid!(dst_field, dst_field.grid, src_field.grid, src_field)
 
 function we_can_regrid_in_z(a, target_grid, source_grid, b)
     # Check that
