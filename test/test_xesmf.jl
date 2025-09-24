@@ -4,16 +4,6 @@ using XESMF
 using SparseArrays
 using LinearAlgebra
 
-function regrid_conservatively!(dst_field, weights, src_field)
-    @assert src_field.grid.Nz == dst_field.grid.Nz
-
-    for k in 1:src_field.grid.Nz
-        LinearAlgebra.mul!(vec(interior(dst_field, :, :, k)), weights, vec(interior(src_field, :, :, k)))
-    end
-
-    return nothing
-end
-
 z = (-1, 0)
 southernmost_latitude = -80
 radius = Oceananigans.Grids.R_Earth
@@ -45,10 +35,10 @@ tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude, radius)
         width = 12         # degrees
         set!(src_field, (λ, φ, z) -> exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2))
 
-        W = Oceananigans.Fields.regridding_weights(dst_field, src_field)
-        @test W isa SparseMatrixCSC
+        R = Oceananigans.Fields.Regridder(dst_field, src_field)
+        @test R.weights isa SparseMatrixCSC
 
-        regrid_conservatively!(dst_field, W, src_field)
+        regrid!(dst_field, R, src_field)
 
         # ∫ dst_field dA = ∫ src_field dA
         @test isapprox(first(Field(Integral(dst_field, dims=(1, 2)))),
