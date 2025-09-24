@@ -1,13 +1,16 @@
 module OceananigansXESMFExt
 
 using XESMF
+using CUDA
 using PythonCall
 using SparseArrays
 using Oceananigans
+using Oceananigans.Architectures: CPU, architecture
 using Oceananigans.Grids: λnodes, φnodes, Center, Face
-using Oceananigans.Architectures: on_architecture, CPU
 
-import Oceananigans.Fields: regridding_weights
+import Oceananigans.Architectures: on_architecture
+import Oceananigans.Fields: Regridder
+
 
 function x_node_array(x::AbstractVector, Nx, Ny)
     return Array(repeat(view(x, 1:Nx), 1, Ny))'
@@ -74,11 +77,14 @@ function extract_xesmf_coordinates_structure(dst_field, src_field)
     return dst_coordinates, src_coordinates
 end
 
-"""
-    regridding_weights(dst_field, src_field; method="conservative")
+#TODO: fix this method so it converts to CuSparseMatrixCSC
+on_architecture(arch, m::SparseMatrixCSC) = m
 
-Return the sparse matrix of containing the regridding weights from
-`src_field` to`dst_field` using the specified `method`.
+"""
+    Regridder(dst_field, src_field; method="conservative")
+
+Return a regridder from `src_field` to `dst_field` using the specified `method`.
+The regridder contains a sparse matrix with the regridding weights.
 The regridding weights are obtained via xESMF Python package.
 xESMF exposes five different regridding algorithms from the ESMF library,
 specified with the `method` keyword argument:
@@ -96,8 +102,26 @@ where `conservative_normed` is just the conservative method with the normalizati
 For more information, see the Python xESMF documentation at:
 
 > https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+
+Example
+=======
+
+```@example
+using Oceananigans
+using XESMF
+
+z = (-1, 0)
+tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude = -80)
+llg = LatitudeLongitudeGrid(; size=(360, 180, 1), z,
+                            longitude=(0, 360), latitude=(-82, 90))
+
+src_field = CenterField(tg)
+dst_field = CenterField(llg)
+
+regridder = Oceananigans.Fields.Regridder(dst_field, src_field, method="conservative")
+```
 """
-function regridding_weights(dst_field, src_field; method="conservative")
+function Regridder(dst_field, src_field; method="conservative")
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
 
@@ -105,6 +129,10 @@ function regridding_weights(dst_field, src_field; method="conservative")
     @assert ℓx isa Center
     @assert ℓy isa Center
     @assert (ℓx, ℓy, ℓz) == Oceananigans.Fields.instantiated_location(dst_field)
+
+    src_Nz = size(src_field)[3]
+    dst_Nz = size(dst_field)[3]
+    @assert src_field.grid.z.cᵃᵃᶠ[1:src_Nz+1] == dst_field.grid.z.cᵃᵃᶠ[1:dst_Nz+1]
 
     dst_coordinates, src_coordinates = extract_xesmf_coordinates_structure(dst_field, src_field)
 
@@ -115,7 +143,18 @@ function regridding_weights(dst_field, src_field; method="conservative")
 
     weights = XESMF.sparse_regridder_weights(regridder)
 
-    return weights
+    arch = architecture(src_field)
+    FT = eltype(src_field)
+
+    weights = on_architecture(arch, weights)
+
+    Nx, Ny, Nz = size(src_field)
+    temp_src = on_architecture(arch, zeros(FT, Nx * Ny))
+
+    Nx, Ny, Nz = size(dst_field)
+    temp_dst = on_architecture(arch, zeros(FT, Nx * Ny))
+
+    return Regridder(arch, weights, src_field.grid, dst_field.grid, temp_src, temp_dst)
 end
 
 end # module
