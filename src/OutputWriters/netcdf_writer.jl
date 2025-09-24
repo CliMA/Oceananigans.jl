@@ -31,5 +31,6 @@ function NetCDFWriter(model, outputs; kw...)
 end
 
 function write_grid_reconstruction_data! end
+function convert_for_netcdf end
 function materialize_from_netcdf end
 function reconstruct_grid end
