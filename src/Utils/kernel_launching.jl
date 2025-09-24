@@ -105,7 +105,7 @@ contiguousrange(range::NTuple{3, Int}, offset::NTuple{3, Int}) = @inbounds (1+of
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 
 # Heuristic for a 3-tuple of integers (our main case)
-flatten_reduced_dimensions(worksize::Tuple{Int, Int, Int}, dims) = 
+flatten_reduced_dimensions(worksize::Tuple{Int, Int, Int}, dims) =
     (1 ∈ dims ? 1 : worksize[1],
      2 ∈ dims ? 1 : worksize[2],
      3 ∈ dims ? 1 : worksize[3])
@@ -132,7 +132,7 @@ heuristic_workgroup(Wx) = min(Wx, 256)
 # This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
 function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     if Wx == 1 && Wy == 1            # One-dimensional column models
-        return (1, 1) 
+        return (1, 1)
     elseif Wx == 1                   # Two-dimensional y-z slice models
         return (1, min(256, Wy))
     elseif Wy == 1                   # Two-dimensional x-z slice models
@@ -183,7 +183,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
                ifelse(workdims == :xy,  (Wx, Wy),
                ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
-               
+
     offsets = ifelse(workdims == :xyz, (ox, oy, oz),
               ifelse(workdims == :xy,  (ox, oy),
               ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
@@ -211,7 +211,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     Nx, Ny, Nz = size(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
     workgroup = heuristic_workgroup(Wx, Wy, Wz)
-    
+
     worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
                ifelse(workdims == :xy, (Wx, Wy),
                ifelse(workdims == :xz, (Wx, Wz), (Wy, Wz))))
@@ -261,19 +261,19 @@ Keyword Arguments
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
 """
-@inline function configure_kernel(arch, grid, workspec, kernel!; 
+@inline function configure_kernel(arch, grid, workspec, kernel!;
                                   active_cells_map = nothing,
                                   exclude_periphery = false,
                                   reduced_dimensions = (),
                                   location = nothing)
 
-    # Transform keyword arguments into arguments to be able to dispatch correctly 
+    # Transform keyword arguments into arguments to be able to dispatch correctly
     return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
                                   reduced_dimensions,
                                   location = nothing)
 end
 
-@inline function configure_kernel(arch, grid, workspec, kernel!, ::Nothing, args...; 
+@inline function configure_kernel(arch, grid, workspec, kernel!, ::Nothing, args...;
                                   reduced_dimensions = (),
                                   location = nothing)
 
@@ -297,7 +297,7 @@ end
 end
 
 # When there are KernelParameters, we use the `offset_work_layout` function
-@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, ::Nothing, args...; 
+@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, ::Nothing, args...;
                                   reduced_dimensions = (), kwargs...)
 
     workgroup, worksize = offset_work_layout(grid, workspec, reduced_dimensions)
@@ -371,7 +371,7 @@ end
                                        location,
                                        reduced_dimensions)
 
-    # Don't launch kernels with no size    
+    # Don't launch kernels with no size
     if length(worksize) > 0
         loop!(first_kernel_arg, other_kernel_args...)
     end
