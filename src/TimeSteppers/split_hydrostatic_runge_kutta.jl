@@ -26,7 +26,7 @@ The tendency fields `Gⁿ` and `G⁻`, and the previous state `Ψ⁻` can be mod
 via optional `kwargs`.
 
 The scheme is described by [Knoth and Wensch (2014)](@cite knoth2014). In a nutshell,
-the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps.
+the nth-order low-storage Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via n substeps.
 A barotropic velocity correction step is applied after at each substep.
 
 The state `U` after each substep `m` is equivalent to an Euler step with a modified time step:
@@ -37,7 +37,9 @@ Uᵐ⁺¹ = Uⁿ + Δt̃ * Gᵐ
 ```
 
 where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
-`Gᵐ` is the tendency at the ``m``-th substep, and constants `β¹ = 3`, `β² = 2`, `β³ = 1`.
+`Gᵐ` is the tendency at the ``m``-th substep. The coefficients `β` can be specified by the user,
+and default to `(3, 2, 1)` for a three-stage scheme. The number of stages is inferred from the length of the
+`β` tuple.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
@@ -73,6 +75,9 @@ function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = nothing)
     return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(coefficients, nothing, nothing, nothing)
 end
 
+# Utility to compute low-storage coefficients from spectral coefficients. This is
+# useful to minimize dispersion and dissipation errors:
+# see Hu et al., Low-Dissipation and Low-Dispersion Runge–Kutta Schemes for Computational Acoustics, 1996
 function spectral_coefficients(c::AbstractVector)
     N = length(c)
     b = similar(c)

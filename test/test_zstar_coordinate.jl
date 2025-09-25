@@ -136,7 +136,7 @@ end
         fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
 
         for TD in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
-            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers
                 for c_bcs in (NoFluxBoundaryCondition(), FluxBoundaryCondition(0.01), ValueBoundaryCondition(0.01))
                     @info "testing ZStarCoordinate diffusion on $(typeof(arch)) with $TD, $timestepper, and $c_bcs at the top"
 

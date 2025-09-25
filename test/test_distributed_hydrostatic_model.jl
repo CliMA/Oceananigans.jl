@@ -113,7 +113,7 @@ for arch in archs
             for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
                                            (global_underlying_grid, global_immersed_grid, global_immersed_grid))
                 
-                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3, :SplitRungeKutta5)
                     @root @info "  Testing distributed solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) on $(timestepper)"
                     
                     # "s" for "serial" computation, "p" for parallel
