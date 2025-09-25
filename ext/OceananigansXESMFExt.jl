@@ -2,7 +2,6 @@ module OceananigansXESMFExt
 
 using XESMF
 using CUDA
-using PythonCall
 using SparseArrays
 using Oceananigans
 using Oceananigans.Architectures: CPU, architecture
@@ -136,7 +135,7 @@ function Regridder(dst_field, src_field; method="conservative")
 
     dst_coordinates, src_coordinates = extract_xesmf_coordinates_structure(dst_field, src_field)
 
-    periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? PythonCall.pybuiltins.True : pybuiltins.False
+    periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? true : false
 
     xesmf = XESMF.xesmf
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
