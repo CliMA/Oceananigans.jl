@@ -106,6 +106,6 @@ grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
 # For summary/show methods
 @inline function topology_strs(grid::AbstractGrid)
     TX, TY, TZ = topology(grid)
-    return (topology_str(TX), topology_str(TY), topology_str(TZ)) 
+    return (topology_str(TX), topology_str(TY), topology_str(TZ))
 end
 

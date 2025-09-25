@@ -74,7 +74,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-fill_halo_regions!(field::DistributedField, args...; kwargs...) = 
+fill_halo_regions!(field::DistributedField, args...; kwargs...) =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -214,7 +214,7 @@ end
 ##### Double-sided Distributed fill_halo!s
 #####
 
-function (::DistributedFillHalo{<:WestAndEast})(c, west_bc, east_bc, loc, grid, arch, buffers) 
+function (::DistributedFillHalo{<:WestAndEast})(c, west_bc, east_bc, loc, grid, arch, buffers)
     @assert west_bc.condition.from == east_bc.condition.from  # Extra protection in case of bugs
     local_rank = west_bc.condition.from
 
@@ -227,7 +227,7 @@ function (::DistributedFillHalo{<:WestAndEast})(c, west_bc, east_bc, loc, grid, 
     return [send_req1, send_req2, recv_req1, recv_req2]
 end
 
-function (::DistributedFillHalo{<:SouthAndNorth})(c, south_bc, north_bc, loc, grid, arch, buffers) 
+function (::DistributedFillHalo{<:SouthAndNorth})(c, south_bc, north_bc, loc, grid, arch, buffers)
     @assert south_bc.condition.from == north_bc.condition.from  # Extra protection in case of bugs
     local_rank = south_bc.condition.from
 
