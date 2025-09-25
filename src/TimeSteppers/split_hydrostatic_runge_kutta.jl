@@ -4,8 +4,7 @@ using Oceananigans: fields
 """
     SplitRungeKuttaTimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
 
-Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
+Hold parameters and tendency fields for a low storage, nth-order Runge-Kutta time-stepping scheme
 """
 struct SplitRungeKuttaTimeStepper{B, TG, PF, TI} <: AbstractTimeStepper
     β  :: B
