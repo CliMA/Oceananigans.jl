@@ -41,7 +41,7 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeD
                                            κ_symmetric = nothing,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                            slope_limiter = FluxTapering(1e-2),
-                                           required_halo_size::Int = 1) where {TD, A}
+                                           required_halo_size::Int = 1) where {TD}
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
@@ -223,7 +223,7 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, grid, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, tracer_index)
 
-    κ_skewᶜᶠᶜ = skew_diffusivity(i, j, k, grid, closure, κᶜᶠᶜ, issd_coefficient_loc, κ_skew, clock)
+    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
@@ -253,7 +253,7 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, grid, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, tracer_index)
 
-    κ_skewᶜᶜᶠ = skew_diffusivity(i, j, k, grid, closure, κᶜᶜᶠ, issd_coefficient_loc, κ_skew, clock)
+    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
 
     # Average... of... the gradient!

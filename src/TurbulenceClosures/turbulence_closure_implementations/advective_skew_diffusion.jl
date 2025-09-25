@@ -51,7 +51,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::EAC)
     Ψx = Field{Face, Center, Face}(grid)
     Ψy = Field{Center, Face, Face}(grid)
 
-    if tapering isa EddyEvolvingStreamfunction
+    if closure.tapering isa EddyEvolvingStreamfunction
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
         diffusivities = merge(U, (; Ψx, Ψy, implicit_solver))
     else
