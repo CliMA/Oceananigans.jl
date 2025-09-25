@@ -92,13 +92,15 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     #### Loop over the stages
     ####
 
-    model.clock.stage = 1
+    for stage in 1:model.timestepper.stages
+        model.clock.stage = stage
+        β = model.timestepper.β[stage]
 
-    for _ in 1:model.timestepper.stages
-        β = model.timestepper.β[model.clock.stage]
+        # Perform the substep
         rk_substep!(model, grid, Δt / β, callbacks)
+
+        # Update the state
         update_state!(model, callbacks)
-        model.clock.stage += 1
     end
     
     # Finalize step
