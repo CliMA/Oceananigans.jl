@@ -94,7 +94,7 @@ Finally, note that the nodes of the staggered mesh coincide with the cell interf
 znodes(grid, Center())
 
 # output
-4-element view(::Vector{Float64}, 2:5) with eltype Float64:
+4-element Vector{Float64}:
  0.05
  0.2
  0.44999999999999996
