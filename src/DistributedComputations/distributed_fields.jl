@@ -61,13 +61,14 @@ function set!(u::DistributedField, V::Field)
     end
 end
 
+synchronize_communication!(field) = nothing
 
 """
     synchronize_communication!(field)
 
 complete the halo passing of `field` among processors.
 """
-function synchronize_communication!(field)
+function synchronize_communication!(field::DistributedField)
     arch = architecture(field.grid)
 
     # Wait for outstanding requests

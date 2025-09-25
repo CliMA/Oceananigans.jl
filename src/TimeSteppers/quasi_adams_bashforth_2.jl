@@ -85,6 +85,10 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     euler = euler || (Δt != model.clock.last_Δt)
     euler && @debug "Taking a forward Euler step."
 
+    if model.clock.iteration == 0
+        update_state!(model, callbacks)
+    end
+    
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
     ab2_timestepper = model.timestepper
@@ -92,9 +96,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
+    ab2_step!(model, Δt, callbacks)
     cache_previous_tendencies!(model)
     update_state!(model, callbacks)
-    ab2_step!(model, Δt, callbacks)
 
     tick!(model.clock, Δt)
 

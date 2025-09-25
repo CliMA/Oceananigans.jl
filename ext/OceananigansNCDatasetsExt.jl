@@ -9,6 +9,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
@@ -1334,6 +1335,12 @@ Write output to netcdf file `output_writer.filepath` at specified intervals. Inc
 every time an output is written to the file.
 """
 function write_output!(ow::NetCDFWriter, model::AbstractModel)
+
+    # Synchronize model state if needed
+    for field in fields(model)
+        synchronize_communication!(field)
+    end
+
     # Start a new file if the file_splitting(model) is true
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
