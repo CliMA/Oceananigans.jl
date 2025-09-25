@@ -38,7 +38,7 @@ include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
-include("split_hydrostatic_runge_kutta_3.jl")
+include("split_hydrostatic_runge_kutta.jl")
 
 """
     TimeStepper(name::Symbol, args...; kwargs...)
@@ -66,6 +66,13 @@ TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
 
 TimeStepper(::Val{:SplitRungeKutta}, args...; kwargs...) =
     SplitRungeKuttaTimeStepper(args...; kwargs...)
+
+TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻) =
+    SplitRungeKuttaTimeStepper(grid, prognostic_fields;
+                               implicit_solver,
+                               coefficients=ts.β,
+                               Gⁿ,
+                               G⁻)
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)

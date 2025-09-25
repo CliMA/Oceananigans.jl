@@ -8,7 +8,6 @@ Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-W
 time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
 """
 struct SplitRungeKuttaTimeStepper{B, TG, PF, TI} <: AbstractTimeStepper
-    stages :: Int
     β  :: B
     Gⁿ :: TG
     Ψ⁻ :: PF # prognostic state at the previous timestep
@@ -51,17 +50,22 @@ Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta methods
     https://doi.org/10.1175/MWR-D-13-00068.1.
 """
 function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
-                                     implicit_solver::TI = nothing,
-                                     stages = 3,
-                                     coefficients = order_optimized_coefficients(stages),
-                                     Gⁿ::TG = map(similar, prognostic_fields),
-                                     Ψ⁻::PF = map(similar, prognostic_fields),
-                                     kwargs...) where {TI, TG, PF}
+                                    implicit_solver::TI = nothing,
+                                    coefficients = (3, 2, 1),
+                                    Gⁿ::TG = map(similar, prognostic_fields),
+                                    Ψ⁻::PF = map(similar, prognostic_fields),
+                                    kwargs...) where {TI, TG, PF}
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKuttaTimeStepper is experimental.\n" *
           "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
 
-    return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(stages, coefficients, Gⁿ, Ψ⁻, implicit_solver)
+    return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(coefficients, Gⁿ, Ψ⁻, implicit_solver)
+end
+
+# Simple constructor that only requires the number of stages
+function SplitRungeKuttaTimeStepper(; stages = 3) 
+    coefficients = tuple(collect(stages:-1:1)...)
+    return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(coefficients, nothing, nothing, nothing)
 end
 
 function spectral_coefficients(c::AbstractVector)
@@ -73,8 +77,6 @@ function spectral_coefficients(c::AbstractVector)
     b[end] = 1
     return tuple(b...)
 end
-
-order_optimized_coefficients(stages::Int) = tuple(stages:-1:1...)
 
 cache_previous_fields!(model) = nothing
 
@@ -92,10 +94,10 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     #### Loop over the stages
     ####
 
-    for stage in 1:model.timestepper.stages
+    for (stage, β) in enumerate(model.timestepper.β)
+        # Update the clock stage
         model.clock.stage = stage
-        β = model.timestepper.β[stage]
-
+        
         # Perform the substep
         rk_substep!(model, grid, Δt / β, callbacks)
 

@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.Models.VarianceDissipationComputations
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
 using KernelAbstractions: @kernel, @index
 using GLMakie
 
@@ -52,14 +53,14 @@ function compute_tracer_dissipation!(sim)
 end
 
 tracer_advection = WENO(order=5)
-closure = ScalarDiffusivity(κ=1e-5)
+closure = nothing # ScalarDiffusivity(κ=1e-5)
 velocities = PrescribedVelocityFields(u=1)
 
 c⁻    = CenterField(grid)
 Δtc²  = CenterField(grid)
 
-for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta))
-    
+for (ts, timestepper) in zip((:AB2, :RK3), (SplitRungeKuttaTimeStepper(; stages=20), SplitRungeKuttaTimeStepper(; stages=40)))
+
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         timestepper, 
                                         velocities, 
@@ -72,9 +73,9 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
     set!(model.auxiliary_fields.c⁻, c₀)
 
     if ts == :AB2
-       Δt = 0.2 * minimum_xspacing(grid)
+       Δt = 2.5 * minimum_xspacing(grid)
     else
-       Δt = 0.2 * minimum_xspacing(grid)
+       Δt = 2.5 * minimum_xspacing(grid)
     end
 
     sim = Simulation(model; Δt, stop_time=10)
