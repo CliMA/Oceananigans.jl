@@ -90,7 +90,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 @inline sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
-rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
+rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 mask_immersed_velocities!(::PrescribedVelocityFields) = nothing

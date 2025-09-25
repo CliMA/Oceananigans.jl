@@ -110,41 +110,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     return nothing
 end
 
-#####
-##### Time stepping in each step
-#####
-
-""" Generic implementation. """
-function ab2_step!(model, Δt)
-    grid = model.grid
-    FT = eltype(grid)
-    arch = architecture(grid)
-    model_fields = prognostic_fields(model)
-    χ = model.timestepper.χ
-    Δt = convert(FT, Δt)
-    χ = convert(FT, χ)
-
-    for (i, field) in enumerate(model_fields)
-        kernel_args = (field, Δt, χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(arch, grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
-
-        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = Val(i - 3) # assumption
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.diffusivity_fields,
-                       tracer_index,
-                       model.clock,
-                       Δt)
-    end
-
-    return nothing
-end
-
 """
-Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
+Time step fields via the 2nd-order quasi Adams-Bashforth method
 
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 

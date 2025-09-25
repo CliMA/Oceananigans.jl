@@ -22,7 +22,7 @@ barotropic_transport(free_surface)  = nothing, nothing
 ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) =
     launch!(architecture(grid), grid, w_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
 
-rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt) =
+rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt) =
     launch!(architecture(grid), grid, w_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
 
 # Update η in the grid

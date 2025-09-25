@@ -36,9 +36,9 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, grid, Δτ, callbacks) =
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
     
     # Finally Substep! Advance grid, tracers, and (predictor) momentum
-    rk3_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-    rk3_substep_tracers!(model.tracers, model, Δτ)
-    rk3_substep_velocities!(model.velocities, model, Δτ)
+    rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+    rk_substep_tracers!(model.tracers, model, Δτ)
+    rk_substep_velocities!(model.velocities, model, Δτ)
 
     # Correct for the updated barotropic mode
     make_pressure_correction!(model, Δτ)
@@ -57,9 +57,9 @@ end
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
     
     # Finally Substep! Advance grid, tracers, (predictor) momentum 
-    rk3_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-    rk3_substep_tracers!(model.tracers, model, Δτ)
-    rk3_substep_velocities!(model.velocities, model, Δτ)
+    rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+    rk_substep_tracers!(model.tracers, model, Δτ)
+    rk_substep_velocities!(model.velocities, model, Δτ)
 
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
@@ -75,13 +75,13 @@ end
 #####
 
 # A Fallback to be extended for specific ztypes and grid types
-rk3_substep_grid!(grid, model, ztype, Δt) = nothing
+rk_substep_grid!(grid, model, ztype, Δt) = nothing
 
 #####
 ##### Step Velocities
 #####
 
-function rk3_substep_velocities!(velocities, model, Δt)
+function rk_substep_velocities!(velocities, model, Δt)
 
     grid = model.grid
     FT = eltype(grid)
@@ -110,9 +110,9 @@ end
 ##### Step Tracers
 #####
 
-rk3_substep_tracers!(::EmptyNamedTuple, model, Δt) = nothing
+rk_substep_tracers!(::EmptyNamedTuple, model, Δt) = nothing
 
-function rk3_substep_tracers!(tracers, model, Δt)
+function rk_substep_tracers!(tracers, model, Δt)
 
     closure = model.closure
     grid = model.grid
