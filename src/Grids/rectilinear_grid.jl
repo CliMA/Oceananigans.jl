@@ -483,10 +483,10 @@ rname(::RG) = :z
 @inline xnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
 @inline ynode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
 
-function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false, indices=(Colon(), Colon(), Colon()))
+    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1])
+    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[2])
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[3])
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
@@ -511,14 +511,14 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     return (x, y, z)
 end
 
-@inline xnodes(grid::RG, ℓx::F; with_halos=false) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
-@inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline xnodes(grid::RG, ℓx::F; with_halos=false, indices=Colon()) = getindex(_property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline xnodes(grid::RG, ℓx::C; with_halos=false, indices=Colon()) = getindex(_property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline ynodes(grid::RG, ℓy::F; with_halos=false, indices=Colon()) = getindex(_property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline ynodes(grid::RG, ℓy::C; with_halos=false, indices=Colon()) = getindex(_property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
 
 # convenience
-@inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
-@inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
+@inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = xnodes(grid, ℓx; with_halos, indices)
+@inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = ynodes(grid, ℓy; with_halos, indices)
 
 # Generalized coordinates
 @inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)
