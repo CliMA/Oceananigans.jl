@@ -19,6 +19,7 @@ export
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    EddyAdvectiveClosure,
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     FluxTapering,
