@@ -1,8 +1,6 @@
 module OceananigansXESMFExt
 
 using XESMF
-using CUDA
-using SparseArrays
 using Oceananigans
 using Oceananigans.Architectures: CPU, architecture
 using Oceananigans.Grids: λnodes, φnodes, Center, Face
