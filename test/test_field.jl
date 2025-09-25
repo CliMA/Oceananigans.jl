@@ -259,6 +259,54 @@ function run_field_interpolation_tests(grid)
     return nothing
 end
 
+function nodes_of_field_views_are_consistent(grid)
+    # Test with different field types
+    test_fields = [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
+
+    for field in test_fields
+        loc = instantiated_location(field)
+
+        # Test various view patterns
+        test_indices = [
+            (2:6, :, :),           # x slice
+            (:, 2:4, :),           # y slice
+            (:, :, 2:3),           # z slice
+            (3:5, 2:4, :),         # xy slice
+            (2:6, :, 2:3),         # xz slice
+            (:, 2:4, 2:3),         # yz slice
+            (3:5, 2:4, 2:3),       # xyz slice
+        ]
+
+        for test_idx in test_indices
+            # Create field view with these indices
+            field_view = view(field, test_idx...)
+
+            # Get nodes from the view
+            view_nodes = nodes(field_view)
+
+            # Get nodes from the original field with the same indices
+            # This is what should be equivalent to the view_nodes
+            full_nodes = nodes(field.grid, loc...; indices=test_idx)
+
+            # Test that they are equal
+            @test view_nodes == full_nodes
+
+            # Also test that the view's indices match what we expect
+            @test indices(field_view) == test_idx
+
+            # Test that view nodes have sizes consistent with the view indices
+            for (i, coord_nodes) in enumerate(view_nodes)
+                if coord_nodes !== nothing && full_nodes[i] !== nothing
+                    @test coord_nodes == full_nodes[i]
+                end
+            end
+        end
+    end
+
+    return nothing
+end
+
+
 #####
 #####
 #####
@@ -655,54 +703,6 @@ end
             @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
         end
     end
-end
-
-function nodes_of_field_views_are_consistent(grid)
-    # Test with different field types
-    test_fields = [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
-
-    for field in test_fields
-        loc = instantiated_location(field)
-
-        # Test various view patterns
-        test_indices = [
-            (2:6, :, :),           # x slice
-            (:, 2:4, :),           # y slice
-            (:, :, 2:3),           # z slice
-            (3:5, 2:4, :),         # xy slice
-            (2:6, :, 2:3),         # xz slice
-            (:, 2:4, 2:3),         # yz slice
-            (3:5, 2:4, 2:3),       # xyz slice
-        ]
-
-        for test_idx in test_indices
-            # Create field view with these indices
-            field_view = view(field, test_idx...)
-
-            # Get nodes from the view
-            view_nodes = nodes(field_view)
-
-            # Get nodes from the original field with the same indices
-            # This is what should be equivalent to the view_nodes
-            full_nodes = nodes(field.grid, loc...; indices=test_idx)
-
-            # Test that they are equal
-            @test view_nodes == full_nodes
-
-            # Also test that the view's indices match what we expect
-            @test indices(field_view) == test_idx
-
-            # Test that view nodes have sizes consistent with the view indices
-            for (i, coord_nodes) in enumerate(view_nodes)
-                if coord_nodes !== nothing && full_nodes[i] !== nothing
-                    @test coord_nodes == full_nodes[i]
-                end
-            end
-        end
-    end
-
-    return nothing
-end
 
     @testset "Field nodes and view consistency" begin
         @info "  Testing that nodes() returns indices consistent with view()..."
@@ -711,3 +711,5 @@ end
             nodes_of_field_views_are_consistent(grid)
         end
     end
+end
+
