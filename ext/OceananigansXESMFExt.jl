@@ -139,7 +139,7 @@ function Regridder(dst_field, src_field; method="conservative")
 
     xesmf = XESMF.xesmf
     regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
-
+    method = uppercasefirst(string(regridder.method))
     weights = XESMF.sparse_regridder_weights(regridder)
 
     arch = architecture(src_field)
@@ -153,7 +153,7 @@ function Regridder(dst_field, src_field; method="conservative")
     Nx, Ny, Nz = size(dst_field)
     temp_dst = on_architecture(arch, zeros(FT, Nx * Ny))
 
-    return Regridder(arch, weights, src_field.grid, dst_field.grid, temp_src, temp_dst)
+    return Regridder(arch, method, weights, src_field.grid, dst_field.grid, temp_src, temp_dst)
 end
 
 end # module
