@@ -74,9 +74,6 @@ function extract_xesmf_coordinates_structure(dst_field, src_field)
     return dst_coordinates, src_coordinates
 end
 
-#TODO: fix this method so it converts to CuSparseMatrixCSC
-on_architecture(arch, m::SparseMatrixCSC) = m
-
 """
     Regridder(dst_field, src_field; method="conservative")
 
