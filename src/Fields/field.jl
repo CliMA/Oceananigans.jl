@@ -859,3 +859,9 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     return nothing
 end
+
+#####
+##### nodes
+#####
+
+nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
