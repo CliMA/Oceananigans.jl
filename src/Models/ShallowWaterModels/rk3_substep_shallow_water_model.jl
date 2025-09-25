@@ -2,9 +2,9 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.Architectures: device
 using Oceananigans.TimeSteppers: rk3_substep_field!
 
-import Oceananigans.TimeSteppers: rk3_substep!
+import Oceananigans.TimeSteppers: rk_substep!
 
-function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
+function rk_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 

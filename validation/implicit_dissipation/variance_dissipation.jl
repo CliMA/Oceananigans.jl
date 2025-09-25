@@ -58,7 +58,7 @@ velocities = PrescribedVelocityFields(u=1)
 c⁻    = CenterField(grid)
 Δtc²  = CenterField(grid)
 
-for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3))
+for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta))
     
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         timestepper, 

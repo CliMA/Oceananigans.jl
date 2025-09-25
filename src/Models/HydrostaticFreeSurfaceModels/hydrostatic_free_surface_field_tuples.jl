@@ -13,4 +13,4 @@ function hydrostatic_tendency_fields(velocities, free_surface, grid, tracer_name
 end
 
 previous_hydrostatic_tendency_fields(::Val{:QuasiAdamsBashforth2}, args...) = hydrostatic_tendency_fields(args...)
-previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, args...)     = nothing
+previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta}, args...)     = nothing

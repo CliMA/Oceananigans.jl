@@ -3,7 +3,7 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
-    SplitRungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
     time_step!,
     Clock,
     tendencies
@@ -64,8 +64,8 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
 
-TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
-    SplitRungeKutta3TimeStepper(args...; kwargs...)
+TimeStepper(::Val{:SplitRungeKutta}, args...; kwargs...) =
+    SplitRungeKuttaTimeStepper(args...; kwargs...)
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)

@@ -2,27 +2,27 @@ using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
-    SplitRungeKutta3TimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
+    SplitRungeKuttaTimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [Lan et al. (2022)](@cite Lan2022).
 """
-struct SplitRungeKutta3TimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
-    β¹ :: FT
-    β² :: FT
+struct SplitRungeKuttaTimeStepper{B, TG, PF, TI} <: AbstractTimeStepper
+    stages :: Int
+    β  :: B
     Gⁿ :: TG
     Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
 
 """
-    SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
-                                implicit_solver::TI = nothing,
-                                Gⁿ::TG = map(similar, prognostic_fields),
-                                Ψ⁻::PF = map(similar, prognostic_fields),
-                                kwargs...) where {TI, TG, PF}
+    SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
+                               implicit_solver::TI = nothing,
+                               Gⁿ::TG = map(similar, prognostic_fields),
+                               Ψ⁻::PF = map(similar, prognostic_fields),
+                               kwargs...) where {TI, TG, PF}
 
-Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
+Return a nth-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, and the previous state `Ψ⁻` can be modified
 via optional `kwargs`.
 
@@ -50,25 +50,35 @@ Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta methods
     compressible Euler equations. Monthly Weather Review, 142, 2067-2081,
     https://doi.org/10.1175/MWR-D-13-00068.1.
 """
-function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
+function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
+                                     stages = 4,
+                                     coefficients = order_optimized_coefficients(stages),
                                      Gⁿ::TG = map(similar, prognostic_fields),
                                      Ψ⁻::PF = map(similar, prognostic_fields),
                                      kwargs...) where {TI, TG, PF}
 
-    @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is experimental.\n" *
+    @warn("Split barotropic-baroclinic time stepping with SplitRungeKuttaTimeStepper is experimental.\n" *
           "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
 
-    FT = eltype(grid)
-    β¹ = 3
-    β² = 2
-
-    return SplitRungeKutta3TimeStepper{FT, TG, PF, TI}(β¹, β², Gⁿ, Ψ⁻, implicit_solver)
+    return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(stages, coefficients, Gⁿ, Ψ⁻, implicit_solver)
 end
+
+function spectral_coefficients(c::AbstractVector)
+    N = length(c)
+    b = similar(c)
+    for i in 1:N-1
+        b[i] = c[N - i] / c[N - i + 1] 
+    end
+    b[end] = 1
+    return tuple(b...)
+end
+
+order_optimized_coefficients(stages::Int) = tuple(stages:-1:1...)
 
 cache_previous_fields!(model) = nothing
 
-function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; callbacks=[])
+function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     if model.clock.iteration == 0
@@ -76,38 +86,21 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     end
 
     cache_previous_fields!(model)
-    β¹ = model.timestepper.β¹
-    β² = model.timestepper.β²
-    
     grid = model.grid
 
     ####
-    #### First stage
+    #### Loop over the stages
     ####
 
-    # First stage: n -> n + 1/3
     model.clock.stage = 1
-    rk3_substep!(model, grid, Δt / β¹, callbacks)
-    update_state!(model, callbacks)
 
-    ####
-    #### Second stage
-    ####
-
-    # Second stage: n -> n + 1/2
-    model.clock.stage = 2
-    rk3_substep!(model, grid, Δt / β², callbacks)
-    update_state!(model, callbacks)
-
-    ####
-    #### Third stage
-    ####
-
-    # Third stage: n -> n + 1
-    model.clock.stage = 3
-    rk3_substep!(model, grid, Δt, callbacks)
-    update_state!(model, callbacks)
-
+    for _ in 1:model.timestepper.stages
+        β = model.timestepper.β[model.clock.stage]
+        rk_substep!(model, grid, Δt / β, callbacks)
+        update_state!(model, callbacks)
+        model.clock.stage += 1
+    end
+    
     # Finalize step
     step_lagrangian_particles!(model, Δt)
     tick!(model.clock, Δt)

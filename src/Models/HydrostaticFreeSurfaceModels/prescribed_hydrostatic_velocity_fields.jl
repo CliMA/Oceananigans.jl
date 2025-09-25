@@ -75,8 +75,8 @@ hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, trac
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
-@inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
-@inline fill_halo_regions!(::FunctionField, args...) = nothing
+@inline fill_halo_regions!(::PrescribedVelocityFields, args...; kwargs...) = nothing
+@inline fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
@@ -93,6 +93,7 @@ ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
+mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()

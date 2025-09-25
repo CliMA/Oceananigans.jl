@@ -116,7 +116,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ¹, nothing)
+    rk_substep!(model, Δt, γ¹, nothing)
 
     tick!(model.clock, first_stage_Δt; stage=true)
 
@@ -132,7 +132,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ², ζ²)
+    rk_substep!(model, Δt, γ², ζ²)
 
     tick!(model.clock, second_stage_Δt; stage=true)
 
@@ -148,7 +148,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ³, ζ³)
+    rk_substep!(model, Δt, γ³, ζ³)
 
     # This adjustment of the final time-step reduces the accumulation of
     # round-off error when Δt is added to model.clock.time. Note that we still use
@@ -176,7 +176,7 @@ end
 stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
 stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 
-function rk3_substep!(model, Δt, γⁿ, ζⁿ)
+function rk_substep!(model, Δt, γⁿ, ζⁿ)
 
     grid = model.grid
     arch = architecture(grid)

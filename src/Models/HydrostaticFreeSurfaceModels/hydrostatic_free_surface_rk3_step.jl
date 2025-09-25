@@ -2,10 +2,10 @@ using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
-import Oceananigans.TimeSteppers: rk3_substep!, cache_previous_fields!
+import Oceananigans.TimeSteppers: rk_substep!, cache_previous_fields!
 
-rk3_substep!(model::HydrostaticFreeSurfaceModel, grid, Δτ, callbacks) = 
-    rk3_substep!(model, model.free_surface, grid, Δτ, callbacks)
+rk_substep!(model::HydrostaticFreeSurfaceModel, grid, Δτ, callbacks) = 
+    rk_substep!(model, model.free_surface, grid, Δτ, callbacks)
 
 # RK3 substep for hydrostatic free surface models, it differs in the order of operations
 # depending on the type of free surface (implicit or explicit)
@@ -19,7 +19,7 @@ rk3_substep!(model::HydrostaticFreeSurfaceModel, grid, Δτ, callbacks) =
 # we then use a predictor-corrector approach to advance momentum, in which we first
 # advance momentum neglecting the free surface contribution, then, after the computation of
 # the new free surface, we correct momentum to account for the updated free surface.
-@inline function rk3_substep!(model, free_surface, grid, Δτ, callbacks)
+@inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
 
     # Advancing free surface and barotropic transport velocities
     compute_momentum_tendencies!(model, callbacks)
@@ -46,7 +46,7 @@ rk3_substep!(model::HydrostaticFreeSurfaceModel, grid, Δτ, callbacks) =
     return nothing
 end
 
-@inline function rk3_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
+@inline function rk_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     # Computing tendencies...
     compute_momentum_tendencies!(model, callbacks)
