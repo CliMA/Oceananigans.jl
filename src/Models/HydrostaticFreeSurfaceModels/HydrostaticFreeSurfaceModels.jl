@@ -27,41 +27,13 @@ abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
 
-fill_halo_regions!(ztype::ZCoordinate; kwargs...) = nothing
-
-struct ZStarCoordinate{CC} #, FC, CF, FF, H}
+struct ZStarCoordinate{CC} 
     storage :: CC # Storage space used in different ways by different timestepping schemes.
-    # σᶜᶜⁿ :: CC
-    # σᶠᶜⁿ :: FC
-    # σᶜᶠⁿ :: CF
-    # σᶠᶠⁿ :: FF
-    # σᶜᶜ⁻ :: CC
-    # ∂t_σ :: CC
-    # ηⁿ   :: H
 end
 
 function ZStarCoordinate(grid::AbstractGrid)
     storage = Field{Center, Center, Nothing}(grid)
-    # σᶜᶜⁿ    = Field{Center, Center, Nothing}(grid; data=grid.z.σᶜᶜⁿ)
-    # σᶠᶜⁿ    = Field{Face,   Center, Nothing}(grid; data=grid.z.σᶠᶜⁿ)
-    # σᶜᶠⁿ    = Field{Center, Face,   Nothing}(grid; data=grid.z.σᶜᶠⁿ)
-    # σᶠᶠⁿ    = Field{Face,   Face,   Nothing}(grid; data=grid.z.σᶠᶠⁿ)
-    # σᶜᶜ⁻    = Field{Center, Center, Nothing}(grid; data=grid.z.σᶜᶜ⁻)
-    # ∂t_σ    = Field{Center, Center, Nothing}(grid; data=grid.z.∂t_σ)
-    # ηⁿ      = Field{Center, Center, Nothing}(grid; data=grid.z.ηⁿ  )
-    return ZStarCoordinate(storage) #, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ, ηⁿ)
-end
-
-function fill_halo_regions!(ztype::ZStarCoordinate; kwargs...)
-    fill_halo_regions!(ztype.storage; kwargs...)
-    fill_halo_regions!(ztype.σᶜᶜⁿ; kwargs...)
-    fill_halo_regions!(ztype.σᶠᶜⁿ; kwargs...)
-    fill_halo_regions!(ztype.σᶜᶠⁿ; kwargs...)
-    fill_halo_regions!(ztype.σᶠᶠⁿ; kwargs...)
-    fill_halo_regions!(ztype.σᶜᶜ⁻; kwargs...)
-    fill_halo_regions!(ztype.∂t_σ; kwargs...)
-    fill_halo_regions!(ztype.ηⁿ; kwargs...)
-    return nothing
+    return ZStarCoordinate(storage) 
 end
 
 Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
