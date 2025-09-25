@@ -52,7 +52,7 @@ Knoth, O., and Wensch, J. (2014). Generalized Split-Explicit Runge-Kutta methods
 """
 function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
-                                     stages = 4,
+                                     stages = 3,
                                      coefficients = order_optimized_coefficients(stages),
                                      Gⁿ::TG = map(similar, prognostic_fields),
                                      Ψ⁻::PF = map(similar, prognostic_fields),
