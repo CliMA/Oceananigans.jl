@@ -202,7 +202,8 @@ end
 @inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
 
 ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
-@inline rnodes(grid::ZFlatAUG, args...; kwargs...) = nothing
+@inline rnodes(grid::ZFlatAUG, ℓz::F; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
+@inline rnodes(grid::ZFlatAUG, ℓz::C; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
 
 # TODO: extend in the Operators module
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)

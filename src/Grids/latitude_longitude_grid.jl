@@ -660,8 +660,10 @@ end
 # Flat topologies
 XFlatLLG = LatitudeLongitudeGrid{<:Any, Flat}
 YFlatLLG = LatitudeLongitudeGrid{<:Any, <:Any, Flat}
-@inline λnodes(grid::XFlatLLG, args...; kwargs...) = nothing
-@inline φnodes(grid::YFlatLLG, args...; kwargs...) = nothing
+@inline λnodes(grid::XFlatLLG, ℓx::F; with_halos=false, indices=Colon()) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline λnodes(grid::XFlatLLG, ℓx::C; with_halos=false, indices=Colon()) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline φnodes(grid::YFlatLLG, ℓy::F; with_halos=false, indices=Colon()) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline φnodes(grid::YFlatLLG, ℓy::C; with_halos=false, indices=Colon()) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)

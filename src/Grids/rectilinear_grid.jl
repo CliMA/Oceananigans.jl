@@ -524,9 +524,10 @@ end
 XFlatRG = RectilinearGrid{<:Any, Flat}
 YFlatRG = RectilinearGrid{<:Any, <:Any, Flat}
 ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, Flat}
-@inline xnodes(grid::XFlatRG, args...; kwargs...) = nothing
-@inline ynodes(grid::YFlatRG, args...; kwargs...) = nothing
-@inline znodes(grid::ZFlatRG, args...; kwargs...) = nothing
+@inline xnodes(grid::XFlatRG, ℓx::F; with_halos=false, indices=Colon()) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline xnodes(grid::XFlatRG, ℓx::C; with_halos=false, indices=Colon()) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline ynodes(grid::YFlatRG, ℓy::F; with_halos=false, indices=Colon()) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline ynodes(grid::YFlatRG, ℓy::C; with_halos=false, indices=Colon()) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)
