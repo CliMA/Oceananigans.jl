@@ -62,9 +62,14 @@ function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
     return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(coefficients, Gⁿ, Ψ⁻, implicit_solver)
 end
 
-# Simple constructor that only requires the number of stages
-function SplitRungeKuttaTimeStepper(; stages = 3) 
-    coefficients = tuple(collect(stages:-1:1)...)
+# Simple constructor that only requires only the coefficients or the number of stages
+function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = nothing) 
+    if coefficients !== nothing && stages !== nothing
+        error("Cannot specify both `coefficients` and `stages`.")
+    end
+    if coefficients == nothing 
+        coefficients = tuple(collect(stages:-1:1)...)
+    end
     return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(coefficients, nothing, nothing, nothing)
 end
 
