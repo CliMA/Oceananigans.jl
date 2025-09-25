@@ -335,10 +335,10 @@ function Base.view(f::Field, i, j, k)
 
     # Check that the indices actually work here
     @apply_regionally valid_view_indices = map(index_range_contains, f.indices, view_indices)
-    
+
     all(getregion(valid_view_indices, 1)) ||
         throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
-    
+
     @apply_regionally begin
         view_indices = map(convert_colon_indices, view_indices, f.indices)
 
@@ -840,7 +840,7 @@ end
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
+function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     arch = architecture(field.grid)
     args = (field.data,
@@ -849,8 +849,8 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
             instantiated_location(field),
             field.grid,
             positional_args...)
-    
-    # Manually convert args... to be 
+
+    # Manually convert args... to be
     # passed to the fill_halo_regions! function.
     GC.@preserve args begin
         converted_args = convert_to_device(arch, args)
