@@ -198,8 +198,11 @@ end
 @inline rnodes(grid::AUG, ℓz::C; with_halos=false, indices=Colon()) = getindex(_property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
 @inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = rnodes(grid, ℓz; with_halos, indices)
 
-rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
-znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+
+ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
+@inline rnodes(grid::ZFlatAUG, args...; kwargs...) = nothing
 
 # TODO: extend in the Operators module
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)

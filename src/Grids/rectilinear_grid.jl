@@ -520,6 +520,11 @@ end
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = xnodes(grid, ℓx; with_halos, indices)
 @inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = ynodes(grid, ℓy; with_halos, indices)
 
+# Flat topologies
+@inline xnodes(grid::RectilinearGrid{<:Any, Flat}, args...; kwargs...) = nothing
+@inline ynodes(grid::RectilinearGrid{<:Any, <:Any, Flat}, args...; kwargs...) = nothing
+@inline ynodes(grid::RectilinearGrid{<:Any, <:Any, <:Any, Flat}, args...; kwargs...) = nothing
+
 # Generalized coordinates
 @inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::RG, ℓy; kwargs...) = ynodes(grid, ℓy; kwargs...)
