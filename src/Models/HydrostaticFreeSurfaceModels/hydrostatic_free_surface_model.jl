@@ -8,7 +8,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, StaticVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKuttaTimeStepper
@@ -56,7 +56,9 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
 end
 
-default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
+
+default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=g_Earth) =
     ImplicitFreeSurface(; gravitational_acceleration)
 
 default_free_surface(grid; gravitational_acceleration=g_Earth) =
