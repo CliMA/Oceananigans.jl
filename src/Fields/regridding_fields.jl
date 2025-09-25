@@ -10,8 +10,9 @@ using Base: ForwardOrdering
 const f = Face()
 const c = Center()
 
-struct Regridder{A, S, V, G1, G2}
+struct Regridder{A, S, V, G1, G2, M}
     architecture :: A
+    method :: M
     weights :: S
     src_grid :: G1
     dst_grid :: G2
@@ -19,12 +20,10 @@ struct Regridder{A, S, V, G1, G2}
     dst_temp :: V
 end
 
-Base.summary(::Regridder) = "Regridder"
+Base.summary(r::Regridder{A, S, V, G1, G2, M}) where {A, S, V, G1, G2, M} = "$(r.method) Regridder on $A"
 
 function Base.show(io::IO, r::Regridder)
-    arch = typeof(r.architecture)
-
-    print(io, summary(r), " on $arch:", '\n')
+    print(io, summary(r), '\n')
     print(io, "├── src_grid: ", summary(r.src_grid), '\n')
     print(io, "├── dst_grid: ", summary(r.dst_grid), '\n')
     print(io, "├── weights: ", summary(r.weights), '\n')
