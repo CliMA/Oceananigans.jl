@@ -657,6 +657,12 @@ end
 @inline φnodes(grid::LLG, ℓy::F; with_halos=false, indices=Colon()) = getindex(_property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
 @inline φnodes(grid::LLG, ℓy::C; with_halos=false, indices=Colon()) = getindex(_property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
 
+# Flat topologies
+XFlatLLG = LatitudeLongitudeGrid{<:Any, Flat}
+YFlatLLG = LatitudeLongitudeGrid{<:Any, <:Any, Flat}
+@inline λnodes(grid::XFlatLLG, args...; kwargs...) = nothing
+@inline φnodes(grid::YFlatLLG, args...; kwargs...) = nothing
+
 # Generalized coordinates
 @inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::LLG, ℓy; kwargs...) = φnodes(grid, ℓy; kwargs...)
