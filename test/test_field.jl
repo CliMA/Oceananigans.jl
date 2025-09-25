@@ -707,8 +707,13 @@ end
     @testset "Field nodes and view consistency" begin
         @info "  Testing that nodes() returns indices consistent with view()..."
         for arch in archs, FT in float_types
-            grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
-            nodes_of_field_views_are_consistent(grid)
+            # Test RectilinearGrid
+            rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
+            nodes_of_field_views_are_consistent(rectilinear_grid)
+
+            # Test LatitudeLongitudeGrid
+            latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
+            nodes_of_field_views_are_consistent(latlon_grid)
         end
     end
 end
