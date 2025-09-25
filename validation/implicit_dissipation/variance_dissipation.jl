@@ -52,14 +52,13 @@ function compute_tracer_dissipation!(sim)
     return nothing
 end
 
-tracer_advection = WENO(order=5)
+tracer_advection = WENO(order=9)
 closure = nothing # ScalarDiffusivity(κ=1e-5)
 velocities = PrescribedVelocityFields(u=1)
-
-c⁻    = CenterField(grid)
-Δtc²  = CenterField(grid)
-
-for (ts, timestepper) in zip((:AB2, :RK3), (SplitRungeKuttaTimeStepper(; stages=20), SplitRungeKuttaTimeStepper(; stages=40)))
+    
+function run_simulation(ts, timestepper)   
+    c⁻    = CenterField(grid)
+    Δtc²  = CenterField(grid)     
 
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         timestepper, 
@@ -72,12 +71,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (SplitRungeKuttaTimeStepper(; stages=
     set!(model, c=c₀)
     set!(model.auxiliary_fields.c⁻, c₀)
 
-    if ts == :AB2
-       Δt = 2.5 * minimum_xspacing(grid)
-    else
-       Δt = 2.5 * minimum_xspacing(grid)
-    end
-
+    Δt  = 0.3 * minimum_xspacing(grid)
     sim = Simulation(model; Δt, stop_time=10)
 
     ϵ = VarianceDissipation(:c, grid)
@@ -94,44 +88,45 @@ for (ts, timestepper) in zip((:AB2, :RK3), (SplitRungeKuttaTimeStepper(; stages=
     sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
     
     run!(sim)
+
+    c    = FieldTimeSeries("one_d_simulation_$(ts).jld2", "c")
+    Δtc² = FieldTimeSeries("one_d_simulation_$(ts).jld2", "Δtc²")
+    Acx  = FieldTimeSeries("one_d_simulation_$(ts).jld2", "Acx")
+    Dcx  = FieldTimeSeries("one_d_simulation_$(ts).jld2", "Dcx")
+
+    Nt = length(c.times)
+
+    ∫closs = abs.([sum(interior(Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Nt-1])
+    ∫A     = abs.([sum(interior(Acx[i] , :, 1, 1))               for i in 2:Nt-1])
+    ∫D     = abs.([sum(interior(Dcx[i] , :, 1, 1))               for i in 2:Nt-1])
+    ∫T     = ∫D .+ ∫A
+    times  = c.times[2:end-1]
+
+    return (; c, Δtc², Acx, Dcx, ∫closs, ∫A, ∫D, ∫T, times)
 end
 
-a_c    = FieldTimeSeries("one_d_simulation_AB2.jld2", "c")
-a_Δtc² = FieldTimeSeries("one_d_simulation_AB2.jld2", "Δtc²")
-a_Acx  = FieldTimeSeries("one_d_simulation_AB2.jld2", "Acx")
-a_Dcx  = FieldTimeSeries("one_d_simulation_AB2.jld2", "Dcx")
+cases = Dict()
 
-r_c    = FieldTimeSeries("one_d_simulation_RK3.jld2", "c")
-r_Δtc² = FieldTimeSeries("one_d_simulation_RK3.jld2", "Δtc²")
-r_Acx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Acx")
-r_Dcx  = FieldTimeSeries("one_d_simulation_RK3.jld2", "Dcx")
-
-Nta = length(a_c.times)
-Ntr = length(r_c.times)
-
-a_∫closs = abs.([sum(interior(a_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Nta-1])
-a_∫A     = abs.([sum(interior(a_Acx[i] , :, 1, 1))               for i in 2:Nta-1])
-a_∫D     = abs.([sum(interior(a_Dcx[i] , :, 1, 1))               for i in 2:Nta-1])
-a_∫T     = a_∫D .+ a_∫A
-
-r_∫closs = abs.([sum(interior(r_Δtc²[i], :, 1, 1) .* grid.Δxᶜᵃᵃ) for i in 2:Ntr-1])
-r_∫A     = abs.([sum(interior(r_Acx[i] , :, 1, 1))               for i in 2:Ntr-1])
-r_∫D     = abs.([sum(interior(r_Dcx[i] , :, 1, 1))               for i in 2:Ntr-1])
-r_∫T     = r_∫D .+ r_∫A
-
-atimes = a_c.times[2:end-1]
-rtimes = r_c.times[2:end-1]
+cases["AB2"]  = run_simulation(:AB2, :QuasiAdamsBashforth2)
+cases["RK2"]  = run_simulation(:RK2, :SplitRungeKutta2)
+cases["RK3"]  = run_simulation(:RK3, :SplitRungeKutta3)
+cases["RK4"]  = run_simulation(:RK4, :SplitRungeKutta4)
+cases["RK5"]  = run_simulation(:RK5, :SplitRungeKutta5)
+cases["RK6"]  = run_simulation(:RK6, :SplitRungeKutta6)
+cases["RK7"]  = run_simulation(:RK7, :SplitRungeKutta7)
+cases["RK8"]  = run_simulation(:RK8, :SplitRungeKutta8)
+cases["RK9"]  = run_simulation(:RK9, :SplitRungeKutta9)
+cases["RK10"] = run_simulation(:RK10, :SplitRungeKutta10)
+cases["RK20"] = run_simulation(:RK20, :SplitRungeKutta20)
+cases["RK30"] = run_simulation(:RK30, :SplitRungeKutta30)
+cases["RK40"] = run_simulation(:RK40, :SplitRungeKutta40)
 
 fig = Figure()
 ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation", yscale=log10)
 
-scatter!(ax, atimes, a_∫closs, label="AB2 total variance loss", color=:blue)
-lines!(ax, atimes, a_∫A, label="AB2 advection dissipation", color=:red)
-lines!(ax, atimes, a_∫D, label="AB2 diffusive dissipation", color=:green)
-lines!(ax, atimes, a_∫T, label="AB2 total dissipation", color=:purple)
-
-scatter!(ax, rtimes, r_∫closs, label="RK3 total variance loss", color=:blue, marker=:diamond)
-lines!(ax, rtimes, r_∫A, label="RK3 advection dissipation", color=:red, linestyle=:dash)
-lines!(ax, rtimes, r_∫D, label="RK3 diffusive dissipation", color=:green, linestyle=:dash)
-lines!(ax, rtimes, r_∫T, label="RK3 total dissipation", color=:purple, linestyle=:dash)
+for key in keys(cases)
+    case = cases[key]
+    scatter!(ax, case.times, case.∫closs, label="$(key) total variance loss")
+    lines!(ax, case.times, case.∫T, label="$(key) total dissipation")
+end
 Legend(fig[1, 2], ax)

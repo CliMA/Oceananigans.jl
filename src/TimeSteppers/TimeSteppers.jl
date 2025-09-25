@@ -64,9 +64,9 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
 
-# Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 10 stages
+# Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 40 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...) 
-for stages in 2:10
+for stages in 2:40
     @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
               SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
 end

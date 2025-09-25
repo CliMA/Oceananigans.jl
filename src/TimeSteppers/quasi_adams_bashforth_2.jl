@@ -110,6 +110,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     return nothing
 end
 
+# Needs to be implemented by every model independently
+ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
+
 """
 Time step fields via the 2nd-order quasi Adams-Bashforth method
 
