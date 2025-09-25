@@ -526,7 +526,7 @@ YFlatRG = RectilinearGrid{<:Any, <:Any, Flat}
 ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, Flat}
 @inline xnodes(grid::XFlatRG, args...; kwargs...) = nothing
 @inline ynodes(grid::YFlatRG, args...; kwargs...) = nothing
-@inline ynodes(grid::ZFlatRG, args...; kwargs...) = nothing
+@inline znodes(grid::ZFlatRG, args...; kwargs...) = nothing
 
 # Generalized coordinates
 @inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)

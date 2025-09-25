@@ -715,31 +715,19 @@ end
             latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
             nodes_of_field_views_are_consistent(latlon_grid)
 
+            # Test OrthogonalSphericalShellGrid (TripolarGrid)
+            tripolar_grid = TripolarGrid(arch, FT, size=(8, 6, 4))
+            nodes_of_field_views_are_consistent(tripolar_grid)
+
             # Test Flat topology behavior for RectilinearGrid
-            x_flat_grid = RectilinearGrid(arch, FT, size=(6, 4), extent=(1, 1), topology=(Flat, Periodic, Bounded))
-            c_x_flat = CenterField(x_flat_grid)
-            @test nodes(c_x_flat)[1] isa Nothing
-
-            y_flat_grid = RectilinearGrid(arch, FT, size=(8, 4), extent=(1, 1), topology=(Periodic, Flat, Bounded))
-            c_y_flat = CenterField(y_flat_grid)
-            @test nodes(c_y_flat)[2] isa Nothing
-
-            z_flat_grid = RectilinearGrid(arch, FT, size=(8, 6), extent=(1, 1), topology=(Periodic, Periodic, Flat))
-            c_z_flat = CenterField(z_flat_grid)
-            @test nodes(c_z_flat)[3] isa Nothing
+            flat_rlgrid = RectilinearGrid(arch, FT, size=(), extent=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_rlgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
 
             # Test Flat topology behavior for LatitudeLongitudeGrid
-            x_flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(6, 4),  latitude=(-85, 85), z=(-100, 0), topology=(Flat, Bounded, Bounded))
-            c_x_flat = CenterField(x_flat_llgrid)
-            @test nodes(c_x_flat)[1] isa Nothing
-
-            y_flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(8, 4), longitude=(-180, 180), z=(-100, 0), topology=(Bounded, Flat, Bounded))
-            c_y_flat = CenterField(y_flat_llgrid)
-            @test nodes(c_y_flat)[2] isa Nothing
-
-            z_flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(8, 6), longitude=(-180, 180), latitude=(-85, 85), topology=(Bounded, Bounded, Flat))
-            c_z_flat = CenterField(z_flat_llgrid)
-            @test nodes(c_z_flat)[3] isa Nothing
+            flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_llgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
         end
     end
 end
