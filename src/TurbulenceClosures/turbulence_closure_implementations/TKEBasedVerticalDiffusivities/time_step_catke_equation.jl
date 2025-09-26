@@ -75,7 +75,9 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
 
         implicit_step!(e, implicit_solver, closure,
                        diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
+                       model.clock, 
+                       fields(model), 
+                       Δτ)
     end
 
     return nothing
@@ -204,6 +206,8 @@ end
     #                  = Lⁱ
     #
     # where ω = ϵ / e ∼ √e / ℓ.
+    
+    active = !inactive_cell(i, j, k, grid)
 
     @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
 
@@ -240,6 +244,7 @@ end
     # See below.    
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
+
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
