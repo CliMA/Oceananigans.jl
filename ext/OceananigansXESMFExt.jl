@@ -3,8 +3,8 @@ module OceananigansXESMFExt
 using XESMF
 using Oceananigans
 using Oceananigans.Architectures: architecture, on_architecture
-using Oceananigans.Fields: AbstractField
-using Oceananigans.Grids: λnodes, φnodes, Center, Face
+using Oceananigans.Fields: AbstractField, topology, location
+using Oceananigans.Grids: λnodes, φnodes, Center, Face, total_length
 
 import Oceananigans.Fields: regrid!
 import XESMF: Regridder, extract_xesmf_coordinates_structure
@@ -170,19 +170,17 @@ dst_field = CenterField(llg)
 width = 12         # degrees
 set!(src_field, (λ, φ, z) -> exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2))
 
-regridder = Regridder(dst_field, src_field, method="conservative")
+regridder = XESMF.Regridder(dst_field, src_field, method="conservative")
 
 regrid!(dst_field, regridder, src_field)
 
 first(Field(Integral(dst_field, dims=(1, 2))))
 ```
 """
-function regrid!(dst_field, regrider::XESMF.Regridder, src_field)
+function regrid!(dst_field,  regridder::XESMF.Regridder, src_field)
     Nz = size(src_field.grid)[3]
     topo_z = topology(src_field)[3]()
     ℓz = location(src_field)[3]()
-
-    dst_temp, W, src_temp = regrider.dst_temp, regrider.weights, regrider.src_temp
 
     for k in 1:total_length(ℓz, topo_z, Nz)
         src = vec(interior(src_field, :, :, k))
