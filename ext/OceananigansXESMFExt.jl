@@ -1,8 +1,6 @@
 module OceananigansXESMFExt
 
 using XESMF
-using CUDA
-using SparseArrays
 using Oceananigans
 using Oceananigans.Architectures: CPU, architecture
 using Oceananigans.Fields: AbstractField
@@ -76,9 +74,6 @@ function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field
 
     return dst_coordinates, src_coordinates
 end
-
-#TODO: fix this method so it converts to CuSparseMatrixCSC
-on_architecture(arch, m::SparseMatrixCSC) = m
 
 """
     Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
