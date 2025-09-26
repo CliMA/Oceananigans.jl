@@ -1,15 +1,11 @@
 module OceananigansXESMFExt
 
-using Pkg
-Pkg.add(PackageSpec(url="https://github.com/NumericalEarth/XESMF.jl", rev="ncc/define-regridder-struct"))
-
 using XESMF
 using Oceananigans
-using Oceananigans.Architectures: CPU, architecture
+using Oceananigans.Architectures: architecture, on_architecture
 using Oceananigans.Fields: AbstractField
 using Oceananigans.Grids: λnodes, φnodes, Center, Face
 
-import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: regrid!
 import XESMF: Regridder, extract_xesmf_coordinates_structure
 
