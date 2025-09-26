@@ -9,13 +9,18 @@ compute_eddy_velocities!(diffusivities, closure, model; parameters = :xyz) = not
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-struct EddyAdvectiveClosure{K, L} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, 1}
+struct EddyAdvectiveClosure{K, L, N} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N}
       κ_skew :: K
     tapering :: L
+    EddyAdvectiveClosure{N}(κ::K, tapering::L) where {K, L, N} = new{K, L, N}(κ, tapering)
 end
 
-EddyAdvectiveClosure(; κ_skew = 1000.0, tapering = EddyEvolvingStreamfunction(150days)) = 
-    EddyAdvectiveClosure(κ_skew, tapering) 
+function EddyAdvectiveClosure(; κ_skew = 1000.0, 
+                                tapering = EddyEvolvingStreamfunction(500days),
+                                required_halo_size::Int = 1) 
+
+    return EddyAdvectiveClosure{required_halo_size}(κ_skew, tapering) 
+end
 
 const EAC = EddyAdvectiveClosure
 
@@ -24,8 +29,10 @@ struct EddyEvolvingStreamfunction{FT}
     time_scale :: FT
 end
 
-νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfISSD, K, args...) = zero(grid)
-νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfISSD, K, args...) = zero(grid)
+νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfISSD,  K, args...) = zero(grid)
+νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfISSD,  K, args...) = zero(grid)
+νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfTISSD, K, args...) = zero(grid)
+νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfTISSD, K, args...) = zero(grid)
 νzᶠᶜᶜ(i, j, k, grid, closure::EAC, K, args...) = zero(grid)
 νzᶜᶠᶜ(i, j, k, grid, closure::EAC, K, args...) = zero(grid)
 
@@ -63,7 +70,7 @@ end
 
 @inline fill_halo_regions!(::Oceananigans.Solvers.BatchedTridiagonalSolver, args...; kwargs...) = nothing
 
-function compute_eddy_velocities!(diffusivities, closure::EddyAdvectiveClosure, model; kwargs...)
+function compute_diffusivities!(diffusivities, closure::EddyAdvectiveClosure, model; kwargs...)
     uₑ = diffusivities.u
     vₑ = diffusivities.v
     wₑ = diffusivities.w
@@ -82,9 +89,9 @@ function compute_eddy_velocities!(diffusivities, closure::EddyAdvectiveClosure, 
     parameters = KernelParameters(0:size(grid, 1)+1, 0:size(grid, 2)+1, 0:size(grid, 3)+1)
 
     launch!(architecture(grid), grid, parameters, _advance_eddy_streamfunctions!,
-            Ψx, Ψy, grid, Δt, clock, closure, model.buoyancy, fields(model), closure.slope_limiter)
+            Ψx, Ψy, grid, Δt, clock, closure, model.buoyancy, fields(model), closure.tapering)
 
-    diffuse_streamfunctions!(closure.slope_limiter, 
+    diffuse_streamfunctions!(closure.tapering, 
                              diffusivities,
                              model.closure, # Note that these can be different than the closure passed to this function
                              model.diffusivity_fields, 
@@ -95,7 +102,7 @@ function compute_eddy_velocities!(diffusivities, closure::EddyAdvectiveClosure, 
     return nothing
 end
 
-diffuse_streamfunctions!(slope_limiter, args...) = nothing
+diffuse_streamfunctions!(tapering, args...) = nothing
 
 function diffuse_streamfunctions!(::EddyEvolvingStreamfunction, diffusivities, model_closure, model_diffusivities, clock, Δt)
     Ψx = diffusivities.Ψx
@@ -109,9 +116,9 @@ function diffuse_streamfunctions!(::EddyEvolvingStreamfunction, diffusivities, m
     return nothing
 end
 
-@inline function tapering_factor(Sx, Sy, slope_limiter::FluxTapering)
+@inline function tapering_factor(Sx, Sy, tapering::FluxTapering)
     S²  = Sx^2 + Sy^2
-    Sₘ² = slope_limiter.max_slope^2 
+    Sₘ² = tapering.max_slope^2 
     return min(one(S²), Sₘ² / S²)
 end
 
@@ -143,16 +150,16 @@ end
 end
 
 # tapered slope in x-direction at F, C, F locations
-@inline function ϵSxᶠᶜᶠ(i, j, k, grid, slope_limiter, b, C)
+@inline function ϵSxᶠᶜᶠ(i, j, k, grid, tapering, b, C)
     Sx = Sxᶠᶜᶠ(i, j, k, grid, b, C) 
-    ϵ  = tapering_factor(Sx, zero(grid), slope_limiter)
+    ϵ  = tapering_factor(Sx, zero(grid), tapering)
     return ϵ * Sx
 end
 
 # tapered slope in y-direction at F, C, F locations
-@inline function ϵSyᶜᶠᶠ(i, j, k, grid, slope_limiter, b, C)
+@inline function ϵSyᶜᶠᶠ(i, j, k, grid, tapering, b, C)
     Sy = Syᶜᶠᶠ(i, j, k, grid, b, C) 
-    ϵ  = tapering_factor(zero(grid), Sy, slope_limiter)
+    ϵ  = tapering_factor(zero(grid), Sy, tapering)
     return ϵ * Sy
 end
 
@@ -177,8 +184,8 @@ end
         GΨy = (κ_ϵSyᶜᶠᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields) - Ψy[i, j, k]) / sl.time_scale
 
         # Advance streamfunctions
-        Ψx[i, j, k] = Ψx[i, j, k] + Δt * GΨx 
-        Ψy[i, j, k] = Ψy[i, j, k] + Δt * GΨy 
+        Ψx[i, j, k] += Δt * GΨx 
+        Ψy[i, j, k] += Δt * GΨy 
     end
 end
 

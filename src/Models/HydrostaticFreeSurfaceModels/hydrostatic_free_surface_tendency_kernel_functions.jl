@@ -128,7 +128,7 @@ where `c = C[tracer_index]`.
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
     closure_velocities = closure_auxiliary_velocity(closure, diffusivities, val_tracer_name)
-
+    
     total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
