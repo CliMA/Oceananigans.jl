@@ -1,11 +1,6 @@
-##### Kernels that ensure 'no-flux' from second- and fourth-order diffusion operators.
-##### Kernel functions that ensure 'no-flux' from second- and fourth-order diffusion operators.
+##### Kernel functions that ensure 'no-flux' from second-order diffusion operators.
 ##### Note that flux divergence associated with a flux boundary condition is added
 ##### in a separate step.
-#####
-##### We implement two sets of kernel functions: one for filling one boundary at a time, and
-##### a second that fills both boundaries at the same as a performance optimization.
-#####
 
 #####
 ##### Low-level functions that set data
@@ -20,7 +15,6 @@
 @inline _fill_flux_bottom_halo!(i, j, k, grid, c) = @inbounds c[i, j, 1-k] = c[i, j, k]
 @inline _fill_flux_top_halo!(i, j, k, grid, c)    = @inbounds c[i, j, grid.Nz+k] = c[i, j, grid.Nz+1-k]
 
-#####
 #####
 ##### Combined halo filling functions
 #####
