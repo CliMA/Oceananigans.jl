@@ -263,15 +263,6 @@ function fill_metric_halo_regions!(grid)
     return nothing
 end
 
-function lat_lon_to_cartesian(lat, lon, radius)
-    abs(lat) > 90 && error("lat must be within -90 ≤ lat ≤ 90")
-    return [lat_lon_to_x(lat, lon, radius), lat_lon_to_y(lat, lon, radius), lat_lon_to_z(lat, lon, radius)]
-end
-
-lat_lon_to_x(lat, lon, radius) = radius * cosd(lon) * cosd(lat)
-lat_lon_to_y(lat, lon, radius) = radius * sind(lon) * cosd(lat)
-lat_lon_to_z(lat, lon, radius) = radius * sind(lat)
-
 function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
     coordinates = (:λᶜᶜᵃ,
                    :λᶠᶜᵃ,
