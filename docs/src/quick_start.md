@@ -1,4 +1,4 @@
-# Quick start
+# [Quick start](@id quick_start)
 
 This code:
 
