@@ -3,6 +3,7 @@ using Oceananigans.BoundaryConditions: permute_boundary_conditions,
                                        DistributedCommunication
 
 using Oceananigans.DistributedComputations: cooperative_waitall!,
+                                            AsynchronousDistributed,
                                             recv_from_buffers!,
                                             fill_corners!,
                                             loc_id,
@@ -58,7 +59,7 @@ end
     return nothing
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...;
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::MPITripolarGridOfSomeKind, buffers, args...; 
                             only_local_halos=false, fill_open_bcs=true, kwargs...)
 
     north_bc = bcs.north
@@ -87,26 +88,28 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     return nothing
 end
 
-function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGridOfSomeKind})
+function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:MPITripolarGridOfSomeKind})
     arch = architecture(field.grid)
 
-    # Wait for outstanding requests
-    if !isempty(arch.mpi_requests)
-        cooperative_waitall!(arch.mpi_requests)
+    if arch isa AsynchronousDistributed # Otherwise no need to synchonize
+        # Wait for outstanding requests
+        if !isempty(arch.mpi_requests) 
+            cooperative_waitall!(arch.mpi_requests)
+      
+            # Reset MPI tag
+            arch.mpi_tag[] = 0
 
-        # Reset MPI tag
-        arch.mpi_tag[] = 0
+            # Reset MPI requests
+            empty!(arch.mpi_requests)
+        end
 
-        # Reset MPI requests
-        empty!(arch.mpi_requests)
+        recv_from_buffers!(field.data, field.communication_buffers, field.grid)
+
+        north_bc = field.boundary_conditions.north
+        instantiated_location = map(instantiate, location(field))
+
+        switch_north_halos!(field, north_bc, field.grid, instantiated_location)
     end
-
-    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-
-    north_bc = field.boundary_conditions.north
-    instantiated_location = map(instantiate, location(field))
-
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location)
 
     return nothing
 end
