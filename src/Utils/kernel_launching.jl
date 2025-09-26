@@ -237,7 +237,9 @@ end
 end
 
 """
-    configure_kernel(arch, grid, workspec, kernel!, [active_cells_map=nothing, exclude_periphery=nothing];
+    configure_kernel(arch, grid, workspec, kernel!;
+                     active_cells_map = nothing,
+                     exclude_periphery = false;
                      reduced_dimensions = (),
                      location = nothing)
 

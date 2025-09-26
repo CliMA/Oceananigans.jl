@@ -36,6 +36,8 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
             ϕ = getproperty(model.velocities, fldname)
         elseif fldname ∈ propertynames(model.tracers)
             ϕ = getproperty(model.tracers, fldname)
+        elseif !isnothing(model.free_surface) && fldname ∈ propertynames(model.free_surface)
+            ϕ = getproperty(model.free_surface, fldname)
         else
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
