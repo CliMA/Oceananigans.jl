@@ -116,4 +116,19 @@ include("vector_rotation_operators.jl")
 @inline yarea(args...)    = Ay(args...)
 @inline zarea(args...)    = Az(args...)
 
+# To be used as GridMetrics
+struct XNode end
+struct YNode end
+struct ZNode end
+struct ΛNode end
+struct ΦNode end
+struct RNode end
+
+const x = XNode()
+const y = YNode()
+const z = ZNode()
+const λ = ΛNode()
+const φ = ΦNode()
+const r = RNode()
+
 end # module
