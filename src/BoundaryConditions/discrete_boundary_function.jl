@@ -19,8 +19,9 @@ When `parameters` is not `nothing`, the boundary condition `func` is called with
 the signature
 
 ```
-func(i, j, grid, clock, model_fields, parameters)
+func(i, j, grid, clock, model_fields, parameters, args...)
 ```
+where `args` are any additional arguments passed to `getbc`.
 
 *Note* that the index `end` does *not* access the final physical grid point of
 a model field in any direction. The final grid point must be explictly specified, as
@@ -34,17 +35,17 @@ end
 const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
 
 @inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, grid, clock, model_fields)
+    condition.func(i, j, grid, clock, model_fields, args...)
 
 @inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, grid, clock, model_fields, condition.parameters)
+    condition.func(i, j, grid, clock, model_fields, condition.parameters, args...)
 
 # 3D function for immersed boundary conditions
 @inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, k, grid, clock, model_fields)
+    condition.func(i, j, k, grid, clock, model_fields, args...)
 
 @inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, k, grid, clock, model_fields, condition.parameters)
+    condition.func(i, j, k, grid, clock, model_fields, condition.parameters, args...)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)
