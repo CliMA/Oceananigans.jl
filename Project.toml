@@ -101,9 +101,13 @@ StaticArrays = "1"
 Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6, 0.7"
 TimesDates = "0.3"
-XESMF = "0.1.1"
+XESMF = "0.1.2"
 julia = "1.9"
 oneAPI = "2.0.1"
+
+[deps.XESMF]
+repo = "https://github.com/NumericalEarth/XESMF.jl.git"
+rev = "ncc/define-regridder-struct"
 
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
