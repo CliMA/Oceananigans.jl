@@ -351,7 +351,7 @@ end
 
 # launching with an empty tuple has no effect
 @inline function launch!(arch, grid, workspec_tuple::Tuple{}, kernel, args...; kwargs...)
-    @warn "trying to launch kernel $kernel! with workspec == (). The kernel will not be launched."
+    @warn "trying to launch kernel $kernel with workspec == (). The kernel will not be launched."
     return nothing
 end
 

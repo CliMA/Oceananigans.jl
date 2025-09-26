@@ -16,11 +16,8 @@ The preconditioned conjugate gradient iterative implicit free-surface solver.
 $(TYPEDFIELDS)
 """
 struct PCGImplicitFreeSurfaceSolver{V, S, R}
-    "The vertically-integrated lateral areas"
     vertically_integrated_lateral_areas :: V
-    "The preconditioned conjugate gradient solver"
     preconditioned_conjugate_gradient_solver :: S
-    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
 end
 
@@ -44,16 +41,10 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
 
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(column_depthᶠᶜᵃ, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Face, Center, Nothing}(column_depthᶜᶠᵃ, grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-
-    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-
-    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
-    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
-    fill_halo_regions!((Ax, Ay); signed=false)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)

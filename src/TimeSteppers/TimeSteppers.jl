@@ -3,7 +3,7 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
-    SplitRungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
     time_step!,
     Clock,
     tendencies
@@ -38,7 +38,7 @@ include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
-include("split_hydrostatic_runge_kutta_3.jl")
+include("split_hydrostatic_runge_kutta.jl")
 
 """
     TimeStepper(name::Symbol, args...; kwargs...)
@@ -64,8 +64,19 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
 
-TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
-    SplitRungeKutta3TimeStepper(args...; kwargs...)
+# Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 40 stages
+# By calling TimeStepper(:SplitRungeKuttaN, ...) 
+for stages in 2:40
+    @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
+              SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
+end
+
+TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻) =
+    SplitRungeKuttaTimeStepper(grid, prognostic_fields;
+                               implicit_solver,
+                               coefficients=ts.β,
+                               Gⁿ,
+                               G⁻)
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)

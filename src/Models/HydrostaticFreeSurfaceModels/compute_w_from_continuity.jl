@@ -4,6 +4,15 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, div_xyᶜᶜᶜ, Δzᶜᶜᶜ
 using Oceananigans.ImmersedBoundaries: immersed_cell
 
+function update_vertical_velocities!(velocities, grid, model; parameters = w_kernel_parameters(grid))
+    update_grid_vertical_velocity!(velocities, model, grid, model.vertical_coordinate; parameters)
+    compute_w_from_continuity!(velocities, architecture(grid), grid; parameters)
+    return nothing
+end
+
+# A Fallback to be extended for specific ztypes and grid types
+update_grid_vertical_velocity!(velocities, model, grid, ztype; kw...) = nothing
+
 """
     compute_w_from_continuity!(model)
 

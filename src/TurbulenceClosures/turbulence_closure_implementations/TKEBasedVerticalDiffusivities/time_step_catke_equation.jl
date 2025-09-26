@@ -5,7 +5,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
@@ -85,7 +85,7 @@ end
                                 stage == 2 ? (ts.γ², ts.ζ²) :
                                              (ts.γ³, ts.ζ³) 
                                 
-function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
+function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple

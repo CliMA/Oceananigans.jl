@@ -116,7 +116,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ¹, nothing)
+    rk_substep!(model, Δt, γ¹, nothing)
 
     tick!(model.clock, first_stage_Δt; stage=true)
 
@@ -132,7 +132,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ², ζ²)
+    rk_substep!(model, Δt, γ², ζ²)
 
     tick!(model.clock, second_stage_Δt; stage=true)
 
@@ -148,7 +148,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ³, ζ³)
+    rk_substep!(model, Δt, γ³, ζ³)
 
     # This adjustment of the final time-step reduces the accumulation of
     # round-off error when Δt is added to model.clock.time. Note that we still use
@@ -176,7 +176,7 @@ end
 stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
 stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 
-function rk3_substep!(model, Δt, γⁿ, ζⁿ)
+function rk_substep!(model, Δt, γⁿ, ζⁿ)
 
     grid = model.grid
     arch = architecture(grid)
@@ -184,7 +184,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     for (i, field) in enumerate(model_fields)
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
+        launch!(arch, grid, :xyz, rk_substep_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -208,7 +208,7 @@ Time step velocity fields via the 3rd-order Runge-Kutta method
 
 where `m` denotes the substage.
 """
-@kernel function rk3_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
+@kernel function rk_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
@@ -216,7 +216,7 @@ where `m` denotes the substage.
     end
 end
 
-@kernel function rk3_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
+@kernel function rk_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin

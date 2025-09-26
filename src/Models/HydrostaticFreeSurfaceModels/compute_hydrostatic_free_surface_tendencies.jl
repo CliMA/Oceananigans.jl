@@ -13,29 +13,36 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
                                        linear_index_to_tuple
 
-"""
-    compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
-
-Calculate the interior and boundary contributions to tendency terms without the
-contribution from non-hydrostatic pressure.
-"""
-function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     grid = model.grid
     arch = architecture(grid)
 
-    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain. The active cells map restricts the computation to the active cells in the
-    # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
     active_cells_map = get_active_cells_map(model.grid, Val(:interior))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
-    complete_communication_and_compute_buffer!(model, grid, arch)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
+    complete_communication_and_compute_momentum_buffer!(model, grid, arch)
+    compute_momentum_flux_bcs!(model)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
     end
+
+    return nothing
+end
+
+function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
+
+    grid = model.grid
+    arch = architecture(grid)
+
+    active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
+    kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
+
+    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
+    complete_communication_and_compute_tracer_buffer!(model, grid, arch)
+    compute_tracer_flux_bcs!(model)
 
     update_tendencies!(model.biogeochemistry, model)
 
@@ -54,12 +61,10 @@ compute_free_surface_tendency!(grid, model, free_surface) = nothing
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
 
     arch = model.architecture
     grid = model.grid
-
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
@@ -75,7 +80,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
-                     model.velocities,
+                     model.transport_velocities,
                      model.free_surface,
                      model.tracers,
                      model.diffusivity_fields,

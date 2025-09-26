@@ -4,11 +4,15 @@ using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation
+using Oceananigans.DistributedComputations
 using Printf
+# using GLMakie
 
+arch    = CPU() #Distributed(CPU(); synchronized_communication=true)
 z_faces = MutableVerticalDiscretization((-20, 0))
 
-grid = RectilinearGrid(size = (128, 20),
+grid = RectilinearGrid(arch; 
+                       size = (128, 20),
                           x = (0, 64kilometers),
                           z = z_faces,
                        halo = (6, 6),
@@ -16,25 +20,23 @@ grid = RectilinearGrid(size = (128, 20),
 
 model = HydrostaticFreeSurfaceModel(; grid,
                          momentum_advection = WENO(order=5),
-                           tracer_advection = WENO(order=7),
+                           tracer_advection = WENO(order=5),
                                    buoyancy = BuoyancyTracer(),
-                                    closure = (VerticalScalarDiffusivity(ν=1e-4), HorizontalScalarDiffusivity(ν=1.0)),
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=20)) # 
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=40)) # 
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
-
-set!(model, b = bᵢ, c = 1)
+set!(model, b = bᵢ, c = (x, z) -> 1)
 
 # Same timestep as in the ilicak paper
-Δt = 1
+Δt = 20
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time=17hours)
+simulation = Simulation(model; Δt, stop_time=50hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
@@ -54,23 +56,33 @@ et2 = []
 bav = [sum(model.tracers.b * V) / sum(V)]
 cav = [sum(model.tracers.c * V) / sum(V)]
 vav = [sum(V)]
+mxc = [maximum(model.tracers.c)]
+mnc = [minimum(model.tracers.c)]
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
+    Nx = size(grid, 1)
+
     push!(bav, sum(model.tracers.b * V) / sum(V))
     push!(cav, sum(model.tracers.c * V) / sum(V))
     push!(vav, sum(V))
+    push!(mxc, maximum(model.tracers.c))
+    push!(mnc, minimum(model.tracers.c))
 
-    msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
+    Δη = maximum(abs, interior(model.free_surface.η, :, 1, 1) .- model.grid.z.ηⁿ[1:Nx, 1, 1])
+
+    msgn = @sprintf("") #Rank: %d, ", arch.local_rank)
+    msg0 = @sprintf("Time: %s, ", prettytime(sim.model.clock.time))
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
-    msg2 = @sprintf("extrema u: %.2e %.2e ",  maximum(u),  minimum(u))
-    msg3 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
-    msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
-    @info msg0 * msg1 * msg2 * msg3 * msg4
+    msg2 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
+    msg3 = @sprintf("max Δη: %6.3e ", Δη)
+    msg4 = @sprintf("extrema c: %.2e %.2e ", mxc[end]-1, mnc[end]-1)
 
     push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
-    push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))
+    push!(et2, deepcopy(model.grid.z.ηⁿ[1:Nx, 1, 1]))
+
+    @handshake @info msgn * msg0 * msg1 * msg2 * msg3 * msg4
 
     return nothing
 end
