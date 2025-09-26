@@ -185,9 +185,9 @@ function regrid!(dst_field, regrider::XESMF.Regridder, src_field)
     dst_temp, W, src_temp = regrider.dst_temp, regrider.weights, regrider.src_temp
 
     for k in 1:total_length(ℓz, topo_z, Nz)
-        src_temp .= vec(interior(src_field, :, :, k))
-        LinearAlgebra.mul!(dst_temp, W, src_temp)
-        vec(interior(dst_field, :, :, k)) .= dst_temp
+        src = vec(interior(src_field, :, :, k))
+        dst = vec(interior(dst_field, :, :, k))
+        regridder(dst, src)
     end
 
     return dst_field
