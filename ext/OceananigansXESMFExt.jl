@@ -190,7 +190,7 @@ function regrid!(dst_field, regrider::XESMF.Regridder, src_field)
         vec(interior(dst_field, :, :, k)) .= dst_temp
     end
 
-    return nothing
+    return dst_field
 end
 
 end # module
