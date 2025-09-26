@@ -18,9 +18,6 @@ using OrderedCollections: OrderedDict
 
 import Base: show
 
-# To be extended in the `Models` module
-timestepper(model) = nothing
-
 include("callback.jl")
 include("simulation.jl")
 include("run.jl")

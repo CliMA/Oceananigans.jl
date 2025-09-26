@@ -15,7 +15,7 @@ using Oceananigans.TurbulenceClosures: with_tracers, build_diffusivity_fields
 using Oceananigans.Utils: tupleit
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Simulations: timestepper
+import Oceananigans.TimeSteppers: timestepper
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
