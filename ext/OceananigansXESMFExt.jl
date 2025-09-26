@@ -5,11 +5,12 @@ using CUDA
 using SparseArrays
 using Oceananigans
 using Oceananigans.Architectures: CPU, architecture
+using Oceananigans.Fields: AbstractField
 using Oceananigans.Grids: λnodes, φnodes, Center, Face
 
 import Oceananigans.Architectures: on_architecture
-import Oceananigans.Fields: Regridder
-
+import Oceananigans.Fields: regrid!
+import XESMF: Regridder, extract_xesmf_coordinates_structure
 
 function x_node_array(x::AbstractVector, Nx, Ny)
     return Array(repeat(view(x, 1:Nx), 1, Ny))'
@@ -30,7 +31,7 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = Array(view(x, 1:Nx+1, 1:Ny+1))'
 y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
 y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
 
-function extract_xesmf_coordinates_structure(dst_field, src_field)
+function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
 
@@ -80,7 +81,7 @@ end
 on_architecture(arch, m::SparseMatrixCSC) = m
 
 """
-    Regridder(dst_field, src_field; method="conservative")
+    Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
 
 Return a regridder from `src_field` to `dst_field` using the specified `method`.
 The regridder contains a sparse matrix with the regridding weights.
@@ -120,7 +121,7 @@ dst_field = CenterField(llg)
 regridder = Oceananigans.Fields.Regridder(dst_field, src_field, method="conservative")
 ```
 """
-function Regridder(dst_field, src_field; method="conservative")
+function Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
 
@@ -134,26 +135,68 @@ function Regridder(dst_field, src_field; method="conservative")
     @assert src_field.grid.z.cᵃᵃᶠ[1:src_Nz+1] == dst_field.grid.z.cᵃᵃᶠ[1:dst_Nz+1]
 
     dst_coordinates, src_coordinates = extract_xesmf_coordinates_structure(dst_field, src_field)
-
     periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? true : false
 
-    xesmf = XESMF.xesmf
-    regridder = xesmf.Regridder(src_coordinates, dst_coordinates, method; periodic)
-    method = uppercasefirst(string(regridder.method))
-    weights = XESMF.sparse_regridder_weights(regridder)
+    regridder = XESMF.Regridder(src_coordinates, dst_coordinates; method, periodic)
+    weights = regridder.weights
 
     arch = architecture(src_field)
-    FT = eltype(src_field)
 
     weights = on_architecture(arch, weights)
 
-    Nx, Ny, Nz = size(src_field)
-    temp_src = on_architecture(arch, zeros(FT, Nx * Ny))
+    temp_src = on_architecture(architecture(src_field), regridder.src_temp)
+    temp_dst = on_architecture(architecture(dst_field), regridder.dst_temp)
 
-    Nx, Ny, Nz = size(dst_field)
-    temp_dst = on_architecture(arch, zeros(FT, Nx * Ny))
+    return XESMF.Regridder(method, weights, temp_src, temp_dst)
+end
 
-    return Regridder(arch, method, weights, src_field.grid, dst_field.grid, temp_src, temp_dst)
+"""
+    regrid!(dst_field, regrider::XESMF.Regridder, src_field)
+
+Regrid `src_field` onto the grid of field `dst_field` using the regrider `r`.
+
+Example
+=======
+
+```@example
+using Oceananigans
+using XESMF
+
+z = (-1, 0)
+
+tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude = -80)
+
+llg = LatitudeLongitudeGrid(; size=(360, 180, 1), z,
+                            longitude=(0, 360), latitude=(-82, 90))
+
+src_field = CenterField(tg)
+dst_field = CenterField(llg)
+
+λ₀, φ₀ = 150, 30.  # degrees
+width = 12         # degrees
+set!(src_field, (λ, φ, z) -> exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2))
+
+regridder = Regridder(dst_field, src_field, method="conservative")
+
+regrid!(dst_field, regridder, src_field)
+
+first(Field(Integral(dst_field, dims=(1, 2))))
+```
+"""
+function regrid!(dst_field, regrider::XESMF.Regridder, src_field)
+    Nz = size(src_field.grid)[3]
+    topo_z = topology(src_field)[3]()
+    ℓz = location(src_field)[3]()
+
+    dst_temp, W, src_temp = regrider.dst_temp, regrider.weights, regrider.src_temp
+
+    for k in 1:total_length(ℓz, topo_z, Nz)
+        src_temp .= vec(interior(src_field, :, :, k))
+        LinearAlgebra.mul!(dst_temp, W, src_temp)
+        vec(interior(dst_field, :, :, k)) .= dst_temp
+    end
+
+    return nothing
 end
 
 end # module
