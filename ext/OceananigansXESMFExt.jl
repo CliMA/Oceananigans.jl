@@ -1,5 +1,8 @@
 module OceananigansXESMFExt
 
+using Pkg
+Pkg.add(PackageSpec(url="https://github.com/NumericalEarth/XESMF.jl", rev="ncc/define-regridder-struct"))
+
 using XESMF
 using Oceananigans
 using Oceananigans.Architectures: CPU, architecture
