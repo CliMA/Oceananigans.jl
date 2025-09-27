@@ -4,9 +4,6 @@ using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.Units
 
-# Fallback
-compute_eddy_velocities!(diffusivities, closure, model; parameters = :xyz) = nothing
-
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 struct EddyAdvectiveClosure{K, L, N} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N}
@@ -52,6 +49,15 @@ end
 
 with_tracers(tracers, closure::EAC) = closure
 
+struct EddyClosureDiffusivities{U, V, W, PX, PY, IS}
+    u  :: U
+    v  :: V
+    w  :: W
+    Ψx :: PX
+    Ψy :: Py
+    implicit_solver :: IS
+end
+
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::EAC) 
 
     U = VelocityFields(grid)
@@ -60,15 +66,21 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::EAC)
 
     if closure.tapering isa EddyEvolvingStreamfunction
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
-        diffusivities = merge(U, (; Ψx, Ψy, implicit_solver))
     else
-        diffusivities = merge(U, (; Ψx, Ψy))
+        implicit_solver = nothing
     end
 
-    return diffusivities
+    return EddyClosureDiffusivities(U.u, U.v, U.w, Ψx, Ψy, implicit_solver)
 end
 
-@inline fill_halo_regions!(::Oceananigans.Solvers.BatchedTridiagonalSolver, args...; kwargs...) = nothing
+@inline function fill_halo_regions!(diffusivities::EddyClosureDiffusivities, args...; kwargs...) 
+    fill_halo_regions!(diffusivities.u, args...; kwargs...)
+    fill_halo_regions!(diffusivities.v, args...; kwargs...)
+    fill_halo_regions!(diffusivities.w, args...; kwargs...)
+    fill_halo_regions!(diffusivities.Ψx, args...; kwargs...)
+    fill_halo_regions!(diffusivities.Ψy, args...; kwargs...)
+    return nothing
+end
 
 function compute_diffusivities!(diffusivities, closure::EddyAdvectiveClosure, model; kwargs...)
     uₑ = diffusivities.u
@@ -122,8 +134,8 @@ end
     return min(one(S²), Sₘ² / S²)
 end
 
-# No tapering if we evolve the streamfunctions!
-@inline tapering_factor(Sx, Sy, ::EddyEvolvingStreamfunction) = 1
+# In any other case, we do not taper
+@inline tapering_factor(Sx, Sy, tapering) = 1
 
 # Slope in x-direction at F, C, F locations, zeroed out on peripheries
 @inline function Sxᶠᶜᶠ(i, j, k, grid, b, C) 
