@@ -2,6 +2,7 @@ using Oceananigans.Fields: VelocityFields, ZeroField
 using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 using Oceananigans.TimeSteppers: implicit_step!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Units
 using Adapt
 
