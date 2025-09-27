@@ -3,6 +3,7 @@ using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.Units
+using Adapt
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
@@ -57,6 +58,14 @@ struct EddyClosureDiffusivities{U, V, W, PX, PY, IS}
     Ψy :: PY
     implicit_solver :: IS
 end
+
+Adapt.adapt_structure(to, K::EddyClosureDiffusivities) = 
+    EddyClosureDiffusivities(adapt(to, K.u),
+                             adapt(to, K.v),
+                             adapt(to, K.w),
+                             adapt(to, K.Ψx),
+                             adapt(to, K.Ψy),
+                             nothing)
 
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::EAC) 
 
