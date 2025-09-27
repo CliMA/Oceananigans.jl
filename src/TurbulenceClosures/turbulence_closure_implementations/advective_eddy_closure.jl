@@ -29,8 +29,6 @@ end
 
 νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfISSD,  K, args...) = zero(grid)
 νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfISSD,  K, args...) = zero(grid)
-νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfTISSD, K, args...) = zero(grid)
-νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfTISSD, K, args...) = zero(grid)
 νzᶠᶜᶜ(i, j, k, grid, closure::EAC, K, args...) = zero(grid)
 νzᶜᶠᶜ(i, j, k, grid, closure::EAC, K, args...) = zero(grid)
 
@@ -83,9 +81,9 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::EAC)
 end
 
 @inline function fill_halo_regions!(diffusivities::EddyClosureDiffusivities, args...; kwargs...) 
-    fill_halo_regions!(diffusivities.u, args...; kwargs...)
-    fill_halo_regions!(diffusivities.v, args...; kwargs...)
-    fill_halo_regions!(diffusivities.w, args...; kwargs...)
+    fill_halo_regions!(diffusivities.u,  args...; kwargs...)
+    fill_halo_regions!(diffusivities.v,  args...; kwargs...)
+    fill_halo_regions!(diffusivities.w,  args...; kwargs...)
     fill_halo_regions!(diffusivities.Ψx, args...; kwargs...)
     fill_halo_regions!(diffusivities.Ψy, args...; kwargs...)
     return nothing
@@ -118,6 +116,9 @@ function compute_diffusivities!(diffusivities, closure::EddyAdvectiveClosure, mo
                              model.diffusivity_fields, 
                              clock, Δt)
 
+    mask_immersed_field!(Ψx)
+    mask_immersed_field!(Ψy)
+
     launch!(architecture(grid), grid, parameters, _compute_eddy_velocities!, uₑ, vₑ, wₑ, grid, Ψx, Ψy)
 
     return nothing
@@ -125,14 +126,12 @@ end
 
 diffuse_streamfunctions!(tapering, args...) = nothing
 
-function diffuse_streamfunctions!(::EddyEvolvingStreamfunction, diffusivities, model_closure, model_diffusivities, clock, Δt)
-    Ψx = diffusivities.Ψx
-    Ψy = diffusivities.Ψy 
-    Is = diffusivities.implicit_solver
+function diffuse_streamfunctions!(::EddyEvolvingStreamfunction, K, closure, diffusivities, clock, Δt)
+    Ψx = K.Ψx
+    Ψy = K.Ψy 
 
-    for Ψ in (Ψx, Ψy)
-        implicit_step!(Ψ, Is, model_closure, model_diffusivities, nothing, clock, Δt)
-    end
+    implicit_step!(Ψx, K.implicit_solver, closure, diffusivities, nothing, clock, Δt)
+    implicit_step!(Ψy, K.implicit_solver, closure, diffusivities, nothing, clock, Δt)
 
     return nothing
 end
@@ -170,30 +169,18 @@ end
     return ifelse(inactive, zero(grid), Sy)
 end
 
-# tapered slope in x-direction at F, C, F locations
-@inline function ϵSxᶠᶜᶠ(i, j, k, grid, tapering, b, C)
-    Sx = Sxᶠᶜᶠ(i, j, k, grid, b, C) 
-    ϵ  = tapering_factor(Sx, zero(grid), tapering)
-    return ϵ * Sx
-end
-
-# tapered slope in y-direction at F, C, F locations
-@inline function ϵSyᶜᶠᶠ(i, j, k, grid, tapering, b, C)
-    Sy = Syᶜᶠᶠ(i, j, k, grid, b, C) 
-    ϵ  = tapering_factor(zero(grid), Sy, tapering)
-    return ϵ * Sy
-end
-
 @inline function κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
-    κ = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) 
-    ϵS = ϵSxᶠᶜᶠ(i, j, k, grid, sl, b, fields)
-    return κ * ϵS
+    κ  = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) 
+    Sx = Sxᶠᶜᶠ(i, j, k, grid, b, fields) 
+    ϵ  = tapering_factor(Sx, zero(grid), sl)
+    return κ * ϵ * Sx
 end
 
 @inline function κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
-    κ = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) 
-    ϵS = ϵSyᶜᶠᶠ(i, j, k, grid, sl, b, fields)
-    return κ * ϵS
+    κ  = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) 
+    Sy = Syᶜᶠᶠ(i, j, k, grid, b, fields) 
+    ϵ  = tapering_factor(zero(grid), Sy, sl)
+    return κ * ϵ * Sy
 end
 
 @kernel function _advance_eddy_streamfunctions!(Ψx, Ψy, grid, Δt, clock, closure, buoyancy, fields, sl::EddyEvolvingStreamfunction)
