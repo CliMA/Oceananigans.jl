@@ -35,7 +35,7 @@ tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude, radius)
         width = 12         # degrees
         set!(src_field, (λ, φ, z) -> exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2))
 
-        R = Oceananigans.Fields.Regridder(dst_field, src_field)
+        R = XESMF.Regridder(dst_field, src_field)
         @test R.weights isa SparseMatrixCSC
 
         regrid!(dst_field, R, src_field)
