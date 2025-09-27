@@ -35,12 +35,12 @@ tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude, radius)
         width = 12         # degrees
         set!(src_field, (λ, φ, z) -> exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2))
 
-        R = XESMF.Regridder(dst_field, src_field)
-        @test R.weights isa SparseMatrixCSC
+        regridder = XESMF.Regridder(dst_field, src_field)
+        @test regridder.weights isa SparseMatrixCSC
 
-        regrid!(dst_field, R, src_field)
+        regrid!(dst_field, regridder, src_field)
 
-        # ∫ dst_field dA = ∫ src_field dA
+        # ∫ dst_field dA ≈ ∫ src_field dA
         @test isapprox(first(Field(Integral(dst_field, dims=(1, 2)))),
                        first(Field(Integral(src_field, dims=(1, 2)))), rtol=1e-4)
     end
