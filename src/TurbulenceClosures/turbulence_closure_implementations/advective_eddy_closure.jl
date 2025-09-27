@@ -150,7 +150,7 @@ end
 @inline function Sxᶠᶜᶠ(i, j, k, grid, b, C) 
     bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C) 
     bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
-    Sx = ifelse((bz == 0) & (bx == 0), zero(grid), - bx / bz)
+    Sx = ifelse(bz == 0, zero(grid), - bx / bz)
     
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
@@ -162,7 +162,7 @@ end
 @inline function Syᶜᶠᶠ(i, j, k, grid, b, C) 
     by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C) 
     bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
-    Sy = ifelse((bz == 0) & (by == 0), zero(grid), - by / bz)
+    Sy = ifelse(bz == 0, zero(grid), - by / bz)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
