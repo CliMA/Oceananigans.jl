@@ -54,13 +54,13 @@ struct EddyClosureDiffusivities{U, V, W, PX, PY, IS}
     v  :: V
     w  :: W
     Ψx :: PX
-    Ψy :: Py
+    Ψy :: PY
     implicit_solver :: IS
 end
 
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::EAC) 
 
-    U = VelocityFields(grid)
+    U  = VelocityFields(grid)
     Ψx = Field{Face, Center, Face}(grid)
     Ψy = Field{Center, Face, Face}(grid)
 
