@@ -189,8 +189,10 @@ end
     κ = closure.κ_skew
 
     @inbounds begin        
-        GΨx = (κ_ϵSxᶠᶜᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields) - Ψx[i, j, k]) / sl.time_scale
-        GΨy = (κ_ϵSyᶜᶠᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields) - Ψy[i, j, k]) / sl.time_scale
+        Sx  = atan(κ_ϵSxᶠᶜᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields))
+        Sy  = atan(κ_ϵSyᶜᶠᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields))
+        GΨx = (Sx - Ψx[i, j, k]) / sl.time_scale
+        GΨy = (Sy - Ψy[i, j, k]) / sl.time_scale
 
         # Advance streamfunctions
         Ψx[i, j, k] += Δt * GΨx 
