@@ -2,7 +2,8 @@ using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
-using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode
+using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode, total_length
+using LinearAlgebra
 
 using Base: ForwardOrdering
 
@@ -10,9 +11,9 @@ const f = Face()
 const c = Center()
 
 """
-    regrid!(a, b)
+    regrid!(dst_field, src_field)
 
-Regrid field `b` onto the grid of field `a`.
+Regrid `src_field` onto the grid of `dst_field`.
 
 Example
 =======
@@ -44,7 +45,8 @@ output_field[1, 1, :]
  0.0
 ```
 """
-regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
+regrid!(dst_field, src_field) =
+    regrid!(dst_field, dst_field.grid, src_field.grid, src_field)
 
 function we_can_regrid_in_z(a, target_grid, source_grid, b)
     # Check that
