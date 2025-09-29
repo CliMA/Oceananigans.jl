@@ -20,17 +20,14 @@ function compute_flux_bc_tendencies!(model::HydrostaticFreeSurfaceModel)
     velocities = model.velocities
     tracers    = model.tracers
     
-    args = (model.clock, fields(model), model.closure, model.buoyancy)
-
-    
     # Velocity fields
     for i in (:u, :v)
-        @apply_regionally compute_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
+        @apply_regionally compute_flux_bcs!(Gⁿ[i], velocities[i], arch, model.clock, fields(model))
     end
 
     # Tracer fields
     for i in propertynames(tracers)
-        @apply_regionally compute_flux_bcs!(Gⁿ[i], tracers[i], arch, args)
+        @apply_regionally compute_flux_bcs!(Gⁿ[i], tracers[i], arch, model.clock, fields(model))
     end
 
     return nothing
