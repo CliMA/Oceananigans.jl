@@ -1,4 +1,5 @@
 using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: configure_kernel
 using Oceananigans.TimeSteppers: rk3_substep_field!
 
 import Oceananigans.TimeSteppers: rk3_substep!
