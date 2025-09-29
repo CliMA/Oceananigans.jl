@@ -33,7 +33,7 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
                        model.diffusivity_fields,
                        Val(i),
                        model.clock,
-                       Δt)
+                       Δτ)
     end
 
     compute_pressure_correction!(model, Δτ)
