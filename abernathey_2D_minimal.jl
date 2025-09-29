@@ -121,7 +121,7 @@ obl_closure  = RiBasedVerticalDiffusivity()
 #redi_closure = IsopycnalSkewSymmetricDiffusivity(; κ_symmetric) 
 redi_closure = IsopycnalDiffusivity(; κ_symmetric) 
 eddy_closure = EddyAdvectiveClosure(; κ_skew, tapering=EddyEvolvingStreamfunction(100days))
-closure = (obl_closure, eddy_closure)
+closure = (obl_closure, redi_closure, eddy_closure)
 
 model = HydrostaticFreeSurfaceModel(; grid = grid,
                                       coriolis = coriolis,

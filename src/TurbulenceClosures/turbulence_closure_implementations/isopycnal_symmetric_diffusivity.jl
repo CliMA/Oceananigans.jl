@@ -32,7 +32,7 @@ References
 """
 function IsopycnalDiffusivity(time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;
                               κ_symmetric = 0,
-                              tapering = FluxTapering(1.0),
+                              tapering = FluxTapering(0.001),
                               required_halo_size::Int = 1)
 
     TD = typeof(time_disc)
