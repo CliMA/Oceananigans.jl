@@ -220,6 +220,7 @@ end
                         model = HydrostaticFreeSurfaceModel(; grid,
                                                             free_surface,
                                                             tracers = (:b, :c, :constant),
+                                                            timestepper = :SplitRungeKutta3,
                             				                buoyancy = BuoyancyTracer(),
                                                             vertical_coordinate = ZStarCoordinate(grid))
 
@@ -234,7 +235,7 @@ end
             end
         end
 
-        @info "  Testing a ZStarCoordinate and Runge-Kutta 3rd order time stepping"
+        @info "  Testing a ZStarCoordinate and Runge-Kutta 5th order time stepping"
 
         topology = topologies[2]
         rtg  = RectilinearGrid(arch; size=(10, 10, 20), x=(0, 100kilometers), y=(-10kilometers, 10kilometers), topology, z=z_stretched)
@@ -247,7 +248,7 @@ end
             model = HydrostaticFreeSurfaceModel(; grid,
                                                 free_surface = split_free_surface,
                                                 tracers = (:b, :c, :constant),
-                                                timestepper = :SplitRungeKutta3,
+                                                timestepper = :SplitRungeKutta5,
                                                 buoyancy = BuoyancyTracer(),
                                                 vertical_coordinate = ZStarCoordinate(grid))
 
@@ -292,6 +293,7 @@ end
                                                   free_surface,
                                                   tracers = (:b, :c, :constant),
                                                   buoyancy = BuoyancyTracer(),
+                                                  timestepper = :SplitRungeKutta3,
                                                   vertical_coordinate = ZStarCoordinate(grid))
 
             bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
