@@ -87,10 +87,10 @@ function spectral_coefficients(c::AbstractVector)
     return tuple(b...)
 end
 
+# To be implemented by every model independently
 cache_previous_fields!(model) = nothing
 
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
-    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     if model.clock.iteration == 0
         update_state!(model, callbacks)
@@ -108,7 +108,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         model.clock.stage = stage
         
         # Perform the substep
-        rk_substep!(model, grid, Δt / β, callbacks)
+        rk_substep!(model, Δt / β, callbacks)
 
         # Update the state
         update_state!(model, callbacks)
@@ -120,3 +120,10 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
     return nothing
 end
+
+#####
+##### These functions need to be implemented by every model independently
+#####
+
+rk_substep!(model::AbstractModel, Δt, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
+cache_previous_fields!(model::AbstractModel) = error("cache_previous_fields! not implemented for $(typeof(model))")
