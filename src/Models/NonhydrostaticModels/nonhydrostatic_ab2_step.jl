@@ -1,4 +1,5 @@
-using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: implicit_step!
+import Oceananigans.TimeSteppers: ab2_step!
 
 # AB2 step for NonhydrostaticModel. This is a predictor-corrector scheme where the
 # predictor step for velocities is an AB2 step. The velocities are then corrected
