@@ -1,5 +1,6 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
+using Oceananigans.Operators: 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear, halo_size
@@ -24,6 +25,11 @@ end
 architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
+
+# The assumption is that the horizontal spacings do not depend on the z-direction
+@inline integrated_x_area(i, j, k, grid) = column_depthᶠᶜᵃ(i, j, grid) * Δyᶠᶜᵃ(i, j, grid.Nz, grid)
+@inline integrated_y_area(i, j, k, grid) = column_depthᶜᶠᵃ(i, j, grid) * Δxᶜᶠᵃ(i, j, grid.Nz, grid)
+
 """
     PCGImplicitFreeSurfaceSolver(grid, settings)
 
@@ -41,8 +47,8 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
 
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(column_depthᶠᶜᵃ, grid)
-    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Face, Center, Nothing}(column_depthᶜᶠᵃ, grid)
+    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_x_area, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_y_area, grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 

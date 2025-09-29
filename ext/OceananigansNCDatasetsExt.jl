@@ -6,6 +6,7 @@ using Dates: AbstractTime, UTC, now
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
 
+using Oceananigans: fields
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.AbstractOperations: KernelFunctionOperation
@@ -1337,7 +1338,7 @@ every time an output is written to the file.
 function write_output!(ow::NetCDFWriter, model::AbstractModel)
 
     # Synchronize model state if needed
-    for field in Oceananigans.fields(model)
+    for field in fields(model)
         synchronize_communication!(field)
     end
 

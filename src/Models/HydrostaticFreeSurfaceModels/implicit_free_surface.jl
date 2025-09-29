@@ -166,7 +166,7 @@ function local_compute_integrated_variables!(∫ᶻQ, velocities, arch)
 
     # Compute barotropic volume flux. 
     foreach(mask_immersed_field!, velocities)
-    compute_barotropic_mode!(U, V, grid, u * Δx, v * Δy)
+    compute_barotropic_mode!(U, V, grid, u * Δy, v * Δx)
 
     return nothing
 end
