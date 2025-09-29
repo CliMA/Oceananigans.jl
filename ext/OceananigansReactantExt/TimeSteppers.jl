@@ -86,7 +86,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     ab2_timestepper.χ = χ
 
     # Full step for tracers, fractional step for velocities.
-    ab2_step!(model, Δt)
+    ab2_step!(model, Δt, callbacks)
 
     tick!(model.clock, Δt)
 
