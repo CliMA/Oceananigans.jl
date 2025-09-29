@@ -1,6 +1,6 @@
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Architectures: device
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δx, Δy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettysummary
@@ -166,7 +166,7 @@ function local_compute_integrated_variables!(∫ᶻQ, velocities, arch)
 
     # Compute barotropic volume flux. 
     foreach(mask_immersed_field!, velocities)
-    compute_barotropic_mode!(U, V, grid, u, v)
+    compute_barotropic_mode!(U, V, grid, u * Δx, v * Δy)
 
     return nothing
 end
