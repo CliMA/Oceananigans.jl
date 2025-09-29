@@ -47,7 +47,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_x_area, grid)
-    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_y_area, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(integrated_y_area, grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -177,6 +177,14 @@ where  ̂ indicates a vertical integral, and
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
     @inbounds L_ηⁿ⁺¹[i, j, k_top] = Az_∇h²ᶜᶜᶜ(i, j, k_top, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_top] / (g * Δt^2)
 end
+
+"""
+Compute the horizontal divergence of vertically-uniform quantity using
+vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
+"""
+@inline Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η) =
+    (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
+     δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
 
 #####
 ##### Preconditioners

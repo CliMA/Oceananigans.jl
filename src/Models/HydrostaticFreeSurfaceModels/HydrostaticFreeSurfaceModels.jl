@@ -91,7 +91,6 @@ include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 using .SplitExplicitFreeSurfaces
 
 # Implicit free-surface solver functionality
-include("implicit_free_surface_utils.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
