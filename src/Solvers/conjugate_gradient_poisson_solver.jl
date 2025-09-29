@@ -42,11 +42,11 @@ end
     @inbounds ∇²ϕ[i, j, k] = V∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
 end
 
-function compute_laplacian!(∇²ϕ, ϕ)
+function compute_symmetric_laplacian!(∇²ϕ, ϕ)
     grid = ϕ.grid
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
-    launch!(arch, grid, :xyz, laplacian!, ∇²ϕ, grid, ϕ)
+    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
     return nothing
 end
 
@@ -115,7 +115,7 @@ function ConjugateGradientPoissonSolver(grid;
 
     rhs = CenterField(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_laplacian!;
+    conjugate_gradient_solver = ConjugateGradientSolver(compute_symmetric_laplacian!;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
