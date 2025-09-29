@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_m
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_previous_fields!
 
-rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) = 
+rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
 
 # RK3 substep for hydrostatic free surface models, it differs in the order of operations

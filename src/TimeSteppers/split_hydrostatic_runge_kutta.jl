@@ -108,7 +108,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         model.clock.stage = stage
         
         # Perform the substep
-        rk_substep!(model, Δt / β, callbacks)
+        Δτ = Δt / β
+        rk_substep!(model, Δτ, callbacks)
 
         # Update the state
         update_state!(model, callbacks)
