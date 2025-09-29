@@ -6,9 +6,9 @@ using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation
 using Oceananigans.DistributedComputations
 using Printf
-# using GLMakie
+using GLMakie
 
-arch    = CPU() #Distributed(CPU(); synchronized_communication=true)
+arch    = CPU()
 z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(arch; 
@@ -18,13 +18,16 @@ grid = RectilinearGrid(arch;
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
+bottom(x) = x < 38kilometers && x > 26kilometers ? -10 : -20
+
+grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+
 model = HydrostaticFreeSurfaceModel(; grid,
                          momentum_advection = WENO(order=5),
                            tracer_advection = WENO(order=5),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
-                        vertical_coordinate = ZStarCoordinate(grid),
                                free_surface = SplitExplicitFreeSurface(grid; substeps=40)) # 
 
 g = model.free_surface.gravitational_acceleration
@@ -32,7 +35,7 @@ bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
 set!(model, b = bᵢ, c = (x, z) -> 1)
 
 # Same timestep as in the ilicak paper
-Δt = 20
+Δt = 1
 
 @info "the time step is $Δt"
 
