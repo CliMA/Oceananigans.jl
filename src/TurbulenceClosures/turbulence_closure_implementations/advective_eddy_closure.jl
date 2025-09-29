@@ -130,10 +130,8 @@ diffuse_streamfunctions!(tapering, args...) = nothing
 function diffuse_streamfunctions!(::EddyEvolvingStreamfunction, K, closure, diffusivities, clock, Δt)
     Ψx = K.Ψx
     Ψy = K.Ψy 
-
     implicit_step!(Ψx, K.implicit_solver, closure, diffusivities, nothing, clock, Δt)
     implicit_step!(Ψy, K.implicit_solver, closure, diffusivities, nothing, clock, Δt)
-
     return nothing
 end
 
@@ -171,14 +169,14 @@ end
 end
 
 @inline function κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
-    κ  = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) 
+    κ  = κᶠᶜᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
     Sx = Sxᶠᶜᶠ(i, j, k, grid, b, fields) 
     ϵ  = tapering_factor(Sx, zero(grid), sl)
     return κ * ϵ * Sx
 end
 
 @inline function κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
-    κ  = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) 
+    κ  = κᶜᶠᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
     Sy = Syᶜᶠᶠ(i, j, k, grid, b, fields) 
     ϵ  = tapering_factor(zero(grid), Sy, sl)
     return κ * ϵ * Sy
@@ -189,8 +187,8 @@ end
     κ = closure.κ_skew
 
     @inbounds begin        
-        Sx  = atan(κ_ϵSxᶠᶜᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields))
-        Sy  = atan(κ_ϵSyᶜᶠᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields))
+        Sx  = κ_ϵSxᶠᶜᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields)
+        Sy  = κ_ϵSyᶜᶠᶠ(i, j, k, grid, clock, sl, κ, buoyancy, fields)
         GΨx = (Sx - Ψx[i, j, k]) / sl.time_scale
         GΨy = (Sy - Ψy[i, j, k]) / sl.time_scale
 

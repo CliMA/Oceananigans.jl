@@ -18,7 +18,7 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
-    IsopycnalSkewSymmetricDiffusivity,
+    IsopycnalDiffusivity,
     EddyAdvectiveClosure,
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
