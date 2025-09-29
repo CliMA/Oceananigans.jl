@@ -9,8 +9,6 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
 
     compute_tendencies!(model, callbacks)
 
-    @show model.timestepper.Gⁿ.T
-
     # Velocity steps
     for (i, field) in enumerate(model.velocities)
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
