@@ -168,18 +168,24 @@ end
     return ifelse(inactive, zero(grid), Sy)
 end
 
+@inline tapered_sx(Sx, Sy, ::EddyEvolvingStreamfunction) = atan(Sx)
+@inline tapered_sy(Sx, Sy, ::EddyEvolvingStreamfunction) = atan(Sy)
+
+@inline tapered_sx(Sx, Sy, sl::FluxTapering) = Sx * tapering_factor(Sx, Sy, sl)
+@inline tapered_sy(Sx, Sy, sl::FluxTapering) = Sy * tapering_factor(Sx, Sy, sl)
+
 @inline function κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
-    κ  = κᶠᶜᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
-    Sx = Sxᶠᶜᶠ(i, j, k, grid, b, fields) 
-    ϵ  = tapering_factor(Sx, zero(grid), sl)
-    return κ * ϵ * Sx
+    κ   = κᶠᶜᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
+    Sx  = Sxᶠᶜᶠ(i, j, k, grid, b, fields) 
+    ϵSx = tapered_sx(Sx, zero(grid), sl)
+    return κ * ϵSx
 end
 
 @inline function κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
-    κ  = κᶜᶠᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
-    Sy = Syᶜᶠᶠ(i, j, k, grid, b, fields) 
-    ϵ  = tapering_factor(zero(grid), Sy, sl)
-    return κ * ϵ * Sy
+    κ   = κᶜᶠᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
+    Sy  = Syᶜᶠᶠ(i, j, k, grid, b, fields) 
+    ϵSy = tapered_sy(zero(grid), Sy, sl)
+    return κ * ϵSy
 end
 
 @kernel function _advance_eddy_streamfunctions!(Ψx, Ψy, grid, Δt, clock, closure, buoyancy, fields, sl::EddyEvolvingStreamfunction)
