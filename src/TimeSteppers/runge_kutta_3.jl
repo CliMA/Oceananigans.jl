@@ -153,6 +153,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     return nothing
 end
 
+# Needs to be implemented by every model independently
+rk3_substep!(model::AbstractModel, Δt, γⁿ, ζⁿ, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")
+
 #####
 ##### Time stepping in each substep
 #####
