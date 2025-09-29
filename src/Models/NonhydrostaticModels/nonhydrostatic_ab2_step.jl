@@ -25,6 +25,7 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
 
     # Tracer steps
     for (i, name) in enumerate(propertynames(model.tracers))
+        field = model.tracers[name]
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, ab2_step_field!, kernel_args...)
 

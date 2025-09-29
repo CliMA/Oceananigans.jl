@@ -23,6 +23,7 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
 
     # Tracer steps
     for (i, name) in enumerate(propertynames(model.tracers))
+        field = model.tracers[name]
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, rk3_substep_field!, kernel_args...)
 
