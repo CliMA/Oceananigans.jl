@@ -26,9 +26,8 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
     end
 
     # Tracer steps
-    for (i, field) in enumerate(model.tracers)
-        idx = i + 3 # Assuming tracers are after velocities in the field tuple
-        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[idx], model.timestepper.G⁻[idx])
+    for (i, name) in enumerate(propertynames(model.tracers))
+        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, ab2_step_field!, kernel_args...)
 
         implicit_step!(field,
