@@ -37,7 +37,7 @@ end
            δzᶜᶜᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c)
 end
 
-@kernel function laplacian!(∇²ϕ, grid, ϕ)
+@kernel function _symmetric_laplacian_operator!(∇²ϕ, grid, ϕ)
     i, j, k = @index(Global, NTuple)
     @inbounds ∇²ϕ[i, j, k] = V∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
 end
