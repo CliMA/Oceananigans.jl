@@ -28,8 +28,8 @@ struct EddyEvolvingStreamfunction{FT}
     time_scale :: FT
 end
 
-νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfISSD,  K, args...) = zero(grid)
-νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfISSD,  K, args...) = zero(grid)
+νzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfTISSD,  K, args...) = zero(grid)
+νzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfTISSD,  K, args...) = zero(grid)
 νzᶠᶜᶜ(i, j, k, grid, closure::EAC, K, args...) = zero(grid)
 νzᶜᶠᶜ(i, j, k, grid, closure::EAC, K, args...) = zero(grid)
 
