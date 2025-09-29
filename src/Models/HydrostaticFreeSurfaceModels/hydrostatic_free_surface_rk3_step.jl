@@ -11,14 +11,9 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
 # depending on the type of free surface (implicit or explicit)
 #
 # For explicit free surfaces (`ExplicitFreeSurface` and `SplitExplicitFreeSurface`), we first
-# compute the free surface that depends on the momentum baroclinic tendencies,
+# compute the free surface using the integrated momentum baroclinic tendencies,
 # then we advance grid, momentum and tracers. The last step is to reconcile the baroclinic and
 # the barotropic modes by applying a pressure correction to momentum.
-# 
-# For implicit free surfaces (`ImplicitFreeSurface`), we first advance grid and tracers,
-# we then use a predictor-corrector approach to advance momentum, in which we first
-# advance momentum neglecting the free surface contribution, then, after the computation of
-# the new free surface, we correct momentum to account for the updated free surface.
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
 
     # Advancing free surface and barotropic transport velocities
@@ -46,6 +41,10 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     return nothing
 end
 
+# For implicit free surfaces (`ImplicitFreeSurface`), we first advance grid and tracers,
+# we then use a predictor-corrector approach to advance momentum, in which we first
+# advance momentum neglecting the free surface contribution, then, after the computation of
+# the new free surface, we correct momentum to account for the updated free surface.
 @inline function rk_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     # Computing tendencies...

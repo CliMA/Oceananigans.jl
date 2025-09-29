@@ -23,16 +23,17 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
 
     # Tracer steps
     for (i, field) in enumerate(model.tracers)
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(architecture(grid), grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
+        idx = i + 3 # Assuming tracers are after velocities in the field tuple
+        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[idx], model.timestepper.G⁻[idx])
+        launch!(architecture(grid), grid, :xyz, rk3_substep_field!, kernel_args...)
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.diffusivity_fields,
-                       Val(i - 3),
+                       Val(i),
                        model.clock,
-                       Δτ)
+                       Δt)
     end
 
     compute_pressure_correction!(model, Δτ)

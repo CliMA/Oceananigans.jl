@@ -9,6 +9,8 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
 
     compute_tendencies!(model, callbacks)
 
+    @show model.timestepper.Gⁿ.T
+
     # Velocity steps
     for (i, field) in enumerate(model.velocities)
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
@@ -25,14 +27,15 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
 
     # Tracer steps
     for (i, field) in enumerate(model.tracers)
-        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
+        idx = i + 3 # Assuming tracers are after velocities in the field tuple
+        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[idx], model.timestepper.G⁻[idx])
         launch!(architecture(grid), grid, :xyz, ab2_step_field!, kernel_args...)
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.diffusivity_fields,
-                       Val(i - 3),
+                       Val(i),
                        model.clock,
                        Δt)
     end
