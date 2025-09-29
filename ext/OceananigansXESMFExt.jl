@@ -112,7 +112,7 @@ llg = LatitudeLongitudeGrid(; size=(360, 180, 1), z,
 src_field = CenterField(tg)
 dst_field = CenterField(llg)
 
-regridder = Oceananigans.Fields.Regridder(dst_field, src_field, method="conservative")
+regridder = XESMF.Regridder(dst_field, src_field, method="conservative")
 ```
 """
 function Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
