@@ -1,8 +1,8 @@
 using Oceananigans.Utils: work_layout
 using Oceananigans.Architectures: device
-using Oceananigans.TimeSteppers: rk_substep_field!
+using Oceananigans.TimeSteppers: rk3_substep_field!
 
-import Oceananigans.TimeSteppers: rk_substep!
+import Oceananigans.TimeSteppers: rk3_substep!
 
 function rk_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
 
@@ -10,7 +10,6 @@ function rk_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
 
     substep_solution_kernel! = rk_substep_solution!(device(model.architecture), workgroup, worksize)
     substep_tracer_kernel! = rk_substep_tracer!(device(model.architecture), workgroup, worksize)
-
 
     substep_solution_kernel!(model.solution,
                              Δt, γⁿ, ζⁿ,

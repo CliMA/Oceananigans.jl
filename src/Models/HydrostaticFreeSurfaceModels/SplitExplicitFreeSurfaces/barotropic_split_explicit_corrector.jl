@@ -74,8 +74,7 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
 
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
 
-    launch!(architecture(grid), grid, :xy,
-            _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+    launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
 
     mask_immersed_field!(ũ)
     mask_immersed_field!(ṽ)

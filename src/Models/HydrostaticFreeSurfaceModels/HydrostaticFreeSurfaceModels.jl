@@ -62,16 +62,16 @@ compute_transport_velocities!(model, free_surface) = nothing
 
 # If either U or V are not available, we compute them
 @inline function barotropic_U(i, j, k, grid, ::Nothing, u)
-    U = zero(grid) * zero(eltype(u))
-    for k′ in 1:size(grid, 3)
+    U = u[i, j, 1] * Δzᶠᶜᶜ(i, j, 1, grid)
+    for k′ in 2:size(grid, 3)
         @inbounds U += u[i, j, k′] * Δzᶠᶜᶜ(i, j, k′, grid)
     end
     return U
 end
 
 @inline function barotropic_V(i, j, k, grid, ::Nothing, v)
-    V = zero(grid) * zero(eltype(v))
-    for k′ in 1:size(grid, 3)
+    V = v[i, j, 1] * Δzᶜᶠᶜ(i, j, 1, grid)
+    for k′ in 2:size(grid, 3)
         @inbounds V += v[i, j, k′] * Δzᶜᶠᶜ(i, j, k′, grid)
     end
     return V
