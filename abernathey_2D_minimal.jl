@@ -1,6 +1,8 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids
+using Oceananigans.Operators
+using Oceananigans.BuoyancyFormulations
 using Oceananigans.Grids: yspacings, xspacings, zspacings
 using Oceananigans.TurbulenceClosures
 using CairoMakie
@@ -11,65 +13,18 @@ using JLD2
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ, Δzᶜᶜᶜ, yspacing, xspacing, zspacing
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, CATKEMixingLength, CATKEEquation
-using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: DiffusiveFormulation, AdvectiveFormulation
+using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity, AbstractScalarDiffusivity
+using Oceananigans.TurbulenceClosures: VerticalFormulation
 using Oceananigans.BuoyancyFormulations: buoyancy_frequency
 
 κ_skew = 1000
-κ_symmetric = nothing;
+κ_symmetric = 1000
 
-skew_flux_formulation = AdvectiveFormulation()
-
-# struct CubicTapering{FT}
-#     a  :: FT
-#     b  :: FT
-#     c  :: FT
-#     d  :: FT
-#     S1 :: FT
-#     S2 :: FT
-# end
-
-# function CubicTapering(S1, S2)
-#     A = [ S1^3  S1^2 S1 1;
-#           S2^3  S2^2 S2 1;
-#          3S1^2 2S1    1 0;
-#          3S2^2 2S2    1 0]
-
-#     b = [1, 0, 0, 0]
-
-#     a, b, c, d = A \ b
-
-#     return CubicTapering(a, b, c, d, S1, S2)
-# end
-
-# import Oceananigans.TurbulenceClosures: tapering_factor
-
-# function tapering_factor(Sx, Sy, slope_limiter::CubicTapering) 
-#     S = sqrt(Sx^2 + Sy^2)
-#     a = slope_limiter.a
-#     b = slope_limiter.b
-#     c = slope_limiter.c
-#     d = slope_limiter.d
-#     ϵ = a * S^3 + b * S^2 + c * S + d
-#     ϵ = ifelse(S < slope_limiter.S1, 1, ϵ)
-#     ϵ = ifelse(S > slope_limiter.S2, 0, ϵ)
-#     return max(min(ϵ, 1), 0)
-# end
-
-tapering_threshold = 5e-3
-filename = "abernathey_channel_2D_noTforcing_taper_$(tapering_threshold)"
-if skew_flux_formulation isa DiffusiveFormulation
-    filename *= "_diffusive_0"
-elseif skew_flux_formulation isa AdvectiveFormulation
-    filename *= "_advective"
-end
-filename *= "_$(κ_skew)_$(κ_symmetric)"
+filename = "file_restoring"
 
 data_folder = "./Output"
 sim_folder = "$(data_folder)/$(filename)"
 mkpath(sim_folder)
-
-timestep = 20minutes
 
 const Ly = 2000kilometers
 const Lz = 3kilometers
@@ -150,10 +105,6 @@ end
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form=true)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form=true)
-
-# u_north_wall_drag_bc = FluxBoundaryCondition(u_north_wall_drag, discrete_form=true)
-# u_south_wall_drag_bc = FluxBoundaryCondition(u_south_wall_drag, discrete_form=true)
-
 u_bcs = FieldBoundaryConditions(bottom=u_bottom_drag_bc, top=wind_flux_bc)
 v_bcs = FieldBoundaryConditions(bottom=v_bottom_drag_bc)
 
@@ -164,41 +115,50 @@ grid = RectilinearGrid(CPU(),
                        topology = (Flat, Bounded, Bounded),
                        halo = (7, 7))
 
-free_surface = SplitExplicitFreeSurface(grid; cfl=0.8, fixed_Δt=timestep + 5minutes)
+using Oceananigans.TurbulenceClosures: EddyEvolvingStreamfunction, IsopycnalDiffusivity, FluxTapering                       
+
 obl_closure  = RiBasedVerticalDiffusivity()
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, κ_symmetric, skew_flux_formulation) #, slope_limiter=CubicTapering(1e-3, 1e-2))
+#redi_closure = IsopycnalSkewSymmetricDiffusivity(; κ_symmetric) 
+redi_closure = IsopycnalDiffusivity(; κ_symmetric) 
+eddy_closure = EddyAdvectiveClosure(; κ_skew, tapering=EddyEvolvingStreamfunction(100days))
 closure = (obl_closure, eddy_closure)
 
 model = HydrostaticFreeSurfaceModel(; grid = grid,
                                       coriolis = coriolis,
                                       buoyancy = buoyancy,
-                                      free_surface,
+                                      free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=25minutes),
                                       timestepper = :QuasiAdamsBashforth2,
                                       tracers = (:T, :S, :c),
                                       closure = closure,
                                       momentum_advection = WENO(order=5),
                                       tracer_advection = WENO(order=5),
                                       boundary_conditions = (u=u_bcs, v=v_bcs))
-                                    #   boundary_conditions = (T=T_bcs, u=u_bcs, v=v_bcs))
 
 set!(model, T=Tᵢ, S=Sᵢ, u=uᵢ, v=vᵢ, c=cᵢ)
-simulation = Simulation(model, Δt=25minutes, stop_time= 20 * 365days) #, stop_iteration=10)
+simulation = Simulation(model, Δt=25minutes, stop_time= 20 * 365days) #, stop_iteration=80333)
 
 using Printf
 
 wall_clock = Ref(time_ns())
 
+diff = filter(x -> hasproperty(x, :v), model.diffusivity_fields)
+if isempty(diff)
+    ve = Oceananigans.Fields.YFaceField(grid)
+    we = Oceananigans.Fields.ZFaceField(grid)
+else
+    ve = diff[1].v
+    we = diff[1].w
+end
+
 function print_progress(sim)
     u, v, w = model.velocities
-    ve = model.diffusivity_fields[2].v
-    we = model.diffusivity_fields[2].w
     T, S = model.tracers
     progress = 100 * (time(sim) / sim.stop_time)
     elapsed = (time_ns() - wall_clock[]) / 1e9
 
-    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(v): (%6.3e, %6.3e) m/s, max(ve): (%6.3e, %6.3e) m/s, max(T): %6.3e, max(S): %6.3e, next Δt: %s\n",
+    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(v): (%6.3e, %6.3e) m/s, max(T): %6.3e, max(S): %6.3e, next Δt: %s\n",
             progress, iteration(sim), prettytime(sim), prettytime(elapsed),
-            maximum(abs, v), maximum(abs, w), maximum(abs, ve), maximum(abs, we), maximum(abs, T), maximum(abs, S), prettytime(sim.Δt))
+            maximum(abs, v), maximum(abs, w), maximum(abs, T), maximum(abs, S), prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
 
@@ -208,8 +168,6 @@ end
 add_callback!(simulation, print_progress, IterationInterval(1000))
 
 u, v, w = model.velocities
-ve = model.diffusivity_fields[2].v
-we = model.diffusivity_fields[2].w
 T, S, c = model.tracers
 b = BuoyancyField(model)
 N² = Field(buoyancy_frequency(model))
@@ -232,45 +190,12 @@ simulation.output_writers[:jld2] = JLD2Writer(model, outputs;
 #                                               overwrite_existing = true)
 
 run!(simulation)
-#%%
-yC = Array(ynodes(grid, Center())) ./ 1e3
-zC = Array(znodes(grid, Center())) ./ 1e3
-zF = Array(znodes(grid, Face())) ./ 1e3
-#%%
-fig = Figure()
-ax = Axis(fig[1, 1], title = "buoyancy at t = $(prettytime(simulation.model.clock.time)), $(filename)", xlabel = "x (km)", ylabel = "z (km)")
-cf = contourf!(ax, yC, zC, Array(interior(b, 1, :, :)), levels = 10)
-Colorbar(fig[1, 2], cf, label = "buoyancy (m/s²)")
-save("$(sim_folder)/buoyancy.png", fig)
-#%%
-fig = Figure()
-ax = Axis(fig[1, 1], title = "temperature at t = $(prettytime(simulation.model.clock.time)), $(filename)", xlabel = "y (km)", ylabel = "z (km)")
-cf = contourf!(ax, yC, zC, Array(interior(T, 1, :, :)), levels = 10)
-Colorbar(fig[1, 2], cf, label = "temperature (ᵒC)")
-save("$(sim_folder)/temperature.png", fig)
-#%%
-fig = Figure()
-ax = Axis(fig[1, 1], title = "salinity at t = $(prettytime(simulation.model.clock.time)), $(filename)", xlabel = "y (km)", ylabel = "z (km)")
-cf = contourf!(ax, yC, zC, Array(interior(S, 1, :, :)), levels = 10)
-Colorbar(fig[1, 2], cf, label = "salinity (psu)")
-save("$(sim_folder)/salinity.png", fig)
-#%%
-fig = Figure()
-ax = Axis(fig[1, 1], title = "N² at t = $(prettytime(simulation.model.clock.time)), $(filename)", xlabel = "y (km)", ylabel = "z (km)")
-cf = contourf!(ax, yC, zF[2:nz-1], Array(interior(N², 1, :, 2:nz-1)), levels = 20)
-Colorbar(fig[1, 2], cf, label = "N² (s⁻²)")
-save("$(sim_folder)/N2.png", fig)
-#%%
-fig = Figure()
-ax = Axis(fig[1, 1], title = "c at t = $(prettytime(simulation.model.clock.time)), $(filename)", xlabel = "y (km)", ylabel = "z (km)")
-cf = contourf!(ax, yC, zC, Array(interior(c, 1, :, :)), levels = 10)
-Colorbar(fig[1, 2], cf, label = "c (nondimensional)")
-save("$(sim_folder)/c.png", fig)
-#%%
 
-b = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "b")
-T = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "T")
-S = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "S")
+using GLMakie
+
+b  = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "b")
+T  = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "T")
+S  = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "S")
 u  = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "u")
 v  = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "v")
 w  = FieldTimeSeries("Output/" * filename * "/instantaneous_timeseries.jld2", "w")
@@ -295,10 +220,10 @@ maxv = maximum(abs, v)
 maxw = maximum(abs, w)
 
 fig = Figure()
-ax  = Axis(fig[1, 1])
-contourf!(ax, y, z, bn; colormap=:jet, levels=range(extrema(b[1])..., length=10))
-ax  = Axis(fig[1, 2])
-contourf!(ax, y, z, Tn; colormap=:jet, levels=range(extrema(T[1])..., length=10))
+ax  = Axis(fig[1, 1:2])
+contourf!(ax, y, z, bn; colormap=:jet, levels=range(extrema(b[1])..., length=20))
+ax  = Axis(fig[1, 3:4])
+contourf!(ax, y, z, Tn; colormap=:jet, levels=range(extrema(T[1])..., length=20))
 ax  = Axis(fig[2, 1])
 contourf!(ax, y, zF, wn; colormap=:jet, levels=range(-maxw, maxw, length=10))
 ax  = Axis(fig[2, 2])
