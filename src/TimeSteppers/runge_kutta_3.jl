@@ -172,16 +172,10 @@ where `m` denotes the substage.
 """
 @kernel function rk3_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
-
-    @inbounds begin
-        U[i, j, k] += convert(FT, Δt) * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
-    end
+    @inbounds U[i, j, k] += convert(FT, Δt) * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
 end
 
 @kernel function rk3_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
     i, j, k = @index(Global, NTuple)
-
-    @inbounds begin
-        U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
-    end
+    @inbounds U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
 end

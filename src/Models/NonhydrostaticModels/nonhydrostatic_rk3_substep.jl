@@ -11,7 +11,7 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
     # Velocity steps
     for (i, field) in enumerate(model.velocities)
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(architecture(grid), grid, :xyz, rk_substep_field!, kernel_args...; exclude_periphery=true)
+        launch!(architecture(grid), grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
@@ -25,7 +25,7 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
     # Tracer steps
     for (i, field) in enumerate(model.tracers)
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(architecture(grid), grid, :xyz, rk_substep_field!, kernel_args...; exclude_periphery=true)
+        launch!(architecture(grid), grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
