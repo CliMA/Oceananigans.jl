@@ -153,7 +153,6 @@ end
 function compute_preconditioner_rhs!(solver::FFTBasedPoissonSolver, rhs)
     grid = solver.grid
     arch = architecture(grid)
-
     launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs, grid)
     return nothing
 end
