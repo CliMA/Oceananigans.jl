@@ -116,6 +116,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     rk3_substep!(model, Δt, γ¹, nothing, callbacks)
+    cache_previous_tendencies!(model)
+
     tick!(model.clock, first_stage_Δt; stage=true)
 
     update_state!(model, callbacks)
@@ -126,6 +128,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     rk3_substep!(model, Δt, γ², ζ², callbacks)
+    cache_previous_tendencies!(model)
+
     tick!(model.clock, second_stage_Δt; stage=true)
 
     update_state!(model, callbacks)
@@ -136,6 +140,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     rk3_substep!(model, Δt, γ³, ζ³, callbacks)
+    cache_previous_tendencies!(model)
 
     # This adjustment of the final time-step reduces the accumulation of
     # round-off error when Δt is added to model.clock.time. Note that we still use

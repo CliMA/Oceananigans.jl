@@ -38,7 +38,5 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
     compute_pressure_correction!(model, Δτ)
     make_pressure_correction!(model, Δτ)
 
-    cache_previous_tendencies!(model)
-
     return nothing
 end
