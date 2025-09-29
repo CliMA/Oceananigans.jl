@@ -39,6 +39,7 @@ prognostic_fields(model::ShallowWaterModel) = fields(model)
 
 include("solution_and_tracer_tendencies.jl")
 include("compute_shallow_water_tendencies.jl")
+include("shallow_water_rk3_substep.jl")
 include("update_shallow_water_state.jl")
 include("shallow_water_advection_operators.jl")
 include("shallow_water_diffusion_operators.jl")
