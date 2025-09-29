@@ -7,6 +7,9 @@ import Oceananigans.TimeSteppers: ab2_step!
 function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
     grid = model.grid
 
+    compute_tendencies!(model, callbacks)
+    compute_flux_bc_tendencies!(model)
+
     # Velocity steps
     for (i, field) in model.velocities
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])

@@ -94,7 +94,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
-    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
@@ -115,40 +115,27 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
-    compute_flux_bc_tendencies!(model)
-    rk_substep!(model, Δt, γ¹, nothing)
-
+    rk3_substep!(model, Δt, γ¹, nothing, callbacks)
     tick!(model.clock, first_stage_Δt; stage=true)
 
-    compute_pressure_correction!(model, first_stage_Δt)
-    make_pressure_correction!(model, first_stage_Δt)
-
-    cache_previous_tendencies!(model)
-    update_state!(model, callbacks; compute_tendencies = true)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, first_stage_Δt)
 
     #
     # Second stage
     #
 
-    compute_flux_bc_tendencies!(model)
-    rk_substep!(model, Δt, γ², ζ²)
-
+    rk3_substep!(model, Δt, γ², ζ², callbacks)
     tick!(model.clock, second_stage_Δt; stage=true)
 
-    compute_pressure_correction!(model, second_stage_Δt)
-    make_pressure_correction!(model, second_stage_Δt)
-
-    cache_previous_tendencies!(model)
-    update_state!(model, callbacks; compute_tendencies = true)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, second_stage_Δt)
 
     #
     # Third stage
     #
 
-    compute_flux_bc_tendencies!(model)
-    rk_substep!(model, Δt, γ³, ζ³)
+    rk3_substep!(model, Δt, γ³, ζ³, callbacks)
 
     # This adjustment of the final time-step reduces the accumulation of
     # round-off error when Δt is added to model.clock.time. Note that we still use
@@ -160,10 +147,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     model.clock.last_stage_Δt = corrected_third_stage_Δt
     model.clock.last_Δt = Δt
 
-    compute_pressure_correction!(model, third_stage_Δt)
-    make_pressure_correction!(model, third_stage_Δt)
-
-    update_state!(model, callbacks; compute_tendencies = true)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing
@@ -176,31 +160,6 @@ end
 stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
 stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 
-function rk_substep!(model, Δt, γⁿ, ζⁿ)
-
-    grid = model.grid
-    arch = architecture(grid)
-    model_fields = prognostic_fields(model)
-
-    for (i, field) in enumerate(model_fields)
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(arch, grid, :xyz, rk_substep_field!, kernel_args...; exclude_periphery=true)
-
-        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = Val(i - 3) # assumption
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.diffusivity_fields,
-                       tracer_index,
-                       model.clock,
-                       stage_Δt(Δt, γⁿ, ζⁿ))
-    end
-
-    return nothing
-end
-
 """
 Time step velocity fields via the 3rd-order Runge-Kutta method
 
@@ -208,7 +167,7 @@ Time step velocity fields via the 3rd-order Runge-Kutta method
 
 where `m` denotes the substage.
 """
-@kernel function rk_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
+@kernel function rk3_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
@@ -216,7 +175,7 @@ where `m` denotes the substage.
     end
 end
 
-@kernel function rk_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
+@kernel function rk3_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
