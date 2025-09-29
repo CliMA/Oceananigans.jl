@@ -5,9 +5,13 @@ struct IsopycnalDiffusivity{TD, K, L, N} <: AbstractTurbulenceClosure{TD, N}
         new{TD, K, L, N}(κ_symmetric, tapering)
 end
 
-const TISSD{TD} = IsopycnalDiffusivity{TD} where TD
-const TISSDVector{TD} = AbstractVector{<:TISSD{TD}} where TD
-const FlavorOfTISSD{TD} = Union{TISSD{TD}, TISSDVector{TD}} where TD
+const ISD{TD} = IsopycnalDiffusivity{TD} where TD
+const ISDVector{TD} = AbstractVector{<:ISD{TD}} where TD
+const FlavorOfISD{TD} = Union{ISD{TD}, ISDVector{TD}} where TD
+
+struct FluxTapering{FT}
+    max_slope :: FT
+end
 
 """
     IsopycnalDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
@@ -43,7 +47,7 @@ IsopycnalDiffusivity(FT::DataType; kw...) =
 with_tracers(tracers, closure) = closure
 
 # For ensembles of closures
-function with_tracers(tracers, closure_vector::TISSDVector)
+function with_tracers(tracers, closure_vector::ISDVector)
     arch = architecture(closure_vector)
 
     if arch isa Architectures.GPU
@@ -57,7 +61,7 @@ function with_tracers(tracers, closure_vector::TISSDVector)
 end
 
 # Note: computing diffusivities at cell centers for now.
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::FlavorOfTISSD{TD}) where TD
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::FlavorOfISD{TD}) where TD
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         K = (; ϵκR₃₃ = ZFaceField(grid))
@@ -68,7 +72,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::FlavorOfTISS
     return K
 end
 
-compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{<:VerticallyImplicitTimeDiscretization}, model; parameters = :xyz) = 
+compute_diffusivities!(diffusivities, closure::FlavorOfISD{<:VerticallyImplicitTimeDiscretization}, model; parameters = :xyz) = 
     launch!(architecture(model.grid), model.grid, parameters,
             triad_compute_tapered_R₃₃!,
             diffusivities, model.grid, closure, model.clock, model.buoyancy, model.tracers)
@@ -142,7 +146,7 @@ end
 #
 
 # defined at fcc
-@inline function diffusive_flux_x(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id},
+@inline function diffusive_flux_x(i, j, k, grid, closure::FlavorOfISD, K, ::Val{id},
                                   c, clock, C, b) where id
 
     closure = getclosure(i, j, closure)
@@ -174,7 +178,7 @@ end
 end
 
 # defined at cfc
-@inline function diffusive_flux_y(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id},
+@inline function diffusive_flux_y(i, j, k, grid, closure::FlavorOfISD, K, ::Val{id},
                                   c, clock, C, b) where id
 
     closure = getclosure(i, j, closure)
@@ -198,7 +202,7 @@ end
 end
 
 # defined at ccf
-@inline function diffusive_flux_z(i, j, k, grid, closure::FlavorOfTISSD{TD}, K, ::Val{id},
+@inline function diffusive_flux_z(i, j, k, grid, closure::FlavorOfISD{TD}, K, ::Val{id},
                                   c, clock, C, b) where {TD, id}
 
     closure = getclosure(i, j, closure)
@@ -264,30 +268,30 @@ end
 
 @inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, c, clock, closure, b, C) = zero(grid)
 
-@inline κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id}, clock) where id = @inbounds K.ϵκR₃₃[i, j, k]
+@inline κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISD, K, ::Val{id}, clock) where id = @inbounds K.ϵκR₃₃[i, j, k]
 
-@inline viscous_flux_ux(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
-@inline viscous_flux_uy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
-@inline viscous_flux_uz(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_ux(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
+@inline viscous_flux_uy(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
+@inline viscous_flux_uz(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
 
-@inline viscous_flux_vx(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
-@inline viscous_flux_vy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
-@inline viscous_flux_vz(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_vx(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
+@inline viscous_flux_vy(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
+@inline viscous_flux_vz(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
 
-@inline viscous_flux_wx(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
-@inline viscous_flux_wy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
-@inline viscous_flux_wz(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_wx(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
+@inline viscous_flux_wy(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
+@inline viscous_flux_wz(i, j, k, grid, closure::Union{ISD, ISDVector}, args...) = zero(grid)
 
 #####
 ##### Show
 #####
 
-# Base.summary(closure::TISSD) = string("IsopycnalDiffusivity",
+# Base.summary(closure::ISD) = string("IsopycnalDiffusivity",
 #                                      "(κ_skew=",
 #                                      prettysummary(closure.κ_skew),
 #                                      ", κ_symmetric=", prettysummary(closure.κ_symmetric), ")")
 
-# Base.show(io::IO, closure::TISSD) =
+# Base.show(io::IO, closure::ISD) =
 #     print(io, "IsopycnalDiffusivity: " *
 #               "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
 #               "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
