@@ -20,7 +20,7 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     compute_momentum_tendencies!(model, callbacks)
     compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
-    
+
     # Computing z-dependent transport velocities
     compute_transport_velocities!(model, model.free_surface)
     
@@ -34,7 +34,7 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
     rk_substep_tracers!(model.tracers, model, Δτ)
     rk_substep_velocities!(model.velocities, model, Δτ)
-
+    
     # Correct for the updated barotropic mode
     make_pressure_correction!(model, Δτ)
 

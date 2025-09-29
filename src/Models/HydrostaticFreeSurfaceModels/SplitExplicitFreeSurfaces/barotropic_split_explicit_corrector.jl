@@ -76,7 +76,7 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     mask_immersed_field!(ũ)
     mask_immersed_field!(ṽ)
 
-    # Fill barotropic stuff...
+    # Fill transport velocities
     fill_halo_regions!((ũ, ṽ); async=true)
     
     # Update grid velocity and vertical transport velocity

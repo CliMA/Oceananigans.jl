@@ -171,6 +171,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         mask_immersed_field!(model.velocities.v)
     end
 
+    # Fill all the barotropic state
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
     fill_halo_regions!(barotropic_velocities; async=true)
     fill_halo_regions!(η; async=true)

@@ -1,31 +1,28 @@
-using Oceananigans.Utils: work_layout
-using Oceananigans.Architectures: device
+using Oceananigans.Architectures: architecture, rk3_substep_field!
 
 import Oceananigans.TimeSteppers: rk3_substep!
 
 function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
 
     compute_tendencies!(model, callbacks)
+    grid = model.grid
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
 
-    substep_solution_kernel! = rk_substep_solution!(device(model.architecture), workgroup, worksize)
-    substep_tracer_kernel! = rk_substep_tracer!(device(model.architecture), workgroup, worksize)
+    launch!(architecture(grid), grid, :xyz, _rk_substep_solution!, 
+            model.solution,
+            Δt, γⁿ, ζⁿ,
+            model.timestepper.Gⁿ,
+            model.timestepper.G⁻)
 
-    substep_solution_kernel!(model.solution,
-                             Δt, γⁿ, ζⁿ,
-                             model.timestepper.Gⁿ,
-                             model.timestepper.G⁻)
-
+    _tracer_kernel! = configure_kernel(architecture(grid), grid, :xyz, rk3_substep_field!)
 
     for i in 1:length(model.tracers)
         @inbounds c = model.tracers[i]
         @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
         @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
 
-        substep_tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
+        _tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
     end
-
 
     return nothing
 end
@@ -33,7 +30,7 @@ end
 """
 Time step solution fields with a 3rd-order Runge-Kutta method.
 """
-@kernel function rk_substep_solution!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+@kernel function _rk_substep_solution!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
@@ -46,7 +43,7 @@ end
 """
 Time step solution fields with a 3rd-order Runge-Kutta method.
 """
-@kernel function rk_substep_solution!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
+@kernel function _rk_substep_solution!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
