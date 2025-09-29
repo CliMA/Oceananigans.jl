@@ -1,4 +1,5 @@
-using Oceananigans.Architectures: architecture, rk3_substep_field!
+using Oceananigans.Architectures: architecture
+using Oceananigans.TimeSteppers: rk3_substep_field!
 
 import Oceananigans.TimeSteppers: rk3_substep!
 
