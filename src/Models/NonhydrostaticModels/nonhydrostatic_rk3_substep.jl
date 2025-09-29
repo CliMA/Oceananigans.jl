@@ -1,15 +1,15 @@
 using Oceananigans.TimeSteppers: rk3_substep_field!, stage_Δt
 import Oceananigans.TimeSteppers: rk3_substep!
 
-function rk3_substep!(model::NonhydrostaticModel, Δt, γ, ζ, callbacks)
-    Δτ   = stage_Δt(Δt, γ, ζ) 
+function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
+    Δτ   = stage_Δt(Δt, γⁿ, ζⁿ) 
     grid = model.grid
 
     compute_tendencies!(model, callbacks)
     compute_flux_bc_tendencies!(model)
 
     # Velocity steps
-    for (i, field) in model.velocities
+    for (i, field) in enumerate(model.velocities)
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
         launch!(architecture(grid), grid, :xyz, rk_substep_field!, kernel_args...; exclude_periphery=true)
 
@@ -23,7 +23,7 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γ, ζ, callbacks)
     end
 
     # Tracer steps
-    for (i, field) in model.tracers
+    for (i, field) in enumerate(model.tracers)
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
         launch!(architecture(grid), grid, :xyz, rk_substep_field!, kernel_args...; exclude_periphery=true)
 

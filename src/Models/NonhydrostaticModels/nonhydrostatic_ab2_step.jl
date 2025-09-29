@@ -11,7 +11,7 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
     compute_flux_bc_tendencies!(model)
 
     # Velocity steps
-    for (i, field) in model.velocities
+    for (i, field) in enumerate(model.velocities)
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
         launch!(architecture(grid), grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
 
@@ -25,7 +25,7 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
     end
 
     # Tracer steps
-    for (i, field) in model.tracers
+    for (i, field) in enumerate(model.tracers)
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
         launch!(architecture(grid), grid, :xyz, ab2_step_field!, kernel_args...)
 
