@@ -4,13 +4,14 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: Centered, adapt_advection_order
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
+using Oceananigans.BoundaryConditions: MixedBoundaryCondition
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, time_discretization, implicit_diffusion_solver
@@ -29,7 +30,7 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 # but for now we use it only for hydrostatic pressure anomalies for now.
 struct DefaultHydrostaticPressureAnomaly end
 
-mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
+mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
                                    V, S, K, BG, P, BGC, AF, BM} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
@@ -41,6 +42,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
          stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
               forcing :: F        # Container for forcing functions defined by the user
               closure :: E        # Diffusive 'turbulence closure' for all model fields
+         free_surface :: FS       # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG       # Background velocity and tracer fields
             particles :: P        # Particle set for Lagrangian tracking
       biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
@@ -120,6 +122,7 @@ function NonhydrostaticModel(; grid,
                              stokes_drift = nothing,
                              forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
+                             free_surface = nothing,
                              boundary_conditions::NamedTuple = NamedTuple(),
                              tracers = (),
                              timestepper = :RungeKutta3,
@@ -128,7 +131,7 @@ function NonhydrostaticModel(; grid,
                              biogeochemistry::AbstractBGCOrNothing = nothing,
                              velocities = nothing,
                              hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                             nonhydrostatic_pressure = CenterField(grid),
+                             nonhydrostatic_pressure = nothing,
                              diffusivity_fields = nothing,
                              pressure_solver = nothing,
                              auxiliary_fields = NamedTuple())
@@ -136,6 +139,20 @@ function NonhydrostaticModel(; grid,
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    if isnothing(nonhydrostatic_pressure)
+        if isnothing(free_surface)
+            nonhydrostatic_pressure = CenterField(grid)
+        else
+        # elseif free_surface isa ImplicitFreeSurface
+            # Use a MixedBoundaryCondition for the top bc for pressure
+            coefficient = Ref(zero(grid))
+            combination = Field{Center, Center, Nothing}(grid)
+            top_bc = MixedBoundaryCondition(coefficient, combination)
+            pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
+            nonhydrostatic_pressure = CenterField(grid; boundary_conditions=pressure_bcs)
+        end
+    end
 
     # Validate pressure fields
     nonhydrostatic_pressure isa Field{Center, Center, Center} ||
@@ -207,6 +224,11 @@ function NonhydrostaticModel(; grid,
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
 
+    # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
+    if !isnothing(free_surface)
+        free_surface = materialize_free_surface(free_surface, velocities, grid)
+    end
+
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
@@ -235,7 +257,7 @@ function NonhydrostaticModel(; grid,
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
-                                forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
+                                forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
 
     update_state!(model; compute_tendencies = false)
