@@ -16,7 +16,7 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
             model.timestepper.Gⁿ,
             model.timestepper.G⁻)
 
-    _tracer_kernel! = configure_kernel(architecture(grid), grid, :xyz, rk3_substep_field!)
+    _tracer_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, rk3_substep_field!)
 
     for i in 1:length(model.tracers)
         @inbounds c = model.tracers[i]

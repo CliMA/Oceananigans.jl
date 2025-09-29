@@ -1337,7 +1337,7 @@ every time an output is written to the file.
 function write_output!(ow::NetCDFWriter, model::AbstractModel)
 
     # Synchronize model state if needed
-    for field in fields(model)
+    for field in Oceananigans.fields(model)
         synchronize_communication!(field)
     end
 
