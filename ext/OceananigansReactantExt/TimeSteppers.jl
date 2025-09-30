@@ -12,7 +12,6 @@ using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
-    compute_pressure_correction!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
     compute_flux_bc_tendencies!

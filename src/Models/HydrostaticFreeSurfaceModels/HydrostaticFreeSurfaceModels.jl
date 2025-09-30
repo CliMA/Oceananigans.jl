@@ -10,8 +10,9 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt
 
 using Oceananigans.Utils
+using Oceananigans.Grids
 using Oceananigans.Utils: launch!
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization
 
 using DocStringExtensions
 
@@ -22,6 +23,9 @@ import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
+
+# The only grid type that can support an FFT implicit free-surface solver 
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
 

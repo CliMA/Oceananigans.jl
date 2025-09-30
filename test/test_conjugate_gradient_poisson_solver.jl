@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
 using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner
-using Oceananigans.TimeSteppers: compute_pressure_correction!
+using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!
 using Oceananigans.Grids: XYZRegularRG
 using LinearAlgebra: norm
 using Random: seed!
