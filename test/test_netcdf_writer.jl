@@ -2755,16 +2755,16 @@ function test_netcdf_single_field_defvar(arch; immersed=false)
     ds = NCDataset(filepath, "r")
 
     @test "c" ∈ keys(ds)
-    @test all(ds["c"] .== interior(c))
+    @test ds["c"] == Array(interior(c))
     @test ds["c"].attrib["long_name"] == c_long_name
     @test ds["c"].attrib["units"] == c_units
 
     @test "c²" ∈ keys(ds)
-    @test all(ds["c²"] .== interior(c²))
+    @test ds["c²"] == Array(interior(Field(c²)))
     @test ds["c²"].attrib["long_name"] == c²_long_name
 
     @test "c̄" ∈ keys(ds)
-    @test all(ds["c̄"] .== interior(Field(c̄)))
+    @test all(ds["c̄"] .== Array(interior(Field(c̄))))
     @test ds["c̄"].attrib["long_name"] == c̄_long_name
     @test ds["c̄"].attrib["units"] == c̄_units
 
@@ -2880,8 +2880,8 @@ function test_netcdf_multiple_grids_defvar(arch; immersed=false)
     @test "z_aac_grid2" ∈ keys(ds)
 
     # Check that data values match
-    @test all(ds["c1"] .== interior(c1))
-    @test all(ds["c2"] .== interior(c2))
+    @test ds["c1"] == Array(interior(c1))
+    @test ds["c2"] == Array(interior(c2))
 
     close(ds)
     rm(filepath)

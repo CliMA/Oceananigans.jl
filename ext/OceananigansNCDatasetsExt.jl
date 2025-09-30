@@ -8,7 +8,7 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.Architectures: CPU, GPU
+using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
@@ -66,13 +66,14 @@ function defVar(ds, name, field::AbstractField;
                 time_dependent=false,
                 dimension_name_generator = trilocation_dim_name,
                 kwargs...)
-    FT = Array{eltype(field)}(field)
+    field_cpu = on_architecture(CPU(), field) # Need to bring field to CPU in order to write it to NetCDF
+    field_data = Array{eltype(field)}(field_cpu)
     dims = field_dimensions(field, dimension_name_generator)
     all_dims = time_dependent ? (dims..., "time") : dims
 
     # Validate that all dimensions exist and match the field
     create_field_dimensions!(ds, field, all_dims, dimension_name_generator)
-    defVar(ds, name, FT, all_dims; kwargs...)
+    defVar(ds, name, field_data, all_dims; kwargs...)
 end
 
 #####
