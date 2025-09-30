@@ -9,6 +9,9 @@ using Oceananigans.Grids: λnodes, φnodes, Center, Face, total_length
 import Oceananigans.Fields: regrid!
 import XESMF: Regridder, extract_xesmf_coordinates_structure
 
+# permutedims below is used because Python's xESMF expects
+# 2D arrays with (x, y) coordinates with y varying in dim=1 and x varying in dim=2
+
 node_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx, 1:Ny), (2, 1))
 vertex_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx+1, 1:Ny+1), (2, 1))
 
