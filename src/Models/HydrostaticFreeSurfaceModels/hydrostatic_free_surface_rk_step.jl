@@ -24,19 +24,24 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     # Computing z-dependent transport velocities
     compute_transport_velocities!(model, model.free_surface)
     
+    # δx_U(i, j, k, grid, U, u) = δxᶜᶜᶜ(i, j, 1, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u) * Az⁻¹ᶜᶜᶜ(i, j, 1, grid)
+    # de2 = Field(KernelFunctionOperation{Center, Center, Nothing}(δx_U, grid, nothing, model.transport_velocities.u))
+    # de  = Field((model.free_surface.η - model.timestepper.Ψ⁻.η) / Δτ)
+
+    # @show model.clock.stage
+    # @show maximum(abs, interior(de) .+ interior(de2))
+
     # compute tracer tendencies
     compute_tracer_tendencies!(model)
-    
-    # Remember to scale tracers tendencies by stretching factor
-    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
-    
-    # Finally Substep! Advance grid, tracers, and (predictor) momentum
+
+    # Finally Substep! Advance grid, tracers, and (baroclinic) momentum
     rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
     rk_substep_tracers!(model.tracers, model, Δτ)
     rk_substep_velocities!(model.velocities, model, Δτ)
-    
+
+
     # Correct for the updated barotropic mode
-    correct_baroptropic_mode!(model, Δτ)
+    correct_barotropic_mode!(model, Δτ)
 
     return nothing
 end
@@ -52,9 +57,6 @@ end
     compute_tracer_tendencies!(model)
     compute_free_surface_tendency!(grid, model, model.free_surface)
     
-    # Remember to scale tracers tendencies by stretching factor
-    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
-    
     # Finally Substep! Advance grid, tracers, (predictor) momentum 
     rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
     rk_substep_tracers!(model.tracers, model, Δτ)
@@ -64,7 +66,7 @@ end
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
 
     # Correct for the updated barotropic mode
-    correct_baroptropic_mode!(model, Δτ)
+    correct_barotropic_mode!(model, Δτ)
 
     return nothing
 end
