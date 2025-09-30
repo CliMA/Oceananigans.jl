@@ -26,7 +26,7 @@ Distributed.addprocs(2)
     bib = CitationBibliography(bib_filepath, style=:authoryear)
 
     #####
-    ##### Generate examples (disabled for fast local builds)
+    ##### Generate examples
     #####
 
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
