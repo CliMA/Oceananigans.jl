@@ -32,7 +32,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
     
     # Correct the barotropic mode
-    correct_baroptropic_mode!(model, Δt)
+    correct_barotropic_mode!(model, Δt)
 
     return nothing
 end

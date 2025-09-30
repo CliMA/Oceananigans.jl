@@ -4,17 +4,17 @@ using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector!
 ##### Barotropic pressure correction for models with a free surface
 #####
 
-correct_baroptropic_mode!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) =
-    correct_baroptropic_mode!(model, model.free_surface, Δt; kwargs...)
+correct_barotropic_mode!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) =
+    correct_barotropic_mode!(model, model.free_surface, Δt; kwargs...)
 
 # Fallback
-correct_baroptropic_mode!(model, free_surface, Δt; kwargs...) = nothing
+correct_barotropic_mode!(model, free_surface, Δt; kwargs...) = nothing
 
 #####
 ##### Barotropic pressure correction for models with an Implicit free surface
 #####
 
-function correct_baroptropic_mode!(model, ::ImplicitFreeSurface, Δt)
+function correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt)
 
     launch!(model.architecture, model.grid, :xyz,
             _barotropic_pressure_correction!,
@@ -27,7 +27,7 @@ function correct_baroptropic_mode!(model, ::ImplicitFreeSurface, Δt)
     return nothing
 end
 
-function correct_baroptropic_mode!(model, ::SplitExplicitFreeSurface, Δt)
+function correct_barotropic_mode!(model, ::SplitExplicitFreeSurface, Δt)
     u, v, _ = model.velocities
     grid = model.grid
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
