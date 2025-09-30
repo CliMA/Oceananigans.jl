@@ -9,24 +9,23 @@ using Oceananigans.Grids: λnodes, φnodes, Center, Face, total_length
 import Oceananigans.Fields: regrid!
 import XESMF: Regridder, extract_xesmf_coordinates_structure
 
-function x_node_array(x::AbstractVector, Nx, Ny)
-    return Array(repeat(view(x, 1:Nx), 1, Ny))'
-end
-function  y_node_array(x::AbstractVector, Nx, Ny)
-    return Array(repeat(view(x, 1:Ny)', Nx, 1))'
-end
-x_node_array(x::AbstractMatrix, Nx, Ny) = Array(view(x, 1:Nx, 1:Ny))'
+# permutedims below is used because Python's xESMF expects
+# 2D arrays with (x, y) coordinates with y varying in dim=1 and x varying in dim=2
 
-function x_vertex_array(x::AbstractVector, Nx, Ny)
-    return Array(repeat(view(x, 1:Nx+1), 1, Ny+1))'
-end
-function y_vertex_array(x::AbstractVector, Nx, Ny)
-    return Array(repeat(view(x, 1:Ny+1)', Nx+1, 1))'
-end
-x_vertex_array(x::AbstractMatrix, Nx, Ny) = Array(view(x, 1:Nx+1, 1:Ny+1))'
+node_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx, 1:Ny), (2, 1))
+vertex_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx+1, 1:Ny+1), (2, 1))
 
-y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
-y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
+x_node_array(x::AbstractVector, Nx, Ny) = permutedims(repeat(view(x, 1:Nx), 1, Ny), (2, 1))
+x_node_array(x::AbstractMatrix, Nx, Ny) = node_array(x, Nx, Ny)
+
+y_node_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny), 1, Nx)
+y_node_array(y::AbstractMatrix, Nx, Ny) = node_array(y, Nx, Ny)
+
+x_vertex_array(x::AbstractVector, Nx, Ny) = permutedims(repeat(view(x, 1:Nx+1), 1, Ny+1), (2, 1))
+x_vertex_array(x::AbstractMatrix, Nx, Ny) = vertex_array(x, Nx, Ny)
+
+y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny+1), 1, Nx+1)
+y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
 function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
 

@@ -252,6 +252,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
+        end
+    end
+
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
             # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
@@ -278,13 +285,6 @@ CUDA.allowscalar() do
     if group == :oneapi || group == :all
         @testset "oneAPI extension tests" begin
             include("test_oneapi.jl")
-        end
-    end
-
-    # Tests for XESMF extension
-    if group == :xesmf || group == :all
-        @testset "XESMF extension tests" begin
-            include("test_xesmf.jl")
         end
     end
 
