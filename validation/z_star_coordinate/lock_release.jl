@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations
 using Printf
 using GLMakie
 
-arch    = CPU()
+arch = CPU()
 z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(arch; 
@@ -18,28 +18,27 @@ grid = RectilinearGrid(arch;
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-bottom(x) = x < 38kilometers && x > 26kilometers ? -10 : -20
-
-grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+# bottom(x) = x < 52kilometers && x > 45kilometers ? -10 : -20
+# grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                         momentum_advection = WENO(order=5),
-                           tracer_advection = WENO(order=5),
+                         momentum_advection = WENO(order=3),
+                           tracer_advection = WENO(order=3),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
-                                timestepper = :SplitRungeKutta3,
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=40)) # 
+                                timestepper = :SplitRungeKutta1,
+                               free_surface = ExplicitFreeSurface()) #SplitExplicitFreeSurface(grid; substeps=10)) # 
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
 set!(model, b = bᵢ, c = (x, z) -> 1)
 
 # Same timestep as in the ilicak paper
-Δt = 1
+Δt = 0.1
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time=50hours)
+simulation = Simulation(model; Δt, stop_time=1.7hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
@@ -96,6 +95,15 @@ run!(simulation)
  
 b = model.tracers.b
 x, y, z = nodes(b)
+
+function running_mean(v, points)
+    n  = length(v)
+    rm = zeros(length(v) - 2points+1)
+    for i in points+1:n-points
+        rm[i-points] = mean(v[i - points:i+points])
+    end
+    return rm[1:end-1]
+end
 
 fig = Figure()
 ax  = Axis(fig[1, 1], title = "Integral property conservation")

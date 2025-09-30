@@ -47,7 +47,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.η)
         parent(z.ηⁿ)   .=  parent(model.free_surface.η)
         for i in -1:grid.Nx+2
-            Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, 1, grid, z.ηⁿ)
+            Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z, i, 1, grid)
         end
         parent(z.σᶜᶜ⁻) .= parent(z.σᶜᶜⁿ)
     end
@@ -109,6 +109,10 @@ grid = RectilinearGrid(size = (80, 1),
                        x = (0, Lh),
                        z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), #  
                        topology = (Periodic, Flat, Bounded))
+
+
+bottom(x) = x < 38kilometers && x > 26kilometers ? 0 : -Lz-1
+grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 explicit_free_surface = ExplicitFreeSurface()
 implicit_free_surface = ImplicitFreeSurface()

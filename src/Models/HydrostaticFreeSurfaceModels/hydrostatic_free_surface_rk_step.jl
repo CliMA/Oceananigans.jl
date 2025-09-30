@@ -39,7 +39,6 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep_tracers!(model.tracers, model, Δτ)
     rk_substep_velocities!(model.velocities, model, Δτ)
 
-
     # Correct for the updated barotropic mode
     correct_barotropic_mode!(model, Δτ)
 
