@@ -108,4 +108,3 @@ grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
     TX, TY, TZ = topology(grid)
     return (topology_str(TX), topology_str(TY), topology_str(TZ))
 end
-

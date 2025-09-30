@@ -231,7 +231,7 @@ CUDA.allowscalar() do
         end
     end
 
-    
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -249,6 +249,13 @@ CUDA.allowscalar() do
     if group == :reactant_2 || group == :all
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
         end
     end
 
@@ -287,4 +294,3 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
-
