@@ -9,22 +9,20 @@ using Oceananigans.Grids: λnodes, φnodes, Center, Face, total_length
 import Oceananigans.Fields: regrid!
 import XESMF: Regridder, extract_xesmf_coordinates_structure
 
-# permutedims below is used because Python's xESMF expects
-# 2D arrays with (x, y) coordinates with y varying in dim=1 and x varying in dim=2
+node_array(ξ::AbstractMatrix, Nx, Ny) = view(ξ, 1:Nx, 1:Ny)
 
-node_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx, 1:Ny), (2, 1))
-vertex_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx+1, 1:Ny+1), (2, 1))
-
-x_node_array(x::AbstractVector, Nx, Ny) = permutedims(repeat(view(x, 1:Nx), 1, Ny), (2, 1))
+x_node_array(x::AbstractVector, Nx, Ny) = repeat(view(x, 1:Nx), 1, Ny)
 x_node_array(x::AbstractMatrix, Nx, Ny) = node_array(x, Nx, Ny)
 
-y_node_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny), 1, Nx)
+y_node_array(y::AbstractVector, Nx, Ny) = repeat(transpose(view(y, 1:Ny)), Nx, 1)
 y_node_array(y::AbstractMatrix, Nx, Ny) = node_array(y, Nx, Ny)
 
-x_vertex_array(x::AbstractVector, Nx, Ny) = permutedims(repeat(view(x, 1:Nx+1), 1, Ny+1), (2, 1))
+vertex_array(ξ::AbstractMatrix, Nx, Ny) = view(ξ, 1:Nx+1, 1:Ny+1)
+
+x_vertex_array(x::AbstractVector, Nx, Ny) = repeat(view(x, 1:Nx+1), 1, Ny+1)
 x_vertex_array(x::AbstractMatrix, Nx, Ny) = vertex_array(x, Nx, Ny)
 
-y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny+1), 1, Nx+1)
+y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(transpose(view(y, 1:Ny+1)), Nx+1, 1)
 y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
 function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
@@ -60,15 +58,19 @@ function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field
     λvˢ = x_vertex_array(λvˢ, Nˢx, Nˢy)
     φvˢ = y_vertex_array(φvˢ, Nˢx, Nˢy)
 
-    dst_coordinates = Dict("lat"   => φᵈ,  # φ is latitude
-                           "lon"   => λᵈ,  # λ is longitude
-                           "lat_b" => φvᵈ,
-                           "lon_b" => λvᵈ)
+    # Python's xESMF expects 2D arrays with (x, y) coordinates
+    # in which y varies in dim=1 and x varies in dim=2
+    # therefore we transpose the coordinate matrices
 
-    src_coordinates = Dict("lat"   => φˢ,  # φ is latitude
-                           "lon"   => λˢ,  # λ is longitude
-                           "lat_b" => φvˢ,
-                           "lon_b" => λvˢ)
+    dst_coordinates = Dict("lat"   => permutedims(φᵈ, (2, 1)),  # φ is latitude
+                           "lon"   => permutedims(λᵈ, (2, 1)),  # λ is longitude
+                           "lat_b" => permutedims(φvᵈ, (2, 1)),
+                           "lon_b" => permutedims(λvᵈ, (2, 1)))
+
+    src_coordinates = Dict("lat"   => permutedims(φˢ, (2, 1)),  # φ is latitude
+                           "lon"   => permutedims(λˢ, (2, 1)),  # λ is longitude
+                           "lat_b" => permutedims(φvˢ, (2, 1)),
+                           "lon_b" => permutedims(λvˢ, (2, 1)))
 
     return dst_coordinates, src_coordinates
 end
