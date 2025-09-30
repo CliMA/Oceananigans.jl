@@ -12,6 +12,7 @@ using SeawaterPolynomials.SecondOrderSeawaterPolynomials: RoquetEquationOfState
 using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.OutputWriters: trilocation_dim_name
+using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
 
 function test_datetime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -2724,10 +2725,9 @@ function test_netcdf_buoyancy_force(arch)
     return nothing
 end
 
-function test_netcdf_single_field_defvar(arch; immersed=false)
-    N = 4
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
-    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)))
+function test_netcdf_single_field_defvar(grid; immersed=false)
+    # Create immersed boundary grid if requested
+    grid = immersed ? ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)) : grid
 
     c = CenterField(grid)
     set!(c, (x, y, z) -> x + y + z)
@@ -2774,11 +2774,9 @@ function test_netcdf_single_field_defvar(arch; immersed=false)
     return nothing
 end
 
-function test_netcdf_field_dimension_validation(arch; immersed=false)
-    N = 4
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
-    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)))
-
+function test_netcdf_field_dimension_validation(grid; immersed=false)
+    # Create immersed boundary grid if requested
+    grid = immersed ? ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)) : grid
     c = CenterField(grid)
 
     # Test 1: Successful validation with proper dimensions
@@ -2788,16 +2786,21 @@ function test_netcdf_field_dimension_validation(arch; immersed=false)
     # Create NetCDF file with proper dimensions
     ds = NCDataset(filepath, "c")
 
+    # Get dimension names in a way that works for multiple grid types
+    ξ_center_name = string(ξname(grid)) * "_caa"
+    η_center_name = string(ηname(grid)) * "_aca"
+    r_center_name = string(rname(grid)) * "_aac"
+
     # Define dimensions first
-    defVar(ds, "x_caa", xnodes(grid, Center()), ("x_caa",))
-    # We "forget" to define the y dimension. Should work regardless
-    defVar(ds, "z_aac", znodes(grid, Center()), ("z_aac",))
+    defVar(ds, ξ_center_name, ξnodes(grid, Center()), (ξ_center_name,))
+    # We "forget" to define the η dimension. Should work regardless
+    defVar(ds, r_center_name, rnodes(grid, Center()), (r_center_name,))
 
     # Write variable to disk after dimensions are created and match the
     defVar(ds, "c", c, time_dependent=false)
-    @test ds["x_caa"][:] == xnodes(grid, Center())
-    @test ds["y_aca"][:] == ynodes(grid, Center())
-    @test ds["z_aac"][:] == znodes(grid, Center())
+    @test ds[ξ_center_name][:] == ξnodes(grid, Center())
+    @test ds[η_center_name][:] == ηnodes(grid, Center())
+    @test ds[r_center_name][:] == rnodes(grid, Center())
 
     close(ds)
     rm(filepath)
@@ -2809,9 +2812,9 @@ function test_netcdf_field_dimension_validation(arch; immersed=false)
     ds_wrong = NCDataset(filepath_wrong_size, "c")
 
     # Define dimensions with wrong sizes
-    defVar(ds_wrong, "x_caa", xnodes(grid, Center()), ("x_caa",))
-    defVar(ds_wrong, "y_aca", ynodes(grid, Center()), ("y_aca",))
-    defVar(ds_wrong, "z_aac", znodes(grid, Face()), ("z_aac",)) # ⚠ wrongly write faces instead of center
+    defVar(ds_wrong, ξ_center_name, ξnodes(grid, Center()), (ξ_center_name,))
+    defVar(ds_wrong, η_center_name, ηnodes(grid, Center()), (η_center_name,))
+    defVar(ds_wrong, r_center_name, rnodes(grid, Face()), (r_center_name,)) # ⚠ wrongly write faces instead of center
 
     @test_throws ArgumentError defVar(ds_wrong, "c", c)
 
@@ -2821,11 +2824,8 @@ function test_netcdf_field_dimension_validation(arch; immersed=false)
     return nothing
 end
 
-function test_netcdf_multiple_grids_defvar(arch; immersed=false)
-    # Create two different grids with different sizes
-    grid1 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-    grid2 = RectilinearGrid(arch, size=(6, 8, 5), extent=(2, 3, 1.5))
-
+function test_netcdf_multiple_grids_defvar(grid1, grid2; immersed=false)
+    # Create immersed boundary grids if requested
     if immersed
         # Create different immersed boundaries for each grid
         grid1 = ImmersedBoundaryGrid(grid1, GridFittedBottom(-1/2))
@@ -2846,11 +2846,11 @@ function test_netcdf_multiple_grids_defvar(arch; immersed=false)
     # Open NetCDF file for writing
     ds = NCDataset(filepath, "c")
 
-    # Define variables from grid1 (4x4x4)
+    # Define variables from grid1
     suffixed_dim_name_grid1(args...) = trilocation_dim_name(args...) * "_grid1"
     defVar(ds, "c1", c1, attrib=Dict("long_name" => "Field from grid 1"), dimension_name_generator=suffixed_dim_name_grid1)
 
-    # Define variables from grid2 (6x8x5) - this should create new dimension names
+    # Define variables from grid2 - this should create new dimension names
     suffixed_dim_name_grid2(args...) = trilocation_dim_name(args...) * "_grid2"
     defVar(ds, "c2", c2, attrib=Dict("long_name" => "Field from grid 2"), dimension_name_generator=suffixed_dim_name_grid2)
 
@@ -2863,21 +2863,29 @@ function test_netcdf_multiple_grids_defvar(arch; immersed=false)
     @test "c1" ∈ keys(ds)
     @test "c2" ∈ keys(ds)
 
-    # Check dimensions for grid1 fields (4x4x4)
-    @test size(ds["c1"]) == (4, 4, 4)
+    # Check dimensions for grid1 fields
+    @test size(ds["c1"]) == size(grid1)
 
-    # Check dimensions for grid2 field (6x8x5)
-    @test size(ds["c2"]) == (6, 8, 5)
+    # Check dimensions for grid2 field
+    @test size(ds["c2"]) == size(grid2)
 
     # Check that the coordinate variables were created with appropriate names
-    # Grid1 coordinates (default names)
-    @test "x_caa_grid1" ∈ keys(ds)
-    @test "y_aca_grid1" ∈ keys(ds)
-    @test "z_aac_grid1" ∈ keys(ds)
+    # Get dimension names in a way that works for multiple grid types
+    ξ_center_name1 = string(ξname(grid1)) * "_caa_grid1"
+    η_center_name1 = string(ηname(grid1)) * "_aca_grid1"
+    r_center_name1 = string(rname(grid1)) * "_aac_grid1"
 
-    @test "x_caa_grid2" ∈ keys(ds)
-    @test "y_aca_grid2" ∈ keys(ds)
-    @test "z_aac_grid2" ∈ keys(ds)
+    @test ξ_center_name1 ∈ keys(ds)
+    @test η_center_name1 ∈ keys(ds)
+    @test r_center_name1 ∈ keys(ds)
+
+    ξ_center_name2 = string(ξname(grid2)) * "_caa_grid2"
+    η_center_name2 = string(ηname(grid2)) * "_aca_grid2"
+    r_center_name2 = string(rname(grid2)) * "_aac_grid2"
+
+    @test ξ_center_name2 ∈ keys(ds)
+    @test η_center_name2 ∈ keys(ds)
+    @test r_center_name2 ∈ keys(ds)
 
     # Check that data values match
     @test ds["c1"] == Array(interior(c1))
@@ -2892,6 +2900,15 @@ end
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
+
+        # Pre-build grids
+        N = 4
+        rectilinear_grid1 = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
+        rectilinear_grid2 = RectilinearGrid(arch, size=(6, 8, 5), extent=(2, 3, 1.5))
+
+        # Pre-build LatitudeLongitudeGrids with different sizes
+        latlon_grid1 = LatitudeLongitudeGrid(arch, size=(N, N, N), longitude=(-180, 180), latitude=(-90, 90), z=(-1, 0))
+        latlon_grid2 = LatitudeLongitudeGrid(arch, size=(8, 6, 4), longitude=(-120, 60), latitude=(-60, 60), z=(-2, 0))
 
         test_datetime_netcdf_output(arch)
         test_timedate_netcdf_output(arch)
@@ -2939,11 +2956,15 @@ for arch in archs
 
         test_netcdf_buoyancy_force(arch)
 
-        test_netcdf_single_field_defvar(arch, immersed=false)
-        test_netcdf_single_field_defvar(arch, immersed=true)
-        test_netcdf_field_dimension_validation(arch, immersed=false)
-        test_netcdf_field_dimension_validation(arch, immersed=true)
-        test_netcdf_multiple_grids_defvar(arch, immersed=false)
-        test_netcdf_multiple_grids_defvar(arch, immersed=true)
+        for grids in ((rectilinear_grid1, rectilinear_grid2),
+                      (latlon_grid1, latlon_grid2))
+            grid1, grid2 = grids
+            test_netcdf_single_field_defvar(grid1, immersed=false)
+            test_netcdf_single_field_defvar(grid1, immersed=true)
+            test_netcdf_field_dimension_validation(grid1, immersed=false)
+            test_netcdf_field_dimension_validation(grid1, immersed=true)
+            test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=false)
+            test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=true)
+        end
     end
 end
