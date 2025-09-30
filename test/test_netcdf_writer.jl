@@ -2726,11 +2726,10 @@ function test_netcdf_buoyancy_force(arch)
 end
 
 function test_netcdf_single_field_defvar(grid; immersed=false)
-    # Create immersed boundary grid if requested
     grid = immersed ? ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)) : grid
 
     c = CenterField(grid)
-    set!(c, (x, y, z) -> x + y + z)
+    set!(c, (x, y, z) -> x + y + z) # Make sure field is non-trivial
 
     filepath = "test_single_field_defvar.nc"
     isfile(filepath) && rm(filepath)
@@ -2775,15 +2774,11 @@ function test_netcdf_single_field_defvar(grid; immersed=false)
 end
 
 function test_netcdf_field_dimension_validation(grid; immersed=false)
-    # Create immersed boundary grid if requested
     grid = immersed ? ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)) : grid
     c = CenterField(grid)
 
-    # Test 1: Successful validation with proper dimensions
     filepath = "test_dimension_validation_success.nc"
     isfile(filepath) && rm(filepath)
-
-    # Create NetCDF file with proper dimensions
     ds = NCDataset(filepath, "c")
 
     # Get dimension names in a way that works for multiple grid types
@@ -2825,14 +2820,11 @@ function test_netcdf_field_dimension_validation(grid; immersed=false)
 end
 
 function test_netcdf_multiple_grids_defvar(grid1, grid2; immersed=false)
-    # Create immersed boundary grids if requested
     if immersed
-        # Create different immersed boundaries for each grid
         grid1 = ImmersedBoundaryGrid(grid1, GridFittedBottom(-1/2))
         grid2 = ImmersedBoundaryGrid(grid2, GridFittedBottom(-0.8))
     end
 
-    # Create fields on each grid
     c1 = CenterField(grid1)
     c2 = CenterField(grid2)
 
@@ -2842,8 +2834,6 @@ function test_netcdf_multiple_grids_defvar(grid1, grid2; immersed=false)
 
     filepath = "test_multiple_grids_defvar.nc"
     isfile(filepath) && rm(filepath)
-
-    # Open NetCDF file for writing
     ds = NCDataset(filepath, "c")
 
     # Define variables from grid1
@@ -2858,15 +2848,10 @@ function test_netcdf_multiple_grids_defvar(grid1, grid2; immersed=false)
 
     # Verify the file was created correctly
     ds = NCDataset(filepath, "r")
-
-    # Check that both fields are present
     @test "c1" ∈ keys(ds)
     @test "c2" ∈ keys(ds)
 
-    # Check dimensions for grid1 fields
     @test size(ds["c1"]) == size(grid1)
-
-    # Check dimensions for grid2 field
     @test size(ds["c2"]) == size(grid2)
 
     # Check that the coordinate variables were created with appropriate names
@@ -2901,7 +2886,7 @@ for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
 
-        # Pre-build grids
+        # Pre-build RectilinearGrids with different sizes
         N = 4
         rectilinear_grid1 = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
         rectilinear_grid2 = RectilinearGrid(arch, size=(6, 8, 5), extent=(2, 3, 1.5))
