@@ -70,49 +70,49 @@ end
 const C = Center
 const F = Face
 
-# @testset "MutableVerticalDiscretization tests" begin
-#     @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
+@testset "MutableVerticalDiscretization tests" begin
+    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
 
-#     z = MutableVerticalDiscretization((-20, 0))
+    z = MutableVerticalDiscretization((-20, 0))
 
-#     # A mutable immersed grid
-#     mutable_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=z)
-#     mutable_grid = ImmersedBoundaryGrid(mutable_grid, GridFittedBottom((x, y) -> -10))
+    # A mutable immersed grid
+    mutable_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=z)
+    mutable_grid = ImmersedBoundaryGrid(mutable_grid, GridFittedBottom((x, y) -> -10))
 
-#     # A static immersed grid
-#     static_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=(-20, 0))
-#     static_grid = ImmersedBoundaryGrid(static_grid, GridFittedBottom((x, y) -> -10))
+    # A static immersed grid
+    static_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=(-20, 0))
+    static_grid = ImmersedBoundaryGrid(static_grid, GridFittedBottom((x, y) -> -10))
 
-#     # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and
-#     # the results are the same as a model with a static vertical discretization.
-#     kw = (; free_surface=ImplicitFreeSurface(), vertical_coordinate=ZCoordinate())
-#     mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, kw...)
-#     static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid, kw...)
+    # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and
+    # the results are the same as a model with a static vertical discretization.
+    kw = (; free_surface=ImplicitFreeSurface(), vertical_coordinate=ZCoordinate())
+    mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, kw...)
+    static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid, kw...)
 
-#     @test mutable_model.vertical_coordinate isa ZCoordinate
-#     @test static_model.vertical_coordinate isa ZCoordinate
+    @test mutable_model.vertical_coordinate isa ZCoordinate
+    @test static_model.vertical_coordinate isa ZCoordinate
 
-#     uᵢ = rand(size(mutable_model.velocities.u)...)
-#     vᵢ = rand(size(mutable_model.velocities.v)...)
+    uᵢ = rand(size(mutable_model.velocities.u)...)
+    vᵢ = rand(size(mutable_model.velocities.v)...)
 
-#     set!(mutable_model; u=uᵢ, v=vᵢ)
-#     set!(static_model;  u=uᵢ, v=vᵢ)
+    set!(mutable_model; u=uᵢ, v=vᵢ)
+    set!(static_model;  u=uᵢ, v=vᵢ)
 
-#     static_sim  = Simulation(static_model;  Δt=1e-3, stop_iteration=100)
-#     mutable_sim = Simulation(mutable_model; Δt=1e-3, stop_iteration=100)
+    static_sim  = Simulation(static_model;  Δt=1e-3, stop_iteration=100)
+    mutable_sim = Simulation(mutable_model; Δt=1e-3, stop_iteration=100)
 
-#     run!(mutable_sim)
-#     run!(static_sim)
+    run!(mutable_sim)
+    run!(static_sim)
 
-#     # Check that fields are the same
-#     um, vm, wm = mutable_model.velocities
-#     us, vs, ws = static_model.velocities
+    # Check that fields are the same
+    um, vm, wm = mutable_model.velocities
+    us, vs, ws = static_model.velocities
 
-#     @test all(um.data .≈ us.data)
-#     @test all(vm.data .≈ vs.data)
-#     @test all(wm.data .≈ ws.data)
-#     @test all(um.data .≈ us.data)
-# end
+    @test all(um.data .≈ us.data)
+    @test all(vm.data .≈ vs.data)
+    @test all(wm.data .≈ ws.data)
+    @test all(um.data .≈ us.data)
+end
 
 @testset "ZStarCoordinate diffusion test" begin
     Random.seed!(1234)
