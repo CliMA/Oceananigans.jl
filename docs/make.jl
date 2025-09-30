@@ -50,6 +50,8 @@ Distributed.addprocs(2)
     ]
 end
 
+@info string("Executing the examples using ", Distributed.nprocs(), " processes")
+
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
