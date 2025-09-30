@@ -9,17 +9,20 @@ using Oceananigans.Grids: λnodes, φnodes, Center, Face, total_length
 import Oceananigans.Fields: regrid!
 import XESMF: Regridder, extract_xesmf_coordinates_structure
 
-x_node_array(x::AbstractVector, Nx, Ny) = permutedims(repeat(view(x, 1:Nx), 1, Ny), (2, 1))
-x_node_array(x::AbstractMatrix, Nx, Ny) = permutedims(view(x, 1:Nx, 1:Ny), (2, 1))
+node_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx, 1:Ny), (2, 1))
+vertex_array(ξ::AbstractMatrix, Nx, Ny) = permutedims(view(ξ, 1:Nx+1, 1:Ny+1), (2, 1))
 
-y_node_array(x::AbstractVector, Nx, Ny) = repeat(view(x, 1:Ny), 1, Nx)
-y_node_array(x::AbstractMatrix, Nx, Ny) = x_node_array(x, Nx, Ny)
+x_node_array(x::AbstractVector, Nx, Ny) = permutedims(repeat(view(x, 1:Nx), 1, Ny), (2, 1))
+x_node_array(x::AbstractMatrix, Nx, Ny) = node_array(x, Nx, Ny)
+
+y_node_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny), 1, Nx)
+y_node_array(y::AbstractMatrix, Nx, Ny) = node_array(y, Nx, Ny)
 
 x_vertex_array(x::AbstractVector, Nx, Ny) = permutedims(repeat(view(x, 1:Nx+1), 1, Ny+1), (2, 1))
-x_vertex_array(x::AbstractMatrix, Nx, Ny) = permutedims(view(x, 1:Nx+1, 1:Ny+1), (2, 1))
+x_vertex_array(x::AbstractMatrix, Nx, Ny) = vertex_array(x, Nx, Ny)
 
-y_vertex_array(x::AbstractVector, Nx, Ny) = repeat(view(x, 1:Ny+1), 1, Nx+1)
-y_vertex_array(x::AbstractMatrix, Nx, Ny) = x_vertex_array(x, Nx, Ny)
+y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny+1), 1, Nx+1)
+y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
 function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
 
