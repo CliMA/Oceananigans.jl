@@ -29,9 +29,6 @@ Distributed.addprocs(2)
     ##### Generate examples (disabled for fast local builds)
     #####
 
-    #=  For LiveServer or quick docs iteration, we skip executing literated examples.
-    #   Re-enable this block to regenerate docs/src/literated/*.md from examples/.
-    #
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
@@ -51,10 +48,8 @@ Distributed.addprocs(2)
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
-    =#
 end
 
-#=  Re-enable for examples build
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -66,7 +61,6 @@ Distributed.pmap(1:length(example_scripts)) do n
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
     end
 end
-=#
 
 Distributed.rmprocs()
 
@@ -74,7 +68,6 @@ Distributed.rmprocs()
 ##### Organize page hierarchies
 #####
 
-#=  Examples section is disabled for fast local builds.
 example_pages = [
     "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
     "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
@@ -89,7 +82,6 @@ example_pages = [
     "Horizontal convection"            => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
 ]
-=#
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
@@ -106,7 +98,6 @@ model_setup_pages = [
     # "Checkpointing" => "model_setup/checkpointing.md",
 ]
 
-#=
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
@@ -145,15 +136,14 @@ appendix_pages = [
     "Library" => "appendix/library.md",
     "Function index" => "appendix/function_index.md"
 ]
-    =#
 
 pages = [
     "Home" => "index.md",
-    # "Quick start" => "quick_start.md",
-    # # "Examples" => example_pages,   # disabled for fast local builds
-    # "Grids" => "grids.md",
-    # "Fields" => "fields.md",
-    # "Operations" => "operations.md",
+    "Quick start" => "quick_start.md",
+    "Examples" => example_pages,
+    "Grids" => "grids.md",
+    "Fields" => "fields.md",
+    "Operations" => "operations.md",
     # TODO:
     #   - Develop the following three tutorials on reductions, simulations, and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
@@ -161,13 +151,13 @@ pages = [
     # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
     "Models" => model_setup_pages,
-    # "Physics" => physics_pages,
-    # "Numerical implementation" => numerical_pages,
-    # "Simulation tips" => "simulation_tips.md",
-    # "Contributor's guide" => "contributing.md",
-    # "Gallery" => "gallery.md",
-    # "References" => "references.md",
-    # "Appendix" => appendix_pages
+    "Physics" => physics_pages,
+    "Numerical implementation" => numerical_pages,
+    "Simulation tips" => "simulation_tips.md",
+    "Contributor's guide" => "contributing.md",
+    "Gallery" => "gallery.md",
+    "References" => "references.md",
+    "Appendix" => appendix_pages
 ]
 
 #####
@@ -188,15 +178,21 @@ else
     Oceananigans.OceananigansNCDatasetsExt
 end
 
+OceananigansXESMFExt = if isdefined(Base, :get_extension)
+    Base.get_extension(Oceananigans, :OceananigansXESMFExt)
+else
+    Oceananigans.OceananigansXESMFExt
+end
+
 makedocs(sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format = format,
          pages = pages,
          plugins = [bib],
-         modules = [Oceananigans, OceananigansNCDatasetsExt],
+         modules = [Oceananigans, OceananigansNCDatasetsExt, OceananigansXESMFExt],
          warnonly = [:cross_references],
          draft = false,        # set to true to speed things up
-         doctest = false,       # set to false to speed things up
+         doctest = true,       # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
