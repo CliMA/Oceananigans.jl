@@ -2726,9 +2726,9 @@ function test_netcdf_buoyancy_force(arch)
     return nothing
 end
 
-function test_netcdf_single_field_defvar()
+function test_netcdf_single_field_defvar(arch)
     N = 4
-    grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
     c = CenterField(grid)
     set!(c, (x, y, z) -> x + y + z)
 
@@ -2774,8 +2774,8 @@ function test_netcdf_single_field_defvar()
     return nothing
 end
 
-function test_netcdf_field_dimension_validation()
-    grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+function test_netcdf_field_dimension_validation(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
 
     # Test 1: Successful validation with proper dimensions
@@ -2818,10 +2818,10 @@ function test_netcdf_field_dimension_validation()
     return nothing
 end
 
-function test_netcdf_multiple_grids_defvar()
+function test_netcdf_multiple_grids_defvar(arch)
     # Create two different grids with different sizes
-    grid1 = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-    grid2 = RectilinearGrid(size=(6, 8, 5), extent=(2, 3, 1.5))
+    grid1 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    grid2 = RectilinearGrid(arch, size=(6, 8, 5), extent=(2, 3, 1.5))
 
     # Create fields on each grid
     c1 = CenterField(grid1)
@@ -2930,8 +2930,8 @@ for arch in archs
 
         test_netcdf_buoyancy_force(arch)
 
-        test_netcdf_single_field_defvar()
-        test_netcdf_field_dimension_validation()
-        test_netcdf_multiple_grids_defvar()
+        test_netcdf_single_field_defvar(arch)
+        test_netcdf_field_dimension_validation(arch)
+        test_netcdf_multiple_grids_defvar(arch)
     end
 end
