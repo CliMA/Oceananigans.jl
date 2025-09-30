@@ -25,6 +25,12 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = vertex_array(x, Nx, Ny)
 y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(transpose(view(y, 1:Ny+1)), Nx+1, 1)
 y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
+"""
+    extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
+
+Extract the coordinates (latitude/longitude) and the coordinates' bounds from the
+`src_field` and `dst_field`.
+"""
 function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
@@ -101,19 +107,19 @@ For more information, see the Python xESMF documentation at:
 Example
 =======
 
-```@example
+```jldoctest
 using Oceananigans
 using XESMF
 
 z = (-1, 0)
-tg = TripolarGrid(; size=(360, 170, 1), z, southernmost_latitude = -80)
-llg = LatitudeLongitudeGrid(; size=(360, 180, 1), z,
+tg = TripolarGrid(; size=(180, 85, 1), z, southernmost_latitude = -80)
+llg = LatitudeLongitudeGrid(; size=(170, 80, 1), z,
                             longitude=(0, 360), latitude=(-82, 90))
 
 src_field = CenterField(tg)
 dst_field = CenterField(llg)
 
-regridder = Oceananigans.Fields.Regridder(dst_field, src_field, method="conservative")
+regridder = XESMF.Regridder(dst_field, src_field, method="conservative")
 ```
 """
 function Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
