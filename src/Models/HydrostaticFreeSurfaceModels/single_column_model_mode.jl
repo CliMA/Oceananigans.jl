@@ -18,7 +18,7 @@ import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
 #####
 
-const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded, <:StaticVerticalDiscretization}
+const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
 #####
 ##### Model constructor utils
