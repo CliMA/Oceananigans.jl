@@ -24,9 +24,6 @@ function update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
 
-compute_pressure_correction!(model, Δt) = nothing
-make_pressure_correction!(model, Δt) = nothing
-
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing

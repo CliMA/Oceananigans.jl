@@ -36,7 +36,7 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep_velocities!(model.velocities, model, Δτ)
     
     # Correct for the updated barotropic mode
-    make_pressure_correction!(model, Δτ)
+    correct_baroptropic_mode!(model, Δτ)
 
     return nothing
 end
@@ -64,7 +64,7 @@ end
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
 
     # Correct for the updated barotropic mode
-    make_pressure_correction!(model, Δτ)
+    correct_baroptropic_mode!(model, Δτ)
 
     return nothing
 end

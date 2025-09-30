@@ -15,12 +15,13 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Advancing free surface and barotropic transport velocities
+    # Computing Baroclinic and Barotropic tendencies
     compute_momentum_tendencies!(model, callbacks)
-    compute_transport_velocities!(model, model.free_surface)
-    compute_tracer_tendencies!(model)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
+    # Computing tracer tendencies
+    compute_transport_velocities!(model, model.free_surface)
+    compute_tracer_tendencies!(model)
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
 
     # Finally Substep! Advance grid, tracers, and momentum
@@ -28,9 +29,11 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
 
+    # Advance the free surface
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
     
-    make_pressure_correction!(model, Δt)
+    # Correct the barotropic mode
+    correct_baroptropic_mode!(model, Δt)
 
     return nothing
 end

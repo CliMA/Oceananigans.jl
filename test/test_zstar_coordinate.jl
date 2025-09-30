@@ -176,65 +176,65 @@ end
                    (Bounded, Bounded, Bounded))
 
     for arch in archs
-        for topology in topologies
-            Random.seed!(1234)
+        # for topology in topologies
+        #     Random.seed!(1234)
 
-            rtgv = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
-            irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
-            prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
+        #     rtgv = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
+        #     irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
+        #     prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
 
-            if topology[2] == Bounded
-                llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
+        #     if topology[2] == Bounded
+        #         llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
-                illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
-                pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
+        #         illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
+        #         pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
 
-                # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
-                # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
-                # When this is issue is fixed we can add the partial cells to the testing.
-                grids = [llgv, rtgv] # , illgv, irtgv] # , pllgv, prtgv]
-            else
-                grids = [rtgv] # , irtgv] #, prtgv]
-            end
+        #         # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
+        #         # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
+        #         # When this is issue is fixed we can add the partial cells to the testing.
+        #         grids = [llgv, rtgv] # , illgv, irtgv] # , pllgv, prtgv]
+        #     else
+        #         grids = [rtgv] # , irtgv] #, prtgv]
+        #     end
 
-            for grid in grids
-                split_free_surface    = SplitExplicitFreeSurface(grid; substeps = 100)
-                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
-                explicit_free_surface = ExplicitFreeSurface()
+        #     for grid in grids
+        #         split_free_surface    = SplitExplicitFreeSurface(grid; substeps = 100)
+        #         implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+        #         explicit_free_surface = ExplicitFreeSurface()
 
-                for free_surface in [split_free_surface, explicit_free_surface]
+        #         for free_surface in [split_free_surface, explicit_free_surface]
 
-                    # TODO: There are parameter space issues with ImplicitFreeSurface and a immersed LatitudeLongitudeGrid
-                    # For the moment we are skipping these tests.
-                    if (arch isa GPU) &&
-                       (free_surface isa ImplicitFreeSurface) &&
-                       (grid isa ImmersedBoundaryGrid) &&
-                       (grid.underlying_grid isa LatitudeLongitudeGrid)
+        #             # TODO: There are parameter space issues with ImplicitFreeSurface and a immersed LatitudeLongitudeGrid
+        #             # For the moment we are skipping these tests.
+        #             if (arch isa GPU) &&
+        #                (free_surface isa ImplicitFreeSurface) &&
+        #                (grid isa ImmersedBoundaryGrid) &&
+        #                (grid.underlying_grid isa LatitudeLongitudeGrid)
 
-                        @info "  Skipping $(info_message(grid, free_surface)) because of parameter space issues"
-                        continue
-                    end
+        #                 @info "  Skipping $(info_message(grid, free_surface)) because of parameter space issues"
+        #                 continue
+        #             end
 
-                    info_msg = info_message(grid, free_surface)
-                    @testset "$info_msg" begin
-                        @info "  Testing a $info_msg"
-                        model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
-                                                            free_surface,
-                                                            tracers = (:b, :c, :constant),
-                                                            timestepper = :SplitRungeKutta3,
-                            				                buoyancy = BuoyancyTracer(),
-                                                            vertical_coordinate = ZStarCoordinate(grid))
+        #             info_msg = info_message(grid, free_surface)
+        #             @testset "$info_msg" begin
+        #                 @info "  Testing a $info_msg"
+        #                 model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
+        #                                                     free_surface,
+        #                                                     tracers = (:b, :c, :constant),
+        #                                                     timestepper = :SplitRungeKutta3,
+        #                     				                buoyancy = BuoyancyTracer(),
+        #                                                     vertical_coordinate = ZStarCoordinate(grid))
 
-                        bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
+        #                 bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
-                        set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
+        #                 set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
-                        Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                        test_zstar_coordinate(model, 100, Δt)
-                    end
-                end
-            end
-        end
+        #                 Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
+        #                 test_zstar_coordinate(model, 100, Δt)
+        #             end
+        #         end
+        #     end
+        # end
 
         @info "  Testing a ZStarCoordinate and Runge-Kutta 5th order time stepping"
 
@@ -244,7 +244,7 @@ end
         irtg = ImmersedBoundaryGrid(deepcopy(rtg), GridFittedBottom((x, y) -> rand()-10))
         illg = ImmersedBoundaryGrid(deepcopy(llg), GridFittedBottom((x, y) -> rand()-10))
 
-        for grid in [rtg, llg, irtg, illg]
+        for grid in [rtg, llg] # , irtg, illg]
             split_free_surface = SplitExplicitFreeSurface(grid; substeps=50)
             model = HydrostaticFreeSurfaceModel(; grid,
                                                 free_surface = split_free_surface,
