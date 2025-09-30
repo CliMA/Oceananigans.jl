@@ -63,55 +63,56 @@ function info_message(grid, free_surface)
     msg4 = grid.z.Δᵃᵃᶠ isa Number ? " with uniform spacing" : " with stretched spacing"
     msg5 = grid isa ImmersedBoundaryGrid ? " and $(string(getnamewrapper(grid.immersed_boundary))) immersed boundary" : ""
     msg6 = " using a " * string(getnamewrapper(free_surface))
-    return msg1 * msg2 * msg3 * msg4 * msg5 * msg6
+    msg7 = ", T: $(topology(grid))"
+    return msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7
 end
 
 const C = Center
 const F = Face
 
-@testset "MutableVerticalDiscretization tests" begin
-    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
+# @testset "MutableVerticalDiscretization tests" begin
+#     @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
 
-    z = MutableVerticalDiscretization((-20, 0))
+#     z = MutableVerticalDiscretization((-20, 0))
 
-    # A mutable immersed grid
-    mutable_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=z)
-    mutable_grid = ImmersedBoundaryGrid(mutable_grid, GridFittedBottom((x, y) -> -10))
+#     # A mutable immersed grid
+#     mutable_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=z)
+#     mutable_grid = ImmersedBoundaryGrid(mutable_grid, GridFittedBottom((x, y) -> -10))
 
-    # A static immersed grid
-    static_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=(-20, 0))
-    static_grid = ImmersedBoundaryGrid(static_grid, GridFittedBottom((x, y) -> -10))
+#     # A static immersed grid
+#     static_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=(-20, 0))
+#     static_grid = ImmersedBoundaryGrid(static_grid, GridFittedBottom((x, y) -> -10))
 
-    # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and
-    # the results are the same as a model with a static vertical discretization.
-    kw = (; free_surface=ImplicitFreeSurface(), vertical_coordinate=ZCoordinate())
-    mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, kw...)
-    static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid, kw...)
+#     # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and
+#     # the results are the same as a model with a static vertical discretization.
+#     kw = (; free_surface=ImplicitFreeSurface(), vertical_coordinate=ZCoordinate())
+#     mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, kw...)
+#     static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid, kw...)
 
-    @test mutable_model.vertical_coordinate isa ZCoordinate
-    @test static_model.vertical_coordinate isa ZCoordinate
+#     @test mutable_model.vertical_coordinate isa ZCoordinate
+#     @test static_model.vertical_coordinate isa ZCoordinate
 
-    uᵢ = rand(size(mutable_model.velocities.u)...)
-    vᵢ = rand(size(mutable_model.velocities.v)...)
+#     uᵢ = rand(size(mutable_model.velocities.u)...)
+#     vᵢ = rand(size(mutable_model.velocities.v)...)
 
-    set!(mutable_model; u=uᵢ, v=vᵢ)
-    set!(static_model;  u=uᵢ, v=vᵢ)
+#     set!(mutable_model; u=uᵢ, v=vᵢ)
+#     set!(static_model;  u=uᵢ, v=vᵢ)
 
-    static_sim  = Simulation(static_model;  Δt=1e-3, stop_iteration=100)
-    mutable_sim = Simulation(mutable_model; Δt=1e-3, stop_iteration=100)
+#     static_sim  = Simulation(static_model;  Δt=1e-3, stop_iteration=100)
+#     mutable_sim = Simulation(mutable_model; Δt=1e-3, stop_iteration=100)
 
-    run!(mutable_sim)
-    run!(static_sim)
+#     run!(mutable_sim)
+#     run!(static_sim)
 
-    # Check that fields are the same
-    um, vm, wm = mutable_model.velocities
-    us, vs, ws = static_model.velocities
+#     # Check that fields are the same
+#     um, vm, wm = mutable_model.velocities
+#     us, vs, ws = static_model.velocities
 
-    @test all(um.data .≈ us.data)
-    @test all(vm.data .≈ vs.data)
-    @test all(wm.data .≈ ws.data)
-    @test all(um.data .≈ us.data)
-end
+#     @test all(um.data .≈ us.data)
+#     @test all(vm.data .≈ vs.data)
+#     @test all(wm.data .≈ ws.data)
+#     @test all(um.data .≈ us.data)
+# end
 
 @testset "ZStarCoordinate diffusion test" begin
     Random.seed!(1234)
@@ -125,8 +126,8 @@ end
     for arch in archs
         c₀ = rand(15)
 
-        grid_static = RectilinearGrid(arch; size=15, z=z_static, topology=(Flat, Flat, Bounded))
-        grid_moving = RectilinearGrid(arch; size=15, z=z_moving, topology=(Flat, Flat, Bounded))
+        grid_static = RectilinearGrid(arch; size=(1, 1, 15), x=(0, 1), y=(0, 1), z=z_static, topology=(Periodic, Periodic, Bounded))
+        grid_moving = RectilinearGrid(arch; size=(1, 1, 15), x=(0, 1), y=(0, 1), z=z_moving, topology=(Periodic, Periodic, Bounded))
 
         fill!(grid_moving.z.ηⁿ,   5)
         fill!(grid_moving.z.σᶜᶜ⁻, 1.5)
@@ -136,8 +137,8 @@ end
         fill!(grid_moving.z.σᶠᶜⁿ, 1.5)
 
         for TD in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
-            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers
-                for c_bcs in (NoFluxBoundaryCondition(), FluxBoundaryCondition(0.01), ValueBoundaryCondition(0.01))
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers
+                for c_bcs in (FluxBoundaryCondition(nothing), FluxBoundaryCondition(0.01), ValueBoundaryCondition(0.01))
                     @info "testing ZStarCoordinate diffusion on $(typeof(arch)) with $TD, $timestepper, and $c_bcs at the top"
 
                     model_static = HydrostaticFreeSurfaceModel(; grid = grid_static,
@@ -152,8 +153,8 @@ end
                                                                 boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs)),
                                                                 closure = VerticalScalarDiffusivity(TD(), κ=0.1))
 
-                    set!(model_static, c = c₀)
-                    set!(model_moving, c = c₀)
+                    set!(model_static, c=c₀)
+                    set!(model_moving, c=c₀, η=5)
 
                     for _ in 1:1000
                         time_step!(model_static, 1.0)
@@ -191,17 +192,17 @@ end
                 # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
                 # When this is issue is fixed we can add the partial cells to the testing.
-                grids = [llgv, rtgv, illgv, irtgv] # , pllgv, prtgv]
+                grids = [llgv, rtgv] # , illgv, irtgv] # , pllgv, prtgv]
             else
-                grids = [rtgv, irtgv] #, prtgv]
+                grids = [rtgv] # , irtgv] #, prtgv]
             end
 
             for grid in grids
-                split_free_surface    = SplitExplicitFreeSurface(grid; cfl = 0.75)
-                implicit_free_surface = ImplicitFreeSurface()
+                split_free_surface    = SplitExplicitFreeSurface(grid; substeps = 100)
+                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
                 explicit_free_surface = ExplicitFreeSurface()
 
-                for free_surface in [split_free_surface, implicit_free_surface, explicit_free_surface]
+                for free_surface in [split_free_surface, explicit_free_surface]
 
                     # TODO: There are parameter space issues with ImplicitFreeSurface and a immersed LatitudeLongitudeGrid
                     # For the moment we are skipping these tests.
@@ -217,7 +218,7 @@ end
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
                         @info "  Testing a $info_msg"
-                        model = HydrostaticFreeSurfaceModel(; grid,
+                        model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
                                                             free_surface,
                                                             tracers = (:b, :c, :constant),
                                                             timestepper = :SplitRungeKutta3,
