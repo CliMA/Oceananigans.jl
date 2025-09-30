@@ -107,7 +107,9 @@ For more information, see the Python xESMF documentation at:
 Example
 =======
 
-```jldoctest
+To create a regridder for two fields that live on different grids.
+
+```@example regridding
 using Oceananigans
 using XESMF
 
@@ -120,6 +122,14 @@ src_field = CenterField(tg)
 dst_field = CenterField(llg)
 
 regridder = XESMF.Regridder(dst_field, src_field, method="conservative")
+```
+
+Then we can use this regridder to regrid:
+
+```@example regridding
+set!(src_field, 1)
+
+regrid!(dst_field, regridder, src_field)
 ```
 """
 function Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
