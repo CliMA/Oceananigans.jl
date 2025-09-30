@@ -44,6 +44,8 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
     compute_tracer_flux_bcs!(model)
 
+    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
+
     update_tendencies!(model.biogeochemistry, model)
 
     return nothing

@@ -22,7 +22,6 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
     # Computing tracer tendencies
     compute_transport_velocities!(model, model.free_surface)
     compute_tracer_tendencies!(model)
-    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
 
     # Finally Substep! Advance grid, tracers, and momentum
     ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
