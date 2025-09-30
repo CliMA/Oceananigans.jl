@@ -2676,7 +2676,6 @@ function test_netcdf_free_surface_mixed_output(arch)
 end
 
 function test_netcdf_buoyancy_force(arch)
-
     Nx, Nz = 8, 8
     Hx, Hz = 2, 3
     Lx, H  = 2, 1
@@ -2697,7 +2696,6 @@ function test_netcdf_buoyancy_force(arch)
                       RoquetEquationOfState(:SimplestRealistic))
 
     for eos in Boussinesq_eos
-
         model = NonhydrostaticModel(; grid,
                                     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                     buoyancy = SeawaterBuoyancy(equation_of_state=eos),
@@ -2726,9 +2724,11 @@ function test_netcdf_buoyancy_force(arch)
     return nothing
 end
 
-function test_netcdf_single_field_defvar(arch)
+function test_netcdf_single_field_defvar(arch; immersed=false)
     N = 4
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
+    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(-1/2)))
+
     c = CenterField(grid)
     set!(c, (x, y, z) -> x + y + z)
 
@@ -2774,8 +2774,11 @@ function test_netcdf_single_field_defvar(arch)
     return nothing
 end
 
-function test_netcdf_field_dimension_validation(arch)
-    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+function test_netcdf_field_dimension_validation(arch; immersed=false)
+    N = 4
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
+    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(-1/2)))
+
     c = CenterField(grid)
 
     # Test 1: Successful validation with proper dimensions
@@ -2818,10 +2821,16 @@ function test_netcdf_field_dimension_validation(arch)
     return nothing
 end
 
-function test_netcdf_multiple_grids_defvar(arch)
+function test_netcdf_multiple_grids_defvar(arch; immersed=false)
     # Create two different grids with different sizes
     grid1 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     grid2 = RectilinearGrid(arch, size=(6, 8, 5), extent=(2, 3, 1.5))
+
+    if immersed
+        # Create different immersed boundaries for each grid
+        grid1 = ImmersedBoundaryGrid(grid1, GridFittedBoundary(-1/2))
+        grid2 = ImmersedBoundaryGrid(grid2, GridFittedBoundary(-0.8))
+    end
 
     # Create fields on each grid
     c1 = CenterField(grid1)
@@ -2930,8 +2939,11 @@ for arch in archs
 
         test_netcdf_buoyancy_force(arch)
 
-        test_netcdf_single_field_defvar(arch)
-        test_netcdf_field_dimension_validation(arch)
-        test_netcdf_multiple_grids_defvar(arch)
+        test_netcdf_single_field_defvar(arch, immersed=false)
+        test_netcdf_single_field_defvar(arch, immersed=true)
+        test_netcdf_field_dimension_validation(arch, immersed=false)
+        test_netcdf_field_dimension_validation(arch, immersed=true)
+        test_netcdf_multiple_grids_defvar(arch, immersed=false)
+        test_netcdf_multiple_grids_defvar(arch, immersed=true)
     end
 end
