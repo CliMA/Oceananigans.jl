@@ -87,7 +87,6 @@ example_pages = [
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md",
     "Coriolis (rotation)" => "model_setup/coriolis.md",
     "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
     "Boundary conditions" => "model_setup/boundary_conditions.md",
