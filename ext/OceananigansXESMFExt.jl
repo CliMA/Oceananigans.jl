@@ -124,12 +124,7 @@ dst_field = CenterField(llg)
 regridder = XESMF.Regridder(dst_field, src_field, method="conservative")
 ```
 
-Then we can use this regridder to regrid:
-
-```@example regridding
-set!(src_field, 1)
-
-regrid!(dst_field, regridder, src_field)
+We can use the above regridder to regrid via [`regrid!`](@ref).
 ```
 """
 function Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
