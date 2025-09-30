@@ -1,8 +1,8 @@
-using Oceananigans.Fields: OneField, ReducedAbstractField, filltype, reduced_location, initialize_reduced_field!
+using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 using Base: @propagate_inbounds
 
-import Base: minimum, maximum, sum, all, any, prod
+import Base: sum
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 

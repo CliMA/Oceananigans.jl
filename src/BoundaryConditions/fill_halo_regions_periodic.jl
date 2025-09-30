@@ -12,7 +12,7 @@
     end
 end
 
-@kernel function _fill_periodic_south_and_north_halo!(c, south_bc, north_bc, loc, grid, args) 
+@kernel function _fill_periodic_south_and_north_halo!(c, south_bc, north_bc, loc, grid, args)
     i, k = @index(Global, NTuple)
     H = grid.Hy
     N = grid.Ny
