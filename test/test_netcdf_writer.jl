@@ -2727,7 +2727,7 @@ end
 function test_netcdf_single_field_defvar(arch; immersed=false)
     N = 4
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
-    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(-1/2)))
+    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)))
 
     c = CenterField(grid)
     set!(c, (x, y, z) -> x + y + z)
@@ -2777,7 +2777,7 @@ end
 function test_netcdf_field_dimension_validation(arch; immersed=false)
     N = 4
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(1, 1, 1))
-    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(-1/2)))
+    immersed && (grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2)))
 
     c = CenterField(grid)
 
@@ -2828,8 +2828,8 @@ function test_netcdf_multiple_grids_defvar(arch; immersed=false)
 
     if immersed
         # Create different immersed boundaries for each grid
-        grid1 = ImmersedBoundaryGrid(grid1, GridFittedBoundary(-1/2))
-        grid2 = ImmersedBoundaryGrid(grid2, GridFittedBoundary(-0.8))
+        grid1 = ImmersedBoundaryGrid(grid1, GridFittedBottom(-1/2))
+        grid2 = ImmersedBoundaryGrid(grid2, GridFittedBottom(-0.8))
     end
 
     # Create fields on each grid
