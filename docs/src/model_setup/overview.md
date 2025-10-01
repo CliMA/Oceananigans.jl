@@ -258,13 +258,12 @@ All models support `set!(model; kwargs...)` to initialize or update fields.
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
 model = NonhydrostaticModel(; grid, advection=WENO(), tracers=(:T, :S), buoyancy=SeawaterBuoyancy())
 
-U₀ = 0.5
-u₀(x, y, z) = U₀ * tanh(8z - 4)                # vertical shear
-T₀(x, y, z) = 1 + 0.01 * z                     # stable stratification
-S₀(x, y, z) = 35 + 0.0 * z
+u₀(x, y, z) = 0.5 * tanh(8z - 4)      # vertical shear
+T₀(x, y, z) = 1 + 0.01 * z           # stable stratification
+S₀(x, y, z) = 35                     # constant salinity
 
 set!(model; u=u₀, T=T₀, S=S₀)
 
@@ -273,14 +272,14 @@ model.velocities.u, model.tracers.T
 # output
 
 (16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+│   └── west: Periodic, east: Periodic, south: ZeroFlux, north: ZeroFlux, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=-0.499797, min=-0.5, mean=-0.49998, 16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+│   └── west: Periodic, east: Periodic, south: ZeroFlux, north: ZeroFlux, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.999687, min=0.990313, mean=0.995)
 ```
