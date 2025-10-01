@@ -179,18 +179,12 @@ else
     Oceananigans.OceananigansNCDatasetsExt
 end
 
-OceananigansXESMFExt = if isdefined(Base, :get_extension)
-    Base.get_extension(Oceananigans, :OceananigansXESMFExt)
-else
-    Oceananigans.OceananigansXESMFExt
-end
-
 makedocs(sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format = format,
          pages = pages,
          plugins = [bib],
-         modules = [Oceananigans, OceananigansNCDatasetsExt, OceananigansXESMFExt],
+         modules = [Oceananigans, OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up
