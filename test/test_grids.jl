@@ -867,6 +867,12 @@ end
                 end
             end
 
+            z = ExponentialDiscretization(Nx, l, r)
+            z_mutable = ExponentialDiscretization(Nx, l, r, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
+
             @info "  Testing ReferenceToStretchedDiscretization..."
             extent = 200
             constant_spacing = 25
@@ -909,6 +915,11 @@ end
             grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
             @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
             @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
+
+            z_mutable = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
         end
     end
 

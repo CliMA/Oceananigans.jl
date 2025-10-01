@@ -1,7 +1,7 @@
 abstract type CallableDiscretization end
 
 # Callable coordinates can be indexed just like arrays!
-Base.getindex(dsrc::CallableCoordinate, i) = dsrc(i)
+Base.getindex(dsrc::CallableDiscretization, i) = dsrc(i)
 
 struct ExponentialDiscretization <: CallableDiscretization
     size :: Int
@@ -23,7 +23,8 @@ Base.getindex(dsrc::ExponentialDiscretization, i) = @inbounds dsrc.faces[i]
 """
     ExponentialDiscretization(N::Int, left, right;
                               scale = (right - left) / 5,
-                              bias = :right)
+                              bias = :right,
+                              mutable = false)
 
 Return a one-dimensional discretization with `N` cells that are exponentially spaced
 (or, equivalently, with spacings that grow linearly along the coordinate).
@@ -43,6 +44,9 @@ Keyword Arguments
 
 - `scale`: The length scale of the exponential e-folding. Default: `(right - left) / 5`
 - `bias :: Symbol`: Determine whether left or right biased. Default: `:right`.
+- `mutable`: Whether the discretization is mutable, i.e., the discretization
+  refers to a vertical coordinate that can evolve in time following certain rules.
+  Default: false.
 
 Examples
 ========
@@ -111,9 +115,19 @@ x = ExponentialDiscretization(N, l, r, bias=:left)
    100.0
 ```
 """
-ExponentialDiscretization(size::Int, left, right;
+function ExponentialDiscretization(size::Int, left, right;
                           scale = (right - left) / 5,
-                          bias = :right) = ExponentialDiscretization(size, left, right, scale, bias)
+                          bias = :right,
+                          mutable = false)
+
+    discretization = ExponentialDiscretization(size, left, right, scale, bias)
+
+    if mutable
+        discretization = Oceananigans.Grids.MutableVerticalDiscretization(discretization)
+    end
+
+    return discretization
+end
 
 @inline rightbiased_exponential_mapping(x, l, r, h) = @. r - (r - l) * expm1((r - x) / h) / expm1((r - l) / h)
 @inline  leftbiased_exponential_mapping(x, l, r, h) = @. l + (r - l) * expm1((x - l) / h) / expm1((r - l) / h)
@@ -150,7 +164,7 @@ Base.length(dscr::ExponentialDiscretization) = dscr.size
 Base.summary(::ExponentialDiscretization) = "ExponentialDiscretization"
 
 function Base.show(io::IO, dscr::ExponentialDiscretization)
-    return print(io, summary(coord), '\n',
+    return print(io, summary(dscr), '\n',
                  "├─ size: ", dscr.size, '\n',
                  "├─ faces: ", dscr.faces, '\n',
                  "├─ left: ", dscr.left, '\n',
@@ -285,7 +299,8 @@ end
                                        maximum_stretching_extent = Inf,
                                        maximum_spacing = Inf,
                                        stretching = PowerLawStretching(1.02),
-                                       rounding_digits = 2)
+                                       rounding_digits = 2,
+                                       mutable = false)
 
 Return a one-dimensional coordinate that has `constant_spacing` over a `constant_spacing_extent`
 on the `bias`-side of the domain.
@@ -312,6 +327,9 @@ Keyword arguments
 * `stretching`: The stretching law. Available options are [`PowerLawStretching`](@ref) and [`LinearStretching`](@ref).
    Default: `PowerLawStretching(1.02)`.
 * `rounding_digits`: the accuracy with which the grid interfaces are saved. Default: 2.
+* `mutable`: Whether the discretization is mutable, i.e., the discretization
+  refers to a vertical coordinate that can evolve in time following certain rules.
+  Default: false.
 
 Examples
 ========
@@ -434,17 +452,23 @@ function ReferenceToStretchedDiscretization(; extent = 1000,
                                             maximum_stretching_extent = Inf,
                                             maximum_spacing = Inf,
                                             stretching = PowerLawStretching(1.02),
-                                            rounding_digits = 2)
+                                            rounding_digits = 2,
+                                            mutable = false)
 
-    return ReferenceToStretchedDiscretization(extent,
-                                              bias,
-                                              bias_edge,
-                                              constant_spacing,
-                                              constant_spacing_extent,
-                                              maximum_stretching_extent,
-                                              maximum_spacing,
-                                              stretching;
-                                              rounding_digits)
+    discretization = ReferenceToStretchedDiscretization(extent,
+                                                        bias,
+                                                        bias_edge,
+                                                        constant_spacing,
+                                                        constant_spacing_extent,
+                                                        maximum_stretching_extent,
+                                                        maximum_spacing,
+                                                        stretching;
+                                                        rounding_digits)
+    if mutable
+        discretization = Oceananigans.Grids.MutableVerticalDiscretization(discretization)
+    end
+
+    return discretization
 end
 
 (dsrc::ReferenceToStretchedDiscretization)(i) = @inbounds dsrc.faces[i]
