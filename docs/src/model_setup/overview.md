@@ -23,11 +23,9 @@ and thus advancing the `model.clock`.
 The `time_step!` interface is used by [`Simulation`](@ref) to manage time-stepping
 along with other activities, like monitoring progress, writing output to disk, and more.
 
-To illustrate discrete equation specification, consider the docstring for `NonhydrostaticModel`:
+To illustrate discrete equation specification see the docstring for [`NonhydrostaticModel`](@ref).
 
-```@docs
-NonhydrostaticModel
-```
+Here's an example:
 
 ```@example
 using Oceananigans
@@ -77,19 +75,11 @@ For the governing equations and details, see Physics pages for the [`Nonhydrosta
 
 ### Constructor Reference
 
-The docstrings below summarize the main constructor options. Later sections show compact examples.
+The docstrings of the three models below summarize the main constructor options. Later sections show compact examples.
 
-```@docs
-NonhydrostaticModel
-```
-
-```@docs
-HydrostaticFreeSurfaceModel
-```
-
-```@docs
-ShallowWaterModel
-```
+* [`NonhydrostaticModel`](@ref)
+* [`HydrostaticFreeSurfaceModel`](@ref)
+* [`ShallowWaterModel`](@ref)
 
 ## Minimal Examples
 
