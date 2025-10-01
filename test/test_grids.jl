@@ -837,15 +837,15 @@ end
     end
 
     @testset "Coordinate utils" begin
-        @info "  Testing ExponentialCoordinate..."
+        @info "  Testing ExponentialDiscretization..."
 
         for arch in archs
             Nx = 10
             l, r = -1000, 100
             scale = (r - l) / 5
 
-            xₗ = ExponentialCoordinate(Nx, l, r; scale, bias =:left)
-            xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
+            xₗ = ExponentialDiscretization(Nx, l, r; scale, bias =:left)
+            xᵣ = ExponentialDiscretization(Nx, l, r; scale, bias =:right)
 
             for i in 1:Nx+1
                 @test xᵣ[i] == xᵣ(i)
@@ -867,11 +867,17 @@ end
                 end
             end
 
-            @info "  Testing ConstantToStretchedCoordinate..."
+            z = ExponentialDiscretization(Nx, l, r)
+            z_mutable = ExponentialDiscretization(Nx, l, r, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
+
+            @info "  Testing ReferenceToStretchedDiscretization..."
             extent = 200
             constant_spacing = 25
             constant_spacing_extent = 90
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             Nz = length(z)
 
@@ -897,7 +903,7 @@ end
             constant_spacing = 25.34
             constant_spacing_extent = Nz * constant_spacing
             extent = constant_spacing_extent
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             @test length(z) == Nz
             @test length(z.faces) == Nz+1
@@ -909,6 +915,11 @@ end
             grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
             @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
             @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
+
+            z_mutable = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
         end
     end
 
