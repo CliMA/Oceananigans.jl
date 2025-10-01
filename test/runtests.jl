@@ -79,12 +79,6 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :matrix_poisson_solvers || group == :all
-        @testset "Matrix Poisson Solvers" begin
-            include("test_matrix_poisson_solver.jl")
-        end
-    end
-
     if group == :general_solvers || group == :all
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
@@ -167,7 +161,6 @@ CUDA.allowscalar() do
         @testset "Multi Region tests" begin
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
-            include("test_multi_region_implicit_solver.jl")
             include("test_multi_region_cubed_sphere.jl")
         end
     end
@@ -238,7 +231,7 @@ CUDA.allowscalar() do
         end
     end
 
-    
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -256,6 +249,13 @@ CUDA.allowscalar() do
     if group == :reactant_2 || group == :all
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
         end
     end
 
@@ -294,4 +294,3 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
-

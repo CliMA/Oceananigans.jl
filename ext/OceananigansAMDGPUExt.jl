@@ -6,6 +6,7 @@ using AMDGPU, AMDGPU.rocSPARSE, AMDGPU.rocFFT
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
+using SparseArrays
 
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
@@ -52,6 +53,16 @@ AC.on_architecture(::ROCGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::ROCArray) = AC.on_architecture(AC.child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:ROCArray}) = AC.on_architecture(child_architecture(arch), a)
 
+@inline AC.sparse_matrix_constructors(::AC.GPU{ROCBackend}, A::SparseMatrixCSC) = (ROCArray(A.colptr), ROCArray(A.rowval), ROCArray(A.nzval),  (A.m, A.n))
+@inline AC.sparse_matrix_constructors(::AC.CPU, A::ROCSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
+@inline AC.sparse_matrix_constructors(::AC.GPU{ROCBackend}, A::ROCSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
+
+@inline AC.sparse_matrix(::AC.GPU{ROCBackend}, constr::Tuple) = ROCSparseMatrixCSC(constr...)
+
+@inline AC.on_architecture(::AC.CPU, A::ROCSparseMatrixCSC)     = SparseMatrixCSC(AC.sparse_matrix_constructors(AC.CPU(), A)...)
+@inline AC.on_architecture(::AC.GPU{ROCBackend}, A::SparseMatrixCSC) = ROCSparseMatrixCSC(AC.sparse_matrix_constructors(AC.GPU(), A)...)
+@inline AC.on_architecture(::AC.GPU{ROCBackend}, A::ROCSparseMatrixCSC) = A
+
 function AC.unified_array(::ROCGPU, a::AbstractArray)
     error("unified_array is not implemented for ROCGPU.")
 end
@@ -66,15 +77,6 @@ end
 end
 
 @inline AC.unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
-
-@inline AC.constructors(::AC.GPU{ROCBackend}, A::SparseMatrixCSC) = (ROCArray(A.colptr), ROCArray(A.rowval), ROCArray(A.nzval),  (A.m, A.n))
-@inline AC.constructors(::AC.CPU, A::ROCSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
-@inline AC.constructors(::AC.GPU{ROCBackend}, A::ROCSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
-
-@inline AC.arch_sparse_matrix(::AC.GPU{ROCBackend}, constr::Tuple) = ROCSparseMatrixCSC(constr...)
-@inline AC.arch_sparse_matrix(::AC.CPU, A::ROCSparseMatrixCSC)   = SparseMatrixCSC(AC.constructors(AC.CPU(), A)...)
-@inline AC.arch_sparse_matrix(::AC.GPU{ROCBackend}, A::SparseMatrixCSC)     = ROCSparseMatrixCSC(AC.constructors(AC.GPU(), A)...)
-@inline AC.arch_sparse_matrix(::AC.GPU{ROCBackend}, A::ROCSparseMatrixCSC) = A
 
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
