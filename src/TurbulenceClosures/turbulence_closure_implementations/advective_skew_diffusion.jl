@@ -65,7 +65,7 @@ end
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
     Sy = ifelse(inactive, zero(grid), Sy)
     
-    return ifelse(bz == 0, zero(grid), - by / bz)
+    return Sy
 end
 
 # tapered slope in x-direction at F, C, F locations

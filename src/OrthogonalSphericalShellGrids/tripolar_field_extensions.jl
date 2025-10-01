@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, 
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        regularize_boundary_condition,
                                        assumed_field_location,
                                        regularize_immersed_boundary_condition,

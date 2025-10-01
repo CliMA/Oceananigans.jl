@@ -42,7 +42,7 @@ const BoundaryConditionOperation{LX, LY, LZ} =
 
 const BoundaryConditionField{LX, LY, LZ} =
     Field{LX, LY, LZ, <:BoundaryConditionOperation} where {LX, LY, LZ}
- 
+
 """
     BoundaryConditionOperation(field::Field, side::Symbol, model::AbstractModel)
 

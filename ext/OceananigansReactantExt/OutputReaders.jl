@@ -1,8 +1,7 @@
 module OutputReaders
 
 import Oceananigans.OutputReaders: find_time_index
-
-import Reactant.TracedRNumberOverrides: TracedStepRangeLen
+using Reactant: TracedStepRangeLen
 
 @inline function find_time_index(times::TracedStepRangeLen, t)
     n₂ = searchsortedfirst(times, t)
@@ -21,6 +20,5 @@ import Reactant.TracedRNumberOverrides: TracedStepRangeLen
 
     return ñ, n₁, n₂
 end
-
 
 end

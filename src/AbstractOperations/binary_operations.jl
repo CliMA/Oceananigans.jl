@@ -67,7 +67,7 @@ function define_binary_operator(op)
         local ConstantField = Oceananigans.Fields.ConstantField
         local AF = AbstractField
 
-        @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) = 
+        @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
             @inbounds apply_op($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
 
         # These shenanigans seem to help / encourage the compiler to infer types of objects

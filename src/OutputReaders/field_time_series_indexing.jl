@@ -199,7 +199,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     t₁ = @allowscalar fts.times[n₁]
     t = t₂ * ñ + t₁ * (1 - ñ)
     status = FixedTime(t)
-    
+
     ψ₂ = fts[n₂]
     ψ₁ = fts[n₁]
     ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ); status)
@@ -369,7 +369,7 @@ function getindex(fts::InMemoryFTS, n::Int)
     m = memory_index(fts, n)
     @apply_regionally underlying_data = view(parent(fts), :, :, :, m)
     @apply_regionally data = offset_data(underlying_data, fts.grid, instantiated_location(fts), fts.indices)
-    
+
     status = @allowscalar FixedTime(fts.times[n])
 
     return Field(instantiated_location(fts), fts.grid; data, fts.boundary_conditions, fts.indices, status)

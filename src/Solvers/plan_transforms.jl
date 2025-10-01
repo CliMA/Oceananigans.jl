@@ -154,7 +154,7 @@ function plan_transforms(grid, storage, planner_flag, untransformed_dim)
         dim ∈ regular_dimensions(grid) ||
             error("Transform directions must be regularly spaced.")
     end
-        
+
     !(topo[untransformed_dim] === Bounded) && error("Transforms can be planned only when the untransformed direction's topology is `Bounded`.")
     periodic_dims = Tuple(dim for dim in findall(t -> t == Periodic, topo) if dim ≠ untransformed_dim)
     bounded_dims  = Tuple(dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ untransformed_dim)

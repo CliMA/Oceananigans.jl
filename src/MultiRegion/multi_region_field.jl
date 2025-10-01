@@ -176,7 +176,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                            immersed = reg_bcs.immersed)
 end
 
-function inject_regional_bcs(grid, connectivity, loc, indices;   
+function inject_regional_bcs(grid, connectivity, loc, indices;
                              west = default_auxiliary_bc(grid, Val(:west), loc),
                              east = default_auxiliary_bc(grid, Val(:east), loc),
                              south = default_auxiliary_bc(grid, Val(:south), loc),

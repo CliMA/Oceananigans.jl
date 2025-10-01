@@ -23,7 +23,7 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
-    
+
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     number_of_tasks = length(kernels!)
 

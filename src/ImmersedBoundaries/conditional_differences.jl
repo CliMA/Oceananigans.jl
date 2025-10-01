@@ -60,7 +60,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
         δξ             = Symbol(:δ, ξ, ℓx, ℓy, ℓz)
         loc            = translate_loc.((ℓx, ℓy, ℓz))
         conditional_δξ = Symbol(:conditional_δ, ξ, :_, loc[d])
-        
+
         if ξ == :x
             δξᵃ = Symbol(:δ, ξ, ℓx, :ᵃ, :ᵃ)
         elseif ξ == :y

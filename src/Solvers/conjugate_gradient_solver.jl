@@ -80,9 +80,9 @@ Arguments
 * `enforce_gauge_condition!`: Function with signature `enforce_gauge_condition!(x, r)` that
                               enforces a gauge condition on the solution `x` and residual `r`.
                               This is useful for problems where the solution is not unique, such as
-                              the Poisson equation with purely Neumann boundary conditions. 
-                              The function is called at the end of each iteration of a conjugate 
-                              gradient iteration to ensure that the solution remains consistent 
+                              the Poisson equation with purely Neumann boundary conditions.
+                              The function is called at the end of each iteration of a conjugate
+                              gradient iteration to ensure that the solution remains consistent
                               with the gauge condition.
                               The default is `no_gauge_enforcement!`, which does not enforce a gauge condition.
 
@@ -93,7 +93,7 @@ function ConjugateGradientSolver(linear_operation;
                                  maxiter = prod(size(template_field)),
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
-                                 preconditioner = nothing, 
+                                 preconditioner = nothing,
                                  enforce_gauge_condition! = no_gauge_enforcement!)
 
     arch = architecture(template_field)
