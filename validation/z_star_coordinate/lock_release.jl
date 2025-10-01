@@ -13,7 +13,7 @@ z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(arch; 
                        size = (128, 20),
-                          x = (0, 64kilometers),
+                          x = (0, 6.4kilometers),
                           z = z_faces,
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
@@ -22,23 +22,24 @@ grid = RectilinearGrid(arch;
 # grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                         momentum_advection = WENO(order=3),
-                           tracer_advection = WENO(order=3),
+                         momentum_advection = Centered(),
+                           tracer_advection = Centered(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
+                                    closure = HorizontalScalarDiffusivity(κ=100, ν=100),
                                 timestepper = :SplitRungeKutta1,
-                               free_surface = ExplicitFreeSurface()) #SplitExplicitFreeSurface(grid; substeps=10)) # 
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=20)) # 
 
 g = model.free_surface.gravitational_acceleration
-bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
+bᵢ(x, z) = x > 3.2kilometers ? 6 // 100 : 1 // 100
 set!(model, b = bᵢ, c = (x, z) -> 1)
 
 # Same timestep as in the ilicak paper
-Δt = 0.1
+Δt = 2 # Oceananigans.defaults.FloatType(1 // 10)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time=1.7hours)
+simulation = Simulation(model; Δt, stop_time=10000hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)

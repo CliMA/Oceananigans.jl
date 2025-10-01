@@ -15,22 +15,16 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
 # then we advance grid, momentum and tracers. The last step is to reconcile the baroclinic and
 # the barotropic modes by applying a pressure correction to momentum.
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
-
-    # Advancing free surface and barotropic transport velocities
+    # Compute barotropic and baroclinic tendencies
     compute_momentum_tendencies!(model, callbacks)
     compute_free_surface_tendency!(grid, model, model.free_surface)
+
+    # Advance the free surface first
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
 
-    # Computing z-dependent transport velocities
+    # Compute z-dependent transport velocities
     compute_transport_velocities!(model, model.free_surface)
     
-    # δx_U(i, j, k, grid, U, u) = δxᶜᶜᶜ(i, j, 1, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u) * Az⁻¹ᶜᶜᶜ(i, j, 1, grid)
-    # de2 = Field(KernelFunctionOperation{Center, Center, Nothing}(δx_U, grid, nothing, model.transport_velocities.u))
-    # de  = Field((model.free_surface.η - model.timestepper.Ψ⁻.η) / Δτ)
-
-    # @show model.clock.stage
-    # @show maximum(abs, interior(de) .+ interior(de2))
-
     # compute tracer tendencies
     compute_tracer_tendencies!(model)
 
