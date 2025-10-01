@@ -713,7 +713,7 @@ To obtain a discretization with a certain minimum spacing we need to play around
 and the number of cells.
 
 
-### Constant-to-stretched-spacing discretization
+### Reference-to-stretched-spacing discretization
 
 [`ReferenceToStretchedDiscretization`](@ref) returns a discretization with a constant reference spacing over
 some extent and beyond which the spacing increases with a prescribed stretching law; this allows a tighter
