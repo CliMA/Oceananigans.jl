@@ -165,10 +165,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         # The halos are updated in the `update_state!` function
         launch!(architecture(free_surface_grid), free_surface_grid, :xy,
                 _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
-
-        # Preparing velocities for the barotropic correction
-        mask_immersed_field!(model.velocities.u)
-        mask_immersed_field!(model.velocities.v)
     end
 
     # Fill all the barotropic state

@@ -30,6 +30,10 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     U̅, V̅  = state.U̅, state.V̅
     arch  = architecture(grid)
 
+    # Preparing velocities for the barotropic correction
+    mask_immersed_field!(u)
+    mask_immersed_field!(v)
+
     # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
     # so we use the filtered velocities as "work arrays" to store the vertical integrals
     # of the instantaneous velocities `u` and `v`.

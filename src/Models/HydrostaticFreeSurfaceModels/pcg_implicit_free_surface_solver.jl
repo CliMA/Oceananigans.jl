@@ -53,17 +53,12 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
-    settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
+    settings[:reltol] = get(settings, :reltol, min(1e-13, 10 * sqrt(eps(eltype(grid)))))
 
     # FFT preconditioner for rectilinear grids, nothing otherwise.
-    # settings[:preconditioner] = isrectilinear(grid) ?
-        # get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid)) :
-        # get(settings, :preconditioner, nothing)
-
-    settings[:preconditioner] = get(settings, :preconditioner, nothing)
-    # isrectilinear(grid) ?
-    #     get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid)) :
-    #     get(settings, :preconditioner, nothing)
+    settings[:preconditioner] = isrectilinear(grid) ?
+        get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid)) :
+        get(settings, :preconditioner, nothing)
 
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
     right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
