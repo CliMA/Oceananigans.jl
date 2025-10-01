@@ -258,7 +258,7 @@ All models support `set!(model; kwargs...)` to initialize or update fields.
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 1, 16), extent=(1, 1, 1), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Flat, Bounded))
 model = NonhydrostaticModel(; grid, advection=WENO(), tracers=(:T, :S), buoyancy=SeawaterBuoyancy())
 
 U₀ = 0.5
