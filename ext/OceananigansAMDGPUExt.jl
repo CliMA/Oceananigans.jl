@@ -35,6 +35,7 @@ const ROCGPU = AC.GPU{ROCBackend}
 ROCGPU() = AC.GPU(AMDGPU.ROCBackend())
 
 Base.summary(::ROCGPU) = "ROCGPU"
+AC.device!(::ROCGPU, i) = AMDGPU.device!(i)
 
 AC.architecture(::ROCArray) = ROCGPU()
 AC.architecture(::Type{ROCArray}) = ROCGPU()
