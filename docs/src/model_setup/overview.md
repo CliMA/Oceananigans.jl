@@ -95,7 +95,7 @@ ShallowWaterModel
 
 Start with a simple box grid and build each model with sensible defaults.
 
-```julia
+```jldoctest
 using Oceananigans
 
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
@@ -106,7 +106,26 @@ hy = HydrostaticFreeSurfaceModel(; grid)         # default free surface, no trac
 nh, hy
 
 # output
-(NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0), HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0))
+
+(NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
+├── tracers: ()
+├── closure: Nothing
+├── buoyancy: Nothing
+└── coriolis: Nothing, HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: ()
+├── closure: Nothing
+├── buoyancy: Nothing
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
+├── advection scheme:
+│   └── momentum: VectorInvariant
+├── vertical_coordinate: ZCoordinate
+└── coriolis: Nothing)
 ```
 
 Both models create velocity fields and time‑steppers; the tracer sets start empty unless specified.
@@ -152,7 +171,15 @@ model = NonhydrostaticModel(; grid,
 model
 
 # output
+
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: WENO{3, Float64, Float32}(order=5)
+├── tracers: (T, S)
+├── closure: ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=(T=1.0e-7, S=1.0e-7))
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
+└── coriolis: Nothing
 ```
 
 Notes
@@ -168,7 +195,7 @@ Notes
 
 `HydrostaticFreeSurfaceModel` separates momentum and tracer advection and evolves a prognostic free surface `η`.
 
-```julia
+```jldoctest model_hy
 using Oceananigans
 using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions
 
@@ -196,6 +223,19 @@ model
 
 # output
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: (T, S)
+├── closure: ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=(T=1.0e-7, S=1.0e-7))
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
+├── advection scheme:
+│   ├── momentum: VectorInvariant
+│   ├── T: WENO{3, Float64, Float32}(order=5)
+│   └── S: WENO{3, Float64, Float32}(order=5)
+├── vertical_coordinate: ZCoordinate
+└── coriolis: Nothing
 ```
 
 **Notes**
@@ -215,7 +255,7 @@ All models support `set!(model; kwargs...)` to initialize or update fields.
 
 ### Nonhydrostatic initial condition (shear and stratification)
 
-```julia
+```jldoctest
 using Oceananigans
 
 grid = RectilinearGrid(size=(16, 1, 16), extent=(1, 1, 1), topology=(Periodic, Flat, Bounded))
@@ -231,43 +271,60 @@ set!(model; u=u₀, T=T₀, S=S₀)
 model.velocities.u, model.tracers.T
 
 # output
-(Field{Face, Center, Center} on RectilinearGrid on CPU, Field{Center, Center, Center} on RectilinearGrid on CPU)
+
+(16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+    └── max=-0.499797, min=-0.5, mean=-0.49998, 16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+    └── max=0.999687, min=0.990313, mean=0.995)
 ```
+
+!!! tip "Divergence-free velocity fields"
+    For the NonhydrostaticModel, as part of the time-stepping algorithm, the velocity
+    field is made divergence-free at every time step. So if a model is not initialized
+    with a divergence-free velocity field, it may change on the first time step.
+    As a result tracers may not be conserved up to machine precision at the first time step.
 
 ### Hydrostatic initial condition (surface displacement and currents)
 
 `HydrostaticFreeSurfaceModel` also accepts `η` (free surface) in `set!`.
 
-```julia
+```jldoctest
 using Oceananigans
+using Oceananigans.Units
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(; grid, tracers=:T, buoyancy=BuoyancyTracer())
+Lx = Ly = 10kilometers
+Lz = 4000meters
+grid = RectilinearGrid(size=(16, 16, 16), x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
+model = HydrostaticFreeSurfaceModel(; grid, tracers=:b, buoyancy=BuoyancyTracer())
 
-η₀(x, y) = 0.01 * cos(2π * x) * cos(2π * y)    # small standing wave
-u₀(x, y, z) = 0.0
-v₀(x, y, z) = 0.0
-T₀(x, y, z) = 0.0
+N² = 1e-5
+bᵢ(x, y, z) = N² * z
+set!(model; b=bᵢ)
 
-set!(model; η=η₀, u=u₀, v=v₀, T=T₀)
-
-model.free_surface.η
+model.tracers.b
 
 # output
-Field{Center, Center, Nothing} on RectilinearGrid on CPU
-```
 
-!!! tip "Divergence-free velocity fields"
-    Note that as part of the time-stepping algorithm, the velocity field is made
-    divergence-free at every time step. So if a model is not initialized with a
-    divergence-free velocity field, it may change on the first time step. As a result
-    tracers may not be conserved up to machine precision at the first time step.
+16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+    └── max=-0.00125, min=-0.03875, mean=-0.02
+```
 
 ## Stepping and Simulations
 
 You can advance a model with a single step:
 
-```julia
+```jldoctest
 using Oceananigans
 
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
@@ -278,6 +335,7 @@ time_step!(model, 0.01)
 model.clock.time > 0
 
 # output
+
 true
 ```
 
