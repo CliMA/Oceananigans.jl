@@ -61,7 +61,7 @@ end
 @testset "Distributed architectures" begin
     for arch in test_architectures()
         child_arch = child_architecture(arch)
-        if child_arch isa Architectures.CUDAGPU
+        if child_arch isa Oceananigans.Architectures.CUDAGPU
             # Check that no device is the same!
             device_number = CUDA.device().handle
             # We are testing on the same node, therefore we can 
