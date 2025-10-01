@@ -36,14 +36,14 @@ Distributed.addprocs(2)
     # docs built which extra workers is as efficient as possible.
     example_scripts = [
         "internal_tide.jl",
+        "langmuir_turbulence.jl",
         "shallow_water_Bickley_jet.jl",
+        "ocean_wind_mixing_and_convection.jl",
         "kelvin_helmholtz_instability.jl",
         "horizontal_convection.jl",
-        "langmuir_turbulence.jl",
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
-        "ocean_wind_mixing_and_convection.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
