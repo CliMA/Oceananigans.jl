@@ -87,6 +87,7 @@ function rk3_substep_tracers!(tracers, model, Δt)
                            model.diffusivity_fields,
                            Val(tracer_index),
                            model.clock,
+                           fields(model),
                            Δt)
         end
     end
