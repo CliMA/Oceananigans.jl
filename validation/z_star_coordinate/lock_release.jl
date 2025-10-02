@@ -8,7 +8,9 @@ using Oceananigans.DistributedComputations
 using Printf
 using GLMakie
 
-arch = CPU()
+Oceananigans.defaults.FloatType = Float64
+
+arch = Distributed(CPU(); synchronized_communication=true)
 z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(arch; 
@@ -28,14 +30,14 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = (:b, :c),
                                     closure = HorizontalScalarDiffusivity(κ=100, ν=100),
                                 timestepper = :SplitRungeKutta3,
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=30)) 
+                               free_surface = ExplicitFreeSurface()) #SplitExplicitFreeSurface(grid; substeps=30)) 
 
 g = model.free_surface.gravitational_acceleration
-bᵢ(x, z) = x > 32kilometers ? 6 // 100 : 1 // 100
+bᵢ(x, z) = x > 20kilometers ? 6 // 100 : 1 // 100
 set!(model, b = bᵢ, c = (x, z) -> - 1)
 
 # Same timestep as in the ilicak paper
-Δt = 20 # Oceananigans.defaults.FloatType(1 // 10)
+Δt = 1 # Oceananigans.defaults.FloatType(1 // 10)
 
 @info "the time step is $Δt"
 
