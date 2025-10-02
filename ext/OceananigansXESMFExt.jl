@@ -1,7 +1,5 @@
 module OceananigansXESMFExt
 
-export Regridder
-
 using XESMF
 using Oceananigans
 using Oceananigans.Architectures: architecture, on_architecture

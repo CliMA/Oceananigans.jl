@@ -71,6 +71,9 @@ Private = false
 Modules = [Oceananigans.Fields]
 Private = false
 ```
+```@docs
+XESMF.NetCDFWriter
+```
 
 ## Forcings
 
