@@ -133,7 +133,6 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     arch = architecture(f)
     sync_device!(arch)
 
-    @handshake @show "I am allreducing"
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))
     end
