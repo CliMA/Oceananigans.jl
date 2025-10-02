@@ -29,7 +29,7 @@ end
 
 const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
@@ -133,6 +133,7 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     arch = architecture(f)
     sync_device!(arch)
 
+    @handshake @show "I am allreducing"
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))
     end
