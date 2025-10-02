@@ -91,19 +91,19 @@ const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
-# Methods without explicit passing of `id`
+# Viscosities without explicit passing of `id`
 @inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 
-# Methods with explicit `id` passing (0 in case of velocities)
+# Viscosities with explicit `id` passing (0 in case of velocities)
 @inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 
-# Diffusivity always passes the tracer index (`id`)
+# Diffusivity always pass the tracer index (`id`)
 @inline κᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶜᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
@@ -113,34 +113,36 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
 # Vertical and horizontal diffusivity 
 
-# Methods without explicit passing of `id`
+# Viscosities without explicit passing of `id`
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
 
-# Methods with explicit passing of `id`
+# Viscosities with explicit passing of `id`
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νzᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νzᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
 
+# Diffusivity always pass the tracer index (`id`)
 @inline κzᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clk, fields)
 @inline κzᶜᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clk, fields)
 @inline κzᶜᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clk, fields)
 
-# Methods without explicit passing of `id`
+# Viscosities without explicit passing of `id`
 @inline νhᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νhᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νhᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
 @inline νhᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
 
-# Methods with explicit `id` passing (0 in case of velocities)
+# Viscosities with explicit `id` passing (0 in case of velocities)
 @inline νhᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νhᶠᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νhᶠᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
 @inline νhᶜᶠᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
 
+# Diffusivity always pass the tracer index (`id`)
 @inline κhᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clk, fields)
 @inline κhᶜᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clk, fields)
 @inline κhᶜᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clk, fields)
