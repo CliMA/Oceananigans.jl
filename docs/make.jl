@@ -11,15 +11,16 @@ Distributed.addprocs(2)
     set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "svg")
 
-    using Oceananigans
     using NCDatasets
+    using XESMF
+
+    using Oceananigans
+    using Oceananigans.AbstractOperations
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
-    using Oceananigans.TurbulenceClosures
     using Oceananigans.TimeSteppers
-    using Oceananigans.AbstractOperations
-
+    using Oceananigans.TurbulenceClosures
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
@@ -180,13 +181,22 @@ format = Documenter.HTML(collapselevel = 1,
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
+modules = []
+OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+OceananigansXESMFExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansXESMFExt) : Oceananigans.OceananigansXESMFExt
+
+for m in [Oceananigans, OceananigansNCDatasetsExt, OceananigansXESMFExt]
+    if !isnothing(m)
+        push!(modules, m)
+    end
+end
+
 makedocs(sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format = format,
          pages = pages,
          plugins = [bib],
-         modules = [Oceananigans,
-                    isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt],
+         modules,
          warnonly = [:cross_references],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up

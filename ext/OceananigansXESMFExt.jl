@@ -1,5 +1,7 @@
 module OceananigansXESMFExt
 
+export Regridder
+
 using XESMF
 using Oceananigans
 using Oceananigans.Architectures: architecture, on_architecture
@@ -178,7 +180,7 @@ llg = LatitudeLongitudeGrid(; size=(360, 180, 1), z,
 src_field = CenterField(tg)
 dst_field = CenterField(llg)
 
-λ₀, φ₀ = 150, 30.  # degrees
+λ₀, φ₀ = 150, 30   # degrees
 width = 12         # degrees
 set!(src_field, (λ, φ, z) -> exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2))
 
