@@ -13,13 +13,13 @@ z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(arch; 
                        size = (128, 20),
-                          x = (0, 6.4kilometers),
+                          x = (0, 64kilometers),
                           z = z_faces,
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-# bottom(x) = x < 52kilometers && x > 45kilometers ? -10 : -20
-# grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+bottom(x) = x < 52kilometers && x > 45kilometers ? -10 : -20
+grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 model = HydrostaticFreeSurfaceModel(; grid,
                          momentum_advection = Centered(),
@@ -27,19 +27,19 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
                                     closure = HorizontalScalarDiffusivity(κ=100, ν=100),
-                                timestepper = :SplitRungeKutta1,
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=20)) # 
+                                timestepper = :SplitRungeKutta3,
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=30)) 
 
 g = model.free_surface.gravitational_acceleration
-bᵢ(x, z) = x > 3.2kilometers ? 6 // 100 : 1 // 100
-set!(model, b = bᵢ, c = (x, z) -> 1)
+bᵢ(x, z) = x > 32kilometers ? 6 // 100 : 1 // 100
+set!(model, b = bᵢ, c = (x, z) -> - 1)
 
 # Same timestep as in the ilicak paper
-Δt = 2 # Oceananigans.defaults.FloatType(1 // 10)
+Δt = 20 # Oceananigans.defaults.FloatType(1 // 10)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time=10000hours)
+simulation = Simulation(model; Δt, stop_time=17hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
@@ -79,13 +79,12 @@ function progress(sim)
     msg0 = @sprintf("Time: %s, ", prettytime(sim.model.clock.time))
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
     msg2 = @sprintf("drift b: %6.3e ", bav[end] - bav[1])
-    msg3 = @sprintf("max Δη: %6.3e ", Δη)
-    msg4 = @sprintf("extrema c: %.2e %.2e ", mxc[end]-1, mnc[end]-1)
+    msg4 = @sprintf("drift c: %6.3e ", cav[end] - cav[1])
 
     push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
     push!(et2, deepcopy(model.grid.z.ηⁿ[1:Nx, 1, 1]))
 
-    @handshake @info msgn * msg0 * msg1 * msg2 * msg3 * msg4
+    @handshake @info msgn * msg0 * msg1 * msg2 * msg4
 
     return nothing
 end
