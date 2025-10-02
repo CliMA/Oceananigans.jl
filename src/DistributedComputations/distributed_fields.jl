@@ -27,8 +27,9 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bc
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
 
-const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
-const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
+const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
+const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
@@ -150,7 +151,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
         # In-place
         function Base.$(reduction!)(f::Function,
                                     r::ReducedAbstractField,
-                                    a::DistributedField;
+                                    a::DistributedAbstractField;
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
@@ -166,7 +167,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
         end
 
         function Base.$(reduction!)(r::ReducedAbstractField,
-                                    a::DistributedField;
+                                    a::DistributedAbstractField;
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
@@ -181,7 +182,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 
         # Allocating
         function Base.$(reduction)(f::Function,
-                                   c::DistributedField;
+                                   c::DistributedAbstractField;
                                    condition = nothing,
                                    mask = get_neutral_mask(Base.$(reduction!)),
                                    dims = :)
