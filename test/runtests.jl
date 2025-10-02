@@ -189,6 +189,7 @@ CUDA.allowscalar() do
         archs = test_architectures()
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
+        include("test_zstar_conservation.jl")
     end
 
     # if group == :distributed_output || group == :all
@@ -222,6 +223,7 @@ CUDA.allowscalar() do
     if group == :vertical_coordinate || group == :all
         @testset "Vertical coordinate tests" begin
             include("test_zstar_coordinate.jl")
+            include("test_zstar_conservation.jl")
         end
     end
 
@@ -231,7 +233,6 @@ CUDA.allowscalar() do
             include("test_mpi_tripolar.jl")
         end
     end
-
 
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
