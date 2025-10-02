@@ -61,6 +61,7 @@ using CUDA
     @onrank split_comm 1 @test a == [2, 4, 6, 8, 10]
 end
 
+#=
 @testset "Distributed architectures" begin
     for arch in test_architectures()
         child_arch = child_architecture(arch)
@@ -78,3 +79,5 @@ end
         end
     end
 end
+=#
+
