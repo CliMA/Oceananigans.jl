@@ -4,7 +4,7 @@ using XESMF
 using Oceananigans
 using Oceananigans.Architectures: architecture, on_architecture
 using Oceananigans.Fields: AbstractField, topology, location
-using Oceananigans.Grids: λnodes, φnodes, Center, Face, total_length
+using Oceananigans.Grids: AbstractGrid, λnodes, φnodes, Center, Face, total_length
 
 import Oceananigans.Fields: regrid!
 import XESMF: Regridder, extract_xesmf_coordinates_structure
@@ -27,6 +27,27 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = vertex_array(x, Nx, Ny)
 y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny+1), 1, Nx+1)
 y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
+function extract_xesmf_coordinates_structure(grid::AbstractGrid, ℓx, ℓy, ℓz, (Nx, Ny, Nz) = size(grid))
+    # Do we need to use ℓx and ℓy eventually?
+    λ  = λnodes(grid, Center(), Center(), ℓz, with_halos=true)
+    φ  = φnodes(grid, Center(), Center(), ℓz, with_halos=true)
+    λv = λnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
+    φv = φnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
+
+    # Build data structures expected by xESMF
+    Nx, Ny, Nz = size(grid)
+
+    λ  = x_node_array(λ, Nx, Ny)
+    φ  = y_node_array(φ, Nx, Ny)
+    λv = x_vertex_array(λv, Nx, Ny)
+    φv = y_vertex_array(φv, Nx, Ny)
+
+    return Dict("lat"   => φ,  # φ is latitude
+                "lon"   => λ,  # λ is longitude
+                "lat_b" => φv,
+                "lon_b" => λv)
+end
+
 function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
@@ -34,42 +55,9 @@ function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field
     dst_grid = dst_field.grid
     src_grid = src_field.grid
 
-    # Extract center coordinates from both fields
-    λᵈ = λnodes(dst_grid, Center(), Center(), ℓz, with_halos=true)
-    φᵈ = φnodes(dst_grid, Center(), Center(), ℓz, with_halos=true)
-    λˢ = λnodes(src_grid, Center(), Center(), ℓz, with_halos=true)
-    φˢ = φnodes(src_grid, Center(), Center(), ℓz, with_halos=true)
-
-    # Extract cell vertices
-    λvᵈ = λnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
-    φvᵈ = φnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
-    λvˢ = λnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
-    φvˢ = φnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
-
-    # Build data structures expected by xESMF
-    Nˢx, Nˢy, Nˢz = size(src_field)
-    Nᵈx, Nᵈy, Nᵈz = size(dst_field)
-
-    λᵈ = x_node_array(λᵈ, Nᵈx, Nᵈy)
-    φᵈ = y_node_array(φᵈ, Nᵈx, Nᵈy)
-    λˢ = x_node_array(λˢ, Nˢx, Nˢy)
-    φˢ = y_node_array(φˢ, Nˢx, Nˢy)
-
-    λvᵈ = x_vertex_array(λvᵈ, Nᵈx, Nᵈy)
-    φvᵈ = y_vertex_array(φvᵈ, Nᵈx, Nᵈy)
-    λvˢ = x_vertex_array(λvˢ, Nˢx, Nˢy)
-    φvˢ = y_vertex_array(φvˢ, Nˢx, Nˢy)
-
-    dst_coordinates = Dict("lat"   => φᵈ,  # φ is latitude
-                           "lon"   => λᵈ,  # λ is longitude
-                           "lat_b" => φvᵈ,
-                           "lon_b" => λvᵈ)
-
-    src_coordinates = Dict("lat"   => φˢ,  # φ is latitude
-                           "lon"   => λˢ,  # λ is longitude
-                           "lat_b" => φvˢ,
-                           "lon_b" => λvˢ)
-
+    dst_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz, size(dst_field))
+    src_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz, size(src_field))
+    
     return dst_coordinates, src_coordinates
 end
 
