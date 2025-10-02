@@ -58,9 +58,8 @@ struct ReactantState <: AbstractSerialArchitecture end
 
 device(a::CPU) = KA.CPU()
 device(a::GPU) = a.device
-device!(::CPU, i) = KA.device!(CPU(), i+1)
+device!(::CPU, i) = nothing
 device!(::CPU) = nothing
-device!(a::GPU, i) = KA.device!(a.device, i+1)
 ndevices(a::CPU) = KA.ndevices(KA.CPU())
 ndevices(a::AbstractArchitecture) = KA.ndevices(a.device)
 synchronize(a::CPU) = KA.synchronize(KA.CPU())
