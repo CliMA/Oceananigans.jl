@@ -34,9 +34,8 @@ const nz = 30
 const ρ₀ = 1025
 
 z_faces = ExponentialCoordinate(nz, -3000, 0; scale = 1000)
-coriolis = BetaPlane(f₀ = -0.83e-4, β = 1.87e-11) 
-
-buoyancy = SeawaterBuoyancy()
+const coriolis = BetaPlane(f₀ = -0.83e-4, β = 1.87e-11) 
+const buoyancy = SeawaterBuoyancy()
 
 function Tₐ(y)
     return 0 + 8 * (y) / Ly
@@ -120,8 +119,16 @@ using Oceananigans.TurbulenceClosures: EddyEvolvingStreamfunction, IsopycnalDiff
 obl_closure  = RiBasedVerticalDiffusivity()
 #redi_closure = IsopycnalSkewSymmetricDiffusivity(; κ_symmetric) 
 redi_closure = IsopycnalDiffusivity(; κ_symmetric) 
-eddy_closure = EddyAdvectiveClosure(; κ_skew, tapering=EddyEvolvingStreamfunction(100days))
-closure = (obl_closure, redi_closure, eddy_closure)
+
+@inline function my_ν(i, j, k, grid, clock, fields) 
+    y = ynode(j, grid, Center())
+    f = coriolis.f₀ + coriolis.β * y
+    N² = max(1e-20, ∂z_b(i, j, k, grid, buoyancy, fields))
+    return min(5.0, 1000 / N² * f^2) # f2 / N2 < 0.01
+end
+
+eddy_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=my_ν, discrete_form=true, loc=(Center(), Center(), Face())) # EddyAdvectiveClosure(; κ_skew, tapering=EddyEvolvingStreamfunction(100days)) EddyAdvectiveClosure(; κ_skew, tapering=FluxTapering(0.01)) # 
+closure = (obl_closure, eddy_closure)
 
 model = HydrostaticFreeSurfaceModel(; grid = grid,
                                       coriolis = coriolis,
@@ -171,6 +178,7 @@ u, v, w = model.velocities
 T, S, c = model.tracers
 b = BuoyancyField(model)
 N² = Field(buoyancy_frequency(model))
+by = Field(∂y(b))
 
 outputs = (; u, v, w, T, S, b, N², c, ve, we)
 
