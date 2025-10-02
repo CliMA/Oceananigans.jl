@@ -51,7 +51,9 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
     @inbounds begin
         for j in 0:order-1
             for m in j+1:order
-                numerator   = sum(num_prod(i, m, l, r, FT.(xr), FT.(xi), shift, op, order, der) for l=0:order if l != m)
+                xr = FT.(xr)
+                xi = FT.(xi)
+                numerator   = sum(num_prod(i, m, l, r, xr, xi, shift, op, order, der) for l=0:order if l != m)
                 denominator = prod(xi[op(i, r-m+1)] - xi[op(i, r-l+1)] for l=0:order if l != m)
                 coeffs[j+1] += numerator / denominator * (xi[op(i, r-j)] - xi[op(i, r-j+1)])
             end
