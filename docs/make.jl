@@ -184,7 +184,7 @@ for m in [Oceananigans, OceananigansNCDatasetsExt, OceananigansXESMFExt]
     end
 end
 
-makedocs(sitename = "Oceananigans.jl",
+makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format = format,
          pages = pages,
