@@ -124,7 +124,7 @@ const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, Nothing,
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields) where {LY, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
 
     i, i′ = domain_boundary_indices(S(), grid.Nx)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -135,7 +135,7 @@ end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
 @inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields) where {LX, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
 
     j, j′ = domain_boundary_indices(S(), grid.Ny)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -146,7 +146,7 @@ end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
 @inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer,
-                       grid::AbstractGrid, clock, model_fields) where {LX, LY, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
 
     k, k′ = domain_boundary_indices(S(), grid.Nz)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -161,7 +161,7 @@ end
 
 # Return ContinuousBoundaryFunction on the east or west interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields) where {LY, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
 
     i′ = cell_boundary_index(S(), i)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -172,7 +172,7 @@ end
 
 # Return ContinuousBoundaryFunction on the south or north interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields) where {LX, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
 
     j′ = cell_boundary_index(S(), j)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -183,7 +183,7 @@ end
 
 # Return ContinuousBoundaryFunction on the bottom or top interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields) where {LX, LY, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
 
     k′ = cell_boundary_index(S(), k)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
