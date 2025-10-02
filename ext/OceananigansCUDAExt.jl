@@ -54,6 +54,7 @@ function UT.versioninfo_with_gpu(::CUDAGPU)
 end
 
 Base.summary(::CUDAGPU) = "CUDAGPU"
+AC.device!(::CUDAGPU, i) = CUDA.device!(i)
 
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::Type{CuArray}) = CUDAGPU()
