@@ -178,7 +178,7 @@ modules = Module[]
 OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
 OceananigansXESMFExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansXESMFExt) : Oceananigans.OceananigansXESMFExt
 
-for m in [Oceananigans, OceananigansNCDatasetsExt, OceananigansXESMFExt]
+for m in [Oceananigans, XESMF, OceananigansNCDatasetsExt, OceananigansXESMFExt]
     if !isnothing(m)
         push!(modules, m)
     end
