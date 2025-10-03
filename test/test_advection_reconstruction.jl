@@ -91,122 +91,149 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     Nx, Ny, Nz = size(grid)
 
     # Test symmetric reconstruction (Centered schemes)
-    scheme   = Centered(order=10)
-    rscheme1 = Centered(order=8)
-    rscheme2 = Centered(order=6)
-    rscheme3 = Centered(order=4)
-    rscheme4 = Centered(order=2)
+    scheme   = Centered(order=12)
+    rscheme1 = Centered(order=10)
+    rscheme2 = Centered(order=8)
+    rscheme3 = Centered(order=6)
+    rscheme4 = Centered(order=4)
+    rscheme5 = Centered(order=2)
 
     @testset "Testing Centered reconstruction" begin
-        for s in (scheme, rscheme1, rscheme2, rscheme3)
+        for s in (scheme, rscheme1, rscheme2, rscheme3, rscheme4)
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 1, c)
-                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme4, 1, c)
-                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme4, 1, c)
+                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme5, 1, c)
+                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme5, 1, c)
+                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme5, 1, c)
             end
         end
             
+        for s in (scheme, rscheme1, rscheme2, rscheme3)
+            for i in 1:Nx, j in 1:Ny, k in 1:Nz
+                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 2, c)
+                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 2, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme4, 2, c)
+                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 2, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme4, 2, c)
+            end
+        end
+
         for s in (scheme, rscheme1, rscheme2)
-                for i in 1:Nx, j in 1:Ny, k in 1:Nz
-                    @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme3, 2, c)
-                    @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 2, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme3, 2, c)
-                    @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 2, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme3, 2, c)
-                end
+            for i in 1:Nx, j in 1:Ny, k in 1:Nz
+                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 3, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme3, 3, c)
+                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 3, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme3, 3, c)
+                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 3, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme3, 3, c)
+            end
         end
 
         for s in (scheme, rscheme1)
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 3, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme2, 3, c)
-                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 3, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme2, 3, c)
-                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 3, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme2, 3, c)
+                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme2, 4, c)
+                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme2, 4, c)
+                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme2, 4, c)
             end
         end
 
         for s in (scheme, )
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 4, c)
-                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 4, c)
-                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 4, c)
+                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 5, c)
+                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 5, c)
+                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 5, c)
             end
         end
     end
 
-    scheme   = UpwindBiased(order=9)
-    rscheme1 = UpwindBiased(order=7)
-    rscheme2 = UpwindBiased(order=5)
-    rscheme3 = UpwindBiased(order=3)
-    rscheme4 = UpwindBiased(order=1)
+    scheme   = UpwindBiased(order=11)
+    rscheme1 = UpwindBiased(order=9)
+    rscheme2 = UpwindBiased(order=7)
+    rscheme3 = UpwindBiased(order=5)
+    rscheme4 = UpwindBiased(order=3)
+    rscheme5 = UpwindBiased(order=1)
     
     @testset "Testing UpwindBiased reconstruction" begin
-        for s in (scheme, rscheme1, rscheme2, rscheme3)
+        for s in (scheme, rscheme1, rscheme2, rscheme3, rscheme4)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 1, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme4, 1, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme4, 1, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme5, 1, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme5, 1, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme5, 1, bias, c)
             end
         end
             
-        for s in (scheme, rscheme1, rscheme2)
+        for s in (scheme, rscheme1, rscheme2, rscheme3)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme3, 2, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme3, 2, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme3, 2, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 2, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme4, 2, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme4, 2, bias, c)
             end
         end
         
+        for s in (scheme, rscheme1, rscheme2)
+            for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme3, 3, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme3, 3, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme3, 3, bias, c)
+            end
+        end
+
         for s in (scheme, rscheme1)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme2, 3, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme2, 3, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme2, 3, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme2, 4, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme2, 4, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme2, 4, bias, c)
             end
         end
 
         for s in (scheme, )
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 4, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 4, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 4, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 5, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 5, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 5, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 5, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 5, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 5, bias, c)
             end
         end
     end
 
-    scheme   = WENO(order=9)
+    scheme   = WENO(order=11)
+    rscheme1 = WENO(order=9)
     rscheme1 = WENO(order=7)
     rscheme2 = WENO(order=5)
     rscheme3 = WENO(order=3)
     rscheme4 = UpwindBiased(order=1)
 
     @testset "Testing WENO reconstruction" begin
-        for s in (scheme, rscheme1, rscheme2, rscheme3)
+        for s in (scheme, rscheme1, rscheme2, rscheme3, rscheme4)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 1, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme4, 1, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme4, 1, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme5, 1, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme5, 1, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme5, 1, bias, c)
             end
         end
             
-        for s in (scheme, rscheme1, rscheme2)
+        for s in (scheme, rscheme1, rscheme2, rscheme3)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme3, 2, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme3, 2, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme3, 2, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 2, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme4, 2, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme4, 2, bias, c)
             end
         end
         
+        for s in (scheme, rscheme1, rscheme2)
+            for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme3, 3, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme3, 3, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme3, 3, bias, c)
+            end
+        end
+
         for s in (scheme, rscheme1)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme2, 3, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme2, 3, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme2, 3, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme2, 4, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme2, 4, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme2, 4, bias, c)
             end
         end
 
         for s in (scheme, )
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 4, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 4, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 4, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 5, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 5, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 5, bias, c)
             end
         end
     end
