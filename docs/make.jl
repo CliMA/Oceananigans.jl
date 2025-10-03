@@ -186,10 +186,8 @@ end
 
 makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
-         format = format,
-         pages = pages,
+         format, pages, modules,
          plugins = [bib],
-         modules,
          warnonly = [:cross_references],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up
