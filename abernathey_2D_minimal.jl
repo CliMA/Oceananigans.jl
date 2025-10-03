@@ -127,7 +127,7 @@ redi_closure = IsopycnalDiffusivity(; κ_symmetric)
     return min(5.0, 1000 / N² * f^2) # f2 / N2 < 0.01
 end
 
-eddy_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=my_ν, discrete_form=true, loc=(Center(), Center(), Face())) # EddyAdvectiveClosure(; κ_skew, tapering=EddyEvolvingStreamfunction(100days)) EddyAdvectiveClosure(; κ_skew, tapering=FluxTapering(0.01)) # 
+eddy_closure = EddyAdvectiveClosure(; κ_skew) #, tapering=EddyEvolvingStreamfunction(500days)) # EddyAdvectiveClosure(; κ_skew, tapering=FluxTapering(0.01)) #  VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=my_ν, discrete_form=true, loc=(Center(), Center(), Face())) 
 closure = (obl_closure, eddy_closure)
 
 model = HydrostaticFreeSurfaceModel(; grid = grid,
@@ -142,7 +142,7 @@ model = HydrostaticFreeSurfaceModel(; grid = grid,
                                       boundary_conditions = (u=u_bcs, v=v_bcs))
 
 set!(model, T=Tᵢ, S=Sᵢ, u=uᵢ, v=vᵢ, c=cᵢ)
-simulation = Simulation(model, Δt=25minutes, stop_time= 20 * 365days) #, stop_iteration=80333)
+simulation = Simulation(model, Δt=25minutes, stop_time=20 * 365days) #, stop_iteration=80333)
 
 using Printf
 
@@ -227,20 +227,27 @@ wen = @lift(interior(we[$iter], 1, :, :))
 maxv = maximum(abs, v)
 maxw = maximum(abs, w)
 
-fig = Figure()
-ax  = Axis(fig[1, 1:2])
+fig = Figure(fontsize=12, size=(500, 2000))
+ax  = Axis(fig[1, 1:2], title = "Buoyancy", xlabel = "y (km)", ylabel = "z (m)")
 contourf!(ax, y, z, bn; colormap=:jet, levels=range(extrema(b[1])..., length=20))
-ax  = Axis(fig[1, 3:4])
-contourf!(ax, y, z, Tn; colormap=:jet, levels=range(extrema(T[1])..., length=20))
-ax  = Axis(fig[2, 1])
-contourf!(ax, y, zF, wn; colormap=:jet, levels=range(-maxw, maxw, length=10))
-ax  = Axis(fig[2, 2])
+xlims!(ax, extrema(y))
+ylims!(ax, extrema(z))
+ax  = Axis(fig[2, 1], title = "V-velocity", xlabel = "y (km)", ylabel = "z (m)")
 contourf!(ax, yF, z, vn; colormap=:jet, levels=range(-maxv, maxv, length=10))
-ax  = Axis(fig[2, 3])
+xlims!(ax, extrema(yF))
+ylims!(ax, extrema(z))
+ax  = Axis(fig[2, 2], title = "W-velocity", xlabel = "y (km)", ylabel = "z (m)")
+contourf!(ax, y, zF, wn; colormap=:jet, levels=range(-maxw, maxw, length=10))
+xlims!(ax, extrema(y))
+ylims!(ax, extrema(zF))
+ax  = Axis(fig[3, 1], title = "Eddy V-velocity", xlabel = "y (km)", ylabel = "z (m)")
 contourf!(ax, yF, z, ven; colormap=:jet, levels=range(-maxv, maxv, length=10))
-ax  = Axis(fig[2, 4])
+xlims!(ax, extrema(yF))
+ylims!(ax, extrema(z))
+ax  = Axis(fig[3, 2], title = "Eddy W-velocity", xlabel = "y (km)", ylabel = "z (m)")
 contourf!(ax, y, zF, wen; colormap=:jet, levels=range(-maxw, maxw, length=10))
-
+xlims!(ax, extrema(y))
+ylims!(ax, extrema(zF))
 
 GLMakie.record(fig, "Output/" * filename * "/output.mp4", 1:length(b)) do i
     @info "step $i";

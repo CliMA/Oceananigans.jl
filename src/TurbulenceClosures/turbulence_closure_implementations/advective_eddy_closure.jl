@@ -1,3 +1,4 @@
+using Oceananigans: fields
 using Oceananigans.Fields: VelocityFields, ZeroField
 using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
@@ -15,7 +16,7 @@ struct EddyAdvectiveClosure{K, L, N} <: AbstractTurbulenceClosure{ExplicitTimeDi
 end
 
 function EddyAdvectiveClosure(; κ_skew = 1000.0, 
-                                tapering = EddyEvolvingStreamfunction(500days),
+                                tapering = FluxTapering(0.01),
                                 required_halo_size::Int = 1) 
 
     return EddyAdvectiveClosure{required_halo_size}(κ_skew, tapering) 
@@ -115,7 +116,9 @@ function compute_diffusivities!(diffusivities, closure::EddyAdvectiveClosure, mo
                              diffusivities,
                              model.closure, # Note that these can be different than the closure passed to this function
                              model.diffusivity_fields, 
-                             clock, Δt)
+                             clock, 
+                             fields(model), 
+                             Δt)
 
     mask_immersed_field!(Ψx)
     mask_immersed_field!(Ψy)
@@ -127,11 +130,11 @@ end
 
 diffuse_streamfunctions!(tapering, args...) = nothing
 
-function diffuse_streamfunctions!(::EddyEvolvingStreamfunction, K, closure, diffusivities, clock, Δt)
+function diffuse_streamfunctions!(::EddyEvolvingStreamfunction, K, closure, diffusivities, clock, fields, Δt)
     Ψx = K.Ψx
     Ψy = K.Ψy 
-    implicit_step!(Ψx, K.implicit_solver, closure, diffusivities, nothing, clock, Δt)
-    implicit_step!(Ψy, K.implicit_solver, closure, diffusivities, nothing, clock, Δt)
+    implicit_step!(Ψx, K.implicit_solver, closure, diffusivities, nothing, clock, fields, Δt)
+    implicit_step!(Ψy, K.implicit_solver, closure, diffusivities, nothing, clock, fields, Δt)
     return nothing
 end
 
@@ -143,6 +146,15 @@ end
 
 # In any other case, we do not taper
 @inline tapering_factor(Sx, Sy, tapering) = 1
+
+@inline tapered_Sx(Sx, Sy, nothing) = Sx
+@inline tapered_Sy(Sx, Sy, nothing) = Sy
+
+@inline tapered_Sx(Sx, Sy, ::EddyEvolvingStreamfunction) = Sx
+@inline tapered_Sy(Sx, Sy, ::EddyEvolvingStreamfunction) = Sy
+
+@inline tapered_Sx(Sx, Sy, sl::FluxTapering) = Sx * tapering_factor(Sx, Sy, sl)
+@inline tapered_Sy(Sx, Sy, sl::FluxTapering) = Sy * tapering_factor(Sx, Sy, sl)
 
 # Slope in x-direction at F, C, F locations, zeroed out on peripheries
 @inline function Sxᶠᶜᶠ(i, j, k, grid, b, C) 
@@ -168,23 +180,17 @@ end
     return ifelse(inactive, zero(grid), Sy)
 end
 
-@inline tapered_sx(Sx, Sy, ::EddyEvolvingStreamfunction) = atan(Sx)
-@inline tapered_sy(Sx, Sy, ::EddyEvolvingStreamfunction) = atan(Sy)
-
-@inline tapered_sx(Sx, Sy, sl::FluxTapering) = Sx * tapering_factor(Sx, Sy, sl)
-@inline tapered_sy(Sx, Sy, sl::FluxTapering) = Sy * tapering_factor(Sx, Sy, sl)
-
 @inline function κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
     κ   = κᶠᶜᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
     Sx  = Sxᶠᶜᶠ(i, j, k, grid, b, fields) 
-    ϵSx = tapered_sx(Sx, zero(grid), sl)
+    ϵSx = tapered_Sx(Sx, zero(grid), sl)
     return κ * ϵSx
 end
 
 @inline function κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, sl, κ, b, fields) 
     κ   = κᶜᶠᶠ(i, j, k, grid, (Center(), Center(), Center()), κ, clk.time, fields) 
     Sy  = Syᶜᶠᶠ(i, j, k, grid, b, fields) 
-    ϵSy = tapered_sy(zero(grid), Sy, sl)
+    ϵSy = tapered_Sy(zero(grid), Sy, sl)
     return κ * ϵSy
 end
 

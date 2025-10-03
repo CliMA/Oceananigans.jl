@@ -91,8 +91,9 @@ const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
-@inline νᶜᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
+@inline νᶠᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
+@inline νᶜᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
@@ -112,9 +113,9 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
 
+@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶠᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶜᶠᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶜᶠᶜ(i, j, k, grid, closure, K, clk, fields)
-@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
