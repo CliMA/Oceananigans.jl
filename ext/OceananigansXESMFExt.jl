@@ -7,7 +7,7 @@ using Oceananigans.Fields: AbstractField, topology, location
 using Oceananigans.Grids: AbstractGrid, λnodes, φnodes, Center, Face, total_length
 
 import Oceananigans.Fields: regrid!
-import XESMF: Regridder, extract_xesmf_coordinates_structure
+import XESMF: Regridder
 
 # permutedims below is used because Python's xESMF expects
 # 2D arrays with (x, y) coordinates with y varying in dim=1 and x varying in dim=2
@@ -27,7 +27,7 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = vertex_array(x, Nx, Ny)
 y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny+1), 1, Nx+1)
 y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
-function extract_xesmf_coordinates_structure(grid::AbstractGrid, ℓx, ℓy, ℓz)
+function xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
     Nx, Ny, Nz = size(grid)
 
     # Do we need to use ℓx and ℓy eventually?
@@ -50,7 +50,7 @@ function extract_xesmf_coordinates_structure(grid::AbstractGrid, ℓx, ℓy, ℓ
                 "lon_b" => λv)
 end
 
-function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
+function xesmf_coordinates(dst_field::AbstractField, src_field::AbstractField)
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
 
@@ -117,7 +117,7 @@ function Regridder(dst_field::AbstractField, src_field::AbstractField; method="c
     dst_Nz = size(dst_field)[3]
     @assert src_field.grid.z.cᵃᵃᶠ[1:src_Nz+1] == dst_field.grid.z.cᵃᵃᶠ[1:dst_Nz+1]
 
-    dst_coordinates, src_coordinates = extract_xesmf_coordinates_structure(dst_field, src_field)
+    dst_coordinates, src_coordinates = xesmf_coordinates(dst_field, src_field)
     periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? true : false
 
     regridder = XESMF.Regridder(src_coordinates, dst_coordinates; method, periodic)
