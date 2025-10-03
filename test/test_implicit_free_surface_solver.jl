@@ -67,14 +67,10 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     g = g_Earth
     η = model.free_surface.η
 
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_x_area, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_y_area, grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-
-    sum!(∫ᶻ_Axᶠᶜᶜ, Operators.Ax)
-    sum!(∫ᶻ_Ayᶜᶠᶜ, Operators.Ay)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
 
     left_hand_side = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
