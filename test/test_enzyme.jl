@@ -2,9 +2,11 @@ include("dependencies_for_runtests.jl")
 
 using Enzyme
 using Oceananigans.TimeSteppers: reset!
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
 # Required presently
 Enzyme.API.looseTypeAnalysis!(true)
+Enzyme.API.strictAliasing!(false)
 Enzyme.API.maxtypeoffset!(2032)
 
 # OceananigansLogger doesn't work here -- not sure why
@@ -379,3 +381,155 @@ end
     @test rel_error < tol
 end
 
+function time_step_with_buoyancy(simulation, Tᵢ, Sᵢ, wind_stress)
+    model = simulation.model
+
+    set!(model.tracers.T, Tᵢ)
+    set!(model.tracers.S, Sᵢ)
+    model.velocities.u.boundary_conditions.top.condition .= wind_stress
+
+    # Initialize the model
+    model.clock.iteration = 0
+    model.clock.time = 0
+    model.clock.last_Δt = Inf
+
+    # Step it forward
+    #run!(simulation)
+    for n = 1:10
+        time_step!(model, 20minutes; euler=true)
+    end
+
+    return nothing
+end
+
+function compute_forward_u(simulation, initial_temperature, initial_salinity, wind_stress, i, j, k)
+    time_step_with_buoyancy(simulation, initial_temperature, initial_salinity, wind_stress)
+    
+    # Another way to compute it
+    forward_u = simulation.model.velocities.u[i, j, k]
+    
+    return forward_u::Float64
+end
+
+@testset "Enzyme autodifferentiation of turbulence with buoyancy on a LatLonGrid" begin
+    arch = CPU()
+    Nλ = 32
+    Nφ = 32
+    Nz = 2
+    
+    Lλ = 60
+    Lφ = 60
+    Lz = 1800
+    
+    φ₀ = 15
+    
+    grid = LatitudeLongitudeGrid(arch,
+                                 size = (Nλ, Nφ, Nz),
+                                 halo = (7, 7, 7),
+                                 longitude = (-Lλ/2, Lλ/2),
+                                 latitude = (φ₀, φ₀ + Lφ),
+                                 z = [-Lz, -450, 0])
+    
+    horizontal_closure = HorizontalScalarDiffusivity(ν = 5000.0, κ = 1000.0)
+    vertical_closure   = VerticalScalarDiffusivity(ν = 1e-2, κ = 1e-5)
+
+    closure  = (horizontal_closure, vertical_closure)
+    coriolis = HydrostaticSphericalCoriolis()
+
+    # Setting wind stress boundary condition
+    ρₒ          = 1026.0 # kg m⁻³, average density at the surface of the world ocean
+    τ₀          = 0.1 / ρₒ # N m⁻² / density of seawater
+    no_slip_bc  = ValueBoundaryCondition(0.0)
+    wind_stress = Field{Face, Center, Nothing}(grid)
+
+    u_top_bc    = FluxBoundaryCondition(Field{Face, Center, Nothing}(grid))
+    @inline τx(λ, φ) = τ₀ * cos(2π * (φ - φ₀) / Lφ)
+    set!(wind_stress, τx)
+
+    set!(u_top_bc.condition, wind_stress)
+
+    # Setting overall boundary conditions:
+    u_bcs = FieldBoundaryConditions(north=no_slip_bc, south=no_slip_bc, top=u_top_bc)
+    v_bcs = FieldBoundaryConditions(east=no_slip_bc, west=no_slip_bc)
+
+    momentum_advection = VectorInvariant()
+    tracer_advection   = Centered(order=2)
+
+    buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState())
+
+    g = 4^2
+    c = sqrt(g)
+    free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
+
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                    coriolis = coriolis,
+                                    momentum_advection,
+                                    tracer_advection,
+                                    closure = closure,
+                                    tracers = (:T, :S),
+                                    boundary_conditions = (u=u_bcs, v=v_bcs),
+                                    buoyancy = buoyancy)
+
+    simulation = Simulation(model, Δt=20minutes, stop_iteration=10)
+
+    # Set initial temperature and salinity
+    dTdz = 30.0 / 1900.0
+    # Temperature initial condition: a stable density gradient with random noise superposed.
+    fₜ(λ, φ, z) = 30 + dTdz * z
+    fₛ(λ, φ, z) = 35
+
+    Tᵢ = Field{Center, Center, Center}(grid)
+    Sᵢ = Field{Center, Center, Center}(grid)
+
+    set!(Tᵢ, fₜ)
+    set!(Sᵢ, fₛ)
+    
+    # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
+    i  = 10
+    j  = 10
+    k  = 1
+    J0 = deepcopy(wind_stress)
+    J1 = deepcopy(wind_stress)
+    J2 = deepcopy(wind_stress)
+
+    ΔJ = 1e-3
+
+    J1[i, j, k] = J0[i, j, k] + ΔJ
+    J2[i, j, k] = J2[i, j, k] + 2ΔJ
+    e0 = compute_forward_u(simulation, Tᵢ, Sᵢ, J0, i+1, j, k)
+    set!(simulation.model, u=0, v=0, T=0, S=0)
+    e2 = compute_forward_u(simulation, Tᵢ, Sᵢ, J2, i+1, j, k)
+    set!(simulation.model, u=0, v=0, T=0, S=0)
+    ΔeΔJ = (e2 - e0) / 2ΔJ
+
+    @info "Finite difference computed for wind stress at index $i, $j, $k: $ΔeΔJ"
+
+    @info "Now with autodiff..."
+    start_time = time_ns()
+    
+    dmodel = Enzyme.make_zero(model)
+    dsim   = Simulation(dmodel, Δt=20minutes, stop_iteration=10)
+
+    dTᵢ  = Enzyme.make_zero(Tᵢ)
+    dSᵢ  = Enzyme.make_zero(Sᵢ)
+    dJ1  = Enzyme.make_zero(J1)
+
+    # Use autodiff to compute a gradient at J1 = wind_stress with permutation
+    dmodel = Enzyme.make_zero(model)
+    dedJ = autodiff(set_runtime_activity(Enzyme.Reverse),
+                    compute_forward_u, Active,
+                    Duplicated(simulation, dsim),
+                    Duplicated(Tᵢ, dTᵢ),
+                    Duplicated(Sᵢ, dSᵢ),
+                    Duplicated(J1, dJ1),
+                    Const(i+1),
+                    Const(j),
+                    Const(k))
+
+    @info "Automatically computed: $dedJ."
+    @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
+
+    tol = 1e-1
+    rel_error = abs(dJ1[i, j, k] - ΔeΔJ) / abs(ΔeΔJ)
+    @test rel_error < tol
+end
