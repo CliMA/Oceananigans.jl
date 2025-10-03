@@ -31,8 +31,8 @@ function extract_xesmf_coordinates_structure(grid::AbstractGrid, ℓx, ℓy, ℓ
     # Do we need to use ℓx and ℓy eventually?
     λ  = λnodes(grid, Center(), Center(), ℓz, with_halos=true)
     φ  = φnodes(grid, Center(), Center(), ℓz, with_halos=true)
-    λv = λnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
-    φv = φnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
+    λv = λnodes(grid, Face(), Face(), ℓz, with_halos=true)
+    φv = φnodes(grid, Face(), Face(), ℓz, with_halos=true)
 
     # Build data structures expected by xESMF
     Nx, Ny, Nz = size(grid)
@@ -55,9 +55,9 @@ function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field
     dst_grid = dst_field.grid
     src_grid = src_field.grid
 
-    dst_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz, size(dst_field))
-    src_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz, size(src_field))
-    
+    dst_coordinates = extract_xesmf_coordinates_structure(dst_grid, ℓx, ℓy, ℓz, size(dst_field))
+    src_coordinates = extract_xesmf_coordinates_structure(src_grid, ℓx, ℓy, ℓz, size(src_field))
+
     return dst_coordinates, src_coordinates
 end
 
