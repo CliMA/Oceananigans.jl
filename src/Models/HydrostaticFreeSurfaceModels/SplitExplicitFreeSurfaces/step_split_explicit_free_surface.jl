@@ -62,6 +62,37 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
                                                                                         substeps, substepping.averaging_kernel)
 
+advance_barotropic_mode!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Nsbusteps) = 
+    @apply_regionally iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Nsbusteps)
+
+function advance_barotropic_mode!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Nsbusteps)
+    arch = architecture(grid)
+
+    η           = free_surface.η
+    grid        = free_surface.η.grid
+    state       = free_surface.filtered_state
+    timestepper = free_surface.timestepper
+    g           = free_surface.gravitational_acceleration
+    parameters  = free_surface.kernel_parameters
+
+    # unpack state quantities, parameters and forcing terms
+    U, V    = free_surface.barotropic_velocities
+    η̅, U̅, V̅ = state.η, state.U, state.V
+
+    Nsubsteps = length(free_surface.substepping.averaging_weights)
+    @unroll for substep in 1:Nsubsteps
+        averaging_weight = weights[substep]
+        fill_halo_regions!((U, V))
+        @apply_regionally launch!(arch, grid, parameters, _split_explicit_free_surface!, grid, Δτᴮ, η, U, V,
+                                  timestepper)
+        fill_halo_regions!(η)
+        @apply_regionally launch!(arch, grid, parameters, _split_explicit_barotropic_velocity!, averaging_weight, grid,
+                                  Δτᴮ, η, U, V, η̅, U̅, V̅, GUⁿ, GVⁿ, g, timestepper)
+    end
+
+    return nothing
+end
+
 function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
@@ -164,11 +195,11 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     U̅ = filtered_state.U
     V̅ = filtered_state.V
 
+    # Solve for the free surface at tⁿ⁺¹
+    advance_barotropic_mode!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
+
     # reset free surface averages
     @apply_regionally begin
-        # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
-
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
         launch!(architecture(free_surface_grid), free_surface_grid, :xy,
