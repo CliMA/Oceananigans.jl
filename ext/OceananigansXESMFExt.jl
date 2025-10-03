@@ -57,8 +57,8 @@ function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field
     dst_grid = dst_field.grid
     src_grid = src_field.grid
 
-    dst_coordinates = extract_xesmf_coordinates_structure(dst_grid, ℓx, ℓy, ℓz, size(dst_field))
-    src_coordinates = extract_xesmf_coordinates_structure(src_grid, ℓx, ℓy, ℓz, size(src_field))
+    dst_coordinates = extract_xesmf_coordinates_structure(dst_grid, ℓx, ℓy, ℓz)
+    src_coordinates = extract_xesmf_coordinates_structure(src_grid, ℓx, ℓy, ℓz)
 
     return dst_coordinates, src_coordinates
 end
