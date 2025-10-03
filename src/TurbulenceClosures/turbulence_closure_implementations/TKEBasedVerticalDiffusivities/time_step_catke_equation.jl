@@ -108,8 +108,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    β  = model.clock.stage == 1 ? model.timestepper.β¹ :
-         model.clock.stage == 2 ? model.timestepper.β² : 1
+    β  = model.timestepper.β[model.clock.stage]  # Get the correct β value for the current stage
     Δt = model.clock.last_Δt / β
 
     # Compute the linear implicit component of the RHS (diffusivities, L)...
