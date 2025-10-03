@@ -1,5 +1,5 @@
 using Oceananigans.ImmersedBoundaries
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
 using Oceananigans.Fields: ZeroField
 
 const IBG = ImmersedBoundaryGrid
@@ -118,103 +118,110 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
  :(inactive_node(i + 1,  j, k, ibg, c, c, c))
 ```
 """
-@inline function inside_immersed_boundary(buffer, shift, dir, side;
-                                          xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
+@inline function inside_immersed_boundary(buffer, dir, side)
 
     N = buffer * 2
-    if shift != :none
-        N -=1
-    end
-
-    if shift == :interior
-        rng = 1:N+1
-    elseif shift == :right
-        rng = 2:N+1
-    else
-        rng = 1:N
-    end
+    rng = 1:N+1
 
     inactive_cells  = Vector(undef, length(rng))
 
+    xside = :f
+    yside = :f
+    zside = :f
+
+    if dir == :x
+        xside = side
+    elseif dir == :y
+        yside = side
+    elseif dir == :z
+        zside = side
+    end
+
     for (idx, n) in enumerate(rng)
-        c = side == :ᶠ ? n - buffer - 1 : n - buffer
-        xflipside = xside == :ᶠ ? :c : :f
-        yflipside = yside == :ᶠ ? :c : :f
-        zflipside = zside == :ᶠ ? :c : :f
-        inactive_cells[idx] =  dir == :x ?
-                               :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
+        c = side == :f ? n - buffer - 1 : n - buffer 
+        xflipside = flip(xside)
+        yflipside = flip(yside)
+        zflipside = flip(zside)
+        inactive_cells[idx] =  dir == :x ? 
+                               :(immersed_inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
-                               :(inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
+                               :(immersed_inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(immersed_inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
     end
 
-    return inactive_cells
+    return :($(inactive_cells...),)
 end
 
-for side in (:ᶜ, :ᶠ)
-    near_x_boundary_symm = Symbol(:near_x_immersed_boundary_symmetric, side)
-    near_y_boundary_symm = Symbol(:near_y_immersed_boundary_symmetric, side)
-    near_z_boundary_symm = Symbol(:near_z_immersed_boundary_symmetric, side)
+flip(l) = ifelse(l == :f, :c, :f)
 
-    near_x_boundary_bias = Symbol(:near_x_immersed_boundary_biased, side)
-    near_y_boundary_bias = Symbol(:near_y_immersed_boundary_biased, side)
-    near_z_boundary_bias = Symbol(:near_z_immersed_boundary_biased, side)
+# For an immersed boundary grid, we compute the reduced order based on the inactive cells around the
+# reconstruction interface (either face or center). 
+#
+# Below an example for an 10th (or 9th for upwind schemes) order reconstruction performed on interface `X`.
+# Note that the buffer size is 5, and we represent reconstructions based on the buffer size, not the formal order.
+# The check follows the following logic:
+#
+# - if at least one between 1 or 10 are inactive, reduce from 5 to 4.
+# - if at least one between 2 or  9 are inactive, reduce from 4 to 3.
+# - if at least one between 3 or  8 are inactive, reduce from 3 to 2.
+# - if at least one between 4 or  7 are inactive, reduce from 2 to 1.
+#     
+#      1     2     3     4     5  X  6     7     8     9    10   
+#   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+#   |     |     |     |     └── 1st ────|     |     |     |     |
+#   |     |     |     └── 2nd ─────────────── |     |     |     |
+#   |     |     └── 3rd ────────────────────────────|     |     |
+#   |     └── 4th ────────────────────────────────────────|     |
+#   └── 5th ────────────────────────────────────────────────────|
+#
+for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
+    compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
+    @eval begin 
+        # Faces symmetric
+        @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}) = 1
 
-    @eval begin
-        @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-
-        @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-    end
-
-    for buffer in advection_buffers
-        @eval begin
-            @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :x, side; xside = side)...))
-            @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :y, side; yside = side)...))
-            @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :z, side; zside = side)...))
-
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side; xside = side)...))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side; yside = side)...))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side; zside = side)...))
-        end
-    end
-end
-
-for bias in (:symmetric, :biased)
-    for (d, ξ) in enumerate((:x, :y, :z))
-        code = [:ᵃ, :ᵃ, :ᵃ]
-
-        for loc in (:ᶜ, :ᶠ), alt in (:_, :__, :___, :____, :_____)
-            code[d] = loc
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt_interp = Symbol(alt, interp)
-            @eval begin
-                import Oceananigans.Advection: $alt_interp
-                using Oceananigans.Advection: $interp
-            end
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{2}) 
+            I = $(inside_immersed_boundary(2, dir, loc))
+            to1 = @inbounds (I[1] | I[4]) # Check only first and last
+            ior = ifelse(to1, 1, 2) 
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
         end
 
-        for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
-            code[d] = loc
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt1_interp = Symbol(alt1, interp)
-            alt2_interp = Symbol(alt2, interp)
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{3}) 
+            I = $(inside_immersed_boundary(3, dir, loc))
+            to2 = @inbounds (I[1] | I[6])
+            to1 = @inbounds (I[2] | I[5]) 
+            ior = ifelse(to1, 1, 
+                  ifelse(to2, 2, 3))
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
+        end
 
-            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{4}) 
+            I = $(inside_immersed_boundary(4, dir, loc))
+            to3 = @inbounds (I[1] | I[8])
+            to2 = @inbounds (I[2] | I[7]) 
+            to1 = @inbounds (I[3] | I[6])
+            ior = ifelse(to1, 1, 
+                  ifelse(to2, 2, 
+                  ifelse(to3, 3, 4)))
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
+        end
 
-            @eval begin
-                # Fallback for low order interpolation
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
-
-                # Conditional high-order interpolation in Bounded directions
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-                           $interp(i, j, k, ibg, scheme, args...))
-            end
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{5}) 
+            I = $(inside_immersed_boundary(5, dir, loc))
+            to4 = @inbounds (I[1] | I[10])
+            to3 = @inbounds (I[2] | I[9])
+            to2 = @inbounds (I[3] | I[8]) 
+            to1 = @inbounds (I[4] | I[7])
+            ior = ifelse(to1, 1, 
+                  ifelse(to2, 2, 
+                  ifelse(to3, 3, 
+                  ifelse(to4, 4, 5))))
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
         end
     end
 end
