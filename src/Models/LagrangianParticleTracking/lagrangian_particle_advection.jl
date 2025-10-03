@@ -1,5 +1,5 @@
+using Oceananigans: total_velocities
 using Oceananigans.Utils: instantiate, KernelParameters
-using Oceananigans.Models: total_velocities
 using Oceananigans.Fields: interpolator, FractionalIndices
 
 #####
