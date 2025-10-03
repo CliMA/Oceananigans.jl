@@ -3,6 +3,7 @@ using Oceananigans.Units
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10
+using BenchmarkTools
 using CUDA
 using Random
 
@@ -94,3 +95,21 @@ if group == :immersed
     model = ocean_benchmark(arch, Nx, Ny, Nz, (Periodic, Periodic, Bounded), true)
     run_benchmark(model)
 end    
+
+if group == :model_stepping
+    include("benchmark_models_stepping.jl")
+    df = stepping_benchmarks()
+    @info "NonhydrostaticModel Benchmark Results"
+    println()
+    show(df[1], allcols=true)
+    println()
+    println()
+    @info "HydrostaticFreeSurfaceModel Benchmark Results"
+    println()
+    show(df[2], allcols=true)
+    println()
+    println()
+    @info "ShalloWaterModel Benchmark Results"
+    println()
+    show(df[3], allcols=true)
+end
