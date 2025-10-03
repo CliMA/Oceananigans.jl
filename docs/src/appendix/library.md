@@ -73,6 +73,7 @@ Private = false
 ```
 ```@docs
 XESMF.Regridder
+OceananigansXESMFExt.regrid!
 ```
 
 ## Forcings
