@@ -43,7 +43,7 @@ const RS432 = (RS332..., 0)
 const RS530 = (RS430..., 0)
 const RS531 = (RS431..., 0)
 const RS532 = (RS432..., 0)
-const RS630 = (RS630..., 0)
+const RS630 = (RS530..., 0)
 const RS631 = (RS531..., 0)
 const RS632 = (RS532..., 0)
 
