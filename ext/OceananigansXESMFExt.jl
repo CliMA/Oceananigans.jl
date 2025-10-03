@@ -4,10 +4,10 @@ using XESMF
 using Oceananigans
 using Oceananigans.Architectures: architecture, on_architecture
 using Oceananigans.Fields: AbstractField, topology, location
-using Oceananigans.Grids: λnodes, φnodes, Center, Face, total_length
+using Oceananigans.Grids: AbstractGrid, λnodes, φnodes, Center, Face, total_length
 
 import Oceananigans.Fields: regrid!
-import XESMF: Regridder, extract_xesmf_coordinates_structure
+import XESMF: Regridder
 
 node_array(ξ::AbstractMatrix, Nx, Ny) = view(ξ, 1:Nx, 1:Ny)
 
@@ -26,57 +26,47 @@ y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(transpose(view(y, 1:Ny+1)), N
 y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
 """
-    extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
+    xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
 
-Extract the coordinates (latitude/longitude) and the coordinates' bounds from the
-`src_field` and `dst_field`.
+Extract the coordinates (latitude/longitude) and the coordinates' bounds from
+`grid` at location `ℓx, ℓy, ℓz`
 """
-function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field::AbstractField)
+function xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
+    Nx, Ny, Nz = size(grid)
+
+    # Do we need to use ℓx and ℓy eventually?
+    λ  = λnodes(grid, Center(), Center(), ℓz, with_halos=true)
+    φ  = φnodes(grid, Center(), Center(), ℓz, with_halos=true)
+    λv = λnodes(grid, Face(), Face(), ℓz, with_halos=true)
+    φv = φnodes(grid, Face(), Face(), ℓz, with_halos=true)
+
+    # Build data structures expected by xESMF
+    Nx, Ny, Nz = size(grid)
+
+    λ  = x_node_array(λ, Nx, Ny)
+    φ  = y_node_array(φ, Nx, Ny)
+    λv = x_vertex_array(λv, Nx, Ny)
+    φv = y_vertex_array(φv, Nx, Ny)
+  
+    # Python's xESMF expects 2D arrays with (x, y) coordinates
+    # in which y varies in dim=1 and x varies in dim=2
+    # therefore we transpose the coordinate matrices
+
+    return Dict("lat"   => permutedims(φ, (2, 1)),  # φ is latitude
+                "lon"   => permutedims(λ, (2, 1)),  # λ is longitude
+                "lat_b" => permutedims(φv, (2, 1)),
+                "lon_b" => permutedims(λv, (2, 1)))
+end
+
+function xesmf_coordinates(dst_field::AbstractField, src_field::AbstractField)
 
     ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
 
     dst_grid = dst_field.grid
     src_grid = src_field.grid
 
-    # Extract center coordinates from both fields
-    λᵈ = λnodes(dst_grid, Center(), Center(), ℓz, with_halos=true)
-    φᵈ = φnodes(dst_grid, Center(), Center(), ℓz, with_halos=true)
-    λˢ = λnodes(src_grid, Center(), Center(), ℓz, with_halos=true)
-    φˢ = φnodes(src_grid, Center(), Center(), ℓz, with_halos=true)
-
-    # Extract cell vertices
-    λvᵈ = λnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
-    φvᵈ = φnodes(dst_grid, Face(), Face(), ℓz, with_halos=true)
-    λvˢ = λnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
-    φvˢ = φnodes(src_grid, Face(), Face(), ℓz, with_halos=true)
-
-    # Build data structures expected by xESMF
-    Nˢx, Nˢy, Nˢz = size(src_field)
-    Nᵈx, Nᵈy, Nᵈz = size(dst_field)
-
-    λᵈ = x_node_array(λᵈ, Nᵈx, Nᵈy)
-    φᵈ = y_node_array(φᵈ, Nᵈx, Nᵈy)
-    λˢ = x_node_array(λˢ, Nˢx, Nˢy)
-    φˢ = y_node_array(φˢ, Nˢx, Nˢy)
-
-    λvᵈ = x_vertex_array(λvᵈ, Nᵈx, Nᵈy)
-    φvᵈ = y_vertex_array(φvᵈ, Nᵈx, Nᵈy)
-    λvˢ = x_vertex_array(λvˢ, Nˢx, Nˢy)
-    φvˢ = y_vertex_array(φvˢ, Nˢx, Nˢy)
-
-    # Python's xESMF expects 2D arrays with (x, y) coordinates
-    # in which y varies in dim=1 and x varies in dim=2
-    # therefore we transpose the coordinate matrices
-
-    dst_coordinates = Dict("lat"   => permutedims(φᵈ, (2, 1)),  # φ is latitude
-                           "lon"   => permutedims(λᵈ, (2, 1)),  # λ is longitude
-                           "lat_b" => permutedims(φvᵈ, (2, 1)),
-                           "lon_b" => permutedims(λvᵈ, (2, 1)))
-
-    src_coordinates = Dict("lat"   => permutedims(φˢ, (2, 1)),  # φ is latitude
-                           "lon"   => permutedims(λˢ, (2, 1)),  # λ is longitude
-                           "lat_b" => permutedims(φvˢ, (2, 1)),
-                           "lon_b" => permutedims(λvˢ, (2, 1)))
+    dst_coordinates = xesmf_coordinates(dst_grid, ℓx, ℓy, ℓz)
+    src_coordinates = xesmf_coordinates(src_grid, ℓx, ℓy, ℓz)
 
     return dst_coordinates, src_coordinates
 end
@@ -140,7 +130,7 @@ function Regridder(dst_field::AbstractField, src_field::AbstractField; method="c
     dst_Nz = size(dst_field)[3]
     @assert src_field.grid.z.cᵃᵃᶠ[1:src_Nz+1] == dst_field.grid.z.cᵃᵃᶠ[1:dst_Nz+1]
 
-    dst_coordinates, src_coordinates = extract_xesmf_coordinates_structure(dst_field, src_field)
+    dst_coordinates, src_coordinates = xesmf_coordinates(dst_field, src_field)
     periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? true : false
 
     regridder = XESMF.Regridder(src_coordinates, dst_coordinates; method, periodic)
