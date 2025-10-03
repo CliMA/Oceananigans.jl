@@ -29,7 +29,7 @@ y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
     xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
 
 Extract the coordinates (latitude/longitude) and the coordinates' bounds from
-`grid` at location `ℓx, ℓy, ℓz`
+`grid` at locations `ℓx, ℓy, ℓz`.
 """
 function xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
     Nx, Ny, Nz = size(grid)
@@ -47,7 +47,7 @@ function xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
     φ  = y_node_array(φ, Nx, Ny)
     λv = x_vertex_array(λv, Nx, Ny)
     φv = y_vertex_array(φv, Nx, Ny)
-  
+
     # Python's xESMF expects 2D arrays with (x, y) coordinates
     # in which y varies in dim=1 and x varies in dim=2
     # therefore we transpose the coordinate matrices
@@ -58,17 +58,15 @@ function xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
                 "lon_b" => permutedims(λv, (2, 1)))
 end
 
-function xesmf_coordinates(dst_field::AbstractField, src_field::AbstractField)
+"""
+    xesmf_coordinates(field::AbstractField)
 
-    ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(src_field)
-
-    dst_grid = dst_field.grid
-    src_grid = src_field.grid
-
-    dst_coordinates = xesmf_coordinates(dst_grid, ℓx, ℓy, ℓz)
-    src_coordinates = xesmf_coordinates(src_grid, ℓx, ℓy, ℓz)
-
-    return dst_coordinates, src_coordinates
+Extract the coordinates (latitude/longitude) and the coordinates' bounds from
+the `field`'s grid.
+"""
+function xesmf_coordinates(field::AbstractField)
+    ℓx, ℓy, ℓz = Oceananigans.Fields.instantiated_location(field)
+    return xesmf_coordinates(field.grid, ℓx, ℓy, ℓz)
 end
 
 """
@@ -130,7 +128,8 @@ function Regridder(dst_field::AbstractField, src_field::AbstractField; method="c
     dst_Nz = size(dst_field)[3]
     @assert src_field.grid.z.cᵃᵃᶠ[1:src_Nz+1] == dst_field.grid.z.cᵃᵃᶠ[1:dst_Nz+1]
 
-    dst_coordinates, src_coordinates = xesmf_coordinates(dst_field, src_field)
+    dst_coordinates = xesmf_coordinates(dst_field)
+    src_coordinates = xesmf_coordinates(src_field)
     periodic = Oceananigans.Grids.topology(src_field.grid, 1) === Periodic ? true : false
 
     regridder = XESMF.Regridder(src_coordinates, dst_coordinates; method, periodic)
