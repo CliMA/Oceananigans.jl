@@ -72,7 +72,7 @@ Modules = [Oceananigans.Fields]
 Private = false
 ```
 ```@docs
-XESMF.NetCDFWriter
+XESMF.Regridder
 ```
 
 ## Forcings
