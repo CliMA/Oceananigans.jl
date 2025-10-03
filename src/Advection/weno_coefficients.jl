@@ -79,6 +79,7 @@ const RS661 = stencil_coefficients(BigFloat, 50, 1, collect(1:100), collect(1:10
 const RS662 = stencil_coefficients(BigFloat, 50, 2, collect(1:100), collect(1:100); order=6)
 const RS663 = stencil_coefficients(BigFloat, 50, 3, collect(1:100), collect(1:100); order=6)
 const RS664 = stencil_coefficients(BigFloat, 50, 4, collect(1:100), collect(1:100); order=6)
+const RS665 = stencil_coefficients(BigFloat, 50, 5, collect(1:100), collect(1:100); order=6)
 
 for FT in fully_supported_float_types
     @eval begin
@@ -182,7 +183,7 @@ for FT in fully_supported_float_types
 
         @inline reconstruction_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{2}) = 
                 ifelse(red_order <  3, $(FT.(RS60M)),     # Order ≤ 3                            
-                ifelse(red_order == 3, $(FT.(RS622)),     # Order 5
+                ifelse(red_order == 3, $(FT.(RS632)),     # Order 5
                 ifelse(red_order == 4, $(FT.(RS642)),     # Order 7
                 ifelse(red_order == 5, $(FT.(RS652)),     # Order 9
                                        $(FT.(RS662))))))  # Order 11
