@@ -27,7 +27,9 @@ x_vertex_array(x::AbstractMatrix, Nx, Ny) = vertex_array(x, Nx, Ny)
 y_vertex_array(y::AbstractVector, Nx, Ny) = repeat(view(y, 1:Ny+1), 1, Nx+1)
 y_vertex_array(y::AbstractMatrix, Nx, Ny) = vertex_array(y, Nx, Ny)
 
-function extract_xesmf_coordinates_structure(grid::AbstractGrid, ℓx, ℓy, ℓz, (Nx, Ny, Nz) = size(grid))
+function extract_xesmf_coordinates_structure(grid::AbstractGrid, ℓx, ℓy, ℓz)
+    Nx, Ny, Nz = size(grid)
+    
     # Do we need to use ℓx and ℓy eventually?
     λ  = λnodes(grid, Center(), Center(), ℓz, with_halos=true)
     φ  = φnodes(grid, Center(), Center(), ℓz, with_halos=true)
@@ -55,8 +57,8 @@ function extract_xesmf_coordinates_structure(dst_field::AbstractField, src_field
     dst_grid = dst_field.grid
     src_grid = src_field.grid
 
-    dst_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz, size(dst_field))
-    src_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz, size(src_field))
+    dst_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz)
+    src_coordinates = extract_xesmf_coordinates_structure(grid, ℓx, ℓy, ℓz)
     
     return dst_coordinates, src_coordinates
 end
