@@ -1,6 +1,14 @@
 import Dates
 using Dates: AbstractTime, Period, Nanosecond
 
+# Time-stepping in Oceananigans always advances prognostic variables using
+# a real-valued step measured in seconds.  When the clock stores calendar
+# values (e.g. `DateTime` or `TimeDate`), the integrator still works with
+# those seconds; the clock converts back and forth by adding/subtracting
+# `Dates.Nanosecond` offsets.  These helper functions centralise the
+# conversions so that simulations, clocks, schedules, and I/O all agree on
+# how numeric seconds and calendar periods map onto one another.
+
 @inline seconds_to_nanosecond(seconds::Number) = Nanosecond(round(Int, seconds * 1e9))
 @inline seconds_to_nanosecond(period::Period) = convert(Nanosecond, period)
 @inline seconds_to_nanosecond(ns::Nanosecond) = ns
