@@ -118,6 +118,7 @@ CUDA.allowscalar() do
     if group == :time_stepping_2 || group == :all
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
+            include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
         end

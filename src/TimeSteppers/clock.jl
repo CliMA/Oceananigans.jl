@@ -1,6 +1,6 @@
 using Adapt
 using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
 
 import Base: show
@@ -108,10 +108,10 @@ function Base.show(io::IO, clock::Clock)
 end
 
 next_time(clock, Δt) = clock.time + Δt
-next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
+next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + seconds_to_nanosecond(Δt)
 
 tick_time!(clock, Δt) = clock.time += Δt
-tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
+tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += seconds_to_nanosecond(Δt)
 
 Time(clock::Clock) = Time(clock.time)
 

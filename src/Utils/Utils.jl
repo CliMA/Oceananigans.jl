@@ -8,6 +8,7 @@ export ordered_dict_show
 export instantiate
 export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
+export seconds_to_nanosecond, period_to_seconds, time_gap_seconds, add_time_interval, UninitializedTime, is_uninitialized_time
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
 export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
@@ -35,6 +36,7 @@ include("output_writer_diagnostic_utils.jl")
 include("ordered_dict_show.jl")
 include("with_tracers.jl")
 include("versioninfo.jl")
+include("datetime.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
