@@ -12,7 +12,7 @@ using Oceananigans.Operators: Δx, Δy, Δz
 @inline  left_gradient(bc::VBC, c¹, Δ, i, j, args...) = ( c¹ - getbc(bc, i, j, args...) ) / (Δ/2)
 @inline right_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( getbc(bc, i, j, args...) - cᴺ ) / (Δ/2)
 
-@inline function left_gradient(bc::CBC, c¹, Δ, i, j, args...)
+@inline function left_gradient(bc::MBC, c¹, Δ, i, j, args...)
     coefficient = bc.condition.coefficient 
     combination = bc.condition.combination
     a = getbc(coefficient, i, j, args...)
@@ -22,7 +22,7 @@ using Oceananigans.Operators: Δx, Δy, Δz
     return g₁ + g₂
 end
 
-@inline function right_gradient(bc::CBC, cᴺ, Δ, i, j, args...)
+@inline function right_gradient(bc::MBC, cᴺ, Δ, i, j, args...)
     coefficient = bc.condition.coefficient 
     combination = bc.condition.combination
     a = getbc(coefficient, i, j, args...)
