@@ -1,3 +1,7 @@
+import Dates
+
+using Dates: AbstractTime, Nanosecond
+
 using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
 using Oceananigans.Architectures: architecture
@@ -6,6 +10,20 @@ using GPUArraysCore: @allowscalar
 using Adapt
 
 import Oceananigans.Fields: interpolate
+
+@inline period_to_seconds(Δ) = Δ
+@inline period_to_seconds(Δ::Dates.Period) = Dates.value(convert(Nanosecond, Δ)) / 1e9
+
+@inline time_difference(t₂, t₁) = t₂ - t₁
+@inline time_difference(t₂::AbstractTime, t₁::AbstractTime) = period_to_seconds(t₂ - t₁)
+
+@inline lerp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
+
+@inline function lerp_time(t₁::AbstractTime, t₂::AbstractTime, θ)
+    Δ = period_to_seconds(t₂ - t₁)
+    offset = Nanosecond(round(Int, θ * Δ * 1e9))
+    return t₁ + offset
+end
 
 struct TimeInterpolator{T, N1, N2, N3}
     fractional_index :: T
@@ -88,27 +106,29 @@ end
         t₂ = times[n₂]
     end
 
-    ñ = (t - t₁) / (t₂ - t₁)
-    ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
+    Δtₜ₁ = float(time_difference(t, t₁))
+    Δt₁₂ = float(time_difference(t₂, t₁))
+    ñ = iszero(Δt₁₂) ? 0.0 : Δtₜ₁ / Δt₁₂
+    ñ = ifelse(n₂ == n₁, 0.0, ñ)
 
     return ñ, n₁, n₂
 end
 
 @inline function find_time_index(times, t)
     Nt = length(times)
-
-    # n₁ and n₂ are the index to interpolate inbetween and
-    # n is a fractional index where 0 ≤ n ≤ 1
-    n₁, n₂ = index_binary_search(times, t, Nt)
+    n₂ = searchsortedfirst(times, t)
+    n₂ = clamp(n₂, 1, Nt)
+    n₁ = max(1, n₂ - 1)
 
     @inbounds begin
         t₁ = times[n₁]
         t₂ = times[n₂]
     end
 
-    # "Fractional index" ñ ∈ (0, 1)
-    ñ = (n₂ - n₁) / (t₂ - t₁) * (t - t₁)
-    ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
+    Δtₜ₁ = float(time_difference(t, t₁))
+    Δt₁₂ = float(time_difference(t₂, t₁))
+    ratio = iszero(Δt₁₂) ? 0.0 : Δtₜ₁ / Δt₁₂
+    ñ = ifelse(n₂ == n₁, 0.0, ratio)
 
     return ñ, n₁, n₂
 end
@@ -197,7 +217,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
 
     t₂ = @allowscalar fts.times[n₂]
     t₁ = @allowscalar fts.times[n₁]
-    t = t₂ * ñ + t₁ * (1 - ñ)
+    t = lerp_time(t₁, t₂, ñ)
     status = FixedTime(t)
 
     ψ₂ = fts[n₂]
