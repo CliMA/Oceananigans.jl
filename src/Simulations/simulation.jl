@@ -1,7 +1,9 @@
 using Oceananigans: prognostic_fields, AbstractModel
+import Dates
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
+using Oceananigans.Utils: period_to_seconds
 
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
@@ -94,6 +96,9 @@ function Simulation(model; Δt,
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
    TT = eltype(model)
+   if Δt isa Dates.Period
+       Δt = TT(period_to_seconds(Δt))
+   end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 

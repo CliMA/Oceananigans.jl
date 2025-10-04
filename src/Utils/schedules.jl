@@ -1,7 +1,6 @@
 import Oceananigans: initialize!
 
-import Dates
-using Dates: AbstractTime, Nanosecond
+using Dates: AbstractTime
 
 """
     AbstractSchedule
@@ -14,25 +13,6 @@ abstract type AbstractSchedule end
 
 # Default behavior is no alignment.
 schedule_aligned_time_step(schedule, clock, Δt) = Δt
-
-const ScheduleFirstTime = Union{Nothing, Number, AbstractTime}
-
-@inline seconds_to_nanosecond(seconds::Number) = Nanosecond(round(Int, seconds * 1e9))
-@inline seconds_to_nanosecond(seconds) = seconds
-
-@inline period_to_seconds(Δ) = Δ
-@inline period_to_seconds(Δ::Dates.Period) = Dates.value(convert(Nanosecond, Δ)) / 1e9
-
-@inline time_gap(target, current) = target - current
-@inline function time_gap(target::AbstractTime, current::AbstractTime)
-    return period_to_seconds(target - current)
-end
-@inline time_gap(target::Number, current::AbstractTime) = period_to_seconds(target - current)
-
-@inline add_interval(base::Number, interval::Number, count) = base + count * interval
-@inline add_interval(base::Number, interval::Dates.Period, count) = base + count * period_to_seconds(interval)
-@inline add_interval(base::AbstractTime, interval::Number, count) = base + seconds_to_nanosecond(interval * count)
-@inline add_interval(base::AbstractTime, interval::Dates.Period, count) = base + count * interval
 
 # Fallback initialization for schedule: call the schedule,
 # then return `true`, indicating that the schedule "actuates" at
@@ -62,19 +42,25 @@ Return a callable `TimeInterval` that schedules periodic output or diagnostic ev
 on a `interval` of simulation time, as kept by `model.clock`.
 """
 function TimeInterval(interval::Number)
-    FT = Oceananigans.defaults.FloatType
-    return TimeInterval{FT, ScheduleFirstTime}(convert(FT, interval), nothing, 0)
+    FT = typeof(float(interval))
+    return TimeInterval{FT, Any}(convert(FT, interval), UninitializedTime(), 0)
 end
 
 function TimeInterval(interval::Dates.Period)
-    return TimeInterval{typeof(interval), ScheduleFirstTime}(interval, nothing, 0)
+    return TimeInterval{typeof(interval), Any}(interval, UninitializedTime(), 0)
 end
 
 function TimeInterval(interval)
     return TimeInterval(convert(Oceananigans.defaults.FloatType, interval))
 end
 
-function initialize!(schedule::TimeInterval, first_actuation_time::Union{Number, AbstractTime})
+function initialize!(schedule::TimeInterval, first_actuation_time::Number)
+    schedule.first_actuation_time = first_actuation_time
+    schedule.actuations = 0
+    return true
+end
+
+function initialize!(schedule::TimeInterval, first_actuation_time::AbstractTime)
     schedule.first_actuation_time = first_actuation_time
     schedule.actuations = 0
     return true
@@ -84,7 +70,7 @@ initialize!(schedule::TimeInterval, model) = initialize!(schedule, model.clock.t
 
 function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.first_actuation_time
-    if t₀ === nothing
+    if is_uninitialized_time(t₀)
         if schedule.interval isa Number
             t₀ = zero(schedule.interval)
             schedule.first_actuation_time = t₀
@@ -94,7 +80,7 @@ function next_actuation_time(schedule::TimeInterval)
     end
     N = schedule.actuations
     T = schedule.interval
-    return add_interval(t₀, T, N + 1)
+    return add_time_interval(t₀, T, N + 1)
 end
 
 function (schedule::TimeInterval)(model)
@@ -116,7 +102,7 @@ end
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
     t = clock.time
-    δt = time_gap(t★, t)
+    δt = time_gap_seconds(t★, t)
     return min(Δt, δt)
 end
 
@@ -210,7 +196,7 @@ function SpecifiedTimes(times::Vararg{T}) where T
     first_time = times[1]
 
     if all(t -> t isa Number, times)
-        FT = Oceananigans.defaults.FloatType
+        FT = typeof(float(first_time))
         return SpecifiedTimes(sort([convert(FT, t) for t in times]), 0)
     elseif all(t -> t isa AbstractTime, times)
         return SpecifiedTimes(sort(collect(times)), 0)
@@ -249,7 +235,7 @@ initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
     t★ = next_actuation_time(schedule)
-    δt = t★ === Inf ? Δt : time_gap(t★, clock.time)
+    δt = t★ === Inf ? Δt : time_gap_seconds(t★, clock.time)
     return min(Δt, δt)
 end
 

@@ -1,53 +1,63 @@
 include("dependencies_for_runtests.jl")
 
 import Dates
+using Dates: DateTime
+
+const HAS_TIMEDATE = try
+    @eval using TimesDates: TimeDate
+    true
+catch
+    false
+end
 
 using Oceananigans
+using Oceananigans.Simulations: Simulation, run!, Callback
 using Oceananigans.Units: hour, Time
 using Oceananigans.TimeSteppers: Clock, tick!
-using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step
+using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step, IterationInterval
 import Oceananigans: initialize!
 
 struct DummyModel
     clock::Clock
 end
 
-function time_step_hydrostatic_with_datetime_field_time_series_forcing(arch)
-    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    start_time = Dates.DateTime(2020, 1, 1)
-    times = start_time:Dates.Hour(1):start_time + Dates.Hour(3)
+function run_forcing_simulation(arch, FT, start_time; Δt, iterations)
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(FT(1), FT(1), FT(1)))
 
-    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, times)
+    time_points = [start_time + Dates.Hour(n) for n in 0:3]
+    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, time_points)
 
-    for (n, _) in enumerate(times)
-        set!(u_forcing[n], (x, y, z) -> Float64(n - 1))
+    for n in 1:length(time_points)
+        set!(u_forcing[n], (x, y, z) -> FT(n - 1))
     end
 
     clock = Clock(time=start_time)
     model = HydrostaticFreeSurfaceModel(; grid, clock, forcing=(; u=u_forcing))
-    forcing_history = Float64[]
-    time_history = Dates.DateTime[]
+    distant_stop_time = start_time + Dates.Hour(iterations + 10)
+    simulation = Simulation(model;
+                            Δt=Δt,
+                            stop_iteration=iterations,
+                            stop_time=distant_stop_time,
+                            align_time_step=false,
+                            verbose=false)
+
+    forcing_history = FT[]
+    time_history = typeof(start_time)[]
+    Δt_history = []
 
     push!(forcing_history, u_forcing[1, 1, 1, Time(model.clock.time)])
     push!(time_history, model.clock.time)
 
-    time_step!(model, hour; euler=true)
-    push!(forcing_history, u_forcing[1, 1, 1, Time(model.clock.time)])
-    push!(time_history, model.clock.time)
-
-    for _ in 1:2
-        time_step!(model, hour)
-        push!(forcing_history, u_forcing[1, 1, 1, Time(model.clock.time)])
-        push!(time_history, model.clock.time)
+    simulation.callbacks[:capture] = Callback(IterationInterval(1)) do sim
+        sim.model.clock.iteration == 0 && return
+        push!(forcing_history, u_forcing[1, 1, 1, Time(sim.model.clock.time)])
+        push!(time_history, sim.model.clock.time)
+        push!(Δt_history, sim.model.clock.last_Δt)
     end
 
-    expected_times = [start_time + Dates.Hour(n) for n in 0:3]
-    expected_forcing = Float64.(0:3)
+    run!(simulation)
 
-    @test time_history == expected_times
-    @test forcing_history == expected_forcing
-
-    return true
+    return forcing_history, time_history, Δt_history
 end
 
 function time_interval_schedule_checks(start_time)
@@ -105,22 +115,114 @@ function specified_times_schedule_checks(start_time)
     return true
 end
 
+function numeric_time_interval_schedule_checks(FT)
+    schedule = TimeInterval(FT(2))
+    clock = Clock(time=zero(FT))
+    model = DummyModel(clock)
+
+    initialize!(schedule, model)
+    @test !schedule(model)
+
+    Δt = FT(3)
+    @test schedule_aligned_time_step(schedule, clock, Δt) == FT(2)
+
+    tick!(clock, FT(2))
+    @test schedule(model)
+    @test !schedule(model)
+
+    tick!(clock, FT(1))
+    aligned = schedule_aligned_time_step(schedule, clock, FT(5))
+    @test aligned == FT(1)
+
+    tick!(clock, aligned)
+    @test schedule(model)
+    @test !schedule(model)
+
+    return true
+end
+
+function numeric_specified_times_schedule_checks(FT)
+    schedule = SpecifiedTimes(FT(1), FT(3))
+    clock = Clock(time=zero(FT))
+    model = DummyModel(clock)
+
+    initialize!(schedule, model)
+    @test !schedule(model)
+
+    Δt = FT(5)
+    @test schedule_aligned_time_step(schedule, clock, Δt) == FT(1)
+
+    tick!(clock, FT(1))
+    @test schedule(model)
+    @test !schedule(model)
+
+    tick!(clock, FT(1))
+    aligned = schedule_aligned_time_step(schedule, clock, FT(2))
+    @test aligned == FT(1)
+
+    tick!(clock, aligned)
+    @test schedule(model)
+    @test !schedule(model)
+
+    @test schedule_aligned_time_step(schedule, clock, FT(1)) == FT(1)
+
+    return true
+end
+
 @testset "DateTime clocks" begin
     @info "Testing DateTime clock behavior..."
 
-    for arch in archs
-        @testset "Hydrostatic DateTime forcing [$(typeof(arch))]" begin
-            @test time_step_hydrostatic_with_datetime_field_time_series_forcing(arch)
+    clock_specs = [(:DateTime, DateTime)]
+    if HAS_TIMEDATE
+        push!(clock_specs, (:TimeDate, TimeDate))
+    end
+
+    for arch in archs, FT in float_types
+        arch_type = typeof(arch)
+        for (clock_label, ctor) in clock_specs
+            start_time = ctor(2020, 1, 1)
+            iterations = 3
+            expected_times = [start_time + Dates.Hour(n) for n in 0:iterations]
+            expected_forcing = FT.(0:iterations)
+
+            step_specs = [(:numeric_seconds, convert(FT, hour)),
+                          (:calendar_period, Dates.Hour(1))]
+
+            for (step_label, Δt_spec) in step_specs
+                forcing_history, time_history, Δt_history = run_forcing_simulation(arch, FT, start_time;
+                                                                                   Δt=Δt_spec,
+                                                                                   iterations=iterations)
+
+                expected_dt = 3600.0
+
+                @testset "Hydrostatic $(clock_label) forcing [$arch_type, $FT, $(step_label)]" begin
+                    @test length(time_history) == iterations + 1
+                    @test time_history == expected_times
+                    @test forcing_history == expected_forcing
+                    @test length(Δt_history) == iterations
+                    @test all(isapprox.(Δt_history, expected_dt; atol=1e-6))
+                end
+            end
         end
     end
 
-    start_time = Dates.DateTime(2020, 1, 1)
+    start_time = DateTime(2020, 1, 1)
 
-    @testset "TimeInterval schedule" begin
+    @testset "TimeInterval schedule (DateTime)" begin
         @test time_interval_schedule_checks(start_time)
     end
 
-    @testset "SpecifiedTimes schedule" begin
+    @testset "SpecifiedTimes schedule (DateTime)" begin
         @test specified_times_schedule_checks(start_time)
+    end
+
+    for FT in float_types
+        @testset "TimeInterval schedule [$FT]" begin
+            @test numeric_time_interval_schedule_checks(FT)
+        end
+
+        @testset "SpecifiedTimes schedule [$FT]" begin
+            @test numeric_specified_times_schedule_checks(FT)
+        end
     end
 end

@@ -1,6 +1,6 @@
 import Dates
 
-using Dates: AbstractTime, Nanosecond
+using Dates: AbstractTime
 
 using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
@@ -11,17 +11,13 @@ using Adapt
 
 import Oceananigans.Fields: interpolate
 
-@inline period_to_seconds(Δ) = Δ
-@inline period_to_seconds(Δ::Dates.Period) = Dates.value(convert(Nanosecond, Δ)) / 1e9
-
-@inline time_difference(t₂, t₁) = t₂ - t₁
-@inline time_difference(t₂::AbstractTime, t₁::AbstractTime) = period_to_seconds(t₂ - t₁)
+using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_gap_seconds
 
 @inline lerp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
 
 @inline function lerp_time(t₁::AbstractTime, t₂::AbstractTime, θ)
     Δ = period_to_seconds(t₂ - t₁)
-    offset = Nanosecond(round(Int, θ * Δ * 1e9))
+    offset = seconds_to_nanosecond(θ * Δ)
     return t₁ + offset
 end
 
@@ -106,8 +102,8 @@ end
         t₂ = times[n₂]
     end
 
-    Δtₜ₁ = float(time_difference(t, t₁))
-    Δt₁₂ = float(time_difference(t₂, t₁))
+    Δtₜ₁ = time_gap_seconds(t, t₁)
+    Δt₁₂ = time_gap_seconds(t₂, t₁)
     ñ = iszero(Δt₁₂) ? 0.0 : Δtₜ₁ / Δt₁₂
     ñ = ifelse(n₂ == n₁, 0.0, ñ)
 
@@ -125,8 +121,8 @@ end
         t₂ = times[n₂]
     end
 
-    Δtₜ₁ = float(time_difference(t, t₁))
-    Δt₁₂ = float(time_difference(t₂, t₁))
+    Δtₜ₁ = time_gap_seconds(t, t₁)
+    Δt₁₂ = time_gap_seconds(t₂, t₁)
     ratio = iszero(Δt₁₂) ? 0.0 : Δtₜ₁ / Δt₁₂
     ñ = ifelse(n₂ == n₁, 0.0, ratio)
 
