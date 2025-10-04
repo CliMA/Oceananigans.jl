@@ -1,8 +1,8 @@
 using Oceananigans.Utils
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: free_surface_displacement_field
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps, 
-                                                                                  barotropic_velocity_boundary_conditions, 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
+                                                                                  barotropic_velocity_boundary_conditions,
                                                                                   materialize_timestepper
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface

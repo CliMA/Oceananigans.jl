@@ -1,4 +1,4 @@
-# Turbulent diffusivity closures and large eddy simulation models
+# [Turbulent diffusivity closures and large eddy simulation models](@id turbulence_closures)
 
 A turbulent diffusivity closure representing the effects of viscous dissipation and diffusion can
 be passed via the `closure` keyword.
