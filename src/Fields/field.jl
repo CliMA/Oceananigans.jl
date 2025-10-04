@@ -54,9 +54,11 @@ function validate_field_data(loc, data, grid, indices)
     return nothing
 end
 
-validate_boundary_condition_location(bc, ::Center, side) = nothing                         # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing, MCBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                 # its nothing or nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
+
+const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
@@ -142,7 +144,7 @@ julia> ω = Field{Face, Face, Center}(grid)
 2×3×4 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -158,7 +160,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
@@ -169,7 +171,7 @@ julia> compute!(ωₛ)
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
@@ -300,7 +302,7 @@ julia> set!(c, rand(size(c)...))
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.972136, min=0.0149088, mean=0.626341
 
@@ -308,7 +310,7 @@ julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, 2:3, 1:2)
 └── data: 6×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -1:4, 2:3, 1:2) with eltype Float64 with indices -1:4×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
@@ -333,10 +335,10 @@ function Base.view(f::Field, i, j, k)
 
     # Check that the indices actually work here
     @apply_regionally valid_view_indices = map(index_range_contains, f.indices, view_indices)
-    
+
     all(getregion(valid_view_indices, 1)) ||
         throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
-    
+
     @apply_regionally begin
         view_indices = map(convert_colon_indices, view_indices, f.indices)
 
@@ -711,12 +713,23 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 """
 @inline condition_operand(op::AbstractField, condition, mask) = condition_operand(nothing, op, condition, mask)
 
-# Do NOT condition if condition=nothing.
+# Do NOT condition if condition=nothing or for identity functions
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
+const Identity = typeof(Base.identity)
+@inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
 @inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
 
-@inline conditional_length(c::AbstractField)        = length(c)
-@inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+@inline conditional_length(c::AbstractField) = length(c)
+@inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
+@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
+@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
+@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
+
+@inline function conditional_length(c::AbstractField, dims::NTuple{2})
+    N = size(c)
+    d1, d2 = dims
+    return N[d1] * N[d2]
+end
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
@@ -790,8 +803,12 @@ end
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
-    n = conditional_length(operand, dims)
-    r ./= n
+    L = conditional_length(operand, dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
@@ -801,8 +818,12 @@ Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mea
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    n = conditional_length(condition_operand(f, a, condition, mask), dims)
-    r ./= n
+    L = conditional_length(condition_operand(f, a, condition, mask), dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
@@ -819,7 +840,7 @@ end
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
+function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     arch = architecture(field.grid)
     args = (field.data,
@@ -828,8 +849,8 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
             instantiated_location(field),
             field.grid,
             positional_args...)
-    
-    # Manually convert args... to be 
+
+    # Manually convert args... to be
     # passed to the fill_halo_regions! function.
     GC.@preserve args begin
         converted_args = convert_to_device(arch, args)
