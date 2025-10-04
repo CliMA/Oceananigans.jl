@@ -326,6 +326,20 @@ for arch in archs
                     end
                 end
             end
+
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(4, 4, 4))
+            c = CenterField(grid)
+            w = ZFaceField(grid)
+            set!(c, 1)
+            set!(w, 1)
+
+            c_z = Field(c * z)
+            w_z = Field(w * z)
+
+            @allowscalar begin
+                @test c_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Center())
+                @test w_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Face())
+            end
         end
 
         @testset "Indexing of AbstractOperations [$(typeof(arch))]" begin
@@ -366,4 +380,3 @@ for arch in archs
         end
     end
 end
-
