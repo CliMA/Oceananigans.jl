@@ -97,7 +97,7 @@ function Simulation(model; Δt,
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
    TT = eltype(model)
    if Δt isa Dates.Period
-       Δt = TT(period_to_seconds(Δt))
+       Δt = convert(TT, period_to_seconds(Δt))
    end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
