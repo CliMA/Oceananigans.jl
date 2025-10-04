@@ -205,7 +205,7 @@ function SpecifiedTimes(times::Vararg{T}) where T
     end
 end
 
-SpecifiedTimes(times::AbstractVector) = SpecifiedTimes(times...)
+SpecifiedTimes(times) = SpecifiedTimes(times...)
 
 function next_actuation_time(st::SpecifiedTimes)
     if st.previous_actuation >= length(st.times)
