@@ -290,7 +290,7 @@ for arch in archs
             @test u / 2 isa BinaryOperation
         end
 
-        @testset "BinaryOperations with GridMetricOperation [$(typeof(arch))]" begin
+        @testset "BinaryOperations with grid metric operations [$(typeof(arch))]" begin
             lat_lon_grid = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 1), latitude=(0, 1), z=(0, 1))
             rectilinear_grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2, 3, 4))
 

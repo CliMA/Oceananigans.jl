@@ -84,8 +84,9 @@ grid_metric_operation(loc, metric, grid) =
 
 const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
 
-function grid_metric_operation((LX, LY, LZ), metric::NodeMetric, grid)
-    ℓx, ℓy, ℓz = LX(), LY(), LZ
+function grid_metric_operation(loc, metric::NodeMetric, grid)
+    LX, LY, LZ = loc
+    ℓx, ℓy, ℓz = LX(), LY(), LZ()
     ξnode = metric_function(loc, metric)
     return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
 end
