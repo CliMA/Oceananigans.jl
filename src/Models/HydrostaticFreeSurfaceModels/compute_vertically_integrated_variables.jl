@@ -1,5 +1,5 @@
 using Oceananigans.Grids: halo_size
-using Oceananigans.AbstractOperations: Ax, Ay, GridMetricOperation
+using Oceananigans.AbstractOperations: Ax, Ay, grid_metric_operation
 # Has to be changed when the regression data is updated
 
 function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
@@ -10,8 +10,8 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
 
-    Axᶠᶜᶜ = GridMetricOperation((Face, Center, Center), Ax, field_grid)
-    Ayᶜᶠᶜ = GridMetricOperation((Center, Face, Center), Ay, field_grid)
+    Axᶠᶜᶜ = grid_metric_operation((Face, Center, Center), Ax, field_grid)
+    Ayᶜᶠᶜ = grid_metric_operation((Center, Face, Center), Ay, field_grid)
 
     sum!(∫ᶻ_A.xᶠᶜᶜ, Axᶠᶜᶜ)
     sum!(∫ᶻ_A.yᶜᶠᶜ, Ayᶜᶠᶜ)

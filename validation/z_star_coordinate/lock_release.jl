@@ -3,7 +3,6 @@ using Oceananigans.Grids
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
-using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
 
 z_faces = MutableVerticalDiscretization((-20, 0))
