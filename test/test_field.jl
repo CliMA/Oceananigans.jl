@@ -12,7 +12,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 
 using Random
-using CUDA: @allowscalar
+using GPUArraysCore: @allowscalar
 
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
@@ -45,45 +45,49 @@ function correct_field_value_was_set(grid, FieldType, val::Number)
     return all(interior(f) .≈ val * on_architecture(arch, ones(size(f))))
 end
 
-function run_field_reduction_tests(FT, arch)
-    N = 8
-    topo = (Bounded, Bounded, Bounded)
-    grid = RectilinearGrid(arch, FT, topology=topo, size=(N, N, N), x=(-1, 1), y=(0, 2π), z=(-1, 1))
-
+function run_field_reduction_tests(grid)
     u = XFaceField(grid)
     v = YFaceField(grid)
     w = ZFaceField(grid)
     c = CenterField(grid)
+    η = Field{Center, Center, Nothing}(grid)
 
     f(x, y, z) = 1 + exp(x) * sin(y) * tanh(z)
 
-    ϕs = (u, v, w, c)
+    ϕs = [u, v, w, c]
     [set!(ϕ, f) for ϕ in ϕs]
+
+    z_top = znodes(grid, Face())[end]
+    set!(η, (x, y) -> f(x, y, z_top))
+    push!(ϕs, η)
+    ϕs = Tuple(ϕs)
 
     u_vals = f.(nodes(u, reshape=true)...)
     v_vals = f.(nodes(v, reshape=true)...)
     w_vals = f.(nodes(w, reshape=true)...)
     c_vals = f.(nodes(c, reshape=true)...)
+    η_vals = f.(nodes(η, reshape=true)...)
 
     # Convert to CuArray if needed.
+    arch = architecture(grid)
     u_vals = on_architecture(arch, u_vals)
     v_vals = on_architecture(arch, v_vals)
     w_vals = on_architecture(arch, w_vals)
     c_vals = on_architecture(arch, c_vals)
+    η_vals = on_architecture(arch, η_vals)
 
-    ϕs_vals = (u_vals, v_vals, w_vals, c_vals)
+    ϕs_vals = (u_vals, v_vals, w_vals, c_vals, η_vals)
 
     dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3), (1, 2, 3))
 
     for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
-
-        ε = eps(eltype(ϕ_vals)) * 10 * maximum(maximum.(ϕs_vals))
-        @info "    Testing field reductions with tolerance $ε..."
+        ε = eps(eltype(grid)) * 10 * maximum(maximum.(ϕs_vals))
+        @info "      Testing field reductions with tolerance $ε..."
 
         @test @allowscalar all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
-        # Important to make sure no CUDA scalar operations occur!
-        CUDA.allowscalar(false)
+        # Important to make sure no scalar operations occur on GPU!
+        GPUArraysCore.allowscalar(false)
 
         @test minimum(ϕ) ≈ minimum(ϕ_vals) atol=ε
         @test maximum(ϕ) ≈ maximum(ϕ_vals) atol=ε
@@ -189,7 +193,7 @@ function run_field_interpolation_tests(grid)
         end
     end
 
-    @info "Testing the convert functions"
+    @info "    Testing the convert functions"
     for n in 1:30
         @test convert_to_0_360(- 10.e0^(-n)) > 359
         @test convert_to_0_360(- 10.f0^(-n)) > 359
@@ -460,20 +464,39 @@ end
                 d = CenterField(cpu_grid)
                 set!(d, a)
                 @test parent(d) == Array(parent(a))
+                @test d == a
+                @test a == d
 
                 cpu_grid_with_smaller_halo = RectilinearGrid(CPU(), FT; halo=small_halo, size=sz, domain...)
                 e = CenterField(cpu_grid_with_smaller_halo)
                 set!(e, a)
+                @test e == a
+                @test a == e
                 @test Array(interior(e)) == Array(interior((a)))
             end
         end
     end
 
     @testset "Field reductions" begin
-        @info "  Testing field reductions..."
-
         for arch in archs, FT in float_types
-            run_field_reduction_tests(FT, arch)
+            @info "  Testing field reductions [$(typeof(arch)), $FT]..."
+            N = 8
+            topo = (Bounded, Bounded, Bounded)
+            size = (N, N, N)
+            y = (0, 2π)
+            z = (-1, 1)
+
+            x = (-1, 1)
+            regular_grid = RectilinearGrid(arch, FT; topology=topo, size, x, y, z)
+
+            x = range(-1, stop=1, length=N+1)
+            variably_spaced_grid = RectilinearGrid(arch, FT; topology=topo, size, x, y, z)
+
+            for (name, grid) in [(:regular_grid => regular_grid),
+                                 (:variably_spaced_grid => variably_spaced_grid)]
+                @info "    Testing field reductions on $name..."
+                run_field_reduction_tests(grid)
+            end
         end
 
         for arch in archs, FT in float_types
@@ -537,9 +560,8 @@ end
     end
 
     @testset "Field interpolation" begin
-        @info "  Testing field interpolation..."
-
         for arch in archs, FT in float_types
+            @info "  Testing field interpolation [$(typeof(arch)), $FT]..."
             reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
 
             # Choose points z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance

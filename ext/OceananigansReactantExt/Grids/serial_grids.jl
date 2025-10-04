@@ -9,14 +9,6 @@ deconcretize(z::StaticVerticalDiscretization) =
 
 # TODO: handle MutableVerticalDiscretization in grid constructors
 deconcretize(z::MutableVerticalDiscretization) = z
-
-function materialize_immersed_boundary(grid::ReactantGrid, ib::GridFittedBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
-    set!(bottom_field, ib.bottom_height)
-    new_ib = GridFittedBottom(bottom_field)
-    return new_ib
-end
-
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
                                                        gfb.immersed_condition)
 
