@@ -169,6 +169,7 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
+        include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
     end
 
@@ -178,7 +179,6 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
-        include("test_distributed_macros.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -251,6 +251,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
+        end
+    end
+
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
             # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
@@ -286,4 +293,3 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
-

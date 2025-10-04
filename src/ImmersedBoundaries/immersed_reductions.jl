@@ -127,6 +127,12 @@ end
     return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
 end
 
+condition_operand(::typeof(identity), op::IF, ::Nothing, mask) =
+    condition_operand(nothing, op, nothing, mask)
+
+condition_operand(::typeof(identity), op::IRF, ::Nothing, mask) =
+    condition_operand(nothing, op, nothing, mask)
+
 @inline function condition_operand(func, op::IF, condition, mask)
     immersed_condition = NotImmersed(condition)
     return ConditionalOperation(op; func, condition=immersed_condition, mask)

@@ -55,7 +55,7 @@ This is not the case for the v-velocity (or any field on the j-faces) where the 
 
     for j = 1 : Hy
         @inbounds begin
-            ζ[i, Ny + j, k] = sign * ζ[i′, Ny - j + 1, k] 
+            ζ[i, Ny + j, k] = sign * ζ[i′, Ny - j + 1, k]
         end
     end
 
@@ -77,7 +77,7 @@ end
 
     # We substitute the redundant part of the last row to ensure consistency
     @inbounds u[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * u[i′, Ny, k], u[i, Ny, k])
-    
+
     return nothing
 end
 
