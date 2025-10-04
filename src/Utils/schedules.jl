@@ -42,7 +42,7 @@ Return a callable `TimeInterval` that schedules periodic output or diagnostic ev
 on a `interval` of simulation time, as kept by `model.clock`.
 """
 function TimeInterval(interval::Number)
-    FT = typeof(float(interval))
+    FT = Oceananigans.defaults.FloatType
     return TimeInterval{FT, Any}(convert(FT, interval), UninitializedTime(), 0)
 end
 
@@ -196,16 +196,19 @@ function SpecifiedTimes(times::Vararg{T}) where T
     first_time = times[1]
 
     if all(t -> t isa Number, times)
-        FT = typeof(float(first_time))
-        return SpecifiedTimes(sort([convert(FT, t) for t in times]), 0)
+        FT = Oceananigans.defaults.FloatType
+        return SpecifiedTimes{FT}(sort([convert(FT, t) for t in times]), 0)
     elseif all(t -> t isa AbstractTime, times)
-        return SpecifiedTimes(sort(collect(times)), 0)
+        TT = typeof(first_time)
+        return SpecifiedTimes{TT}(sort(collect(times)), 0)
     else
         throw(ArgumentError("SpecifiedTimes expects all times to be numbers or all to be Date/DateTime."))
     end
 end
 
-SpecifiedTimes(times) = SpecifiedTimes(times...)
+function SpecifiedTimes(times::AbstractVector)
+    return SpecifiedTimes(Tuple(times)...)
+end
 
 function next_actuation_time(st::SpecifiedTimes)
     if st.previous_actuation >= length(st.times)
