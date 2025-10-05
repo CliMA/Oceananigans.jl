@@ -102,10 +102,10 @@ end
         t₂ = times[n₂]
     end
 
-    Δtₜ₁ = time_difference_seconds(t, t₁)
-    Δt₁₂ = time_difference_seconds(t₂, t₁)
-    ñ = iszero(Δt₁₂) ? 0.0 : Δtₜ₁ / Δt₁₂
-    ñ = ifelse(n₂ == n₁, 0.0, ñ)
+    Δtₜ₁ = time_gap_seconds(t, t₁)
+    Δt₁₂ = time_gap_seconds(t₂, t₁)
+    ñ = Δtₜ₁ / Δt₁₂
+    ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
 end
