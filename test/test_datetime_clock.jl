@@ -166,15 +166,21 @@ end
             test_Δt = [1200, 3600, Dates.Minute(20), Dates.Hour(1)]
 
             for Δt in test_Δt
-                forcing_history, time_history = run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
-
                 DT = typeof(Δt)
                 @testset "Hydrostatic $TimeType forcing [$arch_type, $FT, $DT]" begin
+                    forcing_history, time_history = run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
+
                     Nt = 3 * 3600 / Oceananigans.Utils.period_to_seconds(Δt)
-                    expected_times = [start_time + Δt for n in 0:Nt]
-                    expected_forcing = [n - 1 for n in 0:Nt]
+                    Nt = Int(Nt)
+
+                    Δt_period = Dates.Second(Δt)
+                    expected_times = [start_time + n * Δt_period for n in 0:Nt]
+
+                    dF = 3 / Nt
+                    expected_forcing = [0 + dF * n for n in 0:Nt]
+
                     @test time_history == expected_times
-                    @test forcing_history == expected_forcing
+                    @test forcing_history ≈ expected_forcing
                 end
             end
         end
