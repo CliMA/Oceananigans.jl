@@ -211,8 +211,8 @@ end
 time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
 Base.length(backend::PartlyInMemory) = backend.length
 
-function maybe_time_range(times)
-    if times isa AbstractArray && length(times) > 1
+function try_convert_to_range(times::AbstractArray)
+    if length(times) > 1
         first_time = first(times)
         last_time = last(times)
         len = length(times)
@@ -262,7 +262,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            times = maybe_time_range(times)
+            times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end
 
