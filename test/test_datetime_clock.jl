@@ -32,8 +32,6 @@ function run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
     forcing_history = FT[]
     time_history = typeof(start_time)[]
 
-    @show Δt
-
     simulation.callbacks[:capture] = Callback(IterationInterval(1)) do sim
         push!(forcing_history, u_forcing[1, 1, 1, Time(sim.model.clock.time)])
         push!(time_history, sim.model.clock.time)
