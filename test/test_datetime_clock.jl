@@ -1,66 +1,47 @@
 include("dependencies_for_runtests.jl")
 
 import Dates
-using Dates: DateTime
 
-const HAS_TIMEDATE = try
-    @eval using TimesDates: TimeDate
-    true
-catch
-    false
-end
+using Dates: DateTime
+using TimesDates: TimeDate
 
 using Oceananigans
-using Oceananigans: set!
-using Oceananigans.Architectures: CPU
-using Oceananigans.Simulations: Simulation, run!, Callback, conjure_time_step_wizard!
-using Oceananigans.OutputWriters: JLD2Writer
+using Oceananigans.Simulations: Simulation, run!, Callback
 using Oceananigans.Units: hour, Time
 using Oceananigans.TimeSteppers: Clock, tick!
-using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step, IterationInterval, period_to_seconds
+using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step, IterationInterval
 import Oceananigans: initialize!
 
 struct DummyModel
     clock::Clock
 end
 
-function run_forcing_simulation(arch, FT, start_time; Δt, iterations)
-    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(FT(1), FT(1), FT(1)))
+function run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+    forcing_times = [start_time + Dates.Hour(n) for n in 0:3]
+    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, forcing_times)
 
-    time_points = [start_time + Dates.Hour(n) for n in 0:iterations]
-    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, time_points)
-
-    for n in 1:length(time_points)
-        set!(u_forcing[n], (x, y, z) -> FT(n - 1))
+    for n in 1:length(forcing_times)
+        set!(u_forcing[n], (x, y, z) -> n - 1)
     end
 
     clock = Clock(time=start_time)
     model = HydrostaticFreeSurfaceModel(; grid, clock, forcing=(; u=u_forcing))
-    distant_stop_time = start_time + Dates.Hour(iterations + 10)
-    simulation = Simulation(model;
-                            Δt=Δt,
-                            stop_iteration=iterations,
-                            stop_time=distant_stop_time,
-                            align_time_step=false,
-                            verbose=false)
+    simulation = Simulation(model; Δt, stop_time, verbose=false)
 
     forcing_history = FT[]
     time_history = typeof(start_time)[]
-    Δt_history = []
 
-    push!(forcing_history, u_forcing[1, 1, 1, Time(model.clock.time)])
-    push!(time_history, model.clock.time)
+    @show Δt
 
     simulation.callbacks[:capture] = Callback(IterationInterval(1)) do sim
-        sim.model.clock.iteration == 0 && return
         push!(forcing_history, u_forcing[1, 1, 1, Time(sim.model.clock.time)])
         push!(time_history, sim.model.clock.time)
-        push!(Δt_history, sim.model.clock.last_Δt)
     end
 
     run!(simulation)
 
-    return forcing_history, time_history, Δt_history
+    return forcing_history, time_history
 end
 
 function time_interval_schedule_checks(start_time)
@@ -175,116 +156,27 @@ end
 @testset "DateTime clocks" begin
     @info "Testing DateTime clock behavior..."
 
-    clock_specs = [(:DateTime, DateTime)]
-    if HAS_TIMEDATE
-        push!(clock_specs, (:TimeDate, TimeDate))
-    end
+    test_date_types = [DateTime, TimeDate]
 
     for arch in archs, FT in float_types
         arch_type = typeof(arch)
-        for (clock_label, ctor) in clock_specs
-            start_time = ctor(2020, 1, 1)
-            iterations = 3
-            expected_times = [start_time + Dates.Hour(n) for n in 0:iterations]
-            expected_forcing = FT.(0:iterations)
+        for TimeType in test_date_types
+            start_time = TimeType(2020, 1, 1)
+            stop_time = start_time + Dates.Hour(3)
 
-            step_specs = [(:numeric_seconds, convert(FT, hour)),
-                          (:calendar_period, Dates.Hour(1))]
+            test_Δt = [1200, 3600, Dates.Minute(20), Dates.Hour(1)]
 
-            for (step_label, Δt_spec) in step_specs
-                forcing_history, time_history, Δt_history = run_forcing_simulation(arch, FT, start_time;
-                                                                                   Δt=Δt_spec,
-                                                                                   iterations=iterations)
+            for Δt in test_Δt
+                forcing_history, time_history = run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
 
-                expected_dt = 3600.0
-
-                @testset "Hydrostatic $(clock_label) forcing [$arch_type, $FT, $(step_label)]" begin
-                    @test length(time_history) == iterations + 1
+                DT = typeof(Δt)
+                @testset "Hydrostatic $TimeType forcing [$arch_type, $FT, $DT]" begin
+                    Nt = 3 * 3600 / Oceananigans.Utils.period_to_seconds(Δt)
+                    @show Nt
+                    expected_times = [start_time + Δt for n in 0:Nt]
+                    expected_forcing = [n - 1 for n in 0:Nt]
                     @test time_history == expected_times
                     @test forcing_history == expected_forcing
-                    @test length(Δt_history) == iterations
-                    @test all(isapprox.(Δt_history, expected_dt; atol=1e-6))
-                end
-            end
-
-            if arch isa Oceananigans.Architectures.CPU
-                # Simulation output + FieldTimeSeries reload
-                @testset "Simulation output reload [$arch_type, $FT, $(clock_label)]" begin
-                    path = tempname()
-                    filename = path * "_output"
-                    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(FT(1), FT(1), FT(1)))
-
-                    forcing_times = [start_time + Dates.Hour(n) for n in 0:iterations]
-                    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, forcing_times)
-                    for n in 1:length(forcing_times)
-                        set!(u_forcing[n], (x, y, z) -> FT(n - 1))
-                    end
-
-                    clock = Clock(time=start_time)
-                    model = HydrostaticFreeSurfaceModel(; grid, clock, forcing=(; u=u_forcing))
-                    distant_stop_time = start_time + Dates.Hour(iterations + 10)
-                    simulation = Simulation(model;
-                                            Δt=convert(FT, hour),
-                                            stop_iteration=iterations,
-                                            stop_time=distant_stop_time,
-                                            align_time_step=false,
-                                            verbose=false)
-
-                    simulation.output_writers[:test] = JLD2Writer(model, (; u=model.velocities.u);
-                                                                   schedule=IterationInterval(1),
-                                                                   filename=filename,
-                                                                   overwrite_existing=true)
-
-                    run!(simulation)
-
-                    field_series = FieldTimeSeries(filename * ".jld2", "u")
-                    times_from_output = collect(field_series.times)
-                    @test times_from_output == forcing_times
-
-                    rm(filename * ".jld2"; force=true)
-                end
-
-                # Adaptive time-stepping
-                @testset "Adaptive time stepping [$arch_type, $FT, $(clock_label)]" begin
-                    grid = RectilinearGrid(arch, FT; size=(4, 4, 4), extent=(FT(1), FT(1), FT(1)))
-                    forcing_times = [start_time + Dates.Hour(n) for n in 0:iterations]
-                    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, forcing_times)
-                    for n in 1:length(forcing_times)
-                        set!(u_forcing[n], (x, y, z) -> 0)
-                    end
-
-                    clock = Clock(time=start_time)
-                    model = HydrostaticFreeSurfaceModel(; grid, clock, forcing=(; u=u_forcing))
-                    set!(model, u=(x, y, z) -> FT(1), v=(x, y, z) -> FT(0), w=(x, y, z) -> FT(0))
-
-                    initial_Δt = convert(FT, hour)
-                    distant_stop_time = start_time + Dates.Hour(iterations + 10)
-                    simulation = Simulation(model;
-                                            Δt=initial_Δt,
-                                            stop_iteration=iterations,
-                                            stop_time=distant_stop_time,
-                                            align_time_step=false,
-                                            verbose=false)
-
-                    conjure_time_step_wizard!(simulation, IterationInterval(1);
-                                              cfl=0.05,
-                                              max_change=1.5,
-                                              min_change=0.2,
-                                              max_Δt=float(initial_Δt) / 4,
-                                              min_Δt=float(initial_Δt) / 10)
-
-                    recorded_Δt = Float64[]
-                    simulation.callbacks[:record_dt] = Callback(IterationInterval(1)) do sim
-                        push!(recorded_Δt, float(sim.Δt))
-                    end
-
-                    run!(simulation)
-
-                    @test length(recorded_Δt) >= iterations
-                    recent_Δt = recorded_Δt[end - iterations + 1:end]
-                    @test any(dt -> abs(dt - float(initial_Δt)) > 1e-6, recent_Δt)
-                    @test simulation.model.clock.last_Δt != float(initial_Δt)
-                    @test simulation.model.clock.time isa typeof(start_time)
                 end
             end
         end

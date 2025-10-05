@@ -35,23 +35,27 @@ mutable struct TimeInterval{IT, TT} <: AbstractSchedule
     actuations :: Int
 end
 
+function period_type(interval::Number)
+    FT = Oceananigans.defaults.FloatType
+    return FT
+end
+
+period_type(interval::Dates.Period) = typeof(interval)
+time_type(interval::Number) = typeof(interval)
+time_type(interval::Dates.Period) = Dates.DateTime
+
 """
     TimeInterval(interval)
 
 Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
 """
-function TimeInterval(interval::Number)
-    FT = Oceananigans.defaults.FloatType
-    return TimeInterval{FT, Any}(convert(FT, interval), UninitializedTime(), 0)
-end
-
-function TimeInterval(interval::Dates.Period)
-    return TimeInterval{typeof(interval), Any}(interval, UninitializedTime(), 0)
-end
-
 function TimeInterval(interval)
-    return TimeInterval(convert(Oceananigans.defaults.FloatType, interval))
+    IT = period_type(interval)
+    interval = convert(IT, interval)
+    TT = time_type(interval)
+    first_actuation_time = zero(TT)
+    return TimeInterval{IT, TT}(interval, first_actuation_time, 0)
 end
 
 function initialize!(schedule::TimeInterval, first_actuation_time::Number)
@@ -102,7 +106,7 @@ end
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
     t = clock.time
-    δt = time_gap_seconds(t★, t)
+    δt = time_difference_seconds(t★, t)
     return min(Δt, δt)
 end
 
@@ -238,7 +242,7 @@ initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
     t★ = next_actuation_time(schedule)
-    δt = t★ === Inf ? Δt : time_gap_seconds(t★, clock.time)
+    δt = t★ === Inf ? Δt : time_difference_seconds(t★, clock.time)
     return min(Δt, δt)
 end
 

@@ -11,7 +11,7 @@ using Adapt
 
 import Oceananigans.Fields: interpolate
 
-using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_gap_seconds
+using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
 
 @inline lerp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
 
@@ -102,8 +102,8 @@ end
         t₂ = times[n₂]
     end
 
-    Δtₜ₁ = time_gap_seconds(t, t₁)
-    Δt₁₂ = time_gap_seconds(t₂, t₁)
+    Δtₜ₁ = time_difference_seconds(t, t₁)
+    Δt₁₂ = time_difference_seconds(t₂, t₁)
     ñ = iszero(Δt₁₂) ? 0.0 : Δtₜ₁ / Δt₁₂
     ñ = ifelse(n₂ == n₁, 0.0, ñ)
 
@@ -121,8 +121,8 @@ end
         t₂ = times[n₂]
     end
 
-    Δtₜ₁ = time_gap_seconds(t, t₁)
-    Δt₁₂ = time_gap_seconds(t₂, t₁)
+    Δtₜ₁ = time_difference_seconds(t, t₁)
+    Δt₁₂ = time_difference_seconds(t₂, t₁)
     ñ = Δtₜ₁ / Δt₁₂
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
