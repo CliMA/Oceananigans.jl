@@ -141,7 +141,7 @@ function numeric_specified_times_schedule_checks(FT)
 
     tick!(clock, 1)
     aligned = schedule_aligned_time_step(schedule, clock, 2)
-    @test aligned == 1)
+    @test aligned == 1
 
     tick!(clock, aligned)
     @test schedule(model)
