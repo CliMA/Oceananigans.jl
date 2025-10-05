@@ -13,9 +13,9 @@ import Oceananigans.Fields: interpolate
 
 using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
 
-@inline lerp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
+@inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
 
-@inline function lerp_time(t₁::AbstractTime, t₂::AbstractTime, θ)
+@inline function interp_time(t₁::AbstractTime, t₂::AbstractTime, θ)
     Δ = period_to_seconds(t₂ - t₁)
     offset = seconds_to_nanosecond(θ * Δ)
     return t₁ + offset
@@ -213,7 +213,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
 
     t₂ = @allowscalar fts.times[n₂]
     t₁ = @allowscalar fts.times[n₁]
-    t = lerp_time(t₁, t₂, ñ)
+    t = interp_time(t₁, t₂, ñ)
     status = FixedTime(t)
 
     ψ₂ = fts[n₂]
