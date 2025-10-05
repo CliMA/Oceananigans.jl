@@ -242,7 +242,7 @@ initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
     t★ = next_actuation_time(schedule)
-    δt = t★ === Inf ? Δt : time_difference_seconds(t★, clock.time)
+    δt = t★ == Inf ? Δt : time_difference_seconds(t★, clock.time)
     return min(Δt, δt)
 end
 
