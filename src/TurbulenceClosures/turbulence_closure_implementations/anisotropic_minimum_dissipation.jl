@@ -82,7 +82,7 @@ Examples
 julia> using Oceananigans
 
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
-AnisotropicMinimumDissipation{Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization} turbulence closure with:
+AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
                         Buoyancy modification multiplier Cb: nothing
