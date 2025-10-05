@@ -21,7 +21,7 @@ using Oceananigans.Fields: interior_view_indices, index_binary_search,
                            indices_summary, boundary_conditions, instantiate
 
 using Oceananigans.Units: Time
-using Oceananigans.Utils: launch!, maybe_time_range
+using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc, FieldBoundaryConditions
