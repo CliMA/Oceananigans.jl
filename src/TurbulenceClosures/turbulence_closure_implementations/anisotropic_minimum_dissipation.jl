@@ -96,7 +96,7 @@ julia> const Δz = 0.5; # grid resolution at surface
 julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz));
 
 julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
-AnisotropicMinimumDissipation{Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization} turbulence closure with:
+AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.3333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
                         Buoyancy modification multiplier Cb: nothing
@@ -106,7 +106,7 @@ AnisotropicMinimumDissipation{Oceananigans.TurbulenceClosures.ExplicitTimeDiscre
 julia> using Oceananigans
 
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
-AnisotropicMinimumDissipation{Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization} turbulence closure with:
+AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.3333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
                         Buoyancy modification multiplier Cb: nothing
