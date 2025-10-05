@@ -102,9 +102,9 @@ end
         t₂ = times[n₂]
     end
 
-    Δtₜ₁ = time_difference_seconds(t, t₁)
-    Δt₁₂ = time_difference_seconds(t₂, t₁)
-    ñ = Δtₜ₁ / Δt₁₂
+    δt_t1 = time_difference_seconds(t, t₁)
+    δt_12 = time_difference_seconds(t₂, t₁)
+    ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
@@ -121,9 +121,9 @@ end
         t₂ = times[n₂]
     end
 
-    Δtₜ₁ = time_difference_seconds(t, t₁)
-    Δt₁₂ = time_difference_seconds(t₂, t₁)
-    ñ = Δtₜ₁ / Δt₁₂
+    δt_t1 = time_difference_seconds(t, t₁)
+    δt_12 = time_difference_seconds(t₂, t₁)
+    ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
