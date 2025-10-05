@@ -176,7 +176,7 @@ end
                     Δt_period = Dates.Second(Δt)
                     expected_times = [start_time + n * Δt_period for n in 0:Nt]
 
-                    dF = 3 / Nt
+                    dF = 3 / Nt # determined by run_forcing_simulation
                     expected_forcing = [0 + dF * n for n in 0:Nt]
 
                     @test time_history == expected_times
