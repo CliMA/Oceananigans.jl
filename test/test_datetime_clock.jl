@@ -51,7 +51,8 @@ function time_interval_schedule_checks(start_time)
     @test !schedule(model)
 
     # Alignment trims the step to the next hourly mark
-    @test schedule_aligned_time_step(schedule, clock, 2hour) == hour
+    Δt = hour + 1
+    @test schedule_aligned_time_step(schedule, clock, Δt) == hour
 
     tick!(clock, hour)
     @test schedule(model)
@@ -105,16 +106,16 @@ function numeric_time_interval_schedule_checks(FT)
     initialize!(schedule, model)
     @test !schedule(model)
 
-    Δt = FT(3)
-    @test schedule_aligned_time_step(schedule, clock, Δt) == FT(2)
+    Δt = 3
+    @test schedule_aligned_time_step(schedule, clock, Δt) == 2
 
-    tick!(clock, FT(2))
+    tick!(clock, 2)
     @test schedule(model)
     @test !schedule(model)
 
-    tick!(clock, FT(1))
-    aligned = schedule_aligned_time_step(schedule, clock, FT(5))
-    @test aligned == FT(1)
+    tick!(clock, 1)
+    aligned = schedule_aligned_time_step(schedule, clock, 5)
+    @test aligned == 1
 
     tick!(clock, aligned)
     @test schedule(model)
@@ -131,22 +132,22 @@ function numeric_specified_times_schedule_checks(FT)
     initialize!(schedule, model)
     @test !schedule(model)
 
-    Δt = FT(5)
-    @test schedule_aligned_time_step(schedule, clock, Δt) == FT(1)
+    Δt = 5
+    @test schedule_aligned_time_step(schedule, clock, Δt) == 1
 
-    tick!(clock, FT(1))
+    tick!(clock, 1)
     @test schedule(model)
     @test !schedule(model)
 
-    tick!(clock, FT(1))
-    aligned = schedule_aligned_time_step(schedule, clock, FT(2))
-    @test aligned == FT(1)
+    tick!(clock, 1)
+    aligned = schedule_aligned_time_step(schedule, clock, 2)
+    @test aligned == 1)
 
     tick!(clock, aligned)
     @test schedule(model)
     @test !schedule(model)
 
-    @test schedule_aligned_time_step(schedule, clock, FT(1)) == FT(1)
+    @test schedule_aligned_time_step(schedule, clock, 1) == 1
 
     return true
 end
@@ -170,7 +171,6 @@ end
                 DT = typeof(Δt)
                 @testset "Hydrostatic $TimeType forcing [$arch_type, $FT, $DT]" begin
                     Nt = 3 * 3600 / Oceananigans.Utils.period_to_seconds(Δt)
-                    @show Nt
                     expected_times = [start_time + Δt for n in 0:Nt]
                     expected_forcing = [n - 1 for n in 0:Nt]
                     @test time_history == expected_times
