@@ -32,7 +32,7 @@ end
     return g₁ + g₂
 end
 
-@inline function _fill_west_halo!(j, k, grid, c, bc::Union{VBC, GBC, CBC}, loc, args...)
+@inline function _fill_west_halo!(j, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
            #  ↑ x ↑  interior
            #  -----  interior face
@@ -46,7 +46,7 @@ end
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, -Δ) # extrapolate westward in -x direction.
 end
 
-@inline function _fill_east_halo!(j, k, grid, c, bc::Union{VBC, GBC, CBC}, loc, args...)
+@inline function _fill_east_halo!(j, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
                      #  ↑ x ↑
     iᴴ = grid.Nx + 1 #    *   halo cell
@@ -61,7 +61,7 @@ end
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, Δ) # extrapolate eastward in +x direction.
 end
 
-@inline function _fill_south_halo!(i, k, grid, c, bc::Union{VBC, GBC, CBC}, loc, args...)
+@inline function _fill_south_halo!(i, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
            #  ↑ y ↑  interior
            #  -----  interior face
@@ -75,7 +75,7 @@ end
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, -Δ) # extrapolate southward in -y direction.
 end
 
-@inline function _fill_north_halo!(i, k, grid, c, bc::Union{VBC, GBC, CBC}, loc, args...)
+@inline function _fill_north_halo!(i, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
                      #  ↑ y ↑
     jᴴ = grid.Ny + 1 #    *   halo cell
@@ -90,7 +90,7 @@ end
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, Δ) # extrapolate northward in +y direction.
 end
 
-@inline function _fill_bottom_halo!(i, j, grid, c, bc::Union{VBC, GBC, CBC}, loc, args...)
+@inline function _fill_bottom_halo!(i, j, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
            #  ↑ z ↑  interior
            #  -----  interior face
@@ -104,7 +104,7 @@ end
     @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, -Δ) # extrapolate downward in -z direction.
 end
 
-@inline function _fill_top_halo!(i, j, grid, c, bc::Union{VBC, GBC, CBC}, loc, args...)
+@inline function _fill_top_halo!(i, j, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
                      #  ↑ z ↑
     kᴴ = grid.Nz + 1 #    *    halo cell
