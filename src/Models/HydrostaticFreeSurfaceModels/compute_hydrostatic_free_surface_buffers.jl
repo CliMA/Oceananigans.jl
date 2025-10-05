@@ -48,7 +48,7 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorI
 
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
-        !isnothing(map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+        !isnothing(active_cells_map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
     end
 
     return nothing
