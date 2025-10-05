@@ -58,10 +58,10 @@ julia> using Oceananigans
 julia> using Oceananigans.AbstractOperations: Ax, grid_metric_operation
 
 julia> Axᶠᶜᶜ = grid_metric_operation((Face, Center, Center), Ax, RectilinearGrid(size=(2, 2, 3), extent=(1, 2, 3)))
-Axᶠᶜᶜ at (Face, Center, Center)
+KernelFunctionOperation at (Face, Center, Center)
 ├── grid: 2×2×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×2×3 halo
-└── tree:
-    Axᶠᶜᶜ at (Face, Center, Center)
+├── kernel_function: Axᶠᶜᶜ (generic function with 2 methods)
+└── arguments: ()
 ```
 
 ```jldoctest
