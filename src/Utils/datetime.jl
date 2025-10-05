@@ -29,23 +29,3 @@ end
 @inline add_time_interval(base::Number, interval::Period, count=1) = base + count * period_to_seconds(interval)
 @inline add_time_interval(base::AbstractTime, interval::Number, count=1) = base + seconds_to_nanosecond(interval * count)
 @inline add_time_interval(base::AbstractTime, interval::Period, count=1) = base + count * interval
-
-struct UninitializedTime end
-
-@inline is_uninitialized_time(x) = x isa UninitializedTime
-
-function maybe_time_range(times)
-    if times isa AbstractArray && length(times) > 1
-        first_time = first(times)
-        last_time = last(times)
-        len = length(times)
-        try
-            candidate = range(first_time, last_time; length=len)
-            if all(candidate .== times)
-                return candidate
-            end
-        catch
-        end
-    end
-    return times
-end

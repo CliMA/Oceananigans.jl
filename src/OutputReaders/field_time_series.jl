@@ -209,8 +209,23 @@ function time_indices(backend::PartlyInMemory, time_indexing, Nt)
 end
 
 time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
-
 Base.length(backend::PartlyInMemory) = backend.length
+
+function maybe_time_range(times)
+    if times isa AbstractArray && length(times) > 1
+        first_time = first(times)
+        last_time = last(times)
+        len = length(times)
+        try
+            candidate = range(first_time, last_time; length=len)
+            if all(candidate .== times)
+                return candidate
+            end
+        catch
+        end
+    end
+    return times
+end
 
 #####
 ##### FieldTimeSeries
