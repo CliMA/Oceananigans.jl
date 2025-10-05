@@ -35,15 +35,6 @@ mutable struct TimeInterval{IT, TT} <: AbstractSchedule
     actuations :: Int
 end
 
-function period_type(interval::Number)
-    FT = Oceananigans.defaults.FloatType
-    return FT
-end
-
-period_type(interval::Dates.Period) = typeof(interval)
-time_type(interval::Number) = typeof(interval)
-time_type(interval::Dates.Period) = Dates.DateTime
-
 """
     TimeInterval(interval)
 
@@ -58,13 +49,7 @@ function TimeInterval(interval)
     return TimeInterval{IT, TT}(interval, first_actuation_time, 0)
 end
 
-function initialize!(schedule::TimeInterval, first_actuation_time::Number)
-    schedule.first_actuation_time = first_actuation_time
-    schedule.actuations = 0
-    return true
-end
-
-function initialize!(schedule::TimeInterval, first_actuation_time::AbstractTime)
+function initialize!(schedule::TimeInterval, first_actuation_time)
     schedule.first_actuation_time = first_actuation_time
     schedule.actuations = 0
     return true
@@ -74,14 +59,6 @@ initialize!(schedule::TimeInterval, model) = initialize!(schedule, model.clock.t
 
 function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.first_actuation_time
-    if is_uninitialized_time(t₀)
-        if schedule.interval isa Number
-            t₀ = zero(schedule.interval)
-            schedule.first_actuation_time = t₀
-        else
-            error("TimeInterval has not been initialized.")
-        end
-    end
     N = schedule.actuations
     T = schedule.interval
     return add_time_interval(t₀, T, N + 1)

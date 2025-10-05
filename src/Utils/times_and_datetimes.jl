@@ -1,10 +1,9 @@
 import Dates
 using Dates: AbstractTime, Period, Nanosecond
 
-# Time-stepping in Oceananigans always advances prognostic variables using
-# a real-valued step measured in seconds.  When the clock stores calendar
-# values (e.g. `DateTime` or `TimeDate`), the integrator still works with
-# those seconds; the clock converts back and forth by adding/subtracting
+# For Oceananigans clocks based on calendar values (e.g. DateTime or TimeDate),
+# time-stepping in Oceananigans advances prognostic variables using a real-valued
+# step measured in seconds. The clock converts back and forth by adding/subtracting
 # `Dates.Nanosecond` offsets.  These helper functions centralise the
 # conversions so that simulations, clocks, schedules, and I/O all agree on
 # how numeric seconds and calendar periods map onto one another.
@@ -29,3 +28,12 @@ end
 @inline add_time_interval(base::Number, interval::Period, count=1) = base + count * period_to_seconds(interval)
 @inline add_time_interval(base::AbstractTime, interval::Number, count=1) = base + seconds_to_nanosecond(interval * count)
 @inline add_time_interval(base::AbstractTime, interval::Period, count=1) = base + count * interval
+
+function period_type(interval::Number)
+    FT = Oceananigans.defaults.FloatType
+    return FT
+end
+
+period_type(interval::Dates.Period) = typeof(interval)
+time_type(interval::Number) = typeof(interval)
+time_type(interval::Dates.Period) = Dates.DateTime
