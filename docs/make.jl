@@ -94,9 +94,13 @@ model_setup_pages = [
     "Background fields" => "model_setup/background_fields.md",
     "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
     "Lagrangian particles" => "model_setup/lagrangian_particles.md",
-    "Callbacks" => "model_setup/callbacks.md",
-    "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
+]
+
+simulation_pages = [
+    "Overview" => "simulation_setup/overview.md",
+    "Callbacks" => "simulation_setup/callbacks.md",
+    "Output writers" => "simulation_setup/output_writers.md",
 ]
 
 physics_pages = [
@@ -146,11 +150,11 @@ pages = [
     "Fields" => "fields.md",
     "Operations" => "operations.md",
     # TODO:
-    #   - Develop the following three tutorials on reductions, simulations, and post-processing
+    #   - Develop the following tutorials on reductions and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
     # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
-    # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
+    "Simulations" => simulation_pages,
     "Models" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
