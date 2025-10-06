@@ -25,8 +25,8 @@ architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
 # The assumption is that the horizontal spacings do not depend on the z-direction
-@inline integrated_x_area(i, j, k, grid) = column_depthᶠᶜᵃ(i, j, grid) * Δyᶠᶜᵃ(i, j, grid.Nz, grid)
-@inline integrated_y_area(i, j, k, grid) = column_depthᶜᶠᵃ(i, j, grid) * Δxᶜᶠᵃ(i, j, grid.Nz, grid)
+@inline integrated_x_area(i, j, k, grid) = column_depthᶠᶜᵃ(i, j, grid) * Δyᶠᶜᵃ(i, j, 1, grid)
+@inline integrated_y_area(i, j, k, grid) = column_depthᶜᶠᵃ(i, j, grid) * Δxᶜᶠᵃ(i, j, 1, grid)
 
 """
     PCGImplicitFreeSurfaceSolver(grid, settings)
