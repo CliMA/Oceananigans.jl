@@ -8,8 +8,6 @@ using Oceananigans.DistributedComputations
 using Printf
 using GLMakie
 
-Oceananigans.defaults.FloatType = Float32
-
 arch = Distributed(CPU()) #; synchronized_communication=true)
 z_faces = MutableVerticalDiscretization((-20, 0))
 
