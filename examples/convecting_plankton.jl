@@ -66,7 +66,7 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 # buoyancy flux for the visually-oriented,
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24, linewidth=2))
+set_theme!(Theme(fontsize = 20, linewidth=3))
 
 times = range(0, 12hours, length=100)
 

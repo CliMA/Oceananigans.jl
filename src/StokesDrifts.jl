@@ -222,8 +222,8 @@ function Base.show(io::IO, sd::StokesDrift)
 end
 
 """
-    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction, 
-                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction, 
+    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction,
+                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction,
                   ∂x_wˢ=zerofunction, ∂y_wˢ=zerofunction, ∂t_wˢ=zerofunction, parameters=nothing)
 
 Construct a set of functions of space and time for a Stokes drift velocity field
@@ -341,8 +341,8 @@ const SDnoP = StokesDrift{<:Nothing}
 @inline parameters_tuple(sw::SD) = tuple(sw.parameters)
 
 @inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
-    wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w) 
-    vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v) 
+    wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
+    vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 
     pt = parameters_tuple(sw)
     X = node(i, j, k, grid, f, c, c)

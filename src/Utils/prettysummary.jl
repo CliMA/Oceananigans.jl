@@ -1,5 +1,6 @@
 import Oceananigans.Grids: prettysummary
 
+shortsummary(x, args...) = string(typeof(x).name.wrapper)
 prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)

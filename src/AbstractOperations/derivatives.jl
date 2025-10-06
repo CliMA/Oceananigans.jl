@@ -14,7 +14,7 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, L
     and subsequent interpolation by `▶` on `grid`.
     """
     function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
-                                 grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
+                                    grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
         T = eltype(grid)
         return new{LX, LY, LZ, D, A, IN, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
     end
@@ -28,7 +28,7 @@ end
 
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
-function _derivative(L, ∂, arg, L∂, abstract_∂, grid) 
+function _derivative(L, ∂, arg, L∂, abstract_∂, grid)
     ▶ = interpolation_operator(L∂, L)
     return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
 end
@@ -132,4 +132,3 @@ on_architecture(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            on_architecture(to, deriv.▶),
                            deriv.abstract_∂,
                            on_architecture(to, deriv.grid))
-                           

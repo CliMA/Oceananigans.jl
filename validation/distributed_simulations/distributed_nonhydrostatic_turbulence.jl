@@ -10,7 +10,7 @@
 #
 # See MPI.jl documentation for more information on how to setup the MPI environment.
 # If you have a local installation of MPI, you can use it by setting
-# 
+#
 # julia> MPIPreferences.use_system_binaries()
 #
 # before running the script.

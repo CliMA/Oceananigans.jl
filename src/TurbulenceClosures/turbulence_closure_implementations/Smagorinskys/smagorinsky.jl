@@ -8,6 +8,7 @@ using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
     ThreeDimensionalFormulation,
     ExplicitTimeDiscretization,
+    closure_coefficient,
     convert_diffusivity
 
 import Oceananigans.Utils: with_tracers
@@ -41,6 +42,9 @@ end
 
 @inline viscosity(::Smagorinsky, K) = K.νₑ
 @inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
+
+Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
+    Smagorinsky{TD}(adapt(to, smag.coefficient), adapt(to, smag.Pr))
 
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
@@ -102,6 +106,7 @@ end
 end
 
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, args...) = c.coefficient^2
+@inline square_smagorinsky_coefficient(i, j, k, grid, c, args...) = closure_coefficient(i, j, k, grid, c)^2
 
 compute_coefficient_fields!(diffusivity_fields, closure, model; parameters) = nothing
 
@@ -125,7 +130,7 @@ allocate_coefficient_fields(closure, grid) = NamedTuple()
 function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
     coefficient_fields = allocate_coefficient_fields(closure, grid)
 
-    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center(), Center(), Center())))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
     viscosity_nt = (; νₑ)

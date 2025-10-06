@@ -2,7 +2,7 @@ using Oceananigans.Grids: AbstractMutableGrid
 using Oceananigans.Operators
 using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location
 
-import Oceananigans.Grids: column_depthᶜᶜᵃ, 
+import Oceananigans.Grids: column_depthᶜᶜᵃ,
                            column_depthᶜᶠᵃ,
                            column_depthᶠᶜᵃ,
                            column_depthᶠᶠᵃ

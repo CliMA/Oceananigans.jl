@@ -45,7 +45,7 @@ end
 @inline y_f_cross_U(i, j, k, grid, c::FPlane, U) =   c.f * active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, U[1])
 @inline z_f_cross_U(i, j, k, grid, c::FPlane, U) =   zero(grid)
 
-function Base.summary(fplane::FPlane{FT}) where FT 
+function Base.summary(fplane::FPlane{FT}) where FT
     fstr = prettysummary(fplane.f)
     return "FPlane{$FT}(f=$fstr)"
 end

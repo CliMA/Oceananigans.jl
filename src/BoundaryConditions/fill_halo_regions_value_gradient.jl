@@ -36,7 +36,7 @@ end
                      #    ↓   interior
 
     LX, LY, LZ = loc
-    Δ = Δx(iᴮ, j, k, grid, flip(LX), LY, LZ) # Δ between last interior and first east halo point, defined at cell face. 
+    Δ = Δx(iᴮ, j, k, grid, flip(LX), LY, LZ) # Δ between last interior and first east halo point, defined at cell face.
     @inbounds ∇c = right_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, args...)
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, Δ) # extrapolate eastward in +x direction.
 end
@@ -77,7 +77,7 @@ end
     kᴵ = 1 #    *    interior cell
     kᴮ = 1 #  =====  bottom boundary
     kᴴ = 0 #    *    halo cell
-    
+
     LX, LY, LZ = loc
     Δ = Δz(i, j, kᴮ, grid, LX, LY, flip(LZ)) # Δ between first interior and first bottom halo point, defined at cell face.
     @inbounds ∇c = left_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, args...)
@@ -88,7 +88,7 @@ end
 
                      #  ↑ z ↑
     kᴴ = grid.Nz + 1 #    *    halo cell
-    kᴮ = grid.Nz + 1 #  =====  top boundary 
+    kᴮ = grid.Nz + 1 #  =====  top boundary
     kᴵ = grid.Nz     #    *    interior cell
                      #  -----  interior face
 

@@ -55,7 +55,7 @@ simulation = Simulation(model,
                         stop_time = 100cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
-                                                         
+
 output_fields = model.tracers
 
 output_prefix = "longitudinal_tracer_diffusion_Nx$(grid.Nx)"

@@ -1,45 +1,54 @@
 module TimeSteppers
 
 using ..Architectures: ReactantState
+using ..Grids: ShardedGrid, ReactantGrid
 
 using Reactant
 using Oceananigans
 
 using Oceananigans: AbstractModel, Distributed
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, architecture
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
-    calculate_pressure_correction!,
+    compute_pressure_correction!,
     correct_velocities_and_cache_previous_tendencies!,
     step_lagrangian_particles!,
-    QuasiAdamsBashforth2TimeStepper
+    QuasiAdamsBashforth2TimeStepper,
+    compute_flux_bc_tendencies!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
-    local_ab2_step!,
     compute_free_surface_tendency!
 
-import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
+import Oceananigans.TimeSteppers: Clock, unit_time, first_time_step!, time_step!, ab2_step!
 import Oceananigans: initialize!
 
-const ReactantGrid{FT, TX, TY, TZ} = Union{
-    AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
-    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
-}
 const ReactantModel{TS} = Union{
     AbstractModel{TS, <:ReactantState},
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(grid::ReactantGrid)
-    FT = Float64 # may change in the future
+function Clock(::ReactantGrid)
+    FT = Oceananigans.defaults.FloatType
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
     stage = 0 #ConcreteRNumber(0)
-    last_Δt = zero(FT)
-    last_stage_Δt = zero(FT)
+    last_Δt = convert(FT, Inf)
+    last_stage_Δt = convert(FT, Inf)
+    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
+end
+
+function Clock(grid::ShardedGrid)
+    FT = Oceananigans.defaults.FloatType
+    arch = architecture(grid)
+    replicate = Sharding.Replicated(arch.connectivity)
+    t = ConcreteRNumber(zero(FT), sharding=replicate)
+    iter = ConcreteRNumber(0, sharding=replicate)
+    stage = 0 #ConcreteRNumber(0)
+    last_Δt = convert(FT, Inf)
+    last_stage_Δt = convert(FT, Inf)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
@@ -47,7 +56,11 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
                     callbacks=[], euler=false) where FT
 
     # Note: Δt cannot change
-    model.clock.last_Δt = Δt
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
 
     #=
     # Be paranoid and update state at iteration 0
@@ -74,13 +87,25 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     ab2_timestepper.χ = χ
 
     # Full step for tracers, fractional step for velocities.
+    compute_flux_bc_tendencies!(model)
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
-    model.clock.last_stage_Δt = Δt # just one stage
 
-    calculate_pressure_correction!(model, Δt)
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
+
+    # just one stage
+    if model.clock.last_stage_Δt isa Reactant.TracedRNumber
+        model.clock.last_stage_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_stage_Δt = Δt
+    end
+
+    compute_pressure_correction!(model, Δt)
     correct_velocities_and_cache_previous_tendencies!(model, Δt)
 
     update_state!(model, callbacks; compute_tendencies=true)
@@ -89,6 +114,22 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
 
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt, euler=true)
     return nothing
 end
 

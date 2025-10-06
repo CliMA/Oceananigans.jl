@@ -65,7 +65,7 @@ for closure in (k_epsilon, catke) #, k_epsilon_const_stability)
 
     progress(sim) = @info @sprintf("Iter: % 4d, time: % 24s, max(e): %6.2e, max(ϵ): %6.2e",
                                    iteration(sim), prettytime(sim), maximum(e), maximum(ϵ))
-    
+
     add_callback!(simulation, progress, IterationInterval(100))
 
     run!(simulation)

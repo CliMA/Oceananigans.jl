@@ -12,7 +12,7 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 # The grid metric functions "specialized" for the underlying grids in the
 # Operators module are extended for immersed boundary grids here.
 #
-# The other grid metric functions (for example 3D metrics) are general and do not need 
+# The other grid metric functions (for example 3D metrics) are general and do not need
 # extension for "full-cell" immersed boundaries.
 #
 # However, for non "full-cell" immersed boundaries, grid metric functions

@@ -6,7 +6,7 @@ using Oceananigans.Fields: validate_field_tuple_grid
 
 function build_diffusivity_fields(diffusivity_fields::NamedTuple, grid, clock, tracer_names, bcs, closure)
     validate_field_tuple_grid("diffusivity_fields", diffusivity_fields, grid)
-    
+
     return diffusivity_fields
 end
 

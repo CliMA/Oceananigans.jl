@@ -96,7 +96,7 @@ function progress(sim)
     e = sim.model.tracers.e
 
 
-    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹", 
+    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹",
                    iteration(sim), prettytime(sim),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w))
 
@@ -104,7 +104,7 @@ function progress(sim)
     msg *= @sprintf(", max(κᶜ): %6.2e m² s⁻¹", maximum(κᶜ))
 
     @info msg
-    
+
     return nothing
 end
 

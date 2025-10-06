@@ -1,6 +1,6 @@
 module NonhydrostaticModels
 
-export NonhydrostaticModel
+export NonhydrostaticModel, BackgroundField, BackgroundFields
 
 using DocStringExtensions
 
@@ -15,7 +15,7 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
 using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
@@ -36,6 +36,9 @@ nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver
 nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver) =
     FourierTridiagonalPoissonSolver(grid)
 
+# fallback
+nonhydrostatic_pressure_solver(arch, grid) = ConjugateGradientPoissonSolver(grid)
+
 const IBGWithFFTSolver = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
 
 function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver)
@@ -54,17 +57,14 @@ function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver)
     return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid)
 end
 
-# fallback
-nonhydrostatic_pressure_solver(arch, grid) =
-    error("None of the implemented pressure solvers for NonhydrostaticModel \
-          are supported on $(summary(grid)).")
-
 nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architecture(grid), grid)
 
 #####
 ##### NonhydrostaticModel definition
 #####
 
+include("background_fields.jl")
+include("boundary_mass_fluxes.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")

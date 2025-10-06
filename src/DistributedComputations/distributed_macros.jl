@@ -9,7 +9,7 @@ using MPI
 mpi_initialized()     = MPI.Initialized()
 mpi_rank(comm)        = MPI.Comm_rank(comm)
 mpi_size(comm)        = MPI.Comm_size(comm)
-global_barrier(comm)  = MPI.Barrier(comm) 
+global_barrier(comm)  = MPI.Barrier(comm)
 global_communicator() = MPI.COMM_WORLD
 
 """
@@ -73,7 +73,7 @@ macro onrank(rank, exp)
     return esc(command)
 end
 
-""" 
+"""
     @distribute communicator for i in iterable
         ...
     end
@@ -90,7 +90,7 @@ macro distribute(communicator, exp)
     variable = exp.args[1].args[1]
     forbody  = exp.args[2]
 
-    # Safety net if the iterable variable has the same name as the 
+    # Safety net if the iterable variable has the same name as the
     # reserved variable names (nprocs, counter, rank)
     nprocs  = ifelse(variable == :nprocs,  :othernprocs,  :nprocs)
     counter = ifelse(variable == :counter, :othercounter, :counter)
@@ -125,24 +125,23 @@ end
 """
     @handshake communicator exp...
 
-perform `exp` on all ranks in `communicator`, but only one rank at a time, where
+Perform `exp` on all ranks in `communicator`, but only one rank at a time, that is
 ranks `r2 > r1` wait for rank `r1` to finish before executing `exp`.
 If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
 macro handshake(communicator, exp)
     command = quote
-        mpi_initialized = Oceananigans.DistributedComputations.mpi_initialized()
-        if !mpi_initialized
-            $exp
-        else
+        if Oceananigans.DistributedComputations.mpi_initialized()
             rank   = Oceananigans.DistributedComputations.mpi_rank($communicator)
             nprocs = Oceananigans.DistributedComputations.mpi_size($communicator)
-            for r in 0 : nprocs -1
+            for r in 0 : nprocs-1
                 if rank == r
                     $exp
                 end
                 Oceananigans.DistributedComputations.global_barrier($communicator)
             end
+        else
+            $exp
         end
     end
     return esc(command)

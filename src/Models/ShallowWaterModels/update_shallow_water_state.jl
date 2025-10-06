@@ -25,7 +25,7 @@ function update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencie
 
     # Update possible FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
-    
+
     compute_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     fill_halo_regions!(merge(model.solution, model.tracers), model.clock, fields(model))

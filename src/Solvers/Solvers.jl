@@ -5,11 +5,12 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
-    HeptadiagonalIterativeSolver
+    HeptadiagonalIterativeSolver,
+    KrylovSolver
 
 using Statistics
 using FFTW
-using CUDA
+using GPUArraysCore
 using SparseArrays
 using KernelAbstractions
 
@@ -43,10 +44,7 @@ include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("conjugate_gradient_poisson_solver.jl")
-include("sparse_approximate_inverse.jl")
-include("matrix_solver_utils.jl")
-include("sparse_preconditioners.jl")
-include("heptadiagonal_iterative_solver.jl")
+include("krylov_solver.jl")
 
 const GridWithFFTSolver = Union{XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG}
 const GridWithFourierTridiagonalSolver = Union{XYRegularRG, XZRegularRG, YZRegularRG}

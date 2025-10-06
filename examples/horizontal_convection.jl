@@ -45,10 +45,10 @@ grid = RectilinearGrid(size = (Nx, Nz),
 # ```math
 # b(x, z = 0, t) = - b_* \cos (2 \pi x / L_x) \, ,
 # ```
-# while zero-flux boundary conditions are imposed on all other boundaries. We use free-slip 
+# while zero-flux boundary conditions are imposed on all other boundaries. We use free-slip
 # boundary conditions on ``u`` and ``w`` everywhere.
 
-b★ = 1  
+b★ = 1
 @inline bˢ(x, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
 b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, Lx)))
@@ -68,7 +68,7 @@ b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; 
 #
 # For a domain with a given extent, the nondimensional values of ``Ra`` and ``Pr`` uniquely
 # determine the viscosity and diffusivity, i.e.,
-# 
+#
 # ```math
 # \nu = \sqrt{\frac{Pr b_* L_x^3}{Ra}} \quad \text{and} \quad \kappa = \sqrt{\frac{b_* L_x^3}{Pr Ra}} \, .
 # ```
@@ -105,7 +105,7 @@ simulation = Simulation(model, Δt=1e-2, stop_time=40.0)
 
 # ### The `TimeStepWizard`
 #
-# The `TimeStepWizard` manages the time-step adaptively, keeping the Courant-Freidrichs-Lewy 
+# The `TimeStepWizard` manages the time-step adaptively, keeping the Courant-Freidrichs-Lewy
 # (CFL) number close to `0.7`.
 
 conjure_time_step_wizard!(simulation, IterationInterval(50), cfl=0.7, max_Δt=1e-1)
@@ -160,7 +160,7 @@ run!(simulation)
 # ## Load saved output, process, visualize
 #
 # We animate the results by loading the saved output, extracting data for the iterations we ended
-# up saving at, and plotting the saved fields. From the saved buoyancy field we compute the 
+# up saving at, and plotting the saved fields. From the saved buoyancy field we compute the
 # buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla} b|^2``, and plot that also.
 #
 # To start we load the saved fields are `FieldTimeSeries` and prepare for animating the flow by
@@ -252,7 +252,7 @@ nothing #hide
 
 
 # At higher Rayleigh numbers the flow becomes much more vigorous. See, for example, an animation
-# of the voricity of the fluid at ``Ra = 10^{12}`` on [vimeo](https://vimeo.com/573730711). 
+# of the voricity of the fluid at ``Ra = 10^{12}`` on [vimeo](https://vimeo.com/573730711).
 
 # ### The Nusselt number
 #
@@ -306,17 +306,14 @@ nothing #hide
 
 for n = 1:length(t)
     ke = Field(Integral(1/2 * s_timeseries[n]^2 / (Lx * H)))
-    compute!(ke)
     kinetic_energy[n] = ke[1, 1, 1]
-    
-    χ = Field(Integral(χ_timeseries[n] / (Lx * H)))
-    compute!(χ)
 
+    χ = Field(Integral(χ_timeseries[n] / (Lx * H)))
     Nu[n] = χ[1, 1, 1] / χ_diff
 end
 
 fig = Figure(size = (850, 450))
- 
+
 ax_KE = Axis(fig[1, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"KE $ / (L_x b_*)$")
 lines!(ax_KE, t, kinetic_energy; linewidth = 3)
 

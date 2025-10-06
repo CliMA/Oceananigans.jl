@@ -7,7 +7,7 @@ end
     BetaPlane([FT=Float64;] f₀=nothing, β=nothing,
               rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-Return a ``β``-plane Coriolis parameter, ``f = f₀ + β y`` with floating-point type `FT`. 
+Return a ``β``-plane Coriolis parameter, ``f = f₀ + β y`` with floating-point type `FT`.
 
 The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`, `latitude`
 (in degrees), and `radius` that specify the rotation rate and radius of a planet, and
@@ -56,7 +56,7 @@ end
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) = zero(grid)
 
-function Base.summary(βplane::BetaPlane{FT}) where FT 
+function Base.summary(βplane::BetaPlane{FT}) where FT
     fstr = prettysummary(βplane.f₀)
     βstr = prettysummary(βplane.β)
     return "BetaPlane{$FT}(f₀=$fstr, β=$βstr)"

@@ -31,7 +31,7 @@ Base.summary(scheme::FluxFormAdvection) = string("FluxFormAdvection(x=",
                                                  summary(scheme.y), ", z=",
                                                  summary(scheme.z), ")")
 
-Base.show(io::IO, scheme::FluxFormAdvection) = 
+Base.show(io::IO, scheme::FluxFormAdvection) =
     print(io, "FluxFormAdvection with direction-based reconstructions:", " \n",
           "    ├── x: ", summary(scheme.x), "\n",
           "    ├── y: ", summary(scheme.y), "\n",
@@ -41,7 +41,7 @@ Base.show(io::IO, scheme::FluxFormAdvection) =
 @inline required_halo_size_y(scheme::FluxFormAdvection) = required_halo_size_y(scheme.y)
 @inline required_halo_size_z(scheme::FluxFormAdvection) = required_halo_size_z(scheme.z)
 
-Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} = 
+Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} =
     FluxFormAdvection{N, FT}(Adapt.adapt(to, scheme.x),
                              Adapt.adapt(to, scheme.y),
                              Adapt.adapt(to, scheme.z))

@@ -1,27 +1,44 @@
 using MPI
 using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition
+using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: local_size,
-                                            barrier!,
-                                            all_reduce,
-                                            ranks,
-                                            inject_halo_communication_boundary_conditions,
-                                            concatenate_local_sizes
+using Oceananigans.DistributedComputations:
+    local_size,
+    barrier!,
+    all_reduce,
+    ranks,
+    inject_halo_communication_boundary_conditions,
+    concatenate_local_sizes,
+    communication_buffers
 
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
 import Oceananigans.DistributedComputations: reconstruct_global_grid
+import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 
+const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
 
-const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
-const DistributedTripolarGridOfSomeKind = Union{DistributedTripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}}
+const DistributedTripolarGridOfSomeKind = Union{
+    DistributedTripolarGrid,
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
+}
 
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)
 
-Construct a tripolar grid on a distributed architecture.
-A distributed tripolar grid is supported only on a Y-partitioning configuration,
-therefore, only splitting the j-direction is supported for the moment.
+Construct a tripolar grid on a distributed `arch`itecture.
+
+!!! compat "Supported partitionings"
+
+    Allowed partitionings include:
+    - Only partition in `y`, e.g., `Distributed(CPU(), partition=Partition(1, 4))`.
+    - Partition both in `x` and `y` with `x` partition even. For example:
+      - `Distributed(CPU(), partition=Partition(2, 4))` is supported
+      - `Distributed(CPU(), partition=Partition(3, 4))` is _not_ supported
+
+    Note that partitioning only in `x`, e.g., `Distributed(CPU(), partition=Partition(4))`
+    or `Distributed(CPU(), partition=Partition(4, 1))` is _not_ supported.
 """
 function TripolarGrid(arch::Distributed, FT::DataType=Float64;
                       halo=(4, 4, 4),
@@ -34,16 +51,16 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     # Check that partitioning in x is correct:
     try
         if isodd(px) && (px != 1)
-            throw(ArgumentError("Only even partitioning in x is supported with the TripolarGrid"))
+            throw(ArgumentError("Only even partitioning in x is supported with TripolarGrid."))
         end
-    catch 
-        throw(ArgumentError("The x partition $(px) is not supported. The partition in x must be an even number. "))
+    catch
+        throw(ArgumentError("The x partition $(px) is not supported. The partition in x must be an even number."))
     end
 
     # a slab decomposition in x is not supported
     if px != 1 && py == 1
-        throw(ArgumentError("A x-only partitioning is not supported with the TripolarGrid. \n 
-                            Please, use a y partitioning configuration or a x-y pencil partitioning."))
+        throw(ArgumentError("An x-only partitioning is not supported for TripolarGrid. \n
+                             Please, use a y partitioning configuration or an x-y pencil partitioning."))
     end
 
     Hx, Hy, Hz = halo
@@ -60,7 +77,7 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     nylocal = concatenate_local_sizes(lsize, arch, 2)
     xrank   = ifelse(isnothing(arch.partition.x), 0, arch.local_index[1] - 1)
     yrank   = ifelse(isnothing(arch.partition.y), 0, arch.local_index[2] - 1)
-    
+
     # The j-range
     jstart = 1 + sum(nylocal[1:yrank])
     jend = yrank == workers[2] - 1 ? Ny : sum(nylocal[1:yrank+1])
@@ -103,11 +120,11 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     z = on_architecture(arch, global_grid.z)
     radius = global_grid.radius
 
-    # Fix corners halos passing in case workers[1] != 1 
-    if  workers[1] != 1 
+    # Fix corners halos passing in case workers[1] != 1
+    if  workers[1] != 1
         northwest_idx_x = ranks(arch)[1] - arch.local_index[1] + 2
-        northeast_idx_x = ranks(arch)[1] - arch.local_index[1] 
-        
+        northeast_idx_x = ranks(arch)[1] - arch.local_index[1]
+
         if northwest_idx_x > workers[1]
             northwest_idx_x = arch.local_index[1]
         end
@@ -165,7 +182,7 @@ function partition_tripolar_metric(global_grid, metric_name, irange, jrange)
     metric = getproperty(global_grid, metric_name)
     offsets = metric.offsets
     partitioned_metric = metric[irange, jrange]
-     
+
     if partitioned_metric isa OffsetArray
         partitioned_metric = partitioned_metric.parent
     end
@@ -198,7 +215,7 @@ function receiving_rank(arch; receive_idx_x = ranks(arch)[1] - arch.local_index[
         my_x_idx = 0
         my_y_idx = 0
 
-        if arch.local_rank == rank 
+        if arch.local_rank == rank
             my_x_idx = arch.local_index[1]
             my_y_idx = arch.local_index[2]
         end
@@ -231,7 +248,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     west  = regularize_boundary_condition(bcs.west,  grid, loc, 1, LeftBoundary,  prognostic_names)
     east  = regularize_boundary_condition(bcs.east,  grid, loc, 1, RightBoundary, prognostic_names)
     south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
-    
+
     north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
         ZipperBoundaryCondition(sign)
 
@@ -257,15 +274,16 @@ end
 
 # Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
 # with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
-function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status)
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     arch = architecture(grid)
     yrank = arch.local_index[2] - 1
 
     processor_size = ranks(arch)
 
-    indices = validate_indices(indices, (LX, LY, LZ), grid)
-    validate_field_data((LX, LY, LZ), data, grid, indices)
-    validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
+    indices = validate_indices(indices, loc, grid)
+    validate_field_data(loc, data, grid, indices)
+    validate_boundary_conditions(loc, grid, old_bcs)
+
     default_zipper = ZipperBoundaryCondition(sign(LX, LY))
 
     if isnothing(old_bcs) || ismissing(old_bcs)
@@ -275,7 +293,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, dat
 
         # North boundary conditions are "special". If we are at the top of the domain, i.e.
         # the last rank, then we need to substitute the BC only if the old one is not already
-        # a zipper boundary condition. Otherwise we always substitute because we need to 
+        # a zipper boundary condition. Otherwise we always substitute because we need to
         # inject the halo boundary conditions.
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
             north_bc = if !(old_bcs.north isa ZBC)
@@ -303,7 +321,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, dat
                                             bottom=new_bcs.bottom)
     end
 
-    buffers = FieldBoundaryBuffers(grid, data, new_bcs)
+    buffers = communication_buffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
@@ -336,7 +354,7 @@ function reconstruct_global_grid(grid::DistributedTripolarGrid)
                         z)
 end
 
-function with_halo(new_halo, old_grid::DistributedTripolarGrid) 
+function with_halo(new_halo, old_grid::DistributedTripolarGrid)
 
     arch = old_grid.architecture
 
@@ -349,8 +367,8 @@ function with_halo(new_halo, old_grid::DistributedTripolarGrid)
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
 
     return TripolarGrid(arch, eltype(old_grid);
-                        halo = new_halo, 
-                        size = N, 
+                        halo = new_halo,
+                        size = N,
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,

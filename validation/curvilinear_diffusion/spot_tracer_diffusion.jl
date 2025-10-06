@@ -59,7 +59,7 @@ simulation = Simulation(model,
                         stop_time = 1000cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
-                                                         
+
 output_fields = model.tracers
 
 output_prefix = "spot_tracer_diffusion_Nx$(grid.Nx)_Ny$(grid.Ny)"

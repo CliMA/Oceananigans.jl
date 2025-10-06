@@ -13,13 +13,13 @@ def plot_tracer_advection_2d_frame(scheme, N, n):
     dir = f"thermal_bubble_{scheme}_N{N:d}"
     filename = dir + ".nc"
     ds = xr.open_dataset(filename)
-    
+
     u = ds.u.isel(time=n).squeeze()
     w = ds.w.isel(time=n).squeeze()
     T = ds.T.isel(time=n).squeeze()
-    
+
     print(f"{dir} frame {n}/{len(ds.time)}")
-    
+
     fig, ax = plt.subplots(figsize=(9, 9))
     T.plot.pcolormesh(vmin=20.00, vmax=20.01, cmap=cmocean.cm.balance, extend="both")
     ax.set_title(f"{scheme} N={N:d} ")

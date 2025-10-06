@@ -16,7 +16,7 @@ halo = ColumnEnsembleSize(Nz=sz.Nz)
 grid = RectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
 closure = CuArray([CATKEVerticalDiffusivity() for i=1:Ex, j=1:Ey])
-                                      
+
 Jᵇ = CuArray([+1e-8 for i=1:Ex, j=1:Ey])
 τx = CuArray([-1e-4 for i=1:Ex, j=1:Ey])
 τy = CuArray([0.0   for i=1:Ex, j=1:Ey])
@@ -36,7 +36,7 @@ model = HydrostaticFreeSurfaceModel(architecture = GPU(),
                                     coriolis = coriolis_ensemble,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     closure = closure)
-                                    
+
 N² = 1e-5
 bᵢ(x, y, z) = N² * z
 set!(model, b = bᵢ)

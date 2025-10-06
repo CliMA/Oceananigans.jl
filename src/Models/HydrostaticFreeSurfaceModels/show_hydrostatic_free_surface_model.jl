@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettytime, ordered_dict_show, prettykeys
+using Oceananigans.Utils: prettytime, prettykeys
 using Oceananigans.TurbulenceClosures: closure_summary
 
 function Base.summary(model::HydrostaticFreeSurfaceModel)
@@ -12,7 +12,7 @@ end
 function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
     TS = nameof(typeof(model.timestepper))
     tracernames = prettykeys(model.tracers)
-    
+
     print(io, summary(model), "\n",
         "├── grid: ", summary(model.grid), "\n",
         "├── timestepper: ", TS, "\n",
@@ -41,6 +41,8 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         name = names[end]
         print(io, "│   └── " * string(name) * ": " * summary(model.advection[name]), "\n")
     end
+
+    print(io, "├── vertical_coordinate: $(summary(model.vertical_coordinate))", "\n")
 
     if isnothing(model.particles)
         print(io, "└── coriolis: $(typeof(model.coriolis))")

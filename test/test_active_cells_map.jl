@@ -1,11 +1,11 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.ImmersedBoundaries: get_active_column_map, 
+using Oceananigans.ImmersedBoundaries: get_active_column_map,
                                        get_active_cells_map,
                                        immersed_cell
 
-function Δ_min(grid) 
+function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
     Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx_min, Δy_min)
@@ -41,8 +41,8 @@ function solid_body_rotation_test(grid)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
-    Δt = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
-    
+    Δt = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz)
+
     simulation = Simulation(model; Δt, stop_iteration = 10)
     run!(simulation)
 
@@ -77,8 +77,8 @@ Nz = 10
             surface_active_cells_map  = get_active_column_map(immersed_active_grid)
             interior_active_cells_map = get_active_cells_map(immersed_active_grid, Val(:interior))
 
-            surface_active_cells_map  = on_architecture(CPU(), surface_active_cells_map) 
-            interior_active_cells_map = on_architecture(CPU(), interior_active_cells_map) 
+            surface_active_cells_map  = on_architecture(CPU(), surface_active_cells_map)
+            interior_active_cells_map = on_architecture(CPU(), interior_active_cells_map)
             grid = on_architecture(CPU(), immersed_grid)
 
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
@@ -86,7 +86,7 @@ Nz = 10
                 active = (i, j, k) ∈ interior_active_cells_map
                 @test immersed ⊻ active
             end
-            
+
             for i in 1:Nx, j in 1:Ny
                 immersed = all(immersed_cell(i, j, k, grid) for k in 1:Nz)
                 active = (i, j) ∈ surface_active_cells_map

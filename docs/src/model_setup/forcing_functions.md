@@ -1,4 +1,4 @@
-# Forcing functions
+# [Forcing functions](@id forcing_functions)
 
 "Forcings" are user-defined terms appended to right-hand side of
 the momentum or tracer evolution equations. In `Oceananigans`, momentum
@@ -53,7 +53,7 @@ The `Forcing` constructor provides an interface for specifying forcing functions
 ### Forcing functions with external parameters
 
 Most forcings involve external, changeable parameters.
-Here are two examples of `forcing_func`tions that depend on 
+Here are two examples of `forcing_func`tions that depend on
 _(i)_ a single scalar parameter `s`, and _(ii)_ a `NamedTuple` of parameters, `p`:
 
 ```jldoctest parameterized_forcing
@@ -226,7 +226,7 @@ of the velocity field are damped to zero everywhere on a time-scale of 1000 seco
 ```jldoctest
 damping = Relaxation(rate = 1/1000)
 
-grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
 
 model.forcing.w
