@@ -18,8 +18,8 @@ default_prognostic_bc(::Grids.Periodic, loc,       boundary_condition) = Periodi
 default_prognostic_bc(::FullyConnected, loc,       boundary_condition) = MultiRegionCommunicationBoundaryCondition()
 default_prognostic_bc(::Flat,           loc,       boundary_condition) = nothing
 default_prognostic_bc(::Grids.Periodic, ::Nothing, boundary_condition) = nothing
-default_prognostic_bc(::FullyConnected, loc,       boundary_condition) = nothing
-default_prognostic_bc(::Flat,           loc,       boundary_condition) = nothing
+default_prognostic_bc(::FullyConnected, ::Nothing, boundary_condition) = nothing
+default_prognostic_bc(::Flat,           ::Nothing, boundary_condition) = nothing
 
 # The default boundary condition here is `NoFlux` for centered fields and `Impenetrable` for face fields
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
