@@ -8,8 +8,10 @@ using GPUArraysCore
 
 struct DefaultBoundaryCondition end
 
-# In case we have a default, we return it
+# In case we have a default, we return it, except if the topology is `Nothing`
+# then the only valid boundary condition is `nothing`
 default_prognostic_bc(topo, loc, boundary_condition) = boundary_condition
+default_prognostic_bc(topo, ::Nothing, boundary_condition) = nothing
 
 default_prognostic_bc(::Grids.Periodic, loc, ::DefaultBoundaryCondition) = PeriodicBoundaryCondition()
 default_prognostic_bc(::FullyConnected, loc, ::DefaultBoundaryCondition) = MultiRegionCommunicationBoundaryCondition()
@@ -24,7 +26,12 @@ default_prognostic_bc(::LeftConnected,  ::Face, ::DefaultBoundaryCondition) = Im
 default_prognostic_bc(::RightConnected, ::Face, ::DefaultBoundaryCondition) = ImpenetrableBoundaryCondition()
 
 # We cannot have a boundary condition in a `Nothing` direction
-default_prognostic_bc(topo, ::Nothing, boundary_condition) = nothing
+default_prognostic_bc(::Grids.Periodic, ::Nothing, ::DefaultBoundaryCondition) = nothing
+default_prognostic_bc(::FullyConnected, ::Nothing, ::DefaultBoundaryCondition) = nothing
+default_prognostic_bc(::Flat,           ::Nothing, ::DefaultBoundaryCondition) = nothing
+default_prognostic_bc(::Bounded,        ::Nothing, ::DefaultBoundaryCondition) = nothing
+default_prognostic_bc(::LeftConnected,  ::Nothing, ::DefaultBoundaryCondition) = nothing
+default_prognostic_bc(::RightConnected, ::Nothing, ::DefaultBoundaryCondition) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
 _default_auxiliary_bc(::Bounded, ::Face)        = nothing
