@@ -12,9 +12,6 @@ using Oceananigans.BoundaryConditions: getbc
 
 import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction, with_float_type
 
-# Physical constants for constructors.
-const g_Earth = 9.80665    # [m s⁻²] conventional standard value for Earth's gravity https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
-
 """
     AbstractBuoyancyFormulation{EOS}
 

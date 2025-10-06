@@ -149,9 +149,17 @@ const fully_supported_float_types = (Float32, Float64)
 
 mutable struct Defaults
     FloatType :: DataType
+    gravitational_acceleration :: Float64
 end
 
-Defaults(; FloatType=Float64) = Defaults(FloatType)
+function Defaults(;
+    FloatType = Float64,
+    # [m s⁻²] conventional standard value for Earth's gravity https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
+    gravitational_acceleration = 9.80665)       
+
+    return Defaults(FloatType, gravitational_acceleration)
+end
+
 const defaults = Defaults()
 
 #####
