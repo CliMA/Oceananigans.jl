@@ -12,15 +12,15 @@ for arch in archs
         southernmost_latitude = -80
         radius = Oceananigans.defaults.planet_radius
 
-        llg_coarse = LatitudeLongitudeGrid(arch; size=(176, 88, 1),
-                                        longitude=(0, 360),
-                                        latitude=(southernmost_latitude, 90),
-                                        z, radius)
+        llg_coarse = LatitudeLongitudeGrid(arch; z, radius,
+                                           size = (176, 88, 1),
+                                           longitude = (0, 360),
+                                           latitude = (southernmost_latitude, 90))
 
-        llg_fine = LatitudeLongitudeGrid(arch; size=(360, 170, 1),
-                                        longitude=(0, 360),
-                                        latitude=(southernmost_latitude, 90),
-                                        z, radius)
+        llg_fine = LatitudeLongitudeGrid(arch; z, radius,
+                                         size = (360, 170, 1),
+                                         longitude = (0, 360),
+                                         latitude = (southernmost_latitude, 90))
 
         tg = TripolarGrid(arch; size=(360, 170, 1), z, southernmost_latitude, radius)
 
