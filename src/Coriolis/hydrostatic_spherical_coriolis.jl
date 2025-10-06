@@ -18,7 +18,7 @@ end
 
 """
     HydrostaticSphericalCoriolis([FT=Float64;]
-                                 rotation_rate = Ω_Earth,
+                                 rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                                  scheme = EnstrophyConserving())
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
@@ -26,11 +26,12 @@ Return a parameter object for Coriolis forces on a sphere rotating at `rotation_
 Keyword arguments
 =================
 
-- `rotation_rate`: Sphere's rotation rate; default: [`Ω_Earth`](@ref).
+- `rotation_rate`: Sphere's rotation rate;
+   default: [`Oceananigans.defaults.planet_rotation_rate`](@ref).
 - `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `EnstrophyConserving()` (default).
 """
 function HydrostaticSphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
-                                      rotation_rate = Ω_Earth,
+                                      rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                                       scheme :: S = EnstrophyConserving(FT)) where S
 
     return HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
@@ -89,8 +90,8 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis)
     coriolis_scheme = hydrostatic_spherical_coriolis.scheme
     rotation_rate   = hydrostatic_spherical_coriolis.rotation_rate
-    rotation_rate_Earth = rotation_rate / Ω_Earth
-    rotation_rate_str = @sprintf("%.2e s⁻¹ = %.2e Ω_Earth", rotation_rate, rotation_rate_Earth)
+    rotation_rate_Earth = rotation_rate / Oceananigans.defaults.planet_rotation_rate
+    rotation_rate_str = @sprintf("%.2e s⁻¹ = %.2e Ω_planet", rotation_rate, rotation_rate_Earth)
 
     return print(io, "HydrostaticSphericalCoriolis", '\n',
                  "├─ rotation rate: ", rotation_rate_str, '\n',

@@ -55,8 +55,8 @@ end
 function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                        panel, Nz, z,
                                        topology = (FullyConnected, FullyConnected, Bounded),
-                                         radius = R_Earth,
-                                           halo = (4, 4, 4),
+                                       radius = Oceananigans.defaults.planet_radius,
+                                       halo = (4, 4, 4),
                                        rotation = nothing)
 
     TX, TY, TZ = topology
@@ -171,7 +171,7 @@ end
                                   topology = (Bounded, Bounded, Bounded),
                                   ξ = (-1, 1),
                                   η = (-1, 1),
-                                  radius = R_Earth,
+                                  radius = Oceananigans.defaults.planet_radius,
                                   halo = (1, 1, 1),
                                   rotation = nothing,
                                   non_uniform_conformal_mapping = false,
@@ -264,7 +264,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        topology = (Bounded, Bounded, Bounded),
                                        ξ = (-1, 1),
                                        η = (-1, 1),
-                                       radius = R_Earth,
+                                       radius = Oceananigans.defaults.planet_radius,
                                        halo = (1, 1, 1),
                                        rotation = nothing,
                                        non_uniform_conformal_mapping = false,

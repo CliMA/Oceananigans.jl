@@ -10,7 +10,7 @@ for arch in archs
 
         z = (-1, 0)
         southernmost_latitude = -80
-        radius = Oceananigans.Grids.R_Earth
+        radius = Oceananigans.defaults.planet_radius
 
         llg_coarse = LatitudeLongitudeGrid(arch; size=(176, 88, 1),
                                         longitude=(0, 360),
