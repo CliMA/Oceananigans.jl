@@ -40,8 +40,9 @@ function set!(model::OceananigansModels, filepath::AbstractString)
         set_time_stepper!(model.timestepper, model.architecture, file, model_fields, addr)
 
         # Try restoring particles
-        if :particles ∈ keys(file[addr]) && !isnothing(model.particles)
+        if "particles" ∈ keys(file[addr]) && !isnothing(model.particles)
             copyto!(model.particles.properties, file["$addr/particles"])
+            @show "I am restoring the particles!"
         else
             @warn "Particles do not exist in checkpoint and could not be restored."
         end
