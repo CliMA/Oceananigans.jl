@@ -18,7 +18,7 @@ struct ExplicitFreeSurface{E, G} <: AbstractFreeSurface{E, G}
     gravitational_acceleration :: G
 end
 
-ExplicitFreeSurface(; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
+ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
     ExplicitFreeSurface(nothing, gravitational_acceleration)
 
 Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =

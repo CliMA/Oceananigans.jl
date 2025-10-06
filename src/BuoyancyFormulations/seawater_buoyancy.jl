@@ -41,7 +41,7 @@ end
 
 """
     SeawaterBuoyancy([FT = Float64;]
-                     gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+                     gravitational_acceleration = g_Earth,
                      equation_of_state = LinearEquationOfState(FT),
                      constant_temperature = nothing,
                      constant_salinity = nothing)
@@ -104,7 +104,7 @@ SeawaterBuoyancy{Float64}:
 ```
 """
 function SeawaterBuoyancy(FT = Oceananigans.defaults.FloatType;
-                          gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+                          gravitational_acceleration = g_Earth,
                           equation_of_state = LinearEquationOfState(FT),
                           constant_temperature = nothing,
                           constant_salinity = nothing)

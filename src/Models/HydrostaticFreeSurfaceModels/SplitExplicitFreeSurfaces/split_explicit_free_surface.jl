@@ -1,3 +1,4 @@
+using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Grids: with_halo
 import Oceananigans.Grids: on_architecture
 
@@ -15,7 +16,7 @@ end
 
 """
     SplitExplicitFreeSurface(grid = nothing;
-                             gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+                             gravitational_acceleration = g_Earth,
                              substeps = nothing,
                              cfl = nothing,
                              fixed_Δt = nothing,
@@ -41,7 +42,7 @@ the barotropic mode of the velocities at the new time step is corrected with the
 Keyword Arguments
 =================
 
-- `gravitational_acceleration`: the gravitational acceleration (default: `Oceananigans.defaults.gravitational_acceleration`)
+- `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
 
 - `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
               timestep. Note that some averaging functions do not require substepping until `2Δt`.
@@ -83,7 +84,7 @@ References
 Shchepetkin, A. F., and McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
 function SplitExplicitFreeSurface(grid = nothing;
-                                  gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+                                  gravitational_acceleration = g_Earth,
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
@@ -250,7 +251,7 @@ end
 function FixedTimeStepSize(grid;
                            cfl = 0.7,
                            averaging_kernel = averaging_shape_function,
-                           gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration)
+                           gravitational_acceleration = g_Earth)
 
     FT = eltype(grid)
 
