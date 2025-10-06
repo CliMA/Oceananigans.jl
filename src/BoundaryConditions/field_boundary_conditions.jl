@@ -8,24 +8,24 @@ using GPUArraysCore
 
 struct DefaultBoundaryCondition end
 
-default_prognostic_bc(::Grids.Periodic, loc,      default)  = PeriodicBoundaryCondition()
-default_prognostic_bc(::FullyConnected, loc,      default)  = MultiRegionCommunicationBoundaryCondition()
-default_prognostic_bc(::Flat,           loc,      default)  = nothing
-default_prognostic_bc(::Bounded,        ::Center, default)  = NoFluxBoundaryCondition()
-default_prognostic_bc(::LeftConnected,  ::Center, default)  = NoFluxBoundaryCondition()
-default_prognostic_bc(::RightConnected, ::Center, default)  = NoFluxBoundaryCondition()
+default_prognostic_bc(::Grids.Periodic, loc) = PeriodicBoundaryCondition()
+default_prognostic_bc(::FullyConnected, loc) = MultiRegionCommunicationBoundaryCondition()
+default_prognostic_bc(::Flat,           loc) = nothing
+default_prognostic_bc(::Bounded,        ::Center) = NoFluxBoundaryCondition() 
+default_prognostic_bc(::LeftConnected,  ::Center) = NoFluxBoundaryCondition() 
+default_prognostic_bc(::RightConnected, ::Center) = NoFluxBoundaryCondition() 
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
-default_prognostic_bc(::Bounded,        ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::LeftConnected,  ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightConnected, ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::Bounded,        ::Face) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::LeftConnected,  ::Face) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::RightConnected, ::Face) = ImpenetrableBoundaryCondition()
 
-default_prognostic_bc(::Bounded,        ::Nothing, default) = nothing
-default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
-default_prognostic_bc(::Grids.Periodic, ::Nothing, default) = nothing
-default_prognostic_bc(::FullyConnected, ::Nothing, default) = nothing
-default_prognostic_bc(::LeftConnected,  ::Nothing, default) = nothing
-default_prognostic_bc(::RightConnected, ::Nothing, default) = nothing
+default_prognostic_bc(::Bounded,        ::Nothing) = nothing
+default_prognostic_bc(::Flat,           ::Nothing) = nothing
+default_prognostic_bc(::Grids.Periodic, ::Nothing) = nothing
+default_prognostic_bc(::FullyConnected, ::Nothing) = nothing
+default_prognostic_bc(::LeftConnected,  ::Nothing) = nothing
+default_prognostic_bc(::RightConnected, ::Nothing) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
 _default_auxiliary_bc(::Bounded, ::Face)        = nothing
@@ -124,13 +124,14 @@ and the topology in the boundary-normal direction is used:
  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
  - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-FieldBoundaryConditions(; west = DefaultBoundaryCondition(),
-                          east = DefaultBoundaryCondition(),
-                          south = DefaultBoundaryCondition(),
-                          north = DefaultBoundaryCondition(),
-                          bottom = DefaultBoundaryCondition(),
-                          top = DefaultBoundaryCondition(),
-                          immersed = DefaultBoundaryCondition()) =
+FieldBoundaryConditions(default_bounded_bc = DefaultBoundaryCondition();
+                        west = default_bounded_bc,
+                        east = default_bounded_bc,
+                        south = default_bounded_bc,
+                        north = default_bounded_bc,
+                        bottom = default_bounded_bc,
+                        top = default_bounded_bc,
+                        immersed = default_bounded_bc)
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
