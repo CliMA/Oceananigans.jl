@@ -58,9 +58,7 @@ function stepping_benchmarks()
         Ns = [32, 64, 128, 256]
 
         benchmark_func = Symbol(:benchmark_, model, :_model)
-        @eval begin
-            suite = run_benchmarks($benchmark_func; Architectures=$Architectures, Float_types=$Float_types, Ns=$Ns)
-        end
+        suite = @eval run_benchmarks($benchmark_func; Architectures=$Architectures, Float_types=$Float_types, Ns=$Ns)
 
         push!(df, benchmarks_dataframe(suite))
     end
