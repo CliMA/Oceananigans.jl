@@ -32,7 +32,9 @@ Base.show(io::IO, fs::ImplicitFreeSurface) =
               "└─ settings: ", fs.solver_settings)
 
 """
-    ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...)
+    ImplicitFreeSurface(; solver_method = :Default,
+                        gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+                        solver_settings...)
 
 Return an implicit free-surface solver. The implicit free-surface equation is
 
@@ -73,8 +75,13 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:PreconditionedConjugateGradient`.
 """
-ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
-    ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
+function ImplicitFreeSurface(;
+    solver_method = :Default,
+    gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+    solver_settings...)
+
+    return ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
+end
 
 Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
