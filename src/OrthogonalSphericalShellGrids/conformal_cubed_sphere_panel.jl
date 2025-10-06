@@ -36,9 +36,9 @@ function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMappin
         adapt(to, conformal_mapping.ηᵃᶜᵃ))
 end
 
-const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = 
+const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:CubedSphereConformalMapping, CC, FC, CF, FF, Arch}
-const ConformalCubedSpherePanelGridOfSomeKind{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = 
+const ConformalCubedSpherePanelGridOfSomeKind{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     Union{ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch},
           ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}}}
 
@@ -276,7 +276,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
 
-    # Use a regular rectilinear grid for the face of the cube. 
+    # Use a regular rectilinear grid for the face of the cube.
     ξη_grid_topology = (Bounded, Bounded, topology[3])
 
     # Construct the grid on CPU and convert to architecture later...

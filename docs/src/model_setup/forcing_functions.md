@@ -1,4 +1,4 @@
-# Forcing functions
+# [Forcing functions](@id forcing_functions)
 
 "Forcings" are user-defined terms appended to right-hand side of
 the momentum or tracer evolution equations. In `Oceananigans`, momentum
