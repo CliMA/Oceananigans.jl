@@ -191,10 +191,10 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
 
     scheme   = WENO(order=11)
     rscheme1 = WENO(order=9)
-    rscheme1 = WENO(order=7)
-    rscheme2 = WENO(order=5)
-    rscheme3 = WENO(order=3)
-    rscheme4 = UpwindBiased(order=1)
+    rscheme2 = WENO(order=7)
+    rscheme3 = WENO(order=5)
+    rscheme4 = WENO(order=3)
+    rscheme5 = UpwindBiased(order=1)
 
     @testset "Testing WENO reconstruction" begin
         for s in (scheme, rscheme1, rscheme2, rscheme3, rscheme4)

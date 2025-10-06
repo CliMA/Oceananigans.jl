@@ -165,7 +165,7 @@ for FT in fully_supported_float_types
                                        $(FT.(RS554)))     # Order 9
 
         # 11th order WENO, restricted to orders 9, 7, 5, 3, and 1
-        @inline reconstruction_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{0}) = 
+        @inline reconstruction_coefficients(::WENO{6, $FT}, red_order, ::Val{0}) = 
                 ifelse(red_order == 1, $(FT.(RS610)),     # Order 1                             
                 ifelse(red_order == 2, $(FT.(RS620)),     # Order 3       
                 ifelse(red_order == 3, $(FT.(RS630)),     # Order 5
@@ -173,7 +173,7 @@ for FT in fully_supported_float_types
                 ifelse(red_order == 5, $(FT.(RS650)),     # Order 9
                                        $(FT.(RS660))))))) # Order 11
 
-        @inline reconstruction_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{1}) = 
+        @inline reconstruction_coefficients(::WENO{6, $FT}, red_order, ::Val{1}) = 
                 ifelse(red_order == 1, $(FT.(RS60M)),     # Order 1                             
                 ifelse(red_order == 2, $(FT.(RS621)),     # Order 3       
                 ifelse(red_order == 3, $(FT.(RS631)),     # Order 5
@@ -181,26 +181,88 @@ for FT in fully_supported_float_types
                 ifelse(red_order == 5, $(FT.(RS651)),     # Order 9
                                        $(FT.(RS661))))))) # Order 11
 
-        @inline reconstruction_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{2}) = 
+        @inline reconstruction_coefficients(::WENO{6, $FT}, red_order, ::Val{2}) = 
                 ifelse(red_order <  3, $(FT.(RS60M)),     # Order ≤ 3                            
                 ifelse(red_order == 3, $(FT.(RS632)),     # Order 5
                 ifelse(red_order == 4, $(FT.(RS642)),     # Order 7
                 ifelse(red_order == 5, $(FT.(RS652)),     # Order 9
                                        $(FT.(RS662))))))  # Order 11
 
-        @inline reconstruction_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{3}) = 
+        @inline reconstruction_coefficients(::WENO{6, $FT}, red_order, ::Val{3}) = 
                 ifelse(red_order <  4, $(FT.(RS60M)),     # Order ≤ 5 
                 ifelse(red_order == 4, $(FT.(RS643)),     # Order 7
                 ifelse(red_order == 5, $(FT.(RS653)),     # Order 9
                                        $(FT.(RS663)))))   # Order 11
 
-        @inline reconstruction_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{4}) = 
+        @inline reconstruction_coefficients(::WENO{6, $FT}, red_order, ::Val{4}) = 
                 ifelse(red_order <  5, $(FT.(RS60M)),     # Order ≤ 7
                 ifelse(red_order == 5, $(FT.(RS654)),     # Order 9
                                        $(FT.(RS664))))    # Order 11
 
-        @inline reconstruction_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{5}) = 
+        @inline reconstruction_coefficients(::WENO{6, $FT}, red_order, ::Val{5}) = 
                 ifelse(red_order <  6, $(FT.(RS60M)),     # Order ≤ 9
                                        $(FT.(RS665)))     # Order 11
+    end
+end
+
+# Optimal coefficients for WENO schemes
+const C20 = 2//3
+const C21 = 1//3
+
+const C30 = 3//10
+const C31 = 3//5
+const C32 = 1//10
+
+const C40 = 4//35
+const C41 = 18//35
+const C42 = 12//35
+const C43 = 1//35
+
+const C50 = 5//126
+const C51 = 20//63
+const C52 = 100//231
+const C53 = 10//63
+const C54 = 1//126
+
+const C60 = 1//77
+const C61 = 25//154
+const C62 = 100//231
+const C63 = 25//77
+const C64 = 5//77
+const C65 = 1//462
+
+# Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
+# Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
+for FT in fully_supported_float_types
+    @eval begin
+        # WENO 3rd order
+        @inline C★(::WENO{2, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), $(FT(C20)))
+        @inline C★(::WENO{2, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), $(FT(C21)))
+
+        # WENO 5th order
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(C20)), $(FT(C30))))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(C21)), $(FT(C31))))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), $(FT(C32)))
+
+        # WENO 7th order
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(C20)), ifelse(red_order==3, $(FT(C30)), $(FT(C40)))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(C21)), ifelse(red_order==3, $(FT(C31)), $(FT(C41)))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(C32)), $(FT(C42))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), $(FT(C43)))
+
+        # WENO 9th order
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(C20)), ifelse(red_order==3, $(FT(C30)), ifelse(red_order==4, $(FT(C40)), $(FT(C50))))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(C21)), ifelse(red_order==3, $(FT(C31)), ifelse(red_order==4, $(FT(C41)), $(FT(C51))))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(C32)), ifelse(red_order==4, $(FT(C42)), $(FT(C52)))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), ifelse(red_order==4, $(FT(C43)), $(FT(C53))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{4}) = ifelse(red_order <5, $(FT(0)), $(FT(C54)))
+
+        # WENO 11th order
+        @inline C★(::WENO{6, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(C20)), ifelse(red_order==3, $(FT(C30)), ifelse(red_order==4, $(FT(C40)), ifelse(red_order==5, $(FT(C50)), $(FT(C60)))))))
+        @inline C★(::WENO{6, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(C21)), ifelse(red_order==3, $(FT(C31)), ifelse(red_order==4, $(FT(C41)), ifelse(red_order==5, $(FT(C51)), $(FT(C61)))))))
+        @inline C★(::WENO{6, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(C32)), ifelse(red_order==4, $(FT(C42)), ifelse(red_order==5, $(FT(C52)), $(FT(C62))))))
+        @inline C★(::WENO{6, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), ifelse(red_order==4, $(FT(C43)), ifelse(red_order==5, $(FT(C53)), $(FT(C63)))))
+        @inline C★(::WENO{6, $FT}, red_order, ::Val{4}) = ifelse(red_order <5, $(FT(0)), ifelse(red_order==5, $(FT(C54)), $(FT(C64))))
+        @inline C★(::WENO{6, $FT}, red_order, ::Val{5}) = ifelse(red_order <6, $(FT(0)), $(FT(C65)))
     end
 end
