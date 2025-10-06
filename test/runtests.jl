@@ -34,6 +34,7 @@ CUDA.allowscalar() do
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
+            include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
@@ -75,12 +76,6 @@ CUDA.allowscalar() do
         @testset "Poisson Solvers 2" begin
             include("test_poisson_solvers_stretched_grids.jl")
             include("test_conjugate_gradient_poisson_solver.jl")
-        end
-    end
-
-    if group == :matrix_poisson_solvers || group == :all
-        @testset "Matrix Poisson Solvers" begin
-            include("test_matrix_poisson_solver.jl")
         end
     end
 
@@ -166,7 +161,6 @@ CUDA.allowscalar() do
         @testset "Multi Region tests" begin
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
-            include("test_multi_region_implicit_solver.jl")
             include("test_multi_region_cubed_sphere.jl")
         end
     end
@@ -175,6 +169,7 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
+        include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
     end
 
@@ -184,7 +179,6 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
-        include("test_distributed_macros.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -237,7 +231,7 @@ CUDA.allowscalar() do
         end
     end
 
-    
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -255,6 +249,13 @@ CUDA.allowscalar() do
     if group == :reactant_2 || group == :all
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
         end
     end
 
@@ -293,4 +294,3 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
-

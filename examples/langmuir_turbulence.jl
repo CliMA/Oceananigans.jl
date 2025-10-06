@@ -18,11 +18,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie"
+# pkg"add Oceananigans, CairoMakie, CUDA"
 # ```
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
+using CUDA
 
 # ## Model set-up
 #
@@ -59,7 +60,7 @@ const vertical_scale = wavelength / 4π
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
-# To run this example on the GPU, include `GPU()` in the `RectilinearGrid` constructor above.
+# To run this example on the CPU, replace `GPU()` with `CPU()` in the `RectilinearGrid` constructor above.
 #
 # The Stokes drift profile is
 
@@ -255,7 +256,7 @@ nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
-# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 
@@ -353,7 +354,7 @@ fig
 
 frames = 1:length(times)
 
-record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
+CairoMakie.record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide

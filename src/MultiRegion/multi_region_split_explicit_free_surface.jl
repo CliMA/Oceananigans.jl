@@ -2,8 +2,8 @@ using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: free_surface_displacement_field
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps, 
-                                                                                  barotropic_velocity_boundary_conditions, 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
+                                                                                  barotropic_velocity_boundary_conditions,
                                                                                   materialize_timestepper
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
@@ -13,8 +13,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 
     free_surface.substepping isa FixedTimeStepSize &&
         throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialize SplitExplicitFreeSurface using substeps kwarg"))
-
-    switch_device!(grid.devices[1])
 
     old_halos = halo_size(getregion(grid, 1))
     Nsubsteps = calculate_substeps(free_surface.substepping)
@@ -58,8 +56,14 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     timestepper)
 end
 
+materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
+
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::CubedSpherePartition) = (max(step_halo, old_halos[1]), max(step_halo, old_halos[2]), old_halos[3])
+
+iterate_split_explicit!(free_surface, grid::MultiRegionGrids, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps =
+    @apply_regionally iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
 
 @inline augmented_kernel_size(grid, ::XPartition)           = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
 @inline augmented_kernel_size(grid, ::YPartition)           = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)

@@ -1,9 +1,14 @@
 using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
+using Adapt
 
 struct BuoyancyForce{M, G}
     formulation :: M
     gravity_unit_vector :: G
 end
+
+Adapt.adapt_structure(to, bf::BuoyancyForce) =
+    BuoyancyForce(adapt(to, bf.formulation),
+                  adapt(to, bf.gravity_unit_vector))
 
 """
     BuoyancyForce(formulation; gravity_unit_vector=NegativeZDirection())
@@ -43,7 +48,6 @@ function BuoyancyForce(formulation; gravity_unit_vector=NegativeZDirection())
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
     return BuoyancyForce(formulation, gravity_unit_vector)
 end
-
 
 @inline ĝ_x(bf) = @inbounds - bf.gravity_unit_vector[1]
 @inline ĝ_y(bf) = @inbounds - bf.gravity_unit_vector[2]

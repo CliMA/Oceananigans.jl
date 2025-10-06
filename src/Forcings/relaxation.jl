@@ -129,8 +129,11 @@ Example
 
 Create a Gaussian mask centered on `z=0` with width `1` meter.
 
-```julia
+```jldoctest
+julia> using Oceananigans
+
 julia> mask = GaussianMask{:z}(center=0, width=1)
+GaussianMask{:z, Int64}(0, 1)
 ```
 """
 struct GaussianMask{D, T}
@@ -153,6 +156,63 @@ show_exp_arg(D, c) = c == 0 ? "$D^2" :
 
 Base.summary(g::GaussianMask{D}) where D =
     "exp(-$(show_exp_arg(D, g.center)) / (2 * $(g.width)^2))"
+
+
+"""
+    PiecewiseLinearMask{D}(center, width)
+
+Callable object that returns a piecewise linear masking function centered on
+`center`, with `width`, and varying along direction `D`. The mask is:
+- 0 when |D - center| > width
+- 1 when D = center
+- Linear interpolation between 0 and 1 when |D - center| ≤ width
+
+Example
+=======
+
+Create a piecewise linear mask centered on `z=0` with width `1` meter.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> mask = PiecewiseLinearMask{:z}(center=0, width=1)
+PiecewiseLinearMask{:z, Int64}(0, 1)
+
+julia> mask(0, 0, 0) == 1
+true
+
+julia> mask(0, 0, 1) == mask(0, 0, -1) == 0
+true
+```
+"""
+struct PiecewiseLinearMask{D, T}
+    center :: T
+     width :: T
+
+    function PiecewiseLinearMask{D}(; center, width) where D
+        T = promote_type(typeof(center), typeof(width))
+        return new{D, T}(center, width)
+    end
+end
+
+@inline function (p::PiecewiseLinearMask{:x})(x, y, z)
+    d = 1 - abs(x - p.center) / p.width
+    return max(0, d)
+end
+
+@inline function (p::PiecewiseLinearMask{:y})(x, y, z)
+    d = 1 - abs(y - p.center) / p.width
+    return max(0, d)
+end
+
+@inline function (p::PiecewiseLinearMask{:z})(x, y, z)
+    d = 1 - abs(z - p.center) / p.width
+    return max(0, d)
+end
+
+Base.summary(p::PiecewiseLinearMask{D}) where D =
+    "piecewise_linear($D, center=$(p.center), width=$(p.width))"
+
 
 #####
 ##### Linear target functions

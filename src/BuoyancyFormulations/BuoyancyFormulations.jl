@@ -5,8 +5,6 @@ export
     ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ,
     top_buoyancy_flux, buoyancy, buoyancy_frequency, BuoyancyField
 
-using Printf
-
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators

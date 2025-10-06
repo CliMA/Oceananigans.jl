@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, ConsecutiveIterations
 using Oceananigans.Utils: schedule_aligned_time_step
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans: initialize!
@@ -10,7 +10,9 @@ using Oceananigans: initialize!
 
     # Some fake models
     fake_model_at_iter_0 = (; clock=Clock(time=0.0, iteration=0))
+    fake_model_at_iter_2 = (; clock=Clock(time=0.0, iteration=2))
     fake_model_at_iter_3 = (; clock=Clock(time=1.0, iteration=3))
+    fake_model_at_iter_4 = (; clock=Clock(time=2.1, iteration=4))
     fake_model_at_iter_5 = (; clock=Clock(time=2.0, iteration=5))
 
     fake_model_at_time_2 = (; clock=Clock(time=2.0, iteration=3))
@@ -49,6 +51,17 @@ using Oceananigans: initialize!
     @test ti_or_ii(fake_model_at_time_3) # triggers IterationInterval but not TimeInterval
     @test ti_or_ii(fake_model_at_time_4) # triggers TimeInterval but not IterationInterval
     @test !(ti_or_ii(fake_model_at_time_5))
+
+    ii_plus_one = ConsecutiveIterations(IterationInterval(3))
+    @test !(ii_plus_one(fake_model_at_iter_2))
+    @test ii_plus_one(fake_model_at_iter_3)
+    @test ii_plus_one(fake_model_at_iter_4)
+    @test !(ti_or_ii(fake_model_at_iter_5))
+
+    ti_plus_one = ConsecutiveIterations(TimeInterval(2))
+    @test ti_plus_one(fake_model_at_time_2) # and iter 3
+    @test ti_plus_one(fake_model_at_iter_4)
+    @test !(ti_plus_one(fake_model_at_iter_5))
 
     # WallTimeInterval
     wti = WallTimeInterval(1e-9)

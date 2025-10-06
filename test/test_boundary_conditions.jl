@@ -20,7 +20,7 @@ end
 
     @testset "Default serial boundary conditions" begin
         @info "  Testing default boundary conditions..."
-        loc  = (Center, Center, Center)
+        loc  = (Center(), Center(), Center())
         grid = RectilinearGrid(size=(10, 10), x=(0, 1), y=(0, 1), topology=(Periodic, Bounded, Flat))
         default_bcs = FieldBoundaryConditions(grid, loc)
 
@@ -32,9 +32,9 @@ end
         @test default_bcs.bottom isa Nothing
 
         grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(-10, 10), z = (0, 1))
-        locC  = (Center, Center,  Center)
-        locF  = (Center, Face,    Center)
-        locN  = (Center, Nothing, Center)
+        locC  = (Center(), Center(), Center())
+        locF  = (Center(), Face(), Center())
+        locN  = (Center(), nothing, Center())
 
         default_bcs_C = FieldBoundaryConditions(grid, locC)
         default_bcs_F = FieldBoundaryConditions(grid, locF)
@@ -256,7 +256,7 @@ end
 
         grid = bbb_grid
 
-        T_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+        T_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                         east = ValueBoundaryCondition(simple_bc),
                                         west = ValueBoundaryCondition(simple_bc),
                                         bottom = ValueBoundaryCondition(simple_bc),

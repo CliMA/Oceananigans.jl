@@ -2,13 +2,14 @@ using Adapt
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, default_indices, location
-using Oceananigans.Operators: Δx, Δy, Δz, Ax, Δλ, Δφ, Ay, Az, volume
+using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
 
-import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
+import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
 const AbstractGridMetric = Union{typeof(Δx),
                                  typeof(Δy),
                                  typeof(Δz),
+                                 typeof(Δr),
                                  typeof(Δλ),
                                  typeof(Δφ),
                                  typeof(Ax),
@@ -32,8 +33,8 @@ function metric_function(loc, metric)
 end
 
 struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ, G, T}
-          metric :: M
-            grid :: G
+    metric :: M
+    grid :: G
     function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G) where {LX, LY, LZ, M, G}
         T = eltype(grid)
         return new{LX, LY, LZ, G, T, M}(metric, grid)
@@ -53,13 +54,26 @@ on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
 indices(::GridMetricOperation) = default_indices(3)
 
 """
-    GridMetricOperation(L, metric, grid)
+    GridMetricOperation(loc, metric, grid)
 
-Instance of `GridMetricOperation` that generates `BinaryOperation`s between `AbstractField`s and the metric `metric`
-at the same location as the `AbstractField`.
+Instance of `GridMetricOperation` that generates `BinaryOperation` of the `metric`
+at `loc`ation of the `grid`.
 
 Example
 =======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.AbstractOperations: Ax, GridMetricOperation
+
+julia> Axᶠᶜᶜ = GridMetricOperation((Face, Center, Center), Ax, RectilinearGrid(size=(2, 2, 3), extent=(1, 2, 3)))
+Axᶠᶜᶜ at (Face, Center, Center)
+├── grid: 2×2×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×2×3 halo
+└── tree:
+    Axᶠᶜᶜ at (Face, Center, Center)
+```
+
 ```jldoctest
 julia> using Oceananigans
 
@@ -75,7 +89,8 @@ julia> c_dz[1, 1, 1]
 3.0
 ```
 """
-GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
+GridMetricOperation(loc, metric, grid) =
+    GridMetricOperation{loc[1], loc[2], loc[3]}(metric_function(loc, metric), grid)
 
 #####
 ##### Spacings
@@ -157,6 +172,32 @@ function zspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δz, grid, ℓx, ℓy, ℓz)
     return Δz_op
+end
+
+"""
+    rspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``r`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> rspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δr (generic function with 28 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+function rspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δr_op = KernelFunctionOperation{LX, LY, LZ}(Δr, grid, ℓx, ℓy, ℓz)
+    return Δr_op
 end
 
 """

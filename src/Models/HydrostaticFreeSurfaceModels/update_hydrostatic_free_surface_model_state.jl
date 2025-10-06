@@ -3,12 +3,11 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_conditions!, replace_horizontal_vector_halos!
+using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
-using Oceananigans.Fields: tupled_fill_halo_regions!
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
@@ -39,12 +38,12 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update the boundary conditions
     @apply_regionally update_boundary_conditions!(fields(model), model)
 
-    tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
+    # Fill the halos
+    fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); async=true)
 
-    @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
+    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
@@ -84,9 +83,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     P    = model.pressure.pHY′
     arch = architecture(grid)
 
-    # Update the grid and unscale the tracers
-    update_grid!(model, grid, model.vertical_coordinate; parameters = w_parameters)
-    unscale_tracers!(tracers, grid; parameters = w_parameters)
+    # Update the vertical velocity to comply with the barotropic correction step
+    update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
 
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)

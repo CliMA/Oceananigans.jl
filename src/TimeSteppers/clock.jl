@@ -21,19 +21,10 @@ mutable struct Clock{TT, DT, IT, S}
     stage :: S
 end
 
-function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
-    clock.time = zero(TT)
-    clock.iteration = zero(IT)
-    clock.stage = zero(S)
-    clock.last_Δt = Inf
-    clock.last_stage_Δt = Inf
-    return nothing
-end
-
 """
     Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
 
-Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
+Return a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage` with `last_Δt=last_stage_Δt=Inf`.
 """
 function Clock(; time,
@@ -47,6 +38,38 @@ function Clock(; time,
     IT = typeof(iteration)
     last_stage_Δt = convert(DT, last_Δt)
     return Clock{TT, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
+end
+
+function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
+    clock.time = zero(TT)
+    clock.iteration = zero(IT)
+    clock.stage = zero(S)
+    clock.last_Δt = Inf
+    clock.last_stage_Δt = Inf
+    return nothing
+end
+
+"""
+    set_clock!(clock::Clock, new_clock::Clock)
+
+Set `clock` to the `new_clock`.
+"""
+function set_clock!(clock::Clock, new_clock::Clock)
+    clock.time = new_clock.time
+    clock.iteration = new_clock.iteration
+    clock.last_Δt = new_clock.last_Δt
+    clock.last_stage_Δt = new_clock.last_stage_Δt
+    clock.stage = new_clock.stage
+
+    return nothing
+end
+
+function Base.:(==)(clock1::Clock, clock2::Clock)
+    return clock1.time == clock2.time &&
+           clock1.iteration == clock2.iteration &&
+           clock1.last_Δt == clock2.last_Δt &&
+           clock1.last_stage_Δt == clock2.last_stage_Δt &&
+           clock1.stage == clock2.stage
 end
 
 # TODO: when supporting DateTime, this function will have to be extended
@@ -107,9 +130,12 @@ function tick!(clock, Δt; stage=false)
 
     if stage # tick a stage update
         clock.stage += 1
+        clock.last_stage_Δt = Δt
     else # tick an iteration and reset stage
         clock.iteration += 1
         clock.stage = 1
+        clock.last_Δt = Δt
+        clock.last_stage_Δt = Δt
     end
 
     return nothing
@@ -121,5 +147,3 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            last_stage_Δt = clock.last_stage_Δt,
                                            iteration     = clock.iteration,
                                            stage         = clock.stage)
-
-

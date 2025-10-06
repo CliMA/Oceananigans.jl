@@ -62,29 +62,28 @@ end
 #####
 
 const ZFBC = BoundaryCondition{Flux, Nothing}
-regularize_immersed_boundary_condition(ibc::ZFBC, ibg::GFIBG, args...) = ibc # keep it
+regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
 
-regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::GFIBG, loc, field_name, args...) =
+regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =
     regularize_immersed_boundary_condition(default.boundary_condition, ibg, loc, field_name, args...)
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
-function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::GFIBG, loc, field_name, args...)
+function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::IBG, loc, field_name, args...)
     ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
     regularize_immersed_boundary_condition(ibc, ibg, loc, field_name, args...)
 end
 
 """
-    regularize_immersed_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                           topo, loc, dim, I, prognostic_field_names) where C
+    regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 
-    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names)
-    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names)
-    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names)
-    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names)
-    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names)
-    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names)
+    west   = isa(loc[1], Center) ? regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names) : nothing
+    east   = isa(loc[1], Center) ? regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names) : nothing
+    south  = isa(loc[2], Center) ? regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names) : nothing
+    north  = isa(loc[2], Center) ? regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names) : nothing
+    bottom = isa(loc[3], Center) ? regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names) : nothing
+    top    = isa(loc[3], Center) ? regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names) : nothing
 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
 end
