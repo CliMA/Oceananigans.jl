@@ -8,24 +8,23 @@ using GPUArraysCore
 
 struct DefaultBoundaryCondition end
 
-default_prognostic_bc(::Grids.Periodic, loc) = PeriodicBoundaryCondition()
-default_prognostic_bc(::FullyConnected, loc) = MultiRegionCommunicationBoundaryCondition()
-default_prognostic_bc(::Flat,           loc) = nothing
-default_prognostic_bc(::Bounded,        ::Center) = NoFluxBoundaryCondition() 
-default_prognostic_bc(::LeftConnected,  ::Center) = NoFluxBoundaryCondition() 
-default_prognostic_bc(::RightConnected, ::Center) = NoFluxBoundaryCondition() 
+# In case we have a default, we return it
+default_prognostic_bc(topo, loc, boundary_condition) = boundary_condition
+
+default_prognostic_bc(::Grids.Periodic, loc, ::DefaultBoundaryCondition) = PeriodicBoundaryCondition()
+default_prognostic_bc(::FullyConnected, loc, ::DefaultBoundaryCondition) = MultiRegionCommunicationBoundaryCondition()
+default_prognostic_bc(::Flat,           loc, ::DefaultBoundaryCondition) = nothing
+default_prognostic_bc(::Bounded,        ::Center, ::DefaultBoundaryCondition) = NoFluxBoundaryCondition() 
+default_prognostic_bc(::LeftConnected,  ::Center, ::DefaultBoundaryCondition) = NoFluxBoundaryCondition() 
+default_prognostic_bc(::RightConnected, ::Center, ::DefaultBoundaryCondition) = NoFluxBoundaryCondition() 
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
-default_prognostic_bc(::Bounded,        ::Face) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::LeftConnected,  ::Face) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightConnected, ::Face) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::Bounded,        ::Face, ::DefaultBoundaryCondition) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::LeftConnected,  ::Face, ::DefaultBoundaryCondition) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::RightConnected, ::Face, ::DefaultBoundaryCondition) = ImpenetrableBoundaryCondition()
 
-default_prognostic_bc(::Bounded,        ::Nothing) = nothing
-default_prognostic_bc(::Flat,           ::Nothing) = nothing
-default_prognostic_bc(::Grids.Periodic, ::Nothing) = nothing
-default_prognostic_bc(::FullyConnected, ::Nothing) = nothing
-default_prognostic_bc(::LeftConnected,  ::Nothing) = nothing
-default_prognostic_bc(::RightConnected, ::Nothing) = nothing
+# We cannot have a boundary condition in a `Nothing` direction
+default_prognostic_bc(topo, ::Nothing, boundary_condition) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
 _default_auxiliary_bc(::Bounded, ::Face)        = nothing
