@@ -131,7 +131,7 @@ FieldBoundaryConditions(default_bounded_bc = DefaultBoundaryCondition();
                         north = default_bounded_bc,
                         bottom = default_bounded_bc,
                         top = default_bounded_bc,
-                        immersed = default_bounded_bc)
+                        immersed = default_bounded_bc) = 
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
