@@ -64,7 +64,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                             ifelse(red_order==3, $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),
                             ifelse(red_order==4, $(stencil_reconstruction(FT, 4, :symmetric, dir, bool)),
                             ifelse(red_order==5, $(stencil_reconstruction(FT, 5, :symmetric, dir, bool)),
-                                                 $(stencil_reconstruction(FT, 6, :symmetric, dir, bool))))))
+                                                 $(stencil_reconstruction(FT, 6, :symmetric, dir, bool)))))))
                 end
             end
         end
