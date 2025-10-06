@@ -216,7 +216,7 @@ for FT in fully_supported_float_types
                                        $(FT.(SS663)))))   # Order 11
 
         @inline smoothness_coefficients(::WENO{6, <:Any, $FT}, red_order, ::Val{4}) = 
-                ifelse(red_order <  5, $(FT.(SS50M)),     # Order ≤ 7
+                ifelse(red_order <  5, $(FT.(SS60M)),     # Order ≤ 7
                 ifelse(red_order == 5, $(FT.(SS654)),     # Order 9
                                        $(FT.(SS664))))    # Order 11
 
@@ -252,12 +252,22 @@ end
     return abs(τ)
 end
 
-# Otherwise we take the 9th order WENO smoothness indicator as a default
-@inline function global_smoothness_indicator(β, R) 
+@inline function global_smoothness_indicator(β::NTuple{5}, R) 
     τ = @inbounds @fastmath ifelse(R == 1, β[1],
                             ifelse(R == 2, β[1] - β[2],
                             ifelse(R == 3, β[1] - β[3],
                             ifelse(R == 4, β[1] + 3β[2] - 3β[3] -  β[4],
                                            β[1] + 2β[2] - 6β[3] + 2β[4] + β[5]))))
+    return abs(τ)
+end
+
+# Otherwise we take the 11th order WENO smoothness indicator as a default
+@inline function global_smoothness_indicator(β, R) 
+    τ = @inbounds @fastmath ifelse(R == 1, β[1],
+                            ifelse(R == 2, β[1] -   β[2],
+                            ifelse(R == 3, β[1] -   β[3],
+                            ifelse(R == 4, β[1] +  3β[2] -   3β[3] -    β[4],
+                            ifelse(R == 5, β[1] +  2β[2] -   6β[3] +   2β[4] +   β[5],
+                                           β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])))))
     return abs(τ)
 end

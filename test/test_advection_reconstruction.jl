@@ -133,9 +133,9 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
 
         for s in (scheme, )
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 5, c)
-                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 5, c)
-                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 5, c)
+                @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 5, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 5, c)
+                @test symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 5, c) ≈ symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 5, c)
+                @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 5, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 5, c)
             end
         end
     end
