@@ -231,9 +231,9 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
 
         for s in (scheme, )
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 5, bias, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 5, bias, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 4, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 5, bias, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 5, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme1, 5, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 5, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme1, 5, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 5, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme1, 5, bias, c)
             end
         end
     end
