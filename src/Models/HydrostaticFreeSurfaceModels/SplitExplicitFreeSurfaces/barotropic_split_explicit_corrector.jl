@@ -60,8 +60,16 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    @inline ũ[i, j, k] = u[i, j, k] + (Ũ[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
-    @inline ṽ[i, j, k] = v[i, j, k] + (Ṽ[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
+    immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+
+    @inbounds begin
+        ũ⁺ = u[i, j, k] + (Ũ[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
+        ṽ⁺ = v[i, j, k] + (Ṽ[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
+
+        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ⁺)
+        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ⁺)
+    end
 end
 
 function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
@@ -74,13 +82,9 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     V̅ = free_surface.filtered_state.V̅
 
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
-
     launch!(architecture(grid), grid, :xyz, _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
 
-    mask_immersed_field!(ũ)
-    mask_immersed_field!(ṽ)
-
-    # Fill transport velocities
+    # Fill transport velocities 
     fill_halo_regions!((ũ, ṽ); async=true)
     
     # Update grid velocity and vertical transport velocity

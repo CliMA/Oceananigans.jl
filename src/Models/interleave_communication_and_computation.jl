@@ -66,3 +66,14 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     return KernelParameters(sizes, offsets)
 end
 
+""" Kernel parameters for computing surface variables including halos. """
+@inline function surface_kernel_parameters(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+
+    return KernelParameters(ii, jj)
+end

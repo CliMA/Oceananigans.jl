@@ -20,10 +20,10 @@ barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
 ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) =
-    launch!(architecture(grid), grid, w_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
 
 rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt) =
-    launch!(architecture(grid), grid, w_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
 
 # Update η in the grid
 @kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
@@ -60,7 +60,7 @@ end
     end
 end
 
-function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters=w_kernel_parameters(grid))
+function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models

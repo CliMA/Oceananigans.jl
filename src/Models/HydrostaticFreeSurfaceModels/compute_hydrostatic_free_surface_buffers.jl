@@ -70,10 +70,14 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    # Iterate over the fields to clear _ALL_ possible architectures
-    for field in prognostic_fields(model)
+    # Synchronize the tracer fields
+    for field in model.tracers
         synchronize_communication!(field)
     end
+
+    # Synchronize also the transport velocities!
+    synchronize_communication!(model.transport_velocities.u)
+    synchronize_communication!(model.transport_velocities.v)
 
     w_parameters = buffer_w_kernel_parameters(grid, arch)
     update_vertical_velocities!(model.transport_velocities, grid, model; parameters=w_parameters)
