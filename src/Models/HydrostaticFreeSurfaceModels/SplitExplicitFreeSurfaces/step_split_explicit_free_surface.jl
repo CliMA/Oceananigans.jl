@@ -128,14 +128,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     barotropic_velocities = free_surface.barotropic_velocities
 
-    # Wait for setup step to finish
-    wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
-
     barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
-
-    # Reset the filtered fields and the barotropic timestepper to zero. 
-    @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
     # Calculate the substepping parameters
     # barotropic time step as fraction of baroclinic step and averaging weights
@@ -156,8 +150,13 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     V = barotropic_velocities.V
     F = model.forcing.η
 
-    # reset free surface averages
+    # Wait for setup step to finish
+    wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
+    
     @apply_regionally begin
+        # Reset the filtered fields and the barotropic timestepper to zero. 
+        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
+        
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 
@@ -170,6 +169,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Fill all the barotropic state
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
     fill_halo_regions!((U, V, η); async=true)
-    
+
     return nothing
 end
