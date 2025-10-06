@@ -150,7 +150,8 @@ const fully_supported_float_types = (Float32, Float64)
 mutable struct Defaults
     FloatType :: DataType
     gravitational_acceleration :: Float64
-    planet_angular_speed :: Float64
+    planet_radius :: Float64
+    planet_rotation_rate :: Float64
 end
 
 function Defaults(;
@@ -162,7 +163,10 @@ function Defaults(;
     # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
     planet_rotation_rate = 7.292115e-5)       
 
-    return Defaults(FloatType, gravitational_acceleration)
+    return Defaults(FloatType,
+                    gravitational_acceleration,
+                    planet_radius,
+                    planet_rotation_rate)
 end
 
 const defaults = Defaults()
