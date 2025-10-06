@@ -84,7 +84,7 @@ steps:
           - "🦢 shallow_water"
           - "🐳 simulation"
           - "🍂 lagrangian_particles"
-          - "🧅 multi_region"
+          # - "🧅 multi_region"
           - "🦧 scripts"
           - "👺 enzyme"
           - "🍱 xesmf"

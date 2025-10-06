@@ -7,7 +7,7 @@ using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, surface_kernel_parameters
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
@@ -18,30 +18,32 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 # single column models.
 
 """
-    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true)
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
-they are called in the end. Finally, the tendencies for the new time-step are computed if
-`compute_tendencies = true`.
+they are called in the end. 
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-         update_state!(model, model.grid, callbacks; compute_tendencies)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; kwargs...) =  update_state!(model, model.grid, callbacks; kwargs...)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; async=true)
 
-    @apply_regionally mask_immersed_model_fields!(model, grid)
+    arch = architecture(grid)
 
-    # Update possible FieldTimeSeries used in the model
-    @apply_regionally update_model_field_time_series!(model, model.clock)
-
-    # Update the boundary conditions
-    @apply_regionally update_boundary_conditions!(fields(model), model)
-
+    @apply_regionally begin
+        mask_immersed_model_fields!(model, grid)
+        update_model_field_time_series!(model, model.clock)
+        update_boundary_conditions!(fields(model), model)
+    end
+    
     # Fill the halos
-    fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); async=true)
+    fill_halo_regions!(model.velocities, model.grid, model.clock, fields(model); async)
+    fill_halo_regions!(model.tracers,    model.grid, model.clock, fields(model); async)
 
-    @apply_regionally compute_auxiliaries!(model)
+    parameters = surface_kernel_parameters(model.grid)
+    update_vertical_velocities!(model.velocities, model.grid, model; parameters)    
+    update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters)
+    compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters=:xyz)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
 
@@ -49,49 +51,14 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
-
     return nothing
 end
 
 # Mask immersed fields
 function mask_immersed_model_fields!(model, grid)
-    η = displacement(model.free_surface)
-    fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
-
-    foreach(fields_to_mask) do field
-        if field !== η
-            mask_immersed_field!(field)
-        end
-    end
-    mask_immersed_field_xy!(η, k=size(grid, 3)+1)
-
+    mask_immersed_velocities!(model.velocities)
+    foreach(mask_immersed_field!, model.tracers)
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
-                                                                  p_parameters = p_kernel_parameters(model.grid),
-                                                                  κ_parameters = :xyz)
-
-    grid        = model.grid
-    closure     = model.closure
-    tracers     = model.tracers
-    diffusivity = model.diffusivity_fields
-    buoyancy    = model.buoyancy
-
-    P    = model.pressure.pHY′
-    arch = architecture(grid)
-
-    # Update the vertical velocity to comply with the barotropic correction step
-    update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
-
-    # Advance diagnostic quantities
-    compute_w_from_continuity!(model; parameters = w_parameters)
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
-
-    # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
-
-    return nothing
-end
+mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities)

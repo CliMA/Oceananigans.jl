@@ -36,7 +36,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @testset " One timestep test " begin
                 state = sefs.filtered_state
                 U, V  = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
 
                 η = sefs.η
                 Δτ = 1.0
@@ -58,7 +58,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @testset "Multi-timestep test " begin
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
                 η = sefs.η
 
                 T  = 2π
@@ -107,7 +107,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @testset "Averaging / Do Nothing test " begin
                 state = sefs.filtered_state
                 U, V  = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
                 η = sefs.η
                 g = sefs.gravitational_acceleration
 
@@ -171,7 +171,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
                 η = sefs.η
                 g = sefs.gravitational_acceleration
 

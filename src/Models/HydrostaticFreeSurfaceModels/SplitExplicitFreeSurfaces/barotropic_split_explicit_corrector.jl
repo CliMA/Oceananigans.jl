@@ -27,8 +27,12 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
     η     = free_surface.η
     U, V  = free_surface.barotropic_velocities
-    U̅, V̅  = state.U, state.V
+    U̅, V̅  = state.U̅, state.V̅
     arch  = architecture(grid)
+
+    # Preparing velocities for the barotropic correction
+    mask_immersed_field!(u)
+    mask_immersed_field!(v)
 
     # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
     # so we use the filtered velocities as "work arrays" to store the vertical integrals
@@ -44,14 +48,47 @@ end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, grid)
     i, j, k = @index(Global, NTuple)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+
+    @inbounds u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
+    @inbounds v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
+end
+
+@kernel function _compute_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+    i, j, k = @index(Global, NTuple)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+
+    immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
 
     @inbounds begin
-        Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
-        Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+        ũ⁺ = u[i, j, k] + (Ũ[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
+        ṽ⁺ = v[i, j, k] + (Ṽ[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
 
-        u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
-        v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
+        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ⁺)
+        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ⁺)
     end
 end
 
+function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+    grid = model.grid
+    u, v, _ = model.velocities
+    ũ, ṽ, _ = model.transport_velocities
+    Ũ = free_surface.filtered_state.Ũ
+    Ṽ = free_surface.filtered_state.Ṽ
+    U̅ = free_surface.filtered_state.U̅
+    V̅ = free_surface.filtered_state.V̅
 
+    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+    launch!(architecture(grid), grid, :xyz, _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+
+    # Fill transport velocities 
+    fill_halo_regions!((ũ, ṽ); async=true)
+    
+    # Update grid velocity and vertical transport velocity
+    update_vertical_velocities!(model.transport_velocities, model.grid, model)
+
+    return nothing
+end
