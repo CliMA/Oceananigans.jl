@@ -21,9 +21,10 @@ using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
+import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: reset!, set_clock!
+import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
@@ -115,7 +116,7 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
 
-set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
+set!(model::OceananigansModels, new_clock) = set!(model.clock, new_clock)
 
 """
     possible_field_time_series(model::OceananigansModels)
