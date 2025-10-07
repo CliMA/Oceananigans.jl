@@ -11,8 +11,8 @@ import Oceananigans.Fields: set!
 """
     set!(model::OceananigansModels, filepath::AbstractString)
 
-Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
-`model.timestepper.G⁻` to checkpointed data stored at `filepath`.
+Set data in `model.velocities`, `model.tracers` and the timestepper tendencies `model.timestepper.Gⁿ` and
+`model.timestepper.G⁻` (for non-self starting timesteppers) to the checkpointed data stored at `filepath`.
 """
 function set!(model::OceananigansModels, filepath::AbstractString)
     addr = checkpointer_address(model)
