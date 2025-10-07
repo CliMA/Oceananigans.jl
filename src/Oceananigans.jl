@@ -155,13 +155,14 @@ mutable struct Defaults
 end
 
 function Defaults(;
+    # Floating-point precision type (usually Float64 or Float32).
     FloatType = Float64,
-    # [m s⁻²] conventional standard value for Earth's gravity https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
+    # [m s⁻²] conventional standard value for Earth's gravity; see https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
     gravitational_acceleration = 9.80665,
     # [m] Earth's radius; see https://en.wikipedia.org/wiki/Earth%27s_radius
     planet_radius = 6.371e6,
     # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
-    planet_rotation_rate = 7.292115e-5)       
+    planet_rotation_rate = 7.292115e-5)
 
     return Defaults(FloatType,
                     gravitational_acceleration,
