@@ -191,7 +191,7 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
-# Fallback set! from filepath for a generic model 
+# Fallback set! from filepath for a generic model
 
 """
     set!(model, filepath::AbstractString)
@@ -221,9 +221,7 @@ function set!(model, filepath::AbstractString)
         checkpointed_clock = file["$addr/clock"]
 
         # Update model clock
-        model.clock.iteration = checkpointed_clock.iteration
-        model.clock.time = checkpointed_clock.time
-        model.clock.last_Δt = checkpointed_clock.last_Δt
+        set!(model, checkpointed_clock)
     end
 
     return nothing

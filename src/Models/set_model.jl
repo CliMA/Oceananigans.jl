@@ -1,6 +1,6 @@
 using Oceananigans.Utils
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
-using JLD2 
+using JLD2
 
 import Oceananigans.Fields: set!
 
@@ -49,9 +49,7 @@ function set!(model::OceananigansModels, filepath::AbstractString)
         checkpointed_clock = file["$addr/clock"]
 
         # Update model clock
-        model.clock.iteration = checkpointed_clock.iteration
-        model.clock.time = checkpointed_clock.time
-        model.clock.last_Δt = checkpointed_clock.last_Δt
+        set!(model, checkpointed_clock)
     end
 
     return nothing
