@@ -30,7 +30,7 @@ Keyword arguments
    default: `Oceananigans.defaults.planet_rotation_rate`.
 - `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `EnstrophyConserving()` (default).
 """
-function HydrostaticSphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
+function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                                       scheme :: S = EnstrophyConserving(FT)) where S
 
