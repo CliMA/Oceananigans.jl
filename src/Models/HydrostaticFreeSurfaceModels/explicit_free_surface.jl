@@ -2,6 +2,8 @@ using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
+import Oceananigans.DistributedComputations: synchronize_communication! 
+
 using Adapt
 
 """
@@ -60,6 +62,10 @@ end
 #####
 ##### Time stepping
 #####
+
+# Only the free surface needs to be synchronized
+synchronize_communication!(free_surface::ExplicitFreeSurface) = 
+    synchronize_communication!(free_surface.η)
 
 function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) 
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)

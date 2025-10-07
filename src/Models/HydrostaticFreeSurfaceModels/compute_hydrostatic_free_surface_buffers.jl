@@ -3,6 +3,7 @@ import Oceananigans.Models: compute_buffer_tendencies!
 using Oceananigans.Grids: halo_size
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
+using Oceananigans.Models: surface_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
                                                 buffer_κ_kernel_parameters,
                                                 buffer_parameters
@@ -20,10 +21,14 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     grid = model.grid
     arch = architecture(grid)
 
-    # Iterate over the fields to clear _ALL_ possible architectures
-    for field in prognostic_fields(model)
-        synchronize_communication!(field)
+    # Synchronize tracers
+    for tracer in model.tracers
+        synchronize_communication!(tracer)
     end
+    
+    # Synchronize velocities
+    synchronize_communication!(model.velocities.u)
+    synchronize_communication!(model.velocities.v)
 
     w_parameters = buffer_w_kernel_parameters(grid, arch)
     κ_parameters = buffer_κ_kernel_parameters(grid, model.closure, arch)
@@ -56,9 +61,10 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
         active_cells_map = @inbounds maps[name]
 
         # If the map == nothing, we don't need to compute the buffer because
-        # the buffer is not adjacent to a processor boundary
-        if isnothing(active_cells_map) 
-            compute_hydrostatic_momentum_tendencies!(model, model.velocities, :xyz; active_cells_map)
+        # the buffer is not adjacent to a processor boundary. 
+        if isnothing(active_cells_map)
+            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
+            compute_hydrostatic_momentum_tendencies!(model, model.velocities, nothing; active_cells_map)
         end
     end
 
@@ -70,14 +76,9 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    # Synchronize the tracer fields
-    for field in model.tracers
-        synchronize_communication!(field)
-    end
-
-    # Synchronize also the transport velocities!
-    synchronize_communication!(model.transport_velocities.u)
-    synchronize_communication!(model.transport_velocities.v)
+    u, v, _ = model.transport_velocities
+    synchronize_communication!((u, v))
+    synchronize_communication!(model.free_surface)
 
     w_parameters = buffer_w_kernel_parameters(grid, arch)
     update_vertical_velocities!(model.transport_velocities, grid, model; parameters=w_parameters)

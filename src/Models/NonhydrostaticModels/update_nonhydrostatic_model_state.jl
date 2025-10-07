@@ -17,7 +17,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[]; async=true)
+function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
     foreach(model.tracers) do tracer
@@ -31,7 +31,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; async=true)
     update_boundary_conditions!(fields(model), model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.grid, model.clock, fields(model); fill_open_bcs=false, async)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.grid, model.clock, fields(model); fill_open_bcs=false, async=true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields

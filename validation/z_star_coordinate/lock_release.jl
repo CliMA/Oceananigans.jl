@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations
 using Printf
 using GLMakie
 
-arch = Distributed(CPU()) #; synchronized_communication=true)
+arch = Distributed(CPU()) 
 z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(arch; 

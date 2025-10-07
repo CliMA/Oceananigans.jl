@@ -26,7 +26,7 @@ they are called in the end.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; kwargs...) =  update_state!(model, model.grid, callbacks; kwargs...)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; async=true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     arch = architecture(grid)
 
@@ -36,9 +36,12 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; asyn
         update_boundary_conditions!(fields(model), model)
     end
     
+    u, v, _ = model.velocities
+    tracers = model.tracers
+
     # Fill the halos
-    fill_halo_regions!(model.velocities, model.grid, model.clock, fields(model); async)
-    fill_halo_regions!(model.tracers,    model.grid, model.clock, fields(model); async)
+    fill_halo_regions!((u, v),  grid, model.clock, fields(model); async=true)
+    fill_halo_regions!(tracers, grid, model.clock, fields(model); async=true)
 
     parameters = surface_kernel_parameters(model.grid)
     update_vertical_velocities!(model.velocities, model.grid, model; parameters)    
