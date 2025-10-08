@@ -83,24 +83,27 @@ cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2Tim
     launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
 
 function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, advection, U, c)
-    ℂ = ifelse(stage == 2, ts.γ³, ts.γ³ * ts.γ²)
-    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, Val(stage), ℂ, advection, U, c)
+    if stage == 2
+        launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, advection, U, c)
+    end
 end
 
 cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) =
     launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
 function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
-    ℂ = ifelse(stage == 2, ts.γ³, ts.γ³ * ts.γ²)
-    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, Val(stage), ℂ, clo, D, B, c, tracer_id, clk, model_fields)
+    if stage == 2
+        launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, clo, D, B, c, tracer_id, clk, model_fields)
+    end
 end
 
 update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
 function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, U)
-    ℂ = ifelse(stage == 2, ts.γ³, ts.γ³ * ts.γ²)
-    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, Val(stage), ℂ, U)
+    if stage == 2
+        launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, U)
+    end
 end
 
 @kernel function _update_transport!(Uⁿ, Uⁿ⁻¹, grid, U)
@@ -116,18 +119,10 @@ end
     end
 end
 
-@kernel function _update_transport!(Uⁿ, grid, ::Val{3}, ℂ, U)
+@kernel function _update_transport!(Uⁿ, grid, U)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) * ℂ
-    @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) * ℂ
-    @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) * ℂ
-end
-
-@kernel function _update_transport!(Uⁿ, grid, substep, ℂ, U)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds Uⁿ.u[i, j, k] += U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) * ℂ
-    @inbounds Uⁿ.v[i, j, k] += U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) * ℂ
-    @inbounds Uⁿ.w[i, j, k] += U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) * ℂ
+    @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
+    @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
+    @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
 end

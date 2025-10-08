@@ -361,6 +361,44 @@ function test_grid_equality_over_architectures()
     return grid_cpu == grid_gpu
 end
 
+function test_immersed_boundary_grid_equality(arch)
+    underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+
+    ib1 = GridFittedBottom(-1/2)
+    ibg1 = ImmersedBoundaryGrid(underlying_grid, ib1)
+    @test ibg1 != underlying_grid
+    @test ibg1.underlying_grid != ibg1
+    @test ibg1 == ibg1
+
+    ibg2 = ImmersedBoundaryGrid(underlying_grid, ib1)
+    @test ibg1 == ibg2
+
+    ib2 = PartialCellBottom(-1/2)
+    ibg3 = ImmersedBoundaryGrid(underlying_grid, ib2)
+    ibg4 = ImmersedBoundaryGrid(underlying_grid, ib2)
+    ibg5 = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-1/2, minimum_fractional_cell_height=0.5))
+    @test ibg3 == ibg4
+    @test ibg3 != ibg1
+    @test ibg3 != ibg5
+
+    mask1 = zeros(Bool, 4, 4, 4)
+    mask1[2:3, 2:3, 2:3] .= true
+    ib3 = GridFittedBoundary(mask1)
+    ibg6 = ImmersedBoundaryGrid(underlying_grid, ib3)
+    ibg7 = ImmersedBoundaryGrid(underlying_grid, ib3)
+
+    mask2 = zeros(Bool, 4, 4, 4)
+    ib4 = GridFittedBoundary(mask2)
+    ibg8 = ImmersedBoundaryGrid(underlying_grid, ib4)
+    @test ibg6 != ibg8
+    @test ibg7 != ibg8
+
+    @test ibg1 != ibg3
+    @test ibg1 != ibg6
+
+    return true
+end
+
 #####
 ##### Vertically stretched grids
 #####
@@ -799,15 +837,20 @@ end
     end
 
     @testset "Coordinate utils" begin
-        @info "  Testing ExponentialCoordinate..."
+        @info "  Testing ExponentialDiscretization..."
 
         for arch in archs
             Nx = 10
             l, r = -1000, 100
             scale = (r - l) / 5
 
-            xₗ = ExponentialCoordinate(Nx, l, r; scale, bias =:left)
-            xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
+            xₗ = ExponentialDiscretization(Nx, l, r; scale, bias =:left)
+            xᵣ = ExponentialDiscretization(Nx, l, r; scale, bias =:right)
+
+            for i in 1:Nx+1
+                @test xᵣ[i] == xᵣ(i)
+                @test xₗ[i] == xₗ(i)
+            end
 
             @test length(xₗ) == Nx
             @test xₗ(1) == l
@@ -824,11 +867,17 @@ end
                 end
             end
 
-            @info "  Testing ConstantToStretchedCoordinate..."
+            z = ExponentialDiscretization(Nx, l, r)
+            z_mutable = ExponentialDiscretization(Nx, l, r, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
+
+            @info "  Testing ReferenceToStretchedDiscretization..."
             extent = 200
             constant_spacing = 25
             constant_spacing_extent = 90
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             Nz = length(z)
 
@@ -854,7 +903,7 @@ end
             constant_spacing = 25.34
             constant_spacing_extent = Nz * constant_spacing
             extent = constant_spacing_extent
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             @test length(z) == Nz
             @test length(z.faces) == Nz+1
@@ -866,6 +915,11 @@ end
             grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
             @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
             @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
+
+            z_mutable = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
         end
     end
 
@@ -911,6 +965,7 @@ end
 
             for arch in archs
                 test_grid_equality(arch)
+                test_immersed_boundary_grid_equality(arch)
             end
 
             if CUDA.has_cuda()

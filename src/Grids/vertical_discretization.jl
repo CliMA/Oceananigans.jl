@@ -45,7 +45,6 @@ struct MutableVerticalDiscretization{C, D, E, F, H, U, CC, FC, CF, FF} <: Abstra
     Δ⁻¹ᵃᵃᶠ :: E
     Δ⁻¹ᵃᵃᶜ :: F
         ηⁿ :: H
-        Gⁿ :: U # Storage space used in different ways by different timestepping schemes.
       σᶜᶜⁿ :: CC
       σᶠᶜⁿ :: FC
       σᶜᶠⁿ :: CF
@@ -72,12 +71,14 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 """
     MutableVerticalDiscretization(r_faces)
 
-Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`, a function of an index `k`,
-or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coordinate that might evolve in time
-following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates,
-or sigma coordinates.
+Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
+a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
+defines a vertical coordinate that can evolve in time following certain rules.
+Examples of `MutableVerticalDiscretization`s are the free-surface following coordinates
+(also known as "zee-star") or the terrain following coordinates (also known as "sigma"
+coordinates).
 """
-MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:16)...)
+MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:15)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -129,7 +130,6 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
     σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
-    Gⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...) 
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # Fill all the scalings with one for now (i.e. z == r)
@@ -137,7 +137,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
         fill!(σ, 1)
     end
 
-    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, Gⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end
 
 
@@ -169,7 +169,6 @@ Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
                               Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
                               Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ),
                               Adapt.adapt(to, coord.ηⁿ),
-                              Adapt.adapt(to, coord.Gⁿ),
                               Adapt.adapt(to, coord.σᶜᶜⁿ),
                               Adapt.adapt(to, coord.σᶠᶜⁿ),
                               Adapt.adapt(to, coord.σᶜᶠⁿ),
@@ -189,7 +188,6 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
                               on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
                               on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ),
                               on_architecture(arch, coord.ηⁿ),
-                              on_architecture(arch, coord.Gⁿ),
                               on_architecture(arch, coord.σᶜᶜⁿ),
                               on_architecture(arch, coord.σᶠᶜⁿ),
                               on_architecture(arch, coord.σᶜᶠⁿ),

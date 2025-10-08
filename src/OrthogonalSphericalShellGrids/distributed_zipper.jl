@@ -1,6 +1,5 @@
-using Oceananigans.BoundaryConditions: fill_open_boundary_regions!,
-                                       permute_boundary_conditions,
-                                       fill_halo_event!,
+using Oceananigans.BoundaryConditions: permute_boundary_conditions,
+                                       fill_halo_event!, get_boundary_kernels,
                                        DistributedCommunication
 
 using Oceananigans.DistributedComputations: cooperative_waitall!,
@@ -60,21 +59,18 @@ end
 end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...;
-                            only_local_halos=false, fill_boundary_normal_velocities=true, kwargs...)
-
-    if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
-    end
+                            only_local_halos=false, fill_open_bcs=true, kwargs...)
 
     north_bc = bcs.north
 
     arch = architecture(grid)
-    fill_halos!, bcs = permute_boundary_conditions(bcs)
-    number_of_tasks = length(fill_halos!)
+    kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
+
+    number_of_tasks = length(kernels!)
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+        @inbounds fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)

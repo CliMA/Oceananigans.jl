@@ -1,7 +1,9 @@
-using Oceananigans: prognostic_fields
+using Oceananigans: prognostic_fields, AbstractModel
+import Dates
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
+using Oceananigans.Utils: period_to_seconds
 
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
@@ -94,6 +96,9 @@ function Simulation(model; Δt,
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
    TT = eltype(model)
+   if Δt isa Dates.Period
+       Δt = convert(TT, period_to_seconds(Δt))
+   end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
@@ -182,10 +187,7 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
 function reset!(sim::Simulation)
-    sim.model.clock.time = 0
-    sim.model.clock.last_Δt = Inf
-    sim.model.clock.iteration = 0
-    sim.model.clock.stage = 1
+    reset_clock!(sim.model)
     sim.stop_iteration = Inf
     sim.stop_time = Inf
     sim.wall_time_limit = Inf
@@ -195,6 +197,14 @@ function reset!(sim::Simulation)
     reset!(timestepper(sim.model))
     return nothing
 end
+
+# Fallback. Models without clocks should extend this function.
+"""
+    reset_clock!(model::AbstractModel)
+
+Reset `model.clock` to its initial state.
+"""
+reset_clock!(model::AbstractModel) = reset!(model.clock)
 
 #####
 ##### Default stop criteria callback functions

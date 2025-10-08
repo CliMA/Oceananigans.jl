@@ -17,7 +17,7 @@ function Centered(FT::DataType=Oceananigans.defaults.FloatType; order = 2)
     else
         buffer_scheme = nothing
     end
-    
+
     return Centered{N, FT}(buffer_scheme)
 end
 
@@ -47,7 +47,7 @@ for buffer in advection_buffers, FT in fully_supported_float_types
         @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x, false))
         @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y, false))
         @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z, false))
-        
+
         @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ::Callable, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x,  true))
         @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ::Callable, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y,  true))
         @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ::Callable, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z,  true))

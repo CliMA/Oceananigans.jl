@@ -1,4 +1,5 @@
 using KernelAbstractions: @kernel, @index
+using OrderedCollections: OrderedDict
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
                              DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
@@ -132,7 +133,7 @@ Keyword arguments
   Each is either a:
   1. 2-tuple that specify the end points of the domain,
   2. one-dimensional array specifying the cell interface locations, or
-  3. a single-argument function that takes an index and returns cell interface location.
+  3. single-argument function that takes an index and returns cell interface location.
 
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
 
@@ -315,7 +316,7 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = topology_strs(grid)
     metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
 
     return string(size_summary(size(grid)),
@@ -359,7 +360,7 @@ end
 function constructor_arguments(grid::LatitudeLongitudeGrid)
     arch = architecture(grid)
     FT = eltype(grid)
-    args = Dict(:architecture => arch, :number_type => eltype(grid))
+    args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
     topo = topology(grid)

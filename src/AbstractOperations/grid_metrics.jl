@@ -1,26 +1,37 @@
 using Adapt
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
 using Oceananigans.Fields: AbstractField, default_indices, location
 using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
+using Oceananigans.Operators: XNode, YNode, ZNode, ΛNode, ΦNode, RNode
+using Oceananigans.Operators: x, y, z, λ, φ, r
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
-const AbstractGridMetric = Union{typeof(Δx),
-                                 typeof(Δy),
-                                 typeof(Δz),
-                                 typeof(Δr),
-                                 typeof(Δλ),
-                                 typeof(Δφ),
-                                 typeof(Ax),
-                                 typeof(Ay),
-                                 typeof(Az),
-                                 typeof(volume)} # Do we want it to be `volume` or just `V` like in the Operators module?
+const GridMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode,
+                         typeof(Δx),
+                         typeof(Δy),
+                         typeof(Δz),
+                         typeof(Δr),
+                         typeof(Δλ),
+                         typeof(Δφ),
+                         typeof(Ax),
+                         typeof(Ay),
+                         typeof(Az),
+                         typeof(volume)} # Do we want it to be `volume` or just `V` like in the Operators module?
+
+metric_function(loc, ::XNode) = xnode
+metric_function(loc, ::YNode) = ynode
+metric_function(loc, ::ZNode) = znode
+metric_function(loc, ::ΛNode) = λnode
+metric_function(loc, ::ΦNode) = φnode
+metric_function(loc, ::RNode) = rnode
 
 """
-    metric_function(loc, metric::AbstractGridMetric)
+    metric_function(loc, metric::GridMetric)
 
-Return the function associated with `metric::AbstractGridMetric` at `loc`ation.
+Return the function associated with `metric::GridMetric` at `loc`ation.
 """
 function metric_function(loc, metric)
     code = Tuple(interpolation_code(ℓ) for ℓ in loc)
@@ -32,51 +43,53 @@ function metric_function(loc, metric)
     return getglobal(@__MODULE__, metric_function_symbol)
 end
 
-struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ, G, T}
-          metric :: M
-            grid :: G
-    function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G) where {LX, LY, LZ, M, G}
-        T = eltype(grid)
-        return new{LX, LY, LZ, G, T, M}(metric, grid)
-    end
-end
-
-Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-         GridMetricOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric),
-                                         Adapt.adapt(to, gm.grid))
-
-on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-    GridMetricOperation{LX, LY, LZ}(on_architecture(to, gm.metric),
-                                    on_architecture(to, gm.grid))
-
-@inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
-
-indices(::GridMetricOperation) = default_indices(3)
-
 """
-    GridMetricOperation(L, metric, grid)
+    grid_metric_operation(loc, metric, grid)
 
-Instance of `GridMetricOperation` that generates `BinaryOperation`s between `AbstractField`s and the metric `metric`
-at the same location as the `AbstractField`.
+Return a `KernelFunctionOperation` of `metric` that participates
+in a `BinaryOperation` at `loc`ation of the `grid`.
 
 Example
 =======
+
 ```jldoctest
 julia> using Oceananigans
 
-julia> using Oceananigans.Operators: Δz
+julia> using Oceananigans.AbstractOperations: Ax, grid_metric_operation
+
+julia> Axᶠᶜᶜ = grid_metric_operation((Face, Center, Center), Ax, RectilinearGrid(size=(2, 2, 3), extent=(1, 2, 3)))
+KernelFunctionOperation at (Face, Center, Center)
+├── grid: 2×2×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×2×3 halo
+├── kernel_function: Axᶠᶜᶜ (generic function with 2 methods)
+└── arguments: ()
+```
+
+```jldoctest
+julia> using Oceananigans
 
 julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)));
 
-julia> c_dz = c * Δz; # returns BinaryOperation between Field and GridMetricOperation
+julia> using Oceananigans.Operators: Δz
 
-julia> c .= 1;
+julia> c_dz = c * Δz; # returns BinaryOperation between Field and GridMetric
+
+julia> set!(c, 1);
 
 julia> c_dz[1, 1, 1]
 3.0
 ```
 """
-GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
+grid_metric_operation(loc, metric, grid) =
+    KernelFunctionOperation{loc[1], loc[2], loc[3]}(metric_function(loc, metric), grid)
+
+const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
+
+function grid_metric_operation(loc, metric::NodeMetric, grid)
+    LX, LY, LZ = loc
+    ℓx, ℓy, ℓz = LX(), LY(), LZ()
+    ξnode = metric_function(loc, metric)
+    return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
+end
 
 #####
 ##### Spacings

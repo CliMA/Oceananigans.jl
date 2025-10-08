@@ -6,7 +6,7 @@ get_domain_extent(coord::AbstractVector, N) = @allowscalar (coord[1], coord[N+1]
 get_domain_extent(coord::Number, N)         = (coord, coord)
 
 get_face_node(coord::Nothing, i) = 1
-get_face_node(coord::Union{Function, CallableCoordinate}, i) = coord(i)
+get_face_node(coord::Union{Function, CallableDiscretization}, i) = coord(i)
 get_face_node(coord::AbstractVector, i) = @allowscalar coord[i]
 
 const AT = AbstractTopology

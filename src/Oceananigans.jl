@@ -12,7 +12,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
-    ExponentialCoordinate, ConstantToStretchedCoordinate, PowerLawStretching, LinearStretching,
+    ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
@@ -35,6 +35,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    PerturbationAdvection,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
@@ -81,7 +82,7 @@ export
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
-    PressureField, fields,
+    PressureField, fields, ZCoordinate, ZStarCoordinate,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,

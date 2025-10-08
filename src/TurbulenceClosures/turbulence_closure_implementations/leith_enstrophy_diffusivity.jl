@@ -23,7 +23,8 @@ end
                         isopycnal_model=SmallSlopeIsopycnalTensor())
 
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
-[leith1968diffusion](@citet) and [Fox-Kemper2008](@citet) which has an eddy viscosity of the form
+[Leith (1968)](@cite leith1968diffusion) and [Fox‐Kemper and Menemenlis (2008)](@cite Fox-Kemper2008)
+which has an eddy viscosity of the form
 
 ```julia
 νₑ = (C * Δᶠ)³ * √(|∇ₕ ζ|² + |∇ₕ ∂w/∂z|²)
@@ -37,13 +38,15 @@ and `C` is a model constant.
 Keyword arguments
 =================
 
-  - `C`: Model constant
-  - `C_Redi`: Coefficient for down-gradient tracer diffusivity for each tracer.
-              Either a constant applied to every tracer, or a `NamedTuple` with fields
-              for each tracer individually.
-  - `C_GM`: Coefficient for down-gradient tracer diffusivity for each tracer.
+- `C`: Model constant
+
+- `C_Redi`: Coefficient for down-gradient tracer diffusivity for each tracer.
             Either a constant applied to every tracer, or a `NamedTuple` with fields
             for each tracer individually.
+
+- `C_GM`: Coefficient for down-gradient tracer diffusivity for each tracer.
+        Either a constant applied to every tracer, or a `NamedTuple` with fields
+        for each tracer individually.
 
 References
 ==========
@@ -51,7 +54,7 @@ References
 Leith, C. E. (1968). "Diffusion Approximation for Two‐Dimensional Turbulence", The Physics of
     Fluids 11, 671. doi: 10.1063/1.1691968
 
-Fox‐Kemper, B., & D. Menemenlis (2008), "Can large eddy simulation techniques improve mesoscale rich
+Fox‐Kemper, B., & D. Menemenlis (2008). "Can large eddy simulation techniques improve mesoscale rich
     ocean models?", in Ocean Modeling in an Eddying Regime, Geophys. Monogr. Ser., 177, pp. 319–337.
     doi: 10.1029/177GM19
 """

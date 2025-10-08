@@ -54,12 +54,15 @@ end
 
 function convert_output(mo::MultiRegionObject, writer)
     array_type = writer.array_type
-    arch = architecture(array_type)
-    return MultiRegionObject(arch, Tuple(convert(array_type, obj) for obj in mo.regional_objects))
+    converted = Tuple(convert(array_type, obj) for obj in mo.regional_objects)
+    return MultiRegionObject(converted)
 end
 
-function construct_output(csf::CubedSphereField{LX, LY, LZ}, grid::ConformalCubedSphereGridOfSomeKind, user_indices,
+function construct_output(csf::CubedSphereField{LX, LY, LZ},
+                          grid::ConformalCubedSphereGridOfSomeKind,
+                          user_indices,
                           with_halos) where {LX, LY, LZ}
+
     multi_region_indices = output_indices(csf, grid, user_indices, with_halos)
     indices = getregion(multi_region_indices, 1)
 
@@ -79,3 +82,4 @@ end
 function serializeproperty!(file, location, csg::ConformalCubedSphereGridOfSomeKind)
     file[location] = on_architecture(CPU(), csg)
 end
+
