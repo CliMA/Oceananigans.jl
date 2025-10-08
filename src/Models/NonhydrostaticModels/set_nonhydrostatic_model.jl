@@ -47,13 +47,13 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     if enforce_incompressibility
         FT = eltype(model.grid)
         compute_pressure_correction!(model, one(FT))
         make_pressure_correction!(model, one(FT))
-        update_state!(model; compute_tendencies = false)
+        update_state!(model)
     end
 
     return nothing

@@ -24,17 +24,20 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
 
     # Compute z-dependent transport velocities
     compute_transport_velocities!(model, model.free_surface)
-    
+    rk_substep_velocities!(model.velocities, model, Δτ)
+
     # compute tracer tendencies
     compute_tracer_tendencies!(model)
 
-    # Finally Substep! Advance grid, tracers, and (baroclinic) momentum
+    # Advance the grid
     rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-    rk_substep_tracers!(model.tracers, model, Δτ)
-    rk_substep_velocities!(model.velocities, model, Δτ)
 
     # Correct for the updated barotropic mode
     correct_barotropic_mode!(model, Δτ)
+
+    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+    # Finally Substep! Advance grid, tracers, and (baroclinic) momentum
+    rk_substep_tracers!(model.tracers, model, Δτ)
 
     return nothing
 end

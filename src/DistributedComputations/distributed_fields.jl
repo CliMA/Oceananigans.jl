@@ -62,7 +62,16 @@ function set!(u::DistributedField, V::Field)
     end
 end
 
-synchronize_communication!(field) = nothing
+# Fallback -> not implemented
+synchronize_communication!(var) = throw(ArgumentError("`synchronize_communication!` not implemented for variables of type $(typeof(var))"))
+
+# Methods for types that do not require synchronization
+synchronize_communication!(::AbstractField) = nothing
+synchronize_communication!(::AbstractArray) = nothing   
+synchronize_communication!(::Number)        = nothing
+
+# Distribute synchronize_communication! over tuples and named tuples
+synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)
 
 """
     synchronize_communication!(field)

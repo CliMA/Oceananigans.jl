@@ -238,7 +238,7 @@ function NonhydrostaticModel(; grid,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
 
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     return model
 end

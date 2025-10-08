@@ -24,7 +24,7 @@ Update peripheral aspects of the model (auxiliary fields, halo regions, diffusiv
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end. 
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; kwargs...) =  update_state!(model, model.grid, callbacks; kwargs...)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) =  update_state!(model, model.grid, callbacks)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
