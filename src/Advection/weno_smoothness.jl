@@ -69,10 +69,10 @@ const SS541 = (0547, -2522, 1922, -0494, 0,  3443,  -5966, 1602, 0,  2843, -1642
 const SS542 = (0267, -1642, 1602, -0494, 0,  2843,  -5966, 1922, 0,  3443, -2522, 0, 0547, 0, 0)
 const SS543 = (0547, -3882, 4642, -1854, 0,  7043, -17246, 7042, 0, 11003, -9402, 0, 2107, 0, 0)
 
-const SS540 = (2107, -9402, 7042, -1854, 0, 0, 11003, -17246, 4642, 0, 0,  7043, -3882, 0, 0, 0547, 0, 0, 0, 0, 0)
-const SS541 = (0547, -2522, 1922, -0494, 0, 0,  3443,  -5966, 1602, 0, 0,  2843, -1642, 0, 0, 0267, 0, 0, 0, 0, 0)
-const SS542 = (0267, -1642, 1602, -0494, 0, 0,  2843,  -5966, 1922, 0, 0,  3443, -2522, 0, 0, 0547, 0, 0, 0, 0, 0)
-const SS543 = (0547, -3882, 4642, -1854, 0, 0,  7043, -17246, 7042, 0, 0, 11003, -9402, 0, 0, 2107, 0, 0, 0, 0, 0)
+const SS640 = (2107, -9402, 7042, -1854, 0, 0, 11003, -17246, 4642, 0, 0,  7043, -3882, 0, 0, 0547, 0, 0, 0, 0, 0)
+const SS641 = (0547, -2522, 1922, -0494, 0, 0,  3443,  -5966, 1602, 0, 0,  2843, -1642, 0, 0, 0267, 0, 0, 0, 0, 0)
+const SS642 = (0267, -1642, 1602, -0494, 0, 0,  2843,  -5966, 1922, 0, 0,  3443, -2522, 0, 0, 0547, 0, 0, 0, 0, 0)
+const SS643 = (0547, -3882, 4642, -1854, 0, 0,  7043, -17246, 7042, 0, 0, 11003, -9402, 0, 0, 2107, 0, 0, 0, 0, 0)
 
 # Coefficients for ninth order WENO
 const SS550 = (107918,  -649501, 758823, -411487,  086329,  1020563, -2462076, 1358458, -288007, 1521393, -1704396, 364863,  482963, -208501, 022658)
@@ -97,28 +97,28 @@ const SS665 = (01152561, -12950184, 29442256, -33918804, 19834350, -04712740,  3
 
 @eval begin
         """
-            smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{red_order}, ::Val{stencil})
+                smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{red_order}, ::Val{stencil})
 
         Return the coefficients used to calculate the smoothness indicators for the stencil 
         number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The actual order of 
         reconstruction is restricted by `red_order <= buffer`. The coefficients
         are ordered in such a way to calculate the smoothness in the following fashion:
-        
+
         ```julia
         buffer  = 4
         stencil = 0
-        
+
         ψ = # The stencil corresponding to S₀ with buffer 4 (7th order WENO)
-        
+
         C = smoothness_coefficients(Val(buffer), Val(0))
-        
+
         # The smoothness indicator
         β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
-            ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
-            ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
-            ψ[4] * (C[10] * ψ[4])
+                ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
+                ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
+                ψ[4] * (C[10] * ψ[4])
         ```
-        
+
         In the above case, if `red_order == 2`, then all the coefficients corresponding to ψ[i for i > 2]
         are zero. This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
@@ -152,7 +152,7 @@ const SS665 = (01152561, -12950184, 29442256, -33918804, 19834350, -04712740,  3
                 ifelse(red_order == 2, $(SS420),     # Order 3
                 ifelse(red_order == 3, $(SS430),     # Order 5
                                        $(SS440))))   # Order 7
-        
+
         @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{1}) = 
                 ifelse(red_order == 1, $(SS40M),     # Order 1
                 ifelse(red_order == 2, $(SS421),     # Order 3
@@ -163,7 +163,7 @@ const SS665 = (01152561, -12950184, 29442256, -33918804, 19834350, -04712740,  3
                 ifelse(red_order <  3, $(SS40M),     # Order ≤ 3                    
                 ifelse(red_order == 3, $(SS432),     # Order 5
                                        $(SS442)))    # Order 7
-        
+
         @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{3}) = 
                 ifelse(red_order <  4, $(SS40M),     # Order ≤ 5                                              
                                        $(SS443))     # Order 7
@@ -231,7 +231,7 @@ const SS665 = (01152561, -12950184, 29442256, -33918804, 19834350, -04712740,  3
         @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{4}) = 
                 ifelse(red_order <  5, $(SS60M),     # Order ≤ 7
                 ifelse(red_order == 5, $(SS654),     # Order 9
-                                       $(SS664)))    # Order 11
+                                $(SS664)))    # Order 11
 
         @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{5}) = 
                 ifelse(red_order <  6, $(SS60M),     # Order ≤ 9
