@@ -9,8 +9,10 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
-function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
-    grid = model.grid
+ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
+    ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
+
+function ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
@@ -19,10 +21,35 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
     compute_momentum_tendencies!(model, callbacks)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
+    # Advance the free surface
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+
     # Computing tracer tendencies
     compute_transport_velocities!(model, model.free_surface)
+    ab2_step_velocities!(model.velocities, model, Δt, χ)
     compute_tracer_tendencies!(model)
 
+    # Finally Substep! Advance grid, tracers, and momentum
+    ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+    
+    # Correct the barotropic mode
+    correct_barotropic_mode!(model, Δt)
+
+    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+    # Finally advance tracers:
+    ab2_step_tracers!(model.tracers, model, Δt, χ)
+end
+
+function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
+    FT = eltype(grid)
+    χ  = convert(FT, model.timestepper.χ)
+    Δt = convert(FT, Δt)
+
+    # Computing Baroclinic and Barotropic tendencies
+    compute_momentum_tendencies!(model, callbacks)
+    compute_tracer_tendencies!(model)
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+    
     # Finally Substep! Advance grid, tracers, and momentum
     ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
