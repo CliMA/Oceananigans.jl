@@ -30,21 +30,10 @@ const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVe
 abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
-
-struct ZStarCoordinate{CC} 
-    storage :: CC # Storage space used in different ways by different timestepping schemes.
-end
-
-function ZStarCoordinate(grid::AbstractGrid)
-    storage = Field{Center, Center, Nothing}(grid)
-    return ZStarCoordinate(storage) 
-end
+struct ZStarCoordinate end
 
 Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
 Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
-
-Adapt.adapt_structure(to, coord::ZStarCoordinate) = ZStarCoordinate(Adapt.adapt(to, coord.storage))
-on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing

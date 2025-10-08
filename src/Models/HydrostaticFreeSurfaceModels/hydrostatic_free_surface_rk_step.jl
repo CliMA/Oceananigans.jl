@@ -159,7 +159,7 @@ end
 @kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
+    @inbounds c[i, j, k] = σc⁻[i, j, k] / σᶜᶜⁿ + Δt * Gⁿ[i, j, k] / σᶜᶜⁿ
 end
 
 #####
@@ -189,10 +189,5 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         end
     end
 
-    cache_grid_state!(model.vertical_coordinate, grid, model.free_surface)
-
     return nothing
 end
-
-cache_grid_state!(ztype, grid, free_surface) = nothing
-cache_grid_state!(ztype::ZStarCoordinate, grid, ::ImplicitFreeSurface) = parent(ztype.storage) .= parent(grid.z.ηⁿ)

@@ -26,7 +26,7 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 function default_vertical_coordinate(grid)
     if grid.z isa MutableVerticalDiscretization
-        return ZStarCoordinate(grid)
+        return ZStarCoordinate()
     else
         return ZCoordinate()
     end
