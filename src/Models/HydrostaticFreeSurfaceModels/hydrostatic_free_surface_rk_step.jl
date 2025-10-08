@@ -159,35 +159,5 @@ end
 @kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = σc⁻[i, j, k] / σᶜᶜⁿ + Δt * Gⁿ[i, j, k] / σᶜᶜⁿ
-end
-
-#####
-##### Storing previous fields for the RK3 update
-#####
-
-# Tracers are multiplied by the vertical coordinate scaling factor
-@kernel function _cache_tracer_fields!(Ψ⁻, grid, Ψⁿ)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
-end
-
-function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
-
-    previous_fields = model.timestepper.Ψ⁻
-    model_fields = prognostic_fields(model)
-    grid = model.grid
-    arch = architecture(grid)
-
-    for name in keys(model_fields)
-        Ψ⁻ = previous_fields[name]
-        Ψⁿ = model_fields[name]
-        if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
-            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
-        else # Velocities and free surface are stored without the grid scaling
-            parent(Ψ⁻) .= parent(Ψⁿ)
-        end
-    end
-
-    return nothing
+    @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
 end

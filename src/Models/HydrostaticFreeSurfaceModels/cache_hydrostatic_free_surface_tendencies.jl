@@ -9,6 +9,10 @@ using Oceananigans.Utils: launch!
 
 import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
+#####
+##### Storing previous tendencies for the AB2 update
+#####
+
 """ Store source terms for `η`. """
 @kernel function _cache_free_surface_tendency!(Gη⁻, grid, Gη⁰)
     i, j = @index(Global, NTuple)
@@ -51,7 +55,43 @@ function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
     end
 
     cache_free_surface_tendency!(model.free_surface, model)
+    cache_grid_state!(model.vertical_coordinate, grid)
 
     return nothing
 end
+
+#####
+##### Storing previous fields for the RK3 update
+#####
+
+# Tracers are multiplied by the vertical coordinate scaling factor
+@kernel function _cache_tracer_fields!(Ψ⁻, grid, Ψⁿ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
+end
+
+function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
+
+    previous_fields = model.timestepper.Ψ⁻
+    model_fields = prognostic_fields(model)
+    grid = model.grid
+    arch = architecture(grid)
+
+    for name in keys(model_fields)
+        Ψ⁻ = previous_fields[name]
+        Ψⁿ = model_fields[name]
+        if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
+            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+        else # Velocities and free surface are stored without the grid scaling
+            parent(Ψ⁻) .= parent(Ψⁿ)
+        end
+    end
+
+    cache_grid_state!(model.vertical_coordinate, grid)
+
+    return nothing
+end
+
+cache_grid_state!(ztype, grid) = nothing
+cache_grid_state!(ztype::ZStarCoordinate, grid) = parent(ztype.storage) .= parent(grid.z.ηⁿ)
 

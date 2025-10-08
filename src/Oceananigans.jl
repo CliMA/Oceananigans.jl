@@ -118,6 +118,7 @@ export
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using DocStringExtensions
+using DoubleFloats
 using FFTW
 
 function __init__()
@@ -141,7 +142,7 @@ end
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const fully_supported_float_types = (Float32, Float64, BigFloat)
+const fully_supported_float_types = (Float32, Float64, BigFloat, Double64)
 
 #####
 ##### Default settings for constructors

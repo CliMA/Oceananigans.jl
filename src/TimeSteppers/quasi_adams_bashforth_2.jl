@@ -110,9 +110,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     return nothing
 end
 
-# Needs to be implemented by every model independently
-ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
-
 """
 Time step fields via the 2nd-order quasi Adams-Bashforth method
 
@@ -135,3 +132,10 @@ Time step fields via the 2nd-order quasi Adams-Bashforth method
 end
 
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
+
+#####
+##### These functions need to be implemented by every model independently
+#####
+
+ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
+cache_previous_tendencies!(model::AbstractModel) = error("cache_previous_tendencies! not implemented for $(typeof(model))")

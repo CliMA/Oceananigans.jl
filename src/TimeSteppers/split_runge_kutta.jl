@@ -87,9 +87,6 @@ function spectral_coefficients(c::AbstractVector)
     return tuple(b...)
 end
 
-# To be implemented by every model independently
-cache_previous_fields!(model) = nothing
-
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
     if model.clock.iteration == 0
