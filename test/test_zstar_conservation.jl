@@ -61,7 +61,7 @@ using Oceananigans.Models: ZStarCoordinate, ZCoordinate
                                                             tracers = (:b, :c, :constant),
                                                             timestepper = :SplitRungeKutta3,
                             				                buoyancy = BuoyancyTracer(),
-                                                            vertical_coordinate = ZStarCoordinate(grid))
+                                                            vertical_coordinate = ZStarCoordinate())
 
                         bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
@@ -89,7 +89,7 @@ using Oceananigans.Models: ZStarCoordinate, ZCoordinate
                                                 tracers = (:b, :c, :constant),
                                                 timestepper = :SplitRungeKutta5,
                                                 buoyancy = BuoyancyTracer(),
-                                                vertical_coordinate = ZStarCoordinate(grid))
+                                                vertical_coordinate = ZStarCoordinate())
 
             bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
@@ -133,7 +133,7 @@ using Oceananigans.Models: ZStarCoordinate, ZCoordinate
                                                   tracers = (:b, :c, :constant),
                                                   buoyancy = BuoyancyTracer(),
                                                   timestepper = :SplitRungeKutta3,
-                                                  vertical_coordinate = ZStarCoordinate(grid))
+                                                  vertical_coordinate = ZStarCoordinate())
 
             bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
 
