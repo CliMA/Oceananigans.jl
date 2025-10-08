@@ -24,13 +24,13 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
 
     # Compute z-dependent transport velocities
     compute_transport_velocities!(model, model.free_surface)
-    rk_substep_velocities!(model.velocities, model, Δτ)
 
     # compute tracer tendencies
     compute_tracer_tendencies!(model)
 
-    # Advance the grid
+    # Advance grid and velocities
     rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+    rk_substep_velocities!(model.velocities, model, Δτ)
 
     # Correct for the updated barotropic mode
     correct_barotropic_mode!(model, Δτ)

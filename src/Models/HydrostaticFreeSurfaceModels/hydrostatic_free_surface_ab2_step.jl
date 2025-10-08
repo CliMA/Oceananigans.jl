@@ -26,11 +26,11 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Computing tracer tendencies
     compute_transport_velocities!(model, model.free_surface)
-    ab2_step_velocities!(model.velocities, model, Δt, χ)
     compute_tracer_tendencies!(model)
 
-    # Finally Substep! Advance grid, tracers, and momentum
+    # Advance grid and velocities
     ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+    ab2_step_velocities!(model.velocities, model, Δt, χ)
     
     # Correct the barotropic mode
     correct_barotropic_mode!(model, Δt)
