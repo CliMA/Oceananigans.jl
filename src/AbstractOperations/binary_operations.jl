@@ -123,8 +123,8 @@ function define_binary_operator(op)
         $op(Lc::Tuple, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
         $op(Lc::Tuple, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
 
-        $op(Lc::Tuple, m::AbstractGridMetric, b::AbstractField) = $op(Lc, GridMetricOperation(location(b), m, b.grid), b)
-        $op(Lc::Tuple, a::AbstractField, m::AbstractGridMetric) = $op(Lc, a, GridMetricOperation(location(a), m, a.grid))
+        $op(Lc::Tuple, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(location(b), m, b.grid), b)
+        $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(location(a), m, a.grid))
 
         # Sugary versions with default locations
         $op(a::AF, b::AF) = $op(location(a), a, b)
@@ -158,7 +158,7 @@ Example
 ```jldoctest
 julia> using Oceananigans, Oceananigans.AbstractOperations
 
-julia> using Oceananigans.AbstractOperations: BinaryOperation, AbstractGridMetric, choose_location
+julia> using Oceananigans.AbstractOperations: BinaryOperation, GridMetric, choose_location
 
 julia> plus_or_times(x, y) = x < 0 ? x + y : x * y
 plus_or_times (generic function with 1 method)
