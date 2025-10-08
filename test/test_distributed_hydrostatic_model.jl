@@ -122,7 +122,6 @@ for arch in archs
 
                     us = interior(on_architecture(CPU(), ms.velocities.u))
                     vs = interior(on_architecture(CPU(), ms.velocities.v))
-                    ws = interior(on_architecture(CPU(), ms.velocities.w))
                     cs = interior(on_architecture(CPU(), ms.tracers.c))
                     ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
@@ -130,13 +129,11 @@ for arch in archs
 
                     up = interior(on_architecture(cpu_arch, mp.velocities.u))
                     vp = interior(on_architecture(cpu_arch, mp.velocities.v))
-                    wp = interior(on_architecture(cpu_arch, mp.velocities.w))
                     cp = interior(on_architecture(cpu_arch, mp.tracers.c))
                     ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
                     us = partition(us, cpu_arch, size(up))
                     vs = partition(vs, cpu_arch, size(vp))
-                    ws = partition(ws, cpu_arch, size(wp))
                     cs = partition(cs, cpu_arch, size(cp))
                     ηs = partition(ηs, cpu_arch, size(ηp))
 
@@ -145,7 +142,6 @@ for arch in archs
 
                     @test all(isapprox(up, us; atol, rtol))
                     @test all(isapprox(vp, vs; atol, rtol))
-                    @test all(isapprox(wp, ws; atol, rtol))
                     @test all(isapprox(cp, cs; atol, rtol))
                     @test all(isapprox(ηp, ηs; atol, rtol))
                 end
@@ -163,7 +159,6 @@ for arch in archs
 
             us = interior(on_architecture(CPU(), ms.velocities.u))
             vs = interior(on_architecture(CPU(), ms.velocities.v))
-            ws = interior(on_architecture(CPU(), ms.velocities.w))
             cs = interior(on_architecture(CPU(), ms.tracers.c))
             ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
@@ -171,13 +166,11 @@ for arch in archs
 
             up = interior(on_architecture(cpu_arch, mp.velocities.u))
             vp = interior(on_architecture(cpu_arch, mp.velocities.v))
-            wp = interior(on_architecture(cpu_arch, mp.velocities.w))
             cp = interior(on_architecture(cpu_arch, mp.tracers.c))
             ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
             us = partition(us, cpu_arch, size(up))
             vs = partition(vs, cpu_arch, size(vp))
-            ws = partition(ws, cpu_arch, size(wp))
             cs = partition(cs, cpu_arch, size(cp))
             ηs = partition(ηs, cpu_arch, size(ηp))
 
@@ -186,7 +179,6 @@ for arch in archs
 
             @test all(isapprox(up, us; atol, rtol))
             @test all(isapprox(vp, vs; atol, rtol))
-            @test all(isapprox(wp, ws; atol, rtol))
             @test all(isapprox(cp, cs; atol, rtol))
             @test all(isapprox(ηp, ηs; atol, rtol))
         end

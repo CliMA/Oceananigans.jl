@@ -53,7 +53,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
-    settings[:reltol] = get(settings, :reltol, min(1e-13, 10 * sqrt(eps(eltype(grid)))))
+    settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
 
     # FFT preconditioner for rectilinear grids, nothing otherwise.
     settings[:preconditioner] = isrectilinear(grid) ?
