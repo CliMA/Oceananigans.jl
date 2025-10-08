@@ -7,7 +7,7 @@ using Oceananigans.Models: surface_kernel_parameters
 
 function update_vertical_velocities!(velocities, grid, model; parameters = surface_kernel_parameters(grid))
     update_grid_vertical_velocity!(velocities, model, grid, model.vertical_coordinate; parameters)
-    compute_w_from_continuity!(velocities, architecture(grid), grid; parameters)
+    compute_w_from_continuity!(velocities, grid; parameters)
     return nothing
 end
 
@@ -24,10 +24,10 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 ```
 """
 compute_w_from_continuity!(model; kwargs...) =
-    compute_w_from_continuity!(model.velocities, model.architecture, model.grid; kwargs...)
+    compute_w_from_continuity!(model.velocities, model.grid; kwargs...)
 
-compute_w_from_continuity!(velocities, arch, grid; parameters = surface_kernel_parameters(grid)) =
-    launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
+compute_w_from_continuity!(velocities, grid; parameters = surface_kernel_parameters(grid)) =
+    launch!(architecture(grid), grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
 # If the grid is following the free surface, then the derivative of the moving grid is:
 #

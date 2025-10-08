@@ -17,13 +17,13 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     # Compute barotropic and baroclinic tendencies
     compute_momentum_tendencies!(model, callbacks)
-    compute_free_surface_tendency!(grid, model, model.free_surface)
+    compute_free_surface_tendency!(grid, model, free_surface)
 
     # Advance the free surface first
-    step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
+    step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
     # Compute z-dependent transport velocities
-    compute_transport_velocities!(model, model.free_surface)
+    compute_transport_velocities!(model, free_surface)
 
     # compute tracer tendencies
     compute_tracer_tendencies!(model)

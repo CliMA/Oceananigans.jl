@@ -55,7 +55,6 @@ function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
     end
 
     cache_free_surface_tendency!(model.free_surface, model)
-    cache_grid_state!(model.vertical_coordinate, grid)
 
     return nothing
 end
@@ -87,11 +86,5 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         end
     end
 
-    cache_grid_state!(model.vertical_coordinate, grid)
-
     return nothing
 end
-
-cache_grid_state!(ztype, grid) = nothing
-cache_grid_state!(ztype::ZStarCoordinate, grid) = parent(ztype.storage) .= parent(grid.z.ηⁿ)
-
