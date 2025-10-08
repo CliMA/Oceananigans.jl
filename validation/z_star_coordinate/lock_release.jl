@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations
 using Printf
 using GLMakie
 
-arch = Distributed(CPU())#; synchronized_communication=true) 
+arch = CPU() # Distributed(CPU())#; synchronized_communication=true) 
 z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(arch; 
@@ -27,8 +27,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
                                     closure = HorizontalScalarDiffusivity(κ=100, ν=100),
-                                timestepper = :SplitRungeKutta3,
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=30)) # ExplicitFreeSurface()) #
+                                timestepper = :SplitRungeKutta1,
+                               free_surface = ImplicitFreeSurface()) #SplitExplicitFreeSurface(grid; substeps=30)) # ExplicitFreeSurface()) #
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 20kilometers ? 6 // 100 : 1 // 100

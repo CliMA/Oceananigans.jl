@@ -38,8 +38,6 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
         end
     end
 
-    compute_tendencies && compute_tendencies!(model, callbacks)
-
     return nothing
 end
 
