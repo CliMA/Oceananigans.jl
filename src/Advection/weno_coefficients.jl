@@ -11,13 +11,13 @@
 
 # Zero and one coefficient stencils
 const RS20M = (0, 0)
-const RS210 = (1, 0)
+const RS210 = (1, 1) .// 2
 const RS30M = (0, 0, 0)
-const RS310 = (1, 0, 0)
+const RS310 = (1, 1, 0) .// 2
 const RS40M = (0, 0, 0, 0)
-const RS410 = (1, 0, 0, 0)
+const RS410 = (1, 1, 0, 0) .// 2
 const RS50M = (0, 0, 0, 0, 0)
-const RS510 = (1, 0, 0, 0, 0)
+const RS510 = (1, 1, 0, 0, 0) .// 2
 
 # Coefficients for third order WENO reconstruction
 const RS220 = stencil_coefficients(BigFloat, 50, 0, collect(1:100), collect(1:100); order=2)
