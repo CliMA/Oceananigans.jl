@@ -58,9 +58,8 @@ struct ReactantState <: AbstractSerialArchitecture end
 
 device(a::CPU) = KA.CPU()
 device(a::GPU) = a.device
-device!(::CPU, i) = KA.device!(CPU(), i+1)
+device!(::CPU, i) = nothing
 device!(::CPU) = nothing
-device!(a::GPU, i) = KA.device!(a.device, i+1)
 ndevices(a::CPU) = KA.ndevices(KA.CPU())
 ndevices(a::AbstractArchitecture) = KA.ndevices(a.device)
 synchronize(a::CPU) = KA.synchronize(KA.CPU())
@@ -74,6 +73,12 @@ architecture(a::OffsetArray) = architecture(parent(a))
 architecture(::SparseMatrixCSC) = CPU()
 architecture(::Type{T}) where {T<:AbstractArray} = architecture(Base.typename(T).wrapper)
 architecture(::Type{Array}) = CPU()
+
+# Utils for sparse matrix manipulation
+@inline sparse_matrix_constructors(::CPU, A::SparseMatrixCSC) = (A.m, A.n, A.colptr, A.rowval, A.nzval)
+@inline sparse_matrix_constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
+@inline sparse_matrix_constructors(::GPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
+@inline sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 
 """
     child_architecture(arch)
@@ -97,6 +102,7 @@ on_architecture(::CPU, a::Array) = a
 on_architecture(::CPU, a::BitArray) = a
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 on_architecture(::CPU, a::StepRangeLen) = a
+on_architecture(::CPU, A::SparseMatrixCSC) = A
 
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
     OffsetArray(on_architecture(arch, a.parent), a.offsets...)
