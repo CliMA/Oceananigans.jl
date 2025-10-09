@@ -1,7 +1,7 @@
-using Distributed
-Distributed.addprocs(2)
+# using Distributed
+# Distributed.addprocs(2)
 
-@everywhere begin
+# @everywhere begin
     using Documenter
     using DocumenterCitations
     using Literate
@@ -48,11 +48,12 @@ Distributed.addprocs(2)
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
-end
+# end
 
-@info string("Executing the examples using ", Distributed.nprocs(), " processes")
+# @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
-Distributed.pmap(1:length(example_scripts)) do n
+# Distributed.pmap(1:length(example_scripts)) do n
+for n in 1:length(example_scripts)
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
     withenv("JULIA_DEBUG" => "Literate") do
@@ -64,7 +65,7 @@ Distributed.pmap(1:length(example_scripts)) do n
     end
 end
 
-Distributed.rmprocs()
+# Distributed.rmprocs()
 
 #####
 ##### Organize page hierarchies
