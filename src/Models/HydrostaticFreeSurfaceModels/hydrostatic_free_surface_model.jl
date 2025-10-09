@@ -161,7 +161,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
 
     validate_buoyancy(buoyancy, tracernames(tracers))
-    buoyancy = regularize_buoyancy(buoyancy)
+    buoyancy = regularize_buoyancy(buoyancy, grid)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:

@@ -171,7 +171,7 @@ function NonhydrostaticModel(; grid,
     all_auxiliary_fields = merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry))
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, all_auxiliary_fields, biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
-    buoyancy = regularize_buoyancy(buoyancy)
+    buoyancy = regularize_buoyancy(buoyancy, grid)
 
     # Adjust advection scheme to be valid on a particular grid size. i.e. if the grid size
     # is smaller than the advection order, reduce the order of the advection in that particular
