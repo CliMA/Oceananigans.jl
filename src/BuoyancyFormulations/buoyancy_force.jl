@@ -62,7 +62,7 @@ function BuoyancyForce(grid; formulation, gravity_unit_vector=NegativeZDirection
     return BuoyancyForce(formulation, gravity_unit_vector, gradients)
 end
 
-# Fallback for when no grid is available
+# Fallback for when no grid is available, we overwrite `precompute_gradients` to false
 BuoyancyForce(formulation::AbstractBuoyancyFormulation; precompute_gradients=false, kwargs...) = 
     BuoyancyForce(nothing; formulation, precompute_gradients=false)
 
