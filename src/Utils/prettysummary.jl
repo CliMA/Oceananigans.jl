@@ -5,8 +5,7 @@ prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
-    mt = ft.name.mt
-    name = mt.name
+    name = ft.name.name
     n = length(methods(f))
     m = n==1 ? "method" : "methods"
     sname = string(name)
