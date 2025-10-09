@@ -13,7 +13,7 @@
 const RS20M = (0, 0)
 const RS210 = (1, 1) .// 2
 const RS30M = (0, 0, 0)
-const RS310 = (1, 0, 0) .// 2
+const RS310 = (1, 1, 0) .// 2
 const RS40M = (0, 0, 0, 0)
 const RS410 = (1, 1, 0, 0) .// 2
 const RS50M = (0, 0, 0, 0, 0)
