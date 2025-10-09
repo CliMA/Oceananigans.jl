@@ -1137,7 +1137,7 @@ for r in 0:Nr-1
         @info msg
     end
 
-    barrier!(arch)
+    barrier(arch)
 end
 """
 

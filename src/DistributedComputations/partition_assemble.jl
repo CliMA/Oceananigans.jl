@@ -9,8 +9,8 @@ all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communica
 all_reduce!(op, val, arch) = val
 
 # MPI Barrier
-barrier!(arch) = nothing
-barrier!(arch::Distributed) = MPI.Barrier(arch.communicator)
+barrier(arch) = nothing
+barrier(arch::Distributed) = MPI.Barrier(arch.communicator)
 
 """
     concatenate_local_sizes(local_size, arch::Distributed)
