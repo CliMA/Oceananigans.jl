@@ -1,4 +1,4 @@
-using CubedSphere
+using CubedSphere.SphericalGeometry
 using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded
 using Oceananigans.Utils: KernelParameters
 using StaticArrays

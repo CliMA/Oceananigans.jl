@@ -1,4 +1,4 @@
-using CubedSphere
+using CubedSphere.SphericalGeometry
 using Oceananigans.Grids: xnode, ynode, total_length
 using GPUArraysCore: @allowscalar
 

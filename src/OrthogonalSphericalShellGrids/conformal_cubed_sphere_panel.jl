@@ -1,4 +1,5 @@
 using CubedSphere
+using CubedSphere.SphericalGeometry
 using JLD2
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}

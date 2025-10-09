@@ -6,6 +6,7 @@ using Oceananigans.Grids: R_Earth,
                           topology
 
 using CubedSphere
+using CubedSphere.SphericalGeometry
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
 

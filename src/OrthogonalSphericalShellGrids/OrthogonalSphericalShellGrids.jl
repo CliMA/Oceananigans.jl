@@ -6,7 +6,7 @@ export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 import Oceananigans
 import Oceananigans.Architectures: on_architecture
 
-using CubedSphere
+using CubedSphere.SphericalGeometry
 
 using Oceananigans
 using Oceananigans.Grids

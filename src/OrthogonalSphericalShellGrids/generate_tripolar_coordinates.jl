@@ -1,4 +1,4 @@
-using CubedSphere
+using CubedSphere.SphericalGeometry
 
 """
     _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
