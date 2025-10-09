@@ -36,7 +36,6 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     correct_barotropic_mode!(model, Δτ)
 
     # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
-    # Finally Substep! Advance grid, tracers, and (baroclinic) momentum
     rk_substep_tracers!(model.tracers, model, Δτ)
 
     return nothing
@@ -55,7 +54,6 @@ end
     
     # Finally Substep! Advance grid, tracers, (predictor) momentum 
     rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-    rk_substep_tracers!(model.tracers, model, Δτ)
     rk_substep_velocities!(model.velocities, model, Δτ)
 
     # Advancing free surface in preparation for the correction step
@@ -63,6 +61,9 @@ end
 
     # Correct for the updated barotropic mode
     correct_barotropic_mode!(model, Δτ)
+
+    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+    rk_substep_tracers!(model.tracers, model, Δτ)
 
     return nothing
 end

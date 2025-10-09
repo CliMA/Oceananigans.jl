@@ -38,6 +38,8 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
     # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
     # Finally advance tracers:
     ab2_step_tracers!(model.tracers, model, Δt, χ)
+
+    return nothing
 end
 
 function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
@@ -53,13 +55,15 @@ function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
     # Finally Substep! Advance grid, tracers, and momentum
     ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
-    ab2_step_tracers!(model.tracers, model, Δt, χ)
 
     # Advance the free surface
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
     
     # Correct the barotropic mode
     correct_barotropic_mode!(model, Δt)
+
+    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
+    ab2_step_tracers!(model.tracers, model, Δt, χ)
 
     return nothing
 end
