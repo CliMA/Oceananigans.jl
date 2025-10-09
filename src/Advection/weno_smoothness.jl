@@ -10,163 +10,232 @@
 # The zero stencil for each order is names SSX0M
 
 # Zero and one coefficient stencils
-const SS20M = (0, 0, 0)
-const SS210 = (1, 0, 0)
-const SS30M = (0, 0, 0, 0, 0, 0)
-const SS310 = (1, 0, 0, 0, 0, 0)
-const SS40M = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-const SS410 = (1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-const SS50M = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-const SS510 = (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+const SS20M = Int32.((0, 0, 0))
+const SS210 = Int32.((1, 0, 0))
+
+const SS30M = Int32.((0, 0, 0, 0, 0, 0))
+const SS310 = Int32.((1, 0, 0, 0, 0, 0))
+
+const SS40M = Int32.((0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+const SS410 = Int32.((1, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+
+const SS50M = Int32.((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+const SS510 = Int32.((1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+
+const SS60M = Int32.((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+const SS610 = Int32.((1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
 # Coefficients for third order WENO
-const SS220 = (1, -2, 1)
-const SS221 = (1, -2, 1)
+const SS220 = Int32.((1, -2, 1))
+const SS221 = Int32.((1, -2, 1))
 
-const SS320 = (1, -2, 0, 1, 0, 0)
-const SS321 = (1, -2, 0, 1, 0, 0)
+const SS320 = Int32.((1, -2, 0, 1, 0, 0))
+const SS321 = Int32.((1, -2, 0, 1, 0, 0))
 
-const SS420 = (1, -2, 0, 0, 1, 0, 0, 0, 0, 0)
-const SS421 = (1, -2, 0, 0, 1, 0, 0, 0, 0, 0)
+const SS420 = Int32.((1, -2, 0, 0, 1, 0, 0, 0, 0, 0))
+const SS421 = Int32.((1, -2, 0, 0, 1, 0, 0, 0, 0, 0))
 
-const SS520 = (1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-const SS521 = (1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+const SS520 = Int32.((1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+const SS521 = Int32.((1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+
+const SS620 = Int32.((1, -2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+const SS621 = Int32.((1, -2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
 # Coefficients for fifth order WENO
-const SS330 = (10, -31, 11, 25, -19, 4)
-const SS331 = (4,  -13,  5, 13, -13, 4)
-const SS332 = (4,  -19, 11, 25, -31, 10)
+const SS330 = Int32.((10, -31, 11, 25, -19, 4))
+const SS331 = Int32.((4,  -13,  5, 13, -13, 4))
+const SS332 = Int32.((4,  -19, 11, 25, -31, 10))
 
-const SS430 = (10, -31, 11, 0, 25, -19, 0,  4, 0, 0)
-const SS431 = (4,  -13,  5, 0, 13, -13, 0,  4, 0, 0)
-const SS432 = (4,  -19, 11, 0, 25, -31, 0, 10, 0, 0)
+const SS430 = Int32.((10, -31, 11, 0, 25, -19, 0,  4, 0, 0))
+const SS431 = Int32.((4,  -13,  5, 0, 13, -13, 0,  4, 0, 0))
+const SS432 = Int32.((4,  -19, 11, 0, 25, -31, 0, 10, 0, 0))
 
-const SS530 = (10, -31, 11, 0, 0, 25, -19, 0, 0,  4, 0, 0, 0, 0, 0)
-const SS531 = (4,  -13,  5, 0, 0, 13, -13, 0, 0,  4, 0, 0, 0, 0, 0)
-const SS532 = (4,  -19, 11, 0, 0, 25, -31, 0, 0, 10, 0, 0, 0, 0, 0)
+const SS530 = Int32.((10, -31, 11, 0, 0, 25, -19, 0, 0,  4, 0, 0, 0, 0, 0))
+const SS531 = Int32.((4,  -13,  5, 0, 0, 13, -13, 0, 0,  4, 0, 0, 0, 0, 0))
+const SS532 = Int32.((4,  -19, 11, 0, 0, 25, -31, 0, 0, 10, 0, 0, 0, 0, 0))
+
+const SS630 = Int32.((10, -31, 11, 0, 0, 0, 25, -19, 0, 0, 0,  4, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+const SS631 = Int32.((4,  -13,  5, 0, 0, 0, 13, -13, 0, 0, 0,  4, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+const SS632 = Int32.((4,  -19, 11, 0, 0, 0, 25, -31, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
 # Coefficients for seventh order WENO
-const SS440 = (2.107, -9.402, 7.042, -1.854, 11.003, -17.246, 4.642,  7.043, -3.882, 0.547)
-const SS441 = (0.547, -2.522, 1.922, -0.494,  3.443, -5.966,  1.602,  2.843, -1.642, 0.267)
-const SS442 = (0.267, -1.642, 1.602, -0.494,  2.843, -5.966,  1.922,  3.443, -2.522, 0.547)
-const SS443 = (0.547, -3.882, 4.642, -1.854,  7.043, -17.246, 7.042, 11.003, -9.402, 2.107)
+const SS440 = Int32.((2107, -9402, 7042, -1854, 11003, -17246, 4642,  7043, -3882, 0547))
+const SS441 = Int32.((0547, -2522, 1922, -0494,  3443,  -5966, 1602,  2843, -1642, 0267))
+const SS442 = Int32.((0267, -1642, 1602, -0494,  2843,  -5966, 1922,  3443, -2522, 0547))
+const SS443 = Int32.((0547, -3882, 4642, -1854,  7043, -17246, 7042, 11003, -9402, 2107))
 
-const SS540 = (2.107, -9.402, 7.042, -1.854, 0, 11.003, -17.246, 4.642, 0,  7.043, -3.882, 0, 0.547, 0, 0)
-const SS541 = (0.547, -2.522, 1.922, -0.494, 0,  3.443, -5.966,  1.602, 0,  2.843, -1.642, 0, 0.267, 0, 0)
-const SS542 = (0.267, -1.642, 1.602, -0.494, 0,  2.843, -5.966,  1.922, 0,  3.443, -2.522, 0, 0.547, 0, 0)
-const SS543 = (0.547, -3.882, 4.642, -1.854, 0,  7.043, -17.246, 7.042, 0, 11.003, -9.402, 0, 2.107, 0, 0)
+const SS540 = Int32.((2107, -9402, 7042, -1854, 0, 11003, -17246, 4642, 0,  7043, -3882, 0, 0547, 0, 0))
+const SS541 = Int32.((0547, -2522, 1922, -0494, 0,  3443,  -5966, 1602, 0,  2843, -1642, 0, 0267, 0, 0))
+const SS542 = Int32.((0267, -1642, 1602, -0494, 0,  2843,  -5966, 1922, 0,  3443, -2522, 0, 0547, 0, 0))
+const SS543 = Int32.((0547, -3882, 4642, -1854, 0,  7043, -17246, 7042, 0, 11003, -9402, 0, 2107, 0, 0))
+
+const SS640 = Int32.((2107, -9402, 7042, -1854, 0, 0, 11003, -17246, 4642, 0, 0,  7043, -3882, 0, 0, 0547, 0, 0, 0, 0, 0))
+const SS641 = Int32.((0547, -2522, 1922, -0494, 0, 0,  3443,  -5966, 1602, 0, 0,  2843, -1642, 0, 0, 0267, 0, 0, 0, 0, 0))
+const SS642 = Int32.((0267, -1642, 1602, -0494, 0, 0,  2843,  -5966, 1922, 0, 0,  3443, -2522, 0, 0, 0547, 0, 0, 0, 0, 0))
+const SS643 = Int32.((0547, -3882, 4642, -1854, 0, 0,  7043, -17246, 7042, 0, 0, 11003, -9402, 0, 0, 2107, 0, 0, 0, 0, 0))
 
 # Coefficients for ninth order WENO
-const SS550 = (1.07918,  -6.49501, 7.58823, -4.11487,  0.86329,  10.20563, -24.62076, 13.58458, -2.88007, 15.21393, -17.04396, 3.64863,  4.82963, -2.08501, 0.22658)
-const SS551 = (0.22658,  -1.40251, 1.65153, -0.88297,  0.18079,   2.42723,  -6.11976,  3.37018, -0.70237,  4.06293,  -4.64976, 0.99213,  1.38563, -0.60871, 0.06908)
-const SS552 = (0.06908,  -0.51001, 0.67923, -0.38947,  0.08209,   1.04963,  -2.99076,  1.79098, -0.38947,  2.31153,  -2.99076, 0.67923,  1.04963, -0.51001, 0.06908)
-const SS553 = (0.06908,  -0.60871, 0.99213, -0.70237,  0.18079,   1.38563,  -4.64976,  3.37018, -0.88297,  4.06293,  -6.11976, 1.65153,  2.42723, -1.40251, 0.22658)
-const SS554 = (0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918)
+const SS550 = Int32.((107918,  -649501, 758823, -411487,  086329,  1020563, -2462076, 1358458, -288007, 1521393, -1704396, 364863,  482963, -208501, 022658))
+const SS551 = Int32.((022658,  -140251, 165153, -088297,  018079,   242723,  -611976,  337018, -070237,  406293,  -464976, 099213,  138563, -060871, 006908))
+const SS552 = Int32.((006908,  -051001, 067923, -038947,  008209,   104963,  -299076,  179098, -038947,  231153,  -299076, 067923,  104963, -051001, 006908))
+const SS553 = Int32.((006908,  -060871, 099213, -070237,  018079,   138563,  -464976,  337018, -088297,  406293,  -611976, 165153,  242723, -140251, 022658))
+const SS554 = Int32.((022658,  -208501, 364863, -288007,  086329,   482963, -1704396, 1358458, -411487, 1521393, -2462076, 758823, 1020563, -649501, 107918))
 
-for FT in fully_supported_float_types
-    @eval begin
+const SS650 = Int32.((107918,  -649501, 758823, -411487,  086329,  0, 1020563, -2462076, 1358458, -288007, 0, 1521393, -1704396, 364863, 0,  482963, -208501, 0, 022658, 0, 0))
+const SS651 = Int32.((022658,  -140251, 165153, -088297,  018079,  0,  242723,  -611976,  337018, -070237, 0,  406293,  -464976, 099213, 0,  138563, -060871, 0, 006908, 0, 0))
+const SS652 = Int32.((006908,  -051001, 067923, -038947,  008209,  0,  104963,  -299076,  179098, -038947, 0,  231153,  -299076, 067923, 0,  104963, -051001, 0, 006908, 0, 0))
+const SS653 = Int32.((006908,  -060871, 099213, -070237,  018079,  0,  138563,  -464976,  337018, -088297, 0,  406293,  -611976, 165153, 0,  242723, -140251, 0, 022658, 0, 0))
+const SS654 = Int32.((022658,  -208501, 364863, -288007,  086329,  0,  482963, -1704396, 1358458, -411487, 0, 1521393, -2462076, 758823, 0, 1020563, -649501, 0, 107918, 0, 0))
+
+# Coefficients for eleventh order WENO
+const SS660 = Int32.((06150211, -47460464, 76206736, -63394124, 27060170, -04712740,  94851237, -311771244, 262901672, -113206788,  19834350, 260445372, -444003904, 192596472, -33918804, 190757572, -166461044, 29442256, 36480687, -12950184, 01152561))
+const SS661 = Int32.((01152561, -09117992, 14742480, -12183636, 05134574, -00880548,  19365967,  -65224244,  55053752,  -23510468,  04067018,  56662212,  -97838784,  42405032, -07408908,  43093692,  -37913324, 06694608, 08449957, -03015728, 00271779))
+const SS662 = Int32.((00271779, -02380800, 04086352, -03462252, 01458762, -00245620,  05653317,  -20427884,  17905032,  -07727988,  01325006,  19510972,  -35817664,  15929912, -02792660,  17195652,  -15880404, 02863984, 03824847, -01429976, 00139633))
+const SS663 = Int32.((00139633, -01429976, 02863984, -02792660, 01325006, -00245620,  03824847,  -15880404,  15929912,  -07727988,  01458762,  17195652,  -35817664,  17905032, -03462252,  19510972,  -20427884, 04086352, 05653317, -02380800, 00271779))
+const SS664 = Int32.((00271779, -03015728, 06694608, -07408908, 04067018, -00880548,  08449957,  -37913324,  42405032,  -23510468,  05134574,  43093692,  -97838784,  55053752, -12183636,  56662212,  -65224244, 14742480, 19365967, -09117992, 01152561))
+const SS665 = Int32.((01152561, -12950184, 29442256, -33918804, 19834350, -04712740,  36480687, -166461044, 192596472, -113206788,  27060170, 190757572, -444003904, 262901672, -63394124, 260445372, -311771244, 76206736, 94851237, -47460464, 06150211))
+
+@eval begin
         """
-            smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{red_order}, ::Val{stencil})
+                smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{red_order}, ::Val{stencil})
 
         Return the coefficients used to calculate the smoothness indicators for the stencil 
         number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The actual order of 
         reconstruction is restricted by `red_order <= buffer`. The coefficients
         are ordered in such a way to calculate the smoothness in the following fashion:
-        
+
         ```julia
         buffer  = 4
         stencil = 0
-        
+
         ψ = # The stencil corresponding to S₀ with buffer 4 (7th order WENO)
-        
+
         C = smoothness_coefficients(Val(buffer), Val(0))
-        
+
         # The smoothness indicator
         β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
-            ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
-            ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
-            ψ[4] * (C[10] * ψ[4])
+                ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
+                ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
+                ψ[4] * (C[10] * ψ[4])
         ```
-        
+
         In the above case, if `red_order == 2`, then all the coefficients corresponding to ψ[i for i > 2]
         are zero. This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
         # 3rd order WENO, restricted to order 1 (does not matter the restriction order here)
-        @inline smoothness_coefficients(::WENO{2, <:Any, $FT}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(FT.(SS210)),   # Order 1
-                                       $(FT.(SS220)))   # Order 3
+        @inline smoothness_coefficients(::WENO{2}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(SS210),    # Order 1 (Centered)
+                                       $(SS220))    # Order 3
 
-        @inline smoothness_coefficients(::WENO{2, <:Any, $FT}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(FT.(SS20M)),   # Order 1
-                                       $(FT.(SS221)))   # Order 3
+        @inline smoothness_coefficients(::WENO{2}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(SS20M),    # Order 1 (Centered)
+                                       $(SS221))    # Order 3
 
         # 5th order WENO, restricted to orders 3 and 1
-        @inline smoothness_coefficients(::WENO{3, <:Any, $FT}, red_order, ::Val{0}) =
-                ifelse(red_order == 1, $(FT.(SS310)),    # Order 1
-                ifelse(red_order == 2, $(FT.(SS320)),    # Order 3                                           
-                                       $(FT.(SS330))))   # Order 5
+        @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{0}) =
+                ifelse(red_order == 1, $(SS310),     # Order 1 (Centered)
+                ifelse(red_order == 2, $(SS320),     # Order 3                                           
+                                       $(SS330)))    # Order 5
 
-        @inline smoothness_coefficients(::WENO{3, <:Any, $FT}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(FT.(SS30M)),    # Order 1
-                ifelse(red_order == 2, $(FT.(SS321)),    # Order 3
-                                       $(FT.(SS331))))   # Order 5
+        @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(SS30M),     # Order 1 (Centered)
+                ifelse(red_order == 2, $(SS321),     # Order 3
+                                       $(SS331)))    # Order 5
 
-        @inline smoothness_coefficients(::WENO{3, <:Any, $FT}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(FT.(SS30M)),    # Order ≤ 3
-                                       $(FT.(SS332)))    # Order 5
+        @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{2}) = 
+                ifelse(red_order <  3, $(SS30M),     # Order ≤ 3
+                                       $(SS332))     # Order 5
 
         # 7th order WENO, restricted to orders 5, 3, and 1
-        @inline smoothness_coefficients(::WENO{4, <:Any, $FT}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(FT.(SS410)),    # Order 1                              
-                ifelse(red_order == 2, $(FT.(SS420)),    # Order 3
-                ifelse(red_order == 3, $(FT.(SS430)),    # Order 5
-                                       $(FT.(SS440)))))  # Order 7
-        
-        @inline smoothness_coefficients(::WENO{4, <:Any, $FT}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(FT.(SS40M)),    # Order 1
-                ifelse(red_order == 2, $(FT.(SS421)),    # Order 3
-                ifelse(red_order == 3, $(FT.(SS431)),    # Order 5
-                                       $(FT.(SS441)))))  # Order 7
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(SS410),     # Order 1 (Centered)                             
+                ifelse(red_order == 2, $(SS420),     # Order 3
+                ifelse(red_order == 3, $(SS430),     # Order 5
+                                       $(SS440))))   # Order 7
 
-        @inline smoothness_coefficients(::WENO{4, <:Any, $FT}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(FT.(SS40M)),    # Order ≤ 3                    
-                ifelse(red_order == 3, $(FT.(SS432)),    # Order 5
-                                       $(FT.(SS442))))   # Order 7
-        
-        @inline smoothness_coefficients(::WENO{4, <:Any, $FT}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(FT.(SS40M)),    # Order ≤ 5                                              
-                                       $(FT.(SS443)))    # Order 7
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(SS40M),     # Order 1 (Centered)
+                ifelse(red_order == 2, $(SS421),     # Order 3
+                ifelse(red_order == 3, $(SS431),     # Order 5
+                                       $(SS441))))   # Order 7
+
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{2}) = 
+                ifelse(red_order <  3, $(SS40M),     # Order ≤ 3                    
+                ifelse(red_order == 3, $(SS432),     # Order 5
+                                       $(SS442)))    # Order 7
+
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{3}) = 
+                ifelse(red_order <  4, $(SS40M),     # Order ≤ 5                                              
+                                       $(SS443))     # Order 7
 
         # 9th order WENO, restricted to orders 7, 5, 3, and 1
-        @inline smoothness_coefficients(::WENO{5, <:Any, $FT}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(FT.(SS510)),    # Order 1                             
-                ifelse(red_order == 2, $(FT.(SS520)),    # Order 3       
-                ifelse(red_order == 3, $(FT.(SS530)),    # Order 5
-                ifelse(red_order == 4, $(FT.(SS540)),    # Order 7
-                                       $(FT.(SS550)))))) # Order 9
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(SS510),     # Order 1 (Centered)                             
+                ifelse(red_order == 2, $(SS520),     # Order 3       
+                ifelse(red_order == 3, $(SS530),     # Order 5
+                ifelse(red_order == 4, $(SS540),     # Order 7
+                                       $(SS550)))))  # Order 9
 
-        @inline smoothness_coefficients(::WENO{5, <:Any, $FT}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(FT.(SS50M)),    # Order 1                             
-                ifelse(red_order == 2, $(FT.(SS521)),    # Order 3       
-                ifelse(red_order == 3, $(FT.(SS531)),    # Order 5
-                ifelse(red_order == 4, $(FT.(SS541)),    # Order 7
-                                       $(FT.(SS551)))))) # Order 9
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(SS50M),     # Order 1 (Centered)                             
+                ifelse(red_order == 2, $(SS521),     # Order 3       
+                ifelse(red_order == 3, $(SS531),     # Order 5
+                ifelse(red_order == 4, $(SS541),     # Order 7
+                                       $(SS551)))))  # Order 9
 
-        @inline smoothness_coefficients(::WENO{5, <:Any, $FT}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(FT.(SS50M)),    # Order ≤ 3                            
-                ifelse(red_order == 3, $(FT.(SS532)),    # Order 5
-                ifelse(red_order == 4, $(FT.(SS542)),    # Order 7
-                                       $(FT.(SS552)))))  # Order 9
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{2}) = 
+                ifelse(red_order <  3, $(SS50M),     # Order ≤ 3                            
+                ifelse(red_order == 3, $(SS532),     # Order 5
+                ifelse(red_order == 4, $(SS542),     # Order 7
+                                       $(SS552))))   # Order 9
 
-        @inline smoothness_coefficients(::WENO{5, <:Any, $FT}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(FT.(SS50M)),    # Order ≤ 5 
-                ifelse(red_order == 4, $(FT.(SS543)),    # Order 7
-                                       $(FT.(SS553))))   # Order 9
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{3}) = 
+                ifelse(red_order <  4, $(SS50M),     # Order ≤ 5 
+                ifelse(red_order == 4, $(SS543),     # Order 7
+                                       $(SS553)))    # Order 9
 
-        @inline smoothness_coefficients(::WENO{5, <:Any, $FT}, red_order, ::Val{4}) = 
-                ifelse(red_order <  5, $(FT.(SS50M)),    # Order ≤ 7
-                                       $(FT.(SS554)))    # Order 9
-    end
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{4}) = 
+                ifelse(red_order <  5, $(SS50M),     # Order ≤ 7
+                                       $(SS554))     # Order 9
+
+        # 11th order WENO, restricted to orders 9, 7, 5, 3, and 1
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(SS610),     # Order 1 (Centered)                             
+                ifelse(red_order == 2, $(SS620),     # Order 3       
+                ifelse(red_order == 3, $(SS630),     # Order 5
+                ifelse(red_order == 4, $(SS640),     # Order 7
+                ifelse(red_order == 5, $(SS650),     # Order 9
+                                       $(SS660)))))) # Order 11
+
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(SS60M),     # Order 1 (Centered)                             
+                ifelse(red_order == 2, $(SS621),     # Order 3       
+                ifelse(red_order == 3, $(SS631),     # Order 5
+                ifelse(red_order == 4, $(SS641),     # Order 7
+                ifelse(red_order == 5, $(SS651),     # Order 9
+                                       $(SS661)))))) # Order 11
+
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{2}) = 
+                ifelse(red_order <  3, $(SS60M),     # Order ≤ 3                            
+                ifelse(red_order == 3, $(SS632),     # Order 5
+                ifelse(red_order == 4, $(SS642),     # Order 7
+                ifelse(red_order == 5, $(SS652),     # Order 9
+                                       $(SS662)))))  # Order 11
+
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{3}) = 
+                ifelse(red_order <  4, $(SS60M),     # Order ≤ 5 
+                ifelse(red_order == 4, $(SS643),     # Order 7
+                ifelse(red_order == 5, $(SS653),     # Order 9
+                                       $(SS663))))   # Order 11
+
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{4}) = 
+                ifelse(red_order <  5, $(SS60M),     # Order ≤ 7
+                ifelse(red_order == 5, $(SS654),     # Order 9
+                                $(SS664)))    # Order 11
+
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{5}) = 
+                ifelse(red_order <  6, $(SS60M),     # Order ≤ 9
+                                       $(SS665))     # Order 11
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory 
@@ -195,12 +264,22 @@ end
     return abs(τ)
 end
 
-# Otherwise we take the 9th order WENO smoothness indicator as a default
-@inline function global_smoothness_indicator(β, R) 
+@inline function global_smoothness_indicator(β::NTuple{5}, R) 
     τ = @inbounds @fastmath ifelse(R == 1, β[1],
                             ifelse(R == 2, β[1] - β[2],
                             ifelse(R == 3, β[1] - β[3],
                             ifelse(R == 4, β[1] + 3β[2] - 3β[3] -  β[4],
                                            β[1] + 2β[2] - 6β[3] + 2β[4] + β[5]))))
+    return abs(τ)
+end
+
+# Otherwise we take the 11th order WENO smoothness indicator as a default
+@inline function global_smoothness_indicator(β, R) 
+    τ = @inbounds @fastmath ifelse(R == 1, β[1],
+                            ifelse(R == 2, β[1] -   β[2],
+                            ifelse(R == 3, β[1] -   β[3],
+                            ifelse(R == 4, β[1] +  3β[2] -   3β[3] -    β[4],
+                            ifelse(R == 5, β[1] +  2β[2] -   6β[3] +   2β[4] +   β[5],
+                                           β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])))))
     return abs(τ)
 end

@@ -74,34 +74,6 @@ Base.show(io::IO, a::FunctionStencil) = print(io, "FunctionStencil f = $(a.func)
 
 const ϵ = 1f-8
 
-# Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
-# Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
-for FT in fully_supported_float_types
-    @eval begin
-        # WENO 3rd order
-        @inline C★(::WENO{2, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), $(FT(2//3)))
-        @inline C★(::WENO{2, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), $(FT(1//3)))
-
-        # WENO 5th order
-        @inline C★(::WENO{3, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), $(FT(3//10))))
-        @inline C★(::WENO{3, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), $(FT(3//5))))
-        @inline C★(::WENO{3, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), $(FT(1//10)))
-
-        # WENO 7th order
-        @inline C★(::WENO{4, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), ifelse(red_order==3, $(FT(3//10)), $(FT(4//35)))))
-        @inline C★(::WENO{4, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), ifelse(red_order==3, $(FT(3//5)),  $(FT(18//35)))))
-        @inline C★(::WENO{4, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(1//10)), $(FT(12//35))))
-        @inline C★(::WENO{4, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), $(FT(1//35)))
-
-        # WENO 9th order
-        @inline C★(::WENO{5, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)),  ifelse(red_order==3, $(FT(3//10)), ifelse(red_order==4, $(FT(4//35)),  $(FT(5//126))))))
-        @inline C★(::WENO{5, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)),  ifelse(red_order==3, $(FT(3//5)),  ifelse(red_order==4, $(FT(18//35)), $(FT(20//63))))))
-        @inline C★(::WENO{5, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(1//10)), ifelse(red_order==4, $(FT(12//35)), $(FT(100//231)))))
-        @inline C★(::WENO{5, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), ifelse(red_order==4, $(FT(1//35)), $(FT(10//63))))
-        @inline C★(::WENO{5, $FT}, red_order, ::Val{4}) = ifelse(red_order <5, $(FT(0)), $(FT(1//126)))
-    end
-end
-
 @inline function metaprogrammed_reconstruction_operation(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -357,6 +329,11 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Callable), (false, true))
         @inline function $stencil(i, j, k, grid, ::WENO{5}, bias, ψ::$T, args...)
             S = @inbounds $(load_weno_stencil(5, dir, f))
             return S₀₅(S, bias), S₁₅(S, bias), S₂₅(S, bias), S₃₅(S, bias), S₄₅(S, bias)
+        end
+
+        @inline function $stencil(i, j, k, grid, ::WENO{6}, bias, ψ::$T, args...)
+            S = @inbounds $(load_weno_stencil(6, dir, f))
+            return S₀₆(S, bias), S₁₆(S, bias), S₂₆(S, bias), S₃₆(S, bias), S₄₆(S, bias), S₅₆(S, bias)
         end
     end
 end

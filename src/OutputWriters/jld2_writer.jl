@@ -219,8 +219,8 @@ initialize_jld2_file!(writer::JLD2Writer, model) =
 function iteration_exists(filepath, iter=0)
     file = jldopen(filepath, "r")
 
-    zero_exists = try
-        t₀ = file["timeseries/t/$iter"]
+    iter_exists = try
+        tᵢ = file["timeseries/t/$iter"]
         true
     catch # This can fail for various reasons:
           #     the path does not exist, "t" does not exist...
@@ -229,7 +229,7 @@ function iteration_exists(filepath, iter=0)
         close(file)
     end
 
-    return zero_exists
+    return iter_exists
 end
 
 function write_output!(writer::JLD2Writer, model)

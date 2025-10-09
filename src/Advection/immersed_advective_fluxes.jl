@@ -102,14 +102,14 @@ Example
 =======
 
 ```
-julia> inside_immersed_boundary(2, :none, :z, :ᶜ)
+julia> inside_immersed_boundary(2, :z, :ᶜ)
 4-element Vector{Any}:
  :(inactive_node(i, j, k + -1, ibg, c, c, f))
  :(inactive_node(i, j, k + 0,  ibg, c, c, f))
  :(inactive_node(i, j, k + 1,  ibg, c, c, f))
  :(inactive_node(i, j, k + 2,  ibg, c, c, f))
 
-julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
+julia> inside_immersed_boundary(3, :x, :ᶠ)
 5-element Vector{Any}:
  :(inactive_node(i + -3, j, k, ibg, c, c, c))
  :(inactive_node(i + -2, j, k, ibg, c, c, c))
@@ -220,6 +220,22 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
                   ifelse(to2, 2, 
                   ifelse(to3, 3, 
                   ifelse(to4, 4, 5))))
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            return min(ior, bor)
+        end
+
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{6}) 
+            I = $(inside_immersed_boundary(5, dir, loc))
+            to5 = @inbounds (I[1] | I[12])
+            to4 = @inbounds (I[2] | I[11])
+            to3 = @inbounds (I[3] | I[10])
+            to2 = @inbounds (I[4] | I[9]) 
+            to1 = @inbounds (I[5] | I[8])
+            ior = ifelse(to1, 1, 
+                  ifelse(to2, 2, 
+                  ifelse(to3, 3, 
+                  ifelse(to4, 4, 
+                  ifelse(to5, 5, 6)))))
             bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
             return min(ior, bor)
         end
