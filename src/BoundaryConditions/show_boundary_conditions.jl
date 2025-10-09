@@ -35,7 +35,7 @@ Base.summary(bc::ZBC)                     = string("ZipperBoundaryCondition: ", 
 function Base.summary(bc::MBC)
     string("MixedBoundaryCondition: ",
            prettysummary(bc.condition.coefficient), " c + ",
-           prettysummary(bc.condition.combination))
+           prettysummary(bc.condition.inhomogeneity))
 end
 
 show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))

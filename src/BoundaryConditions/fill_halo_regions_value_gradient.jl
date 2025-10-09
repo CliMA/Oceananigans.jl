@@ -14,9 +14,9 @@ using Oceananigans.Operators: Δx, Δy, Δz
 
 @inline function left_gradient(bc::MBC, c¹, Δ, i, j, args...)
     coefficient = bc.condition.coefficient 
-    combination = bc.condition.combination
+    inhomogeneity = bc.condition.inhomogeneity
     a = getbc(coefficient, i, j, args...)
-    b = getbc(combination, i, j, args...)
+    b = getbc(inhomogeneity, i, j, args...)
     g₁ = c¹ / Δ * (1 - (1 + a * Δ / 2) / (1 - a * Δ / 2))
     g₂ = b / (1 - a * Δ / 2)
     return g₁ + g₂
@@ -24,9 +24,9 @@ end
 
 @inline function right_gradient(bc::MBC, cᴺ, Δ, i, j, args...)
     coefficient = bc.condition.coefficient 
-    combination = bc.condition.combination
+    inhomogeneity = bc.condition.inhomogeneity
     a = getbc(coefficient, i, j, args...)
-    b = getbc(combination, i, j, args...)
+    b = getbc(inhomogeneity, i, j, args...)
     g₁ = cᴺ / Δ * ((1 - a * Δ / 2) / (1 + a * Δ / 2) - 1)
     g₂ = b / (1 + a * Δ / 2)
     return g₁ + g₂

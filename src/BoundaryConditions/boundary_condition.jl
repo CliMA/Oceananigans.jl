@@ -116,11 +116,11 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 
 struct MixedCondition{A, B}
     coefficient :: A
-    combination :: B
+    inhomogeneity :: B
 end
 
 """
-    MixedBoundaryCondition(coefficient, combination=0; kwargs...)
+    MixedBoundaryCondition(coefficient, inhomogeneity=0; kwargs...)
 
 Construct a `MixedBoundaryCondition` representing the condition
 
@@ -128,19 +128,19 @@ Construct a `MixedBoundaryCondition` representing the condition
 \\partial_n c + a c = b
 ```
 
-where ``a`` is the `coefficient` and ``b`` is the `combination`.
+where ``a`` is the `coefficient` and ``b`` is the `inhomogeneity`.
 
 See [`BoundaryCondition`](@ref) for information about the possible `kwargs`
-when using function `coefficient` and/or `combination`.
+when using function `coefficient` and/or `inhomogeneity`.
 """
-function MixedBoundaryCondition(coefficient, combination=0;
+function MixedBoundaryCondition(coefficient, inhomogeneity=0;
                                 parameters = nothing,
                                 discrete_form = false,
                                 field_dependencies = ())
 
     coefficient = materialize_condition(coefficient, parameters, discrete_form, field_dependencies)
-    combination = materialize_condition(combination, parameters, discrete_form, field_dependencies)
-    condition = MixedCondition(coefficient, combination)
+    inhomogeneity = materialize_condition(inhomogeneity, parameters, discrete_form, field_dependencies)
+    condition = MixedCondition(coefficient, inhomogeneity)
 
     return BoundaryCondition(Mixed(), condition)
 end

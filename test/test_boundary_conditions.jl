@@ -309,13 +309,13 @@ end
                                         south = ValueBoundaryCondition(simple_bc))
 
         @test ϕ_bcs.east.condition.coefficient isa ContinuousBoundaryFunction
-        @test ϕ_bcs.east.condition.combination isa ContinuousBoundaryFunction
+        @test ϕ_bcs.east.condition.inhomogeneity isa ContinuousBoundaryFunction
         @test ϕ_bcs.west.condition.coefficient isa eltype(grid)
-        @test ϕ_bcs.west.condition.combination isa eltype(grid)
+        @test ϕ_bcs.west.condition.inhomogeneity isa eltype(grid)
         @test ϕ_bcs.bottom.condition.coefficient isa eltype(grid)
-        @test ϕ_bcs.bottom.condition.combination isa eltype(grid)
+        @test ϕ_bcs.bottom.condition.inhomogeneity isa eltype(grid)
         @test ϕ_bcs.top.condition.coefficient isa eltype(grid)
-        @test ϕ_bcs.top.condition.combination isa eltype(grid)
+        @test ϕ_bcs.top.condition.inhomogeneity isa eltype(grid)
 
         ϕ = CenterField(grid, boundary_conditions=ϕ_bcs)
         set!(ϕ, 1)
