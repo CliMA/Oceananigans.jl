@@ -27,9 +27,14 @@ struct NonTraditionalBetaPlane{FT} <: AbstractRotation
 end
 
 """
-    NonTraditionalBetaPlane(FT=Float64;
-                            fz=nothing, fy=nothing, β=nothing, γ=nothing,
-                            rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+    NonTraditionalBetaPlane([FT = Oceananigans.defaults.FloatType;]
+                            fz = nothing,
+                            fy = nothing,
+                            β = nothing,
+                            γ = nothing,
+                            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
+                            latitude = nothing,
+                            radius = Oceananigans.defaults.planet_radius)
 
 The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three parameters
 `rotation_rate`, `latitude` (in degrees), and `radius` that specify the rotation rate
@@ -43,11 +48,16 @@ and `γ = - 4 * rotation_rate * sind(latitude) / radius`.
 
 By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
 """
-function NonTraditionalBetaPlane(FT=Oceananigans.defaults.FloatType;
-                                 fz=nothing, fy=nothing, β=nothing, γ=nothing,
-                                 rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+function NonTraditionalBetaPlane(FT = Oceananigans.defaults.FloatType;
+                                 fz = nothing,
+                                 fy = nothing,
+                                 β = nothing,
+                                 γ = nothing,
+                                 rotation_rate = Oceananigans.defaults.planet_rotation_rate,
+                                 latitude = nothing,
+                                 radius = Oceananigans.defaults.planet_radius)
 
-    Ω, φ, R = rotation_rate, latitude, radius
+    Ω, φ, R  =  rotation_rate, latitude, radius
 
     use_f = !all(isnothing.((fz, fy, β, γ))) && isnothing(latitude)
     use_planet_parameters = !isnothing(latitude) && all(isnothing.((fz, fy, β, γ)))
