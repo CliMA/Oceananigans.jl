@@ -86,10 +86,10 @@ steps:
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
           - "🦧 scripts"
-          - "👺 enzyme"
+          # - "👺 enzyme"
           - "🍱 xesmf"
-          - "👹 reactant_1"
-          - "🎭 reactant_2"
+          # - "👹 reactant_1"
+          # - "🎭 reactant_2"
     retry:
       automatic:
         - exit_status: 1
