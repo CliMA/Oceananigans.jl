@@ -18,7 +18,7 @@ const RS40M = (0,   0,   0, 0)
 const RS410 = (0.5, 0.5, 0, 0)
 const RS50M = (0,   0,   0, 0, 0)
 const RS510 = (0.5, 0.5, 0, 0, 0)
-const RS60M = (0,   0,   0, 0, 0, 0)
+const RS60M = (0,   0,   0, 0, 0, 0) 
 const RS610 = (0.5, 0.5, 0, 0, 0, 0)
 
 # Coefficients for third order WENO reconstruction
