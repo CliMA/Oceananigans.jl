@@ -36,7 +36,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
         update_boundary_conditions!(fields(model), model)
     end
     
-    u, v, _ = model.velocities
+    u = model.velocities.u
+    v = model.velocities.v
     tracers = model.tracers
 
     # Fill the halos

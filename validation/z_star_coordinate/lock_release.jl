@@ -27,19 +27,19 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
                                     closure = HorizontalScalarDiffusivity(κ=100, ν=100),
-                                timestepper = :SplitRungeKutta1,
-                               free_surface = ImplicitFreeSurface()) #SplitExplicitFreeSurface(grid; substeps=30)) # ExplicitFreeSurface()) #
+                                timestepper = :SplitRungeKutta3,
+                               free_surface = ExplicitFreeSurface()) # SplitExplicitFreeSurface(grid; substeps=30)) # ImplicitFreeSurface()) # #
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 20kilometers ? 6 // 100 : 1 // 100
 set!(model, b = bᵢ, c = (x, z) -> - 1)
 
 # Same timestep as in the ilicak paper
-Δt = 1 # Oceananigans.defaults.FloatType(1 // 10)
+Δt = 0.1 # Oceananigans.defaults.FloatType(1 // 10)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time=17hours)
+simulation = Simulation(model; Δt, stop_time=1.7hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 V  = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)

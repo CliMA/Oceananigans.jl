@@ -14,6 +14,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids
 
 # ## Grid
 
@@ -23,8 +24,8 @@ using Oceananigans.Units
 Nx, Nz = 256, 128
 H, L = 2kilometers, 1000kilometers
 
-underlying_grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4),
-                                  x = (-L, L), z = (-H, 0),
+underlying_grid = RectilinearGrid(size = (Nx, Nz), halo = (6, 6),
+                                  x = (-L, L), z = MutableVerticalDiscretization((-H, 0)),
                                   topology = (Periodic, Flat, Bounded))
 
 # Now we can create the non-trivial bathymetry. We use `GridFittedBottom` that gets as input either
@@ -43,7 +44,7 @@ width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
 bottom(x) = - H + hill(x)
 
-grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
 # Let's see how the domain with the bathymetry is.
 
@@ -51,7 +52,7 @@ x = xnodes(grid, Center())
 bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
 top_boundary = 0 * x
 
-using CairoMakie
+using GLMakie
 
 fig = Figure(size = (700, 200))
 ax = Axis(fig[1, 1],
@@ -105,15 +106,39 @@ A₂ = U₂ * (ω₂^2 - coriolis.f^2) / ω₂
 @inline tidal_forcing(x, z, t, p) = p.A₂ * sin(p.ω₂ * t)
 u_forcing = Forcing(tidal_forcing, parameters=(; A₂, ω₂))
 
+timestepper = :SplitRungeKutta3
+free_surface = SplitExplicitFreeSurface(grid; substeps=50)
 # ## Model
 
 # We built a `HydrostaticFreeSurfaceModel`:
+
+using Oceananigans.Advection: FluxFormAdvection
+
+@inline function b_top(i, j, grid, clock, fields) 
+    b1 = fields.b[i, j, grid.Nz]
+    b2 = fields.b[i, j, grid.Nz-1]
+    return (3b1 - b2) / 2
+end
+
+@inline function b_bottom(i, j, grid, clock, fields)
+    b1 = fields.b[i, j, 1]
+    b2 = fields.b[i, j, 2]
+    return (3b1 - b2) / 2
+end
+
+b_bc_top = ValueBoundaryCondition(b_top, discrete_form=true)
+b_bc_bottom = ValueBoundaryCondition(b_bottom, discrete_form=true)
+
+b_bcs = FieldBoundaryConditions(top = b_bc_top, bottom = b_bc_bottom)
 
 model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                       buoyancy = BuoyancyTracer(),
                                       tracers = :b,
                                       momentum_advection = WENO(),
-                                      tracer_advection = WENO(),
+                                      tracer_advection = WENO(order=7), # FluxFormAdvection(WENO(order=7), nothing, Centered()),
+                                      free_surface,
+                                      boundary_conditions = (; b = b_bcs),    
+                                      timestepper,
                                       forcing = (; u = u_forcing))
 
 # We initialize the model with the tidal flow and a linear stratification.
@@ -124,9 +149,14 @@ set!(model, u=U₂, b=bᵢ)
 
 # Now let's build a `Simulation`.
 
-Δt = 5minutes
-stop_time = 4days
+Δt = 15minutes
+stop_time = 40days
 simulation = Simulation(model; Δt, stop_time)
+
+ϵ = Oceananigans.Models.VarianceDissipationComputations.VarianceDissipation(:b, grid)
+
+# Adding the variance dissipation
+add_callback!(simulation, ϵ, IterationInterval(1))
 
 # We add a callback to print a message about how the simulation is going,
 
@@ -163,10 +193,11 @@ U = Field(Average(u))
 u′ = u - U
 N² = ∂z(b)
 
-filename = "internal_tide"
+filename = "internal_tide_$(string(timestepper))_$(round(Δt/minutes))min"
 save_fields_interval = 30minutes
+f = Oceananigans.Models.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; u, u′, w, b, N²); filename,
+simulation.output_writers[:fields] = JLD2Writer(model, merge((; u, u′, w, b, N²), f); filename,
                                                 schedule = TimeInterval(save_fields_interval),
                                                 overwrite_existing = true)
 
@@ -177,18 +208,24 @@ run!(simulation)
 # ## Load output
 
 # First, we load the saved velocities and stratification output as `FieldTimeSeries`es.
+filename = "internal_tide_QuasiAdamsBashforth2_5.0min"
 
 saved_output_filename = filename * ".jld2"
 
 u′_t = FieldTimeSeries(saved_output_filename, "u′")
  w_t = FieldTimeSeries(saved_output_filename, "w")
+ b_t = FieldTimeSeries(saved_output_filename, "b")
 N²_t = FieldTimeSeries(saved_output_filename, "N²")
+ϵx_t = FieldTimeSeries(saved_output_filename, "Abx")
+ϵz_t = FieldTimeSeries(saved_output_filename, "Abz")
 
 umax = maximum(abs, u′_t[end])
 wmax = maximum(abs, w_t[end])
 
 times = u′_t.times
 nothing #hide
+
+b2 = [sum(b_t[i]^2) for i in 1:length(b_t)]
 
 # ## Visualize
 
@@ -198,38 +235,47 @@ nothing #hide
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
-using CairoMakie
+using GLMakie
 
 n = Observable(1)
 
 title = @lift @sprintf("t = %1.2f days = %1.2f T₂",
                        round(times[$n] / day, digits=2) , round(times[$n] / T₂, digits=2))
 
-u′ₙ = @lift u′_t[$n]
- wₙ = @lift  w_t[$n]
-N²ₙ = @lift N²_t[$n]
+u′ₙ = @lift interior(u′_t[$n], :, 1, :)
+ wₙ = @lift interior( w_t[$n], :, 1, :)
+N²ₙ = @lift interior(N²_t[$n], :, 1, :)
+ϵxₙ = @lift interior(ϵx_t[$n], :, 1, :)
+ϵzₙ = @lift interior(ϵz_t[$n], :, 1, :)
 
 axis_kwargs = (xlabel = "x [m]",
                ylabel = "z [m]",
                limits = ((-grid.Lx/2, grid.Lx/2), (-grid.Lz, 0)),
                titlesize = 20)
 
-fig = Figure(size = (700, 900))
+fig = Figure(size = (700, 1500))
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-ax_u = Axis(fig[2, 1]; title = "u'-velocity", axis_kwargs...)
-hm_u = heatmap!(ax_u, u′ₙ; nan_color=:gray, colorrange=(-umax, umax), colormap=:balance)
+ax_u = Axis(fig[2, 1]; title = "u'-velocity") #, axis_kwargs...)
+hm_u = heatmap!(ax_u, u′ₙ; nan_color=:gray, colorrange=(-0.35, 0.35), colormap=:balance)
 Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
 
-ax_w = Axis(fig[3, 1]; title = "w-velocity", axis_kwargs...)
-hm_w = heatmap!(ax_w, wₙ; nan_color=:gray, colorrange=(-wmax, wmax), colormap=:balance)
+ax_w = Axis(fig[3, 1]; title = "w-velocity") #, axis_kwargs...)
+hm_w = heatmap!(ax_w, wₙ; nan_color=:gray, colorrange=(-0.0035, 0.0035), colormap=:balance)
 Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
-ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
+ax_N² = Axis(fig[4, 1]; title = "stratification N²")# , axis_kwargs...)
 hm_N² = heatmap!(ax_N², N²ₙ; nan_color=:gray, colorrange=(0.9Nᵢ², 1.1Nᵢ²), colormap=:magma)
 Colorbar(fig[4, 2], hm_N², label = "s⁻²")
 
+ax_ϵx = Axis(fig[5, 1]; title = "variance dissipation rate ϵ") #, axis_kwargs...)
+hm_ϵx = heatmap!(ax_ϵx, ϵxₙ; nan_color=:gray, colorrange=(-3e-7, 3e-7), colormap=:magma)
+Colorbar(fig[5, 2], hm_ϵx, label = "m² s⁻³")
+
+ax_ϵz = Axis(fig[6, 1]; title = "variance dissipation rate ϵ_z") #, axis_kwargs...)
+hm_ϵz = heatmap!(ax_ϵz, ϵzₙ; nan_color=:gray, colorrange=(-3e-7, 3e-7), colormap=:magma)
+Colorbar(fig[6, 2], hm_ϵz, label = "m² s⁻³")
 fig
 
 # Finally, we can record a movie.
