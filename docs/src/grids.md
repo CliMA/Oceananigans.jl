@@ -1109,7 +1109,7 @@ rm("equally_partitioned_grids.jl", force=true)
 partitioned_grid_example = """
 
 using Oceananigans
-using Oceananigans.DistributedComputations: Equal, barrier!
+using Oceananigans.DistributedComputations: Equal, barrier
 using MPI
 MPI.Init()
 
