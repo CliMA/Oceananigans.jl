@@ -121,10 +121,10 @@ using DocStringExtensions
 using FFTW
 
 function __init__()
-    if VERSION >= v"1.11.0"
-        @warn """You are using Julia v1.11 or later!"
-                 Oceananigans is currently tested on Julia v1.10."
-                 If you find issues with Julia v1.11 or later,"
+    if VERSION >= v"1.13.0"
+        @warn """You are using Julia v1.13 or later!"
+                 Oceananigans is currently tested on Julia v1.12."
+                 If you find issues with Julia v1.13 or later,"
                  please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
 
     end
