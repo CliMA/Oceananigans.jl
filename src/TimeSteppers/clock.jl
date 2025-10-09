@@ -5,6 +5,7 @@ using Oceananigans.Grids: AbstractGrid
 
 import Base: show
 import Oceananigans.Units: Time
+import Oceananigans.Fields: set!
 
 """
     mutable struct Clock{T, FT}
@@ -50,11 +51,11 @@ function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
 end
 
 """
-    set_clock!(clock::Clock, new_clock::Clock)
+    set!(clock::Clock, new_clock::Clock)
 
 Set `clock` to the `new_clock`.
 """
-function set_clock!(clock::Clock, new_clock::Clock)
+function set!(clock::Clock, new_clock::Clock)
     clock.time = new_clock.time
     clock.iteration = new_clock.iteration
     clock.last_Δt = new_clock.last_Δt
