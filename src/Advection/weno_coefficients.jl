@@ -10,16 +10,16 @@
 # The zero stencil for each order is names RSX0M
 
 # Zero and one coefficient stencils
-const RS20M = (0,   0)
-const RS210 = (0.5, 0.5)
-const RS30M = (0,   0,   0)
-const RS310 = (0.5, 0.5, 0) 
-const RS40M = (0,   0,   0, 0)
-const RS410 = (0.5, 0.5, 0, 0)
-const RS50M = (0,   0,   0, 0, 0)
-const RS510 = (0.5, 0.5, 0, 0, 0)
-const RS60M = (0,   0,   0, 0, 0, 0) 
-const RS610 = (0.5, 0.5, 0, 0, 0, 0)
+const RS20M = (0,  0)
+const RS210 = (1,  0)
+const RS30M = (0,  0,  0)
+const RS310 = (1,  0,  0) 
+const RS40M = (0,  0,  0, 0)
+const RS410 = (1,  0,  0, 0)
+const RS50M = (0,  0,  0, 0, 0)
+const RS510 = (1,  0,  0, 0, 0)
+const RS60M = (0,  0,  0, 0, 0, 0) 
+const RS610 = (1,  0,  0, 0, 0, 0)
 
 # Coefficients for third order WENO reconstruction
 const RS220 = stencil_coefficients(BigFloat, 50, 0, collect(1:100), collect(1:100); order=2)
