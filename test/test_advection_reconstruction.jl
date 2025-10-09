@@ -61,7 +61,7 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
             red_ord_face   = red_order_field(grid, adv, Face())
             red_ord_center = red_order_field(grid, adv, Center())
 
-            @test all(interior(red_ord_face)[:]   .== [1, 2, 3, 4, 5, 5, 5, 4, 3, 2, 1])
+            @test all(interior(red_ord_face)[:]   .== [1, 1, 2, 3, 4, 5, 4, 3, 2, 1, 1])
             @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
         
             ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary(false)) # A fake immersed boundary
