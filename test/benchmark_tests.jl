@@ -19,7 +19,7 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
 
     grid = if immersed
         Random.seed!(1234)
-        bottom = Oceananigans.Architectures.on_architecture(arch, - 5000 .* rand(Nx, Ny) .- 1000)
+        bottom(x, y) = - 5000 * (x + 1000kilometers) / grid.Lx - 1000
         ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map=true)
     else
         grid
