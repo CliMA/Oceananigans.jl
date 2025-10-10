@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.10.9"
+  JULIA_VERSION: "1.10.10"
   JULIA_MINOR_VERSION: "1.10"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -29,7 +29,7 @@ steps:
           limit: 1
 
   - wait
-    
+
   - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
     agents:
@@ -37,7 +37,7 @@ steps:
 
     command: |
       # Instantiate
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.add("CUDA"); Pkg.instantiate()'
 
       # List of benchmark groups
       BENCHMARK_GROUPS=(
@@ -62,16 +62,6 @@ steps:
         rm \${OUTPUT_PREFIX}.sqlite
       done
 
-      # Finally save job ID and build number to later use to retrieve the artifacts
-
-      if [ "$BUILDKITE_BRANCH" = "main" ]; then
-        echo "Saving build ID for main..."
-        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
-        buildkite-agent meta-data set "latest-main-job-id" "$BUILDKITE_JOB_ID"
-      else
-        echo "Not on main, skipping metadata save."
-      fi
-
     artifact_paths:
       - "periodic_output.txt"
       - "bounded_output.txt"
@@ -81,3 +71,46 @@ steps:
     soft_fail:
       - exit_status: 3
 
+  - label: "⬇ Fetch and compare with main"
+    key: "fetch-compare"
+    agents:
+      queue: "Oceananigans-benchmarks"
+
+    command: |
+      # First we download the artifacts from the current PR build
+      buildkite-agent artifact download "*.txt" .
+
+      # Getting the JSON file of the latest passing main build
+      MAIN_BUILD_JSON=\$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?branch=main&state=passed&per_page=1")
+
+      export MAIN_BUILD_NUM=\$(echo "\$MAIN_BUILD_JSON" | jq -r '.[0].number')
+      echo \$MAIN_BUILD_NUM
+
+      # Then we fetch the artifacts from the main branch build
+      curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/\${MAIN_BUILD_NUM}/artifacts" \
+        -o artifacts.json
+
+      echo "🔍 artifacts.json contents:"
+      cat artifacts.json
+
+      # Comparing the artifacts, creating the diff files and uploading them
+      for file in \$(jq -r '.[] | select(.filename | endswith(".txt")) | .filename' artifacts.json); do
+          echo "Downloading \$file from main..."
+          url=$(jq -r --arg filename "\$file" '.[] | select(.filename == \$filename) | .download_url' artifacts.json)
+          curl -s -L -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "\$url" -o "baseline_\$file"
+
+          echo "Comparing \$file with baseline..."
+          if [ -f "\$file" ]; then
+              diff -u "baseline_\$file" "\$file" > "diff_\$file" || true
+          else
+              echo "\$file not found in PR build. Skipping diff." > "diff_\$file"
+          fi
+      done
+
+    artifact_paths:
+      - "diff_periodic_output.txt"
+      - "diff_bounded_output.txt"
+      - "diff_periodic_cheap_advection_output.txt"
+      - "diff_bounded_cheap_advection_output.txt"
+      - "diff_immersed_output.txt"
