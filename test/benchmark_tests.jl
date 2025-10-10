@@ -18,8 +18,8 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
                                     topology)
 
     grid = if immersed
-        Random.seed!(1234)
-        bottom(x, y) = - 5000 * (x + 1000kilometers) / grid.Lx - 1000
+        # A sloped bathymetry in x
+        bottom(x, y) = - 5000 * (x + 1000kilometers) / 2000kilometers - 1000
         ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map=true)
     else
         grid
@@ -40,7 +40,7 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
                                           tracers = (:T, :S, :e))
 
     @info "Model is built"
-
+    Random.seed!(1234)
     R = rand(size(model.grid))
     z = zeros(size(model.grid))
 
