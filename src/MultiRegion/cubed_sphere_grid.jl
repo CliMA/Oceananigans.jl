@@ -33,7 +33,7 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
                              z_topology = Bounded,
                              radius = R_Earth,
                              non_uniform_conformal_mapping = false,
-                             spacing_type = "geometric",
+                             spacing = GeometricSpacing(),
                              provided_conformal_mapping = nothing,
                              partition = CubedSpherePartition(; R = 1))
 
@@ -196,7 +196,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                   z_topology = Bounded,
                                   radius = R_Earth,
                                   non_uniform_conformal_mapping = false,
-                                  spacing_type = "geometric",
+                                  spacing = GeometricSpacing(),
                                   provided_conformal_mapping = nothing,
                                   partition = CubedSpherePartition(; R = 1))
 
@@ -244,7 +244,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                         halo = region_halo,
                                         rotation = region_rotation,
                                         non_uniform_conformal_mapping,
-                                        spacing_type,
+                                        spacing,
                                         provided_conformal_mapping)
 
     # Propagate the vertical coordinate type in the `MultiRegionGrid`.

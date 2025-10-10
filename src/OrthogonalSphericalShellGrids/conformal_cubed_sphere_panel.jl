@@ -176,7 +176,7 @@ end
                                   halo = (1, 1, 1),
                                   rotation = nothing,
                                   non_uniform_conformal_mapping = false,
-                                  spacing_type = "geometric",
+                                  spacing = GeometricSpacing(),
                                   provided_conformal_mapping = nothing)
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been conformally mapped from
@@ -224,8 +224,8 @@ Keyword arguments
 - `non_uniform_conformal_mapping`: If `true`, the cubed sphere panel grid will be generated using a non-uniform
                                    conformal mapping. The default is `false`.
 
-- `spacing_type`: Specifies the spacing scheme for the non-uniform conformal mapping. Options are `"geometric"`
-                  (default) or `"exponential"`.
+- `spacing`: Specifies the spacing scheme for the non-uniform conformal mapping. Options are `GeometricSpacing()`
+             (default) or `ExponentialSpacing()`.
 
 - `provided_conformal_mapping`: The conformal mapping supplied by the user. Defaults to nothing.
 
@@ -269,7 +269,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        halo = (1, 1, 1),
                                        rotation = nothing,
                                        non_uniform_conformal_mapping = false,
-                                       spacing_type = "geometric",
+                                       spacing = GeometricSpacing(),
                                        provided_conformal_mapping = nothing)
 
     radius = FT(radius)
@@ -294,7 +294,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
     else
         if non_uniform_conformal_mapping
             ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
-            optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing_type))
+            optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing))
             ξᶠᵃᵃ = map(FT, ξᶠᵃᵃ)
             ηᵃᶠᵃ = map(FT, ηᵃᶠᵃ)
             ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
