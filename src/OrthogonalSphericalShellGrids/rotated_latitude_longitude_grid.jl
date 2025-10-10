@@ -140,13 +140,12 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     dφ = π/2 - φ₀
 
     # Convert to Cartesian
-    X′ = lat_lon_to_cartesian(φ′, λ′)
+    X′ = SVector(lat_lon_to_cartesian(φ′, λ′)...)
 
     # Rotate Cartesian coordinates
     Rx = x_rotation(dλ)
     Ry = y_rotation(dφ)
     Rz = z_rotation(dλ)
-    #X = Rz * Ry * X′
     X = Rx * Ry * X′
 
     # Convert back to Spherical
