@@ -44,7 +44,7 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
     R = rand(size(model.grid))
 
     # initialize variables with randomish values
-    Tᵢ = 1e-4 .* R .+ 20
+    Tᵢ = 1e-4 .* R .+ 20 * (1 + z / grid.Lz) # Stratified fluid
     Sᵢ = 1e-4 .* R .+ 35
     uᵢ = 1e-6 .* R
     vᵢ = 1e-6 .* R
