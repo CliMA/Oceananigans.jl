@@ -14,9 +14,9 @@ Calculate the divergence ``𝛁·𝐕`` of a vector field ``𝐕 = (u, v, w)``,
 which ends up at the cell centers `ccc`.
 """
 @inline divᶜᶜᶜ(i, j, k, grid, u, v, w) =
-    1 / Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
-                               δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
-                               δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
+                             δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
+                             δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 
 """
     div_xyᶜᶜᵃ(i, j, k, grid, u, v)
@@ -36,11 +36,11 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
                                                δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
 
 @inline div_xyᶜᶜᶜ(i, j, k, grid, u, v) =
-    1 / Vᶜᶜᶜ(i, j, k, grid) * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
 
 @inline div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) =
-    1 / Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᶜᶠ(i, j, k, grid, Ay_qᶠᶜᶠ, Qu) +
-                               δyᶜᶜᶠ(i, j, k, grid, Ax_qᶜᶠᶠ, Qv))
+    V⁻¹ᶜᶜᶠ(i, j, k, grid) * (δxᶜᶜᶠ(i, j, k, grid, Ay_qᶠᶜᶠ, Qu) +
+                             δyᶜᶜᶠ(i, j, k, grid, Ax_qᶜᶠᶠ, Qv))
 
 # Convention
 index_left(i, ::Center)  = i

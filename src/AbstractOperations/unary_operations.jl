@@ -129,7 +129,7 @@ compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 ##### GPU capabilities
 #####
 
-"Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `UnaryOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     UnaryOperation{LX, LY, LZ}(Adapt.adapt(to, unary.op),
                                Adapt.adapt(to, unary.arg),

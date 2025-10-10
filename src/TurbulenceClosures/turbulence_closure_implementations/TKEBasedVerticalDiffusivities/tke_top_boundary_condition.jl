@@ -6,7 +6,6 @@ struct TKETopBoundaryConditionParameters{C, U}
 end
 
 const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionParameters}
-const TKEBoundaryCondition = BoundaryCondition{<:Flux, <:TKEBoundaryFunction}
 
 @inline Adapt.adapt_structure(to, p::TKETopBoundaryConditionParameters) =
     TKETopBoundaryConditionParameters(adapt(to, p.top_tracer_boundary_conditions),
@@ -16,11 +15,11 @@ const TKEBoundaryCondition = BoundaryCondition{<:Flux, <:TKEBoundaryFunction}
     TKETopBoundaryConditionParameters(on_architecture(to, p.top_tracer_boundary_conditions),
                                       on_architecture(to, p.top_velocity_boundary_conditions))
 
-@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
-    bc.condition.func(i, j, grid, clock, fields, bc.condition.parameters, clo, buoyancy)
+@inline getbc(condition::TKEBoundaryFunction, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
+    condition.func(i, j, grid, clock, fields, condition.parameters, clo, buoyancy)
 
-@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
-    bc.condition.func(i, j, k, grid, clock, fields, bc.condition.parameters, clo, buoyancy)
+@inline getbc(condition::TKEBoundaryFunction, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
+    condition.func(i, j, k, grid, clock, fields, condition.parameters, clo, buoyancy)
 
 """
     top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
@@ -45,7 +44,7 @@ See the implementation in catke_equation.jl.
 
 """ Infer tracer boundary conditions from user_bcs and tracer_names. """
 function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
-    default_tracer_bcs = NamedTuple(c => FieldBoundaryConditions(grid, (Center, Center, Center)) for c in tracer_names)
+    default_tracer_bcs = NamedTuple(c => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for c in tracer_names)
     bcs = merge(default_tracer_bcs, user_bcs)
     return NamedTuple(c => bcs[c].top for c in tracer_names)
 end

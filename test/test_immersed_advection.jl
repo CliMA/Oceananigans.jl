@@ -20,14 +20,14 @@ advection_schemes = [linear_advection_schemes... WENO]
 
 function run_tracer_interpolation_test(c, ibg, scheme)
 
-    for i in 6:19, j in 6:19
+    for j in 6:19, i in 6:19
         if typeof(scheme) <: Centered
-            @test CUDA.@allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
         else
-            @test CUDA.@allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, true,  c) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, false, c) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, true,  c) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, false, c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, true,  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, false, c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, true,  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, false, c) ≈ 1.0
         end
     end
 end
@@ -72,20 +72,20 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
 
     for i in 7:19, j in 7:19
         if typeof(scheme) <: Centered
-            @test CUDA.@allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
-            @test CUDA.@allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
-            @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
-            @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
         else
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  u) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, u) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  u) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, u) ≈ 1.0
 
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  v) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, v) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  v) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, v) ≈ 1.0
         end
     end
 

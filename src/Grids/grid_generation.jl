@@ -2,12 +2,12 @@
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
-get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
+get_domain_extent(coord::AbstractVector, N) = @allowscalar (coord[1], coord[N+1])
 get_domain_extent(coord::Number, N)         = (coord, coord)
 
 get_face_node(coord::Nothing, i) = 1
-get_face_node(coord::Function, i) = coord(i)
-get_face_node(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
+get_face_node(coord::Union{Function, CallableDiscretization}, i) = coord(i)
+get_face_node(coord::AbstractVector, i) = @allowscalar coord[i]
 
 const AT = AbstractTopology
 
@@ -152,51 +152,4 @@ function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch)
     else
         return FT(1), nothing, nothing, FT(1), FT(1)
     end
-end
-
-#####
-##### MutableVerticalDiscretization
-#####
-
-generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) =
-    throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
-
-# Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
-# The grid might move with time, so the coordinate includes the time-derivative of the scaling `∂t_σ`.
-# The value of the vertical coordinate at `Nz+1` is saved in `ηⁿ`.
-function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDiscretization, coordinate_name, dim::Int, arch)
-
-    Nx, Ny, Nz = size
-    Hx, Hy, Hz = halo
-
-    if dim != 3
-        msg = "MutableVerticalDiscretization is supported only in the third dimension (z)"
-        throw(ArgumentError(msg))
-    end
-
-    if coordinate_name != :z
-        msg = "MutableVerticalDiscretization is supported only for the z-coordinate"
-        throw(ArgumentError(msg))
-    end
-
-    r_faces = coordinate.cᵃᵃᶠ
-
-    Lr, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
-
-    args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
-
-    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
-    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
-    ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
-    ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
-
-    # Fill all the scalings with one for now (i.e. z == r)
-    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
-        fill!(σ, 1)
-    end
-
-    return Lr, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end

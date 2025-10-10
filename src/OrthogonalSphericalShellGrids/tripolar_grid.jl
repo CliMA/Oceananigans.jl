@@ -1,12 +1,12 @@
 using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
 using Oceananigans.Grids: architecture, cpu_face_constructor_z
 
-import Oceananigans.Grids: with_halo
+import Oceananigans.Grids: with_halo, validate_dimension_specification
 
 """
     struct Tripolar{N, F, S}
 
-A structure to represent a tripolar grid on a spherical shell.
+A structure to represent a tripolar grid on an orthogonal spherical shell.
 """
 struct Tripolar{N, F, S}
     north_poles_latitude :: N
@@ -27,7 +27,7 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
                  size,
                  southernmost_latitude = -80,
                  halo = (4, 4, 4),
-                 radius = R_Earth,
+                 radius = Oceananigans.defaults.planet_radius,
                  z = (0, 1),
                  north_poles_latitude = 55,
                  first_pole_longitude = 70)
@@ -35,6 +35,8 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
 tripolar grid replaces the North pole singularity with two other singularities
 at `north_poles_latitude` that is _less_ than 90ᵒ.
+
+The grid is constructed following the formulation by [Murray (1996)](@cite Murray1996).
 
 Positional Arguments
 ====================
@@ -46,13 +48,18 @@ Keyword Arguments
 =================
 
 - `size`: The number of cells in the (longitude, latitude, vertical) dimensions.
-- `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default is -80.
-- `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default is (4, 4, 4).
-- `radius`: The radius of the spherical shell. Default is `R_Earth`.
-- `z`: The vertical ``z``-coordinate range of the grid. Default is (0, 1).
+- `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
+- `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
+- `radius`: The radius of the spherical shell. Default: `Oceananigans.defaults.planet_radius`.
+- `z`: The vertical ``z``-coordinate range of the grid. Could either be:
+       (i) 2-tuple that specifies the end points of the coordinate,
+       (ii) an array with the ``z`` interfaces, or
+       (iii) a function of `k` index that returns the locations of cell interfaces
+             in ``z``-direction. Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
-- `north_poles_latitude`: The latitude of the "north" singularities.
+                          Default: 75.
+- `north_poles_latitude`: The latitude of the "north" singularities. Default: 55.
 
 !!! warning "Longitude coordinate must have even number of cells"
     `size` is a 3-tuple of the grid size in longitude, latitude, and vertical directions.
@@ -60,13 +67,20 @@ Keyword Arguments
     of the grid (i.e., the first component of `size`) _must_ be an even number!
 
 !!! info "North pole singularities"
-    The north singularities are located at: `i = 1`, `j = Nφ` and `i = Nλ ÷ 2 + 1`, `j = Nφ`.
+    The north singularities are located at: `i = 1`, `j = grid.Ny` and
+    `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`.
+
+References
+==========
+
+Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
+    Journal of Computational Physics, 126(2), 251-273.
 """
 function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                       size,
                       southernmost_latitude = -80,
                       halo = (4, 4, 4),
-                      radius = R_Earth,
+                      radius = Oceananigans.defaults.planet_radius,
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70)  # second pole is at longitude `first_pole_longitude + 180ᵒ`
@@ -75,7 +89,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # to construct the grid on the GPU. This is not a huge problem as
     # grid generation is quite fast, but it might become slow for
     # sub-kilometer resolution grids.
-
     latitude  = (southernmost_latitude, 90)
     longitude = (-180, 180)
 
@@ -90,8 +103,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # the λ and z coordinate is the same as for the other grids,
     # but for the φ coordinate we need to remove one point at the north
-    # because the the north pole is a `Center`point, not on `Face` point...
+    # because the the north pole is a `Center` point, not on `Face` point...
     topology  = (Periodic, RightConnected, Bounded)
+    TZ = topology[3]
+    z = validate_dimension_specification(TZ, z, :z, Nz, FT)
 
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
@@ -124,7 +139,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # We need to circshift everything to have the first pole at the beginning of the
     # grid and the second pole in the middle
-    shift = Nλ÷4
+    shift = Nλ ÷ 4
 
     λFF = circshift(λFF, (shift, 0))
     φFF = circshift(φFF, (shift, 0))
@@ -150,23 +165,23 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # ZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
     # want for coordinates and metrics)
     default_boundary_conditions = FieldBoundaryConditions(north  = ZipperBoundaryCondition(),
-                                                          south  = nothing, # The south should be `continued`
+                                                          south  = NoFluxBoundaryCondition(), # The south should be `continued`
                                                           west   = Oceananigans.PeriodicBoundaryCondition(),
                                                           east   = Oceananigans.PeriodicBoundaryCondition(),
                                                           top    = nothing,
                                                           bottom = nothing)
 
-    lFF = Field((Face, Face, Center), grid; boundary_conditions = default_boundary_conditions)
-    pFF = Field((Face, Face, Center), grid; boundary_conditions = default_boundary_conditions)
+    lFF = Field{Face, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
+    pFF = Field{Face, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
 
-    lFC = Field((Face, Center, Center), grid; boundary_conditions = default_boundary_conditions)
-    pFC = Field((Face, Center, Center), grid; boundary_conditions = default_boundary_conditions)
+    lFC = Field{Face, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
+    pFC = Field{Face, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
 
-    lCF = Field((Center, Face, Center), grid; boundary_conditions = default_boundary_conditions)
-    pCF = Field((Center, Face, Center), grid; boundary_conditions = default_boundary_conditions)
+    lCF = Field{Center, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
+    pCF = Field{Center, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
 
-    lCC = Field((Center, Center, Center), grid; boundary_conditions = default_boundary_conditions)
-    pCC = Field((Center, Center, Center), grid; boundary_conditions = default_boundary_conditions)
+    lCC = Field{Center, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
+    pCC = Field{Center, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
 
     set!(lFF, λFF)
     set!(pFF, φFF)
@@ -232,10 +247,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
           radius)
 
     # Metrics fields to fill halos
-    FF = Field((Face, Face, Center),     grid; boundary_conditions = default_boundary_conditions)
-    FC = Field((Face, Center, Center),   grid; boundary_conditions = default_boundary_conditions)
-    CF = Field((Center, Face, Center),   grid; boundary_conditions = default_boundary_conditions)
-    CC = Field((Center, Center, Center), grid; boundary_conditions = default_boundary_conditions)
+    FF = Field{Face,   Face,   Center}(grid; boundary_conditions = default_boundary_conditions)
+    FC = Field{Face,   Center, Center}(grid; boundary_conditions = default_boundary_conditions)
+    CF = Field{Center, Face,   Center}(grid; boundary_conditions = default_boundary_conditions)
+    CC = Field{Center, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
 
     # Fill all periodic halos
     set!(FF, Δxᶠᶠᵃ)

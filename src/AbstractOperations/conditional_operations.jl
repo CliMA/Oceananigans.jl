@@ -1,8 +1,8 @@
-using Oceananigans.Fields: OneField, ReducedAbstractField, filltype, reduced_location, initialize_reduced_field!
+using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 using Base: @propagate_inbounds
 
-import Base: minimum, maximum, sum, all, any, prod
+import Base: sum
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
@@ -106,7 +106,7 @@ validate_condition(cond::AbstractArray, ::OneField) = cond
 
 function validate_condition(cond::AbstractArray, operand::AbstractField)
     if size(cond) !== size(operand)
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand)) but has size $(size(cond))"))
     end
     return cond
 end
@@ -159,6 +159,7 @@ end
 @inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 
 @inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
 @inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
@@ -170,6 +171,7 @@ end
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
+
 
 @inline materialize_condition!(c::ConditionalOperation) = set!(c.operand, c)
 
@@ -197,7 +199,14 @@ end
 end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
+@inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
+@inline conditional_length(c::ConditionalOperation, ::NTuple{3}) = conditional_length(c)
 @inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+
+# Disambiguations
+@inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::NTuple{1}) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::NTuple{2}) = sum(conditional_one(c, 0); dims)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)

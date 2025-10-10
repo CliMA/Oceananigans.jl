@@ -1,8 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using TimesDates: TimeDate
-
-using Oceananigans.Models: erroring_NaNChecker!
+using Oceananigans.Diagnostics: erroring_NaNChecker!
 
 import Oceananigans.Simulations: finalize!, initialize!
 
@@ -247,7 +246,9 @@ mutable struct InitializedFinalized
     initialized :: Bool
     finalized :: Bool
 end
+
 (::InitializedFinalized)(sim) = nothing
+
 function initialize!(infi::InitializedFinalized, sim)
     infi.initialized = true
     return nothing
@@ -283,7 +284,9 @@ end
         add_callback!(simulation, infi, IterationInterval(1))
         @test !(infi.initialized)
         @test !(infi.finalized)
+        @test !(simulation.initialized)
         time_step!(simulation) # should initialize
+        @test simulation.initialized
         @test infi.initialized
         @test !(infi.finalized)
         run!(simulation) # should finalize

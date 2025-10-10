@@ -18,7 +18,7 @@ end
 
 """
     HydrostaticSphericalCoriolis([FT=Float64;]
-                                 rotation_rate = Ω_Earth,
+                                 rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                                  scheme = EnstrophyConserving())
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
@@ -26,11 +26,12 @@ Return a parameter object for Coriolis forces on a sphere rotating at `rotation_
 Keyword arguments
 =================
 
-- `rotation_rate`: Sphere's rotation rate; default: [`Ω_Earth`](@ref).
+- `rotation_rate`: Sphere's rotation rate;
+   default: `Oceananigans.defaults.planet_rotation_rate`.
 - `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `EnstrophyConserving()` (default).
 """
-function HydrostaticSphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
-                                      rotation_rate = Ω_Earth,
+function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
+                                      rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                                       scheme :: S = EnstrophyConserving(FT)) where S
 
     return HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
@@ -61,11 +62,11 @@ const CoriolisEnstrophyConserving = HydrostaticSphericalCoriolis{<:EnstrophyCons
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+                active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
     @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+                active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Energy-conserving scheme
@@ -77,10 +78,10 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 @inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnergyConserving, U) =
-    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnergyConserving, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Show
@@ -89,8 +90,8 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis)
     coriolis_scheme = hydrostatic_spherical_coriolis.scheme
     rotation_rate   = hydrostatic_spherical_coriolis.rotation_rate
-    rotation_rate_Earth = rotation_rate / Ω_Earth
-    rotation_rate_str = @sprintf("%.2e s⁻¹ = %.2e Ω_Earth", rotation_rate, rotation_rate_Earth)
+    rotation_rate_Earth = rotation_rate / Oceananigans.defaults.planet_rotation_rate
+    rotation_rate_str = @sprintf("%.2e s⁻¹ = %.2e Ω_planet", rotation_rate, rotation_rate_Earth)
 
     return print(io, "HydrostaticSphericalCoriolis", '\n',
                  "├─ rotation rate: ", rotation_rate_str, '\n',

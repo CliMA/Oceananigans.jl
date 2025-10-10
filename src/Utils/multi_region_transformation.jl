@@ -1,40 +1,18 @@
-using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
 
+import Oceananigans.Architectures: on_architecture
+import KernelAbstractions as KA
 import Base: length
 
-const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
 #####
 ##### Multi Region Object
 #####
 
-struct MultiRegionObject{R, D}
+struct MultiRegionObject{R}
     regional_objects :: R
-    devices :: D
-
-    function MultiRegionObject(regional_objects...; devices=Tuple(CPU() for _ in regional_objects))
-        R = typeof(regional_objects)
-        D = typeof(devices)
-        return new{R, D}(regional_objects, devices)
-    end
-
-    function MultiRegionObject(regional_objects::Tuple, devices::Tuple)
-        R = typeof(regional_objects)
-        D = typeof(devices)
-        return new{R, D}(regional_objects, devices)
-    end
 end
-
-"""
-    MultiRegionObject(regional_objects::Tuple; devices)
-
-Return a MultiRegionObject
-"""
-MultiRegionObject(regional_objects::Tuple; devices=Tuple(CPU() for _ in regional_objects)) =
-    MultiRegionObject(regional_objects, devices)
-
 
 #####
 ##### Convenience structs
@@ -51,21 +29,6 @@ end
 #####
 ##### Multi region functions
 #####
-
-@inline getdevice(a, i)                     = nothing
-@inline getdevice(cu::GPUVar, i)            = CUDA.device(cu)
-@inline getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
-@inline getdevice(mo::MultiRegionObject, i) = mo.devices[i]
-
-@inline getdevice(a)               = nothing
-@inline getdevice(cu::GPUVar)      = CUDA.device(cu)
-@inline getdevice(cu::OffsetArray) = getdevice(cu.parent)
-
-@inline switch_device!(a)                        = nothing
-@inline switch_device!(dev::Int)                 = CUDA.device!(dev)
-@inline switch_device!(dev::CuDevice)            = CUDA.device!(dev)
-@inline switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
-@inline switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 
 @inline getregion(a, i) = a
 @inline getregion(ref::Reference, i)        = ref.ref
@@ -100,13 +63,13 @@ end
 
 @inline isregional(t::Tuple{}) = false
 @inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-for func in [:isregional, :devices, :switch_device!]
+for func in [:isregional, :regions]
     @eval begin
         @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
     end
 end
 
-@inline devices(mo::MultiRegionObject) = mo.devices
+@inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)
 
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
@@ -114,24 +77,19 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
+on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(on_architecture(arch, mo.regional_objects))
+
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
-    if isnothing(multi_region_args)
-        devs = devices(multi_region_kwargs)
-    else
-        devs = devices(multi_region_args)
-    end
+    R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
-    for (r, dev) in enumerate(devs)
-        switch_device!(dev)
+    for r in R
         regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
-
-    sync_all_devices!(devs)
 
     return nothing
 end
@@ -147,44 +105,25 @@ end
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
-    if isnothing(multi_region_args)
-        devs = devices(multi_region_kwargs)
-    else
-        devs = devices(multi_region_args)
-    end
+    R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
     # Evaluate regional_func on the device of that region and collect
     # return values
-    regional_return_values = Vector(undef, length(devs))
-    for (r, dev) in enumerate(devs)
-        switch_device!(dev)
+    regional_return_values = Vector(undef, length(R))
+    for r in R
         regional_return_values[r] = regional_func((getregion(arg, r) for arg in args)...;
                                                   (getregion(kwarg, r) for kwarg in kwargs)...)
     end
-    sync_all_devices!(devs)
 
     if Nreturns == 1
-        return MultiRegionObject(Tuple(regional_return_values), devs)
+        return MultiRegionObject(Tuple(regional_return_values))
     else
-        return Tuple(MultiRegionObject(Tuple(regional_return_values[r][i] for r in 1:length(devs)), devs) for i in 1:Nreturns)
-    end
-end
-
-@inline sync_all_devices!(grid::AbstractGrid)    = nothing
-@inline sync_all_devices!(mo::MultiRegionObject) = sync_all_devices!(devices(mo))
-
-@inline function sync_all_devices!(devices)
-    for dev in devices
-        switch_device!(dev)
-        sync_device!(dev)
+        return Tuple(MultiRegionObject(Tuple(regional_return_values[r][i] for r in 1:length(R))) for i in 1:Nreturns)
     end
 end
 
 @inline sync_device!(::Nothing)  = nothing
 @inline sync_device!(::CPU)      = nothing
-@inline sync_device!(::GPU)      = CUDA.synchronize()
-@inline sync_device!(::CuDevice) = CUDA.synchronize()
-
 
 # TODO: The macro errors when there is a return and the function has (args...) in the
 # signature (example using a macro on `multi_region_boundary_conditions:L74)
@@ -194,9 +133,8 @@ end
 
 Distributes locally the function calls in `expr`ession
 
-It calls [`apply_regionally!`](@ref) when the functions do not return anything.
-
-In case the function in `expr` returns something, `@apply_regionally` calls [`construct_regionally`](@ref).
+When the function call in `expr` does not return anything, then `apply_regionally!` method is used.
+When the function in `expr` returns something, the `construct_regionally` method is used.
 """
 macro apply_regionally(expr)
     if expr.head == :call
@@ -215,6 +153,11 @@ macro apply_regionally(expr)
             Nret = length(expr.args[1].args)
         end
         exp = expr.args[2]
+        if exp isa Symbol # It is not a function call! Just a variable assignment
+            return quote
+                $ret = $(esc(exp))
+            end
+        end
         func = exp.args[1]
         args = exp.args[2:end]
         multi_region = quote

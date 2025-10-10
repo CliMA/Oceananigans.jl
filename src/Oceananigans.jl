@@ -12,6 +12,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
@@ -34,6 +35,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    PerturbationAdvection,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
@@ -42,7 +44,7 @@ export
     interior, set!, compute!, regrid!,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
@@ -69,17 +71,18 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles,
+    LagrangianParticles, DroguedParticleDynamics,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
-    PressureField, fields,
+    PressureField, fields, ZCoordinate, ZStarCoordinate,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
@@ -106,10 +109,14 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
-    # Utils
-    prettytime
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
-using CUDA
+    # Utils
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+
 using DocStringExtensions
 using FFTW
 
@@ -129,15 +136,6 @@ function __init__()
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
         FFTW.set_num_threads(4threads)
     end
-
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
-    end
 end
 
 # List of fully-supported floating point types where applicable.
@@ -151,9 +149,27 @@ const fully_supported_float_types = (Float32, Float64)
 
 mutable struct Defaults
     FloatType :: DataType
+    gravitational_acceleration :: Float64
+    planet_radius :: Float64
+    planet_rotation_rate :: Float64
 end
 
-Defaults(; FloatType=Float64) = Defaults(FloatType)
+function Defaults(;
+    # Floating-point precision type (usually Float64 or Float32).
+    FloatType = Float64,
+    # [m s⁻²] conventional standard value for Earth's gravity; see https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
+    gravitational_acceleration = 9.80665,
+    # [m] Earth's radius; see https://en.wikipedia.org/wiki/Earth%27s_radius
+    planet_radius = 6.371e6,
+    # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+    planet_rotation_rate = 7.292115e-5)
+
+    return Defaults(FloatType,
+                    gravitational_acceleration,
+                    planet_radius,
+                    planet_rotation_rate)
+end
+
 const defaults = Defaults()
 
 #####
@@ -221,8 +237,17 @@ include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("DistributedComputations/DistributedComputations.jl")
-include("OutputReaders/OutputReaders.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+
+# Simulations and output handling
+include("Diagnostics/Diagnostics.jl")
+include("OutputReaders/OutputReaders.jl")
+include("OutputWriters/OutputWriters.jl")
+include("Simulations/Simulations.jl")
+
+# TODO:
+# include("Diagnostics/Diagnostics.jl") # or just delete
+# include("OutputWriters/OutputWriters.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
@@ -241,11 +266,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("Models/Models.jl")
-
-# Output and Physics, time-stepping, and models
-include("Diagnostics/Diagnostics.jl")
-include("OutputWriters/OutputWriters.jl")
-include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")

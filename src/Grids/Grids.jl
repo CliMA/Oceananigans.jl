@@ -9,9 +9,9 @@ export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
-export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
-export conformal_cubed_sphere_panel
+export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
 export MutableVerticalDiscretization
+export ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
@@ -24,9 +24,8 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
-using CUDA
-using CUDA: has_cuda
 using Adapt
+using GPUArraysCore
 using OffsetArrays
 using Printf
 
@@ -35,9 +34,6 @@ using Oceananigans.Architectures
 
 import Base: size, length, eltype, show, -
 import Oceananigans.Architectures: architecture, on_architecture
-
-# Physical constants for constructors.
-const R_Earth = 6371.0e3    # [m] Mean radius of the Earth https://en.wikipedia.org/wiki/Earth
 
 #####
 ##### Abstract types
@@ -107,6 +103,11 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
+topology_str(T) = string(T)
+topology_str(::Type{RightConnected}) = "RightConnected"
+topology_str(::Type{LeftConnected}) = "LeftConnected"
+topology_str(::Type{FullyConnected}) = "FullyConnected"
+
 #####
 ##### Directions (for tilted domains)
 #####
@@ -119,9 +120,13 @@ struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
+const F = Face
+const C = Center
+
 include("abstract_grid.jl")
 include("vertical_discretization.jl")
 include("grid_utils.jl")
+include("coordinate_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")
 include("new_data.jl")
@@ -131,7 +136,6 @@ include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
-include("conformal_cubed_sphere_panel.jl")
 include("latitude_longitude_grid.jl")
 
 end # module

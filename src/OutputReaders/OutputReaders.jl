@@ -5,6 +5,8 @@ export FieldTimeSeries
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
+using Oceananigans.Utils: @apply_regionally
+
 """
     auto_extension(filename, ext)
 

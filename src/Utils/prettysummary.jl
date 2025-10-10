@@ -1,11 +1,16 @@
 import Oceananigans.Grids: prettysummary
 
+shortsummary(x, args...) = string(typeof(x).name.wrapper)
 prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
-    mt = ft.name.mt
-    name = mt.name
+    if VERSION >= v"1.12.0"
+        name = ft.name.name
+    else
+        mt = ft.name.mt
+        name = mt.name
+    end
     n = length(methods(f))
     m = n==1 ? "method" : "methods"
     sname = string(name)

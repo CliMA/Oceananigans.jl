@@ -3,6 +3,7 @@ using Oceananigans.Units
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10
+using CUDA
 using Random
 
 function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=WENO(order=7))    

@@ -28,6 +28,7 @@ using DocStringExtensions
 using Base: @propagate_inbounds
 using Adapt
 using OffsetArrays
+using MuladdMacro: @muladd
 
 using Oceananigans
 using Oceananigans.Grids
@@ -84,7 +85,7 @@ include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
-include("positivity_preserving_tracer_advection_operators.jl")
+include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
 

@@ -7,8 +7,8 @@
 # at times `times` on a grid `grid`
 function generate_input_data!(grid, times, filename; ρ_ocean = 1000, cp_ocean = 4000)
 
-    Qˢ_tmp = Field((Center, Center, Nothing), grid)
-    τˣ_tmp = Field((Face, Center, Nothing), grid)
+    Qˢ_tmp = Field{Center, Center, Nothing}(grid)
+    τˣ_tmp = Field{Face, Center, Nothing}(grid)
 
     # Fictitious data
     Qₜ(y, t) = 200 * cos(2π * (y - 15) / 60) * sin(π * (t - 365days) / 365days) / ρ_ocean / cp_ocean

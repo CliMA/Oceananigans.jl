@@ -1,4 +1,4 @@
-# Turbulent diffusivity closures and large eddy simulation models
+# [Turbulent diffusivity closures and large eddy simulation models](@id turbulence_closures)
 
 A turbulent diffusivity closure representing the effects of viscous dissipation and diffusion can
 be passed via the `closure` keyword.
@@ -82,8 +82,8 @@ julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = AnisotropicMinimumDissipation()
 AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
-           Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
-    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.08333333333333333
+           Poincaré constant for momentum eddy viscosity Cν: 0.3333333333333333
+    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.3333333333333333
                         Buoyancy modification multiplier Cb: nothing
 ```
 

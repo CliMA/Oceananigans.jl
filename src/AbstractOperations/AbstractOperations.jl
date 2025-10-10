@@ -6,7 +6,6 @@ export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 
-using CUDA
 using Base: @propagate_inbounds
 
 using Oceananigans.Architectures
@@ -16,9 +15,8 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Utils
 
-using Oceananigans: location, AbstractModel
+using Oceananigans: location
 using Oceananigans.Operators: interpolation_operator
-using Oceananigans.Architectures: device
 
 import Adapt
 

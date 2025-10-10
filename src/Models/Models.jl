@@ -1,12 +1,13 @@
 module Models
 
 export
-    NonhydrostaticModel,
+    NonhydrostaticModel, BackgroundField, BackgroundFields,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
-    HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
+    HydrostaticFreeSurfaceModel, ZStarCoordinate, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles,
+    LagrangianParticles, DroguedParticleDynamics,
+    BoundaryConditionOperation, ForcingOperation,
     seawater_density
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
@@ -20,8 +21,10 @@ using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
-import Oceananigans.TimeSteppers: reset!
+import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
+import Oceananigans.Simulations: timestepper
+import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
@@ -86,9 +89,6 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
-# Util for checking whether the model's prognostic state has NaN'd
-include("nan_checker.jl")
-
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
@@ -101,23 +101,25 @@ include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 
-using .NonhydrostaticModels: NonhydrostaticModel, PressureField
+using .NonhydrostaticModels: NonhydrostaticModel, PressureField, BackgroundField, BackgroundFields
 
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStar, ZCoordinate
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
-using .LagrangianParticleTracking: LagrangianParticles
+using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
 
+set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
+
 """
-    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
+    possible_field_time_series(model::OceananigansModels)
 
 Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
 """
@@ -147,8 +149,6 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
     return nothing
 end
 
-import Oceananigans.TimeSteppers: reset!
-
 function reset!(model::OceananigansModels)
 
     for field in fields(model)
@@ -165,6 +165,9 @@ function reset!(model::OceananigansModels)
 
     return nothing
 end
+
+using Oceananigans.Diagnostics: NaNChecker
+import Oceananigans.Diagnostics: default_nan_checker
 
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
 function default_nan_checker(model::OceananigansModels)
@@ -186,10 +189,41 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 # have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
+# Extend output writer functionality to custom Oceananigans.Models
+import Oceananigans.OutputWriters: default_included_properties,
+                                   checkpointer_address,
+                                   required_checkpoint_properties
+
+default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
+
+checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
+checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
+checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+
+function required_checkpoint_properties(model::OceananigansModels)
+    properties = [:grid, :clock]
+    if !isnothing(timestepper(model))
+       push!(properties, :timestepper)
+    end
+    if !isnothing(model.particles)
+       push!(properties, :particles)
+    end
+    return properties
+end
+
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
-
 include("boundary_mean.jl")
+include("boundary_condition_operation.jl")
+include("forcing_operation.jl")
+include("set_model.jl")
+
+# Implementation of the diagnostic for computing the dissipation rate
+include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
+
+using .VarianceDissipationComputations
 
 end # module

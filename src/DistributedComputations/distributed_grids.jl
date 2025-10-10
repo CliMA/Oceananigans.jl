@@ -5,7 +5,7 @@ using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture,
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: R_Earth, metrics_precomputed
+using Oceananigans.Grids: metrics_precomputed
 
 using Oceananigans.Fields
 
@@ -129,8 +129,8 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                longitude,
                                z,
                                topology = nothing,
-                               radius = R_Earth,
-                               halo = (1, 1, 1))
+                               radius = Oceananigans.defaults.planet_radius,
+                               halo = nothing)
 
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -303,7 +303,7 @@ child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid
 """
     scatter_grid_properties(global_grid)
 
-returns individual `extent`, `topology`, `size` and `halo` of a `global_grid`
+Return the individual `extent`, `topology`, `size`, and `halo` of a `global_grid`.
 """
 function scatter_grid_properties(global_grid)
     # Pull out face grid constructors
@@ -333,8 +333,8 @@ end
 """
     insert_connected_topology(T, R, r)
 
-returns the local topology associated with the global topology `T`, the amount of ranks
-in `T` direction (`R`) and the local rank index `r`
+Return the local topology associated with the global topology `T`, the amount of ranks
+in `T` direction (`R`) and the local rank index `r`.
 """
 insert_connected_topology(T, R, r) = T
 
@@ -348,9 +348,11 @@ insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, Ful
 """
     reconstruct_global_topology(T, R, r, r1, r2, arch)
 
-reconstructs the global topology associated with the local topologies `T`, the amount of ranks
-in `T` direction (`R`) and the local rank index `r`. If all ranks hold a `FullyConnected` topology,
-the global topology is `Periodic`, otherwise it is `Bounded`
+Reconstruct the global topology associated with the local topologies `T`, the amount of ranks
+in `T` direction (`R`) and the local rank index `r`.
+
+If all ranks have `FullyConnected` topologies, the global topology is `Periodic`;
+otherwise it is `Bounded`.
 """
 function reconstruct_global_topology(T, R, r, r1, r2, arch)
     if R == 1
