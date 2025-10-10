@@ -66,10 +66,9 @@ add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt) = nothing
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
 
     @inbounds begin
-        num = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        num = η[i, j] + Δt * w̃[i, j, Nz+1]
         den = Δt^2 + Δzᶠ / 2g
-        # rhs[i, j, Nz] -= num / den
-        rhs[i, j, Nz] += Δt * num / den
+        rhs[i, j, Nz] -= Δt * (num / den)
     end
 end
 
@@ -132,9 +131,9 @@ end
     i, j, = @index(Global, NTuple)
     Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
-    Δzᶜ = Δzᵃᵃᶠ(i, j, Nz, grid)
+    Δzᶜ = Δzᵃᵃᶜ(i, j, Nz, grid)
     den = g * Δt^2 + Δzᶠ / 2
-    @inbounds diagonal[i, j, Nz] = - 1 / den - Δzᶜ * (λx[i] + λy[j])
+    @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Ũ, Δt, g, η)
@@ -150,17 +149,3 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, U
 
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
-
-# TODO: write a function to add the inhomogeneous boundary contributions to `rhs`
-# for a non-hydrostatic implicit free surface
-#=
-function add_inhomogeneous_boundary_terms!(rhs, solver, grid, Ũ, Δt, g, η)
-    launch!(arch, grid, :xy, _add_implicit_free_surface_source_term!, rhs, grid, Ũ, Δt, g, η)
-end
-
-function _add_implicit_free_surface_source_term(rhs, solver, grid, Ũ, Δt, g, η)
-    # modifies rhs of pressure solve surface boundary condition to allow for free surface
-    if k == grid.Nz && active
-        source_term -= ((η[i,j] + Δt * w[i, j, k+1])/(Δt^2 + Δzᶜᶜᶜ(i, j, k, grid) / (2*g))) * Δt
-    end
-=#
