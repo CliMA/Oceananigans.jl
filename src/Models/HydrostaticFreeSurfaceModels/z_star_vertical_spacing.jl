@@ -19,11 +19,19 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) =
 barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
-ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) =
+function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) 
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    return nothing
+end
 
-rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt) =
+function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    if model.clock.stage == length(model.timestepper.β)
+       parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    end
+    return nothing
+end
 
 # Update η in the grid
 @kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
@@ -49,9 +57,6 @@ end
     σᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), Hᶠᶠ / hᶠᶠ)
 
     @inbounds begin
-        # Update previous scaling
-        z.σᶜᶜ⁻[i, j, 1] = z.σᶜᶜⁿ[i, j, 1]
-
         # update current scaling
         z.σᶜᶜⁿ[i, j, 1] = σᶜᶜ
         z.σᶠᶜⁿ[i, j, 1] = σᶠᶜ
