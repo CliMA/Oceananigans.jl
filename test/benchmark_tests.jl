@@ -45,7 +45,7 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
     z = zeros(size(model.grid))
 
     for k in 1:size(grid, 3)
-        z[:, :, k] .= grid.z.cᵃᵃᶜ[k]
+        CUDA.@allowscalar z[:, :, k] .= grid.z.cᵃᵃᶜ[k]
     end
 
     # initialize variables with randomish values
