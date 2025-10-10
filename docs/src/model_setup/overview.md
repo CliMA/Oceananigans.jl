@@ -1,6 +1,14 @@
-# Models: discrete equations and state variables
+# Models
 
-Oceananigans provides two mature models that integrate the Navier-Stokes equations within the Boussinesq approximation
+In general in Oceananigans, the "model" object serves two main purposes:
+ _(i)_ models store the configuration of a set of discrete equations. The discrete equations imply rules for evolving prognostic variables, and computing diagnostic varaibles from the prognostic state.
+ _(ii)_ models provide a container for the prognostic and diagnostic state of those discrete equations at a particular time.
+
+## Two specific models in Oceananigans
+
+In addition to defining the abstract concept of a "model" that can be used with [Simulation](@ref),
+Oceananigans provides two mature model implementations.
+Both of these integrate the Navier-Stokes equations within the Boussinesq approximation
 (we call these the "Boussinesq equations" for short): the [NonhydrostaticModel](@ref) and the [HydrostaticFreeSurfaceModel](@ref).
 
 The [NonhydrostaticModel](@ref) integrates the Boussinesq equations _without_ making the hydrostatic approximation,
@@ -23,12 +31,6 @@ small-scale simulations with NonhydrostaticModel, such as the vertical mixing sc
 [IsopycnalSkewSymmetricDiffusivity](@ref) (a.k.a. "Gent-McWilliams plus Redi").
 
 A third, experimental [ShallowWaterModel](@ref) solves the shallow water equations.
-
-## Whence Models?
-
-Oceananigans models serve two main purposes:
- _(i)_ they are a container for the prognostic and diagnostic state of a discrete model, and
- _(ii)_ they store the configuration of a set of discrete equations. The discrete equations imply rules for evolving prognostic variables, and computing diagnostic varaibles from the prognostic state.
 
 ### Configuring NonhydrostaticModel with keyword arguments
 
