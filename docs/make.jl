@@ -92,15 +92,15 @@ model_setup_pages = [
     "Boundary conditions" => "model_setup/boundary_conditions.md",
     "Forcing functions" => "model_setup/forcing_functions.md",
     "Background fields" => "model_setup/background_fields.md",
-    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
+    "Turbulence closures" => "model_setup/turbulence_closures.md",
     "Lagrangian particles" => "model_setup/lagrangian_particles.md",
-    "Checkpointing" => "model_setup/checkpointing.md",
 ]
 
 simulation_pages = [
-    "Overview" => "simulation_setup/overview.md",
-    "Callbacks" => "simulation_setup/callbacks.md",
-    "Output writers" => "simulation_setup/output_writers.md",
+    "Overview" => "simulations/overview.md",
+    "Callbacks" => "simulations/callbacks.md",
+    "Output writers" => "simulations/output_writers.md",
+    "Checkpointing" => "simulations/checkpointing.md",
 ]
 
 physics_pages = [

@@ -29,16 +29,14 @@ using Oceananigans
 
 arch = CPU()
 grid = RectilinearGrid(arch; size=(8, 8, 8), extent=(128, 128, 64))
-model = NonhydrostaticModel(; grid, tracers=(:T,))
-
+model = NonhydrostaticModel(; grid, tracers=:c)
 simulation = Simulation(model; Δt=10.0, stop_iteration=20)
 run!(simulation)
 simulation
 ```
 
-`Simulation` stores bookkeeping such as total iterations performed, the next `Δt`, and the
-ordered dictionaries `callbacks`, `output_writers`, and `diagnostics`. In the example above we
-run for only 20 steps; realistic applications chain extra logic onto this base object.
+`Simulation` bookkeeps the total iterations performed, the next `Δt`, and the
+lists of `callbacks` and `output_writers`.
 
 ## Stop criteria and time-step control
 
