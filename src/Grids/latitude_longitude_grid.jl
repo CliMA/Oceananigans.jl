@@ -108,7 +108,7 @@ regular_dimensions(::ZRegularLLG) = tuple(3)
                           longitude,
                           latitude,
                           z = nothing,
-                          radius = R_Earth,
+                          radius = Oceananigans.defaults.planet_radius,
                           topology = nothing,
                           precompute_metrics = true,
                           halo = nothing)
@@ -200,7 +200,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                longitude = nothing,
                                latitude = nothing,
                                z = nothing,
-                               radius = R_Earth,
+                               radius = Oceananigans.defaults.planet_radius,
                                topology = nothing,
                                precompute_metrics = true,
                                halo = nothing)
@@ -683,7 +683,9 @@ YFlatLLG = LatitudeLongitudeGrid{<:Any, <:Any, Flat}
 @inline φspacings(grid::LLG, ℓy) = φspacings(grid, nothing, ℓy, nothing)
 
 """
-    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
+                          radius = Oceananigans.defaults.planet_radius,
+                          origin = (0, 0))
 
 Construct a `LatitudeLongitudeGrid` from a `RectilinearGrid`. The horizontal coordinates of the
 rectilinear grid are transformed to longitude-latitude coordinates in degrees, accounting for
@@ -696,7 +698,10 @@ Keyword Arguments
 - `radius`: The radius of the sphere, defaults to Earth's mean radius (≈ 6371 km)
 - `origin`: Tuple of (longitude, latitude) in degrees specifying the origin of the rectilinear grid
 """
-function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
+                               radius = Oceananigans.defaults.planet_radius,
+                               origin = (0, 0))
+
     arch = architecture(rectilinear_grid)
     Hx, Hy, Hz = halo_size(rectilinear_grid)
     Nx, Ny, Nz = size(rectilinear_grid)
