@@ -33,7 +33,7 @@ end
                                  latitude,
                                  z,
                                  halo = (3, 3, 3),
-                                 radius = R_Earth,
+                                 radius = Oceananigans.defaults.planet_radius,
                                  topology = (Bounded, Bounded, Bounded))
 
 Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
@@ -87,7 +87,7 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
                                       latitude,
                                       z,
                                       halo = (3, 3, 3),
-                                      radius = R_Earth,
+                                      radius = Oceananigans.defaults.planet_radius,
                                       topology = (Bounded, Bounded, Bounded))
 
     shifted_halo = halo .+ 1

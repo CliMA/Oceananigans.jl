@@ -6,10 +6,8 @@ using CubedSphere.SphericalGeometry
                                    first_pole_longitude,
                                    focal_distance, Nλ)
 
-Compute the tripolar coordinates for a given set of input parameters. Here, we follow,
-the formulation described by
-
-> Ross J. Murray, (1996). Explicit generation of orthogonal grids for ocean models, _Journal of Computational Physics_, **126(2)**, 251-273.
+Compute the tripolar coordinates for a given set of input parameters following
+the formulation by [Murray (1996)](@cite Murray1996).
 
 The tripolar grid is built as a set of cofocal ellipsed and perpendicular hyperbolae.
 The `focal_distance` argument is the distance from the center of the ellipses to the foci.
@@ -50,6 +48,12 @@ for which it is possible to retrieve the longitude and latitude by:
     λ &=    - \\frac{180}{π} \\mathrm{atan}(y / x)  \\\\
     φ &= 90 - \\frac{360}{π} \\mathrm{atan} \\sqrt{x² + y²}
     \\end{align}
+
+References
+==========
+
+Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
+    Journal of Computational Physics, 126(2), 251-273.
 ```
 """
 @kernel function _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,

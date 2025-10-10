@@ -57,7 +57,7 @@ minimum_zspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 @inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
 
 # the default free surface solver; see Models.HydrostaticFreeSurfaceModels
-default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=g_Earth) =
+default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(; substeps=50, gravitational_acceleration)
 
 """
