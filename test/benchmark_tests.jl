@@ -42,12 +42,17 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
     @info "Model is built"
 
     R = rand(size(model.grid))
+    z = zeros(size(model.grid))
+
+    for k in 1:size(grid, 3)
+        CUDA.@allowscalar z[:, :, k] .= grid.z.cᵃᵃᶜ[k]
+    end
 
     # initialize variables with randomish values
-    Tᵢ = 1e-4 .* R .+ 20 * (1 + z / grid.Lz) # Stratified fluid
+    Tᵢ = 1e-4 .* R .+ 20 * (1 .+ z ./ grid.Lz) # stratified fluid
     Sᵢ = 1e-4 .* R .+ 35
-    uᵢ = 1e-6 .* R
-    vᵢ = 1e-6 .* R
+    uᵢ = 1e-3 .* R
+    vᵢ = 1e-3 .* R
     
     set!(model, T=Tᵢ, S=Sᵢ, e=1e-6, u=uᵢ, v=vᵢ)
 
