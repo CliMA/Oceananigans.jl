@@ -4,10 +4,10 @@ In general in Oceananigans, the "model" object serves two main purposes:
  _(i)_ models store the configuration of a set of discrete equations. The discrete equations imply rules for evolving prognostic variables, and computing diagnostic varaibles from the prognostic state.
  _(ii)_ models provide a container for the prognostic and diagnostic state of those discrete equations at a particular time.
 
-## Two specific models in Oceananigans
+## Two Oceananigans models for ocean simulations
 
 In addition to defining the abstract concept of a "model" that can be used with [Simulation](@ref),
-Oceananigans provides two mature model implementations.
+Oceananigans provides two mature model implementations for simulating ocean-flavored fluid dynamics.
 Both of these integrate the Navier-Stokes equations within the Boussinesq approximation
 (we call these the "Boussinesq equations" for short): the [NonhydrostaticModel](@ref) and the [HydrostaticFreeSurfaceModel](@ref).
 
