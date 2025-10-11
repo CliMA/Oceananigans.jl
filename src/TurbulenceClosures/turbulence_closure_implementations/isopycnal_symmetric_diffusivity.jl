@@ -247,10 +247,10 @@ end
 @inline function ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) 
     loc = (Center(), Center(), Center())
 
-    κ⁻⁻ = κᶜᶜᶜ(i, j, k,   grid, loc, κ, clock)
-    κ⁺⁻ = κᶜᶜᶜ(i, j, k,   grid, loc, κ, clock)
-    κ⁻⁺ = κᶜᶜᶜ(i, j, k-1, grid, loc, κ, clock)
-    κ⁺⁺ = κᶜᶜᶜ(i, j, k-1, grid, loc, κ, clock)
+    κ⁻⁻ = κᶜᶜᶜ(i, j, k,   grid, loc, κ, clock, nothing)
+    κ⁺⁻ = κᶜᶜᶜ(i, j, k,   grid, loc, κ, clock, nothing)
+    κ⁻⁺ = κᶜᶜᶜ(i, j, k-1, grid, loc, κ, clock, nothing)
+    κ⁺⁺ = κᶜᶜᶜ(i, j, k-1, grid, loc, κ, clock, nothing)
 
     ϵκR₃₃ = (κ⁻⁻ * ϵSx⁻⁻(i, j, k,   grid, sl, b, C)^2 + κ⁻⁻ * ϵSy⁻⁻(i, j, k,   grid, sl, b, C)^2 +
              κ⁺⁻ * ϵSx⁺⁻(i, j, k,   grid, sl, b, C)^2 + κ⁺⁻ * ϵSy⁺⁻(i, j, k,   grid, sl, b, C)^2 +
