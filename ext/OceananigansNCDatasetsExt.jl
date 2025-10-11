@@ -733,6 +733,20 @@ function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
     return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
 end
 
+function write_immersed_boundary_data!(ds, grid, immersed_grid_args)
+    ibg_group = defGroup(ds, "immersed_grid_reconstruction_args")
+
+    if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
+        bottom_height = pop!(immersed_grid_args, :bottom_height)
+        defVar(ibg_group, "bottom_height", bottom_height; attrib=convert_for_netcdf(immersed_grid_args))
+
+    elseif grid.immersed_boundary isa GridFittedBoundary
+        mask = pop!(immersed_grid_args, :mask)
+        defVar(ibg_group, "mask", mask; attrib=convert_for_netcdf(immersed_grid_args))
+    end
+    return ds
+end
+
 function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
 
     # Save buman-readable grid attributes for inspection. Not used for reconstruction.
@@ -751,9 +765,7 @@ function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)
     defGroup(ds, "underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
     defGroup(ds, "grid_reconstruction_metadata"; attrib = grid_metadata)
 
-    ibg_group = defGroup(ds, "immersed_grid_reconstruction_args")
-    bottom_height = pop!(immersed_grid_args, :bottom_height)
-    defVar(ibg_group, "bottom_height", bottom_height; attrib=convert_for_netcdf(immersed_grid_args))
+    write_immersed_boundary_data!(ds, grid, immersed_grid_args)
 
     return ds
 end
