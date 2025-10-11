@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations: cooperative_waitall!,
                                             loc_id,
                                             DCBCT
 
-using Oceananigans.Fields: location
+using Oceananigans.Fields: location, instantiated_location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
@@ -59,9 +59,7 @@ end
 end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...;
-                            only_local_halos=false, fill_open_bcs=true, kwargs...)
-
-    north_bc = bcs.north
+                            fill_open_bcs=true, kwargs...)
 
     arch = architecture(grid)
     kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
@@ -73,7 +71,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         @inbounds fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
 
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
@@ -82,6 +80,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         arch.mpi_tag[] += 1
     end
 
+    north_bc = bcs.north
     switch_north_halos!(c, north_bc, grid, loc)
 
     return nothing
@@ -104,9 +103,7 @@ function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:D
     recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
     north_bc = field.boundary_conditions.north
-    instantiated_location = map(instantiate, location(field))
-
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location)
+    switch_north_halos!(field, north_bc, field.grid, instantiated_location(field))
 
     return nothing
 end
