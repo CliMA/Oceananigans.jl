@@ -733,7 +733,7 @@ function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
     return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
 end
 
-function write_immersed_boundary_data!(ds, grid, immersed_grid_args)
+function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args)
     ibg_group = defGroup(ds, "immersed_grid_reconstruction_args")
 
     if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
@@ -746,6 +746,8 @@ function write_immersed_boundary_data!(ds, grid, immersed_grid_args)
     end
     return ds
 end
+
+write_immersed_boundary_data!(ds, grid, immersed_grid_args) = nothing
 
 function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
 
@@ -814,7 +816,6 @@ function reconstruct_grid(ds)
     underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
 
     # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary, otherwise underlying grid is the final grid
-    ibg_group = ds.group["immersed_grid_reconstruction_args"]
     if grid_reconstruction_metadata[:immersed_boundary_type] isa Nothing
         grid = underlying_grid
     else
