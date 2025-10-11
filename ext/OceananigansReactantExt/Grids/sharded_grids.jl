@@ -12,7 +12,7 @@ import Oceananigans.DistributedComputations:
     assemble_coordinate,
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
-    barrier!,
+    barrier,
     all_reduce,
     all_reduce!,
     reconstruct_global_topology
@@ -34,7 +34,7 @@ inject_halo_communication_boundary_conditions(field_bcs, rank, ::Reactant.Shardi
 concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
 
 # We assume everything is already synchronized for a sharded architecture
-barrier!(::ShardedDistributed) = nothing
+barrier(::ShardedDistributed) = nothing
 
 # Reductions are handled by the Sharding framework
 all_reduce(op,  val, ::ShardedDistributed) = val
