@@ -1,36 +1,6 @@
+using CubedSphere.SphericalGeometry
 using Oceananigans.Grids: xnode, ynode, total_length
 using GPUArraysCore: @allowscalar
-
-"""
-    lat_lon_to_cartesian(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to
-cartesian coordinates `(x, y, z)` on the unit sphere.
-"""
-lat_lon_to_cartesian(longitude, latitude) = (lat_lon_to_x(longitude, latitude),
-                                             lat_lon_to_y(longitude, latitude),
-                                             lat_lon_to_z(longitude, latitude))
-
-"""
-    lat_lon_to_x(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to cartesian `x` on the unit sphere.
-"""
-lat_lon_to_x(longitude, latitude) = cosd(longitude) * cosd(latitude)
-
-"""
-    lat_lon_to_y(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to cartesian `y` on the unit sphere.
-"""
-lat_lon_to_y(longitude, latitude) = sind(longitude) * cosd(latitude)
-
-"""
-    lat_lon_to_z(longitude, latitude)
-
-Convert `(longitude, latitude)` coordinates (in degrees) to cartesian `z` on the unit sphere.
-"""
-lat_lon_to_z(longitude, latitude) = sind(latitude)
 
 longitude_in_same_window(λ₁, λ₂) = mod(λ₁ - λ₂ + 180, 360) + λ₂ - 180
 
@@ -40,9 +10,8 @@ flip_location(::Face) = Center()
 """
     get_longitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
-Return the longitudes that correspond to the four vertices of cell `i, j, k` at
-locatiopn `(ℓx, ℓy, ℓz)`. The first vertice is the cell's Southern-Western one
-and the rest follow in counter-clockwise order.
+Return the longitudes that correspond to the four vertices of cell `i, j, k` at location `(ℓx, ℓy, ℓz)`. The first 
+vertex is the cell's Southern-Western one and the rest follow in counter-clockwise order.
 """
 function get_longitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
@@ -69,9 +38,8 @@ end
 """
     get_latitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
-Return the latitudes that correspond to the four vertices of cell `i, j, k` at
-locatiopn `(ℓx, ℓy, ℓz)`. The first vertice is the cell's Southern-Western one
-and the rest follow in counter-clockwise order.
+Return the latitudes that correspond to the four vertices of cell `i, j, k` at location `(ℓx, ℓy, ℓz)`. The first vertex
+is the cell's Southern-Western one and the rest follow in counter-clockwise order.
 """
 function get_latitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
@@ -98,9 +66,8 @@ end
 """
     get_lat_lon_nodes_and_vertices(grid, ℓx, ℓy, ℓz)
 
-Return the latitude-longitude coordinates of the horizontal nodes of the
-`grid` at locations `ℓx`, `ℓy`, and `ℓz` and also the coordinates of the four
-vertices that determine the cell surrounding each node.
+Return the latitude-longitude coordinates of the horizontal nodes of the `grid` at locations `ℓx`, `ℓy`, and `ℓz` and
+also the coordinates of the four vertices that determine the cell surrounding each node.
 
 See [`get_longitude_vertices`](@ref) and [`get_latitude_vertices`](@ref).
 """
@@ -127,21 +94,20 @@ function get_lat_lon_nodes_and_vertices(grid, ℓx, ℓy, ℓz)
     λ = mod.(λ .+ 180, 360) .- 180
     λvertices = longitude_in_same_window.(λvertices, reshape(λ, (1, size(λ)...)))
 
-    return (λ, φ), (λvertices, φvertices)
+    return (φ, λ), (φvertices, λvertices)
 end
 
 """
     get_cartesian_nodes_and_vertices(grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
-Return the cartesian coordinates of the horizontal nodes of the `grid`
-at locations `ℓx`, `ℓy`, and `ℓz` on the unit sphere and also the corresponding
-coordinates of the four vertices that determine the cell surrounding each node.
+Return the cartesian coordinates of the horizontal nodes of the `grid` at locations `ℓx`, `ℓy`, and `ℓz` on the unit
+sphere and also the corresponding coordinates of the four vertices that determine the cell surrounding each node.
 
 See [`get_lat_lon_nodes_and_vertices`](@ref).
 """
 function get_cartesian_nodes_and_vertices(grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
-    (λ, φ), (λvertices, φvertices) = get_lat_lon_nodes_and_vertices(grid, ℓx, ℓy, ℓz)
+    (φ, λ), (φvertices, λvertices) = get_lat_lon_nodes_and_vertices(grid, ℓx, ℓy, ℓz)
 
     x = similar(λ)
     y = similar(λ)
@@ -152,14 +118,14 @@ function get_cartesian_nodes_and_vertices(grid::Union{LatitudeLongitudeGrid, Ort
     zvertices = similar(λvertices)
 
     for j in axes(λ, 2), i in axes(λ, 1)
-        x[i, j] = lat_lon_to_x(λ[i, j], φ[i, j])
-        y[i, j] = lat_lon_to_y(λ[i, j], φ[i, j])
-        z[i, j] = lat_lon_to_z(λ[i, j], φ[i, j])
+        x[i, j] = lat_lon_to_x(φ[i, j], λ[i, j])
+        y[i, j] = lat_lon_to_y(φ[i, j], λ[i, j])
+        z[i, j] = lat_lon_to_z(φ[i, j])
 
         for vertex in 1:4
-            xvertices[vertex, i, j] = lat_lon_to_x(λvertices[vertex, i, j], φvertices[vertex, i, j])
-            yvertices[vertex, i, j] = lat_lon_to_y(λvertices[vertex, i, j], φvertices[vertex, i, j])
-            zvertices[vertex, i, j] = lat_lon_to_z(λvertices[vertex, i, j], φvertices[vertex, i, j])
+            xvertices[vertex, i, j] = lat_lon_to_x(φvertices[vertex, i, j], λvertices[vertex, i, j])
+            yvertices[vertex, i, j] = lat_lon_to_y(φvertices[vertex, i, j], λvertices[vertex, i, j])
+            zvertices[vertex, i, j] = lat_lon_to_z(φvertices[vertex, i, j])
         end
     end
 
