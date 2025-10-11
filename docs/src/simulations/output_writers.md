@@ -1,4 +1,4 @@
-# Output writers
+# [Output writers](@id output_writers)
 
 `AbstractOutputWriter`s save data to disk.
 `Oceananigans` provides three ways to write output:

@@ -1,4 +1,4 @@
-# Callbacks
+# [Callbacks](@id callbacks)
 
 A [`Callback`](@ref) can be used to execute an arbitrary user-defined function on the
 simulation at user-defined times.

@@ -1,4 +1,4 @@
-# Simulations: orchestrating runs (@id simulation_overview)
+# [Simulations: orchestrating runs](@id simulation_overview)
 
 `Simulation` objects wrap a model in the control logic that actually pushes it forward in time.
 They manage the time-stepping loop, stop conditions, output, diagnostics, and callbacks so that
