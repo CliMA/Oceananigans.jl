@@ -24,7 +24,7 @@ to achieve much higher efficiency in simulations on curvilinear grids used for l
 and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
 Because they span larger domains, simulations with the HydrostaticFreeSurfaceModel also usually involve coarser grid spacings of O(30 m) up to O(100 km).
 Such coarse-grained simulations are usually paired with more elaborate turublence closures or "parameterizations" than
-small-scale simulations with NonhydrostaticModel, such as the vertical mixing schemes 
+small-scale simulations with NonhydrostaticModel, such as the vertical mixing schemes
 [CATKEVerticalDiffusivity](@ref),
 [RiBasedVerticalDiffusivity](@ref), and
 [TKEDissipationVerticalDiffusivity](@ref), and the mesoscale turbulence closure
@@ -140,9 +140,10 @@ using SeawaterPolynomials: TEOS10EquationOfState
 grid = LatitudeLongitudeGrid(size = (180, 80, 10),
                              longitude = (0, 360),
                              latitude = (-80, 80),
-                             z = (-1000, 0))
+                             z = (-1000, 0),
+                             halo = (6, 6, 3))
 
-advection = WENOVectorInvariant()
+momentum_advection = WENOVectorInvariant()
 coriolis = HydrostaticSphericalCoriolis()
 equation_of_state = TEOS10EquationOfState()
 buoyancy = SeawaterBuoyancy(; equation_of_state)
@@ -155,7 +156,7 @@ function zonal_wind_stress(λ, φ, t)
     τ₀ = 1e-4  # Maximum wind stress magnitude (N/m²)
     φ₀ = 30   # Latitude of maximum westerlies (degrees)
     dφ = 10
-    
+
     # Approximate wind stress pattern
     return - τ₀ * (+ exp(-(φ - φ₀)^2 / 2dφ^2)
                    - exp(-(φ + φ₀)^2 / 2dφ^2)
@@ -164,7 +165,7 @@ end
 
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(zonal_wind_stress))
 
-model = HydrostaticFreeSurfaceModel(; grid, advection, coriolis, equation_of_state, closure, buoyancy,
+model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, coriolis, closure, buoyancy,
                                     boundary_conditions = (; u=u_bcs), tracers=(:T, :S, :e))
 ```
 
@@ -173,6 +174,8 @@ except that the vertical velocity cannot be `set!`, because vertical velocity is
 prognostic in the hydrostatic equations.
 
 ```@example second_model
+using SeawaterPolynomials
+
 N² = 1e-5
 T₀ = 20
 S₀ = 35
@@ -180,8 +183,8 @@ eos = model.buoyancy.formulation.equation_of_state
 α = SeawaterPolynomials.thermal_expansion(T₀, S₀, 0, eos)
 g = model.buoyancy.formulation.gravitational_acceleration
 dTdz = N² / (α * g)
-Tᵢ(x, z) = T₀ + dTdz * z + 1e-3 * T₀ * randn()
-uᵢ(x, z) = 1e-3 * randn()
+Tᵢ(λ, φ, z) = T₀ + dTdz * z + 1e-3 * T₀ * randn()
+uᵢ(λ, φ, z) = 1e-3 * randn()
 set!(model, T=Tᵢ, S=S₀, u=uᵢ, v=uᵢ)
 
 model.tracers.T
