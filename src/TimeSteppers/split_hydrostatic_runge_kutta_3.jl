@@ -148,6 +148,7 @@ function split_rk3_substep!(model, Δt)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
+                       fields(model),
                        Δt)
     end
 end

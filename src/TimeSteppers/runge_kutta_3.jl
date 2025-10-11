@@ -195,6 +195,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
+                       fields(model),
                        stage_Δt(Δt, γⁿ, ζⁿ))
     end
 
