@@ -710,27 +710,47 @@ materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
 materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
 
-function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
-    grid_attrs, grid_dims = grid_attributes(grid)
 
+function netcdf_grid_constructor_info(grid)
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid)
+
+    immersed_grid_args = Dict()
+
+    underlying_grid_type = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+    grid_metadata = Dict(:immersed_boundary_type => nothing,
+                         :underlying_grid_type => underlying_grid_type)
+    return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
+end
+
+function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
+    underlying_grid_args, underlying_grid_kwargs, immersed_grid_args = constructor_arguments(grid)
+
+    immersed_boundary_type = typeof(grid.immersed_boundary).name.wrapper |> string # Save type of immersed boundary for reconstruction
+    underlying_grid_type   = typeof(grid.underlying_grid).name.wrapper |> string # Save type of underlyinh grid for reconstruction
+
+    grid_metadata = Dict(:immersed_boundary_type => immersed_boundary_type,
+                         :underlying_grid_type => underlying_grid_type)
+    return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
+end
+
+function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
+
+    # Save buman-readable grid attributes for inspection. Not used for reconstruction.
+    # TODO: Remove this once we have a better way to save grid attributes.
+    grid_attrs, grid_dims = grid_attributes(grid)
     sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first) # Organizes attributes to make it more easily human-readable
     ds_grid = defGroup(ds, "grid_attributes"; attrib = sorted_grid_attrs)
     for (dim_name, dim_array) in grid_dims
         defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
     end
 
-    args, kwargs = constructor_arguments(grid)
+    underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata = netcdf_grid_constructor_info(grid)
+    underlying_grid_args, underlying_grid_kwargs, grid_metadata = map(convert_for_netcdf, (underlying_grid_args, underlying_grid_kwargs, grid_metadata))
 
-    # This is needed for now to prevent NetCDF from throwing an error, but precludes
-    # us from reconstructing immersed grids from NetCDF. This is a temporary fix.
-    :mask ∈ keys(args) && delete!(args, :mask)
-    :bottom_height ∈ keys(args) && delete!(args, :bottom_height)
-
-    args, kwargs = map(convert_for_netcdf, (args, kwargs))
-    args["grid_type"] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
-
-    defGroup(ds, "grid_reconstruction_args"; attrib = args)
-    defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
+    defGroup(ds, "underlying_grid_reconstruction_args"; attrib = underlying_grid_args)
+    defGroup(ds, "underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
+    # defGroup(ds, "immersed_grid_reconstruction_args"; attrib = immersed_grid_args)
+    defGroup(ds, "grid_reconstruction_metadata"; attrib = grid_metadata)
 
     return ds
 end
@@ -744,21 +764,24 @@ end
 
 function reconstruct_grid(ds)
     # Read back the grid reconstruction metadata
-    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
-    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_args = ds.group["underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_kwargs = ds.group["underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+    # immersed_grid_reconstruction_args = ds.group["immersed_grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
-    # Pop out infomration about grid type and immersed boundary type from Dict
-    grid_type = pop!(grid_reconstruction_args, :grid_type)
-    is_immersed = haskey(grid_reconstruction_args, :immersed_boundary_type)
-    if is_immersed
-        ib_type = pop!(grid_reconstruction_args, :immersed_boundary_type)
+    # Pop out infomration about the underlying grid
+    underlying_grid_type = pop!(grid_reconstruction_metadata, :underlying_grid_type)
+    underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
+
+    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary, otherwise underlying grid is the final grid
+    if grid_reconstruction_metadata[:immersed_boundary_type] isa Nothing
+        grid = underlying_grid
+    else
+        immersed_boundary_type = pop!(grid_reconstruction_metadata, :immersed_boundary_type)
+        immersed_boundary = immersed_boundary_type(values(immersed_grid_reconstruction_args)...; immersed_grid_reconstruction_kwargs...)
+        grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
     end
 
-    # Reconstruct the grid which may or may not be an underlying grid to an ImmersedBoundaryGrid
-    maybe_underlying_grid = grid_type(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
-
-    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary
-    grid = is_immersed ? ImmersedBoundaryGrid(maybe_underlying_grid, ib_type) : maybe_underlying_grid
     return grid
 end
 
