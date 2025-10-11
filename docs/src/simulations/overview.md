@@ -27,8 +27,7 @@ end
 ```@example simulation_overview
 using Oceananigans
 
-arch = CPU()
-grid = RectilinearGrid(arch; size=(8, 8, 8), extent=(128, 128, 64))
+grid = RectilinearGrid(size=(8, 8, 8), extent=(128, 128, 64))
 model = NonhydrostaticModel(; grid, tracers=:c)
 simulation = Simulation(model; Δt=10.0, stop_iteration=20)
 run!(simulation)
