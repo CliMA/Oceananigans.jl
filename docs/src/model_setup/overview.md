@@ -1,32 +1,33 @@
 # Models
 
 In general in Oceananigans, the "model" object serves two main purposes:
- _(i)_ models store the configuration of a set of discrete equations. The discrete equations imply rules for evolving prognostic variables, and computing diagnostic varaibles from the prognostic state.
- _(ii)_ models provide a container for the prognostic and diagnostic state of those discrete equations at a particular time.
+ * models store the configuration of a set of discrete equations. The discrete equations imply rules for evolving
+   prognostic variables, and computing diagnostic variables from the prognostic state.
+ * models provide a container for the prognostic and diagnostic state of those discrete equations at a particular time.
 
 ## Two Oceananigans models for ocean simulations
 
 In addition to defining the abstract concept of a "model" that can be used with [Simulation](@ref),
 Oceananigans provides two mature model implementations for simulating ocean-flavored fluid dynamics.
 Both of these integrate the Navier-Stokes equations within the Boussinesq approximation
-(we call these the "Boussinesq equations" for short): the [NonhydrostaticModel](@ref) and the [HydrostaticFreeSurfaceModel](@ref).
+(we call these the "Boussinesq equations" for short): the [NonhydrostaticModel](@ref) and
+the [HydrostaticFreeSurfaceModel](@ref).
 
 The [NonhydrostaticModel](@ref) integrates the Boussinesq equations _without_ making the hydrostatic approximation,
 and therefore possessing a prognostic vertical momentum equation. The NonhydrostaticModel is useful for simulations
-that resolve three-dimensional turbulence, such as large eddy simulations on [RectilinearGrid](@ref) with grid spacings of O(1 m),
-as well as direct numerical simulation. The NonhydrostaticModel may also be used for idealized classroom problems,
-as in the [two-dimensional turbulence example](@ref "Two dimensional turbulence example").
+that resolve three-dimensional turbulence, such as large eddy simulations on [RectilinearGrid](@ref) with grid
+spacings of O(1 m), as well as direct numerical simulation. The NonhydrostaticModel may also be used for
+idealized classroom problems, as in the [two-dimensional turbulence example](@ref "Two dimensional turbulence example").
 
 The [HydrostaticFreeSurfaceModel](@ref) integrates the hydrostatic or "primitive" Boussinesq equations
 with a free surface on its top boundary. The hydrostatic approximation allosw the HydrostaticFreeSurfaceModel
-to achieve much higher efficiency in simulations on curvilinear grids used for large-scale regional or global simulations such as
-[LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
+to achieve much higher efficiency in simulations on curvilinear grids used for large-scale regional or global
+simulations such as [LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
 and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
-Because they span larger domains, simulations with the HydrostaticFreeSurfaceModel also usually involve coarser grid spacings of O(30 m) up to O(100 km).
-Such coarse-grained simulations are usually paired with more elaborate turublence closures or "parameterizations" than
-small-scale simulations with NonhydrostaticModel, such as the vertical mixing schemes
-[CATKEVerticalDiffusivity](@ref),
-[RiBasedVerticalDiffusivity](@ref), and
+Because they span larger domains, simulations with the HydrostaticFreeSurfaceModel also usually involve coarser
+grid spacings of O(30 m) up to O(100 km). Such coarse-grained simulations are usually paired with more elaborate
+turbulence closures or "parameterizations" than small-scale simulations with NonhydrostaticModel, such as the
+vertical mixing schemes [CATKEVerticalDiffusivity](@ref), [RiBasedVerticalDiffusivity](@ref), and
 [TKEDissipationVerticalDiffusivity](@ref), and the mesoscale turbulence closure
 [IsopycnalSkewSymmetricDiffusivity](@ref) (a.k.a. "Gent-McWilliams plus Redi").
 
@@ -132,6 +133,15 @@ using Oceananigans
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
 model = HydrostaticFreeSurfaceModel(; grid) # default free surface, no tracers
 ```
+
+The full array of keyword arguments used to configure a HydrostaticFreeSurfaceModel are detailed
+in the docstring for [HydrostaticFreeSurfaceModel](@ref),
+
+```@docs
+HydrostaticFreeSurfaceModel
+```
+
+A bit more involved HydrostaticFreeSurfaceModel example:
 
 ```@example second_model
 using Oceananigans
