@@ -301,6 +301,7 @@ end
 
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
+@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
