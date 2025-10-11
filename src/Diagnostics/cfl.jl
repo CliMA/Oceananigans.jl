@@ -1,4 +1,5 @@
 using Oceananigans.Advection: cell_advection_timescale
+using Oceananigans.Simulations: Simulation
 
 """
     struct CFL{D, S}
