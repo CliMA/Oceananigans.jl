@@ -749,8 +749,11 @@ function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)
 
     defGroup(ds, "underlying_grid_reconstruction_args"; attrib = underlying_grid_args)
     defGroup(ds, "underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
-    # defGroup(ds, "immersed_grid_reconstruction_args"; attrib = immersed_grid_args)
     defGroup(ds, "grid_reconstruction_metadata"; attrib = grid_metadata)
+
+    ibg_group = defGroup(ds, "immersed_grid_reconstruction_args")
+    bottom_height = pop!(immersed_grid_args, :bottom_height)
+    defVar(ibg_group, "bottom_height", bottom_height; attrib=convert_for_netcdf(immersed_grid_args))
 
     return ds
 end
@@ -762,23 +765,48 @@ function reconstruct_grid(filename::String)
     return grid
 end
 
+function reconstruct_immersed_boundary(ds)
+    ibg_group = ds.group["immersed_grid_reconstruction_args"]
+
+    grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+    immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
+    if immersed_boundary_type == GridFittedBottom
+        bottom_height = Array(ibg_group["bottom_height"])
+        immersed_boundary = immersed_boundary_type(bottom_height)
+        # immersed_grid_reconstruction_kwargs = ibg_group.attrib |> materialize_from_netcdf
+        # immersed_boundary = immersed_boundary_type(bottom_height; immersed_grid_reconstruction_kwargs...)
+
+    elseif immersed_boundary_type == PartialCellBottom
+        bottom_height = Array(ibg_group["bottom_height"])
+        immersed_boundary = immersed_boundary_type(bottom_height)
+
+    elseif immersed_boundary_type == GridFittedBoundary
+        mask = Array(ibg_group["mask"])
+        immersed_boundary = immersed_boundary_type(mask)
+
+    else
+        error("Unsupported immersed boundary type: $immersed_boundary_type")
+    end
+    return immersed_boundary
+end
+
+
 function reconstruct_grid(ds)
     # Read back the grid reconstruction metadata
     underlying_grid_reconstruction_args = ds.group["underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
     underlying_grid_reconstruction_kwargs = ds.group["underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
-    # immersed_grid_reconstruction_args = ds.group["immersed_grid_reconstruction_args"].attrib |> materialize_from_netcdf
     grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
     # Pop out infomration about the underlying grid
-    underlying_grid_type = pop!(grid_reconstruction_metadata, :underlying_grid_type)
+    underlying_grid_type = grid_reconstruction_metadata[:underlying_grid_type]
     underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
 
     # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary, otherwise underlying grid is the final grid
+    ibg_group = ds.group["immersed_grid_reconstruction_args"]
     if grid_reconstruction_metadata[:immersed_boundary_type] isa Nothing
         grid = underlying_grid
     else
-        immersed_boundary_type = pop!(grid_reconstruction_metadata, :immersed_boundary_type)
-        immersed_boundary = immersed_boundary_type(values(immersed_grid_reconstruction_args)...; immersed_grid_reconstruction_kwargs...)
+        immersed_boundary = reconstruct_immersed_boundary(ds)
         grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
     end
 
