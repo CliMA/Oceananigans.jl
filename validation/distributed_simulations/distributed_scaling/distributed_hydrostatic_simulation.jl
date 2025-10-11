@@ -53,7 +53,7 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
                                           coriolis,
                                           closure,
                                           free_surface,
-                                          tracers = (:T, :S, :e),
+                                          tracers = (:T, :S),
                                           buoyancy,
                                           timestepper)
 
