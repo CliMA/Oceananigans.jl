@@ -20,7 +20,8 @@ The `Checkpointer` is discussed in detail on a separate [section](@ref checkpoin
 3. A `schedule` on which output is written. `TimeInterval`, `IterationInterval`, `WallTimeInterval` schedule
    periodic output according to the simulation time, simulation interval, or "wall time" (the physical time
    according to a clock on your wall). A fourth `schedule` called `AveragedTimeInterval` specifies
-   periodic output that is time-averaged over a `window` prior to being written.
+   periodic output that is time-averaged over a `window` prior to being written. See [callback schedules](@ref callback_schedules)
+   for a deeper overview of schedule types and how to combine them.
 4. The `filename` and `dir`ectory.
 
 Other important keyword arguments are
