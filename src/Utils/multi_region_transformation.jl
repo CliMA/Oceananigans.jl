@@ -14,6 +14,12 @@ struct MultiRegionObject{R}
     regional_objects :: R
 end
 
+function Base.summary(mo::MultiRegionObject)
+    obj = summary(first(mo.regional_objects))
+    N = length(mo.regional_objects)
+    return "MultiRegionObject with $N × $obj"
+end
+
 #####
 ##### Convenience structs
 #####
