@@ -1,5 +1,4 @@
 using Oceananigans.Advection: cell_advection_timescale
-using Oceananigans.Simulations: Simulation
 
 """
     struct CFL{D, S}
@@ -23,8 +22,6 @@ and [`DiffusiveCFL`](Oceananigans.Diagnostics.DiffusiveCFL).
 CFL(Δt) = CFL(Δt, cell_advection_timescale)
 
 (c::CFL)(model) = c.Δt / c.timescale(model)
-
-(c::CFL)(sim::Simulation) = c(sim.model)
 
 """
     AdvectiveCFL(Δt)
