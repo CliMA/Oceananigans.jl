@@ -206,9 +206,6 @@ end
     #                  = Lⁱ
     #
     # where ω = ϵ / e ∼ √e / ℓ.
-    
-    active = !inactive_cell(i, j, k, grid)
-
     @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
 
     # Compute fast TKE RHS
