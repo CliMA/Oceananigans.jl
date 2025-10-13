@@ -46,7 +46,8 @@ function rk3_substep_velocities!(velocities, model, Δt)
                        model.closure,
                        model.diffusivity_fields,
                        nothing,
-                       model.clock,
+                       model.clock, 
+                       fields(model),
                        Δt)
     end
 
@@ -69,7 +70,6 @@ function rk3_substep_tracers!(tracers, model, Δt)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-
         if catke_in_closures && tracer_name == :e
             @debug "Skipping RK3 step for e"
         else
@@ -87,6 +87,7 @@ function rk3_substep_tracers!(tracers, model, Δt)
                            model.diffusivity_fields,
                            Val(tracer_index),
                            model.clock,
+                           fields(model),
                            Δt)
         end
     end
