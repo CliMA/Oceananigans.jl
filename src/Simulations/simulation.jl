@@ -121,17 +121,22 @@ end
 
 function Base.show(io::IO, s::Simulation)
     modelstr = summary(s.model)
-    return print(io, "Simulation of ", modelstr, "\n",
-                     "├── Next time step: $(prettytime(s.Δt))", "\n",
-                     "├── Elapsed wall time: $(prettytime(s.run_wall_time))", "\n",
-                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", "\n",
-                     "├── Stop time: $(prettytime(s.stop_time))", "\n",
-                     "├── Stop iteration: $(s.stop_iteration)", "\n",
-                     "├── Wall time limit: $(s.wall_time_limit)", "\n",
-                     "├── Minimum relative step: ", prettysummary(s.minimum_relative_step), "\n",
-                     "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
-                     "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
-                     "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    print(io, "Simulation of ", modelstr, '\n',
+              "├── Next time step: $(prettytime(s.Δt))", '\n',
+              "├── run_wall_time: $(prettytime(s.run_wall_time))", '\n',
+              "├── run_wall_time / iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
+              "├── stop_time: $(prettytime(s.stop_time))", '\n',
+              "├── stop_iteration: $(s.stop_iteration)", '\n',
+              "├── wall_time_limit: $(s.wall_time_limit)", '\n',
+              "├── minimum_relative_step: ", prettysummary(s.minimum_relative_step), '\n',
+              "├── callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n')
+
+    if length(s.diagnostics) == 0
+        print(io, "└── output_writers: $(ordered_dict_show(s.output_writers, "│"))")
+    else
+        print(io, "├── output_writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
+                  "└── diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    end
 end
 
 #####

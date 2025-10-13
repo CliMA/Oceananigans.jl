@@ -39,7 +39,7 @@ run!(simulation)
 simulation
 ```
 
-A slightly more complicated `Simulation` might 
+A slightly more complicated callback setup for `Simulation` might look like
 
 ```@example simulation_overview
 using Oceananigans
@@ -55,8 +55,6 @@ declare_time(sim) = @info string("The simulation has been running for ", prettyt
 add_callback!(simulation, declare_time, TimeInterval(10))
 
 run!(simulation)
-
-simulation
 ```
 
 `Simulation` bookkeeps the total iterations performed, the next `Δt`, and the
@@ -77,6 +75,17 @@ The `Simulation` constructor accepts three stopping conditions:
 - `wall_time_limit`: maximum wall-clock seconds before the run aborts
 
 ```@example simulation_overview
+simulation = Simulation(model; Δt=0.1, stop_time=10, stop_iteration=10000, wall_time_limit=30)
+```
+
+### Callbacks: basics
+
+Callbacks execute arbitrary code on [schedule](@ref callback_schedules).
+They automate tasks such as logging, runtime adjustments, or scientific diagnostics.
+The simplest callbacks are used to monitor the progress of a simulation.
+We illustrate a hierarchy of callbacks by using a slightly-less trivial simulation:
+
+```@example simulation_overview
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
@@ -84,23 +93,18 @@ grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 c_source(x, y, z, t, c) = 0.1 * c
 c_forcing = Forcing(c_source, field_dependencies=:c)
 model = NonhydrostaticModel(; grid, tracers=:c, forcing=(; c=c_forcing))
+simulation = Simulation(model; Δt=0.1, stop_time=10)
 
-simulation = Simulation(model; Δt=0.1, stop_time=10, stop_iteration=10000, wall_time_limit=30)
-simulation
-```
-
-### Callbacks: basic callback for monitoring progress
-
-Callbacks execute arbitrary code on [schedule](@ref callback_schedules).
-They automate tasks such as logging, runtime adjustments, or scientific diagnostics.
-
-The simplest callbacks are used to monitor the progress of a simulation:
-
-```@example simulation_overview
+# Add a callback that prints progress
 print_progress(sim) = @info "Iter $(iteration(sim)): $(prettytime(sim))"
-add_callback!(simulation, print_progress, IterationInterval(25))
+add_callback!(simulation, print_progress, IterationInterval(25), name=:progress)
 run!(simulation)
 ```
+
+!!! note "Naming callbacks"
+    Callbacks may be assigned a `name` kwarg for `add_callback!` or by adding
+    the callback manually to the `callbacks` dictionary: `simulation.callbacks[:mine] = my_callback`.
+    Names can be used to identify, modify, or delete callbacks from `Simulation`.
 
 ### Callbacks: for stopping a simulation
 
@@ -108,6 +112,8 @@ To spark your imagination, consider that callbacks can be used to implement
 arbitrary stopping criteria. As an example we consider a stopping criteria based on the magnitude of a tracer:
 
 ```@example simulation_overview
+using Printf 
+
 set!(model, c=1)
 
 function stop_simulation(sim)
@@ -119,11 +125,22 @@ end
 
 # The default schedule is IterationInterval(1)
 add_callback!(simulation, stop_simulation)
+
+function print_progress(sim)
+    max_c = maximum(sim.model.tracers.c)
+    @info @sprintf("Iter %d: t = %s, max(c): %.2f",
+                   iteration(sim), prettytime(sim), max_c)
+    return nothing
+end
+
+add_callback!(simulation, stop_simulation, IterationInterval(10), name=:progress)
 simulation.stop_time += 10
 run!(simulation)
-
-simulation
 ```
+
+!!! note "Callback execution order"
+    Callbacks are executed in the order they appear within the `callbacks` `OrderedDict`,
+    which in turn corresponds to the order they are added.
 
 ### Adaptive time-stepping with `TimeStepWizard`
 
@@ -141,8 +158,8 @@ set!(model, c=1, u=ϵ, v=ϵ, w=ϵ)
 conjure_time_step_wizard!(simulation, cfl=0.7)
 @show simulation.callbacks
 
-print_time_step(sim) = @info "Iter $(iteration(sim)): Δt = $(prettytime(sim.Δt))"
-add_callback!(simulation, print_time_step, IterationInterval(1))
+print_progress(sim) = @info string("Iter: ", iteration(sim), ": Δt = ", prettytime(sim.Δt))
+add_callback!(simulation, print_progress, IterationInterval(10), name=:progress)
 simulation.stop_time += 1
 run!(simulation)
 ```
@@ -153,8 +170,8 @@ By default, `Simulation` "aligns" `Δt` so that events which are _scheduled by t
 Time-step alignment may be disabled by setting `align_time_step = false` in the `Simulation` constructor.
 
 ```@example simulation_overview
-print_iteration(sim) = @info "At t = $(time(sim)), iter = $(iteration(sim))"
-add_callback!(simulation, print_iteration, TimeInterval(0.2))
+print_progress(sim) = @info "At t = $(time(sim)), iter = $(iteration(sim))"
+add_callback!(simulation, print_progress, TimeInterval(0.2), name=:progress)
 simulation.stop_time += 0.6
 run!(simulation)
 ```
@@ -181,7 +198,6 @@ using Oceananigans
 using Oceananigans: TendencyCallsite
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 function modify_tendency!(model, params)
@@ -204,7 +220,6 @@ Checkpointer) describing _how_ to serialize them. Time-step alignment ensures th
 schedule is honoured without user intervention.
 
 ```@example simulation_overview
-using Oceananigans.OutputWriters
 using NCDatasets
 
 fields = Dict("u" => simulation.model.velocities.u)
@@ -227,14 +242,12 @@ into a robust workflow. The snippet below shows a compact pattern frequently use
 ```@example simulation_overview
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(; grid, tracers = (:T,))
-simulation = Simulation(model; Δt = 20.0, stop_time = 2hour)
+model = NonhydrostaticModel(; grid, tracers=:T)
+simulation = Simulation(model, Δt=20, stop_time=2hour)
 
-progress(sim) = @info "t = $(prettytime(sim.model.clock.time)), Δt = $(prettytime(sim.Δt))"
-add_callback!(simulation, progress, TimeInterval(15minute); name = :progress)
-
-wizard = TimeStepWizard(cfl = 0.8, max_change = 1.2, max_Δt = 60.0)
-add_callback!(simulation, wizard; name = :wizard)
+progress(sim) = @info "t = $(prettytime(sim)), Δt = $(prettytime(sim.Δt))"
+add_callback!(simulation, progress, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=0.8)
 
 simulation.output_writers[:snapshots] = JLD2Writer(simulation.model, simulation.model.velocities;
                                                    filename = "snapshots.jld2",
