@@ -6,12 +6,12 @@ using MPI
 #####
 
 # Utilities to make the macro work importing only Oceananigans.DistributedComputations and not MPI
-mpi_initialized()     = MPI.Initialized()
-mpi_rank(comm)        = MPI.Comm_rank(comm)
-mpi_size(comm)        = MPI.Comm_size(comm)
-barrier(comm)         = MPI.Barrier(comm)
-global_communicator() = MPI.COMM_WORLD
-global_barrier()      = barrier(global_communicator())
+mpi_initialized()        = MPI.Initialized()
+mpi_rank(comm::MPI.Comm) = MPI.Comm_rank(comm)
+mpi_size(comm::MPI.Comm) = MPI.Comm_size(comm)
+barrier(comm::MPI.Comm)  = MPI.Barrier(comm)
+global_communicator()    = MPI.COMM_WORLD
+global_barrier()         = barrier(global_communicator())
 
 """
     @root communicator exp...
