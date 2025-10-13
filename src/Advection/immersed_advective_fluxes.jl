@@ -177,7 +177,7 @@ flip(l) = ifelse(l == :f, :c, :f)
 #   
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
-    compute_immersed_reduced_order = Symbol(:compute_immersed_reduced_order_, dir)
+    compute_immersed_reduced_order = Symbol(:compute_, Loc, :immersed_reduced_order_, dir)
 
     @eval begin
         @inline function $compute_reduced_order(i, j, k, grid::IBG, a, bias)
