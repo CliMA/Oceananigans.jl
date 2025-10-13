@@ -103,9 +103,13 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, c
         for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
+            
+            # Advance barotropic velocities
             barotropic_velocity_kernel!(transport_weight, converted_U_args...)
             fill_halo_regions!(converted_U_fill_halo_args...; only_local_halos=true)
             fill_halo_regions!(converted_V_fill_halo_args...; only_local_halos=true)
+
+            # Advance free surface
             free_surface_kernel!(averaging_weight, converted_η_args...)
             fill_halo_regions!(converted_η_fill_halo_args...; only_local_halos=true)
         end
