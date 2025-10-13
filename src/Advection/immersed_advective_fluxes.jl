@@ -228,7 +228,7 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         end
 
         @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{6}, bias) 
-            I = $(inside_immersed_boundary(5, dir, loc))
+            I = $(inside_immersed_boundary(6, dir, loc))
             to5 = fifth_order_bounds_check(I, bias)
             to4 = fourth_order_bounds_check(I, bias)
             to3 = third_order_bounds_check(I, bias)

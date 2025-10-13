@@ -26,7 +26,7 @@ H, L = 2kilometers, 1000kilometers
 
 underlying_grid = RectilinearGrid(size = (Nx, Nz), halo = (6, 6),
                                   x = (-L, L), z = MutableVerticalDiscretization((-H, 0)),
-                                  topology = (Periodic, Flat, Bounded))
+                                  topology = (Bounded, Flat, Bounded))
 
 # Now we can create the non-trivial bathymetry. We use `GridFittedBottom` that gets as input either
 # *(i)* a two-dimensional function whose arguments are the grid's native horizontal coordinates and
@@ -208,8 +208,6 @@ run!(simulation)
 # ## Load output
 
 # First, we load the saved velocities and stratification output as `FieldTimeSeries`es.
-filename = "internal_tide_QuasiAdamsBashforth2_5.0min"
-
 saved_output_filename = filename * ".jld2"
 
 u′_t = FieldTimeSeries(saved_output_filename, "u′")
