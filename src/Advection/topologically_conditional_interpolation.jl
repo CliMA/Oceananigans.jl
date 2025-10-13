@@ -4,21 +4,23 @@
 #####
 
 using Oceananigans.Grids: AbstractGrid,
+                          AbstractUnderlyingGrid,
                           Bounded,
                           RightConnected,
                           LeftConnected,
                           topology,
                           architecture
 
-const AG = AbstractGrid
+const AG  = AbstractGrid
+const AUG = AbstractUnderlyingGrid
 
 # topologies bounded at least on one side
 const BT = Union{Bounded, RightConnected, LeftConnected}
 
 # Bounded Grids
-const AGX = AG{<:Any, <:BT}
-const AGY = AG{<:Any, <:Any, <:BT}
-const AGZ = AG{<:Any, <:Any, <:Any, <:BT}
+const AGX = AUG{<:Any, <:BT}
+const AGY = AUG{<:Any, <:Any, <:BT}
+const AGZ = AUG{<:Any, <:Any, <:Any, <:BT}
 
 # Reduction of the order near boundaries 
 #
@@ -61,14 +63,14 @@ const AGZ = AG{<:Any, <:Any, <:Any, <:BT}
 const A{B} = AbstractAdvectionScheme{B} 
 
 # Fallback for periodic underlying grids
-@inline compute_face_reduced_order_x(i, j, k, grid, ::A{B}, bias) where B = B
-@inline compute_face_reduced_order_y(i, j, k, grid, ::A{B}, bias) where B = B
-@inline compute_face_reduced_order_z(i, j, k, grid, ::A{B}, bias) where B = B
+@inline compute_face_reduced_order_x(i, j, k, grid::AUG, ::A{B}, bias) where B = B
+@inline compute_face_reduced_order_y(i, j, k, grid::AUG, ::A{B}, bias) where B = B
+@inline compute_face_reduced_order_z(i, j, k, grid::AUG, ::A{B}, bias) where B = B
 
 # Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid, ::A{B}, bias) where B = B
-@inline compute_center_reduced_order_y(i, j, k, grid, ::A{B}, bias) where B = B
-@inline compute_center_reduced_order_z(i, j, k, grid, ::A{B}, bias) where B = B
+@inline compute_center_reduced_order_x(i, j, k, grid::AUG, ::A{B}, bias) where B = B
+@inline compute_center_reduced_order_y(i, j, k, grid::AUG, ::A{B}, bias) where B = B
+@inline compute_center_reduced_order_z(i, j, k, grid::AUG, ::A{B}, bias) where B = B
 
 # Bounded grids
 @inline compute_face_reduced_order_x(i, j, k, grid::AGX, ::A{B}, bias) where B = reduced_face_order(i, topology(grid, 1), size(grid, 1), B, bias)
