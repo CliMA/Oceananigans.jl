@@ -36,9 +36,9 @@ function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMappin
         adapt(to, conformal_mapping.ηᵃᶜᵃ))
 end
 
-const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = 
+const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:CubedSphereConformalMapping, CC, FC, CF, FF, Arch}
-const ConformalCubedSpherePanelGridOfSomeKind{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = 
+const ConformalCubedSpherePanelGridOfSomeKind{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     Union{ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch},
           ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}}}
 
@@ -55,8 +55,8 @@ end
 function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                        panel, Nz, z,
                                        topology = (FullyConnected, FullyConnected, Bounded),
-                                         radius = R_Earth,
-                                           halo = (4, 4, 4),
+                                       radius = Oceananigans.defaults.planet_radius,
+                                       halo = (4, 4, 4),
                                        rotation = nothing)
 
     TX, TY, TZ = topology
@@ -171,7 +171,7 @@ end
                                   topology = (Bounded, Bounded, Bounded),
                                   ξ = (-1, 1),
                                   η = (-1, 1),
-                                  radius = R_Earth,
+                                  radius = Oceananigans.defaults.planet_radius,
                                   halo = (1, 1, 1),
                                   rotation = nothing,
                                   non_uniform_conformal_mapping = false,
@@ -264,7 +264,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        topology = (Bounded, Bounded, Bounded),
                                        ξ = (-1, 1),
                                        η = (-1, 1),
-                                       radius = R_Earth,
+                                       radius = Oceananigans.defaults.planet_radius,
                                        halo = (1, 1, 1),
                                        rotation = nothing,
                                        non_uniform_conformal_mapping = false,
@@ -276,7 +276,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
 
-    # Use a regular rectilinear grid for the face of the cube. 
+    # Use a regular rectilinear grid for the face of the cube.
     ξη_grid_topology = (Bounded, Bounded, topology[3])
 
     # Construct the grid on CPU and convert to architecture later...

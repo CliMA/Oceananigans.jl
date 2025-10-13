@@ -6,7 +6,7 @@ import Oceananigans.Grids: with_halo, validate_dimension_specification
 """
     struct Tripolar{N, F, S}
 
-A structure to represent a tripolar grid on a spherical shell.
+A structure to represent a tripolar grid on an orthogonal spherical shell.
 """
 struct Tripolar{N, F, S}
     north_poles_latitude :: N
@@ -27,7 +27,7 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
                  size,
                  southernmost_latitude = -80,
                  halo = (4, 4, 4),
-                 radius = R_Earth,
+                 radius = Oceananigans.defaults.planet_radius,
                  z = (0, 1),
                  north_poles_latitude = 55,
                  first_pole_longitude = 70)
@@ -35,6 +35,8 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
 tripolar grid replaces the North pole singularity with two other singularities
 at `north_poles_latitude` that is _less_ than 90ᵒ.
+
+The grid is constructed following the formulation by [Murray (1996)](@cite Murray1996).
 
 Positional Arguments
 ====================
@@ -48,13 +50,16 @@ Keyword Arguments
 - `size`: The number of cells in the (longitude, latitude, vertical) dimensions.
 - `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
 - `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
-- `radius`: The radius of the spherical shell. Default: `R_Earth`.
-- `z`: The vertical ``z``-coordinate range of the grid. Could either be (i) 2-tuple that specifies
-       the end points of the coordinate, (ii) an array with the ``z`` interfaces, or (iii) a function
-       of `k` index that returns the locations of cell interfaces in ``z``-direction. Default: (0, 1).
+- `radius`: The radius of the spherical shell. Default: `Oceananigans.defaults.planet_radius`.
+- `z`: The vertical ``z``-coordinate range of the grid. Could either be:
+       (i) 2-tuple that specifies the end points of the coordinate,
+       (ii) an array with the ``z`` interfaces, or
+       (iii) a function of `k` index that returns the locations of cell interfaces
+             in ``z``-direction. Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
-- `north_poles_latitude`: The latitude of the "north" singularities.
+                          Default: 75.
+- `north_poles_latitude`: The latitude of the "north" singularities. Default: 55.
 
 !!! warning "Longitude coordinate must have even number of cells"
     `size` is a 3-tuple of the grid size in longitude, latitude, and vertical directions.
@@ -62,13 +67,20 @@ Keyword Arguments
     of the grid (i.e., the first component of `size`) _must_ be an even number!
 
 !!! info "North pole singularities"
-    The north singularities are located at: `i = 1`, `j = Nφ` and `i = Nλ ÷ 2 + 1`, `j = Nφ`.
+    The north singularities are located at: `i = 1`, `j = grid.Ny` and
+    `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`.
+
+References
+==========
+
+Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
+    Journal of Computational Physics, 126(2), 251-273.
 """
 function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                       size,
                       southernmost_latitude = -80,
                       halo = (4, 4, 4),
-                      radius = R_Earth,
+                      radius = Oceananigans.defaults.planet_radius,
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70)  # second pole is at longitude `first_pole_longitude + 180ᵒ`
@@ -91,7 +103,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # the λ and z coordinate is the same as for the other grids,
     # but for the φ coordinate we need to remove one point at the north
-    # because the the north pole is a `Center`point, not on `Face` point...
+    # because the the north pole is a `Center` point, not on `Face` point...
     topology  = (Periodic, RightConnected, Bounded)
     TZ = topology[3]
     z = validate_dimension_specification(TZ, z, :z, Nz, FT)
@@ -127,7 +139,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # We need to circshift everything to have the first pole at the beginning of the
     # grid and the second pole in the middle
-    shift = Nλ÷4
+    shift = Nλ ÷ 4
 
     λFF = circshift(λFF, (shift, 0))
     φFF = circshift(φFF, (shift, 0))

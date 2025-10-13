@@ -97,7 +97,7 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.north),
                             on_architecture(arch, fbcs.bottom),
                             on_architecture(arch, fbcs.top),
-                            on_architecture(arch, fbcs.immersed), 
+                            on_architecture(arch, fbcs.immersed),
                             fbcs.kernels,
                             on_architecture(arch, fbcs.ordered_bcs))
 
@@ -260,7 +260,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               loc::Tuple,
                                               prognostic_names=nothing,
                                               field_name=nothing)
-    
+
     west   = regularize_west_boundary_condition(bcs.west,     grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_east_boundary_condition(bcs.east,     grid, loc, 1, RightBoundary, prognostic_names)
     south  = regularize_south_boundary_condition(bcs.south,   grid, loc, 2, LeftBoundary,  prognostic_names)

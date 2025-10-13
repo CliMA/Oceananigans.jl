@@ -118,6 +118,7 @@ CUDA.allowscalar() do
     if group == :time_stepping_2 || group == :all
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
+            include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
         end
@@ -169,6 +170,7 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
+        include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
     end
 
@@ -178,7 +180,6 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
-        include("test_distributed_macros.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -231,7 +232,7 @@ CUDA.allowscalar() do
         end
     end
 
-    
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -249,6 +250,13 @@ CUDA.allowscalar() do
     if group == :reactant_2 || group == :all
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
         end
     end
 
@@ -287,4 +295,3 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
-
