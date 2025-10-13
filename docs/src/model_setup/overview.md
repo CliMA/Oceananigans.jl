@@ -1,337 +1,208 @@
-# Models: discrete equations and state variables
+# Models
 
-Oceananigans serves two mature models: [NonhydrostaticModel](@ref), which solves the Navier-Stokes equations
-under the Boussinesq approximation _without_ making the hydrostatic approximation, and [HydrostaticFreeSurfaceModel](@ref),
-which solves the hydrostatic or "primitive" Boussinesq equations with a "free" surface on the top boundary.
+In general in Oceananigans, the "model" object serves two main purposes:
+ * models store the configuration of a set of discrete equations. The discrete equations imply rules for evolving
+   prognostic variables, and computing diagnostic variables from the prognostic state.
+ * models provide a container for the prognostic and diagnostic state of those discrete equations at a particular time.
+
+## Two Oceananigans models for ocean simulations
+
+In addition to defining the abstract concept of a "model" that can be used with [Simulation](@ref),
+Oceananigans provides two mature model implementations for simulating ocean-flavored fluid dynamics.
+Both of these integrate the Navier-Stokes equations within the Boussinesq approximation
+(we call these the "Boussinesq equations" for short): the [NonhydrostaticModel](@ref) and
+the [HydrostaticFreeSurfaceModel](@ref).
+
+The [NonhydrostaticModel](@ref) integrates the Boussinesq equations _without_ making the hydrostatic approximation,
+and therefore possessing a prognostic vertical momentum equation. The NonhydrostaticModel is useful for simulations
+that resolve three-dimensional turbulence, such as large eddy simulations on [RectilinearGrid](@ref) with grid
+spacings of O(1 m), as well as direct numerical simulation. The NonhydrostaticModel may also be used for
+idealized classroom problems, as in the [two-dimensional turbulence example](@ref "Two dimensional turbulence example").
+
+The [HydrostaticFreeSurfaceModel](@ref) integrates the hydrostatic or "primitive" Boussinesq equations
+with a free surface on its top boundary. The hydrostatic approximation allosw the HydrostaticFreeSurfaceModel
+to achieve much higher efficiency in simulations on curvilinear grids used for large-scale regional or global
+simulations such as [LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
+and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
+Because they span larger domains, simulations with the HydrostaticFreeSurfaceModel also usually involve coarser
+grid spacings of O(30 m) up to O(100 km). Such coarse-grained simulations are usually paired with more elaborate
+turbulence closures or "parameterizations" than small-scale simulations with NonhydrostaticModel, such as the
+vertical mixing schemes [CATKEVerticalDiffusivity](@ref), [RiBasedVerticalDiffusivity](@ref), and
+[TKEDissipationVerticalDiffusivity](@ref), and the mesoscale turbulence closure
+[IsopycnalSkewSymmetricDiffusivity](@ref) (a.k.a. "Gent-McWilliams plus Redi").
+
 A third, experimental [ShallowWaterModel](@ref) solves the shallow water equations.
 
-The NonhydrostaticModel is primarily used for large eddy simulations on [RectilinearGrid](@ref) with grid spacings of O(1 m), but can also be used for idealized classroom problems (e.g. two-dimensional turbulence) and direct numerical simulation.
-HydrostaticFreeSurfaceModel, on the other hand, derives its purpose at larger scales --- typically for regional to global simulations with grid spacings of O(30 m) and up, on [RectilinearGrid](@ref),
-[LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
-and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
+### Configuring NonhydrostaticModel with keyword arguments
 
-## Whence Models?
+To illustrate the specification of discrete equations, consider first the docstring for [NonhydrostaticModel](@ref),
 
-Oceananigans models may be distilled to two aspects: _(i)_ specification for a set of discrete equations, and
-_(ii)_ a container for the prognostic and diagnostic state of those equations.
+```@docs
+NonhydrostaticModel
+```
 
-### Configuring models by changing keyword arguments
+The configuration operations for NonhydrostaticModel include "discretization choices", such as the `advection` scheme,
+as well as aspects of the continuous underlying equations, such as the formulation of the buoyancy force.
 
-By specifying discrete equations, a model may be integrated or "stepped forward"
-in time by calling `time_step!(model, Δt)`, where `Δt` is the time step
-and thus advancing the `model.clock`.
-The `time_step!` interface is used by [`Simulation`](@ref) to manage time-stepping
-along with other activities, like monitoring progress, writing output to disk, and more.
-
-To illustrate discrete equation specification see the docstring for [`NonhydrostaticModel`](@ref).
-
-Here's an example:
+For our first example, we build  the default `NonhydrostaticModel` (which is quite boring):
 
 ```@example
 using Oceananigans
+grid = RectilinearGrid(size=(8, 8, 8), extent=(8, 8, 8))
+nh = NonhydrostaticModel(; grid)
+```
 
-arch = CPU()
-grid = RectilinearGrid(arch,
-                       size = (128, 128),
-                       x = (0, 256),
-                       z = (-128, 0),
+The default `NonhydrostaticModel` has no tracers, no buoyancy force, no Coriolis force, and a second-order advection scheme.
+We next consider a slightly more exciting NonhydrostaticModel configured with a WENO advection scheme,
+the temperature/salinity-based [SeawaterBuoyancy](@ref), a boundary condition on the zonal momentum,
+and a passive tracer forced by a cooked-up surface flux called "c":
+
+```@example first_model
+using Oceananigans
+
+grid = RectilinearGrid(size=(128, 128), halo=(5, 5), x=(0, 256), z=(-128, 0),
                        topology = (Periodic, Flat, Bounded))
 
 # Numerical method and physics choices
 advection = WENO(order=9) # ninth‑order upwind for momentum and tracers
-buoyancy = SeawaterBuoyancy()  # requires T, S tracers
+buoyancy = BuoyancyTracer()
+coriolis = FPlane(f=1e-4)
 
-τₓ = - 8e-5 # m² s⁻² (τₓ < 0 ⟹ eastward wind stress)
-u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(τₓ))
+τx = - 8e-5 # m² s⁻² (τₓ < 0 ⟹ eastward wind stress)
+u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(τx))
 
-# A small sinusoidal cooling tendency for T
-c_source(x, y, z, t, p) = -p.μ * cos(2π * x) * exp(z / p.H)
-c_forcing = Forcing(c_source; parameters=(μ=1e-3, H=0.2))
+@inline Jc(x, t, Lx) = cos(2π / Lx * x)
+c_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Jc, parameters=grid.Lx))
 
-model = NonhydrostaticModel(; grid, advection, buoyancy,
-                            tracers = (:T, :S, :c),
-                            boundary_conditions = (; u=u_bcs),
-                            forcing = (; c=c_forcing))
+model = NonhydrostaticModel(; grid, advection, buoyancy, coriolis,
+                            tracers = (:b, :c),
+                            boundary_conditions = (; u=u_bcs, c=c_bcs))
 ```
 
-1. Specify the discrete equations to solve: physics options (buoyancy, Coriolis, free surface), numerical methods (advection schemes, closures), and configuration like forcing and boundary conditions.
-   These are primarily set via keyword arguments when constructing a model, and many parameters can be adjusted later.
-2. Hold the simulation state: prognostic state (velocities, tracers, pressure/free surface) and diagnostic/auxiliary fields.
-   Every model pairs with `set!(model; kwargs...)` to update state any time.
-   This is typically used for initial conditions, but can also be used to change state mid‑simulation.
+### Mutation of the model state
 
-We can advance a model in time with `time_step!(model, Δt)`.
-However, we generally recommend using `Simulation` to manage time stepping (including adaptive time steps) and the output.
-See the [Quick start](@ref quick_start) for a compact example.
+In addition to providing an interface for configuring equations, models also
+store the prognostic and diagnostic state associated with the solution to those equations.
+Models thus also provide an interface for "setting" or fixing the prognostic state, which is typically
+invoked to determine the initial conditions of a simulation.
+To illustrate this we consider setting the above model to a stably-stratified and noisy condition:
 
-## Two Model Flavors
-
-Oceananigans provides multiple models. This tutorial focuses on two:
-
-- `NonhydrostaticModel`: Solves Boussinesq, incompressible Navier–Stokes equations with nonhydrostatic pressure.
-- `HydrostaticFreeSurfaceModel`: Solves Boussinesq equations under the hydrostatic approximation, with a prognostic free surface.
-
-For the governing equations and details, see Physics pages for the [`NonhydrostaticModel`](@ref) and the [`HydrostaticFreeSurfaceModel`](@ref hydrostatic_free_surface_model).
-
-### Constructor Reference
-
-The docstrings of the three models below summarize the main constructor options. Later sections show compact examples.
-
-* [`NonhydrostaticModel`](@ref)
-* [`HydrostaticFreeSurfaceModel`](@ref)
-* [`ShallowWaterModel`](@ref)
-
-## Minimal Examples
-
-Start with a simple box grid and build each model with sensible defaults.
-
-```jldoctest
-using Oceananigans
-
-grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
-
-nh = NonhydrostaticModel(; grid)                 # no buoyancy or tracers by default
-hy = HydrostaticFreeSurfaceModel(; grid)         # default free surface, no tracers
-
-nh, hy
-
-# output
-
-(NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
-├── tracers: ()
-├── closure: Nothing
-├── buoyancy: Nothing
-└── coriolis: Nothing, HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── tracers: ()
-├── closure: Nothing
-├── buoyancy: Nothing
-├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
-│   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme:
-│   └── momentum: VectorInvariant
-├── vertical_coordinate: ZCoordinate
-└── coriolis: Nothing)
-```
-
-Both models create velocity fields and time‑steppers; the tracer sets start empty unless specified.
-
-## Discrete Equations: Key Ingredients
-
-This section illustrates how advection schemes, buoyancy, closures, forcing, and boundary conditions are configured at construction. The snippets are self‑contained and intended as patterns; see the Model setup pages for deeper options and examples.
-
-### NonhydrostaticModel: advection, buoyancy, closure, forcing, boundary conditions
-
-`NonhydrostaticModel` uses a single advection scheme for both momentum and tracers.
-
-```jldoctest models_nh
-using Oceananigans
-
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
-
-# Numerical method and physics choices
-advection = WENO()  # fifth‑order upwind for momentum and tracers
-buoyancy = SeawaterBuoyancy()  # requires T, S tracers
-closure = ScalarDiffusivity(ν=1e-6, κ=(T=1e-7, S=1e-7))
-
-# Simple wind stress and surface cooling via boundary conditions + forcing
-using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions
-
-ρ₀ = 1027.0   # kg m⁻³
-τₓ = 0.08     # N m⁻²  (eastward wind stress)
-
-u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(-τₓ / ρ₀))
-
-# A small sinusoidal cooling tendency for T
-T_cool(x, y, z, t, p) = -p.μ * cos(2π * x) * exp(z / p.H)
-T_forcing = Forcing(T_cool; parameters=(μ=1e-3, H=0.2))
-
-model = NonhydrostaticModel(; grid,
-                            advection,
-                            buoyancy,
-                            tracers=(:T, :S),
-                            closure,
-                            boundary_conditions=(; u=u_bcs),
-                            forcing=(; T=T_forcing))
-
-model
-
-# output
-
-NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: WENO{3, Float64, Float32}(order=5)
-├── tracers: (T, S)
-├── closure: ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=(T=1.0e-7, S=1.0e-7))
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
-└── coriolis: Nothing
-```
-
-Notes
-- Advection: [`WENO()`](@ref WENO) is a robust, high‑order upwind method for momentum and tracers.
-- Buoyancy: `SeawaterBuoyancy()` activates Boussinesq buoyancy with a linear equation of state and gravity; it requires `:T` and `:S` tracers.
-- Closure: `ScalarDiffusivity` sets molecular or eddy viscosities/diffusivities.
-  See [Turbulence closures](@ref turbulence_closures) for alternatives like `SmagorinskyLilly()` or `AnisotropicMinimumDissipation()`.
-- Forcing: `Forcing` functions can depend on `x, y, z, t` and parameters; see [Forcing functions](@ref forcing_functions) for field‑dependent and discrete forms.
-- Boundary conditions: Here we add surface wind stress via a `FluxBoundaryCondition` on `u`.
-  See [Boundary conditions](@ref model_step_bcs) for Value/Flux/Gradient forms and more patterns.
-
-### HydrostaticFreeSurfaceModel: momentum vs tracer advection, buoyancy, closure, surface stress
-
-`HydrostaticFreeSurfaceModel` separates momentum and tracer advection and evolves a prognostic free surface `η`.
-
-```jldoctest model_hy
-using Oceananigans
-using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions
-
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
-
-momentum_advection = VectorInvariant()   # recommended on curvilinear grids too
-tracer_advection   = WENO()              # upwinded tracer advection
-
-buoyancy = SeawaterBuoyancy()
-closure  = ScalarDiffusivity(ν=1e-6, κ=(T=1e-7, S=1e-7))
-
-ρ₀ = 1027.0
-τₓ = 0.05
-u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(-τₓ / ρ₀))
-
-model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection,
-                                    tracer_advection,
-                                    buoyancy,
-                                    tracers=(:T, :S),
-                                    closure,
-                                    boundary_conditions=(; u=u_bcs))
-
-model
-
-# output
-HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── tracers: (T, S)
-├── closure: ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=(T=1.0e-7, S=1.0e-7))
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
-├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
-│   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme:
-│   ├── momentum: VectorInvariant
-│   ├── T: WENO{3, Float64, Float32}(order=5)
-│   └── S: WENO{3, Float64, Float32}(order=5)
-├── vertical_coordinate: ZCoordinate
-└── coriolis: Nothing
-```
-
-**Notes**
-
-- Momentum advection defaults to `VectorInvariant()`; tracer advection defaults to `Centered(order=2)`.
-  Users may choose schemes independently.
-- Hydrostatic models include a free surface; the default is an implicit free surface on regular rectilinear grids.
-  See the [Hydrostatic physics page](@ref hydrostatic_free_surface_model) for details and generalized vertical coordinates.
-
-## State: Initial conditions and updates with `set!`
-
-All models support `set!(model; kwargs...)` to initialize or update fields.
-`kwargs` can be:
-- constant values,
-- arrays, or
-- functions of the grid's extrinsic coordinates, e.g., `(x, y, z)`.
-
-### Nonhydrostatic initial condition (shear and stratification)
-
-```jldoctest
-using Oceananigans
-
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
-model = NonhydrostaticModel(; grid, advection=WENO(), tracers=(:T, :S), buoyancy=SeawaterBuoyancy())
-
-u₀(x, y, z) = 0.5 * tanh(8z - 4)      # vertical shear
-T₀(x, y, z) = 1 + 0.01 * z           # stable stratification
-S₀(x, y, z) = 35                     # constant salinity
-
-set!(model; u=u₀, T=T₀, S=S₀)
-
-model.velocities.u, model.tracers.T
-
-# output
-
-(16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: ZeroFlux, north: ZeroFlux, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-    └── max=-0.499797, min=-0.5, mean=-0.49998, 16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: ZeroFlux, north: ZeroFlux, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-    └── max=0.999687, min=0.990313, mean=0.995)
-```
-
-!!! tip "Divergence-free velocity fields"
-    For the NonhydrostaticModel, as part of the time-stepping algorithm, the velocity
-    field is made divergence-free at every time step. So if a model is not initialized
-    with a divergence-free velocity field, it may change on the first time step.
-    As a result tracers may not be conserved up to machine precision at the first time step.
-
-### Hydrostatic initial condition (surface displacement and currents)
-
-`HydrostaticFreeSurfaceModel` also accepts `η` (free surface) in `set!`.
-
-```jldoctest
-using Oceananigans
-using Oceananigans.Units
-
-Lx = Ly = 10kilometers
-Lz = 4000meters
-grid = RectilinearGrid(size=(16, 16, 16), x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
-model = HydrostaticFreeSurfaceModel(; grid, tracers=:b, buoyancy=BuoyancyTracer())
-
+```@example first_model
 N² = 1e-5
-bᵢ(x, y, z) = N² * z
-set!(model; b=bᵢ)
+bᵢ(x, z) = N² * z + 1e-6 * randn()
+uᵢ(x, z) = 1e-3 * randn()
+set!(model, b=bᵢ, u=uᵢ, w=uᵢ)
 
 model.tracers.b
-
-# output
-
-16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-    └── max=-0.00125, min=-0.03875, mean=-0.02
 ```
 
-## Stepping and Simulations
+Invoking `set!` above determine the model tracer `b` and the velocity components `u` and `w`.
+`set!` also computes the diagnostic state of a model, which in the case of `NonhydrostaticModel` includes
+the nonhydrostatic component of pressure,
 
-You can advance a model with a single step:
+```@example first_model
+model.pressures.pNHS
+```
 
-```jldoctest
+### Evolving models in time
+
+Model may be integrated or "stepped forward" in time by calling `time_step!(model, Δt)`, where `Δt` is the time step
+and thus advancing the `model.clock`:
+
+```@example first_model
+time_step!(model, 1)
+model.clock
+```
+
+However, users are strongly encouraged to use the [`Simulation`](@ref) interface to manage time-stepping
+along with other activities, like monitoring progress, writing output to disk, and more.
+
+```@example first_model
+simulation = Simulation(model, Δt=1, stop_iteration=10)
+run!(simulation)
+
+simulation
+```
+
+## Using the HydrostaticFreeSurfaceModel
+
+The HydrostaticFreeSurfaceModel has a similar interface as the NonhydrostaticModel,
+
+```@example
 using Oceananigans
-
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
-
-time_step!(model, 0.01)
-
-model.clock.time > 0
-
-# output
-
-true
+model = HydrostaticFreeSurfaceModel(; grid) # default free surface, no tracers
 ```
 
-But for real simulations we recommend `Simulation` for running, output, and adaptive `Δt`. See [Quick start](@ref quick_start) and the Examples gallery for complete workflows, including Kelvin–Helmholtz instability and wind‑driven mixed layers.
+The full array of keyword arguments used to configure a HydrostaticFreeSurfaceModel are detailed
+in the docstring for [HydrostaticFreeSurfaceModel](@ref),
+
+```@docs
+HydrostaticFreeSurfaceModel
+```
+
+A bit more involved HydrostaticFreeSurfaceModel example:
+
+```@example second_model
+using Oceananigans
+using SeawaterPolynomials: TEOS10EquationOfState
+
+grid = LatitudeLongitudeGrid(size = (180, 80, 10),
+                             longitude = (0, 360),
+                             latitude = (-80, 80),
+                             z = (-1000, 0),
+                             halo = (6, 6, 3))
+
+momentum_advection = WENOVectorInvariant()
+coriolis = HydrostaticSphericalCoriolis()
+equation_of_state = TEOS10EquationOfState()
+buoyancy = SeawaterBuoyancy(; equation_of_state)
+closure = CATKEVerticalDiffusivity()
+
+# Generate a zonal wind stress that mimics Earth's mean winds
+# with westerlies in mid-latitudes and easterlies near equator and poles
+function zonal_wind_stress(λ, φ, t)
+    # Parameters
+    τ₀ = 1e-4  # Maximum wind stress magnitude (N/m²)
+    φ₀ = 30   # Latitude of maximum westerlies (degrees)
+    dφ = 10
+
+    # Approximate wind stress pattern
+    return - τ₀ * (+ exp(-(φ - φ₀)^2 / 2dφ^2)
+                   - exp(-(φ + φ₀)^2 / 2dφ^2)
+                   - 0.3 * exp(-φ^2 / dφ^2))
+end
+
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(zonal_wind_stress))
+
+model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, coriolis, closure, buoyancy,
+                                    boundary_conditions = (; u=u_bcs), tracers=(:T, :S, :e))
+```
+
+Mutating the state of the HydrostaticFreeSurfaceModel works similarly as for the NonhydrostaticModel ---
+except that the vertical velocity cannot be `set!`, because vertical velocity is not
+prognostic in the hydrostatic equations.
+
+```@example second_model
+using SeawaterPolynomials
+
+N² = 1e-5
+T₀ = 20
+S₀ = 35
+eos = model.buoyancy.formulation.equation_of_state
+α = SeawaterPolynomials.thermal_expansion(T₀, S₀, 0, eos)
+g = model.buoyancy.formulation.gravitational_acceleration
+dTdz = N² / (α * g)
+Tᵢ(λ, φ, z) = T₀ + dTdz * z + 1e-3 * T₀ * randn()
+uᵢ(λ, φ, z) = 1e-3 * randn()
+set!(model, T=Tᵢ, S=S₀, u=uᵢ, v=uᵢ)
+
+model.tracers.T
+```
 
 ## Where to go next
 
-- Model setup (legacy): in‑depth pages on buoyancy, forcing, boundary conditions, closures, diagnostics, and output.
+- See [Quick start](@ref quick_start) for a compact, end-to-end workflow
+- See the Examples gallery for longer tutorials covering specific cases, including large eddy simulation, Kelvin–Helmholtz instability and baroclinic instability.
+- Other pages in the Models section: in‑depth pages on buoyancy, forcing, boundary conditions, closures, diagnostics, and output.
 - Physics: governing equations and numerical forms for [`NonhydrostaticModel`](@ref) and [`HydrostaticFreeSurfaceModel`](@ref hydrostatic_free_surface_model).
-- Examples: browse literated examples for richer end‑to‑end setups.
