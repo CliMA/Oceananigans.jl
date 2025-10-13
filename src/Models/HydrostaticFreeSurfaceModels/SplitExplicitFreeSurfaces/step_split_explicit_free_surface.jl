@@ -100,10 +100,9 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, c
         converted_V_fill_halo_args = convert_to_device(arch, V_fill_halo_args)
         converted_η_fill_halo_args = convert_to_device(arch, η_fill_halo_args)
 
-        @unroll for substep in 1:Nsubsteps
-            Base.@_inline_meta
-            averaging_weight = weights[substep]
-            transport_weight = transport_weights[substep]
+        for substep in 1:Nsubsteps
+            @inbounds averaging_weight = weights[substep]
+            @inbounds transport_weight = transport_weights[substep]
             barotropic_velocity_kernel!(transport_weight, converted_U_args...)
             free_surface_kernel!(averaging_weight, converted_η_args...)
 
