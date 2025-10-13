@@ -31,93 +31,108 @@ const AGZ = AG{<:Any, <:Any, <:Any, <:BT}
 #               B                                                           B
 #  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
 #  order:    1     1     2     3    ...               ...    3     2     1     1
+@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::NoBias) = max(1, min(B, i-1))
+@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::NoBias) = max(1, min(B, N+1-i))
+@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::NoBias) = max(1, min(B, i-1, N+1-i))
 
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i-1))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N+1-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i-1, N+1-i))
+@inline reduced_center_order(i, ::Type{RightConnected}, N, B, ::NoBias) = max(1, min(B, i))
+@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, ::NoBias) = max(1, min(B, N+1-i))
+@inline reduced_center_order(i, ::Type{Bounded},        N, B, ::NoBias) = max(1, min(B, i, N+1-i))
 
-@inline reduced_center_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i))
-@inline reduced_center_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N+1-i))
-@inline reduced_center_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i, N+1-i))
+@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::LeftBias) = max(1, min(B, i-1))
+@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::LeftBias) = max(1, min(B, N+2-i))
+@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::LeftBias) = max(1, min(B, i-1, N+2-i))
+
+@inline reduced_center_order(i, ::Type{RightConnected}, N, B, ::LeftBias) = max(1, min(B, i))
+@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, ::LeftBias) = max(1, min(B, N+2-i))
+@inline reduced_center_order(i, ::Type{Bounded},        N, B, ::LeftBias) = max(1, min(B, i, N+2-i))
+
+@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::RightBias) = max(1, min(B, i))
+@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::RightBias) = max(1, min(B, N+1-i))
+@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::RightBias) = max(1, min(B, i, N+1-i))
+
+@inline reduced_center_order(i, ::Type{RightConnected}, N, B, ::RightBias) = max(1, min(B, i+1))
+@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, ::RightBias) = max(1, min(B, N+1-i))
+@inline reduced_center_order(i, ::Type{Bounded},        N, B, ::RightBias) = max(1, min(B, i+1, N+1-i))
 
 const A{B} = AbstractAdvectionScheme{B} 
 
 # Fallback for periodic underlying grids
-@inline compute_face_reduced_order_x(i, j, k, grid, ::A{B}) where B = B
-@inline compute_face_reduced_order_y(i, j, k, grid, ::A{B}) where B = B
-@inline compute_face_reduced_order_z(i, j, k, grid, ::A{B}) where B = B
+@inline compute_face_reduced_order_x(i, j, k, grid, ::A{B}, bias) where B = B
+@inline compute_face_reduced_order_y(i, j, k, grid, ::A{B}, bias) where B = B
+@inline compute_face_reduced_order_z(i, j, k, grid, ::A{B}, bias) where B = B
 
 # Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid, ::A{B}) where B = B
-@inline compute_center_reduced_order_y(i, j, k, grid, ::A{B}) where B = B
-@inline compute_center_reduced_order_z(i, j, k, grid, ::A{B}) where B = B
+@inline compute_center_reduced_order_x(i, j, k, grid, ::A{B}, bias) where B = B
+@inline compute_center_reduced_order_y(i, j, k, grid, ::A{B}, bias) where B = B
+@inline compute_center_reduced_order_z(i, j, k, grid, ::A{B}, bias) where B = B
 
 # Bounded grids
-@inline compute_face_reduced_order_x(i, j, k, grid::AGX, ::A{B}) where B = reduced_face_order(i, topology(grid, 1), size(grid, 1), B)
-@inline compute_face_reduced_order_y(i, j, k, grid::AGY, ::A{B}) where B = reduced_face_order(j, topology(grid, 2), size(grid, 2), B)
-@inline compute_face_reduced_order_z(i, j, k, grid::AGZ, ::A{B}) where B = reduced_face_order(k, topology(grid, 3), size(grid, 3), B)
+@inline compute_face_reduced_order_x(i, j, k, grid::AGX, ::A{B}, bias) where B = reduced_face_order(i, topology(grid, 1), size(grid, 1), B, bias)
+@inline compute_face_reduced_order_y(i, j, k, grid::AGY, ::A{B}, bias) where B = reduced_face_order(j, topology(grid, 2), size(grid, 2), B, bias)
+@inline compute_face_reduced_order_z(i, j, k, grid::AGZ, ::A{B}, bias) where B = reduced_face_order(k, topology(grid, 3), size(grid, 3), B, bias)
 
 # Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid::AGX, ::A{B}) where B = reduced_center_order(i, topology(grid, 1), size(grid, 1), B)
-@inline compute_center_reduced_order_y(i, j, k, grid::AGY, ::A{B}) where B = reduced_center_order(j, topology(grid, 2), size(grid, 2), B)
-@inline compute_center_reduced_order_z(i, j, k, grid::AGZ, ::A{B}) where B = reduced_center_order(k, topology(grid, 3), size(grid, 3), B)
+@inline compute_center_reduced_order_x(i, j, k, grid::AGX, ::A{B}, bias) where B = reduced_center_order(i, topology(grid, 1), size(grid, 1), B, bias)
+@inline compute_center_reduced_order_y(i, j, k, grid::AGY, ::A{B}, bias) where B = reduced_center_order(j, topology(grid, 2), size(grid, 2), B, bias)
+@inline compute_center_reduced_order_z(i, j, k, grid::AGZ, ::A{B}, bias) where B = reduced_center_order(k, topology(grid, 3), size(grid, 3), B, bias)
 
-@inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme)
-    return biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, red_order, args...)
+@inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, args...)
+    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme, bias)
+    return biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...) 
-    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme)
-    return biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, red_order, args...)
+@inline function _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, args...) 
+    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme, bias)
+    return biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme)
-    return biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, red_order, args...)
+@inline function _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, args...)
+    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme, bias)
+    return biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme)
-    return biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, red_order, args...)
+@inline function _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, args...)
+    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme, bias)
+    return biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...) 
-    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme)
-    return biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, red_order, args...)
+@inline function _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, args...) 
+    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme, bias)
+    return biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...) 
-    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme)
-    return biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, red_order, args...)
+@inline function _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, args...) 
+    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme, bias)
+    return biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
 @inline function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme)
+    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme, NoBias())
     return symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme)
+    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme, NoBias())
     return symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme)
+    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme, NoBias())
     return symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme)
+    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme, NoBias())
     return symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme)
+    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme, NoBias())
     return symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme)
+    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme, NoBias())
     return symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, red_order, args...)
 end

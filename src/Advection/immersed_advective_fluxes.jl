@@ -178,27 +178,27 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
     @eval begin 
         # Faces symmetric
-        @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}) = 1
+        @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}, bias) = 1
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{2}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{2}, bias) 
             I = $(inside_immersed_boundary(2, dir, loc))
             to1 = @inbounds (I[1] | I[4]) # Check only first and last
             ior = ifelse(to1, 1, 2) 
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
             return min(ior, bor)
         end
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{3}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{3}, bias) 
             I = $(inside_immersed_boundary(3, dir, loc))
             to2 = @inbounds (I[1] | I[6])
             to1 = @inbounds (I[2] | I[5]) 
             ior = ifelse(to1, 1, 
                   ifelse(to2, 2, 3))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
             return min(ior, bor)
         end
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{4}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{4}, bias) 
             I = $(inside_immersed_boundary(4, dir, loc))
             to3 = @inbounds (I[1] | I[8])
             to2 = @inbounds (I[2] | I[7]) 
@@ -206,11 +206,11 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
             ior = ifelse(to1, 1, 
                   ifelse(to2, 2, 
                   ifelse(to3, 3, 4)))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
             return min(ior, bor)
         end
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{5}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{5}, bias) 
             I = $(inside_immersed_boundary(5, dir, loc))
             to4 = @inbounds (I[1] | I[10])
             to3 = @inbounds (I[2] | I[9])
@@ -220,11 +220,11 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
                   ifelse(to2, 2, 
                   ifelse(to3, 3, 
                   ifelse(to4, 4, 5))))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
             return min(ior, bor)
         end
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{6}) 
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{6}, bias) 
             I = $(inside_immersed_boundary(5, dir, loc))
             to5 = @inbounds (I[1] | I[12])
             to4 = @inbounds (I[2] | I[11])
@@ -236,7 +236,7 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
                   ifelse(to3, 3, 
                   ifelse(to4, 4, 
                   ifelse(to5, 5, 6)))))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
             return min(ior, bor)
         end
     end
