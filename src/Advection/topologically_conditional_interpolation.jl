@@ -20,40 +20,43 @@ const AGX = AG{<:Any, <:BT}
 const AGY = AG{<:Any, <:Any, <:BT}
 const AGZ = AG{<:Any, <:Any, <:Any, <:BT}
 
-# Reduction of the order near boundaries
+# Reduction of the order near boundaries 
 #
-# For faces reconstructions (tracers for example):
+# For faces reconstructions with NoBias (tracers for example):
 #               B                                                           B
 #  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
 #  order:       1     1     2     3   ....        ....    3     2     1     1
 #
-# For center reconstructions (vorticity for example):
+# For faces reconstructions with LeftBias (tracers for example):
+#               B                                                           B
+#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
+#  order:       1     1     2     3   ....        ....    4     3     2     1
+#
+# For faces reconstructions with RightBias (tracers for example):
+#               B                                                           B
+#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
+#  order:       1     2     3     4   ....        ....    3     2     1     1
+#
+# For center reconstructions the bias does not matter (vorticity for example):
 #               B                                                           B
 #  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
 #  order:    1     1     2     3    ...               ...    3     2     1     1
+#
 @inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::NoBias) = max(1, min(B, i-1))
 @inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::NoBias) = max(1, min(B, N+1-i))
 @inline reduced_face_order(i, ::Type{Bounded},        N, B, ::NoBias) = max(1, min(B, i-1, N+1-i))
-
-@inline reduced_center_order(i, ::Type{RightConnected}, N, B, ::NoBias) = max(1, min(B, i))
-@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, ::NoBias) = max(1, min(B, N+1-i))
-@inline reduced_center_order(i, ::Type{Bounded},        N, B, ::NoBias) = max(1, min(B, i, N+1-i))
 
 @inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::LeftBias) = max(1, min(B, i-1))
 @inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::LeftBias) = max(1, min(B, N+2-i))
 @inline reduced_face_order(i, ::Type{Bounded},        N, B, ::LeftBias) = max(1, min(B, i-1, N+2-i))
 
-@inline reduced_center_order(i, ::Type{RightConnected}, N, B, ::LeftBias) = max(1, min(B, i))
-@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, ::LeftBias) = max(1, min(B, N+2-i))
-@inline reduced_center_order(i, ::Type{Bounded},        N, B, ::LeftBias) = max(1, min(B, i, N+2-i))
-
 @inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::RightBias) = max(1, min(B, i))
 @inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::RightBias) = max(1, min(B, N+1-i))
 @inline reduced_face_order(i, ::Type{Bounded},        N, B, ::RightBias) = max(1, min(B, i, N+1-i))
 
-@inline reduced_center_order(i, ::Type{RightConnected}, N, B, ::RightBias) = max(1, min(B, i+1))
-@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, ::RightBias) = max(1, min(B, N+1-i))
-@inline reduced_center_order(i, ::Type{Bounded},        N, B, ::RightBias) = max(1, min(B, i+1, N+1-i))
+@inline reduced_center_order(i, ::Type{RightConnected}, N, B, bias) = max(1, min(B, i))
+@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, bias) = max(1, min(B, N+1-i))
+@inline reduced_center_order(i, ::Type{Bounded},        N, B, bias) = max(1, min(B, i, N+1-i))
 
 const A{B} = AbstractAdvectionScheme{B} 
 

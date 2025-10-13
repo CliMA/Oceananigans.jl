@@ -159,7 +159,7 @@ flip(l) = ifelse(l == :f, :c, :f)
 #
 # Below an example for an 10th (or 9th for upwind schemes) order reconstruction performed on interface `X`.
 # Note that the buffer size is 5, and we represent reconstructions based on the buffer size, not the formal order.
-# The check follows the following logic:
+# The check follows the following logic (for a symmetric stencil represented by a bias == NoBias):
 #
 # - if at least one between 1 or 10 are inactive, reduce from 5 to 4.
 # - if at least one between 2 or  9 are inactive, reduce from 4 to 3.
@@ -174,70 +174,144 @@ flip(l) = ifelse(l == :f, :c, :f)
 #   |     └── 4th ────────────────────────────────────────|     |
 #   └── 5th ────────────────────────────────────────────────────|
 #
+# The same logic applies to biased stencils, with the only difference that we a biased stencil.
+# For example, for a RightBias stencil, we have:
+#
+#      1     2     3     4     5  X  6     7     8     9    10   
+#   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+#         |     |     |     └── 1st ────|     |     |     |     |
+#         |     |     |     └── 2nd ──────────|     |     |     |
+#         |     |     └── 3rd ──────────────────────|     |     |
+#         |     └── 4th ──────────────────────────────────|     |
+#         └── 5th ──────────────────────────────────────────────|
+#   
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
+    compute_immersed_reduced_order = Symbol(:compute_immersed_reduced_order_, dir)
+
+    @eval begin
+        @inline function $compute_reduced_order(i, j, k, grid::IBG, a, bias)
+            ior = $compute_immersed_reduced_order(i, j, k, grid, a, bias)
+            bor = $compute_reduced_order(i, j, k, grid.underlying_grid, a, bias)
+            return min(ior, bor)
+        end
+    end
+
     @eval begin 
         # Faces symmetric
         @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}, bias) = 1
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{2}, bias) 
             I = $(inside_immersed_boundary(2, dir, loc))
-            to1 = @inbounds (I[1] | I[4]) # Check only first and last
-            ior = ifelse(to1, 1, 2) 
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
-            return min(ior, bor)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 2) 
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{3}, bias) 
             I = $(inside_immersed_boundary(3, dir, loc))
-            to2 = @inbounds (I[1] | I[6])
-            to1 = @inbounds (I[2] | I[5]) 
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 3))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
-            return min(ior, bor)
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 3))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{4}, bias) 
             I = $(inside_immersed_boundary(4, dir, loc))
-            to3 = @inbounds (I[1] | I[8])
-            to2 = @inbounds (I[2] | I[7]) 
-            to1 = @inbounds (I[3] | I[6])
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 
-                  ifelse(to3, 3, 4)))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
-            return min(ior, bor)
+            to3 = third_order_bounds_check(I, bias)
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 4)))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{5}, bias) 
             I = $(inside_immersed_boundary(5, dir, loc))
-            to4 = @inbounds (I[1] | I[10])
-            to3 = @inbounds (I[2] | I[9])
-            to2 = @inbounds (I[3] | I[8]) 
-            to1 = @inbounds (I[4] | I[7])
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 
-                  ifelse(to3, 3, 
-                  ifelse(to4, 4, 5))))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
-            return min(ior, bor)
+            to4 = fourth_order_bounds_check(I, bias)
+            to3 = third_order_bounds_check(I, bias)
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 
+                   ifelse(to4, 4, 5))))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{6}, bias) 
             I = $(inside_immersed_boundary(5, dir, loc))
-            to5 = @inbounds (I[1] | I[12])
-            to4 = @inbounds (I[2] | I[11])
-            to3 = @inbounds (I[3] | I[10])
-            to2 = @inbounds (I[4] | I[9]) 
-            to1 = @inbounds (I[5] | I[8])
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 
-                  ifelse(to3, 3, 
-                  ifelse(to4, 4, 
-                  ifelse(to5, 5, 6)))))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a, bias) 
-            return min(ior, bor)
+            to5 = fifth_order_bounds_check(I, bias)
+            to4 = fourth_order_bounds_check(I, bias)
+            to3 = third_order_bounds_check(I, bias)
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 
+                   ifelse(to4, 4, 
+                   ifelse(to5, 5, 6)))))
         end
     end
 end
+
+# NoBias immersed bounds checks
+@inline first_order_bounds_check(I::NTuple{4}, ::NoBias) = @inbounds (I[1] | I[4])
+
+@inline  first_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[2] | I[5])
+@inline second_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[1] | I[6])
+
+@inline  first_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[3] | I[6])
+@inline second_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[2] | I[7])
+@inline  third_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[1] | I[8])
+
+@inline  first_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[4] | I[7])
+@inline second_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[3] | I[8])
+@inline  third_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[2] | I[9])
+@inline fourth_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[1] | I[10])
+
+@inline  first_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[5] | I[8])
+@inline second_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[4] | I[9])
+@inline  third_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[3] | I[10])
+@inline fourth_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[2] | I[11])
+@inline  fifth_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[1] | I[12])
+
+# LeftBias immersed bounds checks
+@inline first_order_bounds_check(I::NTuple{4}, ::LeftBias) = @inbounds (I[1] | I[4])
+
+@inline  first_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[2] | I[5])
+@inline second_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[1] | I[5])
+
+@inline  first_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[3] | I[6])
+@inline second_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[2] | I[6])
+@inline  third_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[1] | I[7])
+
+@inline  first_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[4] | I[7])
+@inline second_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[3] | I[7])
+@inline  third_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[2] | I[8])
+@inline fourth_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[1] | I[9])
+
+@inline  first_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[5] | I[8])
+@inline second_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[4] | I[8])
+@inline  third_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[3] | I[9])
+@inline fourth_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[2] | I[10])
+@inline  fifth_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[1] | I[11])
+
+# RightBias immersed bounds checks
+@inline first_order_bounds_check(I::NTuple{4}, ::RightBias) = @inbounds (I[1] | I[4])
+
+@inline  first_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[5])
+@inline second_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[6])
+
+@inline  first_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[6])
+@inline second_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[7])
+@inline  third_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[2] | I[8])
+
+@inline  first_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[7])
+@inline second_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[8])
+@inline  third_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[3] | I[9])
+@inline fourth_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[2] | I[10])
+
+@inline  first_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[8])
+@inline second_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[9])
+@inline  third_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[4] | I[10])
+@inline fourth_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[3] | I[11])
+@inline  fifth_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[2] | I[12])

@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Random
 
 using Oceananigans.Fields: instantiate
-using Oceananigans.Advection: LeftBias, RightBias
+using Oceananigans.Advection: LeftBias, RightBias, NoBias
 
 using Oceananigans.Advection: compute_face_reduced_order_x,
                               compute_face_reduced_order_y,
@@ -30,23 +30,23 @@ using Oceananigans.Advection: biased_interpolate_xᶠᵃᵃ,
 @inline grid_args(::Tuple{Flat, Bounded, Flat}) = (; y = (0, 1))
 @inline grid_args(::Tuple{Flat, Flat, Bounded}) = (; z = (0, 1))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Face) = 
-    compute!(Field(KernelFunctionOperation{Face, Nothing, Nothing}(compute_face_reduced_order_x, grid, adv)))
+red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Face, bias) = 
+    compute!(Field(KernelFunctionOperation{Face, Nothing, Nothing}(compute_face_reduced_order_x, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Face) = 
-    compute!(Field(KernelFunctionOperation{Nothing, Face, Nothing}(compute_face_reduced_order_y, grid, adv)))
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Face, bias) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Face, Nothing}(compute_face_reduced_order_y, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Face) = 
-    compute!(Field(KernelFunctionOperation{Nothing, Nothing, Face}(compute_face_reduced_order_z, grid, adv)))
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Face, bias) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Nothing, Face}(compute_face_reduced_order_z, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Center) = 
-    compute!(Field(KernelFunctionOperation{Center, Nothing, Nothing}(compute_center_reduced_order_x, grid, adv)))
+red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Center, bias) = 
+    compute!(Field(KernelFunctionOperation{Center, Nothing, Nothing}(compute_center_reduced_order_x, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Center) = 
-    compute!(Field(KernelFunctionOperation{Nothing, Center, Nothing}(compute_center_reduced_order_y, grid, adv)))
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Center, bias) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Center, Nothing}(compute_center_reduced_order_y, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Center) = 
-    compute!(Field(KernelFunctionOperation{Nothing, Nothing, Center}(compute_center_reduced_order_z, grid, adv)))
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Center, bias) = 
+    compute!(Field(KernelFunctionOperation{Nothing, Nothing, Center}(compute_center_reduced_order_z, grid, adv, bias)))
 
 if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     @testset "Reduced order computation" begin
@@ -56,20 +56,32 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
 
             extent = grid_args(instantiate.(topology))
             grid = RectilinearGrid(; size = 10, extent..., topology, halo=6)
-            adv  = Centered(order=10) 
+            adv  = WENO(order=9) 
 
-            red_ord_face   = red_order_field(grid, adv, Face())
-            red_ord_center = red_order_field(grid, adv, Center())
+            red_ord_face   = red_order_field(grid, adv, Face(), NoBias())
+            red_ord_center = red_order_field(grid, adv, Center(), NoBias())
 
             @test all(interior(red_ord_face)[:]   .== [1, 1, 2, 3, 4, 5, 4, 3, 2, 1, 1])
             @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
         
+            red_ord_face   = red_order_field(grid, adv, Face(), LeftBias())
+            red_ord_center = red_order_field(grid, adv, Center(), LeftBias())
+
+            @test all(interior(red_ord_face)[:]   .== [1, 1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
+            @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
+        
+            red_ord_face   = red_order_field(grid, adv, Face(), RightBias())
+            red_ord_center = red_order_field(grid, adv, Center(), RightBias())
+
+            @test all(interior(red_ord_face)[:]   .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 1])
+            @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
+        
             ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary(false)) # A fake immersed boundary
 
-            red_ord_face   = red_order_field(ibg, adv, Face())
-            red_ord_center = red_order_field(ibg, adv, Center())
+            red_ord_face   = red_order_field(ibg, adv, Face(), NoBias())
+            red_ord_center = red_order_field(ibg, adv, Center(), NoBias())
 
-            @test all(interior(red_ord_face)[:]   .== [1, 2, 3, 4, 5, 5, 5, 4, 3, 2, 1])
+            @test all(interior(red_ord_face)[:]   .== [1, 1, 2, 3, 4, 5, 4, 3, 2, 1, 1])
             @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
         end
     end
