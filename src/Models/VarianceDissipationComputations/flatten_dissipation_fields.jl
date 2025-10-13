@@ -10,7 +10,7 @@ Flatten the dissipation fields of a `VarianceDissipation` object into a named tu
 function flatten_dissipation_fields(t::VarianceDissipation) 
     A = t.advective_production
     D = t.diffusive_production
-    G = t.gradient_squared
+    
     tracer_name = t.tracer_name
 
     dirs = (:x, :y, :z)
