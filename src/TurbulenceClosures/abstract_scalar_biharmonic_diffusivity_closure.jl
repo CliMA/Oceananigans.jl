@@ -16,11 +16,20 @@ const ASBD = AbstractScalarBiharmonicDiffusivity
 #####
 
 const ccc = (Center(), Center(), Center())
+
+# Viscosities without explicit passing of `id`
 @inline νᶜᶜᶜ(i, j, k, grid, closure::ASBD, K, clock, fields) = νᶜᶜᶜ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
 @inline νᶠᶠᶜ(i, j, k, grid, closure::ASBD, K, clock, fields) = νᶠᶠᶜ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
 @inline νᶠᶜᶠ(i, j, k, grid, closure::ASBD, K, clock, fields) = νᶠᶜᶠ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
 @inline νᶜᶠᶠ(i, j, k, grid, closure::ASBD, K, clock, fields) = νᶜᶠᶠ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
 
+# Viscosities with explicit `id` passing (0 in case of velocities)
+@inline νᶜᶜᶜ(i, j, k, grid, closure::ASBD, K, id, clock, fields) = νᶜᶜᶜ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
+@inline νᶠᶠᶜ(i, j, k, grid, closure::ASBD, K, id, clock, fields) = νᶠᶠᶜ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
+@inline νᶠᶜᶠ(i, j, k, grid, closure::ASBD, K, id, clock, fields) = νᶠᶜᶠ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
+@inline νᶜᶠᶠ(i, j, k, grid, closure::ASBD, K, id, clock, fields) = νᶜᶠᶠ(i, j, k, grid, ccc, viscosity(closure, K), clock, fields)
+
+# Diffusivity always pass the tracer index (`id`)
 @inline κᶠᶜᶜ(i, j, k, grid, closure::ASBD, K, id, clock, fields) = κᶠᶜᶜ(i, j, k, grid, ccc, diffusivity(closure, K, id), clock, fields)
 @inline κᶜᶠᶜ(i, j, k, grid, closure::ASBD, K, id, clock, fields) = κᶜᶠᶜ(i, j, k, grid, ccc, diffusivity(closure, K, id), clock, fields)
 @inline κᶜᶜᶠ(i, j, k, grid, closure::ASBD, K, id, clock, fields) = κᶜᶜᶠ(i, j, k, grid, ccc, diffusivity(closure, K, id), clock, fields)
@@ -66,12 +75,12 @@ const AZBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantForm
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, clo::AIBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_x, ∂xᶠᶜᶜ, ∇²ᶜᶜᶜ, c)
-@inline diffusive_flux_y(i, j, k, grid, clo::AIBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_y, ∂yᶜᶠᶜ, ∇²ᶜᶜᶜ, c)
-@inline diffusive_flux_z(i, j, k, grid, clo::AIBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_z, ∂zᶜᶜᶠ, ∇²ᶜᶜᶜ, c)
-@inline diffusive_flux_x(i, j, k, grid, clo::AHBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_x, ∂x_∇²h_cᶠᶜᶜ, c)
-@inline diffusive_flux_y(i, j, k, grid, clo::AHBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_y, ∂y_∇²h_cᶜᶠᶜ, c)
-@inline diffusive_flux_z(i, j, k, grid, clo::AVBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_z, ∂³zᶜᶜᶠ, c)
+@inline diffusive_flux_x(i, j, k, grid, clo::AIBD, K, id, c, clk, fields, b) = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, id, clk, fields, biharmonic_mask_x, ∂xᶠᶜᶜ, ∇²ᶜᶜᶜ, c)
+@inline diffusive_flux_y(i, j, k, grid, clo::AIBD, K, id, c, clk, fields, b) = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, id, clk, fields, biharmonic_mask_y, ∂yᶜᶠᶜ, ∇²ᶜᶜᶜ, c)
+@inline diffusive_flux_z(i, j, k, grid, clo::AIBD, K, id, c, clk, fields, b) = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, id, clk, fields, biharmonic_mask_z, ∂zᶜᶜᶠ, ∇²ᶜᶜᶜ, c)
+@inline diffusive_flux_x(i, j, k, grid, clo::AHBD, K, id, c, clk, fields, b) = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, id, clk, fields, biharmonic_mask_x, ∂x_∇²h_cᶠᶜᶜ, c)
+@inline diffusive_flux_y(i, j, k, grid, clo::AHBD, K, id, c, clk, fields, b) = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, id, clk, fields, biharmonic_mask_y, ∂y_∇²h_cᶜᶠᶜ, c)
+@inline diffusive_flux_z(i, j, k, grid, clo::AVBD, K, id, c, clk, fields, b) = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, id, clk, fields, biharmonic_mask_z, ∂³zᶜᶜᶠ, c)
 
 #####
 ##### Biharmonic-specific viscous operators
