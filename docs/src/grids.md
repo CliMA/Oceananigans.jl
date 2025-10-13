@@ -898,6 +898,10 @@ float types to Float32.
 For more examples see [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid)
 and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
 
+```@meta grids
+Oceananigans.defaults.FloatType = Float64
+```
+
 ## Distributed grids
 
 !!! note
