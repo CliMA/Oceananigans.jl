@@ -121,23 +121,13 @@ julia> inside_immersed_boundary(3, :x, :ᶠ)
 @inline function inside_immersed_boundary(buffer, dir, side)
 
     N = buffer * 2
-    rng = 1:N+1
+    inactive_cells  = Vector(undef, N)
 
-    inactive_cells  = Vector(undef, length(rng))
+    xside = dir == :x ? side : Symbol("f")
+    yside = dir == :y ? side : Symbol("f")
+    zside = dir == :z ? side : Symbol("f")
 
-    xside = :f
-    yside = :f
-    zside = :f
-
-    if dir == :x
-        xside = side
-    elseif dir == :y
-        yside = side
-    elseif dir == :z
-        zside = side
-    end
-
-    for (idx, n) in enumerate(rng)
+    for (idx, n) in enumerate(1:N)
         c = side == :f ? n - buffer - 1 : n - buffer 
         xflipside = flip(xside)
         yflipside = flip(yside)
