@@ -16,7 +16,6 @@ function cache_fluxes!(dissipation, model, tracer_name)
     stage = model.clock.stage
 
     update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
-
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
     cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
 
