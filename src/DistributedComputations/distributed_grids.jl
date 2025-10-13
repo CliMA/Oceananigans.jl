@@ -5,7 +5,7 @@ using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture,
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: R_Earth, metrics_precomputed
+using Oceananigans.Grids: metrics_precomputed
 
 using Oceananigans.Fields
 
@@ -129,7 +129,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                longitude,
                                z,
                                topology = nothing,
-                               radius = R_Earth,
+                               radius = Oceananigans.defaults.planet_radius,
                                halo = nothing)
 
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =

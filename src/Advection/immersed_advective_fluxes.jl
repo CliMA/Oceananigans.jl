@@ -38,25 +38,25 @@ end
 
 # dx(uu), dy(vu), dz(wu)
 # ccc,    ffc,    fcf
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uu(i, j, k, ibg, args...))
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vu(i, j, k, ibg, args...))
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wu(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, scheme, U, u) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uu(i, j, k, ibg, scheme, U, u))
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, scheme, V, u) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vu(i, j, k, ibg, scheme, V, u))
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, scheme, W, u) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wu(i, j, k, ibg, scheme, W, u))
 
 # dx(uv), dy(vv), dz(wv)
 # ffc,    ccc,    cff
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uv(i, j, k, ibg, args...))
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vv(i, j, k, ibg, args...))
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wv(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, scheme, U, v) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uv(i, j, k, ibg, scheme, U, v))
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, scheme, V, v) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vv(i, j, k, ibg, scheme, V, v))
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, scheme, W, v) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wv(i, j, k, ibg, scheme, W, v))
 
 # dx(uw), dy(vw), dz(ww)
 # fcf,    cff,    ccc
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uw(i, j, k, ibg, args...))
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vw(i, j, k, ibg, args...))
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Ww(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, scheme, U, w) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uw(i, j, k, ibg, scheme, U, w))
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, scheme, V, w) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vw(i, j, k, ibg, scheme, V, w))
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, scheme, W, w) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Ww(i, j, k, ibg, scheme, W, w))
 
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, args...) = conditional_flux_fcc(i, j, k, ibg, zero(ibg), advective_tracer_flux_x(i, j, k, ibg, args...))
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, zero(ibg), advective_tracer_flux_y(i, j, k, ibg, args...))
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), advective_tracer_flux_z(i, j, k, ibg, args...))
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme, U, c) = conditional_flux_fcc(i, j, k, ibg, zero(ibg), advective_tracer_flux_x(i, j, k, ibg, scheme, U, c))
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme, V, c) = conditional_flux_cfc(i, j, k, ibg, zero(ibg), advective_tracer_flux_y(i, j, k, ibg, scheme, V, c))
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme, W, c) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), advective_tracer_flux_z(i, j, k, ibg, scheme, W, c))
 
 # Fallback for `nothing` advection
 @inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
@@ -64,27 +64,27 @@ end
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 
 # Disambiguation for `FluxForm` momentum fluxes....
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Uu(i, j, k, ibg, advection.x, args...)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Vu(i, j, k, ibg, advection.y, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Wu(i, j, k, ibg, advection.z, args...)
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, u) = _advective_momentum_flux_Uu(i, j, k, ibg, scheme.x, U, u)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, u) = _advective_momentum_flux_Vu(i, j, k, ibg, scheme.y, V, u)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, u) = _advective_momentum_flux_Wu(i, j, k, ibg, scheme.z, W, u)
 
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Uv(i, j, k, ibg, advection.x, args...)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Vv(i, j, k, ibg, advection.y, args...)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Wv(i, j, k, ibg, advection.z, args...)
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, v) = _advective_momentum_flux_Uv(i, j, k, ibg, scheme.x, U, v)
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, v) = _advective_momentum_flux_Vv(i, j, k, ibg, scheme.y, V, v)
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, v) = _advective_momentum_flux_Wv(i, j, k, ibg, scheme.z, W, v)
 
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Uw(i, j, k, ibg, advection.x, args...)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Vw(i, j, k, ibg, advection.y, args...)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = _advective_momentum_flux_Ww(i, j, k, ibg, advection.z, args...)
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, w) = _advective_momentum_flux_Uw(i, j, k, ibg, scheme.x, U, w)
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, w) = _advective_momentum_flux_Vw(i, j, k, ibg, scheme.y, V, w)
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, w) = _advective_momentum_flux_Ww(i, j, k, ibg, scheme.z, W, w)
 
 # Disambiguation for `FluxForm` tracer fluxes....
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_tracer_flux_x(i, j, k, ibg, advection.x, args...)
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, c) =
+        _advective_tracer_flux_x(i, j, k, ibg, scheme.x, U, c)
 
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_tracer_flux_y(i, j, k, ibg, advection.y, args...)
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, c) =
+        _advective_tracer_flux_y(i, j, k, ibg, scheme.y, V, c)
 
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_tracer_flux_z(i, j, k, ibg, advection.z, args...)
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, c) =
+        _advective_tracer_flux_z(i, j, k, ibg, scheme.z, W, c)
 
 #####
 ##### "Boundary-aware" reconstruct
@@ -121,23 +121,13 @@ julia> inside_immersed_boundary(3, :x, :ᶠ)
 @inline function inside_immersed_boundary(buffer, dir, side)
 
     N = buffer * 2
-    rng = 1:N+1
+    inactive_cells  = Vector(undef, N)
 
-    inactive_cells  = Vector(undef, length(rng))
+    xside = dir == :x ? side : Symbol("f")
+    yside = dir == :y ? side : Symbol("f")
+    zside = dir == :z ? side : Symbol("f")
 
-    xside = :f
-    yside = :f
-    zside = :f
-
-    if dir == :x
-        xside = side
-    elseif dir == :y
-        yside = side
-    elseif dir == :z
-        zside = side
-    end
-
-    for (idx, n) in enumerate(rng)
+    for (idx, n) in enumerate(1:N)
         c = side == :f ? n - buffer - 1 : n - buffer 
         xflipside = flip(xside)
         yflipside = flip(yside)
@@ -159,7 +149,7 @@ flip(l) = ifelse(l == :f, :c, :f)
 #
 # Below an example for an 10th (or 9th for upwind schemes) order reconstruction performed on interface `X`.
 # Note that the buffer size is 5, and we represent reconstructions based on the buffer size, not the formal order.
-# The check follows the following logic:
+# The check follows the following logic (for a symmetric stencil represented by a bias == NoBias):
 #
 # - if at least one between 1 or 10 are inactive, reduce from 5 to 4.
 # - if at least one between 2 or  9 are inactive, reduce from 4 to 3.
@@ -174,70 +164,144 @@ flip(l) = ifelse(l == :f, :c, :f)
 #   |     └── 4th ────────────────────────────────────────|     |
 #   └── 5th ────────────────────────────────────────────────────|
 #
+# The same logic applies to biased stencils, with the only difference that we a biased stencil.
+# For example, for a RightBias stencil, we have:
+#
+#      1     2     3     4     5  X  6     7     8     9    10   
+#   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+#         |     |     |     └── 1st ────|     |     |     |     |
+#         |     |     |     └── 2nd ──────────|     |     |     |
+#         |     |     └── 3rd ──────────────────────|     |     |
+#         |     └── 4th ──────────────────────────────────|     |
+#         └── 5th ──────────────────────────────────────────────|
+#   
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
-    @eval begin 
-        # Faces symmetric
-        @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}) = 1
+    compute_immersed_reduced_order = Symbol(:compute_immersed_reduced_order_, dir)
 
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{2}) 
-            I = $(inside_immersed_boundary(2, dir, loc))
-            to1 = @inbounds (I[1] | I[4]) # Check only first and last
-            ior = ifelse(to1, 1, 2) 
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
-            return min(ior, bor)
-        end
-
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{3}) 
-            I = $(inside_immersed_boundary(3, dir, loc))
-            to2 = @inbounds (I[1] | I[6])
-            to1 = @inbounds (I[2] | I[5]) 
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 3))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
-            return min(ior, bor)
-        end
-
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{4}) 
-            I = $(inside_immersed_boundary(4, dir, loc))
-            to3 = @inbounds (I[1] | I[8])
-            to2 = @inbounds (I[2] | I[7]) 
-            to1 = @inbounds (I[3] | I[6])
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 
-                  ifelse(to3, 3, 4)))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
-            return min(ior, bor)
-        end
-
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{5}) 
-            I = $(inside_immersed_boundary(5, dir, loc))
-            to4 = @inbounds (I[1] | I[10])
-            to3 = @inbounds (I[2] | I[9])
-            to2 = @inbounds (I[3] | I[8]) 
-            to1 = @inbounds (I[4] | I[7])
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 
-                  ifelse(to3, 3, 
-                  ifelse(to4, 4, 5))))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
-            return min(ior, bor)
-        end
-
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{6}) 
-            I = $(inside_immersed_boundary(5, dir, loc))
-            to5 = @inbounds (I[1] | I[12])
-            to4 = @inbounds (I[2] | I[11])
-            to3 = @inbounds (I[3] | I[10])
-            to2 = @inbounds (I[4] | I[9]) 
-            to1 = @inbounds (I[5] | I[8])
-            ior = ifelse(to1, 1, 
-                  ifelse(to2, 2, 
-                  ifelse(to3, 3, 
-                  ifelse(to4, 4, 
-                  ifelse(to5, 5, 6)))))
-            bor = $compute_reduced_order(i, j, k, ibg.underlying_grid, a) 
+    @eval begin
+        @inline function $compute_reduced_order(i, j, k, grid::IBG, a, bias)
+            ior = $compute_immersed_reduced_order(i, j, k, grid, a, bias)
+            bor = $compute_reduced_order(i, j, k, grid.underlying_grid, a, bias)
             return min(ior, bor)
         end
     end
+
+    @eval begin 
+        # Faces symmetric
+        @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}, bias) = 1
+
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{2}, bias) 
+            I = $(inside_immersed_boundary(2, dir, loc))
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 2) 
+        end
+
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{3}, bias) 
+            I = $(inside_immersed_boundary(3, dir, loc))
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 3))
+        end
+
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{4}, bias) 
+            I = $(inside_immersed_boundary(4, dir, loc))
+            to3 = third_order_bounds_check(I, bias)
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 4)))
+        end
+
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{5}, bias) 
+            I = $(inside_immersed_boundary(5, dir, loc))
+            to4 = fourth_order_bounds_check(I, bias)
+            to3 = third_order_bounds_check(I, bias)
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 
+                   ifelse(to4, 4, 5))))
+        end
+
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, a::A{6}, bias) 
+            I = $(inside_immersed_boundary(5, dir, loc))
+            to5 = fifth_order_bounds_check(I, bias)
+            to4 = fourth_order_bounds_check(I, bias)
+            to3 = third_order_bounds_check(I, bias)
+            to2 = second_order_bounds_check(I, bias)
+            to1 = first_order_bounds_check(I, bias)
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 
+                   ifelse(to4, 4, 
+                   ifelse(to5, 5, 6)))))
+        end
+    end
 end
+
+# NoBias immersed bounds checks
+@inline first_order_bounds_check(I::NTuple{4}, ::NoBias) = @inbounds (I[1] | I[4])
+
+@inline  first_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[2] | I[5])
+@inline second_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[1] | I[6])
+
+@inline  first_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[3] | I[6])
+@inline second_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[2] | I[7])
+@inline  third_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[1] | I[8])
+
+@inline  first_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[4] | I[7])
+@inline second_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[3] | I[8])
+@inline  third_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[2] | I[9])
+@inline fourth_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[1] | I[10])
+
+@inline  first_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[5] | I[8])
+@inline second_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[4] | I[9])
+@inline  third_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[3] | I[10])
+@inline fourth_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[2] | I[11])
+@inline  fifth_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[1] | I[12])
+
+# LeftBias immersed bounds checks
+@inline first_order_bounds_check(I::NTuple{4}, ::LeftBias) = @inbounds (I[1] | I[4])
+
+@inline  first_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[2] | I[5])
+@inline second_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[1] | I[5])
+
+@inline  first_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[3] | I[6])
+@inline second_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[2] | I[6])
+@inline  third_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[1] | I[7])
+
+@inline  first_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[4] | I[7])
+@inline second_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[3] | I[7])
+@inline  third_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[2] | I[8])
+@inline fourth_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[1] | I[9])
+
+@inline  first_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[5] | I[8])
+@inline second_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[4] | I[8])
+@inline  third_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[3] | I[9])
+@inline fourth_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[2] | I[10])
+@inline  fifth_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[1] | I[11])
+
+# RightBias immersed bounds checks
+@inline first_order_bounds_check(I::NTuple{4}, ::RightBias) = @inbounds (I[1] | I[4])
+
+@inline  first_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[5])
+@inline second_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[6])
+
+@inline  first_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[6])
+@inline second_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[7])
+@inline  third_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[2] | I[8])
+
+@inline  first_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[7])
+@inline second_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[8])
+@inline  third_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[3] | I[9])
+@inline fourth_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[2] | I[10])
+
+@inline  first_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[8])
+@inline second_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[9])
+@inline  third_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[4] | I[10])
+@inline fourth_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[3] | I[11])
+@inline  fifth_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[2] | I[12])

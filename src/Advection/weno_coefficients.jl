@@ -7,11 +7,11 @@
 # Y  -> reduced order of the WENO reconstruction (with Y ≤ X)
 # Z  -> stencil number  
 # 
-# The zero stencil for each order is names RSX0M
+# The zero stencil for order X is names RSX0M
 
 # Zero and one coefficient stencils
 const RS20M = (0, 0)
-const RS210 = (1, 1) .// 2
+const RS210 = (1, 1) .// 2 
 const RS30M = (0, 0, 0)
 const RS310 = (1, 1, 0) .// 2
 const RS40M = (0, 0, 0, 0)
@@ -29,7 +29,7 @@ const RS321 = (RS221..., 0)
 const RS420 = (RS320..., 0)
 const RS421 = (RS321..., 0)
 const RS520 = (RS420..., 0)
-const RS521 = (RS421..., 0)
+const RS521 = (RS421..., 0) 
 const RS620 = (RS520..., 0)
 const RS621 = (RS521..., 0)
 

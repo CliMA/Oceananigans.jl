@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
@@ -21,6 +21,8 @@ import Oceananigans.Models: total_velocities, timestepper
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
+import Oceananigans
+const defaults = Oceananigans.defaults
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
@@ -59,7 +61,7 @@ end
 default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=g_Earth) =
     ImplicitFreeSurface(; gravitational_acceleration)
 
-default_free_surface(grid; gravitational_acceleration=g_Earth) =
+default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 """
@@ -69,7 +71,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                 tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
                                 coriolis = nothing,
-                                free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                free_surface = [default_free_surface],
                                 forcing::NamedTuple = NamedTuple(),
                                 closure = nothing,
                                 timestepper = :QuasiAdamsBashforth2,
@@ -119,24 +121,24 @@ Keyword arguments
                            `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                     clock = Clock(grid),
-                                     momentum_advection = VectorInvariant(),
-                                     tracer_advection = Centered(),
-                                     buoyancy = nothing,
-                                     coriolis = nothing,
-                                     free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                     tracers = nothing,
-                                     forcing::NamedTuple = NamedTuple(),
-                                     closure = nothing,
-                                     timestepper = :QuasiAdamsBashforth2,
-                                     boundary_conditions::NamedTuple = NamedTuple(),
-                                     particles::ParticlesOrNothing = nothing,
-                                     biogeochemistry::AbstractBGCOrNothing = nothing,
-                                     velocities = nothing,
-                                     pressure = nothing,
-                                     diffusivity_fields = nothing,
-                                     auxiliary_fields = NamedTuple(),
-                                     vertical_coordinate = default_vertical_coordinate(grid))
+    clock = Clock(grid),
+    momentum_advection = VectorInvariant(),
+    tracer_advection = Centered(),
+    buoyancy = nothing,
+    coriolis = nothing,
+    free_surface = default_free_surface(grid, gravitational_acceleration=defaults.gravitational_acceleration),
+    tracers = nothing,
+    forcing::NamedTuple = NamedTuple(),
+    closure = nothing,
+    timestepper = :QuasiAdamsBashforth2,
+    boundary_conditions::NamedTuple = NamedTuple(),
+    particles::ParticlesOrNothing = nothing,
+    biogeochemistry::AbstractBGCOrNothing = nothing,
+    velocities = nothing,
+    pressure = nothing,
+    diffusivity_fields = nothing,
+    auxiliary_fields = NamedTuple(),
+    vertical_coordinate = default_vertical_coordinate(grid))
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)

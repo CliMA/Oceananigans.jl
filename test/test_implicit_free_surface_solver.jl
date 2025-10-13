@@ -1,7 +1,6 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
@@ -64,7 +63,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     end
 
     # Compute left hand side "solution"
-    g = g_Earth
+    g = Oceananigans.defaults.gravitational_acceleration
     η = model.free_surface.η
 
     ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_x_area, grid)

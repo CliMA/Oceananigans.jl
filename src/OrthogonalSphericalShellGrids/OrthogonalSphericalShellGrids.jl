@@ -15,8 +15,7 @@ using Oceananigans.Utils
 using Oceananigans.BoundaryConditions: Zipper
 using Oceananigans.Fields: index_binary_search, convert_to_0_360
 using Oceananigans.Grids: RightConnected
-using Oceananigans.Grids: R_Earth,
-                          halo_size, spherical_area_quadrilateral,
+using Oceananigans.Grids: halo_size, spherical_area_quadrilateral,
                           lat_lon_to_cartesian, generate_coordinate, topology
 using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
 
