@@ -1,18 +1,22 @@
-# [Simulations: orchestrating runs](@id simulation_overview)
+# [Simulations: managing model time-stepping](@id simulation_overview)
 
-`Simulation` objects wrap a model in the control logic that actually pushes it forward in time.
-They manage the time-stepping loop, stop conditions, output, diagnostics, and callbacks so that
-Oceananigans models can focus on physics while simulations focus on workflow.
+[`Simulation`](@ref) is a tool for orchestrating a model time-stepping loop that includes
+stop conditions, adaptive time-stepping, writing output,
+and executing arbirary user-defined "callbacks" for everything
+from monitoring simulation progress to editing the model state.
 
-Ocean modelling scripts usually follow this pattern:
+Scripts that execute numerical experiments involve four steps:
 
-1. Build a grid and a model
-2. Wrap the model in a `Simulation`
-3. Attach output writers, diagnostics, and callbacks
-4. Call [`run!`](@ref) to integrate in time
+1. Define the "grid" and physical domain for the numerical experiment
+2. Configure the physics of the experiment by building a model
+3. Wrap the model in a `Simulation` and construct a time-stepping loop by
+   attaching callbacks and output writers.
+4. Call [`run!`](@ref) to integrate the model forward in time.
 
-The sections below sketch this lifecycle with a few small examples and point to the dedicated
-pages on callbacks and output writers.
+`Simulation` is the final boss object that users interact
+with in order in the process of performing a numerical experiment.
+
+## A simple simulation
 
 ```@meta
 DocTestSetup = quote
@@ -22,64 +26,175 @@ DocTestSetup = quote
 end
 ```
 
-## A minimal simulation
+To illustrate how `Simulation` works we start with an ultra-minimal example:
 
 ```@example simulation_overview
 using Oceananigans
 
-grid = RectilinearGrid(size=(8, 8, 8), extent=(128, 128, 64))
-model = NonhydrostaticModel(; grid, tracers=:c)
-simulation = Simulation(model; Δt=10.0, stop_iteration=20)
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+model = NonhydrostaticModel(; grid)
+simulation = Simulation(model; Δt=7, stop_iteration=6)
 run!(simulation)
+
+simulation
+```
+
+A slightly more complicated `Simulation` might 
+
+```@example simulation_overview
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+model = NonhydrostaticModel(; grid)
+simulation = Simulation(model; Δt=7, stop_time=14)
+
+print_progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
+add_callback!(simulation, print_progress, IterationInterval(2))
+
+declare_time(sim) = @info string("The simulation has been running for ", prettytime(sim.run_wall_time), "!")
+add_callback!(simulation, declare_time, TimeInterval(10))
+
+run!(simulation)
+
 simulation
 ```
 
 `Simulation` bookkeeps the total iterations performed, the next `Δt`, and the
 lists of `callbacks` and `output_writers`.
+`Simulation`s can also be continued, which is helpful for interactive work:
+
+```@example simulation_overview
+simulation.stop_time = 42
+run!(simulation)
+```
 
 ## Stop criteria and time-step control
 
-The `Simulation` constructor accepts several stopping conditions. The most common are:
+The `Simulation` constructor accepts three stopping conditions:
 
 - `stop_iteration`: maximum number of steps
 - `stop_time`: maximum model clock time (same units as the model's clock)
 - `wall_time_limit`: maximum wall-clock seconds before the run aborts
 
 ```@example simulation_overview
-simulation = Simulation(model; Δt=15, stop_time=60, wall_time_limit=30)
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+c_source(x, y, z, t, c) = 0.1 * c
+c_forcing = Forcing(c_source, field_dependencies=:c)
+model = NonhydrostaticModel(; grid, tracers=:c, forcing=(; c=c_forcing))
+
+simulation = Simulation(model; Δt=0.1, stop_time=10, stop_iteration=10000, wall_time_limit=30)
 simulation
 ```
 
-Oceananigans can adapt the time-step by inserting a [`TimeStepWizard`](@ref) as a callback.
-The wizard monitors advective and diffusive Courant numbers, shrinking or growing `Δt` while
-respecting bounds such as `max_change` or `max_Δt`.
+### Callbacks: basic callback for monitoring progress
 
-```@example simulation_overview
-wizard = TimeStepWizard(cfl = 0.7, max_change = 1.1, max_Δt = 20.0)
-add_callback!(simulation, wizard; name = :wizard)
-simulation.callbacks[:wizard]
-```
-
-By default `Simulation` aligns the final substep of each `Δt` so that scheduled events (like
-output) land exactly on their target times. Setting `align_time_step = false` allows the
-simulation to march with a fixed `Δt` even if that means overshooting a scheduled time.
-
-## Monitoring progress with callbacks
-
-Callbacks are small pieces of code that run on a [schedule](@ref callback_schedules).
+Callbacks execute arbitrary code on [schedule](@ref callback_schedules).
 They automate tasks such as logging, runtime adjustments, or scientific diagnostics.
 
-```@example simulation_overview
-show_progress(sim) = @info "step $(sim.model.clock.iteration): t = $(prettytime(sim.model.clock.time))"
+The simplest callbacks are used to monitor the progress of a simulation:
 
-add_callback!(simulation, show_progress, IterationInterval(5); name = :progress)
+```@example simulation_overview
+print_progress(sim) = @info "Iter $(iteration(sim)): $(prettytime(sim))"
+add_callback!(simulation, print_progress, IterationInterval(25))
 run!(simulation)
 ```
+
+### Callbacks: for stopping a simulation
+
+To spark your imagination, consider that callbacks can be used to implement
+arbitrary stopping criteria. As an example we consider a stopping criteria based on the magnitude of a tracer:
+
+```@example simulation_overview
+set!(model, c=1)
+
+function stop_simulation(sim)
+    if maximum(sim.model.tracers.c) >= 2
+        sim.running = false
+    end
+    return nothing
+end
+
+# The default schedule is IterationInterval(1)
+add_callback!(simulation, stop_simulation)
+simulation.stop_time += 10
+run!(simulation)
+
+simulation
+```
+
+### Adaptive time-stepping with `TimeStepWizard`
+
+The time-step can be changed by modifying `simulation.Δt`.
+To decrease the computational cost of simulations of flows that significantly grow or decay in time,
+users may invoke a special callback called [`TimeStepWizard`](@ref).
+`TimeStepWizard` monitors the [advective and diffusive Courant numbers](https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition),
+increasing or decreasing `simulation.Δt` to keep the time-step near its maximum stable value
+while respecting bounds such as `max_change` or `max_Δt`.
+
+```@example simulation_overview
+ϵ(x, y, z) = 1e-2
+set!(model, c=1, u=ϵ, v=ϵ, w=ϵ)
+
+conjure_time_step_wizard!(simulation, cfl=0.7)
+@show simulation.callbacks
+
+print_time_step(sim) = @info "Iter $(iteration(sim)): Δt = $(prettytime(sim.Δt))"
+add_callback!(simulation, print_time_step, IterationInterval(1))
+simulation.stop_time += 1
+run!(simulation)
+```
+
+### Time-step alignment with scheduled events
+
+By default, `Simulation` "aligns" `Δt` so that events which are _scheduled by time_ (such as `TimeInterval` and `SpecifiedTimes`) occur exactly on schedule.
+Time-step alignment may be disabled by setting `align_time_step = false` in the `Simulation` constructor.
+
+```@example simulation_overview
+print_iteration(sim) = @info "At t = $(time(sim)), iter = $(iteration(sim))"
+add_callback!(simulation, print_iteration, TimeInterval(0.2))
+simulation.stop_time += 0.6
+run!(simulation)
+```
+
+!!! note "Minimum relative step"
+    Due to round-off error, time-step alignment can produce very small `Δt` close to machine
+    epsilon --- for example, when `TimeInterval` is a constant multiple of a fixed `Δt`.
+    In some cases, `Δt` close to machine epsilon is undesirable: for example, with `NonhydrostaticModel`
+    a machine epsilon `Δt` will produce a pressure field that is polluted by numerical error due to
+    its pressure correction algorithm. To mitigate issues associated with very small time-steps, the `Simulation` constructor accepts a `minimum_relative_step` argument (a typical choice is 1e-9).
+    When `minimum_relative_step > 0`, a time-step will be skipped (instead, the clock is simply reset)
+    if an aligned  time-step is less than `minimum_relative_step * previous_Δt`.
+
+
+### Callback "callsites"
 
 The `callsite` keyword lets callbacks hook into different parts of the time-stepping cycle.
 For example, use `callsite = TendencyCallsite()` to modify tendencies before a step, or
 `UpdateStateCallsite()` to react after auxiliary variables update. See the [Callbacks page](@ref callbacks)
 for more customization patterns, including parameterized callbacks and state callbacks.
+
+```@example checkpointing
+using Oceananigans
+using Oceananigans: TendencyCallsite
+
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+
+simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+function modify_tendency!(model, params)
+    model.timestepper.Gⁿ[params.c] .+= params.δ
+    return nothing
+end
+
+simulation.callbacks[:modify_u] = Callback(modify_tendency!, IterationInterval(1),
+                                           callsite = TendencyCallsite(),
+                                           parameters = (c = :u, δ = 1))
+
+run!(simulation)
+```
 
 ## Writing output
 
@@ -96,32 +211,13 @@ fields = Dict("u" => simulation.model.velocities.u)
 
 simulation.output_writers[:surface_slice] = NetCDFWriter(simulation.model, fields;
                                                          filename = "demo.nc",
-                                                         schedule = TimeInterval(30.0),
+                                                         schedule = TimeInterval(30),
                                                          indices = (:, :, grid.Nz))
 simulation.output_writers
 ```
 
 During `run!`, Oceananigans calls each writer whenever its schedule actuates. Detailed usage
 examples appear in the [Output writers page](@ref output_writers).
-
-## Diagnostics
-
-Diagnostics behave a lot like callbacks: place them in `simulation.diagnostics` and update them
-on a schedule. A typical workflow creates a diagnostic, associates it with a callback, and
-optionally writes the results via an output writer.
-
-```@example simulation_overview
-simulation = Simulation(model; Δt=10, stop_iteration=15)
-
-cfl = AdvectiveCFL(simulation.Δt)
-add_callback!(simulation, cfl; name = :cfl_monitor)
-
-run!(simulation)
-```
-
-Diagnostics are evaluated but not stored automatically. If you want to accumulate values or
-flush them to disk, wrap the diagnostic call in a callback that records the values or writes
-through an output writer.
 
 ## Putting it together
 
