@@ -202,7 +202,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 
     U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
     V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
-
     U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
     V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
     Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
