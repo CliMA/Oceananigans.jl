@@ -266,7 +266,7 @@ model.forcing.u
 
 # output
 ContinuousForcing{Nothing} at (Face, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
+├── func: Relaxation(rate=0.01, mask=exp(-(z + 1)^2 / (2 * 0.1^2)), target=0)
 ├── parameters: nothing
 └── field dependencies: (:u,)
 ```
@@ -276,7 +276,7 @@ model.forcing.T
 
 # output
 ContinuousForcing{Nothing} at (Center, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
+├── func: Relaxation(rate=0.01, mask=exp(-(z + 1)^2 / (2 * 0.1^2)), target=20 + 0.001 * z)
 ├── parameters: nothing
 └── field dependencies: (:T,)
 ```
@@ -324,7 +324,7 @@ grid = RectilinearGrid(size=(32, 32, 32), x=(-10, 10), y=(-10, 10), z=(-4, 4),
                        topology=(Periodic, Periodic, Bounded))
 
 no_penetration = ImpenetrableBoundaryCondition()
-slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
+slip_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()),
                                    top=no_penetration, bottom=no_penetration)
 
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
