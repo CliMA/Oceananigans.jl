@@ -7,10 +7,9 @@ from monitoring simulation progress to editing the model state.
 Scripts for numerical experiments can be broken into four parts:
 
 1. Definition of the "grid" and physical domain for the numerical experiment
-2. Configuration of physics by building a model
-3. Wrap the model in a `Simulation` and construct a time-stepping loop by
-   attaching callbacks and output writers.
-4. Call [`run!`](@ref) to integrate the model forward in time.
+2. Configuration of physics and model construction
+3. Building a `Simulation` time-stepping loop with callbacks and output writers
+4. Calling [`run!`](@ref) to integrate the model forward in time.
 
 `Simulation` is the final boss object that users interact
 with in order in the process of performing a numerical experiment.
