@@ -112,7 +112,8 @@ S_forcing_func(x, y, z, t, S, μ) = - μ * S
 S_forcing = Forcing(S_forcing_func, parameters=0.01, field_dependencies=:S)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(w=w_forcing, S=S_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+forcing = (w=w_forcing, S=S_forcing)
+model = NonhydrostaticModel(; grid, forcing, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.w
 
@@ -275,7 +276,7 @@ model.forcing.T
 
 # output
 ContinuousForcing{Nothing} at (Center, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20 + 0.001 * z)
+├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
 ├── parameters: nothing
 └── field dependencies: (:T,)
 ```
