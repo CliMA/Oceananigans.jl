@@ -34,25 +34,27 @@ function set_top_pressure_boundary_condition!(p_Δt, free_surface, w̃, Δt)
 
     # Set the "combination" of the MixedBoundaryCondition
     η = free_surface.η
-    combo = top_bc.condition.combination
+    bc_rhs = top_bc.condition.inhomogeneity
     grid = p_Δt.grid
     arch = grid.architecture
-    launch!(arch, grid, :xy, _set_top_pressure_boundary_condition!, combo, grid, w̃, Δt, η, g, p_Δt)
+    launch!(arch, grid, :xy, _set_top_pressure_boundary_condition!, bc_rhs, grid, w̃, Δt, η, g, p_Δt)
     return nothing
 end
 
-@kernel function _set_top_pressure_boundary_condition!(combo, grid, w̃, Δt, η, g, p_Δt)
+@kernel function _set_top_pressure_boundary_condition!(bc_rhs, grid, w̃, Δt, η, g, p_Δt)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
 
-    @inbounds combo[i, j, 1] = η[i, j] / Δt + w̃[i, j, Nz+1]
+    @inbounds bc_rhs[i, j, 1] = η[i, j, Nz+1] / Δt + w̃[i, j, Nz+1]
 
     # Compute ηⁿ⁺¹
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     a = 1 / Δzᶠ - 1 / (2g * Δt^2)
     b = 1 / Δzᶠ + 1 / (2g * Δt^2)
-    η★ = η[i, j] + Δt * w̃[i, j, Nz+1]
-    η[i, j] = (p_Δt[i, j, Nz]/Δt + (p_Δt[i, j, Nz]/Δt)*(a/b) + η★/(Δt^2*b)) / (2*g)
+    @inbounds begin
+        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        η[i, j, Nz+1] = (p_Δt[i, j, Nz] / Δt + (p_Δt[i, j, Nz] * a / (b * Δt) + η★ / (b * Δt^2))) / 2g
+    end
 end
 
 #####
@@ -72,7 +74,7 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure mu
     @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 
     if k == grid.Nz
-        U.w[i, j, k+1] -= (pNHSΔt[i,j,k+1] - pNHSΔt[i,j,k])/Δzᶜᶜᶜ(i, j, k, grid) 
+        @inbounds U.w[i, j, k+1] -= (pNHSΔt[i,j,k+1] - pNHSΔt[i,j,k]) / Δzᶜᶜᶜ(i, j, k, grid) 
     end
 end
 

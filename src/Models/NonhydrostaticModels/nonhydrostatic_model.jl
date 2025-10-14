@@ -249,7 +249,7 @@ function NonhydrostaticModel(; grid,
     diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = nonhydrostatic_pressure_solver(grid)
+        pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
     end
 
     # Materialize background fields
@@ -259,7 +259,7 @@ function NonhydrostaticModel(; grid,
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver=implicit_solver)
+    timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
     forcing = model_forcing(model_fields; forcing...)

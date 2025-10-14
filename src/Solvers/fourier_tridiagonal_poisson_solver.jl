@@ -45,6 +45,7 @@ struct HomogeneousNeumannFormulation{D}
 end
 
 tridiagonal_direction(formulation::HomogeneousNeumannFormulation) = formulation.direction
+tridiagonal_direction(formulation::InhomogeneousFormulation) = formulation.direction
 
 const HomogeneousXFormulation = HomogeneousNeumannFormulation{<:XDirection}
 const HomogeneousYFormulation = HomogeneousNeumannFormulation{<:YDirection}

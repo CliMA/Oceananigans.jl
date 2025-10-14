@@ -39,7 +39,7 @@ function nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSo
     return FourierTridiagonalPoissonSolver(grid)
 end
 
-function nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver, free_surface)
+function nonhydrostatic_pressure_solver(arch, grid::Union{GridWithFourierTridiagonalSolver, XYZRegularRG}, free_surface)
     tridiagonal_formulation = InhomogeneousFormulation(ZDirection())
     return FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation)
 end
