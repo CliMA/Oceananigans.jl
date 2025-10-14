@@ -7,7 +7,7 @@
 # Y  -> reduced order of the WENO reconstruction (with Y ≤ X)
 # Z  -> stencil number  
 # 
-# The zero stencil for order X is names RSX0M
+# The zero stencil for order X is named RSX0M
 
 # Zero and one coefficient stencils
 const RS20M = (0, 0)

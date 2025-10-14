@@ -177,7 +177,7 @@ flip(l) = ifelse(l == :f, :c, :f)
 #   
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
-    compute_immersed_reduced_order = Symbol(:compute_, Loc, :immersed_reduced_order_, dir)
+    compute_immersed_reduced_order = Symbol(:compute_, Loc, :_immersed_reduced_order_, dir)
 
     @eval begin
         @inline function $compute_reduced_order(i, j, k, grid::IBG, a, bias)
@@ -200,16 +200,16 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{3}, bias) 
             I = $(inside_immersed_boundary(3, dir, loc))
             to2 = second_order_bounds_check(I, bias)
-            to1 = first_order_bounds_check(I, bias)
+            to1 =  first_order_bounds_check(I, bias)
             return ifelse(to1, 1, 
                    ifelse(to2, 2, 3))
         end
 
         @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{4}, bias) 
             I = $(inside_immersed_boundary(4, dir, loc))
-            to3 = third_order_bounds_check(I, bias)
+            to3 =  third_order_bounds_check(I, bias)
             to2 = second_order_bounds_check(I, bias)
-            to1 = first_order_bounds_check(I, bias)
+            to1 =  first_order_bounds_check(I, bias)
             return ifelse(to1, 1, 
                    ifelse(to2, 2, 
                    ifelse(to3, 3, 4)))
@@ -218,9 +218,9 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{5}, bias) 
             I = $(inside_immersed_boundary(5, dir, loc))
             to4 = fourth_order_bounds_check(I, bias)
-            to3 = third_order_bounds_check(I, bias)
+            to3 =  third_order_bounds_check(I, bias)
             to2 = second_order_bounds_check(I, bias)
-            to1 = first_order_bounds_check(I, bias)
+            to1 =  first_order_bounds_check(I, bias)
             return ifelse(to1, 1, 
                    ifelse(to2, 2, 
                    ifelse(to3, 3, 
@@ -229,11 +229,11 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
 
         @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{6}, bias) 
             I = $(inside_immersed_boundary(6, dir, loc))
-            to5 = fifth_order_bounds_check(I, bias)
+            to5 =  fifth_order_bounds_check(I, bias)
             to4 = fourth_order_bounds_check(I, bias)
-            to3 = third_order_bounds_check(I, bias)
+            to3 =  third_order_bounds_check(I, bias)
             to2 = second_order_bounds_check(I, bias)
-            to1 = first_order_bounds_check(I, bias)
+            to1 =  first_order_bounds_check(I, bias)
             return ifelse(to1, 1, 
                    ifelse(to2, 2, 
                    ifelse(to3, 3, 
