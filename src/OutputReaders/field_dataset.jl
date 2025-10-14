@@ -81,14 +81,6 @@ function Base.show(io::IO, fds::FieldDataset)
     return print(io, s)
 end
 
-function auto_arg(field_names::NTuple{N, T}, a) where {N, T}
-    NamedTuple(Symbol(field_name) => a for field_name in field_names)
-end
-
-function auto_arg(field_names::NTuple{N, T}, a::NTuple{N, S}) where {N, T, S}
-    NamedTuple{map(Symbol, field_names), S}(a)
-end
-
 """
     FieldDataset(grid, field_names, times;
                  backend=OnDisk(),
