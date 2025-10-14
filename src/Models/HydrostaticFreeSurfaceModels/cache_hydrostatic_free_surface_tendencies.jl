@@ -29,6 +29,11 @@ function cache_free_surface_tendency!(::ExplicitFreeSurface, model)
             model.timestepper.Gⁿ.η)
 end
 
+@kernel function _cache_field_tendencies!(G⁻, G⁰)
+    i, j, k = @index(Global, NTuple)
+    @inbounds G⁻[i, j, k] = G⁰[i, j, k]
+end
+
 """ Store previous source terms before updating them. """
 function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
     prognostic_field_names = keys(prognostic_fields(model))

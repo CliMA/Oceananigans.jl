@@ -244,20 +244,21 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
 end
 
 # NoBias immersed bounds checks
-@inline first_order_bounds_check(I::NTuple{4}, ::NoBias) = @inbounds (I[1] | I[4])
-
+# Fourth order centered advection
+@inline  first_order_bounds_check(I::NTuple{4}, ::NoBias) = @inbounds (I[1] | I[4])
+# Sixth order centered advection
 @inline  first_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[2] | I[5])
 @inline second_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[1] | I[6])
-
+# Eighth order centered advection
 @inline  first_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[3] | I[6])
 @inline second_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[2] | I[7])
 @inline  third_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[1] | I[8])
-
+# Tenth order centered advection
 @inline  first_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[4] | I[7])
 @inline second_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[3] | I[8])
 @inline  third_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[2] | I[9])
 @inline fourth_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[1] | I[10])
-
+# Twelfth order centered advection
 @inline  first_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[5] | I[8])
 @inline second_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[4] | I[9])
 @inline  third_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[3] | I[10])
@@ -265,20 +266,21 @@ end
 @inline  fifth_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[1] | I[12])
 
 # LeftBias immersed bounds checks
-@inline first_order_bounds_check(I::NTuple{4}, ::LeftBias) = @inbounds (I[1] | I[4])
-
+# Third order upwind advection
+@inline  first_order_bounds_check(I::NTuple{4}, ::LeftBias) = @inbounds (I[1] | I[4])
+# Fifth order upwind advection
 @inline  first_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[2] | I[5])
 @inline second_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[1] | I[5])
-
+# Seventh order upwind advection
 @inline  first_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[3] | I[6])
 @inline second_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[2] | I[6])
 @inline  third_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[1] | I[7])
-
+# Ninth order upwind advection
 @inline  first_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[4] | I[7])
 @inline second_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[3] | I[7])
 @inline  third_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[2] | I[8])
 @inline fourth_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[1] | I[9])
-
+# Eleventh order upwind advection
 @inline  first_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[5] | I[8])
 @inline second_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[4] | I[8])
 @inline  third_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[3] | I[9])
@@ -286,20 +288,21 @@ end
 @inline  fifth_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[1] | I[11])
 
 # RightBias immersed bounds checks
-@inline first_order_bounds_check(I::NTuple{4}, ::RightBias) = @inbounds (I[1] | I[4])
-
+# Third order upwind advection
+@inline  first_order_bounds_check(I::NTuple{4}, ::RightBias) = @inbounds (I[1] | I[4])
+# Fifth order upwind advection
 @inline  first_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[5])
 @inline second_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[6])
-
+# Seventh order upwind advection
 @inline  first_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[6])
 @inline second_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[7])
 @inline  third_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[2] | I[8])
-
+# Ninth order upwind advection
 @inline  first_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[7])
 @inline second_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[8])
 @inline  third_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[3] | I[9])
 @inline fourth_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[2] | I[10])
-
+# Eleventh order upwind advection
 @inline  first_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[8])
 @inline second_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[9])
 @inline  third_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[4] | I[10])
