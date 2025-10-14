@@ -1,14 +1,14 @@
 # [Simulations: managing model time-stepping](@id simulation_overview)
 
-[`Simulation`](@ref) is a tool for orchestrating a model time-stepping loop that includes
-stop conditions, adaptive time-stepping, writing output,
-and executing arbirary user-defined "callbacks" for everything
+[`Simulation`](@ref Oceananigans.Simulations.Simulation) is a tool for orchestrating
+a model time-stepping loop that includes stop conditions, adaptive time-stepping,
+writing output, and executing arbitrary user-defined "callbacks" for everything
 from monitoring simulation progress to editing the model state.
 
 Scripts that execute numerical experiments involve four steps:
 
 1. Define the "grid" and physical domain for the numerical experiment
-2. Configure the physics of the experiment by building a model
+2. Configure the physics of the experiment by building a "model"
 3. Wrap the model in a `Simulation` and construct a time-stepping loop by
    attaching callbacks and output writers.
 4. Call [`run!`](@ref) to integrate the model forward in time.
@@ -57,7 +57,7 @@ add_callback!(simulation, declare_time, TimeInterval(10))
 run!(simulation)
 ```
 
-`Simulation` bookkeeps the total iterations performed, the next `Δt`, and the
+`Simulation` book-keeps the total iterations performed, the next `Δt`, and the
 lists of `callbacks` and `output_writers`.
 `Simulation`s can also be continued, which is helpful for interactive work:
 
@@ -112,7 +112,7 @@ To spark your imagination, consider that callbacks can be used to implement
 arbitrary stopping criteria. As an example we consider a stopping criteria based on the magnitude of a tracer:
 
 ```@example simulation_overview
-using Printf 
+using Printf
 
 set!(model, c=1)
 
