@@ -74,7 +74,7 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(boundary_func::ContinuousBoundaryFunction,
-                                       grid, loc, dim, Side, field_names) where C
+                                       grid, loc, dim, Side, field_names)
 
     # Set boundary-normal location to Nothing:
     LX, LY, LZ = Tuple(i == dim ? Nothing : destantiate(loc[i]) for i = 1:3)
