@@ -56,7 +56,7 @@ add_callback!(simulation, declare_time, TimeInterval(10))
 run!(simulation)
 ```
 
-`Simulation` bookkeeps the total iterations performed, the next `Δt`, and the
+`Simulation` book-keeps the total iterations performed, the next `Δt`, and the
 lists of `callbacks` and `output_writers`.
 `Simulation`s can be continued, which is helpful for interactive work:
 
@@ -111,7 +111,7 @@ To spark your imagination, consider that callbacks can be used to implement
 arbitrary stopping criteria. As an example we consider a stopping criteria based on the magnitude of a tracer:
 
 ```@example simulation_overview
-using Printf 
+using Printf
 
 set!(model, c=1)
 
