@@ -13,7 +13,7 @@ using Oceananigans.Operators: Δx, Δy, Δz
 @inline right_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( getbc(bc, i, j, args...) - cᴺ ) / (Δ/2)
 
 @inline function left_gradient(bc::MBC, c¹, Δ, i, j, args...)
-    coefficient = bc.condition.coefficient 
+    coefficient = bc.condition.coefficient
     inhomogeneity = bc.condition.inhomogeneity
     a = getbc(coefficient, i, j, args...)
     b = getbc(inhomogeneity, i, j, args...)
@@ -23,7 +23,7 @@ using Oceananigans.Operators: Δx, Δy, Δz
 end
 
 @inline function right_gradient(bc::MBC, cᴺ, Δ, i, j, args...)
-    coefficient = bc.condition.coefficient 
+    coefficient = bc.condition.coefficient
     inhomogeneity = bc.condition.inhomogeneity
     a = getbc(coefficient, i, j, args...)
     b = getbc(inhomogeneity, i, j, args...)
