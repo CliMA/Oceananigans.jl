@@ -1,4 +1,7 @@
 using Statistics
+
+using Oceananigans.Fields: reduced_location, filltype
+
 import Oceananigans.Fields: conditional_length
 
 @inline conditional_length(fts::FieldTimeSeries) = length(fts) * conditional_length(fts[1])
@@ -27,10 +30,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             if dims isa Colon
                 return Base.$(reduction)($(reduction)(f, fts[n]; kw...) for n in 1:length(fts.times))
             else
-                T = filltype(Base.$(reduction!), fts)
+                if dims != Tuple
+                    dims = Tuple(dims)
+                end
                 loc = LX, LY, LZ = reduced_location(location(fts); dims)
                 times = fts.times
-                rts = FieldTimeSeries{LX, LY, LZ}(grid, times, T; indices=fts.indices)
+                rts = FieldTimeSeries((LX, LY, LZ), fts.grid, times; indices=fts.indices, kw...)
                 return Base.$(reduction!)(f, rts, fts; kw...)
             end
         end
@@ -40,7 +45,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         function Base.$(reduction!)(f::Function, rts::FTS, fts::FTS; dims=:, kw...)
             dims isa Tuple && 4 ∈ dims && error("Reduction across the time dimension (dim=4) is not yet supported!")
             for n = 1:length(rts)
-                Base.$(reduction!)(f, rts[i], fts[i]; dims, kw...)
+                Base.$(reduction!)(f, rts[n], fts[n]; kw...)
             end
             return rts
         end
