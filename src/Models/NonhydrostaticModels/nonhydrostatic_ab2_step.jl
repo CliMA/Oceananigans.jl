@@ -20,6 +20,7 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
                        model.diffusivity_fields,
                        nothing,
                        model.clock,
+                       fields(model),
                        Δt)
     end
 
@@ -35,6 +36,7 @@ function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
                        model.diffusivity_fields,
                        Val(i),
                        model.clock,
+                       fields(model),
                        Δt)
     end
 

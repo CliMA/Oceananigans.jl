@@ -18,6 +18,7 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
                        model.diffusivity_fields,
                        nothing,
                        model.clock,
+                       fields(model),
                        Δτ)
     end
 
@@ -33,6 +34,7 @@ function rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
                        model.diffusivity_fields,
                        Val(i),
                        model.clock,
+                       fields(model),
                        Δτ)
     end
 
