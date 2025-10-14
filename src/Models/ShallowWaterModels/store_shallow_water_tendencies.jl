@@ -1,10 +1,8 @@
 using Oceananigans.Utils: work_layout
 using Oceananigans.Architectures: device
-using Oceananigans.TimeSteppers: cache_tracer_tendency!
-
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-import Oceananigans.TimeSteppers: _cache_field_tendencies!
+import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
 """ Store source terms for `uh`, `vh`, and `h`. """
 @kernel function _cache_solution_tendencies!(G⁻, grid, G⁰)
@@ -12,6 +10,12 @@ import Oceananigans.TimeSteppers: _cache_field_tendencies!
     @unroll for t in 1:3
         @inbounds G⁻[t][i, j, k] = G⁰[t][i, j, k]
     end
+end
+
+""" Store source terms for `u`, `v`, and `w`. """
+@kernel function _cache_field_tendencies!(G⁻, G⁰)
+    i, j, k = @index(Global, NTuple)
+    @inbounds G⁻[i, j, k] = G⁰[i, j, k]
 end
 
 """ Store previous source terms before updating them. """

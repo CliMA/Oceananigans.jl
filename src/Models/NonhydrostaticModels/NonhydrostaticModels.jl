@@ -101,6 +101,7 @@ prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tr
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
+include("cache_nonhydrostatic_tendencies.jl")
 include("nonhydrostatic_ab2_step.jl")
 include("nonhydrostatic_rk3_substep.jl")
 include("solve_for_pressure.jl")
