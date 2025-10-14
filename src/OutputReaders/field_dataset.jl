@@ -143,9 +143,20 @@ function FieldDataset(grid, fields::Tuple{Symbol, N}, times;
     N == length(location) && error(ArgumentError("locations and fields must be same length"))
     N == length(boundary_conditions) && error(ArgumentError("boundary_conditions and fields must be same length"))
 
-    # Create FieldTimeSeries
-    ftss = map(field_names, indices, location, boundary_conditions) do name, ind, loc, bcs
-        FieldTimeSeries(loc, grid, times; indices=ind, backend, path, name, reader_kw, boundary_conditions=bcs)
+    # Create the FieldTimeSeries
+    ftss = map(fields, field_names) do field, name
+        inds = indices[field]
+        loc = location[field]
+        bcs = boundary_conditions[field]
+
+        FieldTimeSeries(loc, grid, times; 
+            indices=inds, 
+            backend, 
+            path, 
+            name, 
+            reader_kw, 
+            boundary_conditions=bcs
+        )
     end
 
     ds = Dict{String, FieldTimeSeries}(
