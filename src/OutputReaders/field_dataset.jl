@@ -131,11 +131,6 @@ function FieldDataset(grid, fields::Tuple{Symbol, N}, times;
         boundary_conditions
     )
 
-    # Check lengths
-    N == length(indices) && error(ArgumentError("indices and fields must be same length"))
-    N == length(location) && error(ArgumentError("locations and fields must be same length"))
-    N == length(boundary_conditions) && error(ArgumentError("boundary_conditions and fields must be same length"))
-
     # Create the FieldTimeSeries
     ftss = map(fields, field_names) do field, name
         inds = indices[field]
