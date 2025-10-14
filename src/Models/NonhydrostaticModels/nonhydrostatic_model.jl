@@ -213,12 +213,25 @@ function NonhydrostaticModel(; grid,
 
     # Next, we form a list of default boundary conditions:
     field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions()
-                                                          for name in field_names)
+    default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions() for name in field_names)
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
+
+    if !isnothing(free_surface) # replace top boundary condition for `w` with `nothing`
+        w_bcs = boundary_conditions.w
+        w_bcs = FieldBoundaryConditions(top = nothing,
+                                        bottom = w_bcs.bottom,
+                                        east = w_bcs.east,
+                                        west = w_bcs.west,
+                                        south = w_bcs.south,
+                                        north = w_bcs.north,
+                                        immersed = w_bcs.immersed)
+
+        boundary_conditions  =  merge(boundary_conditions, (; w = w_bcs))
+    end
+
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
 
     # Ensure `closure` describes all tracers
