@@ -125,6 +125,19 @@ function FieldDataset(grid, fields::Tuple{Symbol, N}, times;
 
     field_names = map(String, fields)
 
+    # Default behaviour
+    if isnothing(indices)
+        indices = NamedTuple(field=>(:, :, :) for field in fields)
+    end
+
+    if isnothing(location)
+        location = NamedTuple(field=>(Center(), Center(), Center()) for field in fields)
+    end
+
+    if isnothing(boundary_conditions) 
+        boundary_conditions = NamedTuple(field=>UnspecifiedBoundaryConditions() for field in fields)
+    end
+
     # Check lengths
     N == length(indices) && error(ArgumentError("indices and fields must be same length"))
     N == length(location) && error(ArgumentError("locations and fields must be same length"))
