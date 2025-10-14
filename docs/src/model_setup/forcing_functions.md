@@ -21,7 +21,7 @@ By default, momentum and tracer forcing functions are assumed to be functions of
 u_forcing(x, y, z, t) = exp(z) * cos(x) * sin(t)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
+model = NonhydrostaticModel(; grid, forcing=(; u=u_forcing))
 
 model.forcing.u
 
@@ -59,16 +59,15 @@ _(i)_ a single scalar parameter `s`, and _(ii)_ a `NamedTuple` of parameters, `p
 ```jldoctest parameterized_forcing
 # Forcing that depends on a scalar parameter `s`
 u_forcing_func(x, y, z, t, s) = s * z
-
 u_forcing = Forcing(u_forcing_func, parameters=0.1)
 
 # Forcing that depends on a `NamedTuple` of parameters `p`
 T_forcing_func(x, y, z, t, p) = - p.μ * exp(z / p.λ) * cos(p.k * x) * sin(p.ω * t)
-
 T_forcing = Forcing(T_forcing_func, parameters=(μ=1, λ=0.5, k=2π, ω=4π))
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+forcing = (u=u_forcing, T=T_forcing)
+model = NonhydrostaticModel(; grid, forcing, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.T
 
@@ -182,17 +181,16 @@ using Oceananigans.Operators: ∂zᶠᶜᶠ, ℑxzᶠᵃᶜ
 function u_forcing_func(i, j, k, grid, clock, model_fields, ε)
     # The vertical derivative of buoyancy, interpolated to the u-velocity location:
     N² = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, model_fields.b)
-
-    # Set to zero in unstable stratification where N² < 0:
-    N² = max(N², zero(typeof(N²)))
-
-    return @inbounds - ε * sqrt(N²) * model_fields.u[i, j, k]
+    N²⁺ = max(0, N²) # limit buoyancy frequency to strictly positive values
+    u_ijk = @inbounds model_fields.u[i, j, k]
+    return - ε * sqrt(N²⁺) * u_ijk
 end
 
 u_forcing = Forcing(u_forcing_func, discrete_form=true, parameters=1e-3)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
+forcing = (u=u_forcing, b=b_forcing)
+model = NonhydrostaticModel(; grid, forcing, tracers=:b, buoyancy=BuoyancyTracer())
 
 model.forcing.b
 
@@ -227,7 +225,7 @@ of the velocity field are damped to zero everywhere on a time-scale of 1000 seco
 damping = Relaxation(rate = 1/1000)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
+model = NonhydrostaticModel(; grid, forcing=(u=damping, v=damping, w=damping))
 
 model.forcing.w
 
@@ -250,23 +248,24 @@ velocity fields to zero and restores temperature to a linear gradient in the bot
 ```jldoctest sponge_layer
 grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
 
-        damping_rate = 1/100 # relax fields on a 100 second time-scale
+damping_rate = 1/100 # relax fields on a 100 second time-scale
 temperature_gradient = 0.001 # ⁰C m⁻¹
- surface_temperature = 20    # ⁰C (at z=0)
+surface_temperature = 20    # ⁰C (at z=0)
 
 target_temperature = LinearTarget{:z}(intercept=surface_temperature, gradient=temperature_gradient)
-       bottom_mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10)
+bottom_mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10)
 
 uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
-  T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
+T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
 
-model = NonhydrostaticModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge)
+model = NonhydrostaticModel(; grid, forcing, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.u
 
 # output
 ContinuousForcing{Nothing} at (Face, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1)^2 / (2 * 0.1^2)), target=0)
+├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
 ├── parameters: nothing
 └── field dependencies: (:u,)
 ```
@@ -276,7 +275,7 @@ model.forcing.T
 
 # output
 ContinuousForcing{Nothing} at (Center, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1)^2 / (2 * 0.1^2)), target=20 + 0.001 * z)
+├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20 + 0.001 * z)
 ├── parameters: nothing
 └── field dependencies: (:T,)
 ```
