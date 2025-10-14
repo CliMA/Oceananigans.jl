@@ -1,14 +1,13 @@
 # [Simulations: managing model time-stepping](@id simulation_overview)
 
-[`Simulation`](@ref) is a tool for orchestrating a model time-stepping loop that includes
-stop conditions, adaptive time-stepping, writing output,
-and executing arbirary user-defined "callbacks" for everything
+[`Simulation`](@ref) orchestrates model time-stepping loops that include
+stop conditions, writing output, and the execution of "callbacks" that can do everything
 from monitoring simulation progress to editing the model state.
 
-Scripts that execute numerical experiments involve four steps:
+Scripts for numerical experiments can be broken into four parts:
 
-1. Define the "grid" and physical domain for the numerical experiment
-2. Configure the physics of the experiment by building a model
+1. Definition of the "grid" and physical domain for the numerical experiment
+2. Configuration of physics by building a model
 3. Wrap the model in a `Simulation` and construct a time-stepping loop by
    attaching callbacks and output writers.
 4. Call [`run!`](@ref) to integrate the model forward in time.
@@ -26,7 +25,7 @@ DocTestSetup = quote
 end
 ```
 
-To illustrate how `Simulation` works we start with an ultra-minimal example:
+A minimal example illustrates how `Simulation` works:
 
 ```@example simulation_overview
 using Oceananigans
@@ -39,7 +38,7 @@ run!(simulation)
 simulation
 ```
 
-A slightly more complicated callback setup for `Simulation` might look like
+A more complicated setup might invoke multiple callbacks:
 
 ```@example simulation_overview
 using Oceananigans
@@ -59,7 +58,7 @@ run!(simulation)
 
 `Simulation` bookkeeps the total iterations performed, the next `Δt`, and the
 lists of `callbacks` and `output_writers`.
-`Simulation`s can also be continued, which is helpful for interactive work:
+`Simulation`s can be continued, which is helpful for interactive work:
 
 ```@example simulation_overview
 simulation.stop_time = 42
@@ -80,10 +79,10 @@ simulation = Simulation(model; Δt=0.1, stop_time=10, stop_iteration=10000, wall
 
 ### Callbacks: basics
 
-Callbacks execute arbitrary code on [schedule](@ref callback_schedules).
-They automate tasks such as logging, runtime adjustments, or scientific diagnostics.
-The simplest callbacks are used to monitor the progress of a simulation.
-We illustrate a hierarchy of callbacks by using a slightly-less trivial simulation:
+Callbacks execute arbitrary code on [schedules](@ref schedules).
+They can be used to monitor simulation progress, compute diagnostics, and adjust the
+course of a simulation.
+To illustrate a hierarchy of callbacks we use a simulation with a forced passive tracer:
 
 ```@example simulation_overview
 using Oceananigans
@@ -146,7 +145,8 @@ run!(simulation)
 
 The time-step can be changed by modifying `simulation.Δt`.
 To decrease the computational cost of simulations of flows that significantly grow or decay in time,
-users may invoke a special callback called [`TimeStepWizard`](@ref).
+users may invoke a special callback called [`TimeStepWizard`](@ref) (which is associated with a special
+helper function [`conjure_time_step_wizard!`](@ref)).
 `TimeStepWizard` monitors the [advective and diffusive Courant numbers](https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition),
 increasing or decreasing `simulation.Δt` to keep the time-step near its maximum stable value
 while respecting bounds such as `max_change` or `max_Δt`.
@@ -258,4 +258,4 @@ run!(simulation)
 
 This pattern combines short informative logging, adaptive stepping, and periodic state dumps.
 Modify the schedules or outputs to suit your experiment. For more recipes continue with the
-pages on [Callbacks](@ref callbacks) and [Output writers](@ref output_writers).
+pages on [Output writers](@ref output_writers).

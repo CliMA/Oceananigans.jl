@@ -86,7 +86,7 @@ example_pages = [
 ]
 
 model_pages = [
-    "Overview" => "models/overview.md",
+    "Overview" => "models/models_overview.md",
     "Coriolis forces" => "models/coriolis.md",
     "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
     "Turbulence closures" => "models/turbulence_closures.md",
@@ -97,8 +97,9 @@ model_pages = [
 ]
 
 simulation_pages = [
-    "Overview" => "simulations/overview.md",
-    "Callbacks" => "simulations/callbacks.md",
+    "Overview" => "simulations/simulations_overview.md",
+    # "Callbacks" => "simulations/callbacks.md",
+    "Schedules" => "simulations/schedules.md",
     "Output writers" => "simulations/output_writers.md",
     "Checkpointing" => "simulations/checkpointing.md",
 ]
