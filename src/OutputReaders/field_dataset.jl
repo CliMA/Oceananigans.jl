@@ -109,26 +109,27 @@ Keyword arguments
 function FieldDataset(grid, fields::Tuple{Symbol, N}, times;
     backend=OnDisk(),
     path=nothing,
-    location=nothing,
-    indices=nothing,
-    boundary_conditions=nothing,
+    location=NamedTuple(),
+    indices=NamedTuple(),
+    boundary_conditions=NamedTuple(),
     metadata=Dict(),
     reader_kw=NamedTuple()) where {N}
 
     field_names = map(String, fields)
 
     # Default behaviour
-    if isnothing(indices)
-        indices = NamedTuple(field=>(:, :, :) for field in fields)
-    end
-
-    if isnothing(location)
-        location = NamedTuple(field=>(Center(), Center(), Center()) for field in fields)
-    end
-
-    if isnothing(boundary_conditions) 
-        boundary_conditions = NamedTuple(field=>UnspecifiedBoundaryConditions() for field in fields)
-    end
+    indices = merge(
+        NamedTuple(field=>(:, :, :) for field in fields),
+        indices
+    )
+    location = merge(
+        NamedTuple(field=>(Center(), Center(), Center()) for field in fields),
+        location
+    )
+    boundary_conditions = merge(
+        NamedTuple(field=>UnspecifiedBoundaryConditions() for field in fields),
+        boundary_conditions
+    )
 
     # Check lengths
     N == length(indices) && error(ArgumentError("indices and fields must be same length"))
