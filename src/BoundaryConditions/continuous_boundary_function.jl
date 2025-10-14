@@ -73,10 +73,8 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
 4. Determining the `interps` functions that interpolate field_dependencies to the location
    of the boundary.
 """
-function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
+function regularize_boundary_condition(boundary_func::ContinuousBoundaryFunction,
                                        grid, loc, dim, Side, field_names) where C
-
-    boundary_func = bc.condition
 
     # Set boundary-normal location to Nothing:
     LX, LY, LZ = Tuple(i == dim ? Nothing : destantiate(loc[i]) for i = 1:3)
@@ -90,7 +88,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
                                                                              boundary_func.field_dependencies,
                                                                              indices, interps)
 
-    return BoundaryCondition(bc.classification, regularized_boundary_func)
+    return regularized_boundary_func
 end
 
 @inline domain_boundary_indices(::LeftBoundary, N) = 1, 1
