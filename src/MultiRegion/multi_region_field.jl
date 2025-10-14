@@ -7,7 +7,7 @@ using Oceananigans.OutputWriters: output_indices
 using Base: @propagate_inbounds
 
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
-import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, communication_buffers
@@ -185,8 +185,8 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
                              top = default_auxiliary_bc(grid, Val(:top), loc),
                              immersed = NoFluxBoundaryCondition())
 
-    west  = inject_west_boundary(connectivity, west)
-    east  = inject_east_boundary(connectivity, east)
+    west  =  inject_west_boundary(connectivity, west)
+    east  =  inject_east_boundary(connectivity, east)
     south = inject_south_boundary(connectivity, south)
     north = inject_north_boundary(connectivity, north)
 

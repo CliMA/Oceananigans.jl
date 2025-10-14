@@ -20,8 +20,8 @@ using ..HydrostaticFreeSurfaceModels: barotropic_U, barotropic_V
     
     # ∂τ(U) = - ∇η + G
     @inbounds begin
-        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
         
         # averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
@@ -35,8 +35,8 @@ end
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
-    δh_U = (δxᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-            δyᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid) 
+    δh_U = (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid) 
 
     @inbounds begin
         η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
@@ -83,11 +83,7 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, c
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
-    U_fill_halo_args = (U.data, U.boundary_conditions, U.indices, instantiated_location(U), grid, U.communication_buffers)
-    V_fill_halo_args = (V.data, V.boundary_conditions, V.indices, instantiated_location(V), grid, V.communication_buffers)
-    η_fill_halo_args = (η.data, η.boundary_conditions, η.indices, instantiated_location(η), grid, η.communication_buffers)
-
-    GC.@preserve η_args U_args U_fill_halo_args V_fill_halo_args η_fill_halo_args begin
+    GC.@preserve η_args U_args begin
 
         # We need to perform ~50 time-steps which means
         # launching ~100 very small kernels: we are limited by
@@ -96,22 +92,13 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, c
         converted_η_args = convert_to_device(arch, η_args)
         converted_U_args = convert_to_device(arch, U_args)
 
-        converted_U_fill_halo_args = convert_to_device(arch, U_fill_halo_args)
-        converted_V_fill_halo_args = convert_to_device(arch, V_fill_halo_args)
-        converted_η_fill_halo_args = convert_to_device(arch, η_fill_halo_args)
-
         for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
             
             # Advance barotropic velocities
             barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            fill_halo_regions!(converted_U_fill_halo_args...; only_local_halos=true)
-            fill_halo_regions!(converted_V_fill_halo_args...; only_local_halos=true)
-
-            # Advance free surface
             free_surface_kernel!(averaging_weight, converted_η_args...)
-            fill_halo_regions!(converted_η_fill_halo_args...; only_local_halos=true)
         end
     end
 
