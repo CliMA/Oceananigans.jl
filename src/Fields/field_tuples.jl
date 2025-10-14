@@ -192,8 +192,7 @@ function VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs
 
     u = XFaceField(grid, boundary_conditions=bcs.u, data=proposed_velocities.u.data)
     v = YFaceField(grid, boundary_conditions=bcs.v, data=proposed_velocities.v.data)
-    # w = ZFaceField(grid, boundary_conditions=bcs.w, data=proposed_velocities.w.data)
-    w = ZFaceField(grid, data=proposed_velocities.w.data)
+    w = ZFaceField(grid, boundary_conditions=bcs.w, data=proposed_velocities.w.data)
 
     return (u=u, v=v, w=w)
 end
