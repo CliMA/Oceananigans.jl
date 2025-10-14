@@ -13,7 +13,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
-using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver, closure_required_tracers
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
@@ -143,13 +143,34 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStarCoordinate)
-        error("The grid does not support ZStarCoordinate vertical coordinates. Use a `MutableVerticalDiscretization` to allow the use of ZStarCoordinate (see `MutableVerticalDiscretization`).")
+        msg = string("The grid ", summary(grid), " does not support ZStarCoordinate.", '\n',
+                     "z must be a MutableVerticalDiscretization to allow the use of ZStarCoordinate.")
+        throw(ArgumentError(msg))
     end
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
     biogeochemical_fields = biogeochemical_auxiliary_fields(biogeochemistry)
     tracers, biogeochemical_fields = validate_biogeochemistry(tracers, biogeochemical_fields, biogeochemistry, grid, clock)
+
+    # Automatically append closure-required tracers and disallow users from specifying them explicitly
+    user_tracer_names = tracernames(tracers)
+    closure_tracer_names = closure_required_tracers(closure)
+
+    # Throw an error in case of a conflict between user-specified tracers and any other tracers.
+    if any(name ∈ user_tracer_names for name in closure_tracer_names)
+        msg = string("The tracer names $(user_tracer_names) overlap with the closure auxiliary", '\n',
+                     "tracer names $(closure_tracer_names) associated with $(summary(closure)).", '\n',
+                     "The names $(closure_tracer_names) cannot be specified explicitly", '\n',
+                     "or be the names of biogeochemical tracers.")
+        throw(ArgumentError(msg))
+    elseif tracers isa NamedTuple
+        closure_tracer_fields = Tuple(CenterField(grid) for _ in closure_tracer_names)
+        closure_tracers = NamedTuple{closure_tracer_names}(closure_tracer_fields)
+        tracers = merge(tracers, closure_tracers)
+    else
+        tracers = tuple(user_tracer_names..., closure_tracer_names...)
+    end
 
     # Reduce the advection order in directions that do not have enough grid points
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
@@ -261,4 +282,3 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
-
