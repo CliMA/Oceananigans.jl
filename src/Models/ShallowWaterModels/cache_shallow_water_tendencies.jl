@@ -20,20 +20,16 @@ end
 
 """ Store previous source terms before updating them. """
 function cache_previous_tendencies!(model::ShallowWaterModel)
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    _cache_solution!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_solution_tendencies!)
+    _cache_tracer!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_field_tendencies!)
 
-    cache_solution_tendencies_kernel! = _cache_solution_tendencies!(device(model.architecture), workgroup, worksize)
-    cache_tracer_tendency_kernel! = _cache_field_tendencies!(device(model.architecture), workgroup, worksize)
-
-    cache_solution_tendencies_kernel!(model.timestepper.G⁻,
-                                      model.grid,
-                                      model.timestepper.Gⁿ)
+    _cache_solution!(model.timestepper.G⁻, model.grid, model.timestepper.Gⁿ)
 
     # Tracer fields
     for i in 4:length(model.timestepper.G⁻)
         @inbounds Gc⁻ = model.timestepper.G⁻[i]
         @inbounds Gc⁰ = model.timestepper.Gⁿ[i]
-        cache_tracer_tendency_kernel!(Gc⁻, model.grid, Gc⁰)
+        _cache_tracer!(Gc⁻, model.grid, Gc⁰)
     end
 
     return nothing
