@@ -1,143 +1,133 @@
 #####
 ##### This file provides functions that conditionally-evaluate interpolation operators
-##### near boundaries in bounded directions
+##### near boundaries in bounded directions.
+#####
+##### For example, the function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c) either
+#####
+#####     1. Always returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Periodic; or
+#####
+#####     2. Returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Bounded and index i is not
+#####        close to the boundary, or a second-order interpolation if i is close to a boundary.
 #####
 
 using Oceananigans.Grids: AbstractGrid,
-                          AbstractUnderlyingGrid,
                           Bounded,
                           RightConnected,
                           LeftConnected,
                           topology,
                           architecture
 
-const AG  = AbstractGrid
-const AUG = AbstractUnderlyingGrid
+const AG = AbstractGrid
 
 # topologies bounded at least on one side
 const BT = Union{Bounded, RightConnected, LeftConnected}
 
-# Bounded Grids
-const AGX = AUG{<:Any, <:BT}
-const AGY = AUG{<:Any, <:Any, <:BT}
-const AGZ = AUG{<:Any, <:Any, <:Any, <:BT}
+# Bounded underlying Grids
+const AGX   = AG{<:Any, <:BT}
+const AGY   = AG{<:Any, <:Any, <:BT}
+const AGZ   = AG{<:Any, <:Any, <:Any, <:BT}
+const AGXY  = AG{<:Any, <:BT, <:BT}
+const AGXZ  = AG{<:Any, <:BT, <:Any, <:BT}
+const AGYZ  = AG{<:Any, <:Any, <:BT, <:BT}
+const AGXYZ = AG{<:Any, <:BT, <:BT, <:BT}
 
-# Reduction of the order near boundaries 
-#
-# For faces reconstructions with NoBias (tracers for example):
-#               B                                                           B
-#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
-#  order:       1     1     2     3   ....        ....    3     2     1     1
-#
-# For faces reconstructions with LeftBias (tracers for example):
-#               B                                                           B
-#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
-#  order:       1     1     2     3   ....        ....    4     3     2     1
-#
-# For faces reconstructions with RightBias (tracers for example):
-#               B                                                           B
-#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
-#  order:       1     2     3     4   ....        ....    3     2     1     1
-#
-# For center reconstructions the bias does not matter (vorticity for example):
-#               B                                                           B
-#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
-#  order:    1     1     2     3    ...               ...    3     2     1     1
-#
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::NoBias) = max(1, min(B, i-1))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::NoBias) = max(1, min(B, N+1-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::NoBias) = max(1, min(B, i-1, N+1-i))
+# Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
+# Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::LeftBias) = max(1, min(B, i-1))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::LeftBias) = max(1, min(B, N+2-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::LeftBias) = max(1, min(B, i-1, N+2-i))
+for dir in (:x, :y, :z)
+    outside_symmetric_haloᶠ = Symbol(:outside_symmetric_halo_, dir, :ᶠ)
+    outside_symmetric_haloᶜ = Symbol(:outside_symmetric_halo_, dir, :ᶜ)
+    outside_biased_haloᶠ    = Symbol(:outside_biased_halo_, dir, :ᶠ)
+    outside_biased_haloᶜ    = Symbol(:outside_biased_halo_, dir, :ᶜ)
+    required_halo_size      = Symbol(:required_halo_size_, dir)
 
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::RightBias) = max(1, min(B, i))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::RightBias) = max(1, min(B, N+1-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::RightBias) = max(1, min(B, i, N+1-i))
+    @eval begin
+        # Bounded topologies
+        @inline $outside_symmetric_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
 
-@inline reduced_center_order(i, ::Type{RightConnected}, N, B, bias) = max(1, min(B, i))
-@inline reduced_center_order(i, ::Type{LeftConnected},  N, B, bias) = max(1, min(B, N+1-i))
-@inline reduced_center_order(i, ::Type{Bounded},        N, B, bias) = max(1, min(B, i, N+1-i))
+        @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                    (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                    (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv))          # Right bias
 
-const A{B} = AbstractAdvectionScheme{B} 
+        # Right connected topologies (only test the left side, i.e. the bounded side)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv) + 1
+        @inline $outside_symmetric_haloᶜ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv)
 
-# Fallback for periodic underlying grids
-@inline compute_face_reduced_order_x(i, j, k, grid::AUG, ::A{B}, bias) where B = B
-@inline compute_face_reduced_order_y(i, j, k, grid::AUG, ::A{B}, bias) where B = B
-@inline compute_face_reduced_order_z(i, j, k, grid::AUG, ::A{B}, bias) where B = B
+        @inline $outside_biased_haloᶠ(i, ::Type{RightConnected}, N, adv) = (i >= $required_halo_size(adv) + 1) &  # Left bias
+                                                                           (i >= $required_halo_size(adv))        # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Type{RightConnected}, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
+                                                                           (i >= $required_halo_size(adv) - 1)    # Right bias
 
-# Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid::AUG, ::A{B}, bias) where B = B
-@inline compute_center_reduced_order_y(i, j, k, grid::AUG, ::A{B}, bias) where B = B
-@inline compute_center_reduced_order_z(i, j, k, grid::AUG, ::A{B}, bias) where B = B
+        # Left bounded topologies (only test the right side, i.e. the bounded side)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
 
-# Bounded grids
-@inline compute_face_reduced_order_x(i, j, k, grid::AGX, ::A{B}, bias) where B = reduced_face_order(i, topology(grid, 1), size(grid, 1), B, bias)
-@inline compute_face_reduced_order_y(i, j, k, grid::AGY, ::A{B}, bias) where B = reduced_face_order(j, topology(grid, 2), size(grid, 2), B, bias)
-@inline compute_face_reduced_order_z(i, j, k, grid::AGZ, ::A{B}, bias) where B = reduced_face_order(k, topology(grid, 3), size(grid, 3), B, bias)
-
-# Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid::AGX, ::A{B}, bias) where B = reduced_center_order(i, topology(grid, 1), size(grid, 1), B, bias)
-@inline compute_center_reduced_order_y(i, j, k, grid::AGY, ::A{B}, bias) where B = reduced_center_order(j, topology(grid, 2), size(grid, 2), B, bias)
-@inline compute_center_reduced_order_z(i, j, k, grid::AGZ, ::A{B}, bias) where B = reduced_center_order(k, topology(grid, 3), size(grid, 3), B, bias)
-
-@inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, args...)
-    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme, bias)
-    return biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, red_order, bias, args...)
+        @inline $outside_biased_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
+    end
 end
 
-@inline function _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, args...) 
-    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme, bias)
-    return biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, red_order, bias, args...)
+# Separate High order advection from low order advection
+const HOADV = Union{WENO,
+                    Tuple(Centered{N} for N in advection_buffers[2:end])...,
+                    Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...}
+const LOADV = Union{UpwindBiased{1}, Centered{1}}
+
+for bias in (:symmetric, :biased)
+    for (d, ξ) in enumerate((:x, :y, :z))
+
+        code = [:ᵃ, :ᵃ, :ᵃ]
+
+        for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
+            code[d] = loc
+            second_order_interp = Symbol(:ℑ, ξ, code...)
+            interp = Symbol(bias, :_interpolate_, ξ, code...)
+            alt1_interp = Symbol(alt1, interp)
+            alt2_interp = Symbol(alt2, interp)
+
+            # Simple translation for Periodic directions and low-order advection schemes (fallback)
+            @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+
+            outside_buffer = Symbol(:outside_, bias, :_halo_, ξ, loc)
+
+            # Conditional high-order interpolation in Bounded directions
+            if ξ == :x
+                @eval begin
+                    @inline $alt1_interp(i, j, k, grid::AGX, scheme::HOADV, args...) =
+                            ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
+                                   $interp(i, j, k, grid, scheme, args...),
+                                   $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
+            elseif ξ == :y
+                @eval begin
+                    @inline $alt1_interp(i, j, k, grid::AGY, scheme::HOADV, args...) =
+                        ifelse($outside_buffer(j, topology(grid, 2), grid.Ny, scheme),
+                               $interp(i, j, k, grid, scheme, args...),
+                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
+            elseif ξ == :z
+                @eval begin
+                    @inline $alt1_interp(i, j, k, grid::AGZ, scheme::HOADV, args...) =
+                        ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme),
+                               $interp(i, j, k, grid, scheme, args...),
+                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
+            end
+        end
+    end
 end
 
-@inline function _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, args...)
-    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme, bias)
-    return biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, red_order, bias, args...)
-end
+@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AGX, scheme, interp, args...) =
+                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme),
+                           multi_dimensional_reconstruction_x(i, j, k, grid, scheme, interp, args...),
+                           interp(i, j, k, grid, scheme, args...))
 
-@inline function _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, args...)
-    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme, bias)
-    return biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, red_order, bias, args...)
-end
-
-@inline function _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, args...) 
-    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme, bias)
-    return biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, red_order, bias, args...)
-end
-
-@inline function _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, args...) 
-    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme, bias)
-    return biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, red_order, bias, args...)
-end
-
-@inline function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme, NoBias())
-    return symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, red_order, args...)
-end
-
-@inline function _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme, NoBias())
-    return symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, red_order, args...)
-end
-
-@inline function _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme, NoBias())
-    return symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, red_order, args...)
-end
-
-@inline function _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme, NoBias())
-    return symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, red_order, args...)
-end
-
-@inline function _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme, NoBias())
-    return symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, red_order, args...)
-end
-
-@inline function _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme, NoBias())
-    return symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, red_order, args...)
-end
+@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AGY, scheme, interp, args...) =
+                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme),
+                            multi_dimensional_reconstruction_y(i, j, k, grid, scheme, interp, args...),
+                            interp(i, j, k, grid, scheme, args...))
