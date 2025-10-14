@@ -42,7 +42,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
          stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
               forcing :: F        # Container for forcing functions defined by the user
               closure :: E        # Diffusive 'turbulence closure' for all model fields
-         free_surface :: FS       # Diffusive 'turbulence closure' for all model fields
+         free_surface :: FS       # Linearized free surface representation (Nothing for rigid lid)
     background_fields :: BG       # Background velocity and tracer fields
             particles :: P        # Particle set for Lagrangian tracking
       biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
