@@ -4,7 +4,7 @@ using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations:
     local_size,
-    barrier!,
+    barrier,
     all_reduce,
     ranks,
     inject_halo_communication_boundary_conditions,
