@@ -80,3 +80,65 @@ function Base.show(io::IO, fds::FieldDataset)
 
     return print(io, s)
 end
+
+function auto_arg(field_names::NTuple{N, T}, a) where {N, T}
+    NamedTuple(Symbol(field_name) => a for field_name in field_names)
+end
+
+function auto_arg(field_names::NTuple{N, T}, a::NTuple{N, S}) where {N, T, S}
+    NamedTuple{map(Symbol, field_names), S}(a)
+end
+
+"""
+    FieldDataset(grid, field_names, times;
+                 backend=OnDisk(),
+                 path=nothing,
+                 locations=nothing,
+                 indices=nothing)
+
+Returns a `FieldDataset` containing a new `FieldTimeSeries` for each key in `field_names`
+on `grid` at `times`.
+
+Keyword arguments
+=================
+- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
+
+- `path`: path to data for `backend = OnDisk()`
+
+- `locations`: `Tuple` of location specifications, defaults to 
+               (Center, Center, Center) for each field`
+
+- `indices`: `Tuple` of spatial indices, defaults to (:, :, :) for each field
+
+- `boundary_conditions`: `Tuple` of boundary conditions
+
+- `metadata`: `Dict` containing metadata entries
+"""
+function FieldDataset(grid, fields::Tuple{Symbol, N}, times;
+    backend=OnDisk(),
+    path=nothing,
+    location=nothing,
+    indices=nothing,
+    boundary_conditions=nothing,
+    metadata=Dict(),
+    reader_kw=NamedTuple()) where {N}
+
+    field_names = map(String, fields)
+
+    # Check lengths
+    N == length(indices) && error(ArgumentError("indices and fields must be same length"))
+    N == length(location) && error(ArgumentError("locations and fields must be same length"))
+    N == length(boundary_conditions) && error(ArgumentError("boundary_conditions and fields must be same length"))
+
+    # Create FieldTimeSeries
+    ftss = map(field_names, indices, location, boundary_conditions) do name, ind, loc, bcs
+        FieldTimeSeries(loc, grid, times; indices=ind, backend, path, name, reader_kw, boundary_conditions=bcs)
+    end
+
+    ds = Dict{String, FieldTimeSeries}(
+        name => fts
+        for (name, fts) in zip(field_names, ftss)
+    )
+
+    return FieldDataset(ds, metadata, path, reader_kw)
+end
