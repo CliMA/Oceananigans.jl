@@ -1,10 +1,6 @@
 using KernelAbstractions: @index, @kernel
-
-using Oceananigans.TimeSteppers: _cache_field_tendencies!
-
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
-
 using Oceananigans.Utils: launch!
 
 import Oceananigans.TimeSteppers: cache_previous_tendencies!
