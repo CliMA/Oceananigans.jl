@@ -195,7 +195,14 @@ Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial stat
 function reset!(sim::Simulation)
     reset_clock!(sim.model)
     sim.stop_iteration = Inf
-    sim.stop_time = Inf
+
+    if sim.stop_time isa Number
+        sim.stop_time = Inf
+    elseif sim.stop_time isa AbstractTime
+        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+        sim.stop_time = max_datetime
+    end
+
     sim.wall_time_limit = Inf
     sim.run_wall_time = 0.0
     sim.initialized = false
