@@ -358,7 +358,7 @@ end
     OrthogonalSphericalShellGrid(arch = CPU(), FT = Oceananigans.defaults.FloatType;
                                 size,
                                 z,
-                                radius = R_Earth,
+                                radius = Oceananigans.defaults.planet_radius,
                                 conformal_mapping = nothing,
                                 halo = (3, 3, 3),
                                 topology = (Bounded, Bounded, Bounded))
@@ -369,7 +369,7 @@ function OrthogonalSphericalShellGrid(arch::AbstractArchitecture = CPU(),
                                       FT::DataType = Oceananigans.defaults.FloatType;
                                       size,
                                       z,
-                                      radius = R_Earth,
+                                      radius = Oceananigans.defaults.planet_radius,
                                       conformal_mapping = nothing,
                                       halo = (3, 3, 3), # TODO: support Flat directions
                                       topology = (Bounded, Bounded, Bounded))
