@@ -248,9 +248,9 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
-    # if solver.tridiagonal_formulation isa HomogeneousNeumannFormulation
-    #     ϕ .= ϕ .- mean(ϕ)
-    # end
+    if solver.tridiagonal_formulation isa HomogeneousNeumannFormulation
+        ϕ .= ϕ .- mean(ϕ)
+    end
 
     arch = architecture(solver)
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
