@@ -1,17 +1,17 @@
+using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
 using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
-using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
-import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
-import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-import Oceananigans.Grids: xnodes, ynodes
-import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices, communication_buffers
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
 import Oceananigans.Diagnostics: hasnan
+import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
+                            validate_field_data, validate_boundary_conditions, validate_indices
+import Oceananigans.Grids: xnodes, ynodes
 
 import Base: fill!, axes
 
