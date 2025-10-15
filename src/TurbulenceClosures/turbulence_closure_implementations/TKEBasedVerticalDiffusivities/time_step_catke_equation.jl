@@ -132,7 +132,7 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
                    diffusivity_fields, Val(tracer_index),
                    model.clock, 
                    fields(model), 
-                   Δτ)
+                   Δt)
                    
     return nothing
 end
