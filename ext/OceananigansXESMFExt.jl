@@ -51,11 +51,12 @@ function xesmf_coordinates(grid::AbstractGrid, ℓx, ℓy, ℓz)
     # Python's xESMF expects 2D arrays with (x, y) coordinates
     # in which y varies in dim=1 and x varies in dim=2
     # therefore we transpose the coordinate matrices
+    coords_dictionary = Dict("lat"   => permutedims(φ, (2, 1)),  # φ is latitude
+                             "lon"   => permutedims(λ, (2, 1)),  # λ is longitude
+                             "lat_b" => permutedims(φv, (2, 1)),
+                             "lon_b" => permutedims(λv, (2, 1)))
 
-    return Dict("lat"   => permutedims(φ, (2, 1)),  # φ is latitude
-                "lon"   => permutedims(λ, (2, 1)),  # λ is longitude
-                "lat_b" => permutedims(φv, (2, 1)),
-                "lon_b" => permutedims(λv, (2, 1)))
+    return coords_dictionary
 end
 
 """
