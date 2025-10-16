@@ -5,21 +5,23 @@ A wrapper for boundary condition functions with optional parameters.
 When `parameters=nothing`, the boundary condition `func` is called with the signature
 
 ```
-func(i, j, grid, clock, model_fields)
+func(i, j, grid, clock, model_fields, args...)
 ```
 
 where `i, j` are the indices along the boundary,
-where `grid` is `model.grid`, `clock.time` is the current simulation time and
-`clock.iteration` is the current model iteration, and
-`model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.diffusivity_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
-of `OffsetArray`s depending on the turbulence closure) of field data.
+`grid` is `model.grid`,
+`model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers` or
+the fields in `model.diffusivity_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
+of `OffsetArray`s depending on the turbulence closure) of field data,
+and `args` are any additional arguments passed to `getbc`.
+Note also that `clock.time` is the current simulation time and `clock.iteration` is the current model
+iteration.
 
 When `parameters` is not `nothing`, the boundary condition `func` is called with
 the signature
 
 ```
-func(i, j, grid, clock, model_fields, parameters)
+func(i, j, grid, clock, model_fields, parameters, args...)
 ```
 
 *Note* that the index `end` does *not* access the final physical grid point of
@@ -34,17 +36,17 @@ end
 const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
 
 @inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, grid, clock, model_fields)
+    condition.func(i, j, grid, clock, model_fields, args...)
 
 @inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, grid, clock, model_fields, condition.parameters)
+    condition.func(i, j, grid, clock, model_fields, condition.parameters, args...)
 
 # 3D function for immersed boundary conditions
 @inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, k, grid, clock, model_fields)
+    condition.func(i, j, k, grid, clock, model_fields, args...)
 
 @inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    condition.func(i, j, k, grid, clock, model_fields, condition.parameters)
+    condition.func(i, j, k, grid, clock, model_fields, condition.parameters, args...)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)
