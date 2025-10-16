@@ -1,3 +1,5 @@
+using Oceananigans.Fields: instantiated_location
+
 struct FieldDataset{F, M, P, KW}
         fields :: F
       metadata :: M
@@ -97,7 +99,7 @@ Keyword arguments
 
 - `path`: path to data for `backend = OnDisk()`
 
-- `locations`: `Tuple` of location specifications, defaults to 
+- `location`: `Tuple` of location specifications, defaults to 
                (Center, Center, Center) for each field`
 
 - `indices`: `Tuple` of spatial indices, defaults to (:, :, :) for each field
@@ -106,7 +108,7 @@ Keyword arguments
 
 - `metadata`: `Dict` containing metadata entries
 """
-function FieldDataset(grid, fields::Tuple{Symbol, N}, times;
+function FieldDataset(grid, fields::NTuple{N, Symbol}, times;
     backend=OnDisk(),
     path=nothing,
     location=NamedTuple(),
@@ -153,4 +155,30 @@ function FieldDataset(grid, fields::Tuple{Symbol, N}, times;
     )
 
     return FieldDataset(ds, metadata, path, reader_kw)
+end
+
+# "Similar to" constructor for easily writing existing fields
+function FieldDataset(fields, times; 
+    backend=OnDisk(),
+    path=nothing,
+    metadata=Dict(),
+    reader_kw=NamedTuple()
+    )
+
+    grid = fields[1].grid
+    any([field.grid != grid for field in fields]) && throw(ArgumentError("All fields must be defined on the same grid"))
+
+    location = map(instantiated_location, fields)
+    indices = map(Fields.indices, fields)
+    boundary_conditions = map(Fields.boundary_conditions, fields)
+
+    FieldDataset(grid, keys(fields), times; 
+        backend,
+        metadata,
+        reader_kw,
+        path,
+        location,
+        indices,
+        boundary_conditions
+    )
 end
