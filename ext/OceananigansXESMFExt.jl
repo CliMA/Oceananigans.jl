@@ -114,7 +114,6 @@ regridder = XESMF.Regridder(dst_field, src_field, method="conservative")
 ```
 
 We can use the above regridder to regrid via [`regrid!`](@ref).
-```
 """
 function Regridder(dst_field::AbstractField, src_field::AbstractField; method="conservative")
 
