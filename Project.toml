@@ -63,7 +63,7 @@ OceananigansXESMFExt = ["XESMF"]
 [compat]
 AMDGPU = "1.3.6, 2"
 Adapt = "4.1.1"
-CUDA = "=5.8.5, 5.9.1"
+CUDA = "=5.8.5, 5.9.1, 5"
 ConstructionBase = "1"
 Crayons = "4"
 CubedSphere = "0.2, 0.3 - 0.3.2"
