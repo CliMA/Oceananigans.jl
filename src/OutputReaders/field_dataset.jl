@@ -1,4 +1,4 @@
-using Oceananigans.Fields: instantiated_location
+using Oceananigans.Fields: instantiated_location, indices, boundary_conditions
 import Oceananigans.Fields: set!
 
 struct FieldDataset{F, M, P, KW}
@@ -169,18 +169,18 @@ function FieldDataset(fields, times;
     grid = fields[1].grid
     any([field.grid != grid for field in fields]) && throw(ArgumentError("All fields must be defined on the same grid"))
 
-    location = map(instantiated_location, fields)
-    indices = map(Fields.indices, fields)
-    boundary_conditions = map(Fields.boundary_conditions, fields)
+    loc = map(instantiated_location, fields)
+    inds = map(Fields.indices, fields)
+    bcs = map(Fields.boundary_conditions, fields)
 
     FieldDataset(grid, keys(fields), times; 
         backend,
         metadata,
         reader_kw,
         path,
-        location,
-        indices,
-        boundary_conditions
+        location=loc,
+        indices=inds,
+        boundary_conditions=bcs
     )
 end
 
