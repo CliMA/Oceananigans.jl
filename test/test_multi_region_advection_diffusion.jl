@@ -9,7 +9,7 @@ function Δ_min(grid)
     return min(Δx_min, Δy_min)
 end
 
-function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
+function solid_body_tracer_advection_test(grid; partition=XPartition, regions=1)
 
     if grid isa RectilinearGrid
         L = 0.1
@@ -21,7 +21,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     cᵢ(x, y, z) = Gaussian(x, 0, L)
     eᵢ(x, y, z) = Gaussian(x, y, L)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions))
+    mrg = MultiRegionGrid(grid, partition = partition(regions))
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         tracers = (:c, :e),
@@ -47,9 +47,9 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     return model.tracers
 end
 
-function solid_body_rotation_test(grid; P = XPartition, regions = 1)
+function solid_body_rotation_test(grid; partition=XPartition, regions=1)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions))
+    mrg = MultiRegionGrid(grid, partition=partition(regions))
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
@@ -82,9 +82,9 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
 end
 
-function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field_name = :c)
+function diffusion_cosine_test(grid; partition=XPartition, regions = 1, closure, field_name = :c)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions))
+    mrg = MultiRegionGrid(grid, partition=partition(regions))
 
     # For MultiRegionGrids with regions > 1, the SplitExplicitFreeSurface extends the
     # halo region in the horizontal. Because the extented halo region size cannot exceed
@@ -121,7 +121,7 @@ end
 
 Nx = Ny = 32
 
-partitioning = [XPartition]
+partitions_to_test = [XPartition]
 
 for arch in archs
     grid_rect = RectilinearGrid(arch,
@@ -149,9 +149,11 @@ for arch in archs
             cs = Array(interior(cs))
             es = Array(interior(es))
 
-            for regions in (2,), P in partitioning
-                @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-                c, e = solid_body_tracer_advection_test(grid; P=P, regions=regions)
+            for partition in partitions_to_test
+                regions = 2
+                G = typeof(grid).name.wrapper
+                @info "  Testing $regions $partition on $G on the $arch"
+                c, e = solid_body_tracer_advection_test(grid; partition, regions)
 
                 c = interior(reconstruct_global_field(c))
                 e = interior(reconstruct_global_field(e))
@@ -181,9 +183,11 @@ for arch in archs
         cs = Array(interior(cs))
         ηs = Array(interior(ηs))
 
-        for regions in (2,), P in partitioning
-            @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-            u, v, w, c, η = solid_body_rotation_test(grid; P=P, regions=regions)
+        for partition = partitions_to_test
+            regions = 2
+            G = typeof(grid).name.wrapper
+            @info "  Testing $regions $partition on $G on the $arch"
+            u, v, w, c, η = solid_body_rotation_test(grid; partition, regions=regions)
 
             u = interior(reconstruct_global_field(u))
             v = interior(reconstruct_global_field(v))
@@ -218,10 +222,11 @@ for arch in archs
                 fs = diffusion_cosine_test(grid; closure, field_name, regions = 1)
                 fs = Array(interior(fs))
 
-                for regions in (2,), P in partitioning
-                    @info "  Testing diffusion of $field_name on $regions $(P)s with $(typeof(closure).name.wrapper) on $arch"
+                for partition in partitions_to_test
+                    regions = 2
+                    @info "  Testing diffusion of $field_name on $regions $(partition)s with $(typeof(closure).name.wrapper) on $arch"
 
-                    f = diffusion_cosine_test(grid; closure, P, field_name, regions)
+                    f = diffusion_cosine_test(grid; closure, partition, field_name, regions)
                     f = interior(reconstruct_global_field(f))
 
                     @test all(isapprox(f, fs, atol=1e-20, rtol=1e-15))

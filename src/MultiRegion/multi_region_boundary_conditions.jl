@@ -100,8 +100,11 @@ function (::MultiRegionFillHalo{<:WestAndEast})(c, westbc, eastbc, loc, grid, bu
     device_copy_to!(westdst, westsrc)
     device_copy_to!(eastdst, eastsrc)
 
-    view(parent(c), 1:H, :, :) .= westdst
-    view(parent(c), N+H+1:N+2H, :, :) .= eastdst
+    west_halo = view(parent(c), 1:H, :, :)
+    west_halo .= westdst
+
+    east_halo = view(parent(c), N+H+1:N+2H, :, :)
+    east_halo .= eastdst
 
     return nothing
 end
@@ -119,8 +122,11 @@ function (::MultiRegionFillHalo{<:SouthAndNorth})(c, southbc, northbc, loc, grid
     device_copy_to!(southdst, southsrc)
     device_copy_to!(northdst, northsrc)
 
-    view(parent(c), :, 1:H, :) .= southdst
-    view(parent(c), :, N+H+1:N+2H, :) .= northdst
+    south_halo = view(parent(c), :, 1:H, :)
+    south_halo .= southdst
+
+    north_halo = view(parent(c), :, N+H+1:N+2H, :)
+    north_halo .= northdst
 
     return nothing
 end
@@ -138,8 +144,8 @@ function (::MultiRegionFillHalo{<:West})(c, bc, loc, grid, buffers)
 
     device_copy_to!(dst, src)
 
-    p  = view(parent(c), 1:H, :, :)
-    p .= dst
+    west_halo = view(parent(c), 1:H, :, :)
+    west_halo .= dst
 
     return nothing
 end
@@ -153,8 +159,8 @@ function (::MultiRegionFillHalo{<:East})(c, bc, loc, grid, buffers)
 
     device_copy_to!(dst, src)
 
-    p  = view(parent(c), N+H+1:N+2H, :, :)
-    p .= dst
+    east_halo = view(parent(c), N+H+1:N+2H, :, :)
+    east_halo .= dst
 
     return nothing
 end
@@ -168,8 +174,8 @@ function (::MultiRegionFillHalo{<:South})(c, bc, loc, grid, buffers)
 
     device_copy_to!(dst, src)
 
-    p  = view(parent(c), :, 1:H, :)
-    p .= dst
+    south_halo = view(parent(c), :, 1:H, :)
+    south_halo .= dst
 
     return nothing
 end
@@ -183,8 +189,8 @@ function (::MultiRegionFillHalo{<:North})(c, bc, loc, grid, buffers)
 
     device_copy_to!(dst, src)
 
-    p = view(parent(c), :, N+H+1:N+2H, :)
-    p .= dst
+    north_halo = view(parent(c), :, N+H+1:N+2H, :)
+    north_halo .= dst
 
     return nothing
 end
@@ -194,15 +200,15 @@ end
 #####
 
 @inline getregion(fc::FieldBoundaryConditions, i) =
-            FieldBoundaryConditions(_getregion(fc.west, i),
-                                    _getregion(fc.east, i),
-                                    _getregion(fc.south, i),
-                                    _getregion(fc.north, i),
-                                    _getregion(fc.bottom, i),
-                                    _getregion(fc.top, i),
-                                    fc.immersed,
-                                    fc.kernels,
-                                    _getregion(fc.ordered_bcs, i))
+    FieldBoundaryConditions(_getregion(fc.west, i),
+                            _getregion(fc.east, i),
+                            _getregion(fc.south, i),
+                            _getregion(fc.north, i),
+                            _getregion(fc.bottom, i),
+                            _getregion(fc.top, i),
+                            fc.immersed,
+                            fc.kernels,
+                            _getregion(fc.ordered_bcs, i))
 
 @inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
@@ -214,27 +220,27 @@ end
                                                 cf.field_dependencies_interp)
 
 @inline getregion(df::DiscreteBoundaryFunction, i) =
-            DiscreteBoundaryFunction(_getregion(df.func, i), _getregion(df.parameters, i))
+    DiscreteBoundaryFunction(_getregion(df.func, i), _getregion(df.parameters, i))
 
 @inline _getregion(fc::FieldBoundaryConditions, i) =
-            FieldBoundaryConditions(getregion(fc.west, i),
-                                    getregion(fc.east, i),
-                                    getregion(fc.south, i),
-                                    getregion(fc.north, i),
-                                    getregion(fc.bottom, i),
-                                    getregion(fc.top, i),
-                                    fc.immersed,
-                                    fc.kernels,
-                                    getregion(fc.ordered_bcs, i))
+    FieldBoundaryConditions(getregion(fc.west, i),
+                            getregion(fc.east, i),
+                            getregion(fc.south, i),
+                            getregion(fc.north, i),
+                            getregion(fc.bottom, i),
+                            getregion(fc.top, i),
+                            fc.immersed,
+                            fc.kernels,
+                            getregion(fc.ordered_bcs, i))
 
 @inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
 @inline _getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
-            ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
-                                                getregion(cf.parameters, i),
-                                                cf.field_dependencies,
-                                                cf.field_dependencies_indices,
-                                                cf.field_dependencies_interp)
+    ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
+                                           getregion(cf.parameters, i),
+                                           cf.field_dependencies,
+                                           cf.field_dependencies_indices,
+                                           cf.field_dependencies_interp)
 
 @inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(getregion(df.func, i), getregion(df.parameters, i))
 

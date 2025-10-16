@@ -153,18 +153,18 @@ The default boundary condition can be changed by passing a positional argument t
 as in
 
 ```jldoctest
-julia> no_slip_bc = ValueBoundaryCondition(0.0)
-ValueBoundaryCondition: 0.0
+julia> no_slip_bc = ValueBoundaryCondition(0)
+ValueBoundaryCondition: 0
 
 julia> free_slip_surface_bcs = FieldBoundaryConditions(no_slip_bc, top=FluxBoundaryCondition(nothing))
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── east: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+├── west: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── east: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ├── top: FluxBoundaryCondition: Nothing
-└── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+└── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ```
 
 ## Boundary condition structures
