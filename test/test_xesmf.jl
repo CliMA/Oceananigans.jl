@@ -4,8 +4,7 @@ using XESMF
 using SparseArrays
 using LinearAlgebra
 
-gaussian_bump(λ, φ; amplitude = 1, λ₀=0, φ₀=0, width=10) =
-    amplitude * exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2)
+gaussian_bump(λ, φ; λ₀=0, φ₀=0, width=10) = exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2width^2)
 
 for arch in archs
     @testset "XESMF extension [$(typeof(arch))]" begin
@@ -38,8 +37,8 @@ for arch in archs
             dst_field = CenterField(dst_grid)
 
             width = 12         # degrees
-            set!(src_field, (λ, φ, z) -> gaussian_bump(λ, φ; amplitude=+1, λ₀=150, φ₀=+30, width) +
-                                         gaussian_bump(λ, φ; amplitude=-2, λ₀=270, φ₀=-20, width))
+            set!(src_field,
+                 (λ, φ, z) -> gaussian_bump(λ, φ; λ₀=150, φ₀=30, width) - 2gaussian_bump(λ, φ; λ₀=270, φ₀=-20, width))
 
             regridder = XESMF.Regridder(dst_field, src_field)
 
