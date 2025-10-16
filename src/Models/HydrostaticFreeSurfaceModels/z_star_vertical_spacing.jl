@@ -47,7 +47,7 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordina
     params = zstar_params(grid)
 
     launch!(architecture(grid), grid, params, _ab2_update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
+            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
 
     return nothing
 end
@@ -56,7 +56,7 @@ end
 # Note!!! This η is different than the free surface coming from the barotropic step!!
 # This η is the one used to compute the vertical spacing.
 # TODO: The two different free surfaces need to be reconciled.
-@kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
+@kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -138,6 +138,9 @@ end
         σᶠᶜⁿ[i, j, 1] = σᶠᶜ
         σᶜᶠⁿ[i, j, 1] = σᶜᶠ
         σᶠᶠⁿ[i, j, 1] = σᶠᶠ
+
+        # Update η in the grid
+        ηⁿ[i, j, 1] = η[i, j, k_top]
     end
 end
 

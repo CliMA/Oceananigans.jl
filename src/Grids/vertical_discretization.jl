@@ -23,10 +23,12 @@ Fields
 - `Δᶠ::F`: Face-centered grid spacing.
 """
 struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
-    cᵃᵃᶠ :: C
-    cᵃᵃᶜ :: D
-    Δᵃᵃᶠ :: E
-    Δᵃᵃᶜ :: F
+      cᵃᵃᶠ :: C
+      cᵃᵃᶜ :: D
+      Δᵃᵃᶠ :: E
+      Δᵃᵃᶜ :: F
+    Δ⁻¹ᵃᵃᶠ :: E
+    Δ⁻¹ᵃᵃᶜ :: F
 end
 
 # Summaries
@@ -35,18 +37,24 @@ const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 
 coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
-struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
-    cᵃᵃᶠ :: C
-    cᵃᵃᶜ :: D
-    Δᵃᵃᶠ :: E
-    Δᵃᵃᶜ :: F
-      ηⁿ :: H
-    σᶜᶜⁿ :: CC
-    σᶠᶜⁿ :: FC
-    σᶜᶠⁿ :: CF
-    σᶠᶠⁿ :: FF
-    σᶜᶜ⁻ :: CC
-    ∂t_σ :: CC
+struct MutableVerticalDiscretization{C, D, E, F, H, U, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+      cᵃᵃᶠ :: C
+      cᵃᵃᶜ :: D
+      Δᵃᵃᶠ :: E
+      Δᵃᵃᶜ :: F
+    Δ⁻¹ᵃᵃᶠ :: E
+    Δ⁻¹ᵃᵃᶜ :: F
+        ηⁿ :: H
+      σᶜᶜⁿ :: CC
+      σᶠᶜⁿ :: FC
+      σᶜᶠⁿ :: CF
+      σᶠᶠⁿ :: FF
+    σ⁻¹ᶜᶜⁿ :: CC
+    σ⁻¹ᶠᶜⁿ :: FC
+    σ⁻¹ᶜᶠⁿ :: CF
+    σ⁻¹ᶠᶠⁿ :: FF
+      σᶜᶜ⁻ :: CC
+      ∂t_σ :: CC
 end
 
 ####
@@ -70,8 +78,7 @@ Examples of `MutableVerticalDiscretization`s are the free-surface following coor
 (also known as "zee-star") or the terrain following coordinates (also known as "sigma"
 coordinates).
 """
-MutableVerticalDiscretization(r_faces) =
-    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
+MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:15)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -140,41 +147,58 @@ end
 
 Adapt.adapt_structure(to, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
-                                 Adapt.adapt(to, coord.cᵃᵃᶜ),
-                                 Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                                 Adapt.adapt(to, coord.Δᵃᵃᶜ))
+                             Adapt.adapt(to, coord.cᵃᵃᶜ),
+                             Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                             Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                             Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                             Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ))
 
 on_architecture(arch, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
-                                 on_architecture(arch, coord.cᵃᵃᶜ),
-                                 on_architecture(arch, coord.Δᵃᵃᶠ),
-                                 on_architecture(arch, coord.Δᵃᵃᶜ))
+                             on_architecture(arch, coord.cᵃᵃᶜ),
+                             on_architecture(arch, coord.Δᵃᵃᶠ),
+                             on_architecture(arch, coord.Δᵃᵃᶜ),
+                             on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                             on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ))
 
 Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
-                                  Adapt.adapt(to, coord.cᵃᵃᶜ),
-                                  Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                                  Adapt.adapt(to, coord.Δᵃᵃᶜ),
-                                  Adapt.adapt(to, coord.ηⁿ),
-                                  Adapt.adapt(to, coord.σᶜᶜⁿ),
-                                  Adapt.adapt(to, coord.σᶠᶜⁿ),
-                                  Adapt.adapt(to, coord.σᶜᶠⁿ),
-                                  Adapt.adapt(to, coord.σᶠᶠⁿ),
-                                  Adapt.adapt(to, coord.σᶜᶜ⁻),
-                                  Adapt.adapt(to, coord.∂t_σ))
+                              Adapt.adapt(to, coord.cᵃᵃᶜ),
+                              Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                              Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                              Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                              Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ),
+                              Adapt.adapt(to, coord.ηⁿ),
+                              Adapt.adapt(to, coord.σᶜᶜⁿ),
+                              Adapt.adapt(to, coord.σᶠᶜⁿ),
+                              Adapt.adapt(to, coord.σᶜᶠⁿ),
+                              Adapt.adapt(to, coord.σᶠᶠⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶜᶜⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶠᶜⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶜᶠⁿ),
+                              Adapt.adapt(to, coord.σ⁻¹ᶠᶠⁿ),
+                              Adapt.adapt(to, coord.σᶜᶜ⁻),
+                              Adapt.adapt(to, coord.∂t_σ))
 
 on_architecture(arch, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
-                                  on_architecture(arch, coord.cᵃᵃᶜ),
-                                  on_architecture(arch, coord.Δᵃᵃᶠ),
-                                  on_architecture(arch, coord.Δᵃᵃᶜ),
-                                  on_architecture(arch, coord.ηⁿ),
-                                  on_architecture(arch, coord.σᶜᶜⁿ),
-                                  on_architecture(arch, coord.σᶠᶜⁿ),
-                                  on_architecture(arch, coord.σᶜᶠⁿ),
-                                  on_architecture(arch, coord.σᶠᶠⁿ),
-                                  on_architecture(arch, coord.σᶜᶜ⁻),
-                                  on_architecture(arch, coord.∂t_σ))
+                              on_architecture(arch, coord.cᵃᵃᶜ),
+                              on_architecture(arch, coord.Δᵃᵃᶠ),
+                              on_architecture(arch, coord.Δᵃᵃᶜ),
+                              on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                              on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ),
+                              on_architecture(arch, coord.ηⁿ),
+                              on_architecture(arch, coord.σᶜᶜⁿ),
+                              on_architecture(arch, coord.σᶠᶜⁿ),
+                              on_architecture(arch, coord.σᶜᶠⁿ),
+                              on_architecture(arch, coord.σᶠᶠⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶜᶜⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶠᶜⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶜᶠⁿ),
+                              on_architecture(arch, coord.σ⁻¹ᶠᶠⁿ),
+                              on_architecture(arch, coord.σᶜᶜ⁻),
+                              on_architecture(arch, coord.∂t_σ))
+
 
 #####
 ##### Nodes and spacings (common to every grid)...

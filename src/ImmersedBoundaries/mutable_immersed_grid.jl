@@ -29,8 +29,9 @@ const MutableGridOfSomeKind = Union{MutableImmersedGrid, AbstractMutableGrid}
 @inline column_depthᶠᶠᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
 
 # Fallbacks
-@inline σⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
-@inline σ⁻(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline σⁿ(i,   j, k, ibg::IBG, ℓx, ℓy, ℓz) = σⁿ(i,   j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline σ⁻(i,   j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻(i,   j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline σ⁻¹ⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻¹ⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
 @inline ∂t_σ(i, j, k, ibg::IBG) = ∂t_σ(i, j, k, ibg.underlying_grid)
 
@@ -43,6 +44,9 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
     zspacing = Symbol(:Δz, LX, LY, LZ)
     rspacing = Symbol(:Δr, LX, LY, LZ)
 
+    rcp_zspacing = Symbol(:Δz⁻¹, LX, LY, LZ)
+    rcp_rspacing = Symbol(:Δr⁻¹, LX, LY, LZ)
+
     ℓx = superscript_location(LX)
     ℓy = superscript_location(LY)
     ℓz = superscript_location(LZ)
@@ -54,5 +58,9 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
         @inline $zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+
+        @inline $rcp_zspacing(i, j, k, grid::IMRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::IMLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::IMOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
     end
 end
