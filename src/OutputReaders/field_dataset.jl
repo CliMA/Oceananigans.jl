@@ -1,4 +1,5 @@
 using Oceananigans.Fields: instantiated_location
+import Oceananigans.Fields: set!
 
 struct FieldDataset{F, M, P, KW}
         fields :: F
@@ -181,4 +182,11 @@ function FieldDataset(fields, times;
         indices,
         boundary_conditions
     )
+end
+
+# Setting a FieldDataset iterates over contained FieldTimeSeries
+function set!(fds::FieldDataset, args...; fields...)
+    for (k, v) in pairs(fields)
+        set!(fds[k], v, args...)
+    end
 end
