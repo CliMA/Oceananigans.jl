@@ -66,24 +66,24 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 
 """
     HydrostaticFreeSurfaceModel(; grid,
-                                clock = Clock{Float64}(time = 0),
-                                momentum_advection = VectorInvariant(),
-                                tracer_advection = Centered(),
-                                buoyancy = SeawaterBuoyancy(eltype(grid)),
-                                coriolis = nothing,
-                                free_surface = [default_free_surface],
-                                forcing::NamedTuple = NamedTuple(),
-                                closure = nothing,
-                                timestepper = :QuasiAdamsBashforth2,
-                                boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (:T, :S),
-                                particles::ParticlesOrNothing = nothing,
-                                biogeochemistry::AbstractBGCOrNothing = nothing,
-                                velocities = nothing,
-                                pressure = nothing,
-                                diffusivity_fields = nothing,
-                                auxiliary_fields = NamedTuple(),
-                                vertical_coordinate = default_vertical_coordinate(grid))
+                                  clock = Clock{Float64}(time = 0),
+                                  momentum_advection = VectorInvariant(),
+                                  tracer_advection = Centered(),
+                                  buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                  coriolis = nothing,
+                                  free_surface = [default_free_surface],
+                                  forcing::NamedTuple = NamedTuple(),
+                                  closure = nothing,
+                                  timestepper = :QuasiAdamsBashforth2,
+                                  boundary_conditions::NamedTuple = NamedTuple(),
+                                  tracers = (:T, :S),
+                                  particles::ParticlesOrNothing = nothing,
+                                  biogeochemistry::AbstractBGCOrNothing = nothing,
+                                  velocities = nothing,
+                                  pressure = nothing,
+                                  diffusivity_fields = nothing,
+                                  auxiliary_fields = NamedTuple(),
+                                  vertical_coordinate = default_vertical_coordinate(grid))
 
 Construct a hydrostatic model with a free surface on `grid`.
 
@@ -121,25 +121,25 @@ Keyword arguments
                            `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-    clock = Clock(grid),
-    momentum_advection = VectorInvariant(),
-    tracer_advection = Centered(),
-    buoyancy = nothing,
-    coriolis = nothing,
-    free_surface = default_free_surface(grid, gravitational_acceleration=defaults.gravitational_acceleration),
-    tracers = nothing,
-    forcing::NamedTuple = NamedTuple(),
-    closure = nothing,
-    timestepper = :QuasiAdamsBashforth2,
-    boundary_conditions::NamedTuple = NamedTuple(),
-    particles::ParticlesOrNothing = nothing,
-    biogeochemistry::AbstractBGCOrNothing = nothing,
-    velocities = nothing,
-    pressure = nothing,
-    diffusivity_fields = nothing,
-    auxiliary_fields = NamedTuple(),
-    vertical_coordinate = default_vertical_coordinate(grid))
-
+                                       clock = Clock(grid),
+                                       momentum_advection = VectorInvariant(),
+                                       tracer_advection = Centered(),
+                                       buoyancy = nothing,
+                                       coriolis = nothing,
+                                       free_surface = default_free_surface(grid, gravitational_acceleration=defaults.gravitational_acceleration),
+                                       tracers = nothing,
+                                       forcing::NamedTuple = NamedTuple(),
+                                       closure = nothing,
+                                       timestepper = :SplitRungeKutta3,
+                                       boundary_conditions::NamedTuple = NamedTuple(),
+                                       particles::ParticlesOrNothing = nothing,
+                                       biogeochemistry::AbstractBGCOrNothing = nothing,
+                                       velocities = nothing,
+                                       pressure = nothing,
+                                       diffusivity_fields = nothing,
+                                       auxiliary_fields = NamedTuple(),
+                                       vertical_coordinate = default_vertical_coordinate(grid))
+                                   
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 

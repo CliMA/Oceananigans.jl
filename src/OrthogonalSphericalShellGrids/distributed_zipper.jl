@@ -80,8 +80,10 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         arch.mpi_tag[] += 1
     end
 
-    north_bc = bcs.north
-    switch_north_halos!(c, north_bc, grid, loc)
+    if arch.mpi_tag[] == 0 # The communication was reset, we need to switch halos
+        north_bc = bcs.north
+        switch_north_halos!(c, north_bc, grid, loc)
+    end
 
     return nothing
 end
