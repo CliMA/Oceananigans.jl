@@ -17,6 +17,7 @@ using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.Models: materialize_free_surface
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: on_architecture
 
