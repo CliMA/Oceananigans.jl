@@ -138,7 +138,7 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     dφ = π/2 - φ₀
 
     # Convert to Cartesian
-    X′ = SVector(lat_lon_to_cartesian(φ′, λ′)...)
+    X′ = SVector(lat_lon_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
 
     # Rotate Cartesian coordinates
     Rx = x_rotation(dλ)
