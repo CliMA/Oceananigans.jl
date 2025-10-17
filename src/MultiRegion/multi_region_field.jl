@@ -9,8 +9,15 @@ using Base: @propagate_inbounds
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 import Oceananigans.Diagnostics: hasnan
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
-import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
-                            validate_field_data, validate_boundary_conditions, validate_indices
+import Oceananigans.Fields: set_to_array!,
+                            set_to_field!,
+                            compute!, 
+                            compute_at!, 
+                            interior, 
+                            communication_buffers,
+                            validate_field_data, 
+                            validate_boundary_conditions, 
+                            validate_indices
 import Oceananigans.Grids: xnodes, ynodes
 
 import Base: fill!, axes
@@ -111,15 +118,14 @@ function reconstruct_global_indices(indices, p::YPartition, N)
     return (idx_x, idx_y, idx_z)
 end
 
-## Functions applied regionally
-set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
-fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
+# Set fields regionally
+set_to_array!(mrf::MultiRegionField, a) = apply_regionally!(set_to_array!, mrf, a)
+set_to_field!(mrf::MultiRegionField, v) = apply_regionally!(set_to_field!, mrf, v)
 
-set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
+# Fill fields regionally
+fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
 
-set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
-set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
 compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
 
 # Disambiguation (same as computed_field.jl:64)
