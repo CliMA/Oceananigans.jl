@@ -53,17 +53,6 @@ function test_zstar_coordinate(model, Ni, Δt)
     return nothing
 end
 
-function info_message(grid, free_surface)
-    msg1 = "$(typeof(architecture(grid))) "
-    msg2 = string(getnamewrapper(grid))
-    msg3 = grid isa ImmersedBoundaryGrid ? " on a " * string(getnamewrapper(grid.underlying_grid)) : ""
-    msg4 = grid.z.Δᵃᵃᶠ isa Number ? " with uniform spacing" : " with stretched spacing"
-    msg5 = grid isa ImmersedBoundaryGrid ? " and $(string(getnamewrapper(grid.immersed_boundary))) immersed boundary" : ""
-    msg6 = " using a " * string(getnamewrapper(free_surface))
-    msg7 = ", T: $(topology(grid))"
-    return msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7
-end
-
 const C = Center
 const F = Face
 
