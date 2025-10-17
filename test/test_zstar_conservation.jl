@@ -92,7 +92,7 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
             end
         end
         
-        @testset "TripolarGrid ZStarCoordinate tracer conservation tests" begin
+        @testset "RungeKutta5 ZStarCoordinate tracer conservation tests" begin
             @info "  Testing a ZStarCoordinate and Runge-Kutta 5th order time stepping"
 
             topology = topologies[2]
