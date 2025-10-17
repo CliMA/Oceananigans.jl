@@ -286,7 +286,7 @@ end
     averaging_weights ./= sum(averaging_weights)
     transport_weights = [sum(averaging_weights[i:M★]) for i in 1:M★] ./ M
 
-    return Δτ, map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
+    return FT(Δτ), map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")

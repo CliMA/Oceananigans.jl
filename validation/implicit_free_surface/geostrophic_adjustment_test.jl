@@ -52,11 +52,11 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         parent(z.σᶜᶜ⁻) .= parent(z.σᶜᶜⁿ)
     end
         
-    stop_iteration=1000
+    stop_iteration=10000
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model; Δt = 0.2 * wave_propagation_time_scale, stop_iteration)
+    simulation = Simulation(model; Δt = 2 * wave_propagation_time_scale, stop_iteration)
 
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
@@ -67,7 +67,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.η)
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
-    save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
+    save_u(sim) = uarr[sim.model .clock.iteration+1] = deepcopy(sim.model.velocities.u)
     save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
     save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 1, 2]
     
@@ -83,7 +83,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         H = sum(sim.model.free_surface.η)
         push!(cav, sum(model.tracers.c * V) / sum(V))
 
-        msg = @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e, sim(η): %e",
+        msg = @sprintf("[%.2f], iteration: %d, time: %.3f, max|u|: %.2e, sim(η): %e, ",
                         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
                         sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
 
@@ -101,7 +101,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     run!(simulation)
 
-    return (η=ηarr, v=varr, u=uarr, c=carr, w=warr, g=garr), model
+    return (η=ηarr, v=varr, u=uarr, c=carr, w=warr, g=garr, cav=cav), model
 end
 
 Lh = 100kilometers
@@ -122,7 +122,7 @@ implicit_free_surface      = ImplicitFreeSurface()
 splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=120)
 
 serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
-efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface,      deepcopy(grid), :SplitRungeKutta3)
+# efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface,      deepcopy(grid), :SplitRungeKutta3)
 imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface,      deepcopy(grid), :SplitRungeKutta3)
 
 import Oceananigans.Fields: interior
