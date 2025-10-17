@@ -48,11 +48,10 @@ for arch in archs
                 @test regridder.weights isa CUDA.CUSPARSE.CuSparseMatrixCSC
             end
 
-            cpu_regridder = on_architecture(CPU(), regridder)
-            gpu_regridder = on_architecture(GPU(), regridder)
-
-            @test cpu_regridder.weights isa SparseMatrixCSC
-            if arch isa GPU{CUDABackend}
+            if arch isa GPU
+                cpu_regridder = on_architecture(CPU(), regridder)
+                @test cpu_regridder.weights isa SparseMatrixCSC
+                gpu_regridder = on_architecture(GPU(), cpu_regridder)
                 @test gpu_regridder.weights isa CUDA.CUSPARSE.CuSparseMatrixCSC
             end
 
