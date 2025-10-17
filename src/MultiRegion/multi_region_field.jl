@@ -1,17 +1,17 @@
+using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
 using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
-using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
-import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-import Oceananigans.Grids: xnodes, ynodes
-import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices, communication_buffers
 import Oceananigans.Diagnostics: hasnan
+import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
+                            validate_field_data, validate_boundary_conditions, validate_indices
+import Oceananigans.Grids: xnodes, ynodes
 
 import Base: fill!, axes
 
@@ -192,9 +192,6 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
-
-FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
-    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function Base.show(io::IO, field::MultiRegionField)
     bcs = getregion(field, 1).boundary_conditions

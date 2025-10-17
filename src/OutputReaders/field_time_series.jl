@@ -209,8 +209,23 @@ function time_indices(backend::PartlyInMemory, time_indexing, Nt)
 end
 
 time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
-
 Base.length(backend::PartlyInMemory) = backend.length
+
+function try_convert_to_range(times::AbstractArray)
+    if length(times) > 1
+        first_time = first(times)
+        last_time = last(times)
+        len = length(times)
+        try
+            candidate = range(first_time, last_time; length=len)
+            if all(candidate .== times)
+                return candidate
+            end
+        catch
+        end
+    end
+    return times
+end
 
 #####
 ##### FieldTimeSeries
@@ -247,12 +262,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            # Try to convert to a lighter-weight range for efficiency
-            time_range = range(first(times), last(times), length=length(times))
-            if isapprox(time_range, times)
-                times = time_range
-            end
-
+            times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end
 
@@ -278,7 +288,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
                                 on_architecture(to, fts.grid),
                                 on_architecture(to, fts.backend),
-                                on_architecture(to, fts.bcs),
+                                on_architecture(to, fts.boundary_conditions),
                                 on_architecture(to, fts.indices),
                                 on_architecture(to, fts.times),
                                 on_architecture(to, fts.path),
