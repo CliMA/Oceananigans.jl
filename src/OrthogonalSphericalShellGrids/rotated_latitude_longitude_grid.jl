@@ -131,8 +131,6 @@ z_rotation(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
 
 # Perform the rotation
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
-    λ′ *= π/180
-    φ′ *= π/180
     λ₀ *= π/180
     φ₀ *= π/180
 
@@ -150,9 +148,6 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
 
     # Convert back to Spherical
     φ, λ = cartesian_to_lat_lon(X)
-
-    λ *= 180/π
-    φ *= 180/π
 
     return λ, φ
 end
