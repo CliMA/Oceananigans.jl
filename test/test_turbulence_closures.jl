@@ -205,7 +205,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     return model
 end
 
-function run_time_step_with_catke_tests(arch, closure)
+function run_time_step_with_catke_tests(arch, closure, timestepper)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
 
@@ -216,7 +216,7 @@ function run_time_step_with_catke_tests(arch, closure)
     # CATKE isn't supported with NonhydrostaticModel (we don't diffuse vertical velocity)
     @test_throws ErrorException NonhydrostaticModel(; grid, closure, buoyancy, tracers=(:b, :c, :e))
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :c, :e))
+    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, timestepper, tracers = (:b, :c, :e))
 
     # Default boundary condition is Flux, Nothing... with CATKE this has to change.
     @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
@@ -438,12 +438,16 @@ end
             @info "    Testing time-stepping CATKE by itself..."
             catke = CATKEVerticalDiffusivity()
             explicit_catke = CATKEVerticalDiffusivity(ExplicitTimeDiscretization())
-            run_time_step_with_catke_tests(arch, catke)
+            
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                run_time_step_with_catke_tests(arch, catke, timestepper)
+            end
+
             run_catke_tke_substepping_tests(arch, explicit_catke)
 
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (catke, HorizontalScalarDiffusivity())
-            model = run_time_step_with_catke_tests(arch, closure)
+            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
             @test first(model.closure) === closure[1]
             closure = (explicit_catke, HorizontalScalarDiffusivity())
             run_catke_tke_substepping_tests(arch, closure)
@@ -452,7 +456,7 @@ end
             # Test that closure tuples with CATKE are correctly reordered
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (HorizontalScalarDiffusivity(), catke)
-            model = run_time_step_with_catke_tests(arch, closure)
+            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
             @test first(model.closure) === closure[2]
             closure = (HorizontalScalarDiffusivity(), explicit_catke)
             run_catke_tke_substepping_tests(arch, closure)
@@ -460,7 +464,7 @@ end
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
             closure = (HorizontalScalarDiffusivity(), catke, VerticalScalarDiffusivity())
-            model = run_time_step_with_catke_tests(arch, closure)
+            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
             @test first(model.closure) === closure[2]
             closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
             run_catke_tke_substepping_tests(arch, closure)

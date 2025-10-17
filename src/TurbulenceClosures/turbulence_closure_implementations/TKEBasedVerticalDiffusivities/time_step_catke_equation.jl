@@ -128,10 +128,9 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
             Δt, Gⁿ)
 
     implicit_step!(e, implicit_solver, closure,
-                   diffusivity_fields, 
-                   Val(tracer_index),
+                   diffusivity_fields, Val(tracer_index),
                    model.clock, 
-                   fields(model),
+                   fields(model), 
                    Δt)
                    
     return nothing

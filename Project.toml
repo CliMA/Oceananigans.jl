@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.100.3"
+version = "0.100.6"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -64,7 +64,7 @@ OceananigansXESMFExt = ["XESMF"]
 [compat]
 AMDGPU = "1.3.6, 2"
 Adapt = "4.1.1"
-CUDA = "5.9"
+CUDA = "=5.8.5, 5.9.1"
 ConstructionBase = "1"
 Crayons = "4"
 CubedSphere = "0.2, 0.3 - 0.3.2"
@@ -102,7 +102,7 @@ StaticArrays = "1"
 Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6, 0.7"
 TimesDates = "0.3"
-XESMF = "0.1.4"
+XESMF = "0.1.5"
 julia = "1.9"
 oneAPI = "2.0.1"
 

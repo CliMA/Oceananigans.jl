@@ -14,7 +14,7 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperatio
 using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
-using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location
+using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
@@ -90,7 +90,7 @@ already exist, they are validated to match the expected dimensions for the given
 
 Arguments:
 - `ds`: NetCDF dataset
-- `field`: AbstractField being written  
+- `field`: AbstractField being written
 - `all_dims`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
@@ -105,7 +105,7 @@ function create_field_dimensions!(ds, field::AbstractField, all_dims, dimension_
     if "time" in all_dims && "time" ∉ keys(ds.dim)
         create_time_dimension!(ds)
     end
-    
+
     return nothing
 end
 
@@ -162,6 +162,34 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
             end
         end
     end
+end
+
+"""
+    effective_reduced_dimensions(field)
+
+Return dimensions that are effectively reduced, considering both location-based reduction
+(e.g. a `Nothing` location) and index-based reduction at boundaries (e.g. free surface
+height fields with :, :, Nz+1:Nz+1 indices).
+```
+"""
+function effective_reduced_dimensions(field)
+    loc_reduced = reduced_dimensions(field)
+
+    idx_reduced = ()
+    inds = indices(field)
+    grid_size = size(field.grid)
+
+    for (dim, ind) in enumerate(inds)
+        if ind isa UnitRange && length(ind) == 1
+            index_value = first(ind)
+            if index_value > grid_size[dim]
+                idx_reduced = (idx_reduced..., dim)
+            end
+        end
+    end
+
+    all_reduced = (loc_reduced..., idx_reduced...)
+    return Tuple(unique(all_reduced))
 end
 
 #####
@@ -431,10 +459,13 @@ end
 
 function field_dimensions(field::AbstractField, grid::RectilinearGrid, dim_name_generator)
     LX, LY, LZ = location(field)
+    TX, TY, TZ = topology(grid)
 
-    x_dim_name = dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
-    y_dim_name = dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
+    eff_reduced_dims = effective_reduced_dimensions(field)
+
+    x_dim_name = (1 ∈ eff_reduced_dims || TX == Flat) ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
+    y_dim_name = (2 ∈ eff_reduced_dims || TY == Flat) ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
+    z_dim_name = (3 ∈ eff_reduced_dims || TZ == Flat) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     x_dim_name = isempty(x_dim_name) ? tuple() : tuple(x_dim_name)
     y_dim_name = isempty(y_dim_name) ? tuple() : tuple(y_dim_name)
@@ -445,10 +476,13 @@ end
 
 function field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
     LΛ, LΦ, LZ = location(field)
+    TΛ, TΦ, TZ = topology(grid)
 
-    λ_dim_name = dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    φ_dim_name = dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
+    eff_reduced_dims = effective_reduced_dimensions(field)
+
+    λ_dim_name = (1 ∈ eff_reduced_dims || TΛ == Flat) ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
+    φ_dim_name = (2 ∈ eff_reduced_dims || TΦ == Flat) ? "" : dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
+    z_dim_name = (3 ∈ eff_reduced_dims || TZ == Flat) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     λ_dim_name = isempty(λ_dim_name) ? tuple() : tuple(λ_dim_name)
     φ_dim_name = isempty(φ_dim_name) ? tuple() : tuple(φ_dim_name)
@@ -1411,11 +1445,15 @@ drop_output_dims(output, data) = data # fallback
 drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = drop_output_dims(output.operand, data)
 
 function drop_output_dims(field::Field, data)
-    reduced_dims = reduced_dimensions(field)
+    eff_reduced_dims = effective_reduced_dimensions(field)
     flat_dims = Tuple(i for (i, T) in enumerate(topology(field.grid)) if T == Flat)
-    dims = (reduced_dims..., flat_dims...)
+    dims = (eff_reduced_dims..., flat_dims...)
     dims = Tuple(Set(dims)) # ensure dims are unique
-    return dropdims(data; dims)
+
+    # Only drop dimensions that exist in the data and are size 1
+    dims = filter(d -> d <= ndims(data) && size(data, d) == 1, dims)
+
+    return isempty(dims) ? data : dropdims(data; dims=tuple(dims...))
 end
 
 #####
