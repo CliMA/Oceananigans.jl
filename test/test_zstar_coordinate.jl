@@ -28,25 +28,22 @@ function test_zstar_coordinate(model, Ni, Δt)
         compute!(∫c)
 
         condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-        @test condition
         if !condition
-                @info "Stopping early: buoyancy not conserved at step $step"
-            break
+            @info "Stopping early: buoyancy not conserved at step $step"
         end
+        @test condition
 
         condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-        @test condition
         if !condition
-                @info "Stopping early: c tracer not conserved at step $step"
-            break
+            @info "Stopping early: c tracer not conserved at step $step"
         end
+        @test condition
 
         condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
-        @test condition
         if !condition
-                @info "Stopping early: nonzero vertical velocity at top at step $step"
-            break
+            @info "Stopping early: nonzero vertical velocity at top at step $step"
         end
+        @test condition
 
         # Constancy preservation test
         @test maximum(model.tracers.constant) ≈ 1
