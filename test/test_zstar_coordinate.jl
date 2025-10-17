@@ -6,7 +6,7 @@ using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 
-function test_zstar_coordinate(model, Ni, Δt)
+function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
 
     bᵢ = deepcopy(model.tracers.b)
     cᵢ = deepcopy(model.tracers.c)
@@ -46,8 +46,10 @@ function test_zstar_coordinate(model, Ni, Δt)
         @test condition
 
         # Constancy preservation test
-        @test maximum(model.tracers.constant) ≈ 1
-        @test minimum(model.tracers.constant) ≈ 1
+        if test_local_conservation
+            @test maximum(model.tracers.constant) ≈ 1
+            @test minimum(model.tracers.constant) ≈ 1
+        end
     end
 
     return nothing

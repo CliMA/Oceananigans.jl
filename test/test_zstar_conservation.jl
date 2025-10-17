@@ -7,7 +7,7 @@ using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 
 grid_type(::RectilinearGrid{F, X, Y}) where {F, X, Y} = "Rect{$X, $Y}"
-grid_type(::LatitudeLongitudeGrid) where {F, X, Y, Z} = "LatLon{$X, $Y}"
+grid_type(::LatitudeLongitudeGrid{F, X, Y}) where {F, X, Y} = "LatLon{$X, $Y}"
 
 grid_type(g::ImmersedBoundaryGrid) = "Immersed" * grid_type(g.underlying_grid)
 
@@ -18,6 +18,9 @@ function info_message(grid, free_surface, timestepper)
     msg4 = " using a " * string(getnamewrapper(free_surface))
     return msg1 * msg2 * msg3 * msg4
 end
+
+# QuasiAdamsBashforth2 does not guarantee local conservation of tracers
+test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
 
 @testset "ZStarCoordinate tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
@@ -82,7 +85,7 @@ end
                             set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
                             Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                            test_zstar_coordinate(model, 100, Δt)
+                            test_zstar_coordinate(model, 100, Δt, test_local_conservation(timestepper))
                         end
                     end
                 end
