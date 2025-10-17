@@ -1,3 +1,6 @@
+using Oceananigans.Fields: instantiated_location, indices, boundary_conditions
+import Oceananigans.Fields: set!
+
 struct FieldDataset{F, M, P, KW}
         fields :: F
       metadata :: M
@@ -79,4 +82,115 @@ function Base.show(io::IO, fds::FieldDataset)
     end
 
     return print(io, s)
+end
+
+"""
+    FieldDataset(grid, field_names, times;
+                 backend=OnDisk(),
+                 path=nothing,
+                 locations=nothing,
+                 indices=nothing)
+
+Returns a `FieldDataset` containing a new `FieldTimeSeries` for each key in `field_names`
+on `grid` at `times`.
+
+Keyword arguments
+=================
+- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
+
+- `path`: path to data for `backend = OnDisk()`
+
+- `location`: `Tuple` of location specifications, defaults to 
+               (Center, Center, Center) for each field`
+
+- `indices`: `Tuple` of spatial indices, defaults to (:, :, :) for each field
+
+- `boundary_conditions`: `Tuple` of boundary conditions
+
+- `metadata`: `Dict` containing metadata entries
+"""
+function FieldDataset(grid, fields::NTuple{N, Symbol}, times;
+    backend=OnDisk(),
+    path=nothing,
+    location=NamedTuple(),
+    indices=NamedTuple(),
+    boundary_conditions=NamedTuple(),
+    metadata=Dict(),
+    reader_kw=NamedTuple()) where {N}
+
+    if !isempty(metadata) && backend == OnDisk() 
+        @warn "Metadata output with FieldDataset is not currently supported"
+    end
+
+    field_names = map(String, fields)
+
+    # Default behaviour
+    indices = merge(
+        NamedTuple(field=>(:, :, :) for field in fields),
+        indices
+    )
+    location = merge(
+        NamedTuple(field=>(Center(), Center(), Center()) for field in fields),
+        location
+    )
+    boundary_conditions = merge(
+        NamedTuple(field=>UnspecifiedBoundaryConditions() for field in fields),
+        boundary_conditions
+    )
+
+    # Create the FieldTimeSeries
+    ftss = map(fields, field_names) do field, name
+        inds = indices[field]
+        loc = location[field]
+        bcs = boundary_conditions[field]
+
+        FieldTimeSeries(loc, grid, times; 
+            indices=inds, 
+            backend, 
+            path, 
+            name, 
+            reader_kw, 
+            boundary_conditions=bcs
+        )
+    end
+
+    ds = Dict{String, FieldTimeSeries}(
+        name => fts
+        for (name, fts) in zip(field_names, ftss)
+    )
+
+    return FieldDataset(ds, metadata, path, reader_kw)
+end
+
+# "Similar to" constructor for easily writing existing fields
+function FieldDataset(fields, times; 
+    backend=OnDisk(),
+    path=nothing,
+    metadata=Dict(),
+    reader_kw=NamedTuple()
+    )
+
+    grid = fields[1].grid
+    any([field.grid != grid for field in fields]) && throw(ArgumentError("All fields must be defined on the same grid"))
+
+    loc = map(instantiated_location, fields)
+    inds = map(Fields.indices, fields)
+    bcs = map(Fields.boundary_conditions, fields)
+
+    FieldDataset(grid, keys(fields), times; 
+        backend,
+        metadata,
+        reader_kw,
+        path,
+        location=loc,
+        indices=inds,
+        boundary_conditions=bcs
+    )
+end
+
+# Setting a FieldDataset iterates over contained FieldTimeSeries
+function set!(fds::FieldDataset, args...; fields...)
+    for (k, v) in pairs(fields)
+        set!(fds[k], v, args...)
+    end
 end
