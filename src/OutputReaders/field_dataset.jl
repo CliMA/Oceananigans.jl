@@ -118,6 +118,10 @@ function FieldDataset(grid, fields::NTuple{N, Symbol}, times;
     metadata=Dict(),
     reader_kw=NamedTuple()) where {N}
 
+    if !isempty(metadata) && backend == OnDisk() 
+        @warn "Metadata output with FieldDataset is not currently supported"
+    end
+
     field_names = map(String, fields)
 
     # Default behaviour
