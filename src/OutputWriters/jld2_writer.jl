@@ -3,6 +3,7 @@ using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
 using Oceananigans.Fields: boundary_conditions, indices
+using Oceananigans.DistributedComputations: synchronize_communication!
 
 default_included_properties(model) = [:grid]
 
@@ -232,6 +233,11 @@ function iteration_exists(filepath, iter=0)
 end
 
 function write_output!(writer::JLD2Writer, model)
+
+    # Synchronize model state if needed
+    for field in fields(model)
+        synchronize_communication!(field)
+    end
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration

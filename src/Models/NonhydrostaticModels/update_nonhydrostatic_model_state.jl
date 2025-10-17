@@ -6,7 +6,7 @@ using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -17,7 +17,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
+function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
     foreach(model.tracers) do tracer
@@ -49,13 +49,10 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
-
     return nothing
 end
 
-function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
+function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(surface_kernel_parameters(model.grid)),
                                                           κ_parameters = tuple(:xyz))
 
     closure = model.closure
@@ -65,5 +62,6 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model; parameters = ppar)
     end
+    
     return nothing
 end

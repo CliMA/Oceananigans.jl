@@ -141,12 +141,14 @@ end
 @inline η★(i, j, k, grid,  ::ForwardBackwardScheme, ηᵐ⁺¹) = @inbounds ηᵐ⁺¹[i, j, k]
 @inline η★(i, j, k, grid, t::AdamsBashforth3Scheme, ηᵐ⁺¹) = @inbounds t.δ * ηᵐ⁺¹[i, j, k] + t.μ * t.ηᵐ[i, j, k] + t.γ * t.ηᵐ⁻¹[i, j, k] + t.ϵ * t.ηᵐ⁻²[i, j, k]
 
-@inline cache_previous_velocities!(::ForwardBackwardScheme,   i, j, k, U) = nothing
-@inline cache_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η) = nothing
+@inline   cache_previous_velocities!(::ForwardBackwardScheme, i, j, k, U, V) = nothing
+@inline cache_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η)    = nothing
 
-@inline function cache_previous_velocities!(t::AdamsBashforth3Scheme, i, j, k, U)
+@inline function cache_previous_velocities!(t::AdamsBashforth3Scheme, i, j, k, U, V)
     @inbounds t.Uᵐ⁻²[i, j, k] = t.Uᵐ⁻¹[i, j, k]
     @inbounds t.Uᵐ⁻¹[i, j, k] =      U[i, j, k]
+    @inbounds t.Vᵐ⁻²[i, j, k] = t.Vᵐ⁻¹[i, j, k]
+    @inbounds t.Vᵐ⁻¹[i, j, k] =      V[i, j, k]
 
     return nothing
 end
