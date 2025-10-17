@@ -16,6 +16,7 @@ using Oceananigans.Fields
 using Oceananigans.Utils
 
 using Oceananigans: location
+using Oceananigans.Fields: instantiated_location
 using Oceananigans.Operators: interpolation_operator
 
 import Adapt
