@@ -17,7 +17,9 @@ import Oceananigans.Fields: set_to_array!,
                             communication_buffers,
                             validate_field_data, 
                             validate_boundary_conditions, 
-                            validate_indices
+                            validate_indices,
+                            set!
+
 import Oceananigans.Grids: xnodes, ynodes
 
 import Base: fill!, axes
@@ -121,6 +123,8 @@ end
 # Set fields regionally
 set_to_array!(mrf::MultiRegionField, a) = apply_regionally!(set_to_array!, mrf, a)
 set_to_field!(mrf::MultiRegionField, v) = apply_regionally!(set_to_field!, mrf, v)
+
+set!(mrf::MultiRegionField, f::FunctionField) = apply_regionally!(set!, mrf, f)
 
 # Fill fields regionally
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
