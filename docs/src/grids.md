@@ -841,8 +841,7 @@ colsize!(fig.layout, 6, Relative(0.1))
 fig
 ```
 
-
-## Single-precision `RectilinearGrid`
+## Single-precision grids
 
 To build a grid whose fields are represented with single-precision floating point values,
 we specify the `float_type` argument along with the (optional) `architecture` argument,
@@ -865,6 +864,31 @@ grid = RectilinearGrid(architecture, float_type,
 └── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
 ```
 
+The same can be accomplished by setting the global default floating point type
+to `Float32`:
+
+```jldoctest grids
+architecture = CPU()
+Oceananigans.defaults.FloatType = Float32
+
+grid = RectilinearGrid(architecture,
+                       topology = (Periodic, Periodic, Bounded),
+                       size = (16, 8, 4),
+                       x = (0, 64),
+                       y = (0, 32),
+                       z = (0, 8))
+
+# output
+16×8×4 RectilinearGrid{Float32, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 64.0) regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0) regularly spaced with Δy=4.0
+└── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
+```
+
+Setting the global default is a good approach for building pure Float32 
+simulations, because this will change _all_ default constructor
+float types to Float32.
+
 !!! warn "Using single precision"
     Single precision should be used with care.
     Users interested in performing single-precision simulations should get in touch via
@@ -873,6 +897,13 @@ grid = RectilinearGrid(architecture, float_type,
 
 For more examples see [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid)
 and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
+
+```jldoctest grids
+Oceananigans.defaults.FloatType = Float64
+nothing
+
+# output
+```
 
 ## Distributed grids
 
