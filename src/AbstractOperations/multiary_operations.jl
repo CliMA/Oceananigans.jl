@@ -22,9 +22,9 @@ end
 
 indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
 
-function _multiary_operation(L, op, args, Largs, grid)
+function _multiary_operation(L::Tuple{LX, LY, LZ}, op, args, Largs, grid) where {LX, LY, LZ}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
+    return MultiaryOperation{LX, LY, LZ}(op, Tuple(a for a in args), ▶, grid)
 end
 
 # Recompute location of multiary operation
@@ -52,7 +52,7 @@ function define_multiary_operator(op)
         $op(a::Oceananigans.Fields.AbstractField,
             b::Union{Function, Oceananigans.Fields.AbstractField},
             c::Union{Function, Oceananigans.Fields.AbstractField},
-            d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.location(a), a, b, c, d...)
+            d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.instantiated_location(a), a, b, c, d...)
     end
 end
 

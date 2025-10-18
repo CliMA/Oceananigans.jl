@@ -26,9 +26,9 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
 end
 
 # Some special cases
-const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
-const NoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, Nothing}
-const NoFuncNoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing, Nothing}
+const NoFuncCO{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, Nothing}
+const NoConditionCO{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, <:Any, Nothing}
+const NoFuncNoConditionCO{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, Nothing, Nothing}
 
 """
     ConditionalOperation(operand::AbstractField;
@@ -91,12 +91,11 @@ julia> d[2, 1, 1]
 10.0
 ```
 """
-function ConditionalOperation(operand::AbstractField;
+function ConditionalOperation(operand::AbstractField{LX, LY, LZ};
                               func = nothing,
                               condition = nothing,
-                              mask = zero(eltype(operand)))
+                              mask = zero(eltype(operand))) where {LX, LY, LZ}
     condition = validate_condition(condition, operand)
-    LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
@@ -111,23 +110,20 @@ function validate_condition(cond::AbstractArray, operand::AbstractField)
     return cond
 end
 
-function ConditionalOperation(c::ConditionalOperation;
+function ConditionalOperation(c::ConditionalOperation{LX, LY, LZ};
                               func = c.func,
                               condition = c.condition,
-                              mask = c.mask)
+                              mask = c.mask) where {LX, LY, LZ}
     condition = validate_condition(condition, operand)
-    LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
-
     return ConditionalOperation{LX, LY, LZ}(c.operand, compined_func, c.grid, condition, mask)
 end
 
-function ConditionalOperation(c::NoFuncCO;
+function ConditionalOperation(c::NoFuncCO{LX, LY, LZ};
                               func = c.func,
                               condition = c.condition,
-                              mask = c.mask)
+                              mask = c.mask) where {LX, LY, LZ}
     condition = validate_condition(condition, operand)
-    LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
 

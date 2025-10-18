@@ -28,9 +28,9 @@ end
 
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
-function _derivative(L, ∂, arg, L∂, abstract_∂, grid)
+function _derivative(L::Tuple{LX, LY, LZ}, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
+    return Derivative{LX, LY, LZ}(∂, arg, ▶, abstract_∂, grid)
 end
 
 indices(d::Derivative) = indices(d.arg)
@@ -41,6 +41,8 @@ indices(d::Derivative) = indices(d.arg)
 """Return `Center` if given `Face` or `Face` if given `Center`."""
 flip(::Type{Face}) = Center
 flip(::Type{Center}) = Face
+flip(::Face) = Center()
+flip(::Center) = Face()
 
 const LocationType = Union{Type{Face}, Type{Center}, Type{Nothing}}
 
@@ -63,7 +65,7 @@ Return an abstract representation of an ``x``-derivative acting on field `arg` f
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂x(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
-    _derivative(L, ∂x(LX, LY, LZ), arg, (flip(LX), LY, LZ), ∂x, arg.grid)
+    _derivative(L, ∂x(LX(), LY(), LZ()), arg, (flip(LX()), LY(), LZ()), ∂x, arg.grid)
 
 """
     ∂y(L::Tuple, arg::AbstractField)
@@ -72,7 +74,7 @@ Return an abstract representation of a ``y``-derivative acting on field `arg` fo
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂y(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
-    _derivative(L, ∂y(LX, LY, LZ), arg, (LX, flip(LY), LZ), ∂y, arg.grid)
+    _derivative(L, ∂y(LX(), LY(), LZ()), arg, (LX(), flip(LY()), LZ()), ∂y, arg.grid)
 
 """
     ∂z(L::Tuple, arg::AbstractField)
@@ -81,7 +83,7 @@ Return an abstract representation of a ``z``-derivative acting on field `arg` fo
 by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂z(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
-    _derivative(L, ∂z(LX, LY, LZ), arg, (LX, LY, flip(LZ)), ∂z, arg.grid)
+    _derivative(L, ∂z(LX(), LY(), LZ()), arg, (LX(), LY(), flip(LZ())), ∂z, arg.grid)
 
 # Defaults
 
@@ -90,21 +92,21 @@ by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 
 Return an abstract representation of a ``x``-derivative acting on field `arg`.
 """
-∂x(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((flip(LX), LY, LZ), arg)
+∂x(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((flip(LX()), LY(), LZ()), arg)
 
 """
     ∂y(arg::AbstractField)
 
 Return an abstract representation of a ``y``-derivative acting on field `arg`.
 """
-∂y(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((LX, flip(LY), LZ), arg)
+∂y(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((LX(), flip(LY()), LZ()), arg)
 
 """
     ∂z(arg::AbstractField)
 
 Return an abstract representation of a ``z``-derivative acting on field `arg`.
 """
-∂z(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂z((LX, LY, flip(LZ)), arg)
+∂z(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂z((LX(), LY(), flip(LZ())), arg)
 
 #####
 ##### Nested computations
