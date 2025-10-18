@@ -1,3 +1,4 @@
+using CubedSphere.SphericalGeometry
 using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded
 using Oceananigans.Utils: KernelParameters
 using StaticArrays
@@ -113,23 +114,6 @@ function rotate_metrics!(grid, shifted_lat_lon_grid)
     return nothing
 end
 
-# Convert from Spherical to Cartesian
-function spherical_to_cartesian(λ, φ, r=1)
-    x = r * cos(φ) * cos(λ)
-    y = r * cos(φ) * sin(λ)
-    z = r * sin(φ)
-    return SVector(x, y, z)
-end
-
-# Convert from Cartesian to Spherical
-function cartesian_to_spherical(X)
-    x, y, z = X
-    r = norm(X)
-    φ = asin(z / r)
-    λ = atan(y, x)
-    return λ, φ
-end
-
 # Rotation about x-axis by dλ (Change in Longitude)
 x_rotation(dλ) = @SMatrix [1        0       0
                            0  cos(dλ) -sin(dλ)
@@ -147,8 +131,6 @@ z_rotation(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
 
 # Perform the rotation
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
-    λ′ *= π/180
-    φ′ *= π/180
     λ₀ *= π/180
     φ₀ *= π/180
 
@@ -156,20 +138,16 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     dφ = π/2 - φ₀
 
     # Convert to Cartesian
-    X′ = spherical_to_cartesian(λ′, φ′)
+    X′ = SVector(lat_lon_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
 
     # Rotate Cartesian coordinates
     Rx = x_rotation(dλ)
     Ry = y_rotation(dφ)
     Rz = z_rotation(dλ)
-    #X = Rz * Ry * X′
     X = Rx * Ry * X′
 
     # Convert back to Spherical
-    λ, φ = cartesian_to_spherical(X)
-
-    λ *= 180/π
-    φ *= 180/π
+    φ, λ = cartesian_to_lat_lon(X)
 
     return λ, φ
 end
@@ -224,4 +202,3 @@ end
         grid.Δyᶠᶠᵃ[i, j] = lat_lon_metric(source_grid.Δyᶜᶠᵃ, i, j)
     end
 end
-
