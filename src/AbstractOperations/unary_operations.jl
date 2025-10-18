@@ -28,7 +28,7 @@ indices(υ::UnaryOperation) = indices(υ.arg)
 
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
-function _unary_operation(L::Tuple{{LX, LY, LZ}}, operator, arg, Larg, grid) where {LX, LY, LZ}
+function _unary_operation(L::Tuple{LX, LY, LZ}, operator, arg, Larg, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(Larg, L)
     return UnaryOperation{LX, LY, LZ}(operator, arg, ▶, grid)
 end
