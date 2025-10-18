@@ -35,21 +35,21 @@ indices(β::BinaryOperation) = construct_regionally(intersect_indices, location(
 
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
-function _binary_operation(Lc, op, a, b, La, Lb, grid)
+function _binary_operation(Lc::Tuple{LX, LY, LZ}, op, a, b, La, Lb, grid) where {LX, LY, LZ}
      ▶a = interpolation_operator(La, Lc)
      ▶b = interpolation_operator(Lb, Lc)
 
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid)
+    return BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
 end
 
-const ConcreteLocationType = Union{Type{Face}, Type{Center}}
+const ConcreteLocationType = Union{Face, Center}
 
 # Precedence rules for choosing operation location:
 choose_location(La, Lb, Lc) = Lc                                    # Fallback to the specification Lc, but also...
-choose_location(::Type{Face},   ::Type{Face},   Lc) = Face          # keep common locations; and
-choose_location(::Type{Center}, ::Type{Center}, Lc) = Center        #
-choose_location(La::ConcreteLocationType, ::Type{Nothing}, Lc) = La # don't interpolate unspecified locations.
-choose_location(::Type{Nothing}, Lb::ConcreteLocationType, Lc) = Lb #
+choose_location(::Face,   ::Face,   Lc) = Face          # keep common locations; and
+choose_location(::Center, ::Center, Lc) = Center        #
+choose_location(La::ConcreteLocationType, ::Nothing, Lc) = La # don't interpolate unspecified locations.
+choose_location(::Nothing, Lb::ConcreteLocationType, Lc) = Lb #
 
 # Apply the function if the inputs are scalars, otherwise broadcast it over the inputs
 # This can occur in the binary operator code if we index into with an array, e.g. array[1:10]
@@ -107,8 +107,8 @@ function define_binary_operator(op)
         if that is also Nothing, `Lc`.
         """
         function $op(Lc::Tuple, a, b)
-            La = location(a)
-            Lb = location(b)
+            La = instantiated_location(a)
+            Lb = instantiated_location(b)
             Lab = choose_location.(La, Lb, Lc)
 
             grid = Oceananigans.AbstractOperations.validate_grid(a, b)
@@ -127,15 +127,15 @@ function define_binary_operator(op)
         $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(location(a), m, a.grid))
 
         # Sugary versions with default locations
-        $op(a::AF, b::AF) = $op(location(a), a, b)
-        $op(a::AF, b) = $op(location(a), a, b)
-        $op(a, b::AF) = $op(location(b), a, b)
+        $op(a::AF, b::AF) = $op(instantiated_location(a), a, b)
+        $op(a::AF, b) = $op(instantiated_location(a), a, b)
+        $op(a, b::AF) = $op(instantiated_location(b), a, b)
 
-        $op(a::AF, b::Number) = $op(location(a), a, b)
-        $op(a::Number, b::AF) = $op(location(b), a, b)
+        $op(a::AF, b::Number) = $op(instantiated_location(a), a, b)
+        $op(a::Number, b::AF) = $op(instantiated_location(b), a, b)
 
-        $op(a::AF, b::ConstantField) = $op(location(a), a, b.constant)
-        $op(a::ConstantField, b::AF) = $op(location(b), a.constant, b)
+        $op(a::AF, b::ConstantField) = $op(instantiated_location(a), a, b.constant)
+        $op(a::ConstantField, b::AF) = $op(instantiated_location(b), a.constant, b)
 
         $op(a::Number, b::ConstantField) = ConstantField($op(a, b.constant))
         $op(a::ConstantField, b::Number) = ConstantField($op(a.constant, b))
