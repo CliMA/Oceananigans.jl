@@ -34,8 +34,12 @@ Base.summary(::Accumulating) = "Accumulating"
 const Reduction = Scan{<:AbstractReducing}
 const Accumulation = Scan{<:AbstractAccumulating}
 
-scan_indices(::AbstractReducing, indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
-scan_indices(::AbstractAccumulating, indices; dims) = indices
+@inline location(s::Scan) = location(s.operand)
+@inline instantiated_location(s::Scan) = instantiated_location(s.operand)
+
+scan_indices(::AbstractReducing, indices, dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
+scan_indices(::AbstractAccumulating, indices, dims) = indices
+scan_indices(::AbstractReducing, ::Tuple{Colon, Colon, Colon}, dims) = (:, :, :)
 
 Base.summary(s::Scan) = string(summary(s.type), " ",
                                s.scan!,
@@ -52,7 +56,7 @@ function Field(scan::Scan;
     grid = operand.grid
     LX, LY, LZ = loc = instantiated_location(scan)
     dims = filter_nothing_dims(scan.dims, loc)
-    indices = scan_indices(scan.type, indices; dims)
+    indices = scan_indices(scan.type, indices, dims)
 
     if isnothing(data)
         data = new_data(grid, loc, indices)
