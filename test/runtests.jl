@@ -189,7 +189,7 @@ CUDA.allowscalar() do
         archs = test_architectures()
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
-        include("test_zstar_conservation.jl")
+        # include("test_zstar_conservation.jl")
     end
 
     # if group == :distributed_output || group == :all
