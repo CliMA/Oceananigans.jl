@@ -68,12 +68,8 @@ for stages in 1:40
               SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
 end
 
-TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻) =
-    SplitRungeKuttaTimeStepper(grid, prognostic_fields;
-                               implicit_solver,
-                               coefficients=ts.β,
-                               Gⁿ,
-                               G⁻)
+TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) = 
+    SplitRungeKuttaTimeStepper(grid, prognostic_fields; coefficients=ts.β, kw...)
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)

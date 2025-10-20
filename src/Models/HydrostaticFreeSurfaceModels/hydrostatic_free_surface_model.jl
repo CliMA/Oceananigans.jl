@@ -219,7 +219,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
     Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
-    G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
+    G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
 
     # Regularize forcing for model tracer and velocity fields.

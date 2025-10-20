@@ -3,13 +3,12 @@ using Oceananigans.Grids
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
-using Oceananigans.AbstractOperations: GridMetricOperation
 using Oceananigans.DistributedComputations
 using Printf
 using GLMakie
 
 arch = CPU() # Distributed(CPU())#; synchronized_communication=true) 
-z_faces = MutableVerticalDiscretization((-20, 0))
+z_faces = MutableVerticalDiscretization((-2000, 0))
 
 grid = RectilinearGrid(arch; 
                        size = (128, 20),
@@ -18,7 +17,7 @@ grid = RectilinearGrid(arch;
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-bottom(x) = x < 52kilometers && x > 45kilometers ? -10 : -20
+bottom(x) = x < 52kilometers && x > 45kilometers ? -1000 : -2000
 grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 model = HydrostaticFreeSurfaceModel(; grid,
@@ -28,7 +27,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = (:b, :c),
                                     closure = HorizontalScalarDiffusivity(κ=100, ν=100),
                                 timestepper = :SplitRungeKutta3,
-                               free_surface = ExplicitFreeSurface()) # SplitExplicitFreeSurface(grid; substeps=30)) # ImplicitFreeSurface()) # #
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=30)) # ImplicitFreeSurface()) # #
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 20kilometers ? 6 // 100 : 1 // 100
