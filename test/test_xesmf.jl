@@ -48,6 +48,13 @@ for arch in archs
                 @test regridder.weights isa CUDA.CUSPARSE.CuSparseMatrixCSC
             end
 
+            if arch isa GPU
+                cpu_regridder = on_architecture(CPU(), regridder)
+                @test cpu_regridder.weights isa SparseMatrixCSC
+                gpu_regridder = on_architecture(GPU(), cpu_regridder)
+                @test gpu_regridder.weights isa CUDA.CUSPARSE.CuSparseMatrixCSC
+            end
+
             regrid!(dst_field, regridder, src_field)
 
             # ∫ dst_field dA ≈ ∫ src_field dA
