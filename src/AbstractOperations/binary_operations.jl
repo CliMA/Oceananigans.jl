@@ -45,9 +45,9 @@ end
 const ConcreteLocationType = Union{Face, Center}
 
 # Precedence rules for choosing operation location:
-choose_location(La, Lb, Lc) = Lc                                    # Fallback to the specification Lc, but also...
-choose_location(::Face,   ::Face,   Lc) = Face          # keep common locations; and
-choose_location(::Center, ::Center, Lc) = Center        #
+choose_location(La, Lb, Lc) = Lc                              # Fallback to the specification Lc, but also...
+choose_location(::Face,   ::Face,   Lc) = Face()              # keep common locations; and
+choose_location(::Center, ::Center, Lc) = Center()            #
 choose_location(La::ConcreteLocationType, ::Nothing, Lc) = La # don't interpolate unspecified locations.
 choose_location(::Nothing, Lb::ConcreteLocationType, Lc) = Lb #
 
