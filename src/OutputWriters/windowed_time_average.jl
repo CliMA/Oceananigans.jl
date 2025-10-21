@@ -91,13 +91,11 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <=  next_actuation_time(sch) - sch.window
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <= next_actuation_time(sch) - sch.window
 end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch)
 
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
-
-
 
 """
     mutable struct AveragedSpecifiedTimes <: AbstractSchedule
@@ -143,6 +141,11 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     next_time = schedule.specified_times.times[next]
     return clock.time >= next_time
 end
+
+TimeInterval(sch::AveragedSpecifiedTimes) = TimeInterval(sch.specified_times.times)
+Base.copy(sch::AveragedSpecifiedTimes) = AveragedSpecifiedTimes(copy(sch.specified_times); window=sch.window, stride=sch.stride)
+
+next_actuation_time(sch::AveragedSpecifiedTimes) = Oceananigans.Utils.next_actuation_time(sch.specified_times)
 
 #####
 ##### WindowedTimeAverage
@@ -261,6 +264,40 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
     return nothing
 end
 
+function advance_time_average!(wta::SpecifiedWindowedTimeAverage, model)
+
+    unscheduled = model.clock.iteration == 0 || outside_window(wta.schedule, model.clock)
+    if !(unscheduled)
+        if !(wta.schedule.collecting)
+            # Zero out result to begin new accumulation window
+            wta.result .= 0
+
+            # Begin collecting window-averaged increments
+            wta.schedule.collecting = true
+
+            wta.window_start_time = next_actuation_time(wta.schedule) - wta.schedule.window
+            wta.previous_collection_time = wta.window_start_time
+            wta.window_start_iteration = model.clock.iteration - 1
+            # @info "t $(prettytime(model.clock.time)), next actuation time: $(prettytime(next_actuation_time(wta.schedule))), window $(prettytime(wta.schedule.window))"
+        end
+
+        if end_of_window(wta.schedule, model.clock)
+            accumulate_result!(wta, model)
+            # Save averaging start time and the initial data collection time
+            wta.schedule.collecting = false
+            wta.schedule.specified_times.previous_actuation += 1
+
+        elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
+            accumulate_result!(wta, model)
+        else
+            # Off stride, so do nothing.
+        end
+
+    end
+    return nothing
+end
+
+
 # So it can be used as a Diagnostic
 run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
 
@@ -271,8 +308,14 @@ Base.summary(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
                                                       "stride=", schedule.stride, ", ",
                                                       "interval=", prettytime(schedule.interval),  ")")
 
+Base.summary(schedule::AveragedSpecifiedTimes) = string("AveragedSpecifiedTimes(",
+                                                        "window=", prettytime(schedule.window), ", ",
+                                                        "stride=", schedule.stride, ", ",
+                                                        "times=", schedule.specified_times,  ")")
+
 show_averaging_schedule(schedule) = ""
 show_averaging_schedule(schedule::AveragedTimeInterval) = string(" averaged on ", summary(schedule))
+show_averaging_schedule(schedule::AveragedSpecifiedTimes) = string(" averaged on ", summary(schedule))
 
 output_averaging_schedule(output::WindowedTimeAverage) = output.schedule
 
@@ -282,6 +325,8 @@ output_averaging_schedule(output::WindowedTimeAverage) = output.schedule
 
 time_average_outputs(schedule, outputs, model) = schedule, outputs # fallback
 
+const AveragedTimeSchedule = Union{AveragedTimeInterval, AveragedSpecifiedTimes}
+
 """
     time_average_outputs(schedule::AveragedTimeInterval, outputs, model, field_slicer)
 
@@ -290,17 +335,16 @@ Wrap each `output` in a `WindowedTimeAverage` on the time-averaged `schedule` an
 Returns the `TimeInterval` associated with `schedule` and a `NamedTuple` or `Dict` of the wrapped
 outputs.
 """
-function time_average_outputs(schedule::AveragedTimeInterval, outputs::Dict, model)
+function time_average_outputs(schedule::AveragedTimeSchedule, outputs::Dict, model)
     averaged_outputs = Dict(name => WindowedTimeAverage(output, model; schedule=copy(schedule))
                             for (name, output) in outputs)
 
     return TimeInterval(schedule), averaged_outputs
 end
 
-function time_average_outputs(schedule::AveragedTimeInterval, outputs::NamedTuple, model)
+function time_average_outputs(schedule::AveragedTimeSchedule, outputs::NamedTuple, model)
     averaged_outputs = NamedTuple(name => WindowedTimeAverage(outputs[name], model; schedule=copy(schedule))
                                   for name in keys(outputs))
 
     return TimeInterval(schedule), averaged_outputs
 end
-
