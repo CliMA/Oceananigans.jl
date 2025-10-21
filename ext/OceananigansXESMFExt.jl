@@ -7,6 +7,7 @@ using Oceananigans.Fields: AbstractField, topology, location
 using Oceananigans.Grids: AbstractGrid, λnodes, φnodes, Center, Face, total_length
 
 import Oceananigans.Fields: regrid!
+import Oceananigans.Architectures: on_architecture
 import XESMF: Regridder
 
 node_array(ξ::AbstractMatrix, Nx, Ny) = view(ξ, 1:Nx, 1:Ny)
@@ -144,6 +145,11 @@ function Regridder(dst_field::AbstractField, src_field::AbstractField; method="c
 
     return XESMF.Regridder(method, weights, temp_src, temp_dst)
 end
+
+on_architecture(on, r::XESMF.Regridder) = XESMF.Regridder(on_architecture(on, r.method),
+                                                          on_architecture(on, r.weights),
+                                                          on_architecture(on, r.src_temp),
+                                                          on_architecture(on, r.dst_temp))
 
 """
     regrid!(dst_field, regrider::XESMF.Regridder, src_field)
