@@ -124,7 +124,10 @@ end
 set_to_array!(mrf::MultiRegionField, a) = apply_regionally!(set_to_array!, mrf, a)
 set_to_field!(mrf::MultiRegionField, v) = apply_regionally!(set_to_field!, mrf, v)
 
+# Exporting some set! methods
+# set! a function field can be safely done regionally
 set!(mrf::MultiRegionField, f::FunctionField) = apply_regionally!(set!, mrf, f)
+set!(mrf::MultiRegionField, f::Function)      = set_to_function!(mrf, f)
 
 # Fill fields regionally
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
