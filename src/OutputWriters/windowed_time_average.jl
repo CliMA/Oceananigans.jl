@@ -102,17 +102,22 @@ Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window
 
 A schedule for averaging over windows that precede SpecifiedTimes.
 """
-mutable struct AveragedSpecifiedTimes <: AbstractSchedule
+mutable struct AveragedSpecifiedTimes{W} <: AbstractSchedule
     specified_times :: SpecifiedTimes
-    window :: Float64
+    window :: W
     stride :: Int
     collecting :: Bool
 end
+
+const VaryingWindowAveragedSpecifiedTimes = AveragedSpecifiedTimes{Vector{Float64}}
 
 AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
     AveragedSpecifiedTimes(specified_times, window, stride, false)
 
 AveragedSpecifiedTimes(times; kw...) = AveragedSpecifiedTimes(SpecifiedTimes(times); kw...)
+
+get_next_window(schedule::VaryingWindowAveragedSpecifiedTimes) = schedule.window[schedule.specified_times.previous_actuation + 1]
+get_next_window(schedule::AveragedSpecifiedTimes) = schedule.window
 
 function (schedule::AveragedSpecifiedTimes)(model)
     time = model.clock.time
@@ -121,7 +126,7 @@ function (schedule::AveragedSpecifiedTimes)(model)
     next > length(schedule.specified_times.times) && return false
 
     next_time = schedule.specified_times.times[next]
-    window = schedule.window
+    window = get_next_window(schedule)
 
     schedule.collecting || time >= next_time - window
 end
@@ -132,7 +137,8 @@ function outside_window(schedule::AveragedSpecifiedTimes, clock)
     next = schedule.specified_times.previous_actuation + 1
     next > length(schedule.specified_times.times) && return true
     next_time = schedule.specified_times.times[next]
-    return clock.time < next_time - schedule.window
+    window = get_next_window(schedule)
+    return clock.time < next_time - window
 end
 
 function end_of_window(schedule::AveragedSpecifiedTimes, clock)
@@ -171,7 +177,7 @@ stride(wta::SpecifiedWindowedTimeAverage) = wta.schedule.stride
     WindowedTimeAverage(operand, model=nothing; schedule)
 
 Returns an object for computing running averages of `operand` over `schedule.window` and
-recurring on `schedule.interval`, where `schedule` is an `AveragedTimeInterval`.
+recurring on `schedule.interval`, where `schedule` is an `AveragedTimeInterval` or `AveragedSpecifiedTimes`.
 During the collection period, averages are computed every `schedule.stride` iteration.
 
 `operand` may be a `Oceananigans.Field` or a function that returns an array or scalar.
@@ -275,7 +281,7 @@ function advance_time_average!(wta::SpecifiedWindowedTimeAverage, model)
             # Begin collecting window-averaged increments
             wta.schedule.collecting = true
 
-            wta.window_start_time = next_actuation_time(wta.schedule) - wta.schedule.window
+            wta.window_start_time = next_actuation_time(wta.schedule) - get_next_window(wta.schedule)
             wta.previous_collection_time = wta.window_start_time
             wta.window_start_iteration = model.clock.iteration - 1
             # @info "t $(prettytime(model.clock.time)), next actuation time: $(prettytime(next_actuation_time(wta.schedule))), window $(prettytime(wta.schedule.window))"
