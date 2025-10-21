@@ -62,7 +62,7 @@ model.velocities.u
             throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
         end
 
-        @apply_regionally set!(ϕ, value)
+        set!(ϕ, value)
     end
 
     # initialize!(model)
