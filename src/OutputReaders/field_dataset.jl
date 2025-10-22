@@ -86,7 +86,7 @@ function Base.show(io::IO, fds::FieldDataset)
 end
 
 """
-    FieldDataset(grid, field_names, times;
+    FieldDataset(grid, times, field_names;
                  backend=OnDisk(),
                  path=nothing,
                  locations=nothing,
@@ -110,7 +110,7 @@ Keyword arguments
 
 - `metadata`: `Dict` containing metadata entries
 """
-function FieldDataset(grid, fields::NTuple{N, Symbol}, times;
+function FieldDataset(grid, times, fields::NTuple{N, Symbol},;
     backend=OnDisk(),
     path=nothing,
     location=NamedTuple(),
@@ -160,7 +160,7 @@ function FieldDataset(grid, fields::NTuple{N, Symbol}, times;
 end
 
 # "Similar to" constructor for easily writing existing fields
-function FieldDataset(fields, times; 
+function FieldDataset(times, fields; 
     backend=OnDisk(),
     path=nothing,
     metadata=Dict(),

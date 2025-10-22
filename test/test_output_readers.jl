@@ -467,7 +467,7 @@ end
     metadata = Dict("i"=>12, "j"=>"jay")
 
     filepath = "testfile.jld2"
-    f = FieldDataset((; a, b), 1:10; backend = OnDisk(), path = filepath, metadata)
+    f = FieldDataset(1:10, (; a, b); backend = OnDisk(), path = filepath, metadata)
 
     for i in 1:10
         set!(a, i)
