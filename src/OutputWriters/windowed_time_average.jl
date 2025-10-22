@@ -115,7 +115,6 @@ AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
     AveragedSpecifiedTimes(specified_times, window, stride, false)
 
 AveragedSpecifiedTimes(times; window, kw...) = AveragedSpecifiedTimes(times, window; kw...)
-# AveragedSpecifiedTimes(times; window::Float64; kw...) = AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
 
 function AveragedSpecifiedTimes(times, window::Vector{Float64}; kw...)
     length(window) == length(times) || throw(ArgumentError("When providing a vector of windows, its length $(length(window)) must match the number of specified times $(length(times))."))
@@ -124,9 +123,6 @@ function AveragedSpecifiedTimes(times, window::Vector{Float64}; kw...)
     sorted_window = window[perm]
     time_diff = diff(vcat(0, sorted_times))
 
-    @info "timediff", time_diff
-    @info "sortedwindow", sorted_window
-        
     any(time_diff .- sorted_window .< -eps(eltype(window))) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
 
     return AveragedSpecifiedTimes(SpecifiedTimes(sorted_times); window=sorted_window, kw...)
