@@ -86,13 +86,17 @@ function Base.show(io::IO, fds::FieldDataset)
 end
 
 """
-    FieldDataset(grid, times, field_names;
+    FieldDataset(grid, times, fields;
                  backend=OnDisk(),
                  path=nothing,
-                 locations=nothing,
-                 indices=nothing)
+                 location=NamedTuple(),
+                 indices=NamedTuple(),
+                 boundary_conditions=NamedTuple(),
+                 metadata=Dict(),
+                 reader_kw=NamedTuple(),
+                 )
 
-Returns a `FieldDataset` containing a new `FieldTimeSeries` for each key in `field_names`
+Returns a `FieldDataset` containing a new `FieldTimeSeries` for each key in `fields`
 on `grid` at `times`.
 
 Keyword arguments
@@ -101,23 +105,24 @@ Keyword arguments
 
 - `path`: path to data for `backend = OnDisk()`
 
-- `location`: `Tuple` of location specifications, defaults to 
+- `location`: `NamedTuple` of location specifications, defaults to 
                (Center, Center, Center) for each field`
 
-- `indices`: `Tuple` of spatial indices, defaults to (:, :, :) for each field
+- `indices`: `NamedTuple` of spatial indices, defaults to (:, :, :) for each field
 
-- `boundary_conditions`: `Tuple` of boundary conditions
+- `boundary_conditions`: `NamedTuple` of boundary conditions for each field
 
 - `metadata`: `Dict` containing metadata entries
 """
-function FieldDataset(grid, times, fields::NTuple{N, Symbol},;
+function FieldDataset(grid, times, fields::NTuple{N, Symbol};
     backend=OnDisk(),
     path=nothing,
     location=NamedTuple(),
     indices=NamedTuple(),
     boundary_conditions=NamedTuple(),
     metadata=Dict(),
-    reader_kw=NamedTuple()) where {N}
+    reader_kw=NamedTuple(),
+    ) where {N}
 
     field_names = map(String, fields)
 
@@ -159,12 +164,29 @@ function FieldDataset(grid, times, fields::NTuple{N, Symbol},;
     return FieldDataset(ds, backend, metadata, path, reader_kw)
 end
 
-# "Similar to" constructor for easily writing existing fields
-function FieldDataset(times, fields; 
-    backend=OnDisk(),
-    path=nothing,
-    metadata=Dict(),
-    reader_kw=NamedTuple()
+
+"""
+    FieldDataset(times, fields;
+                 backend=OnDisk(),
+                 path=nothing,
+                 metadata=Dict(),
+                 reader_kw=NamedTuple()
+                 )
+
+Returns a `FieldDataset` containing a new `FieldTimeSeries` for each field 
+in the `NamedTuple``fields` at `times`. Locations, indices and boundary 
+conditions are extracted from `fields``
+
+Keyword arguments
+=================
+- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
+
+- `path`: path to data for `backend = OnDisk()`
+
+- `metadata`: `Dict` containing metadata entries
+"""
+function FieldDataset(times, fields;
+    fds_kw...
     )
 
     grid = fields[1].grid
@@ -174,14 +196,11 @@ function FieldDataset(times, fields;
     inds = map(Fields.indices, fields)
     bcs = map(Fields.boundary_conditions, fields)
 
-    return FieldDataset(grid, keys(fields), times; 
-        backend,
-        metadata,
-        reader_kw,
-        path,
+    return FieldDataset(grid, times, keys(fields);
         location=loc,
         indices=inds,
-        boundary_conditions=bcs
+        boundary_conditions=bcs,
+        fds_kw...
     )
 end
 
@@ -192,7 +211,7 @@ function set!(fds::FieldDataset, args...; fields...)
     end
 end
 
-# Write metadata if possible
+# Write metadata if possible for OnDisk FieldDataset
 function set!(fds::FieldDataset{F, B, M, P, KW}, args...; fields...) where {F, B<:OnDisk, M, P, KW}
     jldopen(fds.filepath, "a+") do file
         for (k, v) in pairs(fds.metadata)
