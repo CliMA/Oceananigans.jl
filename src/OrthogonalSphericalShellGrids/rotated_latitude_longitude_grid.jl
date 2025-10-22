@@ -105,6 +105,16 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
     return grid
 end
 
+function rotate_metrics!(grid, shifted_lat_lon_grid)
+    arch = architecture(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    parameters = KernelParameters(-Hx:Nx+Hx+1, -Hy:Ny+Hy+1)
+    launch!(arch, grid, parameters, _rotate_metrics!, grid, shifted_lat_lon_grid)
+    return nothing
+end
+
+# Convert from Spherical to Cartesian
 function spherical_to_cartesian(φ, λ; radius = 1, check_latitude_bounds = true)
     check_latitude_bounds && abs(φ) > π/2 && error("Latitude φ must be within -90 ≤ φ ≤ 90 degrees.")
     x = radius * cos(λ) * cos(φ)
@@ -113,6 +123,7 @@ function spherical_to_cartesian(φ, λ; radius = 1, check_latitude_bounds = true
     return x, y, z
 end
 
+# Convert from Cartesian to Spherical
 function cartesian_to_spherical(x, y, z)
     φ = atan(z, sqrt(x*x + y*y))
     λ = atan(y, x)
@@ -122,15 +133,6 @@ end
 function cartesian_to_spherical(X)
     x, y, z = X
     return cartesian_to_spherical(x, y, z)
-end
-
-function rotate_metrics!(grid, shifted_lat_lon_grid)
-    arch = architecture(grid)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    parameters = KernelParameters(-Hx:Nx+Hx+1, -Hy:Ny+Hy+1)
-    launch!(arch, grid, parameters, _rotate_metrics!, grid, shifted_lat_lon_grid)
-    return nothing
 end
 
 # Rotation about x-axis by dλ (Change in Longitude)
