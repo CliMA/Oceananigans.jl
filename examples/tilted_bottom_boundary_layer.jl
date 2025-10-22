@@ -114,10 +114,10 @@ b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
-κ = 0.4  # von Karman constant
+ϰ = 0.4  # von Karman constant
 
 z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
-cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
+cᴰ = (ϰ / log(z₁ / z₀))^2 # Drag coefficient
 
 @inline drag_u(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
 @inline drag_v(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
@@ -141,9 +141,7 @@ V∞_field = BackgroundField(V∞)
 # fifth-order `UpwindBiased` advection scheme and a constant viscosity and diffusivity.
 # Here we use a smallish value of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
-ν = 1e-4
-κ = 1e-4
-closure = ScalarDiffusivity(; ν, κ)
+closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             advection = UpwindBiased(order=5),
@@ -230,8 +228,7 @@ fig = Figure(size = (800, 600))
 
 axis_kwargs = (xlabel = "Across-slope distance (m)",
                ylabel = "Slope-normal\ndistance (m)",
-               limits = ((0, Lx), (0, Lz)),
-               )
+               limits = ((0, Lx), (0, Lz)))
 
 ax_ω = Axis(fig[2, 1]; title = "Along-slope vorticity", axis_kwargs...)
 ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
@@ -240,16 +237,17 @@ n = Observable(1)
 
 ωy = @lift ds["ωy"][:, :, $n]
 B = @lift ds["B"][:, :, $n]
-hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
+ωlim = 0.015
+hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-ωlim, +ωlim), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
-ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
+ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
 V = @lift ds["V"][:, :, $n]
 V_max = @lift maximum(abs, ds["V"][:, :, $n])
 
 hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
-ct_b = contour!(ax_v, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
+ct_b = contour!(ax_v, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
