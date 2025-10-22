@@ -103,8 +103,8 @@ Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window
 
 A schedule for averaging over windows that precede SpecifiedTimes.
 """
-mutable struct AveragedSpecifiedTimes{W} <: AbstractSchedule
-    specified_times :: SpecifiedTimes
+mutable struct AveragedSpecifiedTimes{S<:SpecifiedTimes, W} <: AbstractSchedule
+    specified_times :: S
     window :: W
     stride :: Int
     collecting :: Bool
