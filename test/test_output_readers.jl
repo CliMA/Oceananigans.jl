@@ -496,6 +496,10 @@ end
     t = g.a[Time(3.8)]
 
     @test t[1, 1, 1] == 3.8
+
+    set!(g, 2; a=-1, b=-2)
+    @test g.a[1, 1, 1, 2] == -1
+    @test g.b[1, 1, 1, 2] == -2
 end
 
     @testset "Test chunked abstraction" begin
