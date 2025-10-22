@@ -174,7 +174,7 @@ function FieldDataset(fields, times;
     inds = map(Fields.indices, fields)
     bcs = map(Fields.boundary_conditions, fields)
 
-    FieldDataset(grid, keys(fields), times; 
+    return FieldDataset(grid, keys(fields), times; 
         backend,
         metadata,
         reader_kw,
