@@ -13,11 +13,11 @@ import Oceananigans.Fields: location, indices, set!
 
 Container for parameters that configure and handle time-averaged output.
 """
-mutable struct AveragedTimeInterval <: AbstractSchedule
-    interval :: Float64
-    window :: Float64
+mutable struct AveragedTimeInterval{I, T} <: AbstractSchedule
+    interval :: I
+    window :: I
     stride :: Int
-    first_actuation_time :: Float64
+    first_actuation_time :: T
     actuations :: Int
     collecting :: Bool
 end
