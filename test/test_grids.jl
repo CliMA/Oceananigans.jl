@@ -6,7 +6,7 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
 
-using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid, rotate_coordinates
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -1243,12 +1243,37 @@ end
                                             north_pole = (0, 0),
                                             topology = (Bounded, Bounded, Bounded))
 
-        @show grid.conformal_mapping
-
         @test grid isa OrthogonalSphericalShellGrid
         @test grid isa RotatedLatitudeLongitudeGrid
         @test grid.Lz == 1000
         @test size(grid) == (10, 10, 1)
+
+        @testset "RotatedLatitudeLongitudeGrid: rotate_coordinates utility" begin
+            for φ₀ = (90, 30, 10, 0)
+                λ, φ = rotate_coordinates(0, 0, 0, φ₀)
+                @test λ ≈ 0
+                @test φ ≈ φ₀ - 90
+            end
+
+            λᴺ, φᴺ = rotate_coordinates(0, 90, 70, 55)
+            @test λᴺ ≈ 70
+            @test φᴺ ≈ 55
+        end
+
+        @testset "RotatedLatitudeLongitudeGrid respects north_pole argument" begin
+            test_kw = (size = (6, 6, 1),
+                       latitude = (-80, 80),
+                       longitude = (-120, 120),
+                       z = (-100, 0),
+                       topology = (Bounded, Bounded, Bounded))
+
+            tilted_pole = (70, 55)
+            tilted_grid = RotatedLatitudeLongitudeGrid(north_pole = tilted_pole; test_kw...)
+            @test tilted_grid.conformal_mapping.north_pole == tilted_pole
+
+            @test_throws ArgumentError RotatedLatitudeLongitudeGrid(north_pole=(0, 91); test_kw...)
+            @test_throws ArgumentError RotatedLatitudeLongitudeGrid(north_pole=(0, -1); test_kw...)
+        end
 
         for arch in archs
             for FT in float_types
