@@ -129,7 +129,7 @@ function AveragedSpecifiedTimes(times, window::Vector{Float64}; kw...)
         
     any(time_diff .- sorted_window .< -eps(eltype(window))) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
 
-    return AveragedSpecifiedTimes(SpecifiedTimes(times); window=sorted_window, kw...)
+    return AveragedSpecifiedTimes(SpecifiedTimes(sorted_times); window=sorted_window, kw...)
 end
 
 function AveragedSpecifiedTimes(times, window::Float64; kw...)
