@@ -129,12 +129,11 @@ function AveragedSpecifiedTimes(times, window::Vector{Float64}; kw...)
         
     any(time_diff .- sorted_window .< -eps(eltype(window))) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
 
-    return AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
+    return AveragedSpecifiedTimes(SpecifiedTimes(times); window=sorted_window, kw...)
 end
 
 function AveragedSpecifiedTimes(times, window::Float64; kw...)
-    perm = sortperm(times)
-    sorted_times = times[perm]
+    sorted_times = sort(times)
     time_diff = diff(vcat(0, sorted_times))
 
     any(time_diff .- window .< -eps(typeof(window))) && throw(ArgumentError("Averaging window $window is too large and causes overlapping windows. Ensure that for each specified time tᵢ, tᵢ - window ≥ tᵢ₋₁."))
