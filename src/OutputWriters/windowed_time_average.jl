@@ -102,7 +102,7 @@ Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window
 
 A schedule for averaging over windows that precede SpecifiedTimes.
 """
-mutable struct AveragedSpecifiedTimes{W} <: AbstractSchedule
+mutable struct AveragedSpecifiedTimes{W <: Union{Float64, Vector{Float64}}} <: AbstractSchedule
     specified_times :: SpecifiedTimes
     window :: W
     stride :: Int
@@ -114,7 +114,55 @@ const VaryingWindowAveragedSpecifiedTimes = AveragedSpecifiedTimes{Vector{Float6
 AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
     AveragedSpecifiedTimes(specified_times, window, stride, false)
 
-AveragedSpecifiedTimes(times; kw...) = AveragedSpecifiedTimes(SpecifiedTimes(times); kw...)
+AveragedSpecifiedTimes(times; window, kw...) = AveragedSpecifiedTimes(times, window; kw...)
+# AveragedSpecifiedTimes(times; window::Float64; kw...) = AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
+
+function AveragedSpecifiedTimes(times, window::Vector{Float64}; kw...)
+    length(window) == length(times) || throw(ArgumentError("When providing a vector of windows, its length $(length(window)) must match the number of specified times $(length(times))."))
+    perm = sortperm(times)
+    sorted_times = times[perm]
+    sorted_window = window[perm]
+    time_diff = diff(vcat(0, sorted_times))
+
+    @info "timediff", time_diff
+    @info "sortedwindow", sorted_window
+        
+    any(time_diff .- sorted_window .< -eps(eltype(window))) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
+
+    return AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
+end
+
+function AveragedSpecifiedTimes(times, window::Float64; kw...)
+    perm = sortperm(times)
+    sorted_times = times[perm]
+    time_diff = diff(vcat(0, sorted_times))
+
+    any(time_diff .- window .< -eps(typeof(window))) && throw(ArgumentError("Averaging window $window is too large and causes overlapping windows. Ensure that for each specified time tᵢ, tᵢ - window ≥ tᵢ₋₁."))
+
+    return AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
+end
+
+# function AveragedSpecifiedTimes(times; window, kw...)
+#     perm = sortperm(times)
+#     sorted_times = times[perm]
+#     time_diff = diff(vcat(0, sorted_times))
+
+#     if window isa Vector{Float64}
+#         length(window) == length(times) || throw(ArgumentError("When providing a vector of windows, its length $(length(window)) must match the number of specified times $(length(times))."))
+
+#         sorted_window = window[perm]
+#         @info "timediff", time_diff
+#         @info "sortedwindow", sorted_window
+        
+#         any(time_diff .- sorted_window .< -eps(eltype(window))) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
+#     elseif window isa Number
+#         any(time_diff .- window .< -eps(typeof(window))) && throw(ArgumentError("Averaging window $window is too large and causes overlapping windows. Ensure that for each specified time tᵢ, tᵢ - window ≥ tᵢ₋₁."))
+#     else
+#         throw(ArgumentError("window must be a Float64 or a Vector{Float64}, got $(typeof(window))"))
+#     end
+
+#     return AveragedSpecifiedTimes(SpecifiedTimes(times); window=window, kw...)
+# end
 
 get_next_window(schedule::VaryingWindowAveragedSpecifiedTimes) = schedule.window[schedule.specified_times.previous_actuation + 1]
 get_next_window(schedule::AveragedSpecifiedTimes) = schedule.window
