@@ -1,8 +1,9 @@
 using Oceananigans.Fields: instantiated_location, indices, boundary_conditions
 import Oceananigans.Fields: set!
 
-struct FieldDataset{F, M, P, KW}
+struct FieldDataset{F, B, M, P, KW}
         fields :: F
+       backend :: B
       metadata :: M
       filepath :: P
     reader_kw :: KW
@@ -55,7 +56,7 @@ function FieldDataset(filepath;
 
   close(file)
 
-  return FieldDataset(ds, metadata, abspath(filepath), reader_kw)
+  return FieldDataset(ds, backend, metadata, abspath(filepath), reader_kw)
 end
 
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
@@ -118,10 +119,6 @@ function FieldDataset(grid, fields::NTuple{N, Symbol}, times;
     metadata=Dict(),
     reader_kw=NamedTuple()) where {N}
 
-    if !isempty(metadata) && backend == OnDisk() 
-        @warn "Metadata output with FieldDataset is not currently supported"
-    end
-
     field_names = map(String, fields)
 
     # Default behaviour
@@ -159,7 +156,7 @@ function FieldDataset(grid, fields::NTuple{N, Symbol}, times;
         for (name, fts) in zip(field_names, ftss)
     )
 
-    return FieldDataset(ds, metadata, path, reader_kw)
+    return FieldDataset(ds, backend, metadata, path, reader_kw)
 end
 
 # "Similar to" constructor for easily writing existing fields
@@ -190,6 +187,18 @@ end
 
 # Setting a FieldDataset iterates over contained FieldTimeSeries
 function set!(fds::FieldDataset, args...; fields...)
+    for (k, v) in pairs(fields)
+        set!(fds[k], v, args...)
+    end
+end
+
+# Write metadata if possible
+function set!(fds::FieldDataset{F, B, M, P, KW}, args...; fields...) where {F, B<:OnDisk, M, P, KW}
+    jldopen(fds.filepath, "a+") do file
+        for (k, v) in pairs(fds.metadata)
+            maybe_write_property!(file, "metadata/$k", v)
+        end
+    end
     for (k, v) in pairs(fields)
         set!(fds[k], v, args...)
     end

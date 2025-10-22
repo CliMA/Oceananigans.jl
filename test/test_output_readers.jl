@@ -464,8 +464,10 @@ end
     a = CenterField(grid)
     b = Field{Face, Center, Center}(grid)
 
+    metadata = Dict("i"=>12, "j"=>"jay")
+
     filepath = "testfile.jld2"
-    f = FieldDataset((; a, b), 1:10; backend = OnDisk(), path = filepath)
+    f = FieldDataset((; a, b), 1:10; backend = OnDisk(), path = filepath, metadata)
 
     for i in 1:10
         set!(a, i)
@@ -487,6 +489,9 @@ end
     @test g.b[1, 1, 1, 1] == 2
     @test g.b[1, 1, 1, 10] == 20
     @test g.b[1, 1, 1, Time(5.1)] == 10.2
+
+    @test g.metadata["i"] == 12
+    @test g.metadata["j"] == "jay"
 
     t = g.a[Time(3.8)]
 
