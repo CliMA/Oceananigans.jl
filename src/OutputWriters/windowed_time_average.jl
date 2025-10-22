@@ -150,13 +150,13 @@ end
 #         @info "sortedwindow", sorted_window
         
 #         any(time_diff .- sorted_window .< -eps(eltype(window))) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
+#         return AveragedSpecifiedTimes(SpecifiedTimes(sorted_times); window=sorted_window, kw...)
 #     elseif window isa Number
 #         any(time_diff .- window .< -eps(typeof(window))) && throw(ArgumentError("Averaging window $window is too large and causes overlapping windows. Ensure that for each specified time tᵢ, tᵢ - window ≥ tᵢ₋₁."))
+#         return AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
 #     else
 #         throw(ArgumentError("window must be a Float64 or a Vector{Float64}, got $(typeof(window))"))
 #     end
-
-#     return AveragedSpecifiedTimes(SpecifiedTimes(times); window=window, kw...)
 # end
 
 get_next_window(schedule::VaryingWindowAveragedSpecifiedTimes) = schedule.window[schedule.specified_times.previous_actuation + 1]
