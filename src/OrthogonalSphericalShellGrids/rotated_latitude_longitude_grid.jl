@@ -105,6 +105,25 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
     return grid
 end
 
+function spherical_to_cartesian(φ, λ; radius = 1, check_latitude_bounds = true)
+    check_latitude_bounds && abs(φ) > π/2 && error("Latitude φ must be within -90 ≤ φ ≤ 90 degrees.")
+    x = radius * cos(λ) * cos(φ)
+    y = radius * sin(λ) * cos(φ)
+    z = radius * sin(φ)
+    return x, y, z
+end
+
+function cartesian_to_spherical(x, y, z)
+    φ = atan(z, sqrt(x*x + y*y))
+    λ = atan(y, x)
+    return φ, λ
+end
+
+function cartesian_to_spherical(X)
+    x, y, z = X
+    return cartesian_to_spherical(x, y, z)
+end
+
 function rotate_metrics!(grid, shifted_lat_lon_grid)
     arch = architecture(grid)
     Nx, Ny, _ = size(grid)
@@ -131,6 +150,8 @@ z_rotation(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
 
 # Perform the rotation
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
+    λ′ *= π/180
+    φ′ *= π/180
     λ₀ *= π/180
     φ₀ *= π/180
 
@@ -138,7 +159,7 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     dφ = π/2 - φ₀
 
     # Convert to Cartesian
-    X′ = SVector(lat_lon_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
+    X′ = SVector(spherical_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
 
     # Rotate Cartesian coordinates
     Rx = x_rotation(dλ)
@@ -147,7 +168,10 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     X = Rx * Ry * X′
 
     # Convert back to Spherical
-    φ, λ = cartesian_to_lat_lon(X)
+    φ, λ = cartesian_to_spherical(X)
+
+    λ *= 180/π
+    φ *= 180/π
 
     return λ, φ
 end
