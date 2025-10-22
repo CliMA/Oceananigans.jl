@@ -86,7 +86,7 @@ function Base.show(io::IO, fds::FieldDataset)
 end
 
 """
-    FieldDataset(grid, field_names, times;
+    FieldDataset(grid, times, field_names;
                  backend=OnDisk(),
                  path=nothing,
                  locations=nothing,
