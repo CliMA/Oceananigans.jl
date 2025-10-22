@@ -1,8 +1,7 @@
-using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Grids: with_halo
 import Oceananigans.Grids: on_architecture
 
-import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields, previous_hydrostatic_tendency_fields
+import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
@@ -16,7 +15,7 @@ end
 
 """
     SplitExplicitFreeSurface(grid = nothing;
-                             gravitational_acceleration = g_Earth,
+                             gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
                              substeps = nothing,
                              cfl = nothing,
                              fixed_Δt = nothing,
@@ -42,7 +41,7 @@ the barotropic mode of the velocities at the new time step is corrected with the
 Keyword Arguments
 =================
 
-- `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
+- `gravitational_acceleration`: the gravitational acceleration (default: `Oceananigans.defaults.gravitational_acceleration`)
 
 - `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
               timestep. Note that some averaging functions do not require substepping until `2Δt`.
@@ -84,7 +83,7 @@ References
 Shchepetkin, A. F., and McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
 function SplitExplicitFreeSurface(grid = nothing;
-                                  gravitational_acceleration = g_Earth,
+                                  gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
@@ -176,18 +175,6 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, grid, tracername, bcs)
-    U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
-    V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
-
-    free_surface_grid = free_surface.η.grid
-    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
-    η = free_surface_displacement_field(velocities, free_surface, grid)
-
-    return (; U=U, V=V, η=η)
-end
-
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}
 
 # Internal function for HydrostaticFreeSurfaceModel
@@ -263,7 +250,7 @@ end
 function FixedTimeStepSize(grid;
                            cfl = 0.7,
                            averaging_kernel = averaging_shape_function,
-                           gravitational_acceleration = g_Earth)
+                           gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration)
 
     FT = eltype(grid)
 

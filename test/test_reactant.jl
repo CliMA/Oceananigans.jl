@@ -3,6 +3,7 @@ include("reactant_test_utils.jl")
 using Oceananigans
 using Reactant
 using KernelAbstractions: @kernel, @index
+using CUDA
 
 @kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
     i, j, k = @index(Global, NTuple)
@@ -68,7 +69,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     times = 0:1.0:4
     t = 2.1
     times = Reactant.to_rarray(times, track_numbers=Number)
-    @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
+    @test times isa Reactant.TracedStepRangeLen
 
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
     @test ñ ≈ 0.1
@@ -250,4 +251,3 @@ end
                                     hydrostatic_model_kw,
                                     immersed_boundary_grid=true)
 end
-

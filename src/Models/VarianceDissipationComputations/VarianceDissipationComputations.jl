@@ -4,7 +4,7 @@ export VarianceDissipation, flatten_dissipation_fields
 
 using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
-using Oceananigans.Grids: architecture
+using Oceananigans.Grids: architecture, AbstractGrid
 using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: Field, VelocityFields
@@ -35,13 +35,12 @@ using KernelAbstractions: @kernel, @index
 
 const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper}
 
-struct VarianceDissipation{P, K, A, D, S, G}
+struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
     diffusive_production :: K
     advective_fluxes :: A
     diffusive_fluxes :: D
     previous_state :: S
-    gradient_squared :: G
     tracer_name :: Symbol
 end
 
@@ -99,9 +98,7 @@ function VarianceDissipation(tracer_name, grid;
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
     diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
 
-    gradients = deepcopy(P)
-
-    return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients, tracer_name)
+    return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, tracer_name)
 end
 
 function (ϵ::VarianceDissipation)(model)

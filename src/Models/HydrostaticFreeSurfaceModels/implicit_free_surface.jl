@@ -32,7 +32,9 @@ Base.show(io::IO, fs::ImplicitFreeSurface) =
               "└─ settings: ", fs.solver_settings)
 
 """
-    ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...)
+    ImplicitFreeSurface(; solver_method = :Default,
+                        gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+                        solver_settings...)
 
 Return an implicit free-surface solver. The implicit free-surface equation is
 
@@ -68,14 +70,18 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 
 `solver_method` can be either of:
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
-* `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
 * `:PreconditionedConjugateGradient` for [`ConjugateGradientSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
-otherwise the `:HeptadiagonalIterativeSolver`.
+otherwise the `:PreconditionedConjugateGradient`.
 """
-ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
-    ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
+function ImplicitFreeSurface(;
+    solver_method = :Default,
+    gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
+    solver_settings...)
+
+    return ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
+end
 
 Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
@@ -115,7 +121,7 @@ build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravita
     build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
 build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
-    build_implicit_step_solver(Val(:HeptadiagonalIterativeSolver), grid, settings, gravitational_acceleration)
+    build_implicit_step_solver(Val(:PreconditionedConjugateGradient), grid, settings, gravitational_acceleration)
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
@@ -148,6 +154,12 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
 
     fill_halo_regions!(η)
 
+    return nothing
+end
+
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
+    parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
+    step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
 end
 

@@ -54,7 +54,7 @@ steps:
         export BENCHMARK_GROUP
         OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
 
-        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS profile --output=\${OUTPUT_PREFIX} --force-overwrite true --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
         $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
 
         # Remove generated output files
