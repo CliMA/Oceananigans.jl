@@ -60,13 +60,15 @@ grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(
 
 # output
 90×40×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── centered at (λ, φ) = (146.656, 11.3134)
+├── centered at (λ, φ) = (-110.0, 35.0)
 ├── longitude: Bounded  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
 ├── latitude:  Bounded  extent 160.0 degrees variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
 └── z:         Bounded  z ∈ [0.0, 1.0]       regularly spaced with Δz=1.0
 ```
 
-We can also make an ordinary LatitudeLongitudeGrid using `north_polar = (0, 90)`:
+Note that the center latitude ``λ = -110`` follows from ``180 + 70 - 360 = -110``:
+a clockwise rotation of 70 degrees modulo 360 degrees.
+We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
 
 ```jldoctest rllg
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(0, 90))
