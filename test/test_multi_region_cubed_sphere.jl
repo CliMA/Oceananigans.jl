@@ -874,6 +874,8 @@ end
                         vN = model.velocities.v
                         wN = model.velocities.w
                         bN = model.tracers.b
+                    end
+
                     if grid == underlying_grid
                         @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
                     else
