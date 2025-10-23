@@ -49,7 +49,8 @@ end
     @inbounds rhs[i, j, k] = active * δ * V
 end
 
-function compute_source_term!(solver::DistributedFFTBasedPoissonSolver, Ũ)
+function compute_source_term!(solver::DistributedFFTBasedPoissonSolver, free_surface, Ũ, Δt)
+    !isnothing(free_surface) && error("Implicit free surface is not yet supported on Distributed architectures!")
     rhs  = solver.storage.zfield
     arch = architecture(solver)
     grid = solver.local_grid
@@ -57,7 +58,8 @@ function compute_source_term!(solver::DistributedFFTBasedPoissonSolver, Ũ)
     return nothing
 end
 
-function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver, Ũ)
+function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver, free_surface, Ũ, Δt)
+    !isnothing(free_surface) && error("Implicit free surface is not yet supported on Distributed architectures!")
     rhs = solver.storage.zfield
     arch = architecture(solver)
     grid = solver.local_grid
