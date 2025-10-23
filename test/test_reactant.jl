@@ -3,6 +3,7 @@ include("reactant_test_utils.jl")
 using Oceananigans
 using Reactant
 using KernelAbstractions: @kernel, @index
+using CUDA
 
 @kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
     i, j, k = @index(Global, NTuple)
@@ -250,4 +251,3 @@ end
                                     hydrostatic_model_kw,
                                     immersed_boundary_grid=true)
 end
-
