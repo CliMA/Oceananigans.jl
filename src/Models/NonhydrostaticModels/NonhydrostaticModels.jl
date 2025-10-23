@@ -65,6 +65,10 @@ function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver, free_surfac
     return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid, free_surface)
 end
 
+function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver, ::Nothing)
+    return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid, nothing)
+end
+
 nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_solver(architecture(grid), grid, free_surface)
 
 #####
