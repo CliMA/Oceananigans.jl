@@ -252,10 +252,9 @@ end
         for arch in archs
             for non_uniform_conformal_mapping in (false, true)
                 A = typeof(arch)
-                Nx, Ny, Nz = 9, 9, 9
-
                 @info "  Testing immersed cubed sphere grid [$FT, $A]..."
 
+                Nx, Ny, Nz = 9, 9, 9
                 underlying_grid = ConformalCubedSphereGrid(arch, FT;
                                                            panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1,
                                                            non_uniform_conformal_mapping)
@@ -286,7 +285,6 @@ end
                 @info "  Testing fill halos for tracers [$FT, $A]..."
 
                 Nx, Ny, Nz = 9, 9, 1
-
                 underlying_grid = ConformalCubedSphereGrid(arch, FT;
                                                            panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
                                                            horizontal_direction_halo = 3, non_uniform_conformal_mapping)
@@ -356,10 +354,10 @@ end
                 @info "  Testing fill halos for horizontal velocities [$FT, $A]..."
 
                 Nx, Ny, Nz = 9, 9, 1
-
                 underlying_grid = ConformalCubedSphereGrid(arch, FT;
                                                         panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
                                                         horizontal_direction_halo = 3, non_uniform_conformal_mapping)
+
                 @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
                 immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
@@ -773,9 +771,11 @@ end
         for arch in archs
             for non_uniform_conformal_mapping in (false, true)
 
+                Nx, Ny, Nz = 9, 9, 9
                 underlying_grid = ConformalCubedSphereGrid(arch, FT;
                                                            panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
                                                            horizontal_direction_halo = 6, non_uniform_conformal_mapping)
+
                 @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
                 immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom);
                                                      active_cells_map = true)
