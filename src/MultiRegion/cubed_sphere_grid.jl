@@ -5,6 +5,7 @@ using Oceananigans.Grids: halo_size,
                           topology
 
 using CubedSphere
+using CubedSphere.SphericalGeometry
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
 
@@ -31,7 +32,7 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
                              z_topology = Bounded,
                              radius = Oceananigans.defaults.planet_radius,
                              non_uniform_conformal_mapping = false,
-                             spacing_type = "geometric",
+                             spacing = GeometricSpacing(),
                              provided_conformal_mapping = nothing,
                              partition = CubedSpherePartition(; R = 1))
 
@@ -194,7 +195,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                   z_topology = Bounded,
                                   radius = Oceananigans.defaults.planet_radius,
                                   non_uniform_conformal_mapping = false,
-                                  spacing_type = "geometric",
+                                  spacing = GeometricSpacing(),
                                   provided_conformal_mapping = nothing,
                                   partition = CubedSpherePartition(; R = 1))
 
@@ -242,7 +243,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                         halo = region_halo,
                                         rotation = region_rotation,
                                         non_uniform_conformal_mapping,
-                                        spacing_type,
+                                        spacing,
                                         provided_conformal_mapping)
 
     # Propagate the vertical coordinate type in the `MultiRegionGrid`.
