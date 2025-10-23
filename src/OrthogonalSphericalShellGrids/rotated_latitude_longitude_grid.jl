@@ -95,7 +95,7 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
     if φ₀ < 0
         throw(ArgumentError("North pole latitude must be >= 0."))
     elseif φ₀ > 90
-        throw(ArgumentError("North pole latitude must be < 90 degrees."))
+        throw(ArgumentError("North pole latitude must be <= 90 degrees."))
     end
 
     shifted_halo = halo .+ 1
