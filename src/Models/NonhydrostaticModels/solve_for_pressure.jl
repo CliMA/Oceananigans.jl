@@ -74,7 +74,7 @@ add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt) = nothing
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
 
     @inbounds begin
-        num = η[i, j] + Δt * w̃[i, j, Nz+1]
+        num = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
         den = Δt^2 + Δzᶠ / 2g
         rhs[i, j, Nz] -= Δt * (num / den)
     end
