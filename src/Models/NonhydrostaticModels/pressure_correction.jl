@@ -72,20 +72,33 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure mu
     @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHSΔt)
     @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHSΔt)
     @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
+end
 
-    if k == grid.Nz
-        @inbounds U.w[i, j, k+1] -= (pNHSΔt[i,j,k+1] - pNHSΔt[i,j,k]) / Δzᶜᶜᶜ(i, j, k, grid) 
-    end
+@kernel function _compute_surface_vertical_velocity!(w, grid, pNHSΔt)
+    i, j = @index(Global, NTuple)
+    k = grid.Nz + 1
+    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
 "Update the solution variables (velocities and tracers)."
 function make_pressure_correction!(model::NonhydrostaticModel, Δt)
 
-    launch!(model.architecture, model.grid, :xyz,
+    grid = model.grid
+    arch = grid.architecture
+
+    launch!(arch, grid, :xyz,
             _make_pressure_correction!,
             model.velocities,
             model.grid,
             model.pressures.pNHS)
+
+    if !isnothing(model.free_surface)
+        launch!(arch, grid, :xy,
+                _compute_surface_vertical_velocity!,
+                model.velocities,
+                model.grid,
+                model.pressures.pNHS)
+    end
 
     ϵ = eps(eltype(model.pressures.pNHS))
     Δt⁺ = max(ϵ, Δt)
