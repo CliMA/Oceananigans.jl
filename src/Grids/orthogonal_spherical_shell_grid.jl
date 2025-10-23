@@ -263,15 +263,6 @@ function fill_metric_halo_regions!(grid)
     return nothing
 end
 
-function lat_lon_to_cartesian(lat, lon, radius)
-    abs(lat) > 90 && error("lat must be within -90 ≤ lat ≤ 90")
-    return [lat_lon_to_x(lat, lon, radius), lat_lon_to_y(lat, lon, radius), lat_lon_to_z(lat, lon, radius)]
-end
-
-lat_lon_to_x(lat, lon, radius) = radius * cosd(lon) * cosd(lat)
-lat_lon_to_y(lat, lon, radius) = radius * sind(lon) * cosd(lat)
-lat_lon_to_z(lat, lon, radius) = radius * sind(lat)
-
 function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
     coordinates = (:λᶜᶜᵃ,
                    :λᶠᶜᵃ,
@@ -335,7 +326,7 @@ end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = topology_strs(grid)
     metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
 
     return string(size_summary(size(grid)),
@@ -358,7 +349,7 @@ end
     OrthogonalSphericalShellGrid(arch = CPU(), FT = Oceananigans.defaults.FloatType;
                                 size,
                                 z,
-                                radius = R_Earth,
+                                radius = Oceananigans.defaults.planet_radius,
                                 conformal_mapping = nothing,
                                 halo = (3, 3, 3),
                                 topology = (Bounded, Bounded, Bounded))
@@ -369,7 +360,7 @@ function OrthogonalSphericalShellGrid(arch::AbstractArchitecture = CPU(),
                                       FT::DataType = Oceananigans.defaults.FloatType;
                                       size,
                                       z,
-                                      radius = R_Earth,
+                                      radius = Oceananigans.defaults.planet_radius,
                                       conformal_mapping = nothing,
                                       halo = (3, 3, 3), # TODO: support Flat directions
                                       topology = (Bounded, Bounded, Bounded))

@@ -71,6 +71,10 @@ Private = false
 Modules = [Oceananigans.Fields]
 Private = false
 ```
+```@docs
+XESMF.Regridder
+OceananigansXESMFExt.regrid!
+```
 
 ## Forcings
 

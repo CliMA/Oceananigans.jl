@@ -11,7 +11,7 @@ export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
 export MutableVerticalDiscretization
-export ExponentialCoordinate, ConstantToStretchedCoordinate, PowerLawStretching, LinearStretching
+export ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
@@ -34,9 +34,6 @@ using Oceananigans.Architectures
 
 import Base: size, length, eltype, show, -
 import Oceananigans.Architectures: architecture, on_architecture
-
-# Physical constants for constructors.
-const R_Earth = 6371.0e3    # [m] Mean radius of the Earth https://en.wikipedia.org/wiki/Earth
 
 #####
 ##### Abstract types
@@ -105,6 +102,11 @@ struct LeftConnected <: AbstractTopology end
 Grid topology for dimensions that are connected to other models or domains only on the right (the other direction is bounded)
 """
 struct RightConnected <: AbstractTopology end
+
+topology_str(T) = string(T)
+topology_str(::Type{RightConnected}) = "RightConnected"
+topology_str(::Type{LeftConnected}) = "LeftConnected"
+topology_str(::Type{FullyConnected}) = "FullyConnected"
 
 #####
 ##### Directions (for tilted domains)

@@ -22,11 +22,13 @@ const AMD = AnisotropicMinimumDissipation
 @inline viscosity(::AMD, K) = K.νₑ
 @inline diffusivity(::AMD, K, ::Val{id}) where id = K.κₑ[id]
 
-Base.show(io::IO, closure::AMD{TD}) where TD =
-    print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",
+function Base.show(io::IO, closure::AMD{TD}) where TD
+    td_str = summary(TD())
+    print(io, "AnisotropicMinimumDissipation{$td_str} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, "\n",
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, "\n",
               "                        Buoyancy modification multiplier Cb: ", closure.Cb)
+end
 
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]

@@ -1,8 +1,19 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
 using Oceananigans: defaults
 
+struct PerturbationAdvection{FT}
+    inflow_timescale :: FT
+   outflow_timescale :: FT
+end
+
 """
-    PerturbationAdvection
+    PerturbationAdvection(FT = defaults.FloatType;
+                          outflow_timescale = Inf,
+                          inflow_timescale = 0)
+
+Create a `PerturbationAdvection` scheme to be used with an `OpenBoundaryCondition`.
+This scheme will nudge the boundary velocity to the OpenBoundaryCondition's exterior value `val`,
+using a time-scale `inflow_timescale` for inflow and `outflow_timescale` for outflow.
 
 For cases where we assume that the internal flow is a small perturbation from
 an external prescribed or coarser flow, we can split the velocity into background
@@ -43,35 +54,17 @@ to point into the domain.
 The ideal value of the timescales probably depend on the grid spacing and details of the
 boundary flow.
 """
-struct PerturbationAdvection{FT}
-    inflow_timescale :: FT
-   outflow_timescale :: FT
+function PerturbationAdvection(FT = defaults.FloatType;
+                               outflow_timescale = Inf,
+                               inflow_timescale = 0)
+    inflow_timescale = convert(FT, inflow_timescale)
+    outflow_timescale = convert(FT, outflow_timescale)
+    return PerturbationAdvection(inflow_timescale, outflow_timescale)
 end
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
                           adapt(to, pe.outflow_timescale))
-
-"""
-    PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
-                                               outflow_timescale = Inf,
-                                               inflow_timescale = 0, kwargs...)
-
-Creates a `PerturbationAdvectionOpenBoundaryCondition` with a given exterior value `val`, to which
-the flow is forced with an `outflow_timescale` for outflow and `inflow_timescale` for inflow. For
-details about this method, refer to the docstring for `PerturbationAdvection`.
-"""
-function PerturbationAdvectionOpenBoundaryCondition(val, FT = defaults.FloatType;
-                                                    outflow_timescale = Inf,
-                                                    inflow_timescale = 0, kwargs...)
-    inflow_timescale = convert(FT, inflow_timescale)
-    outflow_timescale = convert(FT, outflow_timescale)
-    classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
-
-    @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
-
-    return BoundaryCondition(classification, val; kwargs...)
-end
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
@@ -87,7 +80,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
-    pa = bc.classification.matching_scheme
+    pa = bc.classification.scheme
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ # last stage Δt normalized by the inflow/output timescale
 
@@ -111,7 +104,7 @@ end
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
-    pa = bc.classification.matching_scheme
+    pa = bc.classification.scheme
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ # last stage Δt normalized by the inflow/output timescale
 
