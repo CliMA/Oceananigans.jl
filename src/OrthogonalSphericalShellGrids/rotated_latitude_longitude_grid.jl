@@ -1,5 +1,5 @@
 using CubedSphere.SphericalGeometry
-using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded
+using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded, validate_lat_lon_grid_args
 using Oceananigans.Utils: KernelParameters
 using StaticArrays
 using LinearAlgebra
@@ -59,11 +59,11 @@ z = (0, 1)
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(70, 55))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── centered at (λ, φ) = (-110.0, 35.0)
-├── longitude: Bounded  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
-├── latitude:  Bounded  extent 160.0 degrees variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
-└── z:         Bounded  z ∈ [0.0, 1.0]       regularly spaced with Δz=1.0
+├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
+├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
+└── z:         Bounded  z ∈ [0.0, 1.0]        regularly spaced with Δz=1.0
 ```
 
 Note that the center latitude ``λ = -110`` follows from ``180 + 70 - 360 = -110``:
@@ -74,11 +74,11 @@ We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(0, 90))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── centered at (λ, φ) = (180.0, 0.0)
-├── longitude: Bounded  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
-├── latitude:  Bounded  extent 160.0 degrees variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
-└── z:         Bounded  z ∈ [0.0, 1.0]       regularly spaced with Δz=1.0
+├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
+├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
+└── z:         Bounded  z ∈ [0.0, 1.0]        regularly spaced with Δz=1.0
 ```
 """
 function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
@@ -90,7 +90,11 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
                                       z,
                                       halo = (3, 3, 3),
                                       radius = Oceananigans.defaults.planet_radius,
-                                      topology = (Bounded, Bounded, Bounded))
+                                      topology = nothing)
+
+    precompute_metrics = true
+    topology, size, halo, latitude, longitude, z, precompute_metrics =
+        validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
 
     _, φ₀ = north_pole
 
@@ -101,8 +105,8 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
     end
 
     shifted_halo = halo .+ 1
-    source_grid = LatitudeLongitudeGrid(arch, FT; size, z, topology, radius,
-                                        latitude, longitude, halo = shifted_halo)
+    source_grid = LatitudeLongitudeGrid(arch, FT; halo=shifted_halo, precompute_metrics,
+                                        size, z, topology, radius, latitude, longitude)
 
     conformal_mapping = LatitudeLongitudeRotation(north_pole)
     grid = OrthogonalSphericalShellGrid(arch, FT; size, z, radius, halo, topology, conformal_mapping)
