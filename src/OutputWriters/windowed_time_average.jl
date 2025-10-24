@@ -134,7 +134,7 @@ function AveragedSpecifiedTimes(times, window::Vector; kw...)
     return AveragedSpecifiedTimes(SpecifiedTimes(sorted_times); window=sorted_window, kw...)
 end
 
-function AveragedSpecifiedTimes(times, window::Union{<:Number, <:Period}; kw...)
+function AveragedSpecifiedTimes(times, window; kw...)
     sorted_times = sort(times)
     time_diff = diff(vcat(0, sorted_times))
 
