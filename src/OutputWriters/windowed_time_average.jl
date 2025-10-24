@@ -110,22 +110,16 @@ mutable struct AveragedSpecifiedTimes{S<:SpecifiedTimes, W} <: AbstractSchedule
     collecting :: Bool
 end
 
-const VaryingWindowAveragedSpecifiedTimes = AveragedSpecifiedTimes{<:Vector}
+const VaryingWindowAveragedSpecifiedTimes = AveragedSpecifiedTimes{<:Any, <:Vector}
 
 AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
     AveragedSpecifiedTimes(specified_times, window, stride, false)
 
 AveragedSpecifiedTimes(times; window, kw...) = AveragedSpecifiedTimes(times, window; kw...)
 
-function determine_epsilon(eltype)
-    if eltype <: AbstractFloat
-        return eps(eltype)
-    elseif eltype <: Period
-        return Second(0)
-    else
-        return 0
-    end
-end
+determine_epsilon(eltype) = 0  
+determine_epsilon(::Type{T}) where T <: AbstractFloat = eps(T)  
+determine_epsilon(::Period) = Second(0)  
 
 function AveragedSpecifiedTimes(times, window::Vector; kw...)
     length(window) == length(times) || throw(ArgumentError("When providing a vector of windows, its length $(length(window)) must match the number of specified times $(length(times))."))
@@ -152,7 +146,7 @@ function AveragedSpecifiedTimes(times, window::Union{<:Number, <:Period}; kw...)
 end
 
 get_next_window(schedule::VaryingWindowAveragedSpecifiedTimes) = schedule.window[schedule.specified_times.previous_actuation + 1]
-get_next_window(schedule::AveragedSpecifiedTimes) = schedule.window
+get_next_window(schedule) = schedule.window
 
 function (schedule::AveragedSpecifiedTimes)(model)
     time = model.clock.time
