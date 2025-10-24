@@ -2,8 +2,8 @@ using Oceananigans
 using SeawaterPolynomials: TEOS10EquationOfState
 using CUDA
 
-function ten_steps!(model, Δt=1e-3)
-    for _ in 1:10
+function many_steps!(model, Nt; Δt=1e-3)
+    for _ in 1:Nt
         time_step!(model, Δt)
     end
 end
@@ -37,8 +37,9 @@ function hi_res_hydrostatic_model(grid;
 end
 
 # Configurations
-group = get(ENV, "BENCHMARK_GROUP", "all") |> Symbol
+# group = get(ENV, "BENCHMARK_GROUP", "all") |> Symbol
 
+config = :channel
 Nx = 512
 Ny = 256
 Nz = 128
@@ -72,4 +73,5 @@ elseif config == :box
     model = hi_res_hydrostatic_model(grid)
 end
 
-ten_step!(model)
+@time many_steps!(model, 1) # compile
+@time many_steps!(model, 10)
