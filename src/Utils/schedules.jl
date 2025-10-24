@@ -234,6 +234,8 @@ function specified_times_str(st)
     return string(str, "]")
 end
 
+Base.copy(st::SpecifiedTimes) = SpecifiedTimes(copy(st.times), st.previous_actuation)
+
 #####
 ##### ConsecutiveIterations
 #####
