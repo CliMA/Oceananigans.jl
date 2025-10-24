@@ -47,11 +47,9 @@ arch = GPU()
 immersed = false
 Oceananigans.defaults.FloatType = Float64
 
-lat_lon_kwargs = (longitude = (0, 360),
-                  latitude = (-80, 80), z = (-1000, 0), size=(Nx, Ny, Nz))
-
-dλ = 10 # ridge width in degrees
-ridge(λ, φ) = -1000 + 100 * exp(-(λ - 30)^2 / 2dλ^2)
+lat_lon_kw = (longitude=(0, 360), latitude=(-80, 80), z=(-1000, 0), size=(Nx, Ny, Nz), halo=(7, 7, 7))
+dλ = 20 # ridge width in degrees
+ridge(λ, φ) = -1000 + 800 * exp(-(λ - 30)^2 / 2dλ^2)
 
 if config == :channel
     grid = LatitudeLongitudeGrid(arch; topology=(Periodic, Bounded, Bounded), lat_lon_kw...)
@@ -73,5 +71,8 @@ elseif config == :box
     model = hi_res_hydrostatic_model(grid)
 end
 
+@time many_steps!(model, 1) # compile
+@time many_steps!(model, 1) # compile
+@time many_steps!(model, 1) # compile
 @time many_steps!(model, 1) # compile
 @time many_steps!(model, 10)
