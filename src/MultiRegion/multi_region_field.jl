@@ -6,7 +6,7 @@ using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
-import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
 import Oceananigans.Diagnostics: hasnan
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
