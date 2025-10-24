@@ -314,7 +314,13 @@ schedule_aligned_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, 
 ##### Show methods
 #####
 
-Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
+function Base.summary(schedule::IterationInterval)
+    summary = string("IterationInterval(", schedule.interval, ")")
+    if schedule.offset != 0
+        summary *= " with offset $(schedule.offset)"
+    end
+    return summary
+end
 Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
 Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
