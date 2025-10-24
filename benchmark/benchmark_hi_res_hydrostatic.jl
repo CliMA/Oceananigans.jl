@@ -14,7 +14,7 @@ function hi_res_hydrostatic_model(grid;
     passive_tracers = (),
     tracer_advection = WENO(order=7),
     closure = CATKEVerticalDiffusivity(),
-    timestepper = :SplitRungeKutta3)
+    timestepper = :QuasiAdamsBashforth2)
     
     tracers = tuple(:T, :S, :e, passive_tracers...)
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState())
