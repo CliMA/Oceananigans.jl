@@ -91,7 +91,7 @@ For example,
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
 
-schedule = WallTimeInterval(1e-2)
+schedule = WallTimeInterval(1e-1)
 add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
