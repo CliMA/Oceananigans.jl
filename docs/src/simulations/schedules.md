@@ -16,7 +16,7 @@ using Oceananigans
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(; grid)
 simulation = Simulation(model, Δt=0.1, stop_time=2.5, verbose=false)
-dummy(sim) = @info string("Iter: ", iteration(sim), " I was called at t = ", time(sim))
+dummy(sim) = @info string("Iter: ", iteration(sim), "-- I was called at t = ", time(sim))
 ```
 
 ## [`IterationInterval`](@ref)
@@ -33,6 +33,7 @@ Use the `offset` kwarg to shift the trigger so that, for example,
 
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 schedule = IterationInterval(7; offset=-2)
 add_callback!(simulation, dummy, schedule, name=:dummy)
@@ -48,6 +49,7 @@ in units corresponding to `model.clock.time`. For example,
 
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 schedule = TimeInterval(1.11)
 add_callback!(simulation, dummy, schedule, name=:dummy)
@@ -67,8 +69,8 @@ stop_time = start_time + Dates.Minute(3)
 datetime_simulation = Simulation(datetime_model; Δt=Dates.Second(25), stop_time, verbose=false)
 
 schedule = TimeInterval(Dates.Minute(1))
-add_callback!(datetime_simulation, dummy, schedule, name=:dummy)
-run!(simulation)
+add_callback!(datetime_simulation, dummy, schedule)
+run!(datetime_simulation)
 ```
 
 If `interval isa Number` with an `AbstractTime` clock, then `interval`
@@ -76,6 +78,7 @@ is interpreted as a `Dates.Second`:
 
 ```@example schedules
 Oceananigans.Simulations.reset!(datetime_simulation)
+simulation.stop_time = 2.5
 
 schedule = TimeInterval(59)
 add_callback!(datetime_simulation, dummy, schedule, name=:dummy)
@@ -90,6 +93,7 @@ For example,
 
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 schedule = WallTimeInterval(1e-1)
 # add_callback!(simulation, dummy, schedule, name=:dummy)
@@ -104,6 +108,7 @@ This schedule is helpful for pre-planned save points or events tied to specific 
 
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 schedule = SpecifiedTimes(0.2, 1.5, 2.1)
 add_callback!(simulation, dummy, schedule, name=:dummy)
@@ -116,6 +121,7 @@ Any function of `model` that returns a `Bool` can be used as a schedule:
 
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 after_two(model) = model.clock.time > 2
 add_callback!(simulation, dummy, after_two, name=:dummy)
@@ -133,6 +139,7 @@ For example, averaging callbacks often need data at the scheduled time and immed
 
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 times = SpecifiedTimes(0.2, 1.5, 2.1)
 schedule = ConsecutiveIterations(times)
@@ -148,6 +155,7 @@ Use `OrSchedule(s₁, s₂, ...)` when any one of the child schedules should tri
 
 ```@example schedules
 Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 after_one_point_seven(model) = model.clock.time > 1.7
 schedule = AndSchedule(IterationInterval(2), after_one_point_seven)
