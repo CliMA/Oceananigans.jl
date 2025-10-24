@@ -10,8 +10,8 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
 
-    Axᶠᶜᶜ = grid_metric_operation((Face, Center, Center), Ax, field_grid)
-    Ayᶜᶠᶜ = grid_metric_operation((Center, Face, Center), Ay, field_grid)
+    Axᶠᶜᶜ = grid_metric_operation((Face(), Center(), Center()), Ax, field_grid)
+    Ayᶜᶠᶜ = grid_metric_operation((Center(), Face(), Center()), Ay, field_grid)
 
     sum!(∫ᶻ_A.xᶠᶜᶜ, Axᶠᶜᶜ)
     sum!(∫ᶻ_A.yᶜᶠᶜ, Ayᶜᶠᶜ)

@@ -28,9 +28,9 @@ indices(υ::UnaryOperation) = indices(υ.arg)
 
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
-function _unary_operation(L, operator, arg, Larg, grid)
+function _unary_operation(L::Tuple{LX, LY, LZ}, operator, arg, Larg, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid)
+    return UnaryOperation{LX, LY, LZ}(operator, arg, ▶, grid)
 end
 
 # Recompute location of unary operation
@@ -91,7 +91,7 @@ macro unary(ops...)
             import Oceananigans.Grids: AbstractGrid
             import Oceananigans.Fields: AbstractField
 
-            local location = Oceananigans.Fields.location
+            local instantiated_location = Oceananigans.Fields.instantiated_location
 
             @inline $op(i, j, k, grid::AbstractGrid, a) = @inbounds $op(a[i, j, k])
             @inline $op(i, j, k, grid::AbstractGrid, a::Number) = $op(a)
@@ -103,11 +103,11 @@ macro unary(ops...)
             `a`, and subsequently interpolated to the location indicated by `Lop`.
             """
             function $op(Lop::Tuple, a::AbstractField)
-                L = location(a)
+                L = instantiated_location(a)
                 return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
             end
 
-            $op(a::AbstractField) = $op(location(a), a)
+            $op(a::AbstractField) = $op(instantiated_location(a), a)
 
             push!(Oceananigans.AbstractOperations.operators, Symbol($op))
             push!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))
