@@ -103,17 +103,19 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
-
 1. Shikanian, A. and Parfenyev, V. (2025) [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.48550/arXiv.2508.13590), _arXiv preprint_, arXiv:2508.13590. DOI: [10.48550/arXiv.2508.13590](https://doi.org/10.48550/arXiv.2508.13590)
 
-1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R. and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2504.15308)
+1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R., and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2504.15308)
 
 1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2025) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.48550/arXiv.2503.12845), _arXiv preprint_, arXiv:2503.12845 (submitted to the Journal of Physical Oceanography). DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2503.12845)
 
 1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
 
-1. Bisits, J. I., Zika, J. D. and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)
+1. Wagner, G. L. and Constantinou, N. C. (2025) [Phenomenology of decaying turbulence beneath surface waves](https://doi.org/10.1017/jfm.2025.10649), _Journal of Fluid Mechanics_, **1020**, A51. DOI:[10.1017/jfm.2025.10649](https://doi.org/10.1017/jfm.2025.10649)
+
+1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
+
+1. Bisits, J. I., Zika, J. D., and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)
 
 1. Whitley V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_, **55(6)**, 645-661. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
 
