@@ -36,6 +36,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
+                                        timestepper = :QuasiAdamsBashforth2, 
                                         closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
 
     #####
