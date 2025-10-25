@@ -62,7 +62,7 @@ When `model.clock.time isa AbstractTime` such as `DateTime`, then `interval` can
 using Dates
 
 start_time = DateTime(2025, 1, 1)
-clock = Clock(time = DateTime(2025, 1, 1))
+clock = Clock(time = start_time)
 datetime_model = NonhydrostaticModel(; grid, clock, timestepper = :QuasiAdamsBashforth2)
 
 stop_time = start_time + Dates.Minute(3)
@@ -77,12 +77,13 @@ If `interval isa Number` with an `AbstractTime` clock, then `interval`
 is interpreted as a `Dates.Second`:
 
 ```@example schedules
-Oceananigans.Simulations.reset!(datetime_simulation)
-simulation.stop_time = 2.5
+datetime_model = NonhydrostaticModel(; grid, clock, timestepper = :QuasiAdamsBashforth2)
+stop_time = start_time + Dates.Minute(3)
+datetime_simulation = Simulation(datetime_model; Δt=Dates.Second(25), stop_time, verbose=false)
 
 schedule = TimeInterval(59)
 add_callback!(datetime_simulation, dummy, schedule, name=:dummy)
-run!(simulation)
+run!(datetime_simulation)
 ```
 
 ### [`WallTimeInterval`](@ref)
@@ -96,7 +97,7 @@ Oceananigans.Simulations.reset!(simulation)
 simulation.stop_time = 2.5
 
 schedule = WallTimeInterval(1e-1)
-# add_callback!(simulation, dummy, schedule, name=:dummy)
+add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
 
