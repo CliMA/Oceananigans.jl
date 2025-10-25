@@ -8,11 +8,11 @@ import Oceananigans.Units: Time
 import Oceananigans.Fields: set!
 
 """
-    mutable struct Clock{T, FT}
+    mutable struct Clock{TT, DT, IT, S}
 
 Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
-The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
-either a number or a `DateTime` object.
+The `stage` is updated only for multi-stage time-stepping methods. The `time :: TT` is
+either a `Number` or a `DateTime` object.
 """
 mutable struct Clock{TT, DT, IT, S}
     time :: TT
