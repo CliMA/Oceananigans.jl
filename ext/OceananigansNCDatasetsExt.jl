@@ -1,11 +1,11 @@
 module OceananigansNCDatasetsExt
 
 using NCDatasets
-import NCDatasets: defVar
 
-using Dates: AbstractTime, UTC, now
+using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
+using SeawaterPolynomials: BoussinesqEquationOfState
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.Architectures: CPU, GPU, on_architecture
@@ -20,11 +20,8 @@ using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           constructor_arguments
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
                           versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
-using SeawaterPolynomials: BoussinesqEquationOfState
-
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
@@ -41,6 +38,7 @@ using Oceananigans.OutputWriters:
     fetch_and_convert_output,
     show_array_type
 
+import NCDatasets: defVar
 import Oceananigans: write_output!
 import Oceananigans.OutputWriters:
     NetCDFWriter,
@@ -1378,6 +1376,10 @@ function save_output!(ds, output::LagrangianParticles, model, ow, time_index, na
 
     return nothing
 end
+
+# Convert to a base Julia type (a float or DateTime).
+float_or_date_time(t) = t
+float_or_date_time(t::AbstractTime) = DateTime(t)
 
 """
     write_output!(ow::NetCDFWriter, model)
