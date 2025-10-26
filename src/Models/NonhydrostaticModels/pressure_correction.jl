@@ -77,7 +77,7 @@ end
 @kernel function _compute_surface_vertical_velocity!(w, grid, pNHSΔt)
     i, j = @index(Global, NTuple)
     k = grid.Nz + 1
-    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
+    @inbounds w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
 "Update the solution variables (velocities and tracers)."
