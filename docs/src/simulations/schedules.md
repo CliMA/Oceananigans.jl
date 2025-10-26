@@ -63,7 +63,7 @@ using Dates
 
 start_time = DateTime(2025, 1, 1)
 clock = Clock(time = start_time)
-datetime_model = NonhydrostaticModel(; grid, clock, timestepper = :QuasiAdamsBashforth2)
+datetime_model = NonhydrostaticModel(; grid, clock)
 
 stop_time = start_time + Dates.Minute(3)
 datetime_simulation = Simulation(datetime_model; Δt=Dates.Second(25), stop_time, verbose=false)
