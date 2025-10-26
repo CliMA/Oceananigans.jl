@@ -95,7 +95,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
     if !isnothing(model.free_surface)
         launch!(arch, grid, :xy,
                 _compute_surface_vertical_velocity!,
-                model.velocities,
+                model.velocities.w,
                 model.grid,
                 model.pressures.pNHS)
     end
