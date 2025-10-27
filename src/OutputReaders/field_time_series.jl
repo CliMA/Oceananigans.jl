@@ -448,6 +448,12 @@ end
 
 struct UnspecifiedBoundaryConditions end
 
+function naturalsort(x::Vector{String})
+    f = text -> all(isnumeric, text) ? Char(parse(Int, text)) : text
+    sorter = key -> join(f(m.match) for m in eachmatch(r"[0-9]+|[^0-9]+", key))
+    sort(x, by=sorter)
+end
+
 """
     FieldTimeSeries(path, name;
                     backend = InMemory(),
@@ -499,6 +505,7 @@ function FieldTimeSeries(path::String, name::String;
         # Look for part1, etc
         lookfor = string(start, "_part*.jld2")
         part_paths = glob(lookfor)
+        part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
         path = first(part_paths) # part1 is first?
     else
@@ -647,6 +654,7 @@ function FieldTimeSeries(path::String, name::String;
 
         for part in 2:Nparts
             path = part_paths[part]
+            @show path
             file = jldopen(path; reader_kw...)
             part_iterations = parse.(Int, keys(file["timeseries/t"]))
             part_times = [file["timeseries/t/$i"] for i in part_iterations]

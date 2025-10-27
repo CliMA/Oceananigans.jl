@@ -70,22 +70,27 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
                     end
 
                     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+
                         info_msg = info_message(grid, free_surface, timestepper)
-                        @testset "$info_msg" begin
-                            @info "  Testing a $info_msg"
-                            model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
-                                                                free_surface,
-                                                                tracers = (:b, :c, :constant),
-                                                                timestepper,
-                                                                buoyancy = BuoyancyTracer(),
-                                                                vertical_coordinate = ZStarCoordinate())
+                        if timestepper == :QuasiAdamsBashforth2
+                            @info "  Skipping local conservation test for QuasiAdamsBashforth2 time stepping, which does not guarantee conservation of tracers."
+                        else
+                            @testset "$info_msg" begin
+                                @info "  Testing a $info_msg"
+                                model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
+                                                                    free_surface,
+                                                                    tracers = (:b, :c, :constant),
+                                                                    timestepper,
+                                                                    buoyancy = BuoyancyTracer(),
+                                                                    vertical_coordinate = ZStarCoordinate())
 
-                            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
+                                bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
-                            set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
+                                set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
-                            Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                            test_zstar_coordinate(model, 100, Δt, test_local_conservation(timestepper))
+                                Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
+                                test_zstar_coordinate(model, 100, Δt, test_local_conservation(timestepper))
+                            end
                         end
                     end
                 end

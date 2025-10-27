@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.Models.VarianceDissipationComputations
-using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 using KernelAbstractions: @kernel, @index
 using GLMakie
 
@@ -52,40 +52,56 @@ function compute_tracer_dissipation!(sim)
     return nothing
 end
 
-tracer_advection = WENO(order=9)
+cᵢ = CenterField(grid)
+set!(cᵢ, c₀)
+
+tracer_advection = WENO(order=7)
 closure = nothing # ScalarDiffusivity(κ=1e-5)
 velocities = PrescribedVelocityFields(u=1)
     
-function run_simulation(ts, timestepper)   
+function run_simulation(ts, timestepper; χ=nothing, velocities=velocities)   
     c⁻    = CenterField(grid)
     Δtc²  = CenterField(grid)     
 
     model = HydrostaticFreeSurfaceModel(; grid, 
-                                        timestepper, 
-                                        velocities, 
-                                        tracer_advection, 
-                                        closure, 
-                                        tracers=:c,
-                                        auxiliary_fields=(; Δtc², c⁻))
-                                            
+                                          timestepper, 
+                                          velocities, 
+                                          tracer_advection, 
+                                          closure, 
+                                          tracers=:c,
+                                          auxiliary_fields=(; Δtc², c⁻))
+                                       
+    if timestepper == :QuasiAdamsBashforth2 && χ !== nothing
+        model.timestepper.χ = χ
+    end
+
     set!(model, c=c₀)
     set!(model.auxiliary_fields.c⁻, c₀)
 
-    Δt  = 0.3 * minimum_xspacing(grid)
-    sim = Simulation(model; Δt, stop_time=10)
+    if timestepper == :SplitRungeKutta3
+        Δt = 0.6 * minimum_xspacing(grid)
+    elseif timestepper == :QuasiAdamsBashforth2
+        Δt = 0.2 * minimum_xspacing(grid)
+    elseif timestepper == :D0
+        Δt = 1 * minimum_xspacing(grid)
+    end
+
+    @show Δt
+    sim = Simulation(model; Δt, stop_time=12)
 
     ϵ = VarianceDissipation(:c, grid)
     f = Oceananigans.Models.VarianceDissipationComputations.flatten_dissipation_fields(ϵ)
 
     outputs = merge((; c = model.tracers.c, Δtc² = model.auxiliary_fields.Δtc²), f)
     add_callback!(sim, ϵ, IterationInterval(1))
+    add_callback!(sim, compute_tracer_dissipation!, IterationInterval(1))
+
+    iteration_interval = ceil(Int, 0.12 / Δt)
 
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
-                                            filename="one_d_simulation_$(ts).jld2",
-                                            schedule=IterationInterval(100),
-                                            overwrite_existing=true)
-
-    sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
+                                               filename="one_d_simulation_$(ts).jld2",
+                                               schedule=IterationInterval(iteration_interval),
+                                               overwrite_existing=true)
     
     run!(sim)
 
@@ -105,28 +121,42 @@ function run_simulation(ts, timestepper)
     return (; c, Δtc², Acx, Dcx, ∫closs, ∫A, ∫D, ∫T, times)
 end
 
+using LaTeXStrings
+
 cases = Dict()
 
-cases["AB2"]  = run_simulation(:AB2, :QuasiAdamsBashforth2)
-cases["RK2"]  = run_simulation(:RK2, :SplitRungeKutta2)
+cases["AB1"]  = run_simulation(:AB2, :QuasiAdamsBashforth2, χ=0.1)
 cases["RK3"]  = run_simulation(:RK3, :SplitRungeKutta3)
-cases["RK4"]  = run_simulation(:RK4, :SplitRungeKutta4)
-cases["RK5"]  = run_simulation(:RK5, :SplitRungeKutta5)
-cases["RK6"]  = run_simulation(:RK6, :SplitRungeKutta6)
-cases["RK7"]  = run_simulation(:RK7, :SplitRungeKutta7)
-cases["RK8"]  = run_simulation(:RK8, :SplitRungeKutta8)
-cases["RK9"]  = run_simulation(:RK9, :SplitRungeKutta9)
-cases["RK10"] = run_simulation(:RK10, :SplitRungeKutta10)
-cases["RK20"] = run_simulation(:RK20, :SplitRungeKutta20)
-cases["RK30"] = run_simulation(:RK30, :SplitRungeKutta30)
-cases["RK40"] = run_simulation(:RK40, :SplitRungeKutta40)
+cases["ICC"]  = run_simulation(:D0, :SplitRungeKutta3, velocities=PrescribedVelocityFields())
 
-fig = Figure()
-ax  = Axis(fig[1, 1], title="Dissipation", xlabel="Time (s)", ylabel="Dissipation", yscale=log10)
+fig = Figure(size = (1000, 250))
+ax  = Axis(fig[1, 1:2], 
+           xlabel=L"\text{x [m]}", 
+           ylabel=L"\text{tracer concentration [-]}",
+           xticks=([-1, -0.5, 0, 0.5, 1], latexstring.(string.([-1, -0.5, 0, 0.5, 1]))),
+           yticks=([0, 0.5, 1], latexstring.(string.([0, 0.5, 1]))))
 
-for key in keys(cases)
-    case = cases[key]
-    scatter!(ax, case.times, case.∫closs, label="$(key) total variance loss")
-    lines!(ax, case.times, case.∫T, label="$(key) total dissipation")
-end
-Legend(fig[1, 2], ax)
+x, y, z = nodes(cases["AB1"].c)
+
+lines!(ax, x, interior(cases["ICC"].c[end], :, 1, 1), label = L"\text{initial tracer}", color = :black, linestyle = :dash, linewidth = 0.75)
+lines!(ax, x, interior(cases["AB1"].c[end], :, 1, 1), label = L"QAB2, \ \epsilon = 0.1", color = :blue)
+lines!(ax, x, interior(cases["RK3"].c[end], :, 1, 1), label = L"RK, \ M = 3", color = :red)
+axislegend(ax, position=:rt, framevisible=false)
+
+ax2 = Axis(fig[1, 3], 
+           xlabel=L"\text{time [s]}", 
+           ylabel=L"\text{integrated variance loss}",
+           xticks=([0, 2, 4, 6, 8, 10], latexstring.(string.([0, 2, 4, 6, 8, 10]))),
+           yticks=([0, 0.2, 0.4, 0.6], latexstring.(string.([0, 0.2, 0.4, 0.6]))))
+
+lines!(ax2,   cases["AB1"].times, cases["AB1"].∫T, label = L"QAB2, \ \text{calculated}", color = :blue)
+lines!(ax2,   cases["RK3"].times, cases["RK3"].∫T, label = L"RK, \ \text{calculated}", color = :red)
+scatter!(ax2, cases["AB1"].times[1:4:end], cases["AB1"].∫closs[1:4:end], label = L"QAB2, \text{computed}", color = :blue)
+scatter!(ax2, cases["RK3"].times[1:4:end], cases["RK3"].∫closs[1:4:end], label = L"RK, \text{computed}", color = :red)
+axislegend(ax2, position=:rt, framevisible=false)
+
+# for key in keys(cases)
+#     case = cases[key]
+#     scatter!(ax, case.times, case.∫closs, label="$(key) total variance loss")
+#     lines!(ax, case.times, case.∫T, label="$(key) total dissipation")
+# end

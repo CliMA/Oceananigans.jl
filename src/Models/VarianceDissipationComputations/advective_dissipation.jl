@@ -63,7 +63,7 @@ end
     end
 end
 
-@kernel function _cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid::AbstractGrid, advection, U, c)
+@kernel function _cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid::AbstractGrid, advection, U, tracer)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
@@ -73,19 +73,19 @@ end
         Fⁿ⁻¹.z[i, j, k] = Fⁿ.z[i, j, k]
 
         # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c)
-        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c)
-        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f)
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer) * σⁿ(i, j, k, grid, f, c, c)
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer) * σⁿ(i, j, k, grid, c, f, c)
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
     end
 end
 
-@kernel function _cache_advective_fluxes!(Fⁿ, grid::AbstractGrid, advection, U, c)
+@kernel function _cache_advective_fluxes!(Fⁿ, grid::AbstractGrid, advection, U, tracer)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
         # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) * σⁿ(i, j, k, grid, f, c, c)
-        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) * σⁿ(i, j, k, grid, c, f, c)
-        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, c) * σⁿ(i, j, k, grid, c, c, f)
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer) * σⁿ(i, j, k, grid, f, c, c)
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer) * σⁿ(i, j, k, grid, c, f, c)
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
     end
 end
