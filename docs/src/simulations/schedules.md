@@ -16,7 +16,7 @@ using Oceananigans
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(; grid)
 simulation = Simulation(model, Δt=0.1, stop_time=2.5, verbose=false)
-dummy(sim) = @info string("Iter: ", iteration(sim), "-- I was called at t = ", time(sim))
+dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim))
 ```
 
 ## [`IterationInterval`](@ref)
@@ -77,7 +77,7 @@ If `interval isa Number` with an `AbstractTime` clock, then `interval`
 is interpreted as a `Dates.Second`:
 
 ```@example schedules
-datetime_model = NonhydrostaticModel(; grid, clock, timestepper = :QuasiAdamsBashforth2)
+datetime_model = NonhydrostaticModel(; grid, clock)
 stop_time = start_time + Dates.Minute(3)
 datetime_simulation = Simulation(datetime_model; Δt=Dates.Second(25), stop_time, verbose=false)
 
