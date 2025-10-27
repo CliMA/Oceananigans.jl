@@ -1,5 +1,7 @@
 using Oceananigans: prognostic_fields, AbstractModel
 import Dates
+
+using Dates: AbstractTime
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
