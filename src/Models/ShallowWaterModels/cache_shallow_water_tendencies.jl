@@ -13,7 +13,7 @@ import Oceananigans.TimeSteppers: cache_previous_tendencies!
 end
 
 """ Store source terms for `u`, `v`, and `w`. """
-@kernel function _cache_field_tendencies!(G⁻, G⁰)
+@kernel function _cache_field_tendencies!(G⁻, grid, G⁰)
     i, j, k = @index(Global, NTuple)
     @inbounds G⁻[i, j, k] = G⁰[i, j, k]
 end
