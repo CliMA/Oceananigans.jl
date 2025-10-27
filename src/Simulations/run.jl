@@ -125,7 +125,7 @@ end
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
-    
+
     initial_time_step = !(sim.initialized)
     initial_time_step && initialize!(sim)
 
