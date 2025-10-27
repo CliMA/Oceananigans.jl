@@ -146,7 +146,7 @@ end
     @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
 end
 
-function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Ũ, Δt, g, η)
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)
