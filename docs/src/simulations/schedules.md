@@ -77,7 +77,7 @@ If `interval isa Number` with an `AbstractTime` clock, then `interval`
 is interpreted as a `Dates.Second`:
 
 ```@example schedules
-datetime_model = NonhydrostaticModel(; grid, clock)
+datetime_model = NonhydrostaticModel(; grid, clock = Clock(time = DateTime(2025, 1, 1)))
 stop_time = start_time + Dates.Minute(3)
 datetime_simulation = Simulation(datetime_model; Δt=Dates.Second(25), stop_time, verbose=false)
 
@@ -93,10 +93,11 @@ This is mostly useful for writing checkpoints to disk after consuming a fixed am
 For example,
 
 ```@example schedules
-Oceananigans.Simulations.reset!(simulation)
-simulation.stop_time = 2.5
+model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+simulation = Simulation(model, Δt=0.05, stop_time=100, verbose=false)
+dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim), " when walltime hit: ", prettytime(sim.run_wall_time))
 
-schedule = WallTimeInterval(1e-1)
+schedule = WallTimeInterval(0.1)
 add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
@@ -108,8 +109,8 @@ The constructor accepts numeric times or `Dates.DateTime` values and sorts them 
 This schedule is helpful for pre-planned save points or events tied to specific model times.
 
 ```@example schedules
-Oceananigans.Simulations.reset!(simulation)
-simulation.stop_time = 2.5
+model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+simulation = Simulation(model, Δt=0.05, stop_time=3, verbose=false)
 
 schedule = SpecifiedTimes(0.2, 1.5, 2.1)
 add_callback!(simulation, dummy, schedule, name=:dummy)
@@ -121,8 +122,8 @@ run!(simulation)
 Any function of `model` that returns a `Bool` can be used as a schedule:
 
 ```@example schedules
-Oceananigans.Simulations.reset!(simulation)
-simulation.stop_time = 2.5
+model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
 
 after_two(model) = model.clock.time > 2
 add_callback!(simulation, dummy, after_two, name=:dummy)
@@ -139,8 +140,8 @@ Some applications benefit from running extra steps immediately after an event or
 For example, averaging callbacks often need data at the scheduled time and immediately afterwards.
 
 ```@example schedules
-Oceananigans.Simulations.reset!(simulation)
-simulation.stop_time = 2.5
+model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
 
 times = SpecifiedTimes(0.2, 1.5, 2.1)
 schedule = ConsecutiveIterations(times)
@@ -155,8 +156,8 @@ Use `OrSchedule(s₁, s₂, ...)` when any one of the child schedules should tri
 `AbstractSchedule`s, so you can require, for example, output every hour *and* every 1000 iterations:
 
 ```@example schedules
-Oceananigans.Simulations.reset!(simulation)
-simulation.stop_time = 2.5
+model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
 
 after_one_point_seven(model) = model.clock.time > 1.7
 schedule = AndSchedule(IterationInterval(2), after_one_point_seven)
