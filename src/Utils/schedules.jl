@@ -1,6 +1,6 @@
-import Oceananigans: initialize!
-
 using Dates: AbstractTime
+
+import Oceananigans: initialize!
 
 """
     AbstractSchedule

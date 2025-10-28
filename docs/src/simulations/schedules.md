@@ -80,7 +80,7 @@ This is mostly useful for writing checkpoints to disk after consuming a fixed am
 For example,
 
 ```@example schedules
-model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=0.05, stop_time=100, verbose=false)
 dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim), " when walltime hit: ", prettytime(sim.run_wall_time))
 
@@ -96,7 +96,7 @@ The constructor accepts numeric times or `Dates.DateTime` values and sorts them 
 This schedule is helpful for pre-planned save points or events tied to specific model times.
 
 ```@example schedules
-model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=0.05, stop_time=3, verbose=false)
 
 schedule = SpecifiedTimes(0.2, 1.5, 2.1)
@@ -109,7 +109,7 @@ run!(simulation)
 Any function of `model` that returns a `Bool` can be used as a schedule:
 
 ```@example schedules
-model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
 
 after_two(model) = model.clock.time > 2
@@ -127,10 +127,10 @@ Some applications benefit from running extra steps immediately after an event or
 For example, averaging callbacks often need data at the scheduled time and immediately afterwards.
 
 ```@example schedules
-model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
 
-times = SpecifiedTimes(0.2, 1.5, 2.1)
+times = SpecifiedTimes(0.55, 1.5, 2.12)
 schedule = ConsecutiveIterations(times)
 add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
@@ -143,7 +143,7 @@ Use `OrSchedule(s₁, s₂, ...)` when any one of the child schedules should tri
 `AbstractSchedule`s, so you can require, for example, output every hour *and* every 1000 iterations:
 
 ```@example schedules
-model = NonhydrostaticModel(; grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
 
 after_one_point_seven(model) = model.clock.time > 1.7
