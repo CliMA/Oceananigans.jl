@@ -1,6 +1,7 @@
 using Oceananigans.Utils: prettysummary, ConsecutiveIterations
 using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Dates
 
 import Oceananigans: initialize!
 
@@ -115,7 +116,6 @@ end
 
 """
     add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
-
     add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
@@ -133,6 +133,15 @@ function add_callback!(simulation, callback::Callback; name = GenericName())
     name = unique_callback_name(name, keys(simulation.callbacks))
     simulation.callbacks[name] = callback
     return nothing
+end
+
+const DateTimeSimulations = Simulation{<:Oceananigans.Models.OceananigansDateTimeModels}
+
+function add_callback!(simulation::DateTimeSimulations, func, schedule::TimeInterval{<:Number, <:Number};
+                       name = GenericName(), callback_kw...)
+    schedule = TimeInterval(Dates.Second(schedule.interval))
+    callback = Callback(func, schedule; callback_kw...)
+    return add_callback!(simulation, callback; name)
 end
 
 function add_callback!(simulation, func, schedule = IterationInterval(1);
