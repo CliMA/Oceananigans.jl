@@ -47,7 +47,8 @@ Keyword arguments
 =================
 
 - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
-        for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
+        for constant time steps, or a `TimeStepWizard` for adaptive time-stepping, or a `Dates.Period`
+        if the `model` has a DateTime clock.
 
 - `stop_iteration`: Stop the simulation after this many iterations. Default: `Inf`.
 
