@@ -37,7 +37,7 @@ const ConstantStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:
 @inline momentum_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cu₀
 @inline   tracer_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cc₀
 
-struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctions
+@Base.kwdef struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctions
     Cσe :: FT
     Cσϵ :: FT
     Cu₀ :: FT
