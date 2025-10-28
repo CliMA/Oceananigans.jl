@@ -94,15 +94,9 @@ Callback(wta::WindowedTimeAverage, schedule; kw...) =
 
 struct GenericName end
 
-function unique_callback_name(name, existing_names)
-    if name ∈ existing_names
-        return Symbol(:another_, name)
-    else
-        return name
-    end
-end
+generic_callback_name(name, existing_names) = name
 
-function unique_callback_name(::GenericName, existing_names)
+function generic_callback_name(::GenericName, existing_names)
     prefix = :callback # yeah, that's generic
 
     # Find a unique one
@@ -130,7 +124,7 @@ already exists.
 The `callback` (which contains a schedule) can also be supplied directly.
 """
 function add_callback!(simulation, callback::Callback; name = GenericName())
-    name = unique_callback_name(name, keys(simulation.callbacks))
+    name = generic_callback_name(name, keys(simulation.callbacks))
     simulation.callbacks[name] = callback
     return nothing
 end

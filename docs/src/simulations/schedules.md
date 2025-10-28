@@ -16,7 +16,8 @@ using Oceananigans
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(; grid)
 simulation = Simulation(model, Δt=0.1, stop_time=2.5, verbose=false)
-dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim))
+dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim),
+                          ", and wall time = ", prettytime(sim.run_wall_time))
 ```
 
 ## [`IterationInterval`](@ref)
@@ -41,6 +42,15 @@ run!(simulation)
 ```
 
 notice that the callback is actuated on iterations 5, 12, 19, …
+
+Above, we have overwritten the original callback called "dummy" with the
+new one with the offset schedule. An alternative way is to construct the
+[`Callback`](@ref) manually and add it in the simulation:
+
+```@example schedules
+simulation.callbacks[:dummy] = Callback(dummy, schedule)
+```
+
 
 ## [`TimeInterval`](@ref)
 
@@ -77,14 +87,13 @@ run!(datetime_simulation)
 
 `WallTimeInterval(interval; start_time=time_ns()*1e-9)` uses wall-clock seconds instead of model time.
 This is mostly useful for writing checkpoints to disk after consuming a fixed amount of computational resources.
-For example,
+For example, using the previous `simulation` without the
 
 ```@example schedules
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-simulation = Simulation(model, Δt=0.05, stop_time=100, verbose=false)
-dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim), " when walltime hit: ", prettytime(sim.run_wall_time))
+Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
-schedule = WallTimeInterval(0.1)
+schedule = WallTimeInterval(0.005)
 add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
@@ -96,8 +105,8 @@ The constructor accepts numeric times or `Dates.DateTime` values and sorts them 
 This schedule is helpful for pre-planned save points or events tied to specific model times.
 
 ```@example schedules
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-simulation = Simulation(model, Δt=0.05, stop_time=3, verbose=false)
+Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 schedule = SpecifiedTimes(0.2, 1.5, 2.1)
 add_callback!(simulation, dummy, schedule, name=:dummy)
@@ -109,8 +118,8 @@ run!(simulation)
 Any function of `model` that returns a `Bool` can be used as a schedule:
 
 ```@example schedules
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
+Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 after_two(model) = model.clock.time > 2
 add_callback!(simulation, dummy, after_two, name=:dummy)
@@ -127,8 +136,8 @@ Some applications benefit from running extra steps immediately after an event or
 For example, averaging callbacks often need data at the scheduled time and immediately afterwards.
 
 ```@example schedules
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
+Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 times = SpecifiedTimes(0.55, 1.5, 2.12)
 schedule = ConsecutiveIterations(times)
@@ -143,8 +152,8 @@ Use `OrSchedule(s₁, s₂, ...)` when any one of the child schedules should tri
 `AbstractSchedule`s, so you can require, for example, output every hour *and* every 1000 iterations:
 
 ```@example schedules
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-simulation = Simulation(model, Δt=0.1, stop_time=3, verbose=false)
+Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
 
 after_one_point_seven(model) = model.clock.time > 1.7
 schedule = AndSchedule(IterationInterval(2), after_one_point_seven)
