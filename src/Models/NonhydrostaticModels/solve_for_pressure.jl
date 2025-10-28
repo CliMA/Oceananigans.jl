@@ -155,7 +155,7 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, f
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
+    launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
 
-    launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, args...)
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
