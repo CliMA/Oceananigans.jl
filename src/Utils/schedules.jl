@@ -52,8 +52,16 @@ end
 initialize!(schedule::TimeInterval, model) = initialize_actuations!(schedule, model.clock.time)
 
 function initialize_actuations!(schedule::TimeInterval, first_actuation_time)
+
+    if schedule.first_actuation_time isa Number && first_actuation_time isa Dates.AbstractDateTime
+        T = typeof(schedule.first_actuation_time)
+        msg = "Cannot use $T TimeInterval times with DateTime clock. \n"
+        throw(ArgumentError(msg))
+    end
+
     schedule.first_actuation_time = first_actuation_time
     schedule.actuations = 0
+
     return true
 end
 
