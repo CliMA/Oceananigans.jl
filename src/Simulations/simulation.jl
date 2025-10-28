@@ -46,8 +46,8 @@ Construct a `Simulation` for a `model` with time step `Δt`.
 Keyword arguments
 =================
 
-- `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
-        for constant time steps, or a `TimeStepWizard` for adaptive time-stepping, or a `Dates.Period`
+- `Δt`: Required keyword argument specifying the simulation time step. Can be either a `Number`
+        for constant time steps, a `TimeStepWizard` for adaptive time-stepping, or a `Dates.Period`
         if the `model` has a DateTime clock.
 
 - `stop_iteration`: Stop the simulation after this many iterations. Default: `Inf`.
