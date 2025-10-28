@@ -76,10 +76,10 @@ The `Simulation` constructor accepts three stopping conditions:
 simulation = Simulation(model; Δt=0.1, stop_time=10, stop_iteration=10000, wall_time_limit=30)
 ```
 
-### Callbacks: basics
+### Callback basics
 
-Callbacks execute arbitrary code on [schedules](@ref callback_schedules).
-They can be used to monitor simulation progress, compute diagnostics, and adjust the
+[Callback](@ref) executes arbitrary code on a [schedule](@ref callback_schedules).
+Callbacks can be used to monitor simulation progress, compute diagnostics, and adjust the
 course of a simulation.
 To illustrate a hierarchy of callbacks we use a simulation with a forced passive tracer:
 
@@ -100,7 +100,7 @@ run!(simulation)
 ```
 
 !!! note "Naming callbacks"
-    Callbacks may be assigned a `name` kwarg for `add_callback!` or by adding
+    Callbacks can optionally be assigned a `name` via `add_callback!` or by adding
     the callback manually to the `callbacks` dictionary: `simulation.callbacks[:mine] = my_callback`.
     Names can be used to identify, modify, or delete callbacks from `Simulation`.
 
@@ -117,6 +117,7 @@ set!(model, c=1)
 function stop_simulation(sim)
     if maximum(sim.model.tracers.c) >= 2
         sim.running = false
+        @info "The simulation is stopping because max(c) >= 2."
     end
     return nothing
 end
@@ -146,7 +147,8 @@ The time-step can be changed by modifying `simulation.Δt`.
 To decrease the computational cost of simulations of flows that significantly grow or decay in time,
 users may invoke a special callback called [`TimeStepWizard`](@ref) (which is associated with a special
 helper function [`conjure_time_step_wizard!`](@ref)).
-`TimeStepWizard` monitors the [advective and diffusive Courant numbers](https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition),
+`TimeStepWizard` monitors the
+[advective and diffusive Courant numbers](https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition),
 increasing or decreasing `simulation.Δt` to keep the time-step near its maximum stable value
 while respecting bounds such as `max_change` or `max_Δt`.
 
@@ -155,8 +157,14 @@ while respecting bounds such as `max_change` or `max_Δt`.
 set!(model, c=1, u=ϵ, v=ϵ, w=ϵ)
 
 conjure_time_step_wizard!(simulation, cfl=0.7)
-@show simulation.callbacks
+simulation
+```
 
+A `TimeStepWizard` has been added to the list of `simulation.callbacks`.
+`TimeStepWizard` is authorized to modify the time-step as the simulation progresses
+(every 10 iterations by default, but this can be modified):
+
+```@example simulation_overview
 print_progress(sim) = @info string("Iter: ", iteration(sim), ": Δt = ", prettytime(sim.Δt))
 add_callback!(simulation, print_progress, IterationInterval(10), name=:progress)
 simulation.stop_time += 1
@@ -180,10 +188,10 @@ run!(simulation)
     epsilon --- for example, when `TimeInterval` is a constant multiple of a fixed `Δt`.
     In some cases, `Δt` close to machine epsilon is undesirable: for example, with `NonhydrostaticModel`
     a machine epsilon `Δt` will produce a pressure field that is polluted by numerical error due to
-    its pressure correction algorithm. To mitigate issues associated with very small time-steps, the `Simulation` constructor accepts a `minimum_relative_step` argument (a typical choice is 1e-9).
+    its pressure correction algorithm. To mitigate issues associated with very small time-steps,
+    the `Simulation` constructor accepts a `minimum_relative_step` argument (a typical choice is 1e-9).
     When `minimum_relative_step > 0`, a time-step will be skipped (instead, the clock is simply reset)
     if an aligned  time-step is less than `minimum_relative_step * previous_Δt`.
-
 
 ### Callback "callsites"
 
@@ -211,12 +219,12 @@ simulation.callbacks[:modify_u] = Callback(modify_tendency!, IterationInterval(1
 run!(simulation)
 ```
 
-## Writing output
+## Introduction to writing output
 
 Output writers live in the ordered dictionary `simulation.output_writers`. Each writer pairs
 outputs with a schedule describing _when_ to export them and a backend (NetCDF, JLD2, or
 Checkpointer) describing _how_ to serialize them. Time-step alignment ensures the writer's
-schedule is honoured without user intervention.
+schedule is honored without user intervention.
 
 ```@example simulation_overview
 using NCDatasets
@@ -230,13 +238,13 @@ simulation.output_writers[:surface_slice] = NetCDFWriter(simulation.model, field
 simulation.output_writers
 ```
 
-During `run!`, Oceananigans calls each writer whenever its schedule actuates. Detailed usage
-examples appear in the [Output writers page](@ref output_writers).
+During `run!`, Oceananigans calls each writer whenever its schedule actuates.
+More comprehensive information may be found on the [output writers page](@ref output_writers).
 
 ## Putting it together
 
 Combining callbacks, output writers, and adaptive time-stepping turns a few lines of model code
-into a robust workflow. The snippet below shows a compact pattern frequently used in production.
+into a robust workflow:
 
 ```@example simulation_overview
 using Oceananigans.Units: hours, minutes
@@ -255,6 +263,4 @@ simulation.output_writers[:snapshots] = JLD2Writer(simulation.model, simulation.
 run!(simulation)
 ```
 
-This pattern combines short informative logging, adaptive stepping, and periodic state dumps.
-Modify the schedules or outputs to suit your experiment. For more recipes continue with the
-pages on [Output writers](@ref output_writers).
+For more recipes continue with the page on [schedules](@ref schedules).
