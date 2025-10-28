@@ -73,19 +73,6 @@ add_callback!(datetime_simulation, dummy, schedule)
 run!(datetime_simulation)
 ```
 
-If `interval isa Number` with an `AbstractTime` clock, then `interval`
-is interpreted as a `Dates.Second`:
-
-```@example schedules
-datetime_model = NonhydrostaticModel(; grid, clock = Clock(time = DateTime(2025, 1, 1)))
-stop_time = start_time + Dates.Minute(3)
-datetime_simulation = Simulation(datetime_model; Δt=Dates.Second(25), stop_time, verbose=false)
-
-schedule = TimeInterval(59)
-add_callback!(datetime_simulation, dummy, schedule, name=:dummy)
-run!(datetime_simulation)
-```
-
 ### [`WallTimeInterval`](@ref)
 
 `WallTimeInterval(interval; start_time=time_ns()*1e-9)` uses wall-clock seconds instead of model time.
