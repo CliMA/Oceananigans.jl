@@ -1,6 +1,6 @@
 # [Simulations: managing model time-stepping](@id simulation_overview)
 
-[`Simulation`](@ref) orchestrates model time-stepping loops that include
+[`Simulation`](@ref Oceananigans.Simulations.Simulation) orchestrates model time-stepping loops that include
 stop conditions, writing output, and the execution of "callbacks" that can do everything
 from monitoring simulation progress to editing the model state.
 
@@ -78,7 +78,7 @@ simulation = Simulation(model; Δt=0.1, stop_time=10, stop_iteration=10000, wall
 
 ### Callbacks: basics
 
-Callbacks execute arbitrary code on [schedules](@ref schedules).
+Callbacks execute arbitrary code on [schedules](@ref callback_schedules).
 They can be used to monitor simulation progress, compute diagnostics, and adjust the
 course of a simulation.
 To illustrate a hierarchy of callbacks we use a simulation with a forced passive tracer:
