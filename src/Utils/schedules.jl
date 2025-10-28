@@ -55,7 +55,7 @@ function initialize_actuations!(schedule::TimeInterval, first_actuation_time)
 
     if schedule.first_actuation_time isa Number && first_actuation_time isa Dates.AbstractDateTime
         T = typeof(schedule.first_actuation_time)
-        msg = "Cannot use $T TimeInterval times with DateTime clock. \n"
+        msg = "Cannot use $T TimeInterval times with DateTime clock. Use a Dates.Period instead."
         throw(ArgumentError(msg))
     end
 
