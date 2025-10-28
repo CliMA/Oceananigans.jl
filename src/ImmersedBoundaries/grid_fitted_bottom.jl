@@ -158,7 +158,6 @@ YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Abstrac
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
 
-
 function constructor_arguments(grid::AGFBIBG)
     args, kwargs = constructor_arguments(grid.underlying_grid)
     args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,

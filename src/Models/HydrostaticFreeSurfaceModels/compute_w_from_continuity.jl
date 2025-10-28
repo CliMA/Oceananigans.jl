@@ -3,6 +3,16 @@ using Oceananigans.Grids: halo_size, topology
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, div_xyᶜᶜᶜ, Δzᶜᶜᶜ
 using Oceananigans.ImmersedBoundaries: immersed_cell
+using Oceananigans.Models: surface_kernel_parameters
+
+function update_vertical_velocities!(velocities, grid, model; parameters = surface_kernel_parameters(grid))
+    update_grid_vertical_velocity!(velocities, model, grid, model.vertical_coordinate; parameters)
+    compute_w_from_continuity!(velocities, grid; parameters)
+    return nothing
+end
+
+# A Fallback to be extended for specific ztypes and grid types
+update_grid_vertical_velocity!(velocities, model, grid, ztype; kw...) = nothing
 
 """
     compute_w_from_continuity!(model)
@@ -14,10 +24,10 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 ```
 """
 compute_w_from_continuity!(model; kwargs...) =
-    compute_w_from_continuity!(model.velocities, model.architecture, model.grid; kwargs...)
+    compute_w_from_continuity!(model.velocities, model.grid; kwargs...)
 
-compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_parameters(grid)) =
-    launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
+compute_w_from_continuity!(velocities, grid; parameters = surface_kernel_parameters(grid)) =
+    launch!(architecture(grid), grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
 # If the grid is following the free surface, then the derivative of the moving grid is:
 #
@@ -48,29 +58,13 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     Nz = size(grid, 3)
     for k in 2:Nz+1
         δ = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, u, v) * Az⁻¹ᶜᶜᶜ(i, j, k-1, grid)
+        w̃ = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_σ(i, j, k-1, grid)
 
         # We do not account for grid changes in immersed cells
-        not_immersed = !immersed_cell(i, j, k-1, grid)
-        w̃ = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_σ(i, j, k-1, grid) * not_immersed
+        immersed = immersed_cell(i, j, k-1, grid)
+        w̃ = ifelse(immersed, zero(grid), w̃)
 
         wᵏ -= (δ + w̃)
         @inbounds w[i, j, k] = wᵏ
     end
-end
-
-#####
-##### Size and offsets for the w kernel
-#####
-
-# extend w kernel to compute also the boundaries
-# If Flat, do not calculate on halos!
-@inline function w_kernel_parameters(grid)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    Tx, Ty, _ = topology(grid)
-
-    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
-    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
-
-    return KernelParameters(ii, jj)
 end
