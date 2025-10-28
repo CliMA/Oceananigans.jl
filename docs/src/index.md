@@ -7,7 +7,7 @@ and hydrostatic Boussinesq equations on CPUs and GPUs.
 It runs on GPUs (wow, [fast!](https://doi.org/10.1029/2024MS004465)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
 Oceananigans development is community-driven with contributors from academia and industry.
-Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and [CliMA](https://clima.caltech.edu).
+Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the [Climate Modeling Alliance](https://clima.caltech.edu).
 
 ## Quick install
 
