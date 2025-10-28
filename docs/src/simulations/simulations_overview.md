@@ -239,10 +239,10 @@ Combining callbacks, output writers, and adaptive time-stepping turns a few line
 into a robust workflow. The snippet below shows a compact pattern frequently used in production.
 
 ```@example simulation_overview
-using Oceananigans.Utils: hour, minute
+using Oceananigans.Units: hours, minutes
 
 model = NonhydrostaticModel(; grid, tracers=:T)
-simulation = Simulation(model, Δt=20, stop_time=2hour)
+simulation = Simulation(model, Δt=20, stop_time=2hours)
 
 progress(sim) = @info "t = $(prettytime(sim)), Δt = $(prettytime(sim.Δt))"
 add_callback!(simulation, progress, IterationInterval(10))
@@ -250,7 +250,7 @@ conjure_time_step_wizard!(simulation, cfl=0.8)
 
 simulation.output_writers[:snapshots] = JLD2Writer(simulation.model, simulation.model.velocities;
                                                    filename = "snapshots.jld2",
-                                                   schedule = TimeInterval(30minute))
+                                                   schedule = TimeInterval(30minutes))
 
 run!(simulation)
 ```
