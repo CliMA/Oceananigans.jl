@@ -327,6 +327,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             # Test HydrostaticFreeSurfaceModel
             for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
+                @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $(typeof(closure))]"
                 tracers = (:b, :c, :e, :ϵ)
                 clock = Clock(time=DateTime(2020, 1, 1))
                 grid = RectilinearGrid(arch, FT; size=(2, 2, 2), extent=(1, 1, 1))
