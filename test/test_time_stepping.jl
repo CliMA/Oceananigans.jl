@@ -311,7 +311,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     for arch in archs, FT in float_types
         A = typeof(arch)
         @testset "Time stepping with DateTimes [$A, $FT]" begin
-            @info "  Testing time stepping with datetime clocks [$A, $FT]"
+            @info "  Testing NonhydrostaticModel time stepping with datetime clocks [$A, $FT]"
 
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
             clock = Clock(time=DateTime(2020))
