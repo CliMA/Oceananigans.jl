@@ -87,14 +87,13 @@ end
 
 """
     FieldDataset(grid, times, fields;
-                 backend=OnDisk(),
-                 path=nothing,
-                 location=NamedTuple(),
-                 indices=NamedTuple(),
-                 boundary_conditions=NamedTuple(),
-                 metadata=Dict(),
-                 reader_kw=NamedTuple(),
-                 )
+                 backend = OnDisk(),
+                 path = nothing,
+                 location = NamedTuple(),
+                 indices = NamedTuple(),
+                 boundary_conditions = NamedTuple(),
+                 metadata = Dict(),
+                 reader_kw = NamedTuple())
 
 Returns a `FieldDataset` containing a new `FieldTimeSeries` for each key in `fields`
 on `grid` at `times`.
