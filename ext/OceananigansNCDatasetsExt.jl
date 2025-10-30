@@ -60,7 +60,7 @@ const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g
 
 function squeeze_reduced_dimensions(data, reduced_dims)
     # Fill missing indices from the right with 1s
-    indices = Any[:,:,:]
+    indices = Any[:, :, :]
     for i in 1:3
         if i ∈ reduced_dims
             indices[i] = 1
@@ -90,7 +90,8 @@ function defVar(ds, name, field::AbstractField;
     create_field_dimensions!(ds, field, all_dims, dimension_name_generator; with_halos)
 
     squeezed_field_data = squeeze_reduced_dimensions(field_data, effective_reduced_dimensions(field))
-    defVar(ds, name, squeezed_field_data, all_dims; kwargs...)
+    squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
+    defVar(ds, name, squeezed_reshaped_field_data, all_dims; kwargs...)
 end
 
 #####
@@ -178,7 +179,6 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
         else
             # Validate existing dimension
             if collect(dataset[dim_name]) != collect(dim_array)
-                # dim_name == "y_aca" && Main.@infiltrate
                 throw(ArgumentError("Dimension '$dim_name' already exists in dataset but is different from expected.\n" *
                                     "  Actual:   $(dataset[dim_name]) (length=$(length(dataset[dim_name])))\n" *
                                     "  Expected: $(dim_array) (length=$(length(dim_array)))"))
