@@ -24,7 +24,7 @@ function test_model_equality(test_model, true_model)
     return nothing
 end
 
-function test_minimal_restore(arch, FT)
+function test_minimal_restore(arch, FT, pickup_method)
     N = 16
     L = 50
 
@@ -80,7 +80,15 @@ function test_minimal_restore(arch, FT)
 
     new_simulation.output_writers[:checkpointer] = new_checkpointer
 
-    @test_nowarn set!(new_simulation, true)
+    if pickup_method == :boolean
+        pickup = true
+    elseif pickup_method == :iteration
+        pickup = 3
+    elseif pickup_method == :filepath
+        pickup = "$(prefix)_iteration3.jld2"
+    end
+
+    @test_nowarn set!(new_simulation, pickup)
 
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
@@ -115,13 +123,13 @@ function test_checkpointer_cleanup(arch)
     return nothing
 end
 
-function test_thermal_bubble_checkpointing(arch)
+function test_thermal_bubble_checkpointing(arch, timestepper)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(; grid, timestepper,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -138,7 +146,7 @@ function test_thermal_bubble_checkpointing(arch)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = NonhydrostaticModel(;
+    new_model = NonhydrostaticModel(; timestepper,
         grid = new_grid,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
@@ -158,10 +166,12 @@ function test_thermal_bubble_checkpointing(arch)
 
 end
 
-for arch in archs
-    @testset "Minimal restore [$(typeof(arch))]" begin
-        @info "  Testing minimal restore [$(typeof(arch))]..."
-        test_minimal_restore(arch, Float64)
+for arch in [CPU(), GPU()]
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
+            @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
+            test_minimal_restore(arch, Float64, pickup_method)
+        end
     end
 
     @testset "Checkpointer cleanup [$(typeof(arch))]" begin
@@ -169,8 +179,10 @@ for arch in archs
         test_checkpointer_cleanup(arch)
     end
 
-    @testset "Thermal bubble checkpointing [$(typeof(arch))]" begin
-        @info "  Testing thermal bubble checkpointing [$(typeof(arch))]..."
-        test_thermal_bubble_checkpointing(arch)
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]" begin
+            @info "  Testing thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]..."
+            test_thermal_bubble_checkpointing(arch, timestepper)
+        end
     end
 end

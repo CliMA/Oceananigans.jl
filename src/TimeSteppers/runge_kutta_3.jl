@@ -227,20 +227,3 @@ end
         U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
     end
 end
-
-#####
-##### Checkpointing
-#####
-
-function prognostic_state(timestepper::RungeKutta3TimeStepper)
-    return (
-        Gⁿ = prognostic_state(timestepper.Gⁿ),
-        G⁻ = prognostic_state(timestepper.G⁻),
-    )
-end
-
-function restore_prognostic_state!(timestepper::RungeKutta3TimeStepper, state)
-    restore_prognostic_state!(timestepper.Gⁿ, state.Gⁿ)
-    restore_prognostic_state!(timestepper.G⁻, state.G⁻)
-    return timestepper
-end
