@@ -249,6 +249,16 @@ function restore_prognostic_state!(nt::NamedTuple, state)
     return nt
 end
 
+#####
+##### Checkpointing the checkpointer
+#####
+
+function prognostic_state(checkpointer::Checkpointer)
+    return (
+        schedule = prognostic_state(checkpointer.schedule),
+    )
+end
+
 function restore_prognostic_state!(checkpointer::Checkpointer, state)
     restore_prognostic_state!(checkpointer.schedule, state.schedule)
     return checkpointer
