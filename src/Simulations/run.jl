@@ -1,11 +1,11 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
 
-using Oceananigans: AbstractModel, run_diagnostic!
+using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
+using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!
-import Oceananigans.OutputWriters: checkpoint_path
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: schedule_aligned_time_step
 
@@ -57,24 +57,26 @@ function aligned_time_step(sim::Simulation, Δt)
 end
 
 function set!(sim::Simulation, pickup::Union{Bool, Integer, String})
-    checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
-    set!(sim.model, checkpoint_file_path)
+    checkpoint_filepath = checkpoint_path(pickup, sim.output_writers)
+    state = load_checkpoint_state(checkpoint_filepath)
+    restore_prognostic_state!(sim, state)
     return nothing
 end
 
 """
     run!(simulation; pickup=false)
 
-Run a `simulation` until one of `simulation.stop_criteria` evaluates `true`.
-The simulation will then stop.
+Run a `simulation` until one of `simulation.callbacks` such as `stop_time_exceeded` or
+`wall_time_limit_exceeded` sets `simulation.running` to `false`. The simulation will then
+stop.
 
 # Picking simulations up from a checkpoint
 
 Simulations are "picked up" from a checkpoint if `pickup` is either `true`, a `String`, or an
 `Integer` greater than 0.
 
-Picking up a simulation sets field and tendency data to the specified checkpoint,
-leaving all other model properties unchanged.
+Picking up a simulation restores the simulation's prognostic state to the specified checkpoint,
+leaving all other simulation properties unchanged.
 
 Possible values for `pickup` are:
 
@@ -86,7 +88,7 @@ Possible values for `pickup` are:
 
   * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
-Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
+Note that `pickup=true` and `pickup=iteration` fail if `simulation.output_writers` contains
 more than one checkpointer.
 """
 function run!(sim; pickup=false)
@@ -253,4 +255,3 @@ function initialize!(sim::Simulation)
 
     return nothing
 end
-

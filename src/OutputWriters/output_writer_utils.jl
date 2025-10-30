@@ -241,4 +241,3 @@ function with_architecture_suffix(arch::Distributed, filename, ext)
     prefix *= "_rank$rank"
     return prefix * ext
 end
-

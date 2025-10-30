@@ -18,6 +18,7 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities, timestepper
 
@@ -265,3 +266,41 @@ end
 @inline total_velocities(m::NonhydrostaticModel) =
     sum_of_velocities(m.velocities, m.background_fields.velocities)
 
+# For checkpointing
+function prognostic_state(model::NonhydrostaticModel)
+    return (
+        clock = prognostic_state(model.clock),
+        particles = prognostic_state(model.particles),
+        velocities = prognostic_state(model.velocities),
+        tracers = prognostic_state(model.tracers),
+        pressures = prognostic_state(model.pressures),
+        diffusivity_fields = prognostic_state(model.diffusivity_fields),
+        timestepper = prognostic_state(model.timestepper),
+        auxiliary_fields = prognostic_state(model.auxiliary_fields),
+        boundary_mass_fluxes = prognostic_state(model.boundary_mass_fluxes)
+    )
+end
+
+function restore_prognostic_state!(model::NonhydrostaticModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.particles, state.particles)
+    restore_prognostic_state!(model.velocities, state.velocities)
+
+    if length(model.tracers) > 0
+        restore_prognostic_state!(model.tracers, state.tracers)
+    end
+
+    restore_prognostic_state!(model.pressures, state.pressures)
+    restore_prognostic_state!(model.diffusivity_fields, state.diffusivity_fields)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+
+    if length(model.auxiliary_fields) > 0
+        restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
+    end
+
+    if !isnothing(model.boundary_mass_fluxes)
+        restore_prognostic_state!(model.boundary_mass_fluxes, state.boundary_mass_fluxes)
+    end
+
+    return model
+end

@@ -2,6 +2,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 using Oceananigans.Utils: time_difference_seconds
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
@@ -224,4 +226,21 @@ end
     @inbounds begin
         U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
     end
+end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(timestepper::RungeKutta3TimeStepper)
+    return (
+        Gⁿ = prognostic_state(timestepper.Gⁿ),
+        G⁻ = prognostic_state(timestepper.G⁻),
+    )
+end
+
+function restore_prognostic_state!(timestepper::RungeKutta3TimeStepper, state)
+    restore_prognostic_state!(timestepper.Gⁿ, state.Gⁿ)
+    restore_prognostic_state!(timestepper.G⁻, state.G⁻)
+    return timestepper
 end
