@@ -166,11 +166,10 @@ end
 
 """
     FieldDataset(times, fields;
-                 backend=OnDisk(),
-                 path=nothing,
-                 metadata=Dict(),
-                 reader_kw=NamedTuple()
-                 )
+                 backend = OnDisk(),
+                 path = nothing,
+                 metadata = Dict(),
+                 reader_kw = NamedTuple())
 
 Returns a `FieldDataset` containing a new `FieldTimeSeries` for each field 
 in the `NamedTuple``fields` at `times`. Locations, indices and boundary 
