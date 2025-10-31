@@ -10,8 +10,8 @@ end
 
 function hi_res_hydrostatic_model(grid;
     vertical_coordinate = ZCoordinate(),
-    momentum_advection = WENOVectorInvariant(order=9),
     passive_tracers = (),
+    momentum_advection = WENOVectorInvariant(order=9),
     tracer_advection = WENO(order=7),
     closure = CATKEVerticalDiffusivity(),
     timestepper = :QuasiAdamsBashforth2)
@@ -22,7 +22,8 @@ function hi_res_hydrostatic_model(grid;
     coriolis = HydrostaticSphericalCoriolis()
 
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, coriolis,
-                                        buoyancy, closure, free_surface, tracers, vertical_coordinate, timestepper)
+                                        buoyancy, closure, free_surface, tracers,
+                                        vertical_coordinate, timestepper)
 
     # Sensible initial condition
     Ξ(x, y, z) = rand()
@@ -46,8 +47,17 @@ Nz = 128
 arch = GPU()
 immersed = false
 Oceananigans.defaults.FloatType = Float64
+Nt = 100
 
 lat_lon_kw = (longitude=(0, 360), latitude=(-80, 80), z=(-1000, 0), size=(Nx, Ny, Nz), halo=(7, 7, 7))
+
+model_kw = (;
+    # momentum_advection = nothing,
+    # tracer_advection = nothing,
+    # momentum_advection = nothing,
+    tracer_advection = WENO(order=7),
+)
+
 dλ = 20 # ridge width in degrees
 ridge(λ, φ) = -1000 + 800 * exp(-(λ - 30)^2 / 2dλ^2)
 
@@ -58,7 +68,7 @@ if config == :channel
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(ridge))
     end
 
-    model = hi_res_hydrostatic_model(grid)
+    model = hi_res_hydrostatic_model(grid; model_kw...)
 elseif config == :box
 
     Oceananigans.defaults.FloatType = FT
@@ -68,11 +78,11 @@ elseif config == :box
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(ridge))
     end
 
-    model = hi_res_hydrostatic_model(grid)
+    model = hi_res_hydrostatic_model(grid; model_kw...)
 end
 
 @time many_steps!(model, 1) # compile
 @time many_steps!(model, 1) # compile
 @time many_steps!(model, 1) # compile
 @time many_steps!(model, 1) # compile
-@time many_steps!(model, 10)
+@time many_steps!(model, Nt)
