@@ -288,7 +288,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
                                 on_architecture(to, fts.grid),
                                 on_architecture(to, fts.backend),
-                                on_architecture(to, fts.bcs),
+                                on_architecture(to, fts.boundary_conditions),
                                 on_architecture(to, fts.indices),
                                 on_architecture(to, fts.times),
                                 on_architecture(to, fts.path),
