@@ -81,7 +81,7 @@ function defVar(ds, name, field::AbstractField;
     if with_halos
         field_data = Array{eltype(field)}(parent(field_cpu))
     else
-        field_data = Array{eltype(field)}(field_cpu)
+        field_data = Array{eltype(field)}(interior(field_cpu))
     end
     dims = field_dimensions(field, dimension_name_generator)
     all_dims = time_dependent ? (dims..., "time") : dims
@@ -117,6 +117,9 @@ function create_field_dimensions!(ds, field::AbstractField, dim_names, dimension
     # Main.@infiltrate
     # Get spatial dimensions excluding reduced dimensions (i.e. dimensions where `loc isa Nothing``)
     reduced_dims = effective_reduced_dimensions(field)
+
+    # At the moment, this returns the full nodes even when the field is sliced.
+    # https://github.com/CliMA/Oceananigans.jl/pull/4814 will fix this in the future.
     node_data = nodes(field; with_halos)
     spatial_dim_data = [data for (i, data) in enumerate(node_data) if i ∉ reduced_dims]
 
