@@ -1,5 +1,6 @@
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Advection: WENO, VectorInvariant
+using Oceananigans.BuoyancyFormulations: BuoyancyForce
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
@@ -39,6 +40,7 @@ Types = (:HydrostaticFreeSurfaceModel,
          :PrescribedVelocityFields,
          :ConjugateGradientSolver,
          :CrossAndSelfUpwinding,
+         :BuoyancyForce,
          :OnlySelfUpwinding,
          :GridFittedBoundary,
          :GridFittedBottom,
