@@ -66,7 +66,7 @@ end
 
 # Fallback for when no grid is available, we overwrite `materialize_gradients` to false
 BuoyancyForce(formulation::AbstractBuoyancyFormulation; materialize_gradients=false, kwargs...) = 
-    BuoyancyForce(nothing, formulation, materialize_gradients=false, kwargs...)
+    BuoyancyForce(nothing, formulation; materialize_gradients=false, kwargs...)
 
 Adapt.adapt_structure(to, bf::BuoyancyForce) = 
     BuoyancyForce(Adapt.adapt(to, bf.formulation), 
