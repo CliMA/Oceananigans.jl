@@ -1,6 +1,6 @@
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Advection: WENO, VectorInvariant
-using Oceananigans.BuoyancyFormulations: BuoyancyForce, NegativeZDirection
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
@@ -56,7 +56,7 @@ for T in Types
 end
 
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
-BuoyancyForce(grid::MultiRegionGrids, formulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=true) = 
+BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=true) = 
     BuoyancyForce(grid, formulation; gravity_unit_vector=gravity_unit_vector, materialize_gradients=false)
 
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
