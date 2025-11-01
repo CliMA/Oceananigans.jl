@@ -4,7 +4,9 @@ using CUDA
 
 function many_steps!(model, Nt; Δt=1e-3)
     for _ in 1:Nt
-        time_step!(model, Δt)
+        NVTX.@range "time step" begin
+            time_step!(model, Δt)
+        end
     end
 end
 
