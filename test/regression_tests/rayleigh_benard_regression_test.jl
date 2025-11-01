@@ -1,5 +1,6 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.BuoyancyFormulations: BuoyancyForce
 using Oceananigans.DistributedComputations: cpu_architecture, partition, reconstruct_global_grid
 
 function run_rayleigh_benard_regression_test(arch, grid_type)
@@ -27,10 +28,10 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     #####
 
     if grid_type == :regular
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), halo=(2, 2, 2))
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), halo=(1, 1, 1))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF, halo=(2, 2, 2))
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF, halo=(1, 1, 1))
     end
 
     # Force salinity as a passive tracer (βS=0)
@@ -48,13 +49,13 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                    bottom = BoundaryCondition(Value(), Δb))
 
     model = NonhydrostaticModel(; grid,
-                                timestepper = :QuasiAdamsBashforth2,
-                                closure = ScalarDiffusivity(ν=ν, κ=κ),
-                                tracers = (:b, :c),
-                                buoyancy = BuoyancyTracer(),
-                                boundary_conditions = (; b=bbcs),
-                                hydrostatic_pressure_anomaly = CenterField(grid),
-                                forcing = (; c=cforcing))
+                                  timestepper = :QuasiAdamsBashforth2,
+                                  closure = ScalarDiffusivity(ν=ν, κ=κ),
+                                  tracers = (:b, :c),
+                                  buoyancy = BuoyancyForce(BuoyancyTracer()),
+                                  boundary_conditions = (; b=bbcs),
+                                  hydrostatic_pressure_anomaly = CenterField(grid),
+                                  forcing = (; c=cforcing))
 
     # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
     Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν

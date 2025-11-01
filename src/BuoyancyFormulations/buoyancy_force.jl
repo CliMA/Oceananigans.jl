@@ -13,11 +13,13 @@ struct BuoyancyForce{M, G, B}
 end
 
 """
-    BuoyancyForce(formulation; gravity_unit_vector=NegativeZDirection())
+    BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=true)
 
-Construct a `buoyancy` given a buoyancy `model`. Optional keyword argument `gravity_unit_vector`
+Construct a `buoyancy` given a buoyancy `formulation`. Optional keyword argument `gravity_unit_vector`
 can be used to specify the direction of gravity (default `NegativeZDirection()`).
 The buoyancy acceleration acts in the direction opposite to gravity.
+If `materialize_gradients` is true (default), the buoyancy gradients will be precomputed and stored in fields for
+performance reasons. For `materialize_gradients=true`, the `grid` argument must be provided.
 
 Example
 =======
@@ -46,7 +48,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 """
-function BuoyancyForce(grid; formulation, gravity_unit_vector=NegativeZDirection(), materialize_gradients=true)
+function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=true)
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
 
     if materialize_gradients
@@ -64,7 +66,7 @@ end
 
 # Fallback for when no grid is available, we overwrite `materialize_gradients` to false
 BuoyancyForce(formulation::AbstractBuoyancyFormulation; materialize_gradients=false, kwargs...) = 
-    BuoyancyForce(nothing; formulation, materialize_gradients=false, kwargs...)
+    BuoyancyForce(nothing, formulation, materialize_gradients=false, kwargs...)
 
 Adapt.adapt_structure(to, bf::BuoyancyForce) = 
     BuoyancyForce(Adapt.adapt(to, bf.formulation), 
