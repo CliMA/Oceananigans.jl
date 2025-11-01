@@ -102,8 +102,6 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-
-
 1. Zhang, Y., Kang, W., and Marshall, J. (2025) [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.48550/arXiv.2510.25988), _arXiv preprint_, arXiv:2510.25988. DOI: [10.48550/arXiv.2510.25988](https://doi.org/10.48550/arXiv.2510.25988)
 
 1. Shikanian, A. and Parfenyev, V. (2025) [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.48550/arXiv.2508.13590), _arXiv preprint_, arXiv:2508.13590. DOI: [10.48550/arXiv.2508.13590](https://doi.org/10.48550/arXiv.2508.13590)
