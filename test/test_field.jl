@@ -259,6 +259,54 @@ function run_field_interpolation_tests(grid)
     return nothing
 end
 
+function nodes_of_field_views_are_consistent(grid)
+    # Test with different field types
+    test_fields = [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
+
+    for field in test_fields
+        loc = instantiated_location(field)
+
+        # Test various view patterns
+        test_indices = [
+            (2:6, :, :),           # x slice
+            (:, 2:4, :),           # y slice
+            (:, :, 2:3),           # z slice
+            (3:5, 2:4, :),         # xy slice
+            (2:6, :, 2:3),         # xz slice
+            (:, 2:4, 2:3),         # yz slice
+            (3:5, 2:4, 2:3),       # xyz slice
+        ]
+
+        for test_idx in test_indices
+            # Create field view with these indices
+            field_view = view(field, test_idx...)
+
+            # Get nodes from the view
+            view_nodes = nodes(field_view)
+
+            # Get nodes from the original field with the same indices
+            # This is what should be equivalent to the view_nodes
+            full_nodes = nodes(field.grid, loc...; indices=test_idx)
+
+            # Test that they are equal
+            @test view_nodes == full_nodes
+
+            # Also test that the view's indices match what we expect
+            @test indices(field_view) == test_idx
+
+            # Test that view nodes have sizes consistent with the view indices
+            for (i, coord_nodes) in enumerate(view_nodes)
+                if coord_nodes !== nothing && full_nodes[i] !== nothing
+                    @test coord_nodes == full_nodes[i]
+                end
+            end
+        end
+    end
+
+    return nothing
+end
+
+
 #####
 #####
 #####
@@ -655,4 +703,32 @@ end
             @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
         end
     end
+
+    @testset "Field nodes and view consistency" begin
+        @info "  Testing that nodes() returns indices consistent with view()..."
+        for arch in archs, FT in float_types
+            # Test RectilinearGrid
+            rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
+            nodes_of_field_views_are_consistent(rectilinear_grid)
+
+            # Test LatitudeLongitudeGrid
+            latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
+            nodes_of_field_views_are_consistent(latlon_grid)
+
+            # Test OrthogonalSphericalShellGrid (TripolarGrid)
+            tripolar_grid = TripolarGrid(arch, FT, size=(8, 6, 4))
+            nodes_of_field_views_are_consistent(tripolar_grid)
+
+            # Test Flat topology behavior for RectilinearGrid
+            flat_rlgrid = RectilinearGrid(arch, FT, size=(), extent=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_rlgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
+
+            # Test Flat topology behavior for LatitudeLongitudeGrid
+            flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_llgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
+        end
+    end
 end
+
