@@ -3,7 +3,7 @@ using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!
 
-import Oceananigans.TimeSteppers: cache_previous_tendencies!
+import Oceananigans.TimeSteppers: cache_previous_tendencies!, cache_previous_fields!, ssprk_cache_previous_tendencies!
 
 #####
 ##### Storing previous tendencies for the AB2 update
@@ -89,3 +89,9 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
 
     return nothing
 end
+
+#####
+##### Cache previous tendencies for SSPRK time steppers
+#####
+
+ssprk_cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel) = nothing

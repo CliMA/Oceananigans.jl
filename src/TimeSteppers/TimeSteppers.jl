@@ -4,6 +4,7 @@ export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
+    SSPRungeKuttaTimeStepper,
     time_step!,
     Clock,
     tendencies
@@ -36,6 +37,7 @@ include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
+include("ssp_runge_kutta.jl")
 
 """
     TimeStepper(name::Symbol, args...; kwargs...)
@@ -60,6 +62,12 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:SSPRungeKutta3}, args...; kwargs...) = 
+    SSPRungeKuttaTimeStepper(args...; stages = 3, kwargs...)
+
+TimeStepper(::Val{:SSPRungeKutta4}, args...; kwargs...) =
+    SSPRungeKuttaTimeStepper(args...; stages = 4, kwargs...)
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 40 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...) 

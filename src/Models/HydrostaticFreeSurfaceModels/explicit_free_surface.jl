@@ -74,14 +74,25 @@ function step_free_surface!(free_surface::ExplicitFreeSurface, model, timesteppe
 end
 
 function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
-    @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
+    @apply_regionally explicit_rk_step_free_surface!(free_surface, model, Δt)
     fill_halo_regions!(free_surface.η; async=true)
     return nothing
 end
 
-explicit_rk3_step_free_surface!(free_surface, model, Δt) = 
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SSPRungeKuttaTimeStepper, Δt)
+    @apply_regionally explicit_ssprk_step_free_surface!(free_surface, model, Δt)
+    fill_halo_regions!(free_surface.η; async=true)
+    return nothing
+end
+
+explicit_ssprk_step_free_surface!(free_surface, model, Δt) = 
     launch!(model.architecture, model.grid, :xy,
-            _explicit_rk3_step_free_surface!, free_surface.η, Δt,
+            _explicit_rk_step_free_surface!, free_surface.η, Δt, model.clock.stage,
+            model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
+
+explicit_rk_step_free_surface!(free_surface, model, Δt) = 
+    launch!(model.architecture, model.grid, :xy,
+            _explicit_rk_step_free_surface!, free_surface.η, Δt,
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
 
 explicit_ab2_step_free_surface!(free_surface, model, Δt) =
@@ -93,7 +104,22 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt) =
 ##### Kernels
 #####
 
-@kernel function _explicit_rk3_step_free_surface!(η, Δt, Gⁿ, η⁻, Nz)
+@kernel function _explicit_ssprk_step_free_surface!(η, Δt, stage, Gⁿ, η⁻, Nz)
+    i, j = @index(Global, NTuple)
+    
+    θ = if stage == 1
+        zero(η)
+    elseif stage == 2
+        one(η) / 4
+    else
+        2 * one(η) / 3
+    end
+
+    @inbounds η⁺ = η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1]
+    @inbounds η[i, j, Nz+1] =  θ * η⁺ + (1 - θ) * η⁻[i, j, Nz+1] 
+end
+
+@kernel function _explicit_rk_step_free_surface!(η, Δt, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
     @inbounds η[i, j, Nz+1] = η⁻[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1]
 end
