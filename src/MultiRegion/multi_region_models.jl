@@ -56,8 +56,13 @@ for T in Types
 end
 
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
-BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=true) = 
-    BuoyancyForce(grid, formulation; gravity_unit_vector=gravity_unit_vector, materialize_gradients=false)
+function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation; 
+                       gravity_unit_vector=NegativeZDirection(), 
+                       materialize_gradients=false) 
+
+    gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
+    return BuoyancyForce(formulation, gravity_unit_vector, gradients)
+end
 
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
 @inline regions(pv::PrescribedVelocityFields)    = regions(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
