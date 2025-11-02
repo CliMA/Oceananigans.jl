@@ -165,6 +165,12 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SSPRungeKuttaTimeStepper, Δt)
+    parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
+    step_free_surface!(free_surface, model, nothing, Δt)
+    return nothing
+end
+
 function local_compute_integrated_variables!(∫ᶻQ, velocities, arch)
     u, v, _ = velocities
     U, V = ∫ᶻQ

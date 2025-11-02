@@ -155,9 +155,11 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Wait for setup step to finish
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
     
+    stage = model.clock.stage
+
     @apply_regionally begin
         # Reset the filtered fields and the barotropic timestepper to zero. 
-        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
+        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, stage)
         
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))

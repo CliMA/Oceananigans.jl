@@ -1,5 +1,5 @@
 using Oceananigans.ImmersedBoundaries: get_active_column_map, peripheral_node
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper
 using Oceananigans.Operators: Δz
 
 # This file contains two different initializations methods performed at different stages of the simulation.
@@ -27,7 +27,7 @@ end
 
 # `initialize_free_surface_state!` is called at the beginning of the substepping to
 # reset the filtered state to zero and reinitialize the state from the filtered state.
-function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper)
+function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper, stage)
 
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
@@ -42,7 +42,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 end
 
 # At the last stage we reset the velocities and perform the complete substepping from n to n+1
-function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKuttaTimeStepper, barotropic_ts)
+function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKuttaTimeStepper, barotropic_ts, stage)
 
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
@@ -55,6 +55,32 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
     parent(U) .= parent(Uⁿ⁻¹)
     parent(V) .= parent(Vⁿ⁻¹)
     parent(η) .= parent(ηⁿ⁻¹)
+
+    initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
+
+    for field in free_surface.filtered_state
+        fill!(field, 0)
+    end
+       
+    return nothing
+end
+
+# At the last stage we reset the velocities and perform the complete substepping from n to n+1
+function initialize_free_surface_state!(free_surface, baroclinic_ts::SSPRungeKuttaTimeStepper, barotropic_ts, stage)
+
+    η = free_surface.η
+    U, V = free_surface.barotropic_velocities
+
+    if stage == 3
+        Uⁿ⁻¹ = baroclinic_ts.Ψ⁻.U
+        Vⁿ⁻¹ = baroclinic_ts.Ψ⁻.V
+        ηⁿ⁻¹ = baroclinic_ts.Ψ⁻.η
+
+        # Restart from the state at baroclinic step n
+        parent(U) .= parent(Uⁿ⁻¹)
+        parent(V) .= parent(Vⁿ⁻¹)
+        parent(η) .= parent(ηⁿ⁻¹)
+    end
 
     initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
 

@@ -32,7 +32,7 @@ end
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper)
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper, args...)
     active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
@@ -45,7 +45,7 @@ end
 end
 
 #####
-##### Compute slow tendencies with a RK3 timestepper
+##### Compute slow tendencies with a RK timestepper
 #####
 
 @inline function G_vertical_integral(i, j, grid, Gⁿ, ℓx, ℓy, ℓz)
@@ -67,9 +67,50 @@ end
     @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 end
 
-@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper) = 
+@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper, args...) = 
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
             GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_column_map(grid))
+
+#####
+##### Compute slow tendencies for a SSPR RK Timestepper
+#####
+
+@kernel function _compute_integrated_ssprk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{1})
+    i, j = @index(Global, NTuple)
+    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+
+    @inbounds GU⁻[i, j, 1] = GUⁿ[i, j, 1]
+    @inbounds GV⁻[i, j, 1] = GVⁿ[i, j, 1]
+end
+
+@kernel function _compute_integrated_ssprk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{2})
+    i, j = @index(Global, NTuple)
+    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+
+    @inbounds GU⁻[i, j, 1] = (GUⁿ[i, j, 1] + GU⁻[i, j, 1]) / 6
+    @inbounds GV⁻[i, j, 1] = (GUⁿ[i, j, 1] + GV⁻[i, j, 1]) / 6
+end
+
+@kernel function _compute_integrated_ssprk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{3})
+    i, j = @index(Global, NTuple)
+    GUi = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    GVi = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+
+    @inbounds GUⁿ[i, j, 1] = 2 * GUi / 3 + GU⁻[i, j, 1]
+    @inbounds GVⁿ[i, j, 1] = 2 * GVi / 3 + GV⁻[i, j, 1]
+end
+
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::SSPRungeKuttaTimeStepper{3}, stage)
+    GU⁻ = timestepper.G⁻.U
+    GV⁻ = timestepper.G⁻.V
+
+    launch!(architecture(grid), grid, :xy, _compute_integrated_ssprk3_tendencies!,
+            GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, Val(stage); active_cells_map = get_active_column_map(grid))
+
+    return nothing
+end
 
 #####
 ##### Free surface setup
@@ -87,8 +128,9 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
 
     baroclinic_timestepper = model.timestepper
 
-    @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
+    @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper, model.clock.stage)
     fill_halo_regions!((GUⁿ, GVⁿ); async=true) 
 
     return nothing
 end
+
