@@ -50,7 +50,6 @@ function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
     # Computing Baroclinic and Barotropic tendencies
     compute_momentum_tendencies!(model, callbacks)
     compute_tracer_tendencies!(model)
-    compute_free_surface_tendency!(grid, model, model.free_surface)
     
     # Finally Substep! Advance grid, tracers, and momentum
     ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)

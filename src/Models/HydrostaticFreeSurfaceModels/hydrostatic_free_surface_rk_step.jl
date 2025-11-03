@@ -50,7 +50,6 @@ end
     # Computing tendencies...
     compute_momentum_tendencies!(model, callbacks)
     compute_tracer_tendencies!(model)
-    compute_free_surface_tendency!(grid, model, model.free_surface)
     
     # Finally Substep! Advance grid, tracers, (predictor) momentum 
     rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
