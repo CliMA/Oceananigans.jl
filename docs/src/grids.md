@@ -885,7 +885,7 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
 ```
 
-Setting the global default is a good approach for building pure Float32 
+Setting the global default is a good approach for building pure Float32
 simulations, because this will change _all_ default constructor
 float types to Float32.
 
@@ -941,6 +941,7 @@ write("distributed_arch_example.jl", make_distributed_arch)
 using MPI
 run(`$(mpiexec()) -n 2 julia --project distributed_arch_example.jl`)
 rm("distributed_arch_example.jl")
+nothing # hide
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
@@ -975,6 +976,7 @@ grid = RectilinearGrid(architecture,
 write("distributed_grid_example.jl", make_distributed_grid)
 
 run(`$(mpiexec()) -n 2 julia --project distributed_grid_example.jl`)
+nothing # hide
 ```
 
 Now we're getting somewhere. Let's note a few things:
@@ -997,6 +999,7 @@ To drive these points home, let's run the same script, but using 3 processors in
 
 ```@example distributed_grids
 run(`$(mpiexec()) -n 3 julia --project distributed_grid_example.jl`)
+nothing # hide
 ```
 
 Now we have three local grids, each with size `(16, 48, 16)`.
@@ -1030,6 +1033,7 @@ end
 write("partition_example.jl", make_y_partition)
 
 run(`$(mpiexec()) -n 2 julia --project partition_example.jl`)
+nothing # hide
 ```
 
 #### Manually specifying ranks in ``x, y``
@@ -1071,6 +1075,7 @@ end
 write("programmatic_partition_example.jl", make_xy_partition)
 
 run(`$(mpiexec()) -n 6 julia --project programmatic_partition_example.jl`)
+nothing # hide
 ```
 
 Finally, we can use `Equal` to partition a grid evenly in ``x, y``:
@@ -1118,4 +1123,5 @@ end
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
 run(`$(mpiexec()) -n 4 julia --project equally_partitioned_grids.jl`)
+nothing # hide
 ```
