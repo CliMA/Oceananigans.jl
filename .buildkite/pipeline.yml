@@ -79,10 +79,11 @@ steps:
           - "CPU"
           - "GPU"
         group:
+          - "🦖 poisson_solvers_2"
+          - "🎭 reactant_2"
           - "🐇 unit"
           - "👻 abstract_operations"
           - "🕊 poisson_solvers_1"
-          - "🦖 poisson_solvers_2"
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
           - "🦀 time_stepping_1"
@@ -101,7 +102,6 @@ steps:
           - "👺 enzyme"
           - "🍱 xesmf"
           - "👹 reactant_1"
-          - "🎭 reactant_2"
 
     retry:
       automatic:
