@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
@@ -163,7 +163,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
 
     validate_buoyancy(buoyancy, tracernames(tracers))
-    buoyancy = regularize_buoyancy(buoyancy)
+    buoyancy = materialize_buoyancy(buoyancy, grid)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -179,8 +179,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Next, we form a list of default boundary conditions:
     field_names = constructor_field_names(velocities, tracers, free_surface, auxiliary_fields, biogeochemistry, grid)
-    default_boundary_conditions = NamedTuple{field_names}(Tuple(FieldBoundaryConditions()
-                                                          for name in field_names))
+    default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions() for name in field_names)
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
