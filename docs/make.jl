@@ -1,7 +1,7 @@
-# using Distributed
-# Distributed.addprocs(2)
+using Distributed
+Distributed.addprocs(2)
 
-# @everywhere begin
+@everywhere begin
     using Documenter
     using DocumenterCitations
     using Literate
@@ -49,12 +49,11 @@
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
-# end
+end
 
-# @info string("Executing the examples using ", Distributed.nprocs(), " processes")
+@info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
-# Distributed.pmap(1:length(example_scripts)) do n
-for n in 1:length(example_scripts)
+Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
     withenv("JULIA_DEBUG" => "Literate") do
@@ -66,7 +65,7 @@ for n in 1:length(example_scripts)
     end
 end
 
-# Distributed.rmprocs()
+Distributed.rmprocs()
 
 #####
 ##### Organize page hierarchies
@@ -87,18 +86,23 @@ example_pages = [
     "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
 ]
 
-model_setup_pages = [
-    "Overview" => "model_setup/overview.md",
-    "Coriolis (rotation)" => "model_setup/coriolis.md",
-    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
-    "Boundary conditions" => "model_setup/boundary_conditions.md",
-    "Forcing functions" => "model_setup/forcing_functions.md",
-    "Background fields" => "model_setup/background_fields.md",
-    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
-    "Lagrangian particles" => "model_setup/lagrangian_particles.md",
-    "Callbacks" => "model_setup/callbacks.md",
-    "Output writers" => "model_setup/output_writers.md",
-    "Checkpointing" => "model_setup/checkpointing.md",
+model_pages = [
+    "Overview" => "models/models_overview.md",
+    "Coriolis forces" => "models/coriolis.md",
+    "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
+    "Turbulence closures" => "models/turbulence_closures.md",
+    "Boundary conditions" => "models/boundary_conditions.md",
+    "Forcings" => "models/forcing_functions.md",
+    "Lagrangian particles" => "models/lagrangian_particles.md",
+    "Background fields" => "models/background_fields.md",
+]
+
+simulation_pages = [
+    "Overview" => "simulations/simulations_overview.md",
+    # "Callbacks" => "simulations/callbacks.md",
+    "Schedules" => "simulations/schedules.md",
+    "Output writers" => "simulations/output_writers.md",
+    "Checkpointing" => "simulations/checkpointing.md",
 ]
 
 physics_pages = [
@@ -148,12 +152,12 @@ pages = [
     "Fields" => "fields.md",
     "Operations" => "operations.md",
     # TODO:
-    #   - Develop the following three tutorials on reductions, simulations, and post-processing
+    #   - Develop the following tutorials on reductions and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
     # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
-    # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Models" => model_setup_pages,
+    "Models" => model_pages,
+    "Simulations" => simulation_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Simulation tips" => "simulation_tips.md",
