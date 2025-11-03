@@ -40,7 +40,6 @@ Types = (:HydrostaticFreeSurfaceModel,
          :PrescribedVelocityFields,
          :ConjugateGradientSolver,
          :CrossAndSelfUpwinding,
-         :BuoyancyForce,
          :OnlySelfUpwinding,
          :GridFittedBoundary,
          :GridFittedBottom,
@@ -61,7 +60,7 @@ function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyForm
                        materialize_gradients=false) 
 
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
-    return BuoyancyForce(formulation, gravity_unit_vector, gradients)
+    return BuoyancyForce(formulation, gravity_unit_vector, nothing)
 end
 
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
