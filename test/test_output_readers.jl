@@ -456,6 +456,52 @@ end
         @test t[1, 1, 1] == 3.8
     end
 
+@testset "Outputwriting with set!(FieldDataset{OnDisk})" begin
+    @info "  Testing set!(FieldDataset{OnDisk})..."
+
+    grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+
+    a = CenterField(grid)
+    b = Field{Face, Center, Center}(grid)
+
+    metadata = Dict("i"=>12, "j"=>"jay")
+
+    filepath = "testfile.jld2"
+    f = FieldDataset(1:10, (; a, b); backend = OnDisk(), path = filepath, metadata)
+
+    for i in 1:10
+        set!(a, i)
+        set!(b, 2i)
+        set!(f, i; a, b)
+    end
+
+    g = FieldDataset(filepath)
+
+    @test location(g.a) == (Center, Center, Center)
+    @test location(g.b) == (Face, Center, Center)
+    @test g.a.grid == a.grid
+    @test g.b.grid == b.grid
+
+    @test g.a[1, 1, 1, 1] == 1
+    @test g.a[1, 1, 1, 10] == 10
+    @test g.a[1, 1, 1, Time(1.6)] == 1.6
+
+    @test g.b[1, 1, 1, 1] == 2
+    @test g.b[1, 1, 1, 10] == 20
+    @test g.b[1, 1, 1, Time(5.1)] == 10.2
+
+    @test g.metadata["i"] == 12
+    @test g.metadata["j"] == "jay"
+
+    t = g.a[Time(3.8)]
+
+    @test t[1, 1, 1] == 3.8
+
+    set!(g, 2; a=-1, b=-2)
+    @test g.a[1, 1, 1, 2] == -1
+    @test g.b[1, 1, 1, 2] == -2
+end
+
     @testset "Test chunked abstraction" begin
         @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"

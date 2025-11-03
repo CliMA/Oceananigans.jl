@@ -4,11 +4,10 @@
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs.
-It runs on GPUs (wow, fast!), though we believe Oceananigans makes the biggest waves
+It runs on GPUs (wow, [fast!](https://doi.org/10.1029/2024MS004465)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
-
-Oceananigans is written in Julia by the [Climate Modeling Alliance](https://clima.caltech.edu)
-and heroic external collaborators.
+Oceananigans development is community-driven with contributors from academia and industry.
+Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the [Climate Modeling Alliance](https://clima.caltech.edu).
 
 ## Quick install
 
@@ -102,6 +101,10 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI:[10.31223/X51N08](https://doi.org/10.31223/X51N08).
+
+1. Zhang, Y., Kang, W., and Marshall, J. (2025) [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.48550/arXiv.2510.25988), _arXiv preprint_, arXiv:2510.25988. DOI: [10.48550/arXiv.2510.25988](https://doi.org/10.48550/arXiv.2510.25988)
 
 1. Shikanian, A. and Parfenyev, V. (2025) [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.48550/arXiv.2508.13590), _arXiv preprint_, arXiv:2508.13590. DOI: [10.48550/arXiv.2508.13590](https://doi.org/10.48550/arXiv.2508.13590)
 
