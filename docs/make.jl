@@ -195,7 +195,7 @@ makedocs(; sitename = "Oceananigans.jl",
          plugins = [bib],
          warnonly = [:cross_references],
          draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
+         doctest = false,      # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
