@@ -40,7 +40,7 @@ function compute_pressure_solution(grid)
     ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
 
     # Using Δt = 1 to avoid pressure rescaling
-    solve_for_pressure!(ϕ, solver, 1, U)
+    solve_for_pressure!(ϕ, solver, nothing, U, 1)
     compute_∇²!(∇²ϕ, ϕ, arch, grid)
     return ϕ, ∇²ϕ, R
 end
