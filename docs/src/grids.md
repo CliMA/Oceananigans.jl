@@ -940,7 +940,7 @@ write("distributed_arch_example.jl", make_distributed_arch)
 # from the terminal.
 using MPI
 run(`$(mpiexec()) -n 2 julia --project distributed_arch_example.jl`)
-rm("distributed_architecture_example.jl")
+rm("distributed_arch_example.jl")
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
