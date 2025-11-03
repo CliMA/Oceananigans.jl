@@ -9,7 +9,7 @@ export instantiate
 export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
 export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
-export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
 export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div

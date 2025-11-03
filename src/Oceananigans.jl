@@ -100,7 +100,7 @@ export
 
     # Output writers
     NetCDFWriter, JLD2Writer, Checkpointer,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
