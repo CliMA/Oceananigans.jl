@@ -34,6 +34,7 @@ steps:
 
   - label: "🏕️ initialize enzyme environment"
     key: "init_enzyme"
+    depends_on: "init"
     agents:
       queue: "Oceananigans-nautilus"
     env:
