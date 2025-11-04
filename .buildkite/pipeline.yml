@@ -25,9 +25,11 @@ steps:
       mkdir -p "$OCEANANIGANS_DIR"
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
-      mv Manifest.toml Manifest-v1.12.toml
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      # After we have instantiated the general environment, move manifest to the
+      # version-specific filename, not to clash with the manifest for Enzyme.
+      mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION}" | cut -d. -f1-2).toml
     retry:
       automatic:
         - exit_status: 1
@@ -45,6 +47,9 @@ steps:
       cd "$OCEANANIGANS_DIR"
 
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      # After we have instantiated the Enzyme environment, move manifest to the
+      # version-specific filename, not to clash with the general manifest.
+      mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
     retry:
       automatic:
         - exit_status: 1
@@ -140,7 +145,7 @@ steps:
 
       # Run tests
       cd "$OCEANANIGANS_DIR"
-      julia +$JULIA_VERSIO_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
 
     matrix:
       setup:
