@@ -1,5 +1,6 @@
 env:
   JULIA_VERSION: "1.12.1"
+  JULIA_VERSION_ENZYME: "1.11.7"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia-oceananigans"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -12,7 +13,7 @@ with:
   coverage: false
 
 steps:
-  - label: "🏕️ initialize environment"
+  - label: "🏕️ initialize general environment"
     key: "init"
     agents:
       queue: "Oceananigans-nautilus"
@@ -26,6 +27,25 @@ steps:
       cd "$OCEANANIGANS_DIR"
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "🏕️ initialize enzyme environment"
+    key: "init_enzyme"
+    agents:
+      queue: "Oceananigans-nautilus"
+    env:
+      TEST_GROUP: "init"
+    command: |
+      juliaup add $JULIA_VERSION
+
+      mkdir -p "$OCEANANIGANS_DIR"
+      rsync -a . "$OCEANANIGANS_DIR/"
+      cd "$OCEANANIGANS_DIR"
+
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     retry:
       automatic:
         - exit_status: 1
@@ -74,7 +94,6 @@ steps:
           - "GPU"
         group:
           - "🦖 poisson_solvers_2"
-          - "🎭 reactant_2"
           - "🐇 unit"
           - "👻 abstract_operations"
           - "🕊 poisson_solvers_1"
@@ -93,15 +112,51 @@ steps:
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
           - "🦧 scripts"
-          - "👺 enzyme"
           - "🍱 xesmf"
-          - "👹 reactant_1"
 
     retry:
       automatic:
         - exit_status: 1
           limit: 1
 
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "tests"
+    depends_on: "init_enzyme"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: |
+      # Add matrix-specific environment variables
+      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+        export CUDA_VISIBLE_DEVICES="-1"
+        export TEST_ARCHITECTURE="CPU"
+      else
+        export CUDA_VISIBLE_DEVICES="0"
+        export TEST_ARCHITECTURE="GPU"
+      fi
+
+      # Strip emoji for environment variable
+      group="{{ matrix.group }}"
+      export TEST_GROUP="\${group#* }"
+      echo $TEST_GROUP
+
+      # Run tests
+      cd "$OCEANANIGANS_DIR"
+      julia +$JULIA_VERSIO_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          - "🎭 reactant_2"
+          - "👺 enzyme"
+          - "👹 reactant_1"
+
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
   #####
   ##### Blocking wait on tests and documentation
   #####
