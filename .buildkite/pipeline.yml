@@ -117,7 +117,7 @@ steps:
           limit: 1
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
-    key: "tests"
+    key: "tests_enzyme_reactant"
     depends_on: "init_enzyme"
     agents:
       queue: "Oceananigans-nautilus"
