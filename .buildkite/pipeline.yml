@@ -25,7 +25,7 @@ steps:
       mkdir -p "$OCEANANIGANS_DIR"
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
-      mv Manifest.toml Manifest-v12.0.toml
+      mv Manifest.toml Manifest-v1.12.toml
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     retry:
