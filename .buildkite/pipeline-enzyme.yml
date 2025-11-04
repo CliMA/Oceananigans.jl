@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.12.1"
+  JULIA_VERSION: "1.11.7"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia-oceananigans"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -31,18 +31,6 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🦉 documentation"
-    depends_on: "init"
-    agents:
-      queue: "Oceananigans-nautilus"
-    env:
-      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
-    command: |
-      cd "$OCEANANIGANS_DIR"
-      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
-        'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
-
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
     depends_on: "init"
@@ -57,6 +45,12 @@ steps:
         export CUDA_VISIBLE_DEVICES="0"
         export TEST_ARCHITECTURE="GPU"
       fi
+
+      # Force IFRT runtime for Reactant (this can be moved to Project.toml on 1.11)
+      touch LocalPreferences.toml
+      echo "[Reactant]" >> LocalPreferences.toml
+      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
+      cat LocalPreferences.toml
 
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
@@ -73,28 +67,8 @@ steps:
           - "CPU"
           - "GPU"
         group:
-          - "🦖 poisson_solvers_2"
           - "🎭 reactant_2"
-          - "🐇 unit"
-          - "👻 abstract_operations"
-          - "🕊 poisson_solvers_1"
-          - "🦤 general_solvers"
-          - "🎣 turbulence_closures"
-          - "🦀 time_stepping_1"
-          - "🦈 time_stepping_2"
-          - "🦟 time_stepping_3"
-          - "🐫 nonhydrostatic_regression"
-          - "🐙 hydrostatic_free_surface"
-          - "🫐 tripolar_grid"
-          - "🥑 vertical_coordinate"
-          - "🙈 hydrostatic_regression"
-          - "🦢 shallow_water"
-          - "🐳 simulation"
-          - "🍂 lagrangian_particles"
-          - "🧅 multi_region"
-          - "🦧 scripts"
           - "👺 enzyme"
-          - "🍱 xesmf"
           - "👹 reactant_1"
 
     retry:
