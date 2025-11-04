@@ -40,9 +40,6 @@ steps:
       TEST_GROUP: "init"
     command: |
       juliaup add $JULIA_VERSION
-
-      mkdir -p "$OCEANANIGANS_DIR"
-      rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
 
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
