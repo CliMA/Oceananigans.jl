@@ -33,6 +33,8 @@ abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
+const Location = Union{Face, Center, Nothing}
+
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 

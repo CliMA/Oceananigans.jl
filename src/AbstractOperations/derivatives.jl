@@ -44,8 +44,6 @@ flip(::Type{Center}) = Face
 flip(::Face) = Center()
 flip(::Center) = Face()
 
-const Location = Union{Face, Center, Nothing}
-
 """Return the ``x``-derivative function acting at (`X`, `Y`, `Any`)."""
 ∂x(X::Location, Y::Location, Z::Location) = eval(Symbol(:∂x, interpolation_code(flip(X)), interpolation_code(Y), interpolation_code(Z)))
 

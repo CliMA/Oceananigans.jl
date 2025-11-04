@@ -79,12 +79,14 @@ julia> c_dz[1, 1, 1]
 3.0
 ```
 """
-grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric, grid) where {LX, LY, LZ} =
+grid_metric_operation(loc metric, grid) = grid_metric_operation(instantiate(loc), metric, grid)
+
+grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric, grid) where {LX<:Location, LY<:Location, LZ<:Location} =
     KernelFunctionOperation{LX, LY, LZ}(metric_function(loc, metric), grid)
 
 const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
 
-function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX, LY, LZ}
+function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX<:Location, LY<:Location, LZ<:Location} 
     ℓx, ℓy, ℓz = loc
     ξnode = metric_function(loc, metric)
     return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
