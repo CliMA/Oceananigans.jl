@@ -84,9 +84,9 @@ by  interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Ce
     _derivative(L, ∂z(LX(), LY(), LZ()), arg, (LX(), LY(), flip(LZ())), ∂z, arg.grid)
 
 # Instantiate location if types are passed
-∂x(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((L[1](), L[2](), L[3]()), arg)
-∂y(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((L[1](), L[2](), L[3]()), arg)  
-∂z(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂z((L[1](), L[2](), L[3]()), arg)   
+∂x(L::Tuple, arg::AF) = ∂x((L[1](), L[2](), L[3]()), arg)
+∂y(L::Tuple, arg::AF) = ∂y((L[1](), L[2](), L[3]()), arg)  
+∂z(L::Tuple, arg::AF) = ∂z((L[1](), L[2](), L[3]()), arg)   
 
 # Defaults
 

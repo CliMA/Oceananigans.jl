@@ -33,7 +33,7 @@ end
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote
-        function $op(Lop::Tuple{{<:Location, <:Location, <:Location}},
+        function $op(Lop::Tuple{<:Location, <:Location, <:Location},
                      a::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      b::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      c::Union{Function, Number, Oceananigans.Fields.AbstractField},
