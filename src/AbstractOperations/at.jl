@@ -62,7 +62,7 @@ macro at(location, abstract_operation)
 
     # We wrap it all in an interpolator to help "stubborn" binary operations
     # arrive in the right place.
-    wrapped_operation = quote        
+    wrapped_operation = quote
         interpolate_operation($(esc(location)), $(esc(abstract_operation)))
     end
 
