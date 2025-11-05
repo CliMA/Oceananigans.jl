@@ -35,9 +35,9 @@ indices(β::BinaryOperation) = construct_regionally(intersect_indices, location(
 
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
-function _binary_operation(Lc::Tuple{LX, LY, LZ}, op, a, b, La, Lb, grid) where {LX, LY, LZ}
-     ▶a = interpolation_operator(La, Lc)
-     ▶b = interpolation_operator(Lb, Lc)
+function _binary_operation(Lc::Tuple{LX, LY, LZ}, op, a, b, La, Lb, grid) where {LX<:Location, LY<:Location, LZ<:Location}
+    ▶a = interpolation_operator(La, Lc)
+    ▶b = interpolation_operator(Lb, Lc)
 
     return BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
 end
@@ -106,7 +106,7 @@ function define_binary_operator(op)
         the location of the dimension in question is supplied either by `location(b)` or
         if that is also Nothing, `Lc`.
         """
-        function $op(Lc::Tuple, a, b)
+        function $op(Lc::Tuple{<:Location, <:Location, <:Location}, a, b)
             La = instantiated_location(a)
             Lb = instantiated_location(b)
             Lab = choose_location.(La, Lb, Lc)
@@ -115,6 +115,9 @@ function define_binary_operator(op)
 
             return Oceananigans.AbstractOperations._binary_operation(Lab, $op, a, b, La, Lb, grid)
         end
+
+        # instantiate location if types are passed
+        $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
         # Numbers are not fields...
         $op(Lc::Tuple, a::Number, b::Number) = $op(a, b)

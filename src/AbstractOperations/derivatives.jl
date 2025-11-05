@@ -60,28 +60,33 @@ push!(operators, derivative_operators...)
     ∂x(L::Tuple, arg::AbstractField)
 
 Return an abstract representation of an ``x``-derivative acting on field `arg` followed
-by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
+by interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Center`s.
 """
-∂x(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
+∂x(L::Tuple{<:Location, <:Location, <:Location}, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
     _derivative(L, ∂x(LX(), LY(), LZ()), arg, (flip(LX()), LY(), LZ()), ∂x, arg.grid)
 
 """
     ∂y(L::Tuple, arg::AbstractField)
 
 Return an abstract representation of a ``y``-derivative acting on field `arg` followed
-by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
+by interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Center`s.
 """
-∂y(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
+∂y(L::Tuple{<:Location, <:Location, <:Location}, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
     _derivative(L, ∂y(LX(), LY(), LZ()), arg, (LX(), flip(LY()), LZ()), ∂y, arg.grid)
 
 """
     ∂z(L::Tuple, arg::AbstractField)
 
 Return an abstract representation of a ``z``-derivative acting on field `arg` followed
-by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
+by  interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Center`s.
 """
-∂z(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
+∂z(L::Tuple{<:Location, <:Location, <:Location}, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
     _derivative(L, ∂z(LX(), LY(), LZ()), arg, (LX(), LY(), flip(LZ())), ∂z, arg.grid)
+
+# Instantiate location if types are passed
+∂x(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((L[1](), L[2](), L[3]()), arg)
+∂y(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((L[1](), L[2](), L[3]()), arg)  
+∂z(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂z((L[1](), L[2](), L[3]()), arg)   
 
 # Defaults
 
