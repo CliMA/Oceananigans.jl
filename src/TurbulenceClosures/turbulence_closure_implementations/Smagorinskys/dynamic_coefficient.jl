@@ -17,11 +17,17 @@ const DynamicSmagorinsky = Union{
     Smagorinsky{<:Any, <:DeviceDynamicCoefficient},
 }
 
-function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; averaging,
-                            Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
+function DynamicSmagorinsky(time_discretization  =ExplicitTimeDiscretization(),
+                            FT = Oceananigans.defaults.FloatType;
+                            averaging = LagrangianAveraging(),
+                            Pr = 1,
+                            schedule = IterationInterval(1),
+                            minimum_numerator = 1e-32)
+
     coefficient = DynamicCoefficient(FT; averaging, schedule, minimum_numerator)
     TD = typeof(time_discretization)
     Pr = convert_diffusivity(FT, Pr; discrete_form=false)
+
     return Smagorinsky{TD}(coefficient, Pr)
 end
 
