@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans: fields
+using Oceananigans.Utils: time_difference_seconds
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -153,8 +154,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # This adjustment of the final time-step reduces the accumulation of
     # round-off error when Δt is added to model.clock.time. Note that we still use
     # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
-    corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
-    tick!(model.clock, third_stage_Δt)
+    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
+    tick!(model.clock, corrected_third_stage_Δt)
     # now model.clock.last_Δt = clock.last_stage_Δt = third_stage_Δt
     # we correct those below
     model.clock.last_stage_Δt = corrected_third_stage_Δt
