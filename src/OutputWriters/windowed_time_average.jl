@@ -2,7 +2,7 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 using Oceananigans.TimeSteppers: Clock
-using Dates: Period
+using Dates: Period, Second, value
 
 import Oceananigans: run_diagnostic!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
@@ -119,28 +119,30 @@ AveragedSpecifiedTimes(times; window, kw...) = AveragedSpecifiedTimes(times, win
 
 determine_epsilon(eltype) = 0  
 determine_epsilon(::Type{T}) where T <: AbstractFloat = eps(T)  
-determine_epsilon(::Period) = Second(0)  
+determine_epsilon(::Type{<:Period}) = Second(0)
 
 function AveragedSpecifiedTimes(times, window::Vector; kw...)
     length(window) == length(times) || throw(ArgumentError("When providing a vector of windows, its length $(length(window)) must match the number of specified times $(length(times))."))
     perm = sortperm(times)
     sorted_times = times[perm]
     sorted_window = window[perm]
-    time_diff = diff(vcat(0, sorted_times))
+    # time_diff = diff(vcat(0, sorted_times))
+    # time_diff = diff(sorted_times)
 
-    epsilon = determine_epsilon(eltype(window))
-    any(time_diff .- sorted_window .< -epsilon) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
+    # epsilon = determine_epsilon(eltype(window))
+    # any(time_diff .- sorted_window .< -epsilon) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
 
     return AveragedSpecifiedTimes(SpecifiedTimes(sorted_times); window=sorted_window, kw...)
 end
 
 function AveragedSpecifiedTimes(times, window; kw...)
     sorted_times = sort(times)
-    time_diff = diff(vcat(0, sorted_times))
+    # time_diff = diff(vcat(0, sorted_times))
+    # time_diff = diff(sorted_times)
 
-    epsilon = determine_epsilon(typeof(window))
+    # epsilon = determine_epsilon(typeof(window))
 
-    any(time_diff .- window .< -epsilon) && throw(ArgumentError("Averaging window $window is too large and causes overlapping windows. Ensure that for each specified time tᵢ, tᵢ - window ≥ tᵢ₋₁."))
+    # any(time_diff .- window .< -epsilon) && throw(ArgumentError("Averaging window $window is too large and causes overlapping windows. Ensure that for each specified time tᵢ, tᵢ - window ≥ tᵢ₋₁."))
 
     return AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
 end
@@ -167,7 +169,7 @@ function outside_window(schedule::AveragedSpecifiedTimes, clock)
     next > length(schedule.specified_times.times) && return true
     next_time = schedule.specified_times.times[next]
     window = get_next_window(schedule)
-    return clock.time < next_time - window
+    return clock.time <= next_time - window
 end
 
 function end_of_window(schedule::AveragedSpecifiedTimes, clock)
@@ -186,18 +188,18 @@ next_actuation_time(sch::AveragedSpecifiedTimes) = Oceananigans.Utils.next_actua
 ##### WindowedTimeAverage
 #####
 
-mutable struct WindowedTimeAverage{OP, R, S} <: AbstractDiagnostic
+mutable struct WindowedTimeAverage{OP, R, T, S} <: AbstractDiagnostic
                       result :: R
                      operand :: OP
-           window_start_time :: Float64
+           window_start_time :: T
       window_start_iteration :: Int
-    previous_collection_time :: Float64
+    previous_collection_time :: T
                     schedule :: S
                fetch_operand :: Bool
 end
 
-const IntervalWindowedTimeAverage = WindowedTimeAverage{<:Any, <:Any, <:AveragedTimeInterval}
-const SpecifiedWindowedTimeAverage = WindowedTimeAverage{<:Any, <:Any, <:AveragedSpecifiedTimes}
+const IntervalWindowedTimeAverage = WindowedTimeAverage{<:Any, <:Any, <:Any, <:AveragedTimeInterval}
+const SpecifiedWindowedTimeAverage = WindowedTimeAverage{<:Any, <:Any, <:Any, <:AveragedSpecifiedTimes}
 
 stride(wta::IntervalWindowedTimeAverage) = wta.schedule.stride
 stride(wta::SpecifiedWindowedTimeAverage) = wta.schedule.stride
@@ -224,7 +226,7 @@ function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=tru
         result .= operand
     end
 
-    return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule, fetch_operand)
+    return WindowedTimeAverage(result, operand, model.clock.time, 0, model.clock.time, schedule, fetch_operand)
 end
 
 # Time-averaging doesn't change spatial location
@@ -251,12 +253,15 @@ function accumulate_result!(wta, model)
     return accumulate_result!(wta, model.clock, integrand)
 end
 
+period_to_number(p::Period) = value(p)
+period_to_number(n::Number) = n
+
 function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     # Time increment:
-    Δt = clock.time - wta.previous_collection_time
+    Δt = period_to_number(clock.time - wta.previous_collection_time)
     # Time intervals:
-    T_current = clock.time - wta.window_start_time
-    T_previous = wta.previous_collection_time - wta.window_start_time
+    T_current = period_to_number(clock.time - wta.window_start_time)
+    T_previous = period_to_number(wta.previous_collection_time - wta.window_start_time)
 
     # Accumulate left Riemann sum
     @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
