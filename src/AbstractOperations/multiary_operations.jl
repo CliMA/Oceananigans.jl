@@ -34,10 +34,10 @@ end
 function define_multiary_operator(op)
     return quote
         function $op(Lop::Tuple{<:Location, <:Location, <:Location},
-                     a::Union{Function, Number, Oceananigans.Fields.AbstractField},
-                     b::Union{Function, Number, Oceananigans.Fields.AbstractField},
-                     c::Union{Function, Number, Oceananigans.Fields.AbstractField},
-                     d::Union{Function, Number, Oceananigans.Fields.AbstractField}...)
+                     a::Union{Function, Number, AbstractField},
+                     b::Union{Function, Number, AbstractField},
+                     c::Union{Function, Number, AbstractField},
+                     d::Union{Function, Number, AbstractField}...)
 
             args = tuple(a, b, c, d...)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
@@ -50,12 +50,16 @@ function define_multiary_operator(op)
         end
 
         # Instantiate location if types are passed
-        $op(Lop::Tuple, a, b, c, d...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
+        $op(Lop::Tuple, 
+            a::Union{Function, Number, AbstractField}, 
+            b::Union{Function, Number, AbstractField}, 
+            c::Union{Function, Number, AbstractField}, 
+            d::Union{Function, Number, AbstractField}...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
 
-        $op(a::Oceananigans.Fields.AbstractField,
-            b::Union{Function, Oceananigans.Fields.AbstractField},
-            c::Union{Function, Oceananigans.Fields.AbstractField},
-            d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.instantiated_location(a), a, b, c, d...)
+        $op(a::AbstractField,
+            b::Union{Function, Number, AbstractField},
+            c::Union{Function, Number, AbstractField},
+            d::Union{Function, Number, AbstractField}...) = $op(Oceananigans.Fields.instantiated_location(a), a, b, c, d...)
     end
 end
 

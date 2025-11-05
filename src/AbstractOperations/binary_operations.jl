@@ -116,18 +116,24 @@ function define_binary_operator(op)
             return Oceananigans.AbstractOperations._binary_operation(Lab, $op, a, b, La, Lb, grid)
         end
 
-        # instantiate location if types are passed
-        $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
-
         # Numbers are not fields...
         $op(Lc::Tuple, a::Number, b::Number) = $op(a, b)
 
         # Sugar for mixing in functions of (x, y, z)
-        $op(Lc::Tuple, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
-        $op(Lc::Tuple, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
+        $op(Lc::Tuple{<:Location, <:Location, <:Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
+        $op(Lc::Tuple{<:Location, <:Location, <:Location}, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
 
-        $op(Lc::Tuple, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(instantiated_location(b), m, b.grid), b)
-        $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(instantiated_location(a), m, a.grid))
+        $op(Lc::Tuple{<:Location, <:Location, <:Location}, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(instantiated_location(b), m, b.grid), b)
+        $op(Lc::Tuple{<:Location, <:Location, <:Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(instantiated_location(a), m, a.grid))
+
+        # instantiate location if types are passed
+        $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        
+        $op(Lc::Tuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        $op(Lc::Tuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+
+        $op(Lc::Tuple, m::GridMetric, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
         # Sugary versions with default locations
         $op(a::AF, b::AF) = $op(instantiated_location(a), a, b)
