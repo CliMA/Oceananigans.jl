@@ -89,17 +89,6 @@ References
 
 Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
 large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
-
-Salesky, Scott T., Chamecki, Marcelo, and Bou-Zeid Elie. (2017) On the nature of the transition between
-roll and cellular organization in the convective boundary layer, Boundary-layer meteorology 163, 41-68.
-
-Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
-transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
-Research: Oceans, 121(5), pp.3564-3578.
-
-Chor, Tomas, McWilliams, James C., Chamecki, Marcelo. (2021) Modifications to the K-Profile
-Parameterization with nondiffusive fluxes for Langmuir turbulence, Journal of Physical Oceanography,
-51(5), pp.1503-1521.
 """
 function DynamicSmagorinsky(time_discretization = ExplicitTimeDiscretization(),
                             FT = Oceananigans.defaults.FloatType;
@@ -182,10 +171,25 @@ Smagorinsky closure with
 
 `schedule`s other than `IterationInterval(1)` are valid if the coefficient at any particular location
 changes slowly relative to the frequency of recalculation.
-Some published studies compute the dynamic every 5 steps (e.g., Bou-Zeid et al. 2005;
-Chen et al. 2016; Salesky et al. 2017; Chor et al 2021) to balance fidelity with computational cost.
+Some published studies compute the dynamic every 5 steps (e.g., [Bou-Zeid et al. (2005)](@cite BouZeid05);
+[Chen et al. 2016](@cite Chen2016); [Salesky et al. (2017)](@cite Salesky2017);
+[Chor et al. 2021](@cite Chor2021)) to balance fidelity with computational cost.
 
 See also [`DynamicSmagorinsky`](@ref).
+
+References
+==========
+
+Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
+transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
+Research: Oceans, 121(5), pp.3564-3578.
+
+Salesky, Scott T., Chamecki, Marcelo, and Bou-Zeid Elie. (2017) On the nature of the transition between
+roll and cellular organization in the convective boundary layer, Boundary-layer meteorology 163, 41-68.
+
+Chor, Tomas, McWilliams, James C., Chamecki, Marcelo. (2021) Modifications to the K-Profile
+Parameterization with nondiffusive fluxes for Langmuir turbulence, Journal of Physical Oceanography,
+51(5), pp.1503-1521.
 """
 function DynamicCoefficient(FT=Oceananigans.defaults.FloatType; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
@@ -203,7 +207,7 @@ Base.show(io::IO, dc::DynamicCoefficient) = print(io, "DynamicCoefficient with\n
 function Base.show(io::IO, c::DynamicSmagorinsky)
 
     FT = eltype(c.coefficient.minimum_numerator)
-    
+
     print(io, "DynamicSmagorinsky{$FT}:", '\n',
               "├── averaging = ", c.coefficient.averaging, '\n',
               "├── schedule = ", c.coefficient.schedule, '\n',
