@@ -115,6 +115,7 @@ const LagrangianAveragedCoefficient = DynamicCoefficient{<:LagrangianAveraging}
 const LagrangianAveragedDynamicSmagorinsky = Smagorinsky{<:Any, <:LagrangianAveragedCoefficient}
 
 tupleit(::LagrangianAveraging) = LagrangianAveraging()
+tupleit(::Colon) = Colon()
 tupleit(a::Number) = tuple(a)
 tupleit(a::Tuple) = a
 
