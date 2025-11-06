@@ -29,8 +29,8 @@ julia> grid = RectilinearGrid(size=(16, 16, 16), x=(0, 2π), y=(0, 1), z=(0, 1),
 ├── Bounded  y ∈ [0.0, 1.0]     regularly spaced with Δy=0.0625
 └── Bounded  z ∈ [0.0, 1.0]     regularly spaced with Δz=0.0625
 
-julia> no_slip_bc = ValueBoundaryCondition(0.0)
-ValueBoundaryCondition: 0.0
+julia> no_slip_bc = ValueBoundaryCondition(0)
+ValueBoundaryCondition: 0
 ```
 
 A "no-slip" [`BoundaryCondition`](@ref) specifies that velocity components tangential to `Bounded`
@@ -53,10 +53,10 @@ julia> model.velocities.u.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: ValueBoundaryCondition: 0.0
-├── north: ValueBoundaryCondition: 0.0
-├── bottom: ValueBoundaryCondition: 0.0
-├── top: ValueBoundaryCondition: 0.0
+├── south: ValueBoundaryCondition: 0
+├── north: ValueBoundaryCondition: 0
+├── bottom: ValueBoundaryCondition: 0
+├── top: ValueBoundaryCondition: 0
 └── immersed: Nothing
 ```
 
@@ -82,9 +82,9 @@ julia> model.velocities.u.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: ValueBoundaryCondition: 0.0
-├── north: ValueBoundaryCondition: 0.0
-├── bottom: ValueBoundaryCondition: 0.0
+├── south: ValueBoundaryCondition: 0
+├── north: ValueBoundaryCondition: 0
+├── bottom: ValueBoundaryCondition: 0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: Nothing
 
@@ -94,7 +94,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── east: PeriodicBoundaryCondition
 ├── south: OpenBoundaryCondition{Nothing}: Nothing
 ├── north: OpenBoundaryCondition{Nothing}: Nothing
-├── bottom: ValueBoundaryCondition: 0.0
+├── bottom: ValueBoundaryCondition: 0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: Nothing
 ```
