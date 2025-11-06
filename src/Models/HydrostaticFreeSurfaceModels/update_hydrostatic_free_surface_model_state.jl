@@ -47,7 +47,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     parameters = surface_kernel_parameters(model.grid)
   
-    compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters=:xyz)
+    compute_buoyancy_gradients!(model.buoyancy, grid, tracers; parameters=:xyz)
     update_vertical_velocities!(model.velocities, model.grid, model; parameters)    
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters)
     compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters=:xyz)
