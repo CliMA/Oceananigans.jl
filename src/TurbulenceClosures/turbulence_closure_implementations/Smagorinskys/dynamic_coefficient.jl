@@ -171,9 +171,10 @@ Smagorinsky closure with
 
 `schedule`s other than `IterationInterval(1)` are valid if the coefficient at any particular location
 changes slowly relative to the frequency of recalculation.
-Some published studies compute the dynamic every 5 steps (e.g., [Bou-Zeid et al. (2005)](@cite BouZeid05);
-[Chen et al. 2016](@cite Chen2016); [Salesky et al. (2017)](@cite Salesky2017);
-[Chor et al. 2021](@cite Chor2021)) to balance fidelity with computational cost.
+Some published studies compute the dynamic coefficient every 5 steps
+(e.g., [Bou-Zeid et al. (2005)](@cite BouZeid05); [Chen et al. 2016](@cite Chen2016);
+[Salesky et al. (2017)](@cite Salesky2017); [Chor et al. 2021](@cite Chor2021))
+to balance fidelity with computational cost.
 
 See also [`DynamicSmagorinsky`](@ref).
 
