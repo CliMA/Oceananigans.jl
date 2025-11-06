@@ -44,7 +44,7 @@ julia> using Oceananigans
 
 julia> closure = DynamicSmagorinsky()
 DynamicSmagorinsky{Float64}:
-├── averaging = Oceananigans.TurbulenceClosures.Smagorinskys.LagrangianAveraging
+├── averaging = Oceananigans.TurbulenceClosures.Smagorinskys.LagrangianAveraging()
 ├── schedule = IterationInterval(1, 0)
 ├── Pr = 1.0
 └── minimum_numerator = 1.0e-32
@@ -55,7 +55,7 @@ To compute the dynamic coefficient every 5 time steps, for example, we can use
 ```jldoctest smag
 julia> closure = DynamicSmagorinsky(schedule = IterationInterval(5))
 DynamicSmagorinsky{Float64}:
-├── averaging = Oceananigans.TurbulenceClosures.Smagorinskys.LagrangianAveraging
+├── averaging = Oceananigans.TurbulenceClosures.Smagorinskys.LagrangianAveraging()
 ├── schedule = IterationInterval(5, 0)
 ├── Pr = 1.0
 └── minimum_numerator = 1.0e-32
