@@ -10,12 +10,12 @@ end
 
 function Centered(FT::DataType=Oceananigans.defaults.FloatType; 
                   order = 2,
-                  buffer_scheme = nothing)
+                  buffer_scheme = DescreasingOrderAdvectionScheme())
 
     mod(order, 2) != 0 && throw(ArgumentError("Centered reconstruction scheme is defined only for even orders"))
 
     N  = Int(order ÷ 2)
-    if isnothing(buffer_scheme)
+    if buffer_scheme isa DescreasingOrderAdvectionScheme
         if N > 1
             buffer_scheme = Centered(FT; order=order-2)
         else
