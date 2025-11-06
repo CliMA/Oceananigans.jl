@@ -8,7 +8,7 @@ using Printf
 using LinearAlgebra, SparseArrays
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 using Oceananigans.Grids
-using GLMakie
+# using GLMakie
 using JLD2
 
 function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:QuasiAdamsBashforth2)
@@ -52,11 +52,11 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         parent(z.σᶜᶜ⁻) .= parent(z.σᶜᶜⁿ)
     end
         
-    stop_iteration=10000
+    stop_iteration=40000
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model; Δt = 2 * wave_propagation_time_scale, stop_iteration)
+    simulation = Simulation(model; Δt = 0.1 * wave_propagation_time_scale, stop_iteration)
 
     ηarr = Vector{Field}(undef, stop_iteration+1)
     varr = Vector{Field}(undef, stop_iteration+1)
@@ -67,7 +67,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.η)
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
-    save_u(sim) = uarr[sim.model .clock.iteration+1] = deepcopy(sim.model.velocities.u)
+    save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
     save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
     save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 1, 2]
     
@@ -110,20 +110,20 @@ Lz = 400meters
 grid = RectilinearGrid(size = (80, 1),
                        halo = (5, 5),
                        x = (0, Lh),
-                       z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), #  
+                       z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), #
                        topology = (Periodic, Flat, Bounded))
 
 
-bottom(x) = x < 38kilometers && x > 26kilometers ? 0 : -Lz-1
-grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+# bottom(x) = x < 60kilometers && x > 50kilometers ? 0 : -Lz-1
+# grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
-explicit_free_surface      = ExplicitFreeSurface()
-implicit_free_surface      = ImplicitFreeSurface()
+# explicit_free_surface      = ExplicitFreeSurface()
+implicit_free_surface      = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner = nothing)
 splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=120)
 
 serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
-# efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface,      deepcopy(grid), :SplitRungeKutta3)
 imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface,      deepcopy(grid), :SplitRungeKutta3)
+imssp, sim9 = geostrophic_adjustment_simulation(implicit_free_surface,      deepcopy(grid), :IMEXSSP)
 
 import Oceananigans.Fields: interior
 interior(a::Array, idx...) = a
@@ -187,14 +187,3 @@ function plot_variable2(sims, var1, var2;
         iter[] = i
     end
 end
-
-# @inline dη_local(i, j, k, grid, U, V) = (Oceananigans.Operators.δxᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δy_qᶠᶜᶜ, U) + 
-#                                          Oceananigans.Operators.δyᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δx_qᶜᶠᶜ, V)) * 
-#                                          Oceananigans.Operators.Az⁻¹ᶜᶜᶜ(i, j, k, grid)
-
-# model = sim3
-# ηⁿ⁻¹ = deepcopy(model.free_surface.η)
-# time_step!(model, 10);
-# dη1 = (interior(model.free_surface.η, :, 1, 1) .- interior(ηⁿ⁻¹, :, 1, 1)) ./ 10
-# dη2 = interior(compute!(Field(KernelFunctionOperation{Center, Center, Nothing}(dη_local, grid, model.free_surface.filtered_state.Ũ, model.free_surface.filtered_state.Ṽ))),:, 1,1)
-# dη3 = interior(compute!(Field(KernelFunctionOperation{Center, Center, Nothing}(dη_local, grid, model.free_surface.barotropic_velocities.U, model.free_surface.barotropic_velocities.V))),:, 1,1)

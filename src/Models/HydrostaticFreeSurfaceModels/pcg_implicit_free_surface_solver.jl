@@ -77,16 +77,12 @@ build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settin
 ##### Solve...
 #####
 
-function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)
-    # Take explicit step first? We haven't found improvement from this yet, but perhaps it will
-    # help eventually.
-    #explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
-
+function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt, C=1)
     ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
     solver = implicit_free_surface_solver.preconditioned_conjugate_gradient_solver
 
     # solve!(x, solver, b, args...) solves A*x = b for x.
-    solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+    solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt, C)
 
     return nothing
 end
@@ -128,12 +124,12 @@ in an implicit time step for the free surface displacement `η`.
 
 (See the docs section on implicit time stepping.)
 """
-function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt, C)
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
 
     launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
-            L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+            L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt, C)
 
     return nothing
 end
@@ -150,31 +146,31 @@ end
 @inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * ∂yᶜᶠᶠ(i, j, k, grid, η)
 
 """
-    _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δ, C)
 
 Return the left side of the "implicit ``η`` equation"
 
 ```math
-(∇ʰ⋅ H ∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = 1 / (g Δt) ∇ʰ ⋅ Q★ - 1 / (g Δt²) ηⁿ
-----------------------
-        ≡ L_ηⁿ⁺¹
+(C ∇ʰ⋅ H ∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = 1 / (g Δt) ∇ʰ ⋅ Q★ - 1 / (g Δt²) ηⁿ
+-------------------------------
+           ≡ L_ηⁿ⁺¹
 ```
 
 which is derived from the discretely summed barotropic mass conservation equation,
 and arranged in a symmetric form by multiplying by horizontal areas Az:
 
 ```
-δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - Az ηⁿ⁺¹ / (g Δt²) = 1 / (g Δt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - Az ηⁿ / (g Δt²)
+CδⁱÂʷ∂ˣηⁿ⁺¹ + CδʲÂˢ∂ʸηⁿ⁺¹ - Az ηⁿ⁺¹ / (g Δt²) = 1 / (g Δt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - Az ηⁿ / (g Δt²)
 ```
 
 where  ̂ indicates a vertical integral, and
        ̅ indicates a vertical average
 """
-@kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+@kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt, C)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz + 1
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
-    @inbounds L_ηⁿ⁺¹[i, j, k_top] = Az_∇h²ᶜᶜᶜ(i, j, k_top, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_top] / (g * Δt^2)
+    @inbounds L_ηⁿ⁺¹[i, j, k_top] = C * Az_∇h²ᶜᶜᶜ(i, j, k_top, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_top] / (g * Δt^2)
 end
 
 """
@@ -192,7 +188,7 @@ vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 """
 Add  `- H⁻¹ ∇H ⋅ ∇ηⁿ` to the right-hand-side.
 """
-@inline function precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+@inline function precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt, C=1)
     poisson_solver = preconditioner.fft_poisson_solver
     arch = architecture(poisson_solver)
     grid = preconditioner.three_dimensional_grid
@@ -201,14 +197,14 @@ Add  `- H⁻¹ ∇H ⋅ ∇ηⁿ` to the right-hand-side.
 
     launch!(arch, grid, :xy,
             fft_preconditioner_right_hand_side!,
-            poisson_solver.storage, r, grid, Az, Lz)
+            poisson_solver.storage, r, grid, Az, Lz, C)
 
-    return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
+    return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt, C)
 end
 
-@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az, Lz)
+@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az, Lz, C)
     i, j = @index(Global, NTuple)
-    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az)
+    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az * C)
 end
 
 # TODO: make it so adding this term:

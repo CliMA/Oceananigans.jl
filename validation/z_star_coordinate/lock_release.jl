@@ -29,7 +29,7 @@ function compute_tracer_dissipation!(sim)
 end
 
 arch = CPU() # Distributed(CPU())#; synchronized_communication=true) 
-z_faces = MutableVerticalDiscretization((-200, 0)) # (-200, 0) # 
+z_faces = MutableVerticalDiscretization((-20, 0)) # (-200, 0) # 
 
 grid = RectilinearGrid(arch; 
                        size = (128, 20),
@@ -38,28 +38,27 @@ grid = RectilinearGrid(arch;
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-bottom(x) = x < 52kilometers && x > 45kilometers ? -1000 : -2000
-grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+# bottom(x) = x < 52kilometers && x > 45kilometers ? -1000 : -2000
+# grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 b⁻   = CenterField(grid)
 Δtb² = CenterField(grid)
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                         momentum_advection = Centered(),
+                         momentum_advection = WENO(order=7),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
-                                    closure = HorizontalScalarDiffusivity(ν=100),
                                 timestepper = :QuasiAdamsBashforth2,
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=30),  # ImplicitFreeSurface()) # #
+                               free_surface = ImplicitFreeSurface(), # #
                            auxiliary_fields = (; Δtb², b⁻))
 
 g = model.free_surface.gravitational_acceleration
-bᵢ(x, z) = x > 20kilometers ? 6 // 100 : 1 // 100
+bᵢ(x, z) = x > 32kilometers ? 6 // 100 : 1 // 100
 set!(model, b = bᵢ, c = (x, z) -> - 1)
 
 # Same timestep as in the ilicak paper
-Δt = 20 /3 # Oceananigans.defaults.FloatType(1 // 10)
+Δt = 1 # Oceananigans.defaults.FloatType(1 // 10)
 
 @info "the time step is $Δt"
 
@@ -102,9 +101,9 @@ f = Oceananigans.Models.VarianceDissipationComputations.flatten_dissipation_fiel
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
-simulation.callbacks[:variance_dissipation_b] = Callback(ϵ, IterationInterval(1))
+# simulation.callbacks[:variance_dissipation_b] = Callback(ϵ, IterationInterval(1))
 
-field_outputs = merge(model.velocities, model.tracers, (; Δz), f, model.auxiliary_fields)
+field_outputs = merge(model.velocities, model.tracers, (; Δz),  model.auxiliary_fields)
 
 simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
                                                          overwrite_existing = true,
@@ -125,23 +124,26 @@ function running_mean(v, points)
     return rm[1:end-1]
 end
 
-# fig = Figure()
-# ax  = Axis(fig[1, 1], title = "Integral property conservation")
-# lines!(ax, (vav .- vav[1]) ./ vav[1], label = "Volume anomaly")
-# lines!(ax, (bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
-# lines!(ax, (cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
-# axislegend(ax, position=:lt)
-# ax  = Axis(fig[1, 2], title = "Final buoyancy field") 
-# contourf!(ax, x, z, interior(model.tracers.b, :, 1, :), colormap=:balance, levels=20)
-# vlines!(ax, 62.3e3, linestyle = :dash, linewidth = 3, color = :black)
+fig = Figure()
+ax  = Axis(fig[1, 1], title = "Integral property conservation")
+lines!(ax, (vav .- vav[1]) ./ vav[1], label = "Volume anomaly")
+lines!(ax, (bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
+lines!(ax, (cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
+axislegend(ax, position=:lt)
+ax  = Axis(fig[1, 1], title = "Final buoyancy field") 
+contourf!(ax, x, z, interior(bold, :, 1, :), colormap=:balance, levels=20)
 
-Δtc² = FieldTimeSeries("zstar_model.jld2", "Δtb²")
-Acx  = FieldTimeSeries("zstar_model.jld2", "Abx")
-Acz  = FieldTimeSeries("zstar_model.jld2", "Abz")
-Dcx  = FieldTimeSeries("zstar_model.jld2", "Dbx")
-Nt   = length(Acx)
+ax  = Axis(fig[1, 2], title = "Final buoyancy field") 
+contourf!(ax, x, z, interior(model.tracers.b, :, 1, :), colormap=:balance, levels=20)
+vlines!(ax, 62.3e3, linestyle = :dash, linewidth = 3, color = :black)
 
-∫closs = abs.([sum(Δtc²[i])               for i in 2:Nt-1])
-∫A     = abs.([sum(Acx[i]) + sum(Acz[i])  for i in 2:Nt-1])
-∫D     = abs.([sum(Dcx[i])                for i in 2:Nt-1])
-∫T     = ∫D .+ ∫A
+# Δtc² = FieldTimeSeries("zstar_model.jld2", "Δtb²")
+# Acx  = FieldTimeSeries("zstar_model.jld2", "Abx")
+# Acz  = FieldTimeSeries("zstar_model.jld2", "Abz")
+# Dcx  = FieldTimeSeries("zstar_model.jld2", "Dbx")
+# Nt   = length(Acx)
+
+# ∫closs = abs.([sum(Δtc²[i])               for i in 2:Nt-1])
+# ∫A     = abs.([sum(Acx[i]) + sum(Acz[i])  for i in 2:Nt-1])
+# ∫D     = abs.([sum(Dcx[i])                for i in 2:Nt-1])
+# ∫T     = ∫D .+ ∫A

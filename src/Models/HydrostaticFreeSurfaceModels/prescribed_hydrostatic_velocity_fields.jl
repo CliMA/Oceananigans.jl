@@ -95,6 +95,13 @@ step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
 
+@inline function ssp_substep!(val_stage, model, ::Nothing, grid, Δt, callbacks)
+    compute_tracer_tendencies!(model)
+    store_tendencies!(stage_tendency(model.timestepper.Gⁱ, val_stage), model.timestepper.Gⁿ)
+    ssp_substep_tracers!(model.tracers, model, Δt, val_stage)
+    return nothing
+end
+
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 

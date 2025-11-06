@@ -36,6 +36,7 @@ include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
+include("imex_ssp.jl")
 
 """
     TimeStepper(name::Symbol, args...; kwargs...)
@@ -60,6 +61,9 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:IMEXSSP}, args...; kwargs...) =
+    IMEXSSPTimeStepper(args...; kwargs...)
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 40 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...) 

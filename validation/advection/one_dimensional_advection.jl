@@ -30,26 +30,24 @@ a = 0.5
     end
 end
 
-Δt_max = 0.6 * minimum_xspacing(grid)
+Δt_max = 0.75 * minimum_xspacing(grid)
 c_real = CenterField(grid)
 set!(c_real, c₀)
 
 # Change to test pure advection schemes
-advection = WENO(order=7)
+advection = WENO(order=5)
 
 model1 = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection, tracers=:c)
 set!(model1, c=c₀, u=1)
-sim1 = Simulation(model1, Δt=Δt_max, stop_time=10)
+sim1 = Simulation(model1, Δt=Δt_max, stop_time=100)
 
 model2 = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(u=1), timestepper=:SplitRungeKutta3, tracer_advection=advection, tracers=:c)
 set!(model2, c=c₀)
-sim2 = Simulation(model2, Δt=Δt_max, stop_time=10)
+sim2 = Simulation(model2, Δt=Δt_max, stop_time=100)
 
-timestepper = SplitRungeKuttaTimeStepper(coefficients = [4, 3, 2, 1])
-
-model3 = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(u=1), timestepper=timestepper, tracer_advection=advection, tracers=:c)
+model3 = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(u=1), timestepper=:IMEXSSP, tracer_advection=advection, tracers=:c)
 set!(model3, c=c₀)
-sim3 = Simulation(model3, Δt=Δt_max, stop_time=10)
+sim3 = Simulation(model3, Δt=Δt_max, stop_time=100)
 
 sim1.output_writers[:solution] = JLD2Writer(model1, (; c = model1.tracers.c);
                                             filename="one_d_simulation_1.jld2",

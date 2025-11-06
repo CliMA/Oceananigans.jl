@@ -33,6 +33,14 @@ function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordi
     return nothing
 end
 
+function ssp_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    if model.clock.stage == 3
+       parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    end
+    return nothing
+end
+
 # Update η in the grid
 @kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
     i, j = @index(Global, NTuple) 

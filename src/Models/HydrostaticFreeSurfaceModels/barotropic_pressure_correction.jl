@@ -14,17 +14,26 @@ correct_barotropic_mode!(model, free_surface, Δt; kwargs...) = nothing
 ##### Barotropic pressure correction for models with an Implicit free surface
 #####
 
-function correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt)
+function correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt, C=1)
 
     launch!(model.architecture, model.grid, :xyz,
             _barotropic_pressure_correction!,
             model.velocities,
             model.grid,
-            Δt,
+            Δt, C,
             model.free_surface.gravitational_acceleration,
             model.free_surface.η)
 
     return nothing
+end
+
+@kernel function _barotropic_pressure_correction!(U, grid, Δt, C, g, η)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶠ(i, j, grid.Nz+1, grid, η) * C
+        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶠ(i, j, grid.Nz+1, grid, η) * C
+    end
 end
 
 function correct_barotropic_mode!(model, ::SplitExplicitFreeSurface, Δt)
@@ -33,13 +42,4 @@ function correct_barotropic_mode!(model, ::SplitExplicitFreeSurface, Δt)
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
 
     return nothing
-end
-
-@kernel function _barotropic_pressure_correction!(U, grid, Δt, g, η)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds begin
-        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶠ(i, j, grid.Nz+1, grid, η)
-        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶠ(i, j, grid.Nz+1, grid, η)
-    end
 end

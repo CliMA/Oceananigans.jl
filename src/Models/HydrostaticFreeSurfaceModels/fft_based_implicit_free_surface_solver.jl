@@ -77,13 +77,13 @@ build_implicit_step_solver(::Val{:FastFourierTransform}, grid, settings, gravita
 ##### Solve...
 #####
 
-function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, rhs, g, Δt)
+function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, rhs, g, Δt, C=1)
     solver = implicit_free_surface_solver.fft_poisson_solver
     grid = implicit_free_surface_solver.three_dimensional_grid
     Lz = grid.Lz
 
     # LHS constant
-    m = - 1 / (g * Lz * Δt^2) # units L⁻²
+    m = - 1 / (g * Lz * Δt^2 * C) # units L⁻²
 
     # solve! is blocking:
     solve!(η, solver, rhs, m)
