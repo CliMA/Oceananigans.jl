@@ -4,6 +4,7 @@ export FieldDataset
 export FieldTimeSeries
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
+export save_field_time_series
 
 using Oceananigans.Utils: @apply_regionally
 
