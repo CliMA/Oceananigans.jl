@@ -23,13 +23,15 @@ stage_tendency(Gⁱ, ::Val{1}) = Gⁱ.n₁
 stage_tendency(Gⁱ, ::Val{2}) = Gⁱ.n₂ 
 stage_tendency(Gⁱ, ::Val{3}) = Gⁱ.n₃
 
-stage_free_surface_coefficient(::Val{1}) = 1
-stage_free_surface_coefficient(::Val{2}) = 2/3
+stage_free_surface_coefficient(::Val{1}) = d₁₂
+stage_free_surface_coefficient(::Val{2}) = d₂₃
 stage_free_surface_coefficient(::Val{3}) = nothing
 
 stored_free_surface(::Val{1}, timestepper) = timestepper.Ψ⁻.η₁
 stored_free_surface(::Val{2}, timestepper) = timestepper.Ψ⁻.η₂
 stored_free_surface(::Val{3}, timestepper) = timestepper.Ψ⁻.η₃
+
+# SET 1:
 
 # b = sqrt(3) / 6 + 0.5
 # c = - (sqrt(3) + 1) / 8
@@ -53,26 +55,32 @@ stored_free_surface(::Val{3}, timestepper) = timestepper.Ψ⁻.η₃
 # d₃₁ = 1/6
 # d₃₂ = 1/6
 # d₃₃ = 2/3
+# d₃₄ = 0
 
-# a₁₁ = 1
+# SET 2:
+ 
+a₁₁ = 1
 
-# a₂₁ = 1/4
-# a₂₂ = 1/4
+a₂₁ = 1/4
+a₂₂ = 1/4
 
-# a₃₁ = 1/6
-# a₃₂ = 1/6
-# a₃₃ = 2/3
+a₃₁ = 1/6
+a₃₂ = 1/6
+a₃₃ = 2/3
 
-# d₁₁ = 0
-# d₁₂ = 1
+d₁₁ = 0
+d₁₂ = 1
 
-# d₂₁ =  1/6
-# d₂₂ = -1/3
-# d₂₃ =  2/3
+d₂₁ =  1/6
+d₂₂ = -1/3
+d₂₃ =  2/3
 
-# d₃₁ = 1/6
-# d₃₂ = 1/6
-# d₃₃ = 2/3
+d₃₁ = 1/6
+d₃₂ = 1/6
+d₃₃ = 2/3
+d₃₄ = 0
+
+# SET 3:
 
 # a₁₁ = 0.711664700366941
 
@@ -93,6 +101,30 @@ stored_free_surface(::Val{3}, timestepper) = timestepper.Ψ⁻.η₃
 # d₃₁ = 0.398930808264688
 # d₃₂ = 0.345755244189623
 # d₃₃ = 0.255313947545689
+# d₃₄ = 0
+
+# SET 4:
+
+# a₁₁ = 1/3
+
+# a₂₁ = 1/6
+# a₂₂ = 1/2
+
+# a₃₁ = 1/2
+# a₃₂ = -1/2
+# a₃₃ = 1
+
+# d₁₁ = 1/6
+# d₁₂ = 1/6
+
+# d₂₁ = 1/3
+# d₂₂ = 0
+# d₂₃ = 1/3
+
+# d₃₁ = 
+# d₃₂ = 
+# d₃₃ = 
+# d₃₄ = 
 
 @kernel function _compute_free_surface_rhs!(rhs, grid, g, Δt, U, η, ::Val{1}, D₁, D₂, D₃)
     i, j = @index(Global, NTuple)
@@ -121,6 +153,12 @@ end
 @kernel function _compute_free_surface_rhs!(rhs, grid, g, Δt, U, η, ::Val{3}, D₁, D₂, D₃)
     i, j = @index(Global, NTuple)
     kᴺ⁺¹ = grid.Nz + 1
+    # δx_U = δxᶜᶜᶜ(i, j, kᴺ⁺¹, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
+    # δy_V = δyᶜᶜᶜ(i, j, kᴺ⁺¹, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    
+    # D★ = (δx_U + δy_V)
+    # Az = Azᶜᶜᶠ(i, j, kᴺ⁺¹, grid)
+
     @inbounds rhs[i, j, kᴺ⁺¹] = (d₃₁ * D₁[i, j, kᴺ⁺¹] + d₃₂ * D₂[i, j, kᴺ⁺¹] + d₃₃ * D₃[i, j, kᴺ⁺¹]) * Az⁻¹ᶜᶜᶠ(i, j, kᴺ⁺¹, grid)
 end
 
