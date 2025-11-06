@@ -76,6 +76,7 @@ WENO{5, Float64, Float32}(order=9)
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
+              buffer_scheme = DescreasingOrderAdvectionScheme(),
               bounds = nothing)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
@@ -85,7 +86,10 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
         return UpwindBiased(FT; order=1)
     else
         advecting_velocity_scheme = Centered(FT; order=order-1)
-        buffer_scheme = WENO(FT, FT2; order=order-2, bounds)
+        
+        if buffer_scheme isa DescreasingOrderAdvectionScheme
+            buffer_scheme = WENO(FT, FT2; order=order-2, bounds)
+        end
 
         N = Int((order + 1) ÷ 2)
         return WENO{N, FT, FT2}(bounds, buffer_scheme, advecting_velocity_scheme)
