@@ -59,26 +59,26 @@ stored_free_surface(::Val{3}, timestepper) = timestepper.Ψ⁻.η₃
 
 # SET 2:
  
-a₁₁ = 1
+const a₁₁ = 1
 
-a₂₁ = 1/4
-a₂₂ = 1/4
+const a₂₁ = 1/4
+const a₂₂ = 1/4
 
-a₃₁ = 1/6
-a₃₂ = 1/6
-a₃₃ = 2/3
+const a₃₁ = 1/6
+const a₃₂ = 1/6
+const a₃₃ = 2/3
 
-d₁₁ = 0
-d₁₂ = 1
+const d₁₁ = 0
+const d₁₂ = 1
 
-d₂₁ =  1/6
-d₂₂ = -1/3
-d₂₃ =  2/3
+const d₂₁ =  1/6
+const d₂₂ = -1/3
+const d₂₃ =  2/3
 
-d₃₁ = 1/6
-d₃₂ = 1/6
-d₃₃ = 2/3
-d₃₄ = 0
+const d₃₁ = 1/6
+const d₃₂ = 1/6
+const d₃₃ = 2/3
+const d₃₄ = 0
 
 # SET 3:
 
@@ -105,26 +105,26 @@ d₃₄ = 0
 
 # SET 4:
 
-a₁₁ = 1/3
+# a₁₁ = 1/3
 
-a₂₁ = 1/6
-a₂₂ = 1/2
+# a₂₁ = 1/6
+# a₂₂ = 1/2
 
-a₃₁ = 1/2
-a₃₂ = -1/2
-a₃₃ = 1
+# a₃₁ = 1/2
+# a₃₂ = -1/2
+# a₃₃ = 1
 
-d₁₁ = 1/6
-d₁₂ = 1/6
+# d₁₁ = 1/6
+# d₁₂ = 1/6
 
-d₂₁ = 1/3
-d₂₂ = 0
-d₂₃ = 1/3
+# d₂₁ = 1/3
+# d₂₂ = 0
+# d₂₃ = 1/3
 
-d₃₁ = 3/8
-d₃₂ = 0
-d₃₃ = 3/8
-d₃₄ = 1/4
+# d₃₁ = 3/8
+# d₃₂ = 0
+# d₃₃ = 3/8
+# d₃₄ = 1/4
 
 @kernel function _compute_free_surface_rhs!(rhs, grid, g, Δt, U, η, ::Val{1}, D₁, D₂, D₃)
     i, j = @index(Global, NTuple)
