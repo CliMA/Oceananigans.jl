@@ -45,12 +45,13 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     fill_halo_regions!((u, v),  grid, model.clock, fields(model); async=true)
     fill_halo_regions!(tracers, grid, model.clock, fields(model); async=true)
 
-    parameters = surface_kernel_parameters(model.grid)
-  
-    compute_buoyancy_gradients!(model.buoyancy, grid, tracers; parameters=:xyz)
-    update_vertical_velocities!(model.velocities, model.grid, model; parameters)    
-    update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters)
-    compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters=:xyz)
+    @apply_regionally begin
+        surface_params = surface_kernel_parameters(model.grid)
+        compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=:xyz)
+        update_vertical_velocities!(model.velocities, model.grid, model, parameters = surface_params)    
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = surface_params)
+        compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters=:xyz)
+    end
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
 
