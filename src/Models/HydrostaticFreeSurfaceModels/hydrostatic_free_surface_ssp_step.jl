@@ -25,7 +25,7 @@ stage_tendency(Gⁱ, ::Val{3}) = Gⁱ.n₃
 
 stage_free_surface_coefficient(::Val{1}) = d₁₂
 stage_free_surface_coefficient(::Val{2}) = d₂₃
-stage_free_surface_coefficient(::Val{3}) = nothing
+stage_free_surface_coefficient(::Val{3}) = d₃₄
 
 stored_free_surface(::Val{1}, timestepper) = timestepper.Ψ⁻.η₁
 stored_free_surface(::Val{2}, timestepper) = timestepper.Ψ⁻.η₂
@@ -105,26 +105,26 @@ d₃₄ = 0
 
 # SET 4:
 
-# a₁₁ = 1/3
+a₁₁ = 1/3
 
-# a₂₁ = 1/6
-# a₂₂ = 1/2
+a₂₁ = 1/6
+a₂₂ = 1/2
 
-# a₃₁ = 1/2
-# a₃₂ = -1/2
-# a₃₃ = 1
+a₃₁ = 1/2
+a₃₂ = -1/2
+a₃₃ = 1
 
-# d₁₁ = 1/6
-# d₁₂ = 1/6
+d₁₁ = 1/6
+d₁₂ = 1/6
 
-# d₂₁ = 1/3
-# d₂₂ = 0
-# d₂₃ = 1/3
+d₂₁ = 1/3
+d₂₂ = 0
+d₂₃ = 1/3
 
-# d₃₁ = 
-# d₃₂ = 
-# d₃₃ = 
-# d₃₄ = 
+d₃₁ = 3/8
+d₃₂ = 0
+d₃₃ = 3/8
+d₃₄ = 1/4
 
 @kernel function _compute_free_surface_rhs!(rhs, grid, g, Δt, U, η, ::Val{1}, D₁, D₂, D₃)
     i, j = @index(Global, NTuple)
@@ -153,13 +153,16 @@ end
 @kernel function _compute_free_surface_rhs!(rhs, grid, g, Δt, U, η, ::Val{3}, D₁, D₂, D₃)
     i, j = @index(Global, NTuple)
     kᴺ⁺¹ = grid.Nz + 1
-    # δx_U = δxᶜᶜᶜ(i, j, kᴺ⁺¹, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
-    # δy_V = δyᶜᶜᶜ(i, j, kᴺ⁺¹, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ⁺¹, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ⁺¹, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
     
-    # D★ = (δx_U + δy_V)
-    # Az = Azᶜᶜᶠ(i, j, kᴺ⁺¹, grid)
+    D★ = (δx_U + δy_V)
+    Az = Azᶜᶜᶠ(i, j, kᴺ⁺¹, grid)
 
-    @inbounds rhs[i, j, kᴺ⁺¹] = (d₃₁ * D₁[i, j, kᴺ⁺¹] + d₃₂ * D₂[i, j, kᴺ⁺¹] + d₃₃ * D₃[i, j, kᴺ⁺¹]) * Az⁻¹ᶜᶜᶠ(i, j, kᴺ⁺¹, grid)
+    rhs1 = (d₃₁ * D₁[i, j, kᴺ⁺¹] + d₃₂ * D₂[i, j, kᴺ⁺¹] + d₃₃ * D₃[i, j, kᴺ⁺¹]) * Az⁻¹ᶜᶜᶠ(i, j, kᴺ⁺¹, grid)
+    rhs2 = (d₃₁ * D₁[i, j, kᴺ⁺¹] + d₃₂ * D₂[i, j, kᴺ⁺¹] + d₃₃ * D₃[i, j, kᴺ⁺¹] + d₃₄ * D★ - Az * η[i, j, kᴺ⁺¹] / Δt) / (g * Δt)
+
+    @inbounds rhs[i, j, kᴺ⁺¹] = (d₃₄ == 0) * rhs1 + (d₃₄ != 0) * rhs2
 end
 
 function step_free_surface!(val_stage, free_surface::ImplicitFreeSurface, model, timestepper::IMEXSSPTimeStepper, Δt)
@@ -189,7 +192,16 @@ end
 
 solve!(::Val{1}, η, solver, rhs, g, Δt, C) = solve!(η, solver, rhs, g, Δt, C)
 solve!(::Val{2}, η, solver, rhs, g, Δt, C) = solve!(η, solver, rhs, g, Δt, C)
-solve!(::Val{3}, η, solver, rhs, g, Δt, C) = parent(η) .-= Δt .* parent(rhs)
+function solve!(::Val{3}, η, solver, rhs, g, Δt, C) 
+    if d₃₄ == 0
+        parent(η) .-= Δt .* parent(rhs)
+    else
+        solve!(η, solver, rhs, g, Δt, C)
+    end
+end
+
+correct_barotropic_mode!(val_stage, model, free_surface, Δt, C) = correct_barotropic_mode!(model, free_surface, Δt, C)
+# correct_barotropic_mode!(::Val{3},  model, free_surface, Δt, C) = nothing
 
 @kernel function _store_free_surface_rhs!(D, grid, U)
     i, j = @index(Global, NTuple)
@@ -230,9 +242,6 @@ end
 
     return nothing
 end
-
-correct_barotropic_mode!(val_stage, model, free_surface, Δt, C) = correct_barotropic_mode!(model, free_surface, Δt, C)
-correct_barotropic_mode!(::Val{3},  model, free_surface, Δt, C) = nothing
 
 # A Fallback to be extended for specific ztypes and grid types
 ssp_substep_grid!(grid, model, ztype::ZCoordinate, Δt) = nothing
