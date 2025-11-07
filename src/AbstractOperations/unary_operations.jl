@@ -102,7 +102,7 @@ macro unary(ops...)
             Returns an abstract representation of the operator `$($op)` acting on the Oceananigans `Field`
             `a`, and subsequently interpolated to the location indicated by `Lop`.
             """
-            function $op(Lop::Tuple{<:Location, <:Location, <:Location}, a::AbstractField)
+            function $op(Lop::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField)
                 L = instantiated_location(a)
                 return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
             end

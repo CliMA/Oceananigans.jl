@@ -106,7 +106,7 @@ function define_binary_operator(op)
         the location of the dimension in question is supplied either by `location(b)` or
         if that is also Nothing, `Lc`.
         """
-        function $op(Lc::Tuple{<:Location, <:Location, <:Location}, a, b)
+        function $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a, b)
             La = instantiated_location(a)
             Lb = instantiated_location(b)
             Lab = choose_location.(La, Lb, Lc)
@@ -120,11 +120,11 @@ function define_binary_operator(op)
         $op(Lc::Tuple, a::Number, b::Number) = $op(a, b)
 
         # Sugar for mixing in functions of (x, y, z)
-        $op(Lc::Tuple{<:Location, <:Location, <:Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
-        $op(Lc::Tuple{<:Location, <:Location, <:Location}, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
 
-        $op(Lc::Tuple{<:Location, <:Location, <:Location}, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(instantiated_location(b), m, b.grid), b)
-        $op(Lc::Tuple{<:Location, <:Location, <:Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(instantiated_location(a), m, a.grid))
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(instantiated_location(b), m, b.grid), b)
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(instantiated_location(a), m, a.grid))
 
         # instantiate location if types are passed
         $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
