@@ -127,7 +127,7 @@ according to the scale invariant procedure described by [Bou-Zeid et al. (2005)]
 
 `DynamicCoefficient` requires an `averaging` procedure, which can be a `LagrangianAveraging` (which
 averages fluid parcels along their Lagrangian trajectory) or a tuple of integers indicating
-a directional averaging procedure along chosen dimensions (e.g. `averaging=(1,2)` uses averages
+a directional averaging procedure along chosen dimensions (e.g. `averaging=(1, 2)` uses averages
 in the `x` and `y` directions).
 
 `DynamicCoefficient` is updated according to `schedule`, and `minimum_numerator` defines the minimum
@@ -137,7 +137,7 @@ Examples
 ========
 
 ```jldoctest
-julia> using Oceananigans
+julia> using Oceananigans.TurbulenceClosures
 
 julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2))
 DynamicCoefficient with
@@ -145,10 +145,14 @@ DynamicCoefficient with
 ├── schedule = IterationInterval(1, 0)
 └── minimum_numerator = 1.0e-32
 
+julia> using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky
+
 julia> dynamic_smagorinsky = Smagorinsky(coefficient=dynamic_coeff)
-Smagorinsky closure with
-├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(1, 0))
-└── Pr = 1.0
+DynamicSmagorinsky{Float64}:
+├── averaging = (1, 2)
+├── schedule = IterationInterval(1, 0)
+├── Pr = 1.0
+└── minimum_numerator = 1.0e-32
 ```
 
 To alleviate the computational cost of the `DynamicCoefficient` calculation,
@@ -156,7 +160,7 @@ users may introduce an approximation wherein the dynamic coefficient is recomput
 every so often. For example,
 
 ```jldoctest
-julia> using Oceananigans
+julia> using Oceananigans, Oceananigans.TurbulenceClosures
 
 julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2), schedule=IterationInterval(4))
 DynamicCoefficient with
@@ -164,10 +168,14 @@ DynamicCoefficient with
 ├── schedule = IterationInterval(4, 0)
 └── minimum_numerator = 1.0e-32
 
+julia> using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky
+
 julia> dynamic_smagorinsky = Smagorinsky(coefficient=dynamic_coeff)
-Smagorinsky closure with
-├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(4, 0))
-└── Pr = 1.0
+DynamicSmagorinsky{Float64}:
+├── averaging = (1, 2)
+├── schedule = IterationInterval(4, 0)
+├── Pr = 1.0
+└── minimum_numerator = 1.0e-32
 ```
 
 `schedule`s other than `IterationInterval(1)` are valid if the coefficient at any particular location
