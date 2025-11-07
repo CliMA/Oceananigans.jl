@@ -34,9 +34,6 @@ Base.summary(::Accumulating) = "Accumulating"
 const Reduction = Scan{<:AbstractReducing}
 const Accumulation = Scan{<:AbstractAccumulating}
 
-@inline location(s::Scan) = location(s.operand)
-@inline instantiated_location(s::Scan) = instantiated_location(s.operand)
-
 scan_indices(::AbstractReducing, indices, dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
 scan_indices(::AbstractAccumulating, indices, dims) = indices
 scan_indices(::AbstractReducing, ::Tuple{Colon, Colon, Colon}, dims) = (:, :, :)
