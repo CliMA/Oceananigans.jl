@@ -46,7 +46,9 @@ insert_location!(anything, location) = nothing
 interpolate_operation(L, x) = x
 
 function interpolate_operation(L, x::AbstractField)
-    L == location(x) && return x # Don't interpolate unnecessarily
+    if L == instantiated_location(x) || L == location(x)
+        return x # Don't interpolate unnecessarily
+    end
     return interpolate_identity(L, x)
 end
 
