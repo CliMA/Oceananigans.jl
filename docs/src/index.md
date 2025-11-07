@@ -116,6 +116,9 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wagner, G. L. and Constantinou, N. C. (2025) [Phenomenology of decaying turbulence beneath surface waves](https://doi.org/10.1017/jfm.2025.10649), _Journal of Fluid Mechanics_, **1020**, A51. DOI:[10.1017/jfm.2025.10649](https://doi.org/10.1017/jfm.2025.10649)
 
+1. de la Calle, E. and García, C. (2025) [Evaluation of Juliana Tool: A translator for Julia’s CUDA.jl code into KernelAbstraction.jl](https://doi.org/10.1016/j.future.2025.107813), _Future Generation Computer Systems_,
+**171**, 107813. DOI:[10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
+
 1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
 
 1. Bisits, J. I., Zika, J. D., and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)

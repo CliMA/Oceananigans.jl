@@ -12,6 +12,7 @@ using Oceananigans.Solvers: ConjugateGradientSolver
 
 import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
