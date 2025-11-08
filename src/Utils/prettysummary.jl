@@ -5,17 +5,13 @@ prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
-    mt = ft.name.mt
-    name = mt.name
+    name = string(Base.nameof(f))
     n = length(methods(f))
     m = n==1 ? "method" : "methods"
-    sname = string(name)
-    isself = isdefined(ft.name.module, name) && ft == typeof(getfield(ft.name.module, name))
-    ns = (isself || '#' in sname) ? sname : string("(::", ft, ")")
     if showmethods
-        return string(ns, " (", "generic function", " with $n $m)")
+        return string(name, " (", "generic function", " with $n $m)")
     else
-        return string(ns)
+        return string(name)
     end
 end
 

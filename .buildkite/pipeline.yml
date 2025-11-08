@@ -31,6 +31,18 @@ steps:
         - exit_status: 1
           limit: 1
 
+  - label: "🦉 documentation"
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    env:
+      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
+    command: |
+      cd "$OCEANANIGANS_DIR"
+      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
+        'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
     depends_on: "init"
@@ -67,10 +79,11 @@ steps:
           - "CPU"
           - "GPU"
         group:
+          - "🦖 poisson_solvers_2"
+          - "🎭 reactant_2"
           - "🐇 unit"
           - "👻 abstract_operations"
           - "🕊 poisson_solvers_1"
-          - "🦖 poisson_solvers_2"
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
           - "🦀 time_stepping_1"
@@ -87,28 +100,12 @@ steps:
           - "🧅 multi_region"
           - "🦧 scripts"
           - "👺 enzyme"
+          - "🍱 xesmf"
           - "👹 reactant_1"
-          - "🎭 reactant_2"
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-
-  #####
-  ##### Documentation
-  #####
-
-  - label: "🦉 documentation"
-    depends_on: "init"
-    agents:
-      queue: "Oceananigans-nautilus"
-    env:
-      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
-    command: |
-      cd "$OCEANANIGANS_DIR"
-      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
-        'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
 
   #####
   ##### Blocking wait on tests and documentation

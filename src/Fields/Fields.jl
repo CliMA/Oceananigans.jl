@@ -20,7 +20,7 @@ import Oceananigans: location, instantiated_location
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
 @inline location(a, i) = location(a)[i]
-@inline function instantiated_location(a) 
+@inline function instantiated_location(a)
     LX, LY, LZ = location(a)
     return (LX(), LY(), LZ())
 end

@@ -1,4 +1,4 @@
-# Callbacks
+# [Callbacks](@id callbacks)
 
 A [`Callback`](@ref) can be used to execute an arbitrary user-defined function on the
 simulation at user-defined times.
@@ -85,8 +85,9 @@ Callback functions can only take one or two parameters `sim` - a simulation, or 
 
 ## Scheduling
 
-The time that callbacks are called at are specified by schedule functions which can be:
- - [`IterationInterval`](@ref) : runs every `n` iterations
- - [`TimeInterval`](@ref) : runs every `n`s of model run time
- - [`SpecifiedTimes`](@ref) : runs at the specified times
- - [`WallTimeInterval`](@ref) : runs every `n`s of wall time
+Callbacks rely on the schedules described in [Scheduling callbacks and output writers](@ref callback_schedules).
+The most common choices are:
+ - [`IterationInterval`](@ref): runs every `n` iterations
+ - [`TimeInterval`](@ref): runs every `n` seconds of model time
+ - [`SpecifiedTimes`](@ref): runs at the specified times
+ - [`WallTimeInterval`](@ref): runs every `n` seconds of wall time

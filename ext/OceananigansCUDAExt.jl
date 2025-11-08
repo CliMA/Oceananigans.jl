@@ -6,6 +6,7 @@ using CUDA, CUDA.CUSPARSE, CUDA.CUFFT
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
 using KernelAbstractions
+using SparseArrays
 
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
@@ -53,6 +54,7 @@ function UT.versioninfo_with_gpu(::CUDAGPU)
 end
 
 Base.summary(::CUDAGPU) = "CUDAGPU"
+AC.device!(::CUDAGPU, i) = CUDA.device!(i)
 
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::Type{CuArray}) = CUDAGPU()
@@ -72,6 +74,16 @@ AC.on_architecture(::AC.CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 AC.on_architecture(::CUDAGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(AC.child_architecture(arch), a)
 AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:CuArray}) = AC.on_architecture(child_architecture(arch), a)
+
+@inline AC.sparse_matrix_constructors(::AC.GPU{CUDABackend}, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
+@inline AC.sparse_matrix_constructors(::AC.CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
+@inline AC.sparse_matrix_constructors(::AC.GPU{CUDABackend}, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
+
+@inline AC.sparse_matrix(::AC.GPU{CUDABackend}, constr::Tuple) = CuSparseMatrixCSC(constr...)
+
+@inline AC.on_architecture(::AC.CPU, A::CuSparseMatrixCSC)              = SparseMatrixCSC(AC.sparse_matrix_constructors(AC.CPU(), A)...)
+@inline AC.on_architecture(::AC.GPU{CUDABackend}, A::SparseMatrixCSC)   = CuSparseMatrixCSC(AC.sparse_matrix_constructors(AC.GPU(), A)...)
+@inline AC.on_architecture(::AC.GPU{CUDABackend}, A::CuSparseMatrixCSC) = A
 
 # cu alters the type of `a`, so we convert it back to the correct type
 AC.unified_array(::CUDAGPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))

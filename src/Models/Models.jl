@@ -21,9 +21,10 @@ using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
+import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: reset!, set_clock!
+import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
@@ -88,6 +89,9 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
+# Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
+function materialize_free_surface end
+
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
@@ -115,7 +119,7 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
 
-set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
+set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
 """
     possible_field_time_series(model::OceananigansModels)
@@ -218,6 +222,7 @@ include("seawater_density.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
+include("set_model.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")

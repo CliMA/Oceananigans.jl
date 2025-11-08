@@ -551,13 +551,14 @@ fig
 As described above, to construct grids with stretched coordinates we need to provide as input
 either a function the returns the coordinate's interfaces or an array with the interfaces.
 
-Here we further showcase some helper utilities that can be used to define few special types of
-coordinates with variable spacings.
+Here we showcase some helper utilities that can be used to define few special types of
+discretizations with variable spacings.
 
-### Exponential coordinate
+### Exponential discretization
 
-[`ExponentialCoordinate`](@ref) returns a coordinate with interfaces that lie on an exponential profile.
-By that, we mean that a uniformly discretized domain in the range ``[l, r]`` is mapped back onto itself via either
+[`ExponentialDiscretization`](@ref) returns a discretization with interfaces that lie on an
+exponential profile. By that, we mean that a uniformly discretized domain in the range ``[l, r]``
+is mapped back onto itself via either
 
 ```math
 ξ \mapsto w(ξ) = r - (r - l) \frac{\exp{[(r - ξ) / h]} - 1}{\exp{[(r - l) / h]} - 1} \quad \text{(right biased)}
@@ -570,16 +571,20 @@ or
 ```
 
 The exponential mappings above have an e-folding controlled by scale ``h``.
-It's worth noting that the exponential maps imply that the cell widths (distances between interfaces) grow linearly at a rate inversely proportional to ``h / (r - l)``.
+It's worth noting that the exponential maps imply that the cell widths (distances between interfaces)
+grow linearly at a rate inversely proportional to ``h / (r - l)``.
 
-The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases the interfaces towards ``l``.
+The right-biased map biases the interfaces being closer towards ``r``; the left-biased map biases
+the interfaces towards ``l``.
 
-At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the grid becomes uniformly spaced.
+At the limit ``h / (r - l) \to \infty`` both mappings reduce to identity (``w \to ξ``) and thus the
+discretization becomes uniformly spaced.
 
 !!! note "Oceanography-related bias"
-    For vertical coordinates fit for oceanographic purposes, the right-biased mapping is usually more relevant as it implies finer vertical resolution closer to the ocean's surface.
+    For vertical coordinates fit for oceanographic purposes, the right-biased mapping is usually more
+    relevant as it implies finer vertical resolution near the ocean's surface.
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 using Oceananigans.Grids: rightbiased_exponential_mapping, leftbiased_exponential_mapping
 
 using CairoMakie
@@ -591,8 +596,8 @@ l, r = 0, 1
 
 fig = Figure(size=(1200, 550))
 
-axis_labels = (xlabel="uniform coordinate ξ / (r-l)",
-               ylabel="mapped coordinate w / (r-l)")
+axis_labels = (xlabel="uniform ξ / (r - l)",
+               ylabel="mapped w / (r - l)")
 
 axl = Axis(fig[1, 1]; title="left-biased map", axis_labels...)
 axr = Axis(fig[1, 2]; title="right-biased map", axis_labels...)
@@ -612,34 +617,36 @@ Legend(fig[2, :], axl, orientation = :horizontal)
 fig
 ```
 
-Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points towards the left or right side of the domain.
+Note that the smallest the ratio ``h / (r - l)`` is, the more finely-packed are the mapped points
+towards the left or right side of the domain.
 
-Let's see how we use [`ExponentialCoordinate`](@ref). Below we construct a coordinate with 10 cells that spans the range ``[-700, 300]``. By default, the `ExponentialCoordinate` is right-biased.
+Let's see how we use [`ExponentialDiscretization`](@ref). Below we construct a coordinate with 10 cells
+that spans the range ``[-700, 300]``. By default, the `ExponentialDiscretization` is right-biased.
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 using Oceananigans
 
 N = 10
 l = -700
 r = 300
 
-x = ExponentialCoordinate(N, l, r)
+x = ExponentialDiscretization(N, l, r)
 ```
 
 Note that above, the default e-folding scale (`scale = (r - l) / 5`) was used.
 
 We can inspect the interfaces of the coordinate via
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 [x(i) for i in 1:N+1]
 ```
 
 Being right-biased, note above how the interfaces are closer together near ``r``.
 
-To demonstrate how the scale ``h`` affects the coordinate, we construct below two such exponential
-coordinates: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
+To demonstrate how the scale ``h`` affects the discretization, we construct below two such exponential
+discretizations: the first with ``h / (r - l) = 1/5`` and the second with ``h / (r - l) = 1/2``.
 
-```@example exponentialcoord
+```@example exponentialdiscretization
 using Oceananigans
 
 N = 10
@@ -652,7 +659,7 @@ using CairoMakie
 fig = Figure(size=(1000, 1000))
 
 scale = extent / 5
-x = ExponentialCoordinate(N, l, r; scale)
+x = ExponentialDiscretization(N, l, r; scale)
 grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
 xc = xnodes(grid, Center())
 xf = xnodes(grid, Face())
@@ -668,7 +675,7 @@ scatter!(axΔx1, xc, Δx)
 
 
 scale = extent / 2
-x = ExponentialCoordinate(N, l, r; scale)
+x = ExponentialDiscretization(N, l, r; scale)
 grid = RectilinearGrid(; size=N, x, topology=(Bounded, Flat, Flat))
 xc = xnodes(grid, Center())
 xf = xnodes(grid, Face())
@@ -700,42 +707,46 @@ rowsize!(fig.layout, 3, Relative(0.1))
 fig
 ```
 
-A downside of [`ExponentialCoordinate`](@ref) coordinate is that we don't have tight control on the minimum spacing at the biased edge.
-To obtain a coordinate with a certain minimum spacing we need to play around with the scale ``h`` and the number of cells.
+A downside of [`ExponentialDiscretization`](@ref) discretization is that we don't have tight control
+on the minimum spacing at the biased edge.
+To obtain a discretization with a certain minimum spacing we need to play around with the scale ``h``
+and the number of cells.
 
 
-### Constant-to-stretched-spacing coordinate
+### Reference-to-stretched-spacing discretization
 
-[`ConstantToStretchedCoordinate`](@ref) returns a coordinate with constant spacing over some extent and beyond
-which the spacing increases with a prescribed stretching law; this allows a tighter control on the spacing at the biased edge.
+[`ReferenceToStretchedDiscretization`](@ref) returns a discretization with a constant reference spacing over
+some extent and beyond which the spacing increases with a prescribed stretching law; this allows a tighter
+control on the spacing at the biased edge.
 That is, we can prescribe a constant spacing over the top `surface_layer_height`  below which the grid spacing
 increases following a prescribed stretching law.
-The downside here is that neither the final coordinate extent nor the total number of cells can be prescribed.
-The coordinate's extent is greater or equal from what we prescribe via the keyword argument `extent`.
+The downside here is that neither the final discretization extent nor the total number of cells can be prescribed.
+The discretization's extent is greater or equal from what we prescribe via the keyword argument `extent`.
 Also, the total number of cells we end up with depends on the stretching law.
 
 As an example, we build three single-column vertical grids.
-We use right-biased coordinate (i.e., `bias = :right`) since this way we can have tight control of the spacing at the ocean's surface (`bias_edge = 0`).
+We use right-biased discretization (i.e., `bias = :right`) since this way we can have tight control of the spacing
+at the ocean's surface (`bias_edge = 0`).
 The three grids below have constant 30-meter spacing for the top 180 meters.
 We prescribe to all three a `extent = 800` meters and we apply power-law stretching for depths below 120 meters.
 The bigger the power-law stretching factor is, the further the last interface goes beyond the prescribed depth and/or with less total number of cells.
 
-```@setup ConstantToStretchedCoordinate
+```@setup ReferenceToStretchedDiscretization
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(fontsize=16))
 ```
 
-```@example ConstantToStretchedCoordinate
+```@example ReferenceToStretchedDiscretization
 bias = :right
 bias_edge = 0
 extent = 800
 constant_spacing = 25
 constant_spacing_extent = 160
 
-z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
-                                  constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.06))
+z = ReferenceToStretchedDiscretization(; extent, bias, bias_edge,
+                                       constant_spacing,  constant_spacing_extent,
+                                       stretching =  PowerLawStretching(1.06))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
@@ -763,9 +774,9 @@ hidedecorations!(axz1)
 hidespines!(axz1)
 
 
-z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
-                                  constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.03))
+z = ReferenceToStretchedDiscretization(; extent, bias, bias_edge,
+                                       constant_spacing,  constant_spacing_extent,
+                                       stretching =  PowerLawStretching(1.03))
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
 zc = znodes(grid, Center())
@@ -789,10 +800,10 @@ scatter!(axz2, 0 * zc, zc)
 hidedecorations!(axz2)
 hidespines!(axz2)
 
-z = ConstantToStretchedCoordinate(; extent, bias, bias_edge,
-                                  constant_spacing, constant_spacing_extent,
-                                  stretching = PowerLawStretching(1.03),
-                                  maximum_stretching_extent = 500)
+z = ReferenceToStretchedDiscretization(; extent, bias, bias_edge,
+                                       constant_spacing,  constant_spacing_extent,
+                                       stretching =  PowerLawStretching(1.03),
+                                       maximum_stretching_extent =  500)
 
 grid = RectilinearGrid(; size=length(z), z, topology=(Flat, Flat, Bounded))
 zf = znodes(grid, Face())
@@ -830,8 +841,7 @@ colsize!(fig.layout, 6, Relative(0.1))
 fig
 ```
 
-
-## Single-precision `RectilinearGrid`
+## Single-precision grids
 
 To build a grid whose fields are represented with single-precision floating point values,
 we specify the `float_type` argument along with the (optional) `architecture` argument,
@@ -854,6 +864,31 @@ grid = RectilinearGrid(architecture, float_type,
 └── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
 ```
 
+The same can be accomplished by setting the global default floating point type
+to `Float32`:
+
+```jldoctest grids
+architecture = CPU()
+Oceananigans.defaults.FloatType = Float32
+
+grid = RectilinearGrid(architecture,
+                       topology = (Periodic, Periodic, Bounded),
+                       size = (16, 8, 4),
+                       x = (0, 64),
+                       y = (0, 32),
+                       z = (0, 8))
+
+# output
+16×8×4 RectilinearGrid{Float32, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 64.0) regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0) regularly spaced with Δy=4.0
+└── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
+```
+
+Setting the global default is a good approach for building pure Float32
+simulations, because this will change _all_ default constructor
+float types to Float32.
+
 !!! warn "Using single precision"
     Single precision should be used with care.
     Users interested in performing single-precision simulations should get in touch via
@@ -862,6 +897,13 @@ grid = RectilinearGrid(architecture, float_type,
 
 For more examples see [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid)
 and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
+
+```jldoctest grids
+Oceananigans.defaults.FloatType = Float64
+nothing
+
+# output
+```
 
 ## Distributed grids
 
@@ -876,7 +918,7 @@ It can also be used to speed up a simulation -- provided that the simulation
 is large enough such that the added cost of communicating information between
 nodes does not exceed the benefit of dividing up the computation among different nodes.
 
-```julia
+```@example distributed_grids
 # Make a simple program that can be written to file
 make_distributed_arch = """
 
@@ -897,21 +939,9 @@ write("distributed_arch_example.jl", make_distributed_arch)
 #
 # from the terminal.
 using MPI
-run(`$(mpiexec()) -n 2 julia --project distributed_arch_example.jl`)
-rm("distributed_architecture_example.jl")
-```
-
-gives
-
-```julia
-architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
-├── local_rank: 0 of 0-1
-├── local_index: [1, 1, 1]
-└── connectivity: east=1 west=1
-architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
-├── local_rank: 1 of 0-1
-├── local_index: [2, 1, 1]
-└── connectivity: east=0 west=0
+run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project distributed_arch_example.jl`)
+rm("distributed_arch_example.jl")
+nothing # hide
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
@@ -923,7 +953,7 @@ changed only with great intention). See the [`Distributed`](@ref) docstring for 
 
 Next, let's try to build a distributed grid:
 
-```julia
+```@example distributed_grids
 make_distributed_grid = """
 
 using Oceananigans
@@ -945,20 +975,8 @@ grid = RectilinearGrid(architecture,
 
 write("distributed_grid_example.jl", make_distributed_grid)
 
-run(`$(mpiexec()) -n 2 julia --project distributed_grid_example.jl`)
-```
-
-gives
-
-```
-grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
-├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
-├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
-└── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
-grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
-├── FullyConnected x ∈ (32.0, 64.0) regularly spaced with Δx=1.33333
-├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
-└── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project distributed_grid_example.jl`)
+nothing # hide
 ```
 
 Now we're getting somewhere. Let's note a few things:
@@ -979,24 +997,9 @@ Now we're getting somewhere. Let's note a few things:
 
 To drive these points home, let's run the same script, but using 3 processors instead of 2:
 
-```julia
-run(`$(mpiexec()) -n 3 julia --project distributed_grid_example.jl`)
-```
-gives
-
-```
-grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
-├── FullyConnected x ∈ [0.0, 21.3333) regularly spaced with Δx=1.33333
-├── Periodic y ∈ [0.0, 64.0)          regularly spaced with Δy=1.33333
-└── Bounded  z ∈ [0.0, 16.0]          regularly spaced with Δz=1.0
-grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
-├── FullyConnected x ∈ [21.3333, 42.6667) regularly spaced with Δx=1.33333
-├── Periodic y ∈ [0.0, 64.0)              regularly spaced with Δy=1.33333
-└── Bounded  z ∈ [0.0, 16.0]              regularly spaced with Δz=1.0
-grid = 16×48×16 RectilinearGrid{Float64, Oceananigans.Grids.FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
-├── FullyConnected x ∈ [42.6667, 64.0) regularly spaced with Δx=1.33333
-├── Periodic y ∈ [0.0, 64.0)           regularly spaced with Δy=1.33333
-└── Bounded  z ∈ [0.0, 16.0]           regularly spaced with Δz=1.0
+```@example distributed_grids
+run(`$(mpiexec()) -n 3 $(Base.julia_cmd()) --project distributed_grid_example.jl`)
+nothing # hide
 ```
 
 Now we have three local grids, each with size `(16, 48, 16)`.
@@ -1008,11 +1011,11 @@ we use a custom [`Partition`](@ref).
 
 The default `Partition` is equally distributed in `x`. To equally distribute in `y`, we write
 
-```@setup grids
+```@setup distributed_grids
 rm("partition_example.jl", force=true)
 ```
 
-```julia
+```@example distributed_grids
 make_y_partition = """
 
 using Oceananigans
@@ -1029,14 +1032,8 @@ end
 
 write("partition_example.jl", make_y_partition)
 
-run(`$(mpiexec()) -n 2 julia --project partition_example.jl`)
-```
-
-gives
-
-```julia
-partition = Partition across 2 = 1×2×1 ranks:
-└── y: 2
+run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project partition_example.jl`)
+nothing # hide
 ```
 
 #### Manually specifying ranks in ``x, y``
@@ -1056,11 +1053,11 @@ For this the specification `Equal` is useful: if the number of ranks in one dime
 and the other is `Equal`, then the `Equal` dimension is allocated
 the remaining workers. For example,
 
-```@setup grids
+```@setup distributed_grids
 rm("programmatic_partition_example.jl", force=true)
 ```
 
-```julia
+```@example distributed_grids
 make_xy_partition = """
 
 using Oceananigans
@@ -1077,28 +1074,21 @@ end
 
 write("programmatic_partition_example.jl", make_xy_partition)
 
-run(`$(mpiexec()) -n 6 julia --project programmatic_partition_example.jl`)
-```
-
-gives
-
-```
-partition = Partition across 2 = 3×2×1 ranks:
-├── x: 3
-└── y: 2
+run(`$(mpiexec()) -n 6 $(Base.julia_cmd()) --project programmatic_partition_example.jl`)
+nothing # hide
 ```
 
 Finally, we can use `Equal` to partition a grid evenly in ``x, y``:
 
-```@setup grids
+```@setup distributed_grids
 rm("equally_partitioned_grids.jl", force=true)
 ```
 
-```julia
+```@example distributed_grids
 partitioned_grid_example = """
 
 using Oceananigans
-using Oceananigans.DistributedComputations: Equal, barrier!
+using Oceananigans.DistributedComputations: Equal, barrier
 using MPI
 MPI.Init()
 
@@ -1126,56 +1116,12 @@ for r in 0:Nr-1
         @info msg
     end
 
-    barrier!(arch)
+    barrier(arch)
 end
 """
 
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
-run(`$(mpiexec()) -n 4 julia --project equally_partitioned_grids.jl`)
-```
-
-gives
-
-```
-┌ Info: On rank 0:
-│
-│ Distributed{CPU} across 4 = 2×2×1 ranks:
-│ ├── local_rank: 0 of 0-3
-│ ├── local_index: [1, 1, 1]
-│ └── connectivity: east=2 west=2 north=1 south=1 southwest=3 southeast=3 northwest=3 northeast=3
-│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
-│ ├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
-│ ├── FullyConnected y ∈ [0.0, 32.0) regularly spaced with Δy=1.33333
-└ └── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
-┌ Info: On rank 1:
-│
-│ Distributed{CPU} across 4 = 2×2×1 ranks:
-│ ├── local_rank: 1 of 0-3
-│ ├── local_index: [1, 2, 1]
-│ └── connectivity: east=3 west=3 north=0 south=0 southwest=2 southeast=2 northwest=2 northeast=2
-│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
-│ ├── FullyConnected x ∈ [0.0, 32.0)  regularly spaced with Δx=1.33333
-│ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
-└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
-┌ Info: On rank 2:
-│
-│ Distributed{CPU} across 4 = 2×2×1 ranks:
-│ ├── local_rank: 2 of 0-3
-│ ├── local_index: [2, 1, 1]
-│ └── connectivity: east=0 west=0 north=3 south=3 southwest=1 southeast=1 northwest=1 northeast=1
-│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
-│ ├── FullyConnected x ∈ [32.0, 64.0) regularly spaced with Δx=1.33333
-│ ├── FullyConnected y ∈ [0.0, 32.0)  regularly spaced with Δy=1.33333
-└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
-┌ Info: On rank 3:
-│
-│ Distributed{CPU} across 4 = 2×2×1 ranks:
-│ ├── local_rank: 3 of 0-3
-│ ├── local_index: [2, 2, 1]
-│ └── connectivity: east=1 west=1 north=2 south=2 southwest=0 southeast=0 northwest=0 northeast=0
-│ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
-│ ├── FullyConnected x ∈ [32.0, 64.0) regularly spaced with Δx=1.33333
-│ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
-└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
+run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project equally_partitioned_grids.jl`)
+nothing # hide
 ```

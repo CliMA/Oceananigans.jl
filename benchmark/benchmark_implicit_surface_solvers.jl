@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Advection: VelocityStencil
-using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, R_Earth
+using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver
 
@@ -108,7 +108,8 @@ for N in 10:10:250
             δy = 50kilometers
         else
             δφ = 0.5 # degrees
-            δy = R_Earth * deg2rad(δφ)
+            R = Oceananigans.defaults.planet_radius
+            δy = R * deg2rad(δφ)
         end
 
         δb = δy * M²

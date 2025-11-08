@@ -10,8 +10,8 @@
 
 <!-- Information badges -->
 <p align="center">
-  <a href="https://www.repostatus.org/#active">
-    <img alt="Repo status" src="https://www.repostatus.org/badges/latest/active.svg?style=flat-square" />
+  <a href="https://github.com/CliMA/Oceananigans.jl/releases">
+    <img alt="GitHub tag (latest SemVer pre-release)" src="https://img.shields.io/github/v/tag/CliMA/Oceananigans.jl?include_prereleases&label=latest%20version&logo=github&sort=semver&style=flat-square">
   </a>
   <a href="https://mit-license.org">
     <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
@@ -27,25 +27,18 @@
   </a>
 </p>
 
-<!-- Version and documentation badges -->
+<!-- Documentation and downloads -->
+<!-- counts downloads from individual IPs excluding bots (eg, CI) -->
+<!-- see https://discourse.julialang.org/t/announcing-package-download-stats/69073 -->
 <p align="center">
-  <a href="https://github.com/CliMA/Oceananigans.jl/releases">
-    <img alt="GitHub tag (latest SemVer pre-release)" src="https://img.shields.io/github/v/tag/CliMA/Oceananigans.jl?include_prereleases&label=latest%20version&logo=github&sort=semver&style=flat-square">
-  </a>
+
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/documentation-stable%20release-blue?style=flat-square">
   </a>
   <a href="https://clima.github.io/OceananigansDocumentation/dev">
     <img alt="Development documentation" src="https://img.shields.io/badge/documentation-in%20development-orange?style=flat-square">
   </a>
-</p>
-
-<!-- Downloads -->
-<!-- counts downloads from individual IPs excluding bots (eg, CI) -->
-<!-- see https://discourse.julialang.org/t/announcing-package-download-stats/69073 -->
-
-<p align="center">
-  <a href="https://juliapkgstats.com/pkg/Oceananigans">
+    <a href="https://juliapkgstats.com/pkg/Oceananigans">
     <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Fmonthly_downloads%2FOceananigans&query=total_requests&suffix=%2Fmonth&label=Downloads&style=flat-square">
   </a>
   <a href="https://juliapkgstats.com/pkg/Oceananigans">
@@ -53,22 +46,12 @@
   </a>
 </p>
 
-<!-- CI/CD badges -->
-<p align="center">
-  <a href="https://buildkite.com/clima/oceananigans">
-    <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/main?logo=buildkite&label=Buildkite%20CPU%2BGPU&style=flat-square">
-  </a>
-  <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
-    <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
-  </a>
-</p>
-
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs.
-It runs on GPUs (wow, [fast!](http://arxiv.org/abs/2309.06662)), though we believe Oceananigans makes the biggest waves
+It runs on GPUs (wow, [fast!](https://doi.org/10.1029/2024MS004465)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
-
-Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
+Oceananigans development is community-driven with contributors from academia and industry.
+Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the [Climate Modeling Alliance](https://clima.caltech.edu).
 
 ## Contents
 

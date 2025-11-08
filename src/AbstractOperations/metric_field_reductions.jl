@@ -1,4 +1,4 @@
-using Statistics: mean!, sum!
+using Statistics: sum!
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
@@ -75,7 +75,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     else
         # Compute "size" (length, area, or volume) of averaging region
         dx = reduction_grid_metric(dims)
-        metric = GridMetricOperation(location(field), dx, field.grid)
+        metric = grid_metric_operation(location(field), dx, field.grid)
         volume = sum(metric; condition, mask, dims)
 
         # Construct summand of the Average
@@ -86,7 +86,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         field_dx = field * dx
         operand = condition_operand(field_dx, condition, mask)
 
-        metric = GridMetricOperation(location(field), dx, field.grid)
+        metric = grid_metric_operation(location(field), dx, field.grid)
         volume = sum(metric; condition, mask, dims)
         averaging = Averaging(volume)
         return Scan(averaging, average!, operand, dims)

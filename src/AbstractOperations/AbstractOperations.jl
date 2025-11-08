@@ -15,9 +15,8 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Utils
 
-using Oceananigans: location, AbstractModel
+using Oceananigans: location
 using Oceananigans.Operators: interpolation_operator
-using Oceananigans.Architectures: device
 
 import Adapt
 
