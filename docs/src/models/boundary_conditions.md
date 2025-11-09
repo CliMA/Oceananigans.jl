@@ -41,7 +41,6 @@ julia> no_slip_field_bcs = FieldBoundaryConditions(no_slip_bc);
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=no_slip_field_bcs, v=no_slip_field_bcs, w=no_slip_field_bcs))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
