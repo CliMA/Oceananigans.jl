@@ -27,7 +27,7 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
                  size,
                  southernmost_latitude = -80,
                  halo = (4, 4, 4),
-                 radius = R_Earth,
+                 radius = Oceananigans.defaults.planet_radius,
                  z = (0, 1),
                  north_poles_latitude = 55,
                  first_pole_longitude = 70)
@@ -50,7 +50,7 @@ Keyword Arguments
 - `size`: The number of cells in the (longitude, latitude, vertical) dimensions.
 - `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
 - `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
-- `radius`: The radius of the spherical shell. Default: `R_Earth`.
+- `radius`: The radius of the spherical shell. Default: `Oceananigans.defaults.planet_radius`.
 - `z`: The vertical ``z``-coordinate range of the grid. Could either be:
        (i) 2-tuple that specifies the end points of the coordinate,
        (ii) an array with the ``z`` interfaces, or
@@ -80,7 +80,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                       size,
                       southernmost_latitude = -80,
                       halo = (4, 4, 4),
-                      radius = R_Earth,
+                      radius = Oceananigans.defaults.planet_radius,
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70)  # second pole is at longitude `first_pole_longitude + 180ᵒ`
