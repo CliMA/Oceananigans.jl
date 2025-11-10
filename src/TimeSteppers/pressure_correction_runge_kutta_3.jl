@@ -3,7 +3,7 @@ using Oceananigans: fields
 using Oceananigans.Utils: time_difference_seconds
 
 """
-    RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
+    PressureCorrectionRungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [Le and Moin (1991)](@cite LeMoin1991).
@@ -13,7 +13,7 @@ References
 Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
-struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
+struct PressureCorrectionRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  γ¹ :: FT
                  γ² :: FT
                  γ³ :: FT
@@ -25,10 +25,10 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(grid, prognostic_fields;
-                           implicit_solver = nothing,
-                           Gⁿ = map(similar, prognostic_fields),
-                           G⁻ = map(similar, prognostic_fields))
+    PressureCorrectionRungeKutta3TimeStepper(grid, prognostic_fields;
+                                             implicit_solver = nothing,
+                                             Gⁿ = map(similar, prognostic_fields),
+                                             G⁻ = map(similar, prognostic_fields))
 
 Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
@@ -58,14 +58,10 @@ References
 Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
-function RungeKutta3TimeStepper(grid, prognostic_fields;
-                                implicit_solver::TI = nothing,
-                                Gⁿ::TG = map(similar, prognostic_fields),
-                                G⁻     = map(similar, prognostic_fields)) where {TI, TG}
-
-    !isnothing(implicit_solver) &&
-        @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " *
-              "\n implicit_solver: $(typeof(implicit_solver))")
+function PressureCorrectionRungeKutta3TimeStepper(grid, prognostic_fields;
+                                                  implicit_solver::TI = nothing,
+                                                  Gⁿ::TG = map(similar, prognostic_fields),
+                                                  G⁻     = map(similar, prognostic_fields)) where {TI, TG}
 
     γ¹ = 8 // 15
     γ² = 5 // 12
@@ -76,7 +72,7 @@ function RungeKutta3TimeStepper(grid, prognostic_fields;
 
     FT = eltype(grid)
 
-    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
+    return PressureCorrectionRungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
 
 #####
@@ -84,14 +80,14 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
+    time_step!(model::AbstractModel{<:PressureCorrectionRungeKutta3TimeStepper}, Δt)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+function time_step!(model::AbstractModel{<:PressureCorrectionRungeKutta3TimeStepper}, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
@@ -159,9 +155,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     return nothing
 end
 
-# Needs to be implemented by every model independently
-rk3_substep!(model::AbstractModel, Δt, γⁿ, ζⁿ, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")
-
 #####
 ##### Time stepping in each substep
 #####
@@ -185,3 +178,36 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
 end
+
+function rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
+    Δτ   = stage_Δt(Δt, γⁿ, ζⁿ) 
+    grid = model.grid
+
+    compute_tendencies!(model, callbacks)
+    fields = prognostic_fields(model)
+    
+    for (i, name) in enumerate(key(fields))
+        field = fields[name]
+        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
+        launch!(architecture(grid), grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
+
+        implicit_step!(field,
+                       model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       Val(i - 3),
+                       model.clock,
+                       fields(model),
+                       Δτ)
+    end
+
+    compute_pressure_correction!(model, Δτ)
+    make_pressure_correction!(model, Δτ)
+
+    return nothing
+end
+
+# Needs to be implemented by every model independently
+compute_tendencies!(model::AbstractModel, callbacks) = error("compute_tendencies! not implemented for $(typeof(model))")
+compute_pressure_correction!(model::AbstractModel, Δτ) = error("compute_tendencies! not implemented for $(typeof(model))")
+make_pressure_correction!(model, Δτ) = error("make_pressure_correction! not implemented for $(typeof(model))")
