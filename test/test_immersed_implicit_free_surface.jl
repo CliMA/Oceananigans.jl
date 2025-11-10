@@ -3,8 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!,
-                                                        compute_implicit_free_surface_right_hand_side!,
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_implicit_free_surface_right_hand_side!,
                                                         step_free_surface!,
                                                         correct_barotropic_mode!
 

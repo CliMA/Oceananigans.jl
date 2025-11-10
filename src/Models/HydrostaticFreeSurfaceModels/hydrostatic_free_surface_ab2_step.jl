@@ -19,9 +19,9 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Computing Baroclinic and Barotropic tendencies
     @apply_regionally compute_momentum_tendencies!(model, callbacks)
-    @apply_regionally compute_free_surface_tendency!(grid, model, model.free_surface)
-
+    
     # Advance the free surface
+    compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     # Computing tracer tendencies

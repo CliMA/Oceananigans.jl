@@ -17,9 +17,9 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     # Compute barotropic and baroclinic tendencies
     @apply_regionally compute_momentum_tendencies!(model, callbacks)
-    @apply_regionally compute_free_surface_tendency!(grid, model, free_surface)
-
+    
     # Advance the free surface first
+    compute_free_surface_tendency!(grid, model, free_surface)
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
     @apply_regionally begin
@@ -50,7 +50,7 @@ end
 @inline function rk_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     @apply_regionally begin
-    # Computing tendencies...
+        # Computing tendencies...
         compute_momentum_tendencies!(model, callbacks)
         compute_tracer_tendencies!(model)
         

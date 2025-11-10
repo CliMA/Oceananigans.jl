@@ -73,6 +73,12 @@ validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegion
 @inline isregional(mrm::MultiRegionModel) = true
 @inline regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
+Oceananigans.TimeSteppers.cache_previous_tendencies!(model::MultiRegionModel) = 
+    @apply_regionally Oceananigans.TimeSteppers.cache_previous_tendencies!(model)
+
+Oceananigans.TimeSteppers.cache_previous_fields!(model::MultiRegionModel) = 
+    @apply_regionally Oceananigans.TimeSteppers.cache_previous_fields!(model)
+
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
