@@ -446,6 +446,14 @@ function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) wh
     return FieldTimeSeries(loc, grid, times; kwargs...)
 end
 
+# Function to naturally sort strings containing numbers, code credit:
+# https://discourse.julialang.org/t/sorting-strings-containing-numbers-so-that-a2-a10/5372/28
+function naturalsort(x::Vector{String})
+    f = text -> all(isnumeric, text) ? Char(parse(Int, text)) : text
+    sorter = key -> join(f(m.match) for m in eachmatch(r"[0-9]+|[^0-9]+", key))
+    return sort(x, by=sorter)
+end
+
 struct UnspecifiedBoundaryConditions end
 
 """
@@ -499,6 +507,7 @@ function FieldTimeSeries(path::String, name::String;
         # Look for part1, etc
         lookfor = string(start, "_part*.jld2")
         part_paths = glob(lookfor)
+        part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
         path = first(part_paths) # part1 is first?
     else
