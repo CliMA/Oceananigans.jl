@@ -114,6 +114,7 @@ step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_pa
 
 include("cache_nonhydrostatic_tendencies.jl")
 include("nonhydrostatic_ab2_step.jl")
+include("nonhydrostatic_rk3_step.jl")
 include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")
 include("update_nonhydrostatic_model_state.jl")
