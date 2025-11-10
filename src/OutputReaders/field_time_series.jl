@@ -451,7 +451,7 @@ end
 function naturalsort(x::Vector{String})
     f = text -> all(isnumeric, text) ? Char(parse(Int, text)) : text
     sorter = key -> join(f(m.match) for m in eachmatch(r"[0-9]+|[^0-9]+", key))
-    sort(x, by=sorter)
+    return sort(x, by=sorter)
 end
 
 struct UnspecifiedBoundaryConditions end
