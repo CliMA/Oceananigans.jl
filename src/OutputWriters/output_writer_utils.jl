@@ -4,7 +4,7 @@ using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, PressureCorrectionRungeKutta3TimeStepper
 using Oceananigans.Utils: AbstractSchedule
 using Oceananigans.OutputReaders: auto_extension
 
@@ -163,7 +163,7 @@ end
 # Special serializeproperty! for AB2 time stepper struct used by the checkpointer so
 # it only saves the fields and not the tendency BCs or χ value (as they can be
 # constructed by the `Model` constructor).
-function serializeproperty!(file, address, ts::RungeKutta3TimeStepper)
+function serializeproperty!(file, address, ts::PressureCorrectionRungeKutta3TimeStepper)
     serializeproperty!(file, address * "/Gⁿ", ts.Gⁿ)
     serializeproperty!(file, address * "/G⁻", ts.G⁻)
     return nothing

@@ -84,7 +84,7 @@ SeawaterBuoyancy{Float64}:
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── timestepper: RungeKutta3TimeStepper
+├── timestepper: PressureCorrectionRungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
 ├── tracers: (T, S)
 ├── closure: Nothing

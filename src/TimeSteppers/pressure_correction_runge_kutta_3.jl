@@ -30,7 +30,7 @@ end
                                              Gⁿ = map(similar, prognostic_fields),
                                              G⁻ = map(similar, prognostic_fields))
 
-Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
+Return a 3rd-order Runge-Kutta timestepper (`PressureCorrectionRungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
 to the `prognostic_fields` can be modified via the optional `kwargs`.
 

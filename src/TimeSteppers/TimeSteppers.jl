@@ -2,7 +2,7 @@ module TimeSteppers
 
 export
     QuasiAdamsBashforth2TimeStepper,
-    RungeKutta3TimeStepper,
+    PressureCorrectionRungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
     Clock,
