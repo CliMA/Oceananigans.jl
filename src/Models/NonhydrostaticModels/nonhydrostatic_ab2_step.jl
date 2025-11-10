@@ -1,10 +1,13 @@
 using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 import Oceananigans.TimeSteppers: ab2_step!
 
+ab2_step!(model::NonhydrostaticModel, args...) = 
+    pressure_correction_ab2_step!(model, args...)
+
 # AB2 step for NonhydrostaticModel. This is a predictor-corrector scheme where the
 # predictor step for velocities is an AB2 step. The velocities are then corrected
 # using the pressure correction obtained by solving a Poisson equation for the pressure. 
-function ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
+function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
 
     compute_tendencies!(model, callbacks)

@@ -3,7 +3,7 @@ using Oceananigans: fields
 using Oceananigans.Utils: time_difference_seconds
 
 """
-    PressureCorrectionRungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
+    RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [Le and Moin (1991)](@cite LeMoin1991).
@@ -13,7 +13,7 @@ References
 Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
-struct PressureCorrectionRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
+struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  γ¹ :: FT
                  γ² :: FT
                  γ³ :: FT
@@ -25,12 +25,12 @@ struct PressureCorrectionRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepp
 end
 
 """
-    PressureCorrectionRungeKutta3TimeStepper(grid, prognostic_fields;
+    RungeKutta3TimeStepper(grid, prognostic_fields;
                                              implicit_solver = nothing,
                                              Gⁿ = map(similar, prognostic_fields),
                                              G⁻ = map(similar, prognostic_fields))
 
-Return a 3rd-order Runge-Kutta timestepper (`PressureCorrectionRungeKutta3TimeStepper`) on `grid`
+Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
 to the `prognostic_fields` can be modified via the optional `kwargs`.
 
@@ -58,7 +58,7 @@ References
 Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
-function PressureCorrectionRungeKutta3TimeStepper(grid, prognostic_fields;
+function RungeKutta3TimeStepper(grid, prognostic_fields;
                                                   implicit_solver::TI = nothing,
                                                   Gⁿ::TG = map(similar, prognostic_fields),
                                                   G⁻     = map(similar, prognostic_fields)) where {TI, TG}
@@ -72,7 +72,7 @@ function PressureCorrectionRungeKutta3TimeStepper(grid, prognostic_fields;
 
     FT = eltype(grid)
 
-    return PressureCorrectionRungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
+    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
 
 #####
@@ -80,14 +80,14 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:PressureCorrectionRungeKutta3TimeStepper}, Δt)
+    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::AbstractModel{<:PressureCorrectionRungeKutta3TimeStepper}, Δt; callbacks=[])
+function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:

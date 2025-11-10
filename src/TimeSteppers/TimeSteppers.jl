@@ -2,7 +2,7 @@ module TimeSteppers
 
 export
     QuasiAdamsBashforth2TimeStepper,
-    PressureCorrectionRungeKutta3TimeStepper,
+    RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
     Clock,
@@ -59,7 +59,7 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
     QuasiAdamsBashforth2TimeStepper(args...; kwargs...)
 
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
-    PressureCorrectionRungeKutta3TimeStepper(args...; kwargs...)
+    RungeKutta3TimeStepper(args...; kwargs...)
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 40 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...) 
