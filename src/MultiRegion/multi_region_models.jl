@@ -1,6 +1,6 @@
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Advection: WENO, VectorInvariant
-using Oceananigans.BuoyancyFormulations: BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
+using Oceananigans.BuoyancyFormulations: NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
@@ -12,6 +12,7 @@ using Oceananigans.Solvers: ConjugateGradientSolver
 
 import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 

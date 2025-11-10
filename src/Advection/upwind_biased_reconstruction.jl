@@ -12,7 +12,7 @@ end
 
 function UpwindBiased(FT::DataType = Float64; 
                       order = 3,
-                      buffer_scheme = DescreasingOrderAdvectionScheme())
+                      buffer_scheme = DecreasingOrderAdvectionScheme())
 
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
@@ -25,7 +25,7 @@ function UpwindBiased(FT::DataType = Float64;
         # Some tests are needed to verify why this is the case (and if it is expected)
         # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
         advecting_velocity_scheme = Centered(FT; order = order - 1)
-        if buffer_scheme isa DescreasingOrderAdvectionScheme
+        if buffer_scheme isa DecreasingOrderAdvectionScheme
             buffer_scheme  = UpwindBiased(FT; order = order - 2)
         end
     else
