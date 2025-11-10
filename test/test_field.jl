@@ -496,8 +496,10 @@ end
                 @info "  Testing isapprox on fields [$(typeof(arch)), $FT, $(nameof(typeof(grid)))]..."
                 u = CenterField(grid)
                 v = CenterField(grid)
-                set!(u, FT(1))
-                set!(v, FT(1))
+                set!(u, 1)
+                set!(v, 1)
+                Oceananigans.ImmersedBoundaries.mask_immersed_field!(u, 1)
+                Oceananigans.ImmersedBoundaries.mask_immersed_field!(v, 2)
                 # Make sure the two fields are the same
                 @test isapprox(u, v)
                 @test isapprox(u, v; rtol=0, atol=0)
