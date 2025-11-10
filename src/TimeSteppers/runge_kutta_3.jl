@@ -179,35 +179,6 @@ end
     @inbounds U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
 end
 
-function rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
-    Δτ   = stage_Δt(Δt, γⁿ, ζⁿ) 
-    grid = model.grid
-
-    compute_tendencies!(model, callbacks)
-    fields = prognostic_fields(model)
-    
-    for (i, name) in enumerate(key(fields))
-        field = fields[name]
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.diffusivity_fields,
-                       Val(i - 3),
-                       model.clock,
-                       fields(model),
-                       Δτ)
-    end
-
-    compute_pressure_correction!(model, Δτ)
-    make_pressure_correction!(model, Δτ)
-
-    return nothing
-end
-
 # Needs to be implemented by every model independently
-compute_tendencies!(model::AbstractModel, callbacks) = error("compute_tendencies! not implemented for $(typeof(model))")
-compute_pressure_correction!(model::AbstractModel, Δτ) = error("compute_tendencies! not implemented for $(typeof(model))")
-make_pressure_correction!(model, Δτ) = error("make_pressure_correction! not implemented for $(typeof(model))")
+rk3_substep!(model::AbstractModel, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")
+cache_previous_tendencies!(model::AbstractModel) = error("cache_previous_tendencies! not implemented for $(typeof(model))")
