@@ -180,4 +180,4 @@ end
 end
 
 # Needs to be implemented by every model independently
-rk3_substep!(model::AbstractModel, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")
+rk3_substep!(model::AbstractModel, Δt, γ, ζ, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")

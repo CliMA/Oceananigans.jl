@@ -1,8 +1,8 @@
 using Oceananigans.TimeSteppers: rk3_substep_field!, stage_Δt	
 import Oceananigans.TimeSteppers: rk3_substep!	
 
-rk3_substep!(model::NonhydrostaticModel, args...) = 
-    pressure_correction_rk3_substep!(model, args...)
+rk3_substep!(model::NonhydrostaticModel, Δt, γ, ζ, callbacks) = 
+    pressure_correction_rk3_substep!(model, Δt, γ, ζ, callbacks)
 
 function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     Δτ   = stage_Δt(Δt, γⁿ, ζⁿ) 	
