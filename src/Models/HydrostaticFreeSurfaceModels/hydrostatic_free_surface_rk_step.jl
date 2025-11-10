@@ -16,28 +16,30 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
 # the barotropic modes by applying a pressure correction to momentum.
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     # Compute barotropic and baroclinic tendencies
-    compute_momentum_tendencies!(model, callbacks)
-    compute_free_surface_tendency!(grid, model, free_surface)
+    @apply_regionally compute_momentum_tendencies!(model, callbacks)
+    @apply_regionally compute_free_surface_tendency!(grid, model, free_surface)
 
     # Advance the free surface first
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
-    # Compute z-dependent transport velocities
-    compute_transport_velocities!(model, free_surface)
+    @apply_regionally begin
+        # Compute z-dependent transport velocities
+        compute_transport_velocities!(model, free_surface)
 
-    # compute tracer tendencies
-    compute_tracer_tendencies!(model)
+        # compute tracer tendencies
+        compute_tracer_tendencies!(model)
 
-    # Advance grid and velocities
-    rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-    rk_substep_velocities!(model.velocities, model, Δτ)
+        # Advance grid and velocities
+        rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+        rk_substep_velocities!(model.velocities, model, Δτ)
 
-    # Correct for the updated barotropic mode
-    correct_barotropic_mode!(model, Δτ)
+        # Correct for the updated barotropic mode
+        correct_barotropic_mode!(model, Δτ)
 
-    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
-    rk_substep_tracers!(model.tracers, model, Δτ)
-
+        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+        rk_substep_tracers!(model.tracers, model, Δτ)
+    end
+    
     return nothing
 end
 
@@ -47,22 +49,24 @@ end
 # the new free surface, we correct momentum to account for the updated free surface.
 @inline function rk_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
 
+    @apply_regionally begin
     # Computing tendencies...
-    compute_momentum_tendencies!(model, callbacks)
-    compute_tracer_tendencies!(model)
-    
-    # Finally Substep! Advance grid, tracers, (predictor) momentum 
-    rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-    rk_substep_velocities!(model.velocities, model, Δτ)
+        compute_momentum_tendencies!(model, callbacks)
+        compute_tracer_tendencies!(model)
+        
+        # Finally Substep! Advance grid, tracers, (predictor) momentum 
+        rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+        rk_substep_velocities!(model.velocities, model, Δτ)
+    end
 
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
 
     # Correct for the updated barotropic mode
-    correct_barotropic_mode!(model, Δτ)
+    @apply_regionally correct_barotropic_mode!(model, Δτ)
 
     # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
-    rk_substep_tracers!(model.tracers, model, Δτ)
+    @apply_regionally rk_substep_tracers!(model.tracers, model, Δτ)
 
     return nothing
 end
