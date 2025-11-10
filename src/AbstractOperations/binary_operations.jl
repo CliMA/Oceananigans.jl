@@ -107,8 +107,8 @@ function define_binary_operator(op)
         if that is also Nothing, `Lc`.
         """
         function $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a, b)
-            La = instantiated_location(a)
-            Lb = instantiated_location(b)
+            La = Oceananigans.Fields.instantiated_location(a)
+            Lb = Oceananigans.Fields.instantiated_location(b)
             Lab = choose_location.(La, Lb, Lc)
 
             grid = Oceananigans.AbstractOperations.validate_grid(a, b)
@@ -123,8 +123,8 @@ function define_binary_operator(op)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
 
-        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(instantiated_location(b), m, b.grid), b)
-        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(instantiated_location(a), m, a.grid))
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(Oceananigans.Fields.instantiated_location(b), m, b.grid), b)
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(Oceananigans.Fields.instantiated_location(a), m, a.grid))
 
         # instantiate location if types are passed
         $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
@@ -136,15 +136,15 @@ function define_binary_operator(op)
         $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
         # Sugary versions with default locations
-        $op(a::AF, b::AF) = $op(instantiated_location(a), a, b)
-        $op(a::AF, b) = $op(instantiated_location(a), a, b)
-        $op(a, b::AF) = $op(instantiated_location(b), a, b)
+        $op(a::AF, b::AF) = $op(Oceananigans.Fields.instantiated_location(a), a, b)
+        $op(a::AF, b) = $op(Oceananigans.Fields.instantiated_location(a), a, b)
+        $op(a, b::AF) = $op(Oceananigans.Fields.instantiated_location(b), a, b)
 
-        $op(a::AF, b::Number) = $op(instantiated_location(a), a, b)
-        $op(a::Number, b::AF) = $op(instantiated_location(b), a, b)
+        $op(a::AF, b::Number) = $op(Oceananigans.Fields.instantiated_location(a), a, b)
+        $op(a::Number, b::AF) = $op(Oceananigans.Fields.instantiated_location(b), a, b)
 
-        $op(a::AF, b::ConstantField) = $op(instantiated_location(a), a, b.constant)
-        $op(a::ConstantField, b::AF) = $op(instantiated_location(b), a.constant, b)
+        $op(a::AF, b::ConstantField) = $op(Oceananigans.Fields.instantiated_location(a), a, b.constant)
+        $op(a::ConstantField, b::AF) = $op(Oceananigans.Fields.instantiated_location(b), a.constant, b)
 
         $op(a::Number, b::ConstantField) = ConstantField($op(a, b.constant))
         $op(a::ConstantField, b::Number) = ConstantField($op(a.constant, b))
