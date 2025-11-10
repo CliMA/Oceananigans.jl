@@ -181,4 +181,3 @@ end
 
 # Needs to be implemented by every model independently
 rk3_substep!(model::AbstractModel, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")
-cache_previous_tendencies!(model::AbstractModel) = error("cache_previous_tendencies! not implemented for $(typeof(model))")
