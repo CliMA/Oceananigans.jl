@@ -49,8 +49,8 @@ end
          Π.▶[3](i, j, k, Π.grid, Π.args[3]), 
          Π.▶[4](i, j, k, Π.grid, Π.args[4]), 
          Π.▶[5](i, j, k, Π.grid, Π.args[5]), 
-         Π.▶[5](i, j, k, Π.grid, Π.args[6]))
-         
+         Π.▶[6](i, j, k, Π.grid, Π.args[6]))
+
 #####
 ##### MultiaryOperation construction
 #####
