@@ -335,7 +335,7 @@ end
     κe_max = closure.maximum_tke_diffusivity
     κe★ = min(κe, κe_max)
     FT = eltype(grid)
-    return FT(κe)
+    return FT(κe★)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
