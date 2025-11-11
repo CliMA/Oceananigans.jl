@@ -35,8 +35,8 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 
     update_vertical_velocities!(model.velocities, grid, model; parameters = w_parameters)
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = w_parameters)
-    compute_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = κ_parameters)
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    compute_diffusivities!(model.closure_fields, model.closure, model; parameters = κ_parameters)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     # parameters for communicating North / South / East / West side
     @apply_regionally compute_momentum_buffer_contributions!(grid, arch, model)
