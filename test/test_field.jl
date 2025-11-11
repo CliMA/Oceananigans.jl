@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: ReducedField, has_velocities
+using Oceananigans.Fields: CenterField, ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
@@ -10,6 +10,8 @@ using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
+using Oceananigans.Grids: RectilinearGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -473,6 +475,42 @@ end
                 @test e == a
                 @test a == e
                 @test Array(interior(e)) == Array(interior((a)))
+            end
+        end
+    end
+
+    @testset "isapprox on Fields" begin
+        for arch in archs, FT in float_types
+            # Make sure this doesn't require scalar indexing
+            GPUArraysCore.allowscalar(false)
+            FT = Float32
+
+            rect_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), x=(0, 1_000), y=(0, 1_000), z=(0, 1_000))
+
+            H = 100.0
+            W = 1000.0
+            mountain(x, y) = H * exp(-(x^2 + y^2) / 2W^2)
+            imm_grid = ImmersedBoundaryGrid(rect_grid, GridFittedBottom(mountain))
+
+            for grid in (rect_grid, imm_grid)
+                @info "  Testing isapprox on fields [$(typeof(arch)), $FT, $(nameof(typeof(grid)))]..."
+                u = CenterField(grid)
+                v = CenterField(grid)
+                set!(u, 1)
+                set!(v, 1)
+                Oceananigans.ImmersedBoundaries.mask_immersed_field!(u, 1)
+                Oceananigans.ImmersedBoundaries.mask_immersed_field!(v, 2)
+                # Make sure the two fields are the same
+                @test isapprox(u, v)
+                @test isapprox(u, v; rtol=0, atol=0)
+
+                set!(v, FT(1.1))
+                @test !isapprox(u, v)
+                @test isapprox(u, v; rtol=0.1)
+                @test !isapprox(u, v; atol=2.0)
+                # norm(u) = √512, norm(v) = 1.1 * √512, difference is 0.1 * √512 ∼ 2.26274,
+                # we use a slightly larger tolerance to make the check successful.
+                @test isapprox(u, v; atol=2.26275)
             end
         end
     end
