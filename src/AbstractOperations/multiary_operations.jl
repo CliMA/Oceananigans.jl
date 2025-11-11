@@ -22,9 +22,9 @@ end
 
 indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
 
-function _multiary_operation(L, op, args, Largs, grid)
+function _multiary_operation(L::Tuple{LX, LY, LZ}, op, args, Largs, grid) where {LX, LY, LZ}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
+    return MultiaryOperation{LX, LY, LZ}(op, Tuple(a for a in args), ▶, grid)
 end
 
 # Recompute location of multiary operation
@@ -33,7 +33,7 @@ end
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote
-        function $op(Lop::Tuple,
+        function $op(Lop::Tuple{<:$Location, <:$Location, <:$Location},
                      a::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      b::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      c::Union{Function, Number, Oceananigans.Fields.AbstractField},
@@ -49,10 +49,17 @@ function define_multiary_operator(op)
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
         end
 
+        # Instantiate location if types are passed
+        $op(Lop::Tuple, 
+            a::Union{Function, Number, Oceananigans.Fields.AbstractField}, 
+            b::Union{Function, Number, Oceananigans.Fields.AbstractField}, 
+            c::Union{Function, Number, Oceananigans.Fields.AbstractField}, 
+            d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
+
         $op(a::Oceananigans.Fields.AbstractField,
-            b::Union{Function, Oceananigans.Fields.AbstractField},
-            c::Union{Function, Oceananigans.Fields.AbstractField},
-            d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.location(a), a, b, c, d...)
+            b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            c::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.instantiated_location(a), a, b, c, d...)
     end
 end
 

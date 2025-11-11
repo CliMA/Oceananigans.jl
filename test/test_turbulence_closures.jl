@@ -367,7 +367,7 @@ end
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
 
-        @info "   Testing cell_diffusion_timescale for ScalarDiffusivity with FunctionDiffusion"
+        @info "  Testing cell_diffusion_timescale for ScalarDiffusivity with FunctionDiffusion"
         @test test_function_scalar_diffusivity()
         @test test_discrete_function_scalar_diffusivity()
 
@@ -383,7 +383,7 @@ end
     end
 
     @testset "Time-stepping with variable diffusivities" begin
-        @info "  Testing time-stepping with presribed variable diffusivities..."
+        @info "  Testing time-stepping with prescribed variable diffusivities..."
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_field_isotropic_diffusivity(arch)
@@ -438,7 +438,7 @@ end
             @info "    Testing time-stepping CATKE by itself..."
             catke = CATKEVerticalDiffusivity()
             explicit_catke = CATKEVerticalDiffusivity(ExplicitTimeDiscretization())
-            
+
             for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
                 run_time_step_with_catke_tests(arch, catke, timestepper)
             end
