@@ -43,7 +43,7 @@ width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
 bottom(x) = - H + hill(x)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 # Let's see how the domain with the bathymetry is.
 
