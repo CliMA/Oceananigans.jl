@@ -373,7 +373,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── bottom: GradientBoundaryCondition: 0.01
-├── top: ValueBoundaryCondition: 20
+├── top: ValueBoundaryCondition: 20.0
 └── immersed: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ```
 
