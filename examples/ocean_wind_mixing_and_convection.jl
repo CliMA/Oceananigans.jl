@@ -205,7 +205,7 @@ add_callback!(simulation, progress_message, IterationInterval(40))
 # `ocean_wind_mixing_and_convection.jld2`.
 
 ## Create a NamedTuple with eddy viscosity
-eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
+eddy_viscosity = (; νₑ = model.closure_fields.νₑ)
 
 filename = "ocean_wind_mixing_and_convection"
 

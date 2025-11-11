@@ -73,9 +73,9 @@ set!(model, b=bᵢ, u=uᵢ, K=Kᵢ)
 
 simulation = Simulation(model; Δt=20minutes, stop_time)
 
-νₑ = model.diffusivity_fields.νₑ
-κₖz = model.diffusivity_fields.κₖz
-κₖh = model.diffusivity_fields.κₖh
+νₑ = model.closure_fields.νₑ
+κₖz = model.closure_fields.κₖz
+κₖh = model.closure_fields.κₖh
 
 # add progress callback
 wall_clock = Ref(time_ns())

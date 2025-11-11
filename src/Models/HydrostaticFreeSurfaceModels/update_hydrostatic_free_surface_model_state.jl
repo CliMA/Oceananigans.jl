@@ -44,7 +44,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     @apply_regionally compute_auxiliaries!(model)
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
@@ -78,7 +78,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     grid        = model.grid
     closure     = model.closure
     tracers     = model.tracers
-    diffusivity = model.diffusivity_fields
+    diffusivity = model.closure_fields
     buoyancy    = model.buoyancy
 
     P    = model.pressure.pHY′

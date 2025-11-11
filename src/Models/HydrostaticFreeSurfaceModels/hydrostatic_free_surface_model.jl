@@ -12,7 +12,7 @@ using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurviline
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
@@ -51,7 +51,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     velocities :: U             # Container for velocity fields `u`, `v`, and `w`
     tracers :: C                # Container for tracer fields
     pressure :: Φ               # Container for hydrostatic pressure
-    diffusivity_fields :: K     # Container for turbulent diffusivities
+    closure_fields :: K         # Container for auxiliary fields for closures
     timestepper :: TS           # Object containing timestepper fields and parameters
     auxiliary_fields :: AF      # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z    # Rulesets that define the time-evolution of the grid
@@ -80,7 +80,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 biogeochemistry::AbstractBGCOrNothing = nothing,
                                 velocities = nothing,
                                 pressure = nothing,
-                                diffusivity_fields = nothing,
+                                closure_fields = nothing,
                                 auxiliary_fields = NamedTuple(),
                                 vertical_coordinate = default_vertical_coordinate(grid))
 
@@ -112,7 +112,7 @@ Keyword arguments
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
-  - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
+  - `closure_fields`: Closure fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
   - `vertical_coordinate`: Algorithm for grid evolution: `ZStarCoordinate()` or `ZCoordinate(grid)`.
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
@@ -135,7 +135,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     biogeochemistry::AbstractBGCOrNothing = nothing,
     velocities = nothing,
     pressure = nothing,
-    diffusivity_fields = nothing,
+    closure_fields = nothing,
     auxiliary_fields = NamedTuple(),
     vertical_coordinate = default_vertical_coordinate(grid))
 
@@ -175,7 +175,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
                                          extract_boundary_conditions(tracers),
                                          extract_boundary_conditions(pressure),
-                                         extract_boundary_conditions(diffusivity_fields))
+                                         extract_boundary_conditions(closure_fields))
 
     # Next, we form a list of default boundary conditions:
     field_names = constructor_field_names(velocities, tracers, free_surface, auxiliary_fields, biogeochemistry, grid)
@@ -204,7 +204,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
     pressure           = PressureField(grid)
-    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
+    closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
@@ -228,7 +228,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
-                                        pressure, diffusivity_fields, timestepper, auxiliary_fields, vertical_coordinate)
+                                        pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
     initialization_update_state!(model; compute_tendencies=false)
 
