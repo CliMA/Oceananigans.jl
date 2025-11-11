@@ -50,10 +50,10 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
         compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=:xyz)
         update_vertical_velocities!(model.velocities, model.grid, model, parameters=surface_params)    
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
-        compute_diffusivities!(model.diffusivity_fields, model.closure, model, parameters=:xyz)
+        compute_diffusivities!(model.closure_fields, model.closure, model, parameters=:xyz)
     end
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 

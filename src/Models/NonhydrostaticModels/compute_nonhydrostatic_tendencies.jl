@@ -63,7 +63,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     tracers              = model.tracers
     auxiliary_fields     = model.auxiliary_fields
     hydrostatic_pressure = model.pressures.pHY′
-    diffusivities        = model.diffusivity_fields
+    diffusivities        = model.closure_fields
     forcings             = model.forcing
     clock                = model.clock
     u_immersed_bc        = velocities.u.boundary_conditions.immersed

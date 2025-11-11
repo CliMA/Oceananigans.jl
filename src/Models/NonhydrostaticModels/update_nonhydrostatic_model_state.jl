@@ -42,7 +42,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     # Calculate diffusivities and hydrostatic pressure
     @apply_regionally compute_auxiliaries!(model)
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
@@ -58,7 +58,7 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
 
     grid = model.grid
     closure = model.closure
-    diffusivity = model.diffusivity_fields
+    diffusivity = model.closure_fields
     tracers = model.tracers
     buoyancy = model.buoyancy
 

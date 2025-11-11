@@ -196,7 +196,7 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
+function compute_diffusivities!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
@@ -204,9 +204,9 @@ function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumD
     buoyancy = model.buoyancy
 
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+            closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
-    for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
+    for (tracer_index, κₑ) in enumerate(closure_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
         launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
@@ -351,10 +351,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### build_diffusivity_fields
+##### build_closure_fields
 #####
 
-function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
+function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
