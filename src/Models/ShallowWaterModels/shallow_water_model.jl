@@ -49,7 +49,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, 
                     bathymetry :: B         # Bathymetry/Topography for the model
                       solution :: Q         # Container for transports `uh`, `vh`, and height `h`
                        tracers :: C         # Container for tracer fields
-            closure_fields :: K         # Container for turbulent diffusivities
+                closure_fields :: K         # Container for closure auxiliary fields
                    timestepper :: TS        # Object containing timestepper fields and parameters
                    formulation :: FR        # Either conservative or vector-invariant
 end
