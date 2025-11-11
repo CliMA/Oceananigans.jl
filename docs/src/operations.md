@@ -57,14 +57,14 @@ MultiaryOperation at (Center, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     + at (Center, Center, Center)
-    ├── ^ at (Center, Center, Center)
-    │   ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    │   └── 2
-    ├── * at (Center, Center, Center)
-    │   ├── 2
-    │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── 1
-```
+    ├── ^ at (Center, Center, Center)
+    │   ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    │   └── 2
+    ├── * at (Center, Center, Center)
+    │   ├── 2
+    │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1
+ ```
 
 Like `Field`s, `AbstractOperations` have a location and a grid.
 In addition to `BinaryOperation`s like the kind above, `UnaryOperation`s and `MultiaryOperation`s are also supported,
