@@ -268,4 +268,3 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
-
