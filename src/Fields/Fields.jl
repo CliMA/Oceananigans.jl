@@ -25,7 +25,6 @@ import Oceananigans: location, instantiated_location
     return (LX(), LY(), LZ())
 end
 
-
 include("abstract_field.jl")
 include("constant_field.jl")
 include("function_field.jl")
