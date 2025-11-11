@@ -16,6 +16,32 @@ end
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, N}, i, j, k)  where {LX, LY, LZ, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
 
+# Try to improve inferrability by hardcoding methods for small N
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 1}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 2}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 3}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 4}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[γ]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[γ]), 
+         Π.▶[3](i, j, k, Π.grid, Π.args[γ]), 
+         Π.▶[4](i, j, k, Π.grid, Π.args[γ]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 5}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[γ]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[γ]), 
+         Π.▶[3](i, j, k, Π.grid, Π.args[γ]), 
+         Π.▶[4](i, j, k, Π.grid, Π.args[γ]), 
+         Π.▶[5](i, j, k, Π.grid, Π.args[γ]))
+
 #####
 ##### MultiaryOperation construction
 #####
