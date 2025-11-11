@@ -121,7 +121,7 @@ function ShallowWaterModel(;
                              closure = nothing,
                           bathymetry = nothing,
                              tracers = (),
-                  closure_fields = nothing,
+                      closure_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3,
                          formulation = ConservativeFormulation())
