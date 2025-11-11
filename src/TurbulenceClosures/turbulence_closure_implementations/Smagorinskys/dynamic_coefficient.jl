@@ -126,9 +126,9 @@ Base.show(io::IO, dc::DynamicCoefficient) = print(io, "DynamicCoefficient with\n
 ##### Some common utilities independent of averaging
 #####
 
-@inline function square_smagorinsky_coefficient(i, j, k, grid, closure::DynamicSmagorinsky, diffusivity_fields, args...)
-    𝒥ᴸᴹ = diffusivity_fields.𝒥ᴸᴹ
-    𝒥ᴹᴹ = diffusivity_fields.𝒥ᴹᴹ
+@inline function square_smagorinsky_coefficient(i, j, k, grid, closure::DynamicSmagorinsky, closure_fields, args...)
+    𝒥ᴸᴹ = closure_fields.𝒥ᴸᴹ
+    𝒥ᴹᴹ = closure_fields.𝒥ᴹᴹ
     𝒥ᴸᴹ_min = closure.coefficient.minimum_numerator
 
     @inbounds begin
@@ -191,24 +191,24 @@ end
 ##### Directionally-averaged functionality
 #####
 
-function compute_coefficient_fields!(diffusivity_fields, closure::DirectionallyAveragedDynamicSmagorinsky, model; parameters)
+function compute_coefficient_fields!(closure_fields, closure::DirectionallyAveragedDynamicSmagorinsky, model; parameters)
     grid = model.grid
     arch = architecture(grid)
     velocities = model.velocities
     cˢ = closure.coefficient
 
     if cˢ.schedule(model)
-        Σ = diffusivity_fields.Σ
-        Σ̄ = diffusivity_fields.Σ̄
+        Σ = closure_fields.Σ
+        Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
 
-        LM = diffusivity_fields.LM
-        MM = diffusivity_fields.MM
+        LM = closure_fields.LM
+        MM = closure_fields.MM
         launch!(arch, grid, :xyz, _compute_LM_MM!, LM, MM, Σ, Σ̄, grid, velocities...)
 
-        𝒥ᴸᴹ = diffusivity_fields.𝒥ᴸᴹ
-        𝒥ᴹᴹ = diffusivity_fields.𝒥ᴹᴹ
+        𝒥ᴸᴹ = closure_fields.𝒥ᴸᴹ
+        𝒥ᴹᴹ = closure_fields.𝒥ᴹᴹ
         compute!(𝒥ᴸᴹ)
         compute!(𝒥ᴹᴹ)
     end
@@ -289,30 +289,30 @@ const c = Center()
     end
 end
 
-function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
+function compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
     cˢ = closure.coefficient
-    t⁻ = diffusivity_fields.previous_compute_time
+    t⁻ = closure_fields.previous_compute_time
     u, v, w = model.velocities
 
     Δt = clock.time - t⁻[]
     t⁻[] = model.clock.time
 
     if cˢ.schedule(model)
-        Σ = diffusivity_fields.Σ
-        Σ̄ = diffusivity_fields.Σ̄
+        Σ = closure_fields.Σ
+        Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
-        parent(diffusivity_fields.𝒥ᴸᴹ⁻) .= parent(diffusivity_fields.𝒥ᴸᴹ)
-        parent(diffusivity_fields.𝒥ᴹᴹ⁻) .= parent(diffusivity_fields.𝒥ᴹᴹ)
+        parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
+        parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)
 
-        𝒥ᴸᴹ⁻ = diffusivity_fields.𝒥ᴸᴹ⁻
-        𝒥ᴹᴹ⁻ = diffusivity_fields.𝒥ᴹᴹ⁻
-        𝒥ᴸᴹ  = diffusivity_fields.𝒥ᴸᴹ
-        𝒥ᴹᴹ  = diffusivity_fields.𝒥ᴹᴹ
+        𝒥ᴸᴹ⁻ = closure_fields.𝒥ᴸᴹ⁻
+        𝒥ᴹᴹ⁻ = closure_fields.𝒥ᴹᴹ⁻
+        𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
+        𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
         if !isfinite(clock.last_Δt) || Δt == 0 # first time-step
