@@ -51,7 +51,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     velocities :: U             # Container for velocity fields `u`, `v`, and `w`
     tracers :: C                # Container for tracer fields
     pressure :: Φ               # Container for hydrostatic pressure
-    closure_fields :: K     # Container for turbulent diffusivities
+    closure_fields :: K         # Container for auxiliary fields for closures
     timestepper :: TS           # Object containing timestepper fields and parameters
     auxiliary_fields :: AF      # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z    # Rulesets that define the time-evolution of the grid
