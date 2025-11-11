@@ -64,7 +64,7 @@ MultiaryOperation at (Center, Center, Center)
     │   ├── 2
     │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
     └── 1
- ```
+```
 
 Like `Field`s, `AbstractOperations` have a location and a grid.
 In addition to `BinaryOperation`s like the kind above, `UnaryOperation`s and `MultiaryOperation`s are also supported,
