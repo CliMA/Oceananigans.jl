@@ -53,7 +53,7 @@ choose_location(::Nothing, Lb::ConcreteLocationType, Lc) = Lb #
 
 # Apply the function if the inputs are scalars, otherwise broadcast it over the inputs
 # This can occur in the binary operator code if we index into with an array, e.g. array[1:10]
-@inline @propagate_inbounds apply_op(op, a::Number, b::Number) = op(a, b)
+@inline @propagate_inbounds apply_op(op, a, b) = op(a, b)
 @inline @propagate_inbounds apply_op(op, a::AbstractArray, b::AbstractArray) = op.(a, b)
 
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
