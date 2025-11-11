@@ -74,7 +74,7 @@ end
                                velocities = nothing,
                   nonhydrostatic_pressure = CenterField(grid),
              hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                       closure_fields = nothing,
+                           closure_fields = nothing,
                           pressure_solver = nothing,
                          auxiliary_fields = NamedTuple())
 
