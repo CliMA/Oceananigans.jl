@@ -27,7 +27,7 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
 
-    build_diffusivity_fields,
+    build_closure_fields,
     compute_diffusivities!,
 
     viscosity, diffusivity,
@@ -203,7 +203,7 @@ using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly
 using .Smagorinskys: LillyCoefficient, DynamicCoefficient, LagrangianAveraging
 
 # Miscellaneous utilities
-include("diffusivity_fields.jl")
+include("closure_fields.jl")
 include("turbulence_closure_diagnostics.jl")
 
 #####

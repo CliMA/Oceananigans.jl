@@ -99,7 +99,7 @@ function with_tracers(tracers, closure_vector::ISSDVector)
     return on_architecture(arch, closure_vector)
 end
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         diffusivities = (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
@@ -225,7 +225,7 @@ end
 
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  closure::Union{ISSD, ISSDVector}, closure_fields, ::Val{tracer_index},
                                   c, clock, fields, buoyancy) where tracer_index
 
     closure = getclosure(i, j, closure)
@@ -255,7 +255,7 @@ end
 
 # defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  closure::Union{ISSD, ISSDVector}, closure_fields, ::Val{tracer_index},
                                   c, clock, fields, buoyancy) where tracer_index
 
     closure = getclosure(i, j, closure)
@@ -285,7 +285,7 @@ end
 
 # defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::FlavorOfISSD{TD}, diffusivity_fields, ::Val{tracer_index},
+                                  closure::FlavorOfISSD{TD}, closure_fields, ::Val{tracer_index},
                                   c, clock, fields, buoyancy) where {tracer_index, TD}
 
     closure = getclosure(i, j, closure)

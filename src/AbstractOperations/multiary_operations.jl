@@ -13,8 +13,43 @@ struct MultiaryOperation{LX, LY, LZ, N, O, A, IN, G, T} <: AbstractOperation{LX,
     end
 end
 
+# NOTE!!! The GPU compiler has trouble inferring this operation which might lead to dynamic evaluations.
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, N}, i, j, k)  where {LX, LY, LZ, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
+
+# Try to improve inferrability by hardcoding methods for small N
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 1}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 2}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 3}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 4}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]), 
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 5}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]), 
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]), 
+         Π.▶[5](i, j, k, Π.grid, Π.args[5]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 6}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]), 
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]), 
+         Π.▶[5](i, j, k, Π.grid, Π.args[5]), 
+         Π.▶[6](i, j, k, Π.grid, Π.args[6]))
 
 #####
 ##### MultiaryOperation construction

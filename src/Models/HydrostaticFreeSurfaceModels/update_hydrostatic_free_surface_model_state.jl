@@ -44,7 +44,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     @apply_regionally compute_auxiliaries!(model)
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
@@ -61,9 +61,9 @@ function mask_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
-    foreach(fields_to_mask) do field
-        if field !== η
-            mask_immersed_field!(field)
+    foreach(keys(fields_to_mask)) do key
+        if key != :η
+            @inbounds mask_immersed_field!(fields_to_mask[key])
         end
     end
     mask_immersed_field_xy!(η, k=size(grid, 3)+1)
@@ -78,7 +78,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     grid        = model.grid
     closure     = model.closure
     tracers     = model.tracers
-    diffusivity = model.diffusivity_fields
+    diffusivity = model.closure_fields
     buoyancy    = model.buoyancy
 
     P    = model.pressure.pHY′

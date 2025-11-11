@@ -78,7 +78,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      model.velocities,
                      model.free_surface,
                      model.tracers,
-                     model.diffusivity_fields,
+                     model.closure_fields,
                      model.auxiliary_fields,
                      model.clock,
                      c_forcing)
@@ -114,7 +114,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.free_surface,
                                 model.tracers,
                                 model.buoyancy,
-                                model.diffusivity_fields,
+                                model.closure_fields,
                                 model.pressure.pHY′,
                                 model.auxiliary_fields,
                                 model.vertical_coordinate,
