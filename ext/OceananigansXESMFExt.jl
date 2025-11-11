@@ -184,7 +184,7 @@ regrid!(dst_field, regridder, src_field)
 first(Field(Integral(dst_field, dims=(1, 2))))
 ```
 """
-function regrid!(dst_field,  regridder::XESMF.Regridder, src_field)
+function regrid!(dst_field::AbstractField,  regridder::XESMF.Regridder, src_field::AbstractField)
     Nz = size(src_field.grid)[3]
     topo_z = topology(src_field)[3]()
     ℓz = location(src_field)[3]()
