@@ -22,6 +22,20 @@ function insert_location!(ex::Expr, location)
     return nothing
 end
 
+# Transform expressions like :((LX, LY, LZ)) into :((LX(), LY(), LZ()))
+# when LX, LY, LZ are Face, Center, or Nothing. Leave eveything else unchanged.
+function instantiate_location_expression(exp::Expr)
+    new_exp = deepcopy(exp)
+    for (i, arg) in enumerate(new_exp.args)
+        new_exp.args[i] = instantiate_location_expression(arg) 
+    end
+    return new_exp
+end
+
+instantiate_location_expression(arg) = arg == :Center  ? :(Center()) :
+                                       arg == :Face    ? :(Face()  ) :
+                                       arg == :Nothing ? :(nothing ) : arg
+
 "Fallback for when `insert_location` is called on objects other than expressions."
 insert_location!(anything, location) = nothing
 
@@ -32,7 +46,9 @@ insert_location!(anything, location) = nothing
 interpolate_operation(L, x) = x
 
 function interpolate_operation(L, x::AbstractField)
-    L == location(x) && return x # Don't interpolate unnecessarily
+    if L == instantiated_location(x) || L == location(x)
+        return x # Don't interpolate unnecessarily
+    end
     return interpolate_identity(L, x)
 end
 
@@ -43,6 +59,7 @@ Modify the `abstract_operation` so that it returns values at
 `location`, where `location` is a 3-tuple of `Face`s and `Center`s.
 """
 macro at(location, abstract_operation)
+    location = instantiate_location_expression(location)
     insert_location!(abstract_operation, location)
 
     # We wrap it all in an interpolator to help "stubborn" binary operations

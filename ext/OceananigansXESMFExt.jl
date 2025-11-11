@@ -8,7 +8,7 @@ using Oceananigans.Grids: AbstractGrid, λnodes, φnodes, Center, Face, total_le
 
 import Oceananigans.Fields: regrid!
 import Oceananigans.Architectures: on_architecture
-import XESMF: Regridder
+import XESMF: Regridder, xesmf_coordinates
 
 node_array(ξ::AbstractMatrix, Nx, Ny) = view(ξ, 1:Nx, 1:Ny)
 

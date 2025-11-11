@@ -149,11 +149,15 @@ function getindex(fts::OnDiskFTS, n::Int)
 
     status = @allowscalar FixedTime(fts.times[n])
 
-    return Field(loc, fts.grid;
-                 indices = fts.indices,
-                 boundary_conditions = fts.boundary_conditions,
-                 status,
-                 data = field_data)
+    field = Field(loc, fts.grid;
+                  indices = fts.indices,
+                  boundary_conditions = fts.boundary_conditions,
+                  status,
+                  data = field_data)
+
+    fill_halo_regions!(field)
+
+    return field
 end
 
 @propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
