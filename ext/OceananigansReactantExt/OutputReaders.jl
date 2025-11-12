@@ -1,6 +1,6 @@
 module OutputReaders
 
-import Oceananigans.OutputReaders: find_time_index
+import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indices
 using Reactant: TracedStepRangeLen
 
 @inline function find_time_index(times::TracedStepRangeLen, t)
@@ -20,5 +20,8 @@ using Reactant: TracedStepRangeLen
 
     return ñ, n₁, n₂
 end
+
+cpu_interpolating_time_indices(arch::ReactantState, times, time_indexing, t) = 
+    Oceananigans.OutputReaders.TimeInterpolator(time_indexing, times, t)
 
 end
