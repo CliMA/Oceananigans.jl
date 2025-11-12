@@ -61,7 +61,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     end
     
     # Time step the model 10 times
-    Δt = 10seconds
+    Δt = convert(FT, 1)
     for n in 1:10
         time_step!(model, Δt)
     end
