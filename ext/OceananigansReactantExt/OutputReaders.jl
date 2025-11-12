@@ -21,7 +21,7 @@ using Reactant: TracedStepRangeLen
     return ñ, n₁, n₂
 end
 
-cpu_interpolating_time_indices(arch::ReactantState, times, time_indexing, t) = 
+cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t) = 
     Oceananigans.OutputReaders.TimeInterpolator(time_indexing, times, t)
 
 end
