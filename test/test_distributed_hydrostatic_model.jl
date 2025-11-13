@@ -98,7 +98,7 @@ for arch in archs
                                                     halo = (4, 4, 3),
                                                     latitude = (-80, 80),
                                                     longitude = (-160, 160),
-                                                    z = (-1, 0),
+                                                    z = MutableVerticalDiscretization((-1, 0)),
                                                     radius = 1,
                                                     topology = (Bounded, Bounded, Bounded))
 
@@ -110,10 +110,8 @@ for arch in archs
             global_underlying_grid = reconstruct_global_grid(underlying_grid)
             global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-            # for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
-                                        #    (global_underlying_grid, global_immersed_grid, global_immersed_grid))
-            for (grid, global_grid) in zip((immersed_active_grid, ),
-                            (global_immersed_grid, ))
+            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
+                                           (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
                 for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3, :SplitRungeKutta5)
                     @root @info "  Testing distributed solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) on $(timestepper)"
