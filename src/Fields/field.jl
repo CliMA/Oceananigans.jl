@@ -833,13 +833,6 @@ end
 
 Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
-function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
-    conditional_a = condition_operand(a, nothing, one(eltype(a)))
-    conditional_b = condition_operand(b, nothing, one(eltype(b)))
-    # TODO: Make this non-allocating?
-    return all(isapprox.(conditional_a, conditional_b; kw...))
-end
-
 #####
 ##### fill_halo_regions!
 #####

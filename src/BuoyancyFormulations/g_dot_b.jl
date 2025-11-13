@@ -5,7 +5,7 @@
 
 const NZBF = BuoyancyForce{<:Any, NegativeZDirection}
 
-@inline x_dot_g_bᶠᶜᶜ(i, j, k, grid, ::NZBF) = 0
-@inline y_dot_g_bᶜᶠᶜ(i, j, k, grid, ::NZBF) = 0
-@inline z_dot_g_bᶜᶜᶠ(i, j, k, grid, bf::NZBF) = zᵃᵃᶠ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, bf.formulation, C)
+@inline x_dot_g_bᶠᶜᶜ(i, j, k, grid, bf::NZBF, C) = 0
+@inline y_dot_g_bᶜᶠᶜ(i, j, k, grid, bf::NZBF, C) = 0
+@inline z_dot_g_bᶜᶜᶠ(i, j, k, grid, bf::NZBF, C) = ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, bf.formulation, C)
 

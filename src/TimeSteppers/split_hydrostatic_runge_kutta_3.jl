@@ -145,9 +145,10 @@ function split_rk3_substep!(model, Δt)
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
-                       model.diffusivity_fields,
+                       model.closure_fields,
                        tracer_index,
                        model.clock,
+                       fields(model),
                        Δt)
     end
 end

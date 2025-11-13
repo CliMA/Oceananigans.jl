@@ -246,11 +246,20 @@ function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, 
     return regularize_boundary_condition(default_bc, grid, loc, dim, args...)
 end
 
-regularize_boundary_condition(bc, args...) = bc # fallback
+function regularize_boundary_condition(bc::BoundaryCondition, grid, loc, dim, args...)
+    regularized = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
+    return BoundaryCondition(bc.classification, regularized)
+end
 
 # Convert all `Number` boundary conditions to `eltype(grid)`
-regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...) where C =
-    BoundaryCondition(bc.classification, convert(eltype(grid), bc.condition))
+regularize_boundary_condition(condition::Number, grid, args...) = convert(eltype(grid), condition)
+regularize_boundary_condition(condition, grid, args...) = condition # fallback
+
+function regularize_boundary_condition(mc::MixedCondition, grid, args...)
+    coefficient = regularize_boundary_condition(mc.coefficient, grid, args...)
+    inhomogeneity = regularize_boundary_condition(mc.inhomogeneity, grid, args...)
+    return MixedCondition(coefficient, inhomogeneity)
+end
 
 """
     regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
