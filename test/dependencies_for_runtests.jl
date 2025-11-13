@@ -57,6 +57,7 @@ using Oceananigans.ImmersedBoundaries: conditional_length
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, hack_cosd
 using Oceananigans.TurbulenceClosures: with_tracers
 using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field, getnamewrapper
+using Oceananigans.Utils: prettysummary
 
 import Oceananigans.Utils: launch!, datatuple
 Logging.global_logger(OceananigansLogger())

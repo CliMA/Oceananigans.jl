@@ -168,28 +168,28 @@ struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
     _tupled_implicit_linear_coefficients :: LC
 end
 
-Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
-    CATKEDiffusivityFields(adapt(to, catke_diffusivity_fields.κu),
-                           adapt(to, catke_diffusivity_fields.κc),
-                           adapt(to, catke_diffusivity_fields.κe),
-                           adapt(to, catke_diffusivity_fields.Le),
-                           adapt(to, catke_diffusivity_fields.Jᵇ),
-                           catke_diffusivity_fields.previous_compute_time[],
-                           adapt(to, catke_diffusivity_fields.previous_velocities),
-                           adapt(to, catke_diffusivity_fields._tupled_tracer_diffusivities),
-                           adapt(to, catke_diffusivity_fields._tupled_implicit_linear_coefficients))
+Adapt.adapt_structure(to, catke_closure_fields::CATKEDiffusivityFields) =
+    CATKEDiffusivityFields(adapt(to, catke_closure_fields.κu),
+                           adapt(to, catke_closure_fields.κc),
+                           adapt(to, catke_closure_fields.κe),
+                           adapt(to, catke_closure_fields.Le),
+                           adapt(to, catke_closure_fields.Jᵇ),
+                           catke_closure_fields.previous_compute_time[],
+                           adapt(to, catke_closure_fields.previous_velocities),
+                           adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
+                           adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, args...; kw...)
-    grid = catke_diffusivity_fields.κu.grid
+function fill_halo_regions!(catke_closure_fields::CATKEDiffusivityFields, args...; kw...)
+    grid = catke_closure_fields.κu.grid
 
-    κ = (catke_diffusivity_fields.κu,
-         catke_diffusivity_fields.κc,
-         catke_diffusivity_fields.κe)
+    κ = (catke_closure_fields.κu,
+         catke_closure_fields.κc,
+         catke_closure_fields.κe)
 
     return fill_halo_regions!(κ, grid, args...; kw...)
 end
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
                                κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
@@ -333,7 +333,7 @@ end
     κe_max = closure.maximum_tke_diffusivity
     κe★ = min(κe, κe_max)
     FT = eltype(grid)
-    return FT(κe)
+    return FT(κe★)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
