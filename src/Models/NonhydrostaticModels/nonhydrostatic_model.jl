@@ -308,7 +308,6 @@ function prognostic_state(model::NonhydrostaticModel)
         particles = prognostic_state(model.particles),
         velocities = prognostic_state(model.velocities),
         tracers = prognostic_state(model.tracers),
-        pressures = prognostic_state(model.pressures),
         closure_fields = prognostic_state(model.closure_fields),
         timestepper = prognostic_state(model.timestepper),
         auxiliary_fields = prognostic_state(model.auxiliary_fields),
@@ -320,14 +319,13 @@ function restore_prognostic_state!(model::NonhydrostaticModel, state)
     restore_prognostic_state!(model.clock, state.clock)
     restore_prognostic_state!(model.particles, state.particles)
     restore_prognostic_state!(model.velocities, state.velocities)
-    restore_prognostic_state!(model.pressures, state.pressures)
     restore_prognostic_state!(model.timestepper, state.timestepper)
 
     if length(model.tracers) > 0
         restore_prognostic_state!(model.tracers, state.tracers)
     end
 
-    if length(model.closure_fields) > 0
+    if !isnothing(model.closure_fields)
         restore_prognostic_state!(model.closure_fields, state.closure_fields)
     end
 

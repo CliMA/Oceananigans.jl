@@ -268,9 +268,10 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
         particles = prognostic_state(model.particles),
         velocities = prognostic_state(model.velocities),
         tracers = prognostic_state(model.tracers),
-        diffusivity_fields = prognostic_state(model.diffusivity_fields),
+        closure_fields = prognostic_state(model.closure_fields),
         timestepper = prognostic_state(model.timestepper),
         free_surface = prognostic_state(model.free_surface),
+        auxiliary_fields = prognostic_state(model.auxiliary_fields),
     )
 end
 
@@ -278,20 +279,20 @@ function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
     restore_prognostic_state!(model.clock, state.clock)
     restore_prognostic_state!(model.particles, state.particles)
     restore_prognostic_state!(model.velocities, state.velocities)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+    restore_prognostic_state!(model.free_surface, state.free_surface)
 
     if length(model.tracers) > 0
         restore_prognostic_state!(model.tracers, state.tracers)
     end
 
-    restore_prognostic_state!(model.pressure, state.pressure)
-    restore_prognostic_state!(model.diffusivity_fields, state.diffusivity_fields)
-    restore_prognostic_state!(model.timestepper, state.timestepper)
+    if !isnothing(model.closure_fields)
+        restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    end
 
     if length(model.auxiliary_fields) > 0
         restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
     end
-
-    restore_prognostic_state!(model.free_surface, state.free_surface)
 
     return model
 end
