@@ -1,10 +1,10 @@
 agents:
-  queue: new-central
+  queue: central
   slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues
   modules: climacommon/2024_10_10
 
 env:
-  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default:"
   OPENBLAS_NUM_THREADS: 1
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 8
@@ -23,7 +23,7 @@ steps:
       - echo "--- Initialize distributed tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 50G
       slurm_ntasks: 1
       slurm_gpus_per_task: 1
 
@@ -37,7 +37,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 50G
       slurm_ntasks: 4
     retry:
       automatic:
@@ -52,7 +52,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -115,7 +115,7 @@ steps:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     timeout_in_minutes: 1440
     agents:
-      slurm_mem: 100G # Apparently the GPU tests require more memory
+      slurm_mem: 150G # Apparently the GPU tests require more memory?
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
