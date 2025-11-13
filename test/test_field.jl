@@ -482,7 +482,7 @@ end
     @testset "ConstantField" begin
         z = ZeroField()
         o = OneField()
-        c = ConstantField(2)
+        c = ConstantField(-2)
         @test norm(z) == 0
         @test norm(o) == 1
         @test norm(c) == 2
