@@ -6,6 +6,7 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple, sum_of_velocities
@@ -69,7 +70,7 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) = 
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
@@ -134,3 +135,10 @@ end
 
 update_state!(model::OnlyParticleTrackingModel, callbacks) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
+
+#####
+##### Checkpointing
+#####
+
+prognostic_state(::PrescribedVelocityFields) = nothing
+restore_prognostic_state!(::PrescribedVelocityFields, ::Nothing) = nothing

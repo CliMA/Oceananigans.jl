@@ -16,7 +16,7 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_dif
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities, timestepper
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -261,3 +261,39 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
 
+# For checkpointing
+function prognostic_state(model::HydrostaticFreeSurfaceModel)
+    return (
+        clock = prognostic_state(model.clock),
+        particles = prognostic_state(model.particles),
+        velocities = prognostic_state(model.velocities),
+        tracers = prognostic_state(model.tracers),
+        pressure = prognostic_state(model.pressure),
+        diffusivity_fields = prognostic_state(model.diffusivity_fields),
+        timestepper = prognostic_state(model.timestepper),
+        auxiliary_fields = prognostic_state(model.auxiliary_fields),
+        free_surface = prognostic_state(model.free_surface),
+    )
+end
+
+function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.particles, state.particles)
+    restore_prognostic_state!(model.velocities, state.velocities)
+
+    if length(model.tracers) > 0
+        restore_prognostic_state!(model.tracers, state.tracers)
+    end
+
+    restore_prognostic_state!(model.pressure, state.pressure)
+    restore_prognostic_state!(model.diffusivity_fields, state.diffusivity_fields)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+
+    if length(model.auxiliary_fields) > 0
+        restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
+    end
+
+    restore_prognostic_state!(model.free_surface, state.free_surface)
+
+    return model
+end
