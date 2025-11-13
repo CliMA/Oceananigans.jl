@@ -117,7 +117,7 @@ function define_binary_operator(op)
         end
 
         # Numbers are not fields...
-        $op(Lc::Tuple, a::Number, b::Number) = $op(a, b)
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::Number, b::Number) = $op(a, b)
 
         # Sugar for mixing in functions of (x, y, z)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
