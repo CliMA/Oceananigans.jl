@@ -53,17 +53,16 @@ and even by chaining expressions together, which may themselves include `Abstrac
 quadratic = c^2 + two_c + 1
 
 # output
-BinaryOperation at (Center, Center, Center)
+MultiaryOperation at (Center, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     + at (Center, Center, Center)
-    ├── + at (Center, Center, Center)
-    │   ├── ^ at (Center, Center, Center)
-    │   │   ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    │   │   └── 2
-    │   └── * at (Center, Center, Center)
-        │   ├── 2
-        │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── ^ at (Center, Center, Center)
+    │   ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    │   └── 2
+    ├── * at (Center, Center, Center)
+    │   ├── 2
+    │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
     └── 1
 ```
 

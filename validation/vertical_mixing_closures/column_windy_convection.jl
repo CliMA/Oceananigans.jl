@@ -38,7 +38,7 @@ function progress(sim)
                    iteration(sim), prettytime(sim), maximum(model.tracers.b))
 
     msg *= @sprintf(", max(κ): %6.2e, max(e): %6.2e, max(ϵ): %6.2e",
-                    maximum(model.diffusivity_fields.κc),
+                    maximum(model.closure_fields.κc),
                     maximum(model.tracers.e),
                     maximum(model.tracers.ϵ))
 
@@ -61,8 +61,8 @@ for closure in closures_to_run
 
     closurename = string(nameof(typeof(closure)))
 
-    diffusivities = (κu = model.diffusivity_fields.κu,
-                     κc = model.diffusivity_fields.κc)
+    diffusivities = (κu = model.closure_fields.κu,
+                     κc = model.closure_fields.κc)
 
     outputs = merge(model.velocities, model.tracers, diffusivities)
 

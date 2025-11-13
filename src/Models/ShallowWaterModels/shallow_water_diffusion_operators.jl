@@ -12,7 +12,7 @@ using Oceananigans.TurbulenceClosures:
                         ∂ⱼ_τ₂ⱼ
 
 import Oceananigans.TurbulenceClosures:
-                        build_diffusivity_fields,
+                        build_closure_fields,
                         compute_diffusivities!,
                         viscosity,
                         with_tracers,
@@ -63,7 +63,7 @@ on_architecture(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
     νₑ[i, j, k] = fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
+function compute_diffusivities!(closure_fields, closure::ShallowWaterScalarDiffusivity, model)
 
     arch  = model.architecture
     grid  = model.grid
@@ -73,12 +73,12 @@ function compute_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarD
 
     launch!(arch, grid, :xyz,
             _calculate_shallow_water_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, clock, model_fields)
+            closure_fields.νₑ, grid, closure, clock, model_fields)
 
     return nothing
 end
 
-build_diffusivity_fields(grid, clock, tracer_names, bcs, ::ShallowWaterScalarDiffusivity) = (; νₑ=CenterField(grid, boundary_conditions=bcs.h))
+build_closure_fields(grid, clock, tracer_names, bcs, ::ShallowWaterScalarDiffusivity) = (; νₑ=CenterField(grid, boundary_conditions=bcs.h))
 
 #####
 ##### Diffusion flux divergence operators

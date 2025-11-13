@@ -89,6 +89,9 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
+# Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
+function materialize_free_surface end
+
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
@@ -127,7 +130,7 @@ function possible_field_time_series(model::OceananigansModels)
     forcing = model.forcing
     model_fields = fields(model)
     # Note: we may need to include other objects in the tuple below,
-    # such as model.diffusivity_fields
+    # such as model.closure_fields
     return tuple(model_fields, forcing)
 end
 

@@ -4,6 +4,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
+using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
@@ -43,7 +44,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     @apply_regionally compute_auxiliaries!(model)
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
@@ -77,11 +78,14 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     grid        = model.grid
     closure     = model.closure
     tracers     = model.tracers
-    diffusivity = model.diffusivity_fields
+    diffusivity = model.closure_fields
     buoyancy    = model.buoyancy
 
     P    = model.pressure.pHY′
     arch = architecture(grid)
+
+    # Maybe compute buoyancy gradients
+    compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
 
     # Update the vertical velocity to comply with the barotropic correction step
     update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
