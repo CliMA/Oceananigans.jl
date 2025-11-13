@@ -1,4 +1,5 @@
 using Oceananigans.Utils: prettysummary
+using LinearAlgebra
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
