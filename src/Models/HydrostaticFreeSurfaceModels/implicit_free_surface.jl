@@ -7,6 +7,8 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 using Adapt
 
 struct ImplicitFreeSurface{E, G, B, I, M, S} <: AbstractFreeSurface{E, G}
@@ -171,4 +173,21 @@ function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
 
     return nothing
+end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::ImplicitFreeSurface)
+    return (
+        η = prognostic_state(fs.η),
+        barotropic_volume_flux = prognostic_state(fs.barotropic_volume_flux),
+    )
+end
+
+function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
+    restore_prognostic_state!(fs.η, state.η)
+    restore_prognostic_state!(fs.barotropic_volume_flux, state.barotropic_volume_flux)
+    return fs
 end
