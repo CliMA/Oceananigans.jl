@@ -196,6 +196,13 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         archs = test_architectures()
         include("test_distributed_hydrostatic_model.jl")
+    end
+
+    if group == :distributed_vertical_coordinate || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
         include("test_zstar_conservation.jl")
     end
 
