@@ -119,14 +119,13 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
                        (free_surface isa ImplicitFreeSurface) &&
                        (grid isa ImmersedBoundaryGrid) &&
                        (grid.underlying_grid isa LatitudeLongitudeGrid)
-
-                        @info "  Skipping $(info_message(grid, free_surface)) because of parameter space issues"
+                        @info "  Skipping $(info_message(grid, free_surface, :timestepper)) because of parameter space issues"
                         continue
                     end
 
                     if (free_surface isa ImplicitFreeSurface) &&
                        (grid isa DistributedGrid) 
-                        @info "  Skipping $(info_message(grid, free_surface)) because not supported"
+                        @info "  Skipping ImplicitFreeSurface on DistributedGrids because not supported"
                         continue
                     end
 
