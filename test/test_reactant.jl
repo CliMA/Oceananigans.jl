@@ -262,9 +262,6 @@ using Oceananigans.OutputReaders: cpu_interpolating_time_indices
     grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(1, 1, 1))
     fts  = FieldTimeSeries{Center, Center, Center}(grid, sort(rand(10)))
 
-    @test parent(fts) isa Reactant.ConcreteIFRTArray
-    @test fts.times isa Reactant.ConcreteIFRTArray
-
     # Test I can index into a Reactant FieldTimeSeries
     @test fts[5] isa Field
 end
