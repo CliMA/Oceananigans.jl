@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: CenterField, ReducedField, has_velocities
+using Oceananigans.Fields: CenterField, ReducedField, OneField, ZeroField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
@@ -705,3 +705,4 @@ end
         end
     end
 end
+
