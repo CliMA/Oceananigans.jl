@@ -479,6 +479,15 @@ end
         end
     end
 
+    @testset "ConstantField" begin
+        z = ZeroField()
+        o = OneField()
+        c = ConstantField(2)
+        @test norm(z) == 0
+        @test norm(o) == 1
+        @test norm(c) == 2
+    end
+
     @testset "isapprox on Fields" begin
         for arch in archs, FT in float_types
             # Make sure this doesn't require scalar indexing
@@ -503,6 +512,8 @@ end
                 # Make sure the two fields are the same
                 @test isapprox(u, v)
                 @test isapprox(u, v; rtol=0, atol=0)
+
+                @test isapprox(u, ConstantField(1))
 
                 set!(v, FT(1.1))
                 @test !isapprox(u, v)
