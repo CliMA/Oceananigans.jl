@@ -90,6 +90,39 @@ steps:
         - exit_status: 1
           limit: 1
 
+  - label: "🤿 cpu distributed hydrostatic regression tests"
+    key: "distributed_hydrostatic_regression_cpu"
+    env:
+      TEST_GROUP: "distributed_hydrostatic_regression"
+      TEST_ARCHITECTURE: "CPU"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    timeout_in_minutes: 1440
+    agents:
+      slurm_mem: 50G
+      slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "🥽 gpu distributed hydrostatic regression tests"
+    key: "distributed_hydrostatic_regression_gpu"
+    env:
+      TEST_GROUP: "distributed_hydrostatic_regression"
+      TEST_ARCHITECTURE: "GPU"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    timeout_in_minutes: 1440
+    agents:
+      slurm_mem: 100G # Apparently the GPU tests require more memory
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
   - label: "🤺 cpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_cpu"
     env:
