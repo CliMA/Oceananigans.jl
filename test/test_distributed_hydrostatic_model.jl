@@ -98,7 +98,7 @@ for arch in archs
                                                     halo = (4, 4, 3),
                                                     latitude = (-80, 80),
                                                     longitude = (-160, 160),
-                                                    z = MutableVerticalDiscretization((-1, 0)),
+                                                    z = (-1, 0),
                                                     radius = 1,
                                                     topology = (Bounded, Bounded, Bounded))
 
