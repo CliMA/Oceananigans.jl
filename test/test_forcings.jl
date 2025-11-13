@@ -74,7 +74,13 @@ end
 """ Take one time step with a Forcing forcing function with parameters. """
 function time_step_with_single_field_dependent_forcing(arch, fld)
 
-    forcing = NamedTuple{(fld,)}((Forcing((x, y, z, t, fld) -> -fld, field_dependencies=fld),))
+    fld_forcing = Forcing((x, y, z, t, fld) -> -fld, field_dependencies=fld)
+
+    forcing = if fld == :A # not a prognostic field
+        (; T = fld_forcing)
+    else
+        (; fld => fld_forcing)
+    end
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     A = Field{Center, Center, Center}(grid)
