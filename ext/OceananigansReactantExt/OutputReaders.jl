@@ -2,7 +2,7 @@ module OutputReaders
 
 using Oceananigans.Architectures: ReactantState
 using Reactant: TracedStepRangeLen
-
+using Oceananigans.OutputReaders: TimeInterpolator
 import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indices
 
 @inline function find_time_index(times::TracedStepRangeLen, t)
@@ -23,7 +23,9 @@ import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indic
     return ñ, n₁, n₂
 end
 
-cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t) = 
-    Oceananigans.OutputReaders.TimeInterpolator(time_indexing, times, t)
+function cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t) 
+    cpu_times = on_architecture(CPU(), times)
+    return TimeInterpolator(time_indexing, times, t)
+end
 
 end
