@@ -124,6 +124,12 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
                         continue
                     end
 
+                    if (free_surface isa ImplicitFreeSurface) &&
+                       (grid isa DistributedGrid) 
+                        @info "  Skipping $(info_message(grid, free_surface)) because not supported"
+                        continue
+                    end
+
                     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
 
                         info_msg = info_message(grid, free_surface, timestepper)
