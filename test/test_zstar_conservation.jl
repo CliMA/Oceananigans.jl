@@ -5,11 +5,66 @@ using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
+using Oceananigans.DistributedComputations: DistributedGrid
 
 grid_type(::RectilinearGrid{F, X, Y}) where {F, X, Y} = "Rect{$X, $Y}"
 grid_type(::LatitudeLongitudeGrid{F, X, Y}) where {F, X, Y} = "LatLon{$X, $Y}"
 
 grid_type(g::ImmersedBoundaryGrid) = "Immersed" * grid_type(g.underlying_grid)
+
+function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
+
+    bᵢ = deepcopy(model.tracers.b)
+    cᵢ = deepcopy(model.tracers.c)
+
+    ∫bᵢ = Field(Integral(bᵢ))
+    ∫cᵢ = Field(Integral(cᵢ))
+    compute!(∫bᵢ)
+    compute!(∫cᵢ)
+
+    w   = model.velocities.w
+    Nz  = model.grid.Nz
+
+    for step in 1:Ni
+        time_step!(model, Δt)
+
+        ∫b = Field(Integral(model.tracers.b))
+        ∫c = Field(Integral(model.tracers.c))
+        compute!(∫b)
+        compute!(∫c)
+
+        condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+        if !condition
+            @info "Stopping early: buoyancy not conserved at step $step"
+        end
+        @test condition
+
+        condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+        if !condition
+            @info "Stopping early: c tracer not conserved at step $step"
+        end
+        @test condition
+
+        # Test this condition only if the model is not distributed. 
+        # The vertical velocity at the top may not be exactly zero due asynchronous updates,
+        # which will be fixed in a future PR.
+        if !(model.grid isa DistributedGrid)
+            condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+            if !condition
+                @info "Stopping early: nonzero vertical velocity at top at step $step"
+            end
+            @test condition
+        end
+
+        # Constancy preservation test
+        if test_local_conservation
+            @test maximum(model.tracers.constant) ≈ 1
+            @test minimum(model.tracers.constant) ≈ 1
+        end
+    end
+
+    return nothing
+end
 
 function info_message(grid, free_surface, timestepper)
     msg1 = "$(typeof(architecture(grid))) "
@@ -52,11 +107,11 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
             end
 
             for grid in grids
-                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=100)
-                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+                split_free_surface    = SplitExplicitFreeSurface(grid; cfl=0.9, fixed_Δt=2minutes)
+                implicit_free_surface = ImplicitFreeSurface() # Preconditioned conjugate gradient solver
                 explicit_free_surface = ExplicitFreeSurface()
 
-                for free_surface in [split_free_surface, explicit_free_surface]
+                for free_surface in [split_free_surface, explicit_free_surface, implicit_free_surface]
 
                     # TODO: There are parameter space issues with ImplicitFreeSurface and a immersed LatitudeLongitudeGrid
                     # For the moment we are skipping these tests.

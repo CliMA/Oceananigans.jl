@@ -6,55 +6,6 @@ using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 
-function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
-
-    bᵢ = deepcopy(model.tracers.b)
-    cᵢ = deepcopy(model.tracers.c)
-
-    ∫bᵢ = Field(Integral(bᵢ))
-    ∫cᵢ = Field(Integral(cᵢ))
-    compute!(∫bᵢ)
-    compute!(∫cᵢ)
-
-    w   = model.velocities.w
-    Nz  = model.grid.Nz
-
-    for step in 1:Ni
-        time_step!(model, Δt)
-
-        ∫b = Field(Integral(model.tracers.b))
-        ∫c = Field(Integral(model.tracers.c))
-        compute!(∫b)
-        compute!(∫c)
-
-        condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-        if !condition
-            @info "Stopping early: buoyancy not conserved at step $step"
-        end
-        @test condition
-
-        condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-        if !condition
-            @info "Stopping early: c tracer not conserved at step $step"
-        end
-        @test condition
-
-        condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
-        if !condition
-            @info "Stopping early: nonzero vertical velocity at top at step $step"
-        end
-        @test condition
-
-        # Constancy preservation test
-        if test_local_conservation
-            @test maximum(model.tracers.constant) ≈ 1
-            @test minimum(model.tracers.constant) ≈ 1
-        end
-    end
-
-    return nothing
-end
-
 const C = Center
 const F = Face
 
