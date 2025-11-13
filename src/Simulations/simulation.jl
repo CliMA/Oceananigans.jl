@@ -282,16 +282,11 @@ function prognostic_state(sim::Simulation)
     return (
         model = prognostic_state(sim.model),
         Δt = sim.Δt,
-        stop_iteration = sim.stop_iteration,
-        stop_time = sim.stop_time,
-        wall_time_limit = sim.wall_time_limit,
         diagnostics = prognostic_state(sim.diagnostics),
         output_writers = prognostic_state(sim.output_writers),
         callbacks = prognostic_state(sim.callbacks),
         run_wall_time = sim.run_wall_time,
         align_time_step = sim.align_time_step,
-        running = sim.running,
-        initialized = sim.initialized,
         verbose = sim.verbose,
         minimum_relative_step = sim.minimum_relative_step
     )
@@ -300,9 +295,6 @@ end
 function restore_prognostic_state!(sim::Simulation, state)
     restore_prognostic_state!(sim.model, state.model)
     sim.Δt = state.Δt
-    sim.stop_iteration = state.stop_iteration
-    sim.stop_time = state.stop_time
-    sim.wall_time_limit = state.wall_time_limit
 
     if length(sim.diagnostics) > 0
         restore_prognostic_state!(sim.diagnostics, state.diagnostics)
@@ -318,8 +310,6 @@ function restore_prognostic_state!(sim::Simulation, state)
 
     sim.run_wall_time = state.run_wall_time
     sim.align_time_step = state.align_time_step
-    sim.running = state.running
-    sim.initialized = state.initialized
     sim.verbose = state.verbose
     sim.minimum_relative_step = state.minimum_relative_step
     return sim
