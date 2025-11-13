@@ -116,7 +116,7 @@ Time step fields via the 2nd-order quasi Adams-Bashforth method
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 
 """
-@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
+@kernel function _ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(u)
@@ -131,7 +131,7 @@ Time step fields via the 2nd-order quasi Adams-Bashforth method
     end
 end
 
-@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
+@kernel _ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
 
 #####
 ##### These functions need to be implemented by every model independently

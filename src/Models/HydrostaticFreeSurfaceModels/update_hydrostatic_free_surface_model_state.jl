@@ -54,6 +54,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     end
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    fill_halo_regions!(model.pressure.pHY′;  only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 

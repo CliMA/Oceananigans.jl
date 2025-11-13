@@ -1,5 +1,5 @@
 using Oceananigans.Fields: location
-using Oceananigans.TimeSteppers: ab2_step_field!
+using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
@@ -90,7 +90,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
+                _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,

@@ -22,7 +22,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
     foreach(model.tracers) do tracer
-        @apply_regionally mask_immersed_field!(tracer)
+        mask_immersed_field!(tracer)
     end
 
     # Update all FieldTimeSeries used in the model
@@ -40,9 +40,10 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     end
 
     # Calculate diffusivities and hydrostatic pressure
-    @apply_regionally compute_auxiliaries!(model)
+    compute_auxiliaries!(model)
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    fill_halo_regions!(model.pressures.pHY′; only_local_halos=true)
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)

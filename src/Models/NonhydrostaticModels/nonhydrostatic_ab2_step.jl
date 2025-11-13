@@ -1,4 +1,4 @@
-using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 import Oceananigans.TimeSteppers: ab2_step!
 
 ab2_step!(model::NonhydrostaticModel, args...) = 
@@ -15,7 +15,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     # Velocity steps
     for (i, field) in enumerate(model.velocities)
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(architecture(grid), grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
+        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery=true)
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
@@ -31,7 +31,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     for (i, name) in enumerate(propertynames(model.tracers))
         field = model.tracers[name]
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, ab2_step_field!, kernel_args...)
+        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...)
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
@@ -48,3 +48,4 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
 
     return nothing
 end
+
