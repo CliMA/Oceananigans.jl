@@ -1,4 +1,5 @@
 using Glob
+using StructArrays: StructArray
 
 using Oceananigans
 using Oceananigans: fields, prognostic_fields
@@ -247,6 +248,20 @@ function restore_prognostic_state!(nt::NamedTuple, state)
         restore_prognostic_state!(nt[name], value)
     end
     return nt
+end
+
+function restore_prognostic_state!(sa::StructArray, state)
+    # Get the architecture from one of the component arrays
+    some_property = first(propertynames(sa))
+    arch = architecture(getproperty(sa, some_property))
+
+    # Copy each property
+    for name in propertynames(sa)
+        data = on_architecture(arch, getproperty(state, name))
+        copyto!(getproperty(sa, name), data)
+    end
+
+    return sa
 end
 
 #####
