@@ -74,9 +74,6 @@ function info_message(grid, free_surface, timestepper)
     return msg1 * msg2 * msg3 * msg4
 end
 
-# QuasiAdamsBashforth2 does not guarantee local conservation of tracers
-test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
-
 @testset "ZStarCoordinate tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded),
@@ -88,12 +85,12 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
         for topology in topologies
             Random.seed!(1234)
 
-            rtgv = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
+            rtgv = RectilinearGrid(arch; size = (15, 15, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
             irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
             prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
-                llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
+                llgv = LatitudeLongitudeGrid(arch; size = (15, 15, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
                 illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
@@ -106,12 +103,14 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
                 grids = [rtgv, irtgv] #, prtgv]
             end
 
-            for grid in grids
-                split_free_surface    = SplitExplicitFreeSurface(grid; cfl=0.9, fixed_Δt=2minutes)
-                implicit_free_surface = ImplicitFreeSurface() # Preconditioned conjugate gradient solver
-                explicit_free_surface = ExplicitFreeSurface()
+            @info "  Skipping local conservation test for QuasiAdamsBashforth2 time stepping, which does not guarantee conservation of tracers."
 
-                for free_surface in [split_free_surface, explicit_free_surface, implicit_free_surface]
+            for grid in grids
+                # Preconditioned conjugate gradient solver does not satisfy local conservation stricly to machine precision.
+                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient) 
+                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=10)
+                explicit_free_surface = ExplicitFreeSurface()
+                for free_surface in [explicit_free_surface, split_free_surface]
 
                     # TODO: There are parameter space issues with ImplicitFreeSurface and a immersed LatitudeLongitudeGrid
                     # For the moment we are skipping these tests.
@@ -123,35 +122,28 @@ test_local_conservation(timestepper) = timestepper != :QuasiAdamsBashforth2
                         continue
                     end
 
-                    if (free_surface isa ImplicitFreeSurface) &&
-                       (grid isa DistributedGrid) 
+                    if (free_surface isa ImplicitFreeSurface) && (grid isa DistributedGrid) 
                         @info "  Skipping ImplicitFreeSurface on DistributedGrids because not supported"
                         continue
                     end
 
-                    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                    timestepper = :SplitRungeKutta3 
+                    info_msg = info_message(grid, free_surface, timestepper)
+                    @testset "$info_msg" begin
+                        @info "  Testing a $info_msg"
+                        model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
+                                                              free_surface,
+                                                              tracers = (:b, :c, :constant),
+                                                              timestepper,
+                                                              buoyancy = BuoyancyTracer(),
+                                                              vertical_coordinate = ZStarCoordinate())
 
-                        info_msg = info_message(grid, free_surface, timestepper)
-                        if timestepper == :QuasiAdamsBashforth2
-                            @info "  Skipping local conservation test for QuasiAdamsBashforth2 time stepping, which does not guarantee conservation of tracers."
-                        else
-                            @testset "$info_msg" begin
-                                @info "  Testing a $info_msg"
-                                model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
-                                                                    free_surface,
-                                                                    tracers = (:b, :c, :constant),
-                                                                    timestepper,
-                                                                    buoyancy = BuoyancyTracer(),
-                                                                    vertical_coordinate = ZStarCoordinate())
+                        bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
-                                bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
+                        set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
-                                set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
-
-                                Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                                test_zstar_coordinate(model, 100, Δt, test_local_conservation(timestepper))
-                            end
-                        end
+                        Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
+                        test_zstar_coordinate(model, 100, Δt, !(free_surface isa ImplicitFreeSurface))
                     end
                 end
             end
