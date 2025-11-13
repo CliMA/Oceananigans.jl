@@ -10,12 +10,13 @@ using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, Trac
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, StaticVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
+using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKuttaTimeStepper
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
+import Oceananigans.Models: initialization_update_state!
 import Oceananigans: initialize!
 import Oceananigans.Models: total_velocities, timestepper
 
@@ -235,6 +236,21 @@ function HydrostaticFreeSurfaceModel(; grid,
     initialization_update_state!(model)
 
     return model
+end
+
+function initialization_update_state!(model::HydrostaticFreeSurfaceModel; kw...) 
+    
+    # Update the state of the model
+    update_state!(model; kw...)
+    
+    # Make sure everyhing is correctly communicated after initialization
+    for field in prognostic_fields(model)
+        synchronize_communication!(field)
+    end
+
+    # Finally, initialize the model (e.g., free surface)
+    initialize!(model)
+    return nothing
 end
 
 transport_velocity_fields(velocities, free_surface) = velocities

@@ -69,6 +69,7 @@ synchronize_communication!(var) = throw(ArgumentError("`synchronize_communicatio
 synchronize_communication!(::AbstractField) = nothing
 synchronize_communication!(::AbstractArray) = nothing   
 synchronize_communication!(::Number)        = nothing
+synchronize_communication!(::Nothing)       = nothing
 
 # Distribute synchronize_communication! over tuples and named tuples
 synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)

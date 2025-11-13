@@ -63,9 +63,9 @@ model.velocities.u
         end
 
         @apply_regionally set!(ϕ, value)
+        fill_halo_regions!(ϕ, model.grid, model.clock, fields(model))
     end
 
-    # initialize!(model)
     initialization_update_state!(model)
 
     return nothing

@@ -35,28 +35,9 @@ end
 
 function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdamsBashforth2)
 
-    free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = 1)
-    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
-
-    tracers = if closure isa CATKEVerticalDiffusivity
-        (:c, :b, :e)
-    else
-        (:c, :b)
-    end
-
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = WENOVectorInvariant(order=3),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        closure,
-                                        tracers,
-                                        timestepper,
-                                        tracer_advection = WENO(order=3),
-                                        buoyancy = BuoyancyTracer())
-
-    g = model.free_surface.gravitational_acceleration
+    g = one(grid)
     R = grid.radius
-    Ω = model.coriolis.rotation_rate
+    Ω = Oceananigans.defaults.planet_rotation_rate
 
     # Add some shear on the velocity field
     uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ) + 0.05 * z
@@ -67,7 +48,26 @@ function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdams
     cᵢ(λ, φ, z) = max(Gaussian(λ, φ - 5, 10), 0.1)
     vᵢ(λ, φ, z) = 0.1
 
-    set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = g)
+    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+
+    tracers = if closure isa CATKEVerticalDiffusivity
+        (:c, :b, :e)
+    else
+        (:c, :b)
+    end
+
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                        momentum_advection = WENOVectorInvariant(order=3), 
+                                        free_surface = free_surface,
+                                        coriolis = coriolis,
+                                        closure,
+                                        tracers,
+                                        timestepper,
+                                        tracer_advection = WENO(order=3),
+                                        buoyancy = BuoyancyTracer())
+
+    set!(model, u=uᵢ, c=cᵢ, η=ηᵢ)
 
     Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz)
     Δt = all_reduce(min, Δt_local, architecture(grid))
