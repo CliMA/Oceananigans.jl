@@ -85,12 +85,12 @@ end
         for topology in topologies
             Random.seed!(1234)
 
-            rtgv = RectilinearGrid(arch; size = (15, 15, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
+            rtgv = RectilinearGrid(arch; size = (20, 20, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
             irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
             prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
-                llgv = LatitudeLongitudeGrid(arch; size = (15, 15, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
+                llgv = LatitudeLongitudeGrid(arch; size = (20, 20, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
                 illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
@@ -108,7 +108,7 @@ end
             for grid in grids
                 # Preconditioned conjugate gradient solver does not satisfy local conservation stricly to machine precision.
                 implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient) 
-                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=10)
+                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=20)
                 explicit_free_surface = ExplicitFreeSurface()
                 for free_surface in [explicit_free_surface, split_free_surface]
 
@@ -127,59 +127,38 @@ end
                         continue
                     end
 
-                    timestepper = :SplitRungeKutta3 
-                    info_msg = info_message(grid, free_surface, timestepper)
-                    @testset "$info_msg" begin
-                        @info "  Testing a $info_msg"
-                        model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
-                                                              free_surface,
-                                                              tracers = (:b, :c, :constant),
-                                                              timestepper,
-                                                              buoyancy = BuoyancyTracer(),
-                                                              vertical_coordinate = ZStarCoordinate())
+                    for timestepper in (:SplitRungeKutta3, :SplitRungeKutta5)
+                        info_msg = info_message(grid, free_surface, timestepper)
+                        @testset "$info_msg" begin
+                            @info "  Testing a $info_msg"
+                            model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
+                                                                free_surface,
+                                                                tracers = (:b, :c, :constant),
+                                                                timestepper,
+                                                                buoyancy = BuoyancyTracer(),
+                                                                vertical_coordinate = ZStarCoordinate())
 
-                        bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
+                            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
-                        set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
+                            set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
-                        Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                        test_zstar_coordinate(model, 100, Δt, !(free_surface isa ImplicitFreeSurface))
+                            Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
+                            test_zstar_coordinate(model, 100, Δt, !(free_surface isa ImplicitFreeSurface))
+                        end
                     end
                 end
             end
         end
         
-        @testset "RungeKutta5 ZStarCoordinate tracer conservation tests" begin
-            @info "  Testing a ZStarCoordinate and Runge-Kutta 5th order time stepping"
-
-            topology = topologies[2]
-            rtg  = RectilinearGrid(arch; size=(10, 10, 20), x=(0, 100kilometers), y=(-10kilometers, 10kilometers), topology, z=z_stretched)
-            llg  = LatitudeLongitudeGrid(arch; size=(10, 10, 20), latitude=(0, 1), longitude=(0, 1), topology, z=z_stretched)
-            irtg = ImmersedBoundaryGrid(deepcopy(rtg), GridFittedBottom((x, y) -> rand()-10))
-            illg = ImmersedBoundaryGrid(deepcopy(llg), GridFittedBottom((x, y) -> rand()-10))
-
-            for grid in [rtg, llg] # , irtg, illg]
-                split_free_surface = SplitExplicitFreeSurface(grid; substeps=50)
-                model = HydrostaticFreeSurfaceModel(; grid,
-                                                    free_surface = split_free_surface,
-                                                    tracers = (:b, :c, :constant),
-                                                    timestepper = :SplitRungeKutta5,
-                                                    buoyancy = BuoyancyTracer(),
-                                                    vertical_coordinate = ZStarCoordinate())
-
-                bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
-
-                set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
-
-                Δt = 2minutes
-                test_zstar_coordinate(model, 100, Δt)
-            end
-        end
-
         @testset "TripolarGrid ZStarCoordinate tracer conservation tests" begin
             @info "Testing a ZStarCoordinate coordinate with a Tripolar grid on $(arch)..."
 
-            grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched)
+            # Check that the grid is correctly partitioned in case of a distributed architecture
+            if arch isa Distributed && (arch.ranks[1] != 1 || arch.ranks[2] == 1)
+                continue
+            end
+
+            grid = TripolarGrid(arch; size = (30, 30, 20), z = z_stretched)
 
             # Code credit:
             # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
@@ -203,7 +182,7 @@ end
             gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
 
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
-            free_surface = SplitExplicitFreeSurface(grid; substeps=10)
+            free_surface = SplitExplicitFreeSurface(grid; substeps=20)
 
             model = HydrostaticFreeSurfaceModel(; grid,
                                                   free_surface,
