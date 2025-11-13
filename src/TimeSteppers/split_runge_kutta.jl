@@ -46,9 +46,7 @@ The state at the first substep is taken to be the one that corresponds to the ``
 References
 ==========
 
-Silvestri, S., Campin, J.-M., Wagner, G. L., and Ferrari R. (2026). Generalized Split-Explicit Runge-Kutta methods for the
-    compressible Euler equations. Monthly Weather Review, 142, 2067-2081,
-    https://doi.org/10.1175/MWR-D-13-00068.1.
+To be added once the paper is submitted...
 """
 function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     implicit_solver::TI = nothing,
