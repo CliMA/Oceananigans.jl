@@ -251,3 +251,15 @@ end
                                     hydrostatic_model_kw,
                                     immersed_boundary_grid=true)
 end
+
+@testset "Reactant FieldTimeSeries Tests" begin
+    @info "Testing the use of a `FieldTimeSeries` on a `ReactantState` arch..."
+
+    arch = ReactantState()
+    Nx, Ny, Nz = (10, 10, 10) # number of cells
+    grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    fts  = FieldTimeSeries{Center, Center, Center}(grid, 1:10)
+
+    @test parent(fts) isa Reactant.ConcreteIFRTArray
+    @test fts.times isa Reactant.ConcreteIFRTArray
+end
