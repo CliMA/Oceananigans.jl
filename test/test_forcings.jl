@@ -74,14 +74,14 @@ end
 """ Take one time step with a Forcing forcing function with parameters. """
 function time_step_with_single_field_dependent_forcing(arch, fld)
 
-    if fld == :A # not a prognostic field
-        forcing_field = :u
+    fld_forcing = Forcing((x, y, z, t, fld) -> -fld, field_dependencies=fld)
+
+    forcing = if fld == :A # not a prognostic field
+        (; T = fld_forcing)
     else
-        forcing_field = fld
+        (; fld => fld_forcing)
     end
 
-    fld_forcing(x, y, z, t, fld) = -fld
-    forcing = NamedTuple{tuple(forcing_field)}(fld_forcing)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     A = Field{Center, Center, Center}(grid)
     model = NonhydrostaticModel(; grid, forcing,
