@@ -29,4 +29,4 @@ fill_halo_regions!(::ConstantField, args...; kw...) = nothing
 
 LinearAlgebra.norm(a::ConstantField; condition = nothing) = abs(a.constant)
 LinearAlgebra.norm(::ZeroField{T}; condition = nothing) where T = zero(T)
-LinearAlgebra.norm(::OneField{T}; condition = nothing) where T = zero(T)
+LinearAlgebra.norm(::OneField{T}; condition = nothing) where T = one(T)
