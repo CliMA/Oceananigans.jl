@@ -14,7 +14,7 @@ using Oceananigans.TimeSteppers:
     tick!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
-    compute_flux_bc_tendencies!
+    cache_previous_tendencies!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
