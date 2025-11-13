@@ -268,10 +268,8 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
         particles = prognostic_state(model.particles),
         velocities = prognostic_state(model.velocities),
         tracers = prognostic_state(model.tracers),
-        pressure = prognostic_state(model.pressure),
         diffusivity_fields = prognostic_state(model.diffusivity_fields),
         timestepper = prognostic_state(model.timestepper),
-        auxiliary_fields = prognostic_state(model.auxiliary_fields),
         free_surface = prognostic_state(model.free_surface),
     )
 end
