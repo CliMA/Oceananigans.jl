@@ -60,7 +60,7 @@ fill_horizontal_velocity_halos!(args...) = nothing
 end
 
 @inline function barotropic_V(i, j, k, grid, ::Nothing, v)
-    V = 0
+    V = zero(grid)
     for k in 1:size(grid, 3)
         @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
     end
