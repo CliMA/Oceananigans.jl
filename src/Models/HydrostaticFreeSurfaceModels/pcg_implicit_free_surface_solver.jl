@@ -16,16 +16,17 @@ The preconditioned conjugate gradient iterative implicit free-surface solver.
 $(TYPEDFIELDS)
 """
 struct PCGImplicitFreeSurfaceSolver{V, S, R}
-    "The vertically-integrated lateral areas"
     vertically_integrated_lateral_areas :: V
-    "The preconditioned conjugate gradient solver"
     preconditioned_conjugate_gradient_solver :: S
-    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
 end
 
 architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
+
+# The assumption is that the horizontal spacings do not depend on the z-direction
+@inline integrated_x_area(i, j, k, grid) = column_depthᶠᶜᵃ(i, j, grid) * Δyᶠᶜᵃ(i, j, 1, grid)
+@inline integrated_y_area(i, j, k, grid) = column_depthᶜᶠᵃ(i, j, grid) * Δxᶜᶠᵃ(i, j, 1, grid)
 
 """
     PCGImplicitFreeSurfaceSolver(grid, settings)
@@ -44,16 +45,10 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
 
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_x_area, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(integrated_y_area, grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-
-    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-
-    Ax = vertically_integrated_lateral_areas.xᶠᶜᶜ
-    Ay = vertically_integrated_lateral_areas.yᶜᶠᶜ
-    fill_halo_regions!((Ax, Ay); signed=false)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
@@ -181,6 +176,14 @@ where  ̂ indicates a vertical integral, and
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
     @inbounds L_ηⁿ⁺¹[i, j, k_top] = Az_∇h²ᶜᶜᶜ(i, j, k_top, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_top] / (g * Δt^2)
 end
+
+"""
+Compute the horizontal divergence of vertically-uniform quantity using
+vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
+"""
+@inline Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η) =
+    (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
+     δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
 
 #####
 ##### Preconditioners
