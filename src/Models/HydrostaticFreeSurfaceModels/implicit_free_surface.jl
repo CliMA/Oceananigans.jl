@@ -7,8 +7,6 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!
-
 using Adapt
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
@@ -150,21 +148,8 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
     parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
-    return nothing
-end
-
-function local_compute_integrated_variables!(∫ᶻQ, velocities, arch)
-    u, v, _ = velocities
-    U, V = ∫ᶻQ
-
-    grid = u.grid
-
-    # Compute barotropic volume flux. 
-    foreach(mask_immersed_field!, velocities)
-    compute_barotropic_mode!(U, V, grid, u * Δy, v * Δx)
-
     return nothing
 end
