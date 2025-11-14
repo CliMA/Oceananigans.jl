@@ -262,8 +262,8 @@ function NonhydrostaticModel(; grid,
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
 
-    # Regularize forcing for model tracer and velocity fields.
-    forcing = model_forcing(model_fields; forcing...)
+    # Materialize forcing for model tracer and velocity fields.
+    forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
     # Initialize boundary mass fluxes container
     boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)

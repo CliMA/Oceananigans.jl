@@ -1,6 +1,7 @@
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: flattened_unique_values, Field
 using Oceananigans.Grids: AbstractGrid
+using Base: Returns
 
 #####
 ##### Utility for "extracting" FieldTimeSeries from large nested objects (eg models)
@@ -25,7 +26,7 @@ end
 extract_field_time_series(f::FieldTimeSeries) = f
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
-CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField)
+CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns)
 
 for T in CannotPossiblyContainFTS
     @eval extract_field_time_series(::$T) = nothing
