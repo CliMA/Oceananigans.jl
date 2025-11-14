@@ -52,7 +52,7 @@ fill_horizontal_velocity_halos!(args...) = nothing
 
 # If either U or V are not available, we compute them
 @inline function barotropic_U(i, j, k, grid, ::Nothing, u)
-    U = 0
+    U = zero(grid)
     for k in 1:size(grid, 3)
         @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
     end
