@@ -82,8 +82,22 @@ function compute!(comp::ComputedField, time=nothing)
     compute_at!(comp.operand, time)
 
     # Now perform the primary computation
-    @apply_regionally compute_computed_field!(comp)
+    compute_at!(comp, time)
 
+    return comp
+end
+
+function compute_at!(comp::ComputedField, time)
+    if time == zero(time) || time != comp.status.time
+        compute_at!(comp, nothing)
+        comp.status.time = time
+    end
+
+    return comp
+end
+
+function compute_at!(comp::ComputedField, ::Nothing)
+    @apply_regionally compute_computed_field!(comp)
     fill_halo_regions!(comp)
 
     return comp
