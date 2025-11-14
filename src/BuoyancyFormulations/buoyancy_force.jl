@@ -13,12 +13,12 @@ struct BuoyancyForce{M, G, B}
 end
 
 """
-    BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=true)
+    BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=false)
 
 Construct a `buoyancy` given a buoyancy `formulation`. Optional keyword argument `gravity_unit_vector`
 can be used to specify the direction of gravity (default `NegativeZDirection()`).
 The buoyancy acceleration acts in the direction opposite to gravity.
-If `materialize_gradients` is true (default), the buoyancy gradients will be precomputed and stored in fields for
+If `materialize_gradients` is true (default is false), the buoyancy gradients will be precomputed and stored in fields for
 performance reasons. For `materialize_gradients=true`, the `grid` argument must be provided.
 
 Example

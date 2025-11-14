@@ -220,9 +220,9 @@ function HydrostaticFreeSurfaceModel(; grid,
     G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
 
-    # Regularize forcing for model tracer and velocity fields.
+    # Materialize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)
-    forcing = model_forcing(model_fields; forcing...)
+    forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
