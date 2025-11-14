@@ -110,11 +110,11 @@ compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η) =
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, U, η)
     i, j = @index(Global, NTuple)
-    k_top = grid.Nz + 1
+    kᴺ   = grid.Nz + 1
     Az   = Azᶜᶜᶠ(i, j, k_top, grid)
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
-    @inbounds rhs[i, j, k_top] = (δx_U + δy_V - Az * η[i, j, k_top] / Δt) / (g * Δt)
+    @inbounds rhs[i, j, k_top] = (δx_U + δy_V - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
 end
 
 """

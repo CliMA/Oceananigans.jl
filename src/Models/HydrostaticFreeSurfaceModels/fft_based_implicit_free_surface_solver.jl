@@ -108,10 +108,10 @@ end
 
 @kernel function fft_implicit_free_surface_right_hand_side!(rhs, grid, g, Lz, Δt, U, η)
     i, j = @index(Global, NTuple)
-    k_top = grid.Nz+1
+    kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, k_top, grid)
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
 
-    @inbounds rhs[i, j, 1] = (δx_U + δy_V - Az * η[i, j, k_top] / Δt) / (g * Lz * Δt * Az)
+    @inbounds rhs[i, j, 1] = (δx_U + δy_V - Az * η[i, j, kᴺ+1] / Δt) / (g * Lz * Δt * Az)
 end
