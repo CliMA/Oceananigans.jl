@@ -97,8 +97,10 @@ function x_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY
         recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
         return OneDBuffer(send, recv)
     else
-        return (send = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))),
-                recv = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))))
+        Tz = size(parent(data), 3)
+        Ny = size(grid, 2)
+        FT = eltype(data)
+        return (send = on_architecture(arch, zeros(FT, H, Ny, Tz)), recv = on_architecture(arch, zeros(FT, H, Ny, Tz))) 
     end
 end
 
