@@ -74,7 +74,7 @@ end
 
 @testset "Model tests..." begin
     for arch in archs
-        grid = TripolarGrid(arch, size = (10, 10, 1))
+        grid = TripolarGrid(arch, size = (20, 20, 1))
 
         # Wrong free surface
         @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid)
@@ -98,7 +98,7 @@ end
 
         @test Hx == halo_size(grid, 1)
         @test Hy != halo_size(grid, 2)
-        @test Hy == length(free_surface.substepping.averaging_weights) + 1
+        @test Hy == length(free_surface.substepping.averaging_weights) + 3
 
         @test begin
             time_step!(model, 1.0)
