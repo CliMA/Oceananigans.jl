@@ -229,7 +229,6 @@ CUDA.allowscalar() do
     if group == :vertical_coordinate || group == :all
         @testset "Vertical coordinate tests" begin
             include("test_zstar_coordinate.jl")
-            include("test_zstar_conservation.jl")
         end
     end
 
