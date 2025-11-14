@@ -508,6 +508,11 @@ end
 FieldStatus() = FieldStatus(0.0)
 Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
 
+set_status!(status, time) = nothing
+
+set_status!(status::FieldStatus, time::Nothing) = nothing
+set_status!(status::FieldStatus, time) = status.time = time
+
 """
     FixedTime(time)
 

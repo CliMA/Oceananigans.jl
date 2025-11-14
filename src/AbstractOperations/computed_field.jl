@@ -4,7 +4,7 @@
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index, instantiated_location
+using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -86,7 +86,7 @@ function compute!(comp::ComputedField, time=nothing)
     fill_halo_regions!(comp)
 
     # Update status
-    isnothing(time) || comp.status.time = time
+    set_status!(comp.status, time)
 
     return comp
 end
