@@ -92,25 +92,25 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver,
-                                                        g, Δt, ∫ᶻQ, η)
+                                                        g, Δt, U, η)
 
     solver = implicit_solver.preconditioned_conjugate_gradient_solver
     arch = architecture(solver)
     grid = solver.grid
 
-    @apply_regionally compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η)
+    @apply_regionally compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η)
 
     return nothing
 end
 
-compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η) =
+compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η) =
     launch!(arch, grid, :xy,
             implicit_free_surface_right_hand_side!,
-            rhs, grid, g, Δt, ∫ᶻQ, η)
+            rhs, grid, g, Δt, U, η)
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, U, η)
     i, j = @index(Global, NTuple)
-    kᴺ   = grid.Nz + 1
+    kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
