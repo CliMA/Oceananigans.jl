@@ -207,7 +207,7 @@ function x_communication_buffer(arch, grid, data, H, ::MCBC)
     return OneDBuffer(send, recv)
 end
 
-function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX, TY}, data, H, ::DCBC) where {TX, TY}
+function y_communication_buffer(arch, grid, data, H, ::MCBC) 
     Tx, _, Tz = size(parent(data))
     FT = eltype(data)
     send = on_architecture(arch, zeros(FT, H, Tx, Tz))
