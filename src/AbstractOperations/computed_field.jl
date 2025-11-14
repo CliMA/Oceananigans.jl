@@ -75,30 +75,18 @@ end
     compute!(comp::ComputedField, time=nothing)
 
 Compute `comp.operand` and store the result in `comp.data`.
-If `time` then computation happens if `time != field.status.time`.
+If `time` then only compute dependency fields with `time != field.status.time`.
 """
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
     compute_at!(comp.operand, time)
 
     # Now perform the primary computation
-    compute_at!(comp, time)
-
-    return comp
-end
-
-function compute_at!(comp::ComputedField, time)
-    if time == zero(time) || time != comp.status.time
-        compute_at!(comp, nothing)
-        comp.status.time = time
-    end
-
-    return comp
-end
-
-function compute_at!(comp::ComputedField, ::Nothing)
     @apply_regionally compute_computed_field!(comp)
     fill_halo_regions!(comp)
+
+    # Update status
+    isnothing(time) || comp.status.time = time
 
     return comp
 end

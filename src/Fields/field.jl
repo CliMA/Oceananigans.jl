@@ -536,7 +536,6 @@ function compute_at!(field::Field, time)
     # Otherwise, compute only on initialization or if field.status.time is not current,
     elseif time == zero(time) || time != field.status.time
         compute!(field, time)
-        field.status.time = time
     end
 
     return field
