@@ -15,6 +15,8 @@ struct MultiRegionObject{R}
     regional_objects :: R
 end
 
+Base.eltype(mo::MultiRegionObject) = eltype(first(mo.regional_objects))
+
 #####
 ##### Convenience structs
 #####
