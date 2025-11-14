@@ -108,15 +108,13 @@ compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η) =
             implicit_free_surface_right_hand_side!,
             rhs, grid, g, Δt, ∫ᶻQ, η)
 
-""" Compute the divergence of fluxes Qu and Qv. """
-@inline flux_div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
-
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz + 1
-    Az = Azᶜᶜᶠ(i, j, k_top, grid)
-    δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    @inbounds rhs[i, j, k_top] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Δt)
+    Az   = Azᶜᶜᶠ(i, j, k_top, grid)
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+    @inbounds rhs[i, j, k_top] = (δx_U + δy_V - Az * η[i, j, k_top] / Δt) / (g * Δt)
 end
 
 """
