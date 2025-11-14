@@ -91,8 +91,11 @@ y_communication_buffer(arch, grid, data, H, bc) = nothing
 # passing all the corners in that case
 function x_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY}, data, H, ::DCBC) where {FT, TX, TY}
     if (arch.ranks[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
-        return OneDBuffer(on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))),
-                          on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))
+        _, Ty, Tz = size(parent(data))
+        FT = eltype(data)
+        send = on_architecture(arch, zeros(FT, H, Ty, Tz))
+        recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
+        return OneDBuffer(send, recv)
     else
         return (send = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))),
                 recv = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))))
