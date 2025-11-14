@@ -9,6 +9,7 @@ export
     VerticalScalarBiharmonicDiffusivity,
     HorizontalScalarBiharmonicDiffusivity,
     HorizontalDivergenceScalarBiharmonicDiffusivity,
+    HorizontalVectorInvariantScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
