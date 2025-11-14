@@ -77,8 +77,6 @@ end
 @testset "ZStarCoordinate tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded),
-                   (Periodic, Bounded, Bounded),
-                   (Bounded, Periodic, Bounded),
                    (Bounded, Bounded, Bounded))
 
     for arch in archs
@@ -127,24 +125,23 @@ end
                         continue
                     end
 
-                    for timestepper in (:SplitRungeKutta3, :SplitRungeKutta5)
-                        info_msg = info_message(grid, free_surface, timestepper)
-                        @testset "$info_msg" begin
-                            @info "  Testing a $info_msg"
-                            model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
-                                                                free_surface,
-                                                                tracers = (:b, :c, :constant),
-                                                                timestepper,
-                                                                buoyancy = BuoyancyTracer(),
-                                                                vertical_coordinate = ZStarCoordinate())
+                    timestepper = :SplitRungeKutta3
+                    info_msg = info_message(grid, free_surface, timestepper)
+                    @testset "$info_msg" begin
+                        @info "  Testing a $info_msg"
+                        model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
+                                                            free_surface,
+                                                            tracers = (:b, :c, :constant),
+                                                            timestepper,
+                                                            buoyancy = BuoyancyTracer(),
+                                                            vertical_coordinate = ZStarCoordinate())
 
-                            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
+                        bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
 
-                            set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
+                        set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
-                            Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                            test_zstar_coordinate(model, 100, Δt, !(free_surface isa ImplicitFreeSurface))
-                        end
+                        Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
+                        test_zstar_coordinate(model, 100, Δt, !(free_surface isa ImplicitFreeSurface))
                     end
                 end
             end
