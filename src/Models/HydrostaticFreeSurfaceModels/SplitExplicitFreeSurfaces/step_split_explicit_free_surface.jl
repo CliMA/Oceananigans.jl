@@ -1,6 +1,5 @@
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 using Oceananigans.Fields: instantiated_location
-using ..HydrostaticFreeSurfaceModels: barotropic_U, barotropic_V
 
 # Evolution Kernels
 #
