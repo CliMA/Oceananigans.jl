@@ -40,6 +40,31 @@ Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
 fill_horizontal_velocity_halos!(args...) = nothing
 
 #####
+##### Utilities to compute the vertically integrated ``barotropic'' velocities
+#####
+
+# If U and V are prognostic (for example in `SplitExplicitFreeSurface`), we use them
+@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]
+@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, k]
+
+# If either U or V are not available, we compute them
+@inline function barotropic_U(i, j, k, grid, ::Nothing, u)
+    U = zero(grid)
+    for k in 1:size(grid, 3)
+        @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
+    end
+    return U
+end
+
+@inline function barotropic_V(i, j, k, grid, ::Nothing, v)
+    V = zero(grid)
+    for k in 1:size(grid, 3)
+        @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
+    end
+    return V
+end
+
+#####
 ##### HydrostaticFreeSurfaceModel definition
 #####
 

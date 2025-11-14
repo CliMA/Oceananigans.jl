@@ -69,8 +69,6 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_x_area, grid)
     ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_y_area, grid)
 
-    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-
     left_hand_side = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
