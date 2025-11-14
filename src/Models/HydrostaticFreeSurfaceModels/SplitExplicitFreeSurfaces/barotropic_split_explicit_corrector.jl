@@ -81,14 +81,16 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     U̅ = free_surface.filtered_state.U̅
     V̅ = free_surface.filtered_state.V̅
 
-    compute_barotropic_mode!(U̅, V̅, grid, u, v)
-    launch!(architecture(grid), grid, :xyz, _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+    @apply_regionally begin
+        compute_barotropic_mode!(U̅, V̅, grid, u, v)
+        launch!(architecture(grid), grid, :xyz, _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+    end
 
     # Fill transport velocities 
     fill_halo_regions!((ũ, ṽ); async=true)
     
     # Update grid velocity and vertical transport velocity
-    update_vertical_velocities!(model.transport_velocities, model.grid, model)
+    @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
 
     return nothing
 end

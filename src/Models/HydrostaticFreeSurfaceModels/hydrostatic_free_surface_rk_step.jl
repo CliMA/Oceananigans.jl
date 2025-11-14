@@ -22,10 +22,10 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     compute_free_surface_tendency!(grid, model, free_surface)
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
-    @apply_regionally begin
-        # Compute z-dependent transport velocities
-        compute_transport_velocities!(model, free_surface)
+    # Compute z-dependent transport velocities
+    compute_transport_velocities!(model, free_surface)
 
+    @apply_regionally begin
         # compute tracer tendencies
         compute_tracer_tendencies!(model)
 

@@ -24,9 +24,11 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
     compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
+    # Update transport velocities
+    compute_transport_velocities!(model, model.free_surface)
+
     # Computing tracer tendencies
     @apply_regionally begin
-        compute_transport_velocities!(model, model.free_surface)
         compute_tracer_tendencies!(model)
 
         # Advance grid and velocities
