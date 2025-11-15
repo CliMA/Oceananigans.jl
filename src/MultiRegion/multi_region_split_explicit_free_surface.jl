@@ -28,8 +28,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     @apply_regionally u_bcs = barotropic_velocity_boundary_conditions(u_baroclinic)
     @apply_regionally v_bcs = barotropic_velocity_boundary_conditions(v_baroclinic)
 
-    U̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
-    V̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bcs)
+    U = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
+    V = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bcs)
     U̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
     V̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bcs)
     Ũ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
