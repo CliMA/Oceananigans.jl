@@ -173,12 +173,10 @@ end
 function prognostic_state(fs::ImplicitFreeSurface)
     return (
         η = prognostic_state(fs.η),
-        barotropic_volume_flux = prognostic_state(fs.barotropic_volume_flux),
     )
 end
 
 function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
     restore_prognostic_state!(fs.η, state.η)
-    restore_prognostic_state!(fs.barotropic_volume_flux, state.barotropic_volume_flux)
     return fs
 end
