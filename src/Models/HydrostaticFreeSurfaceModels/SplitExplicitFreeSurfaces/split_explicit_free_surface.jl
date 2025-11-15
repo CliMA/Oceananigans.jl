@@ -1,5 +1,6 @@
 using Oceananigans.Grids: with_halo
 import Oceananigans.Grids: on_architecture
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
@@ -349,4 +350,25 @@ for Type in (:SplitExplicitFreeSurface,
             return $Type(args...)
         end
     end
+end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::SplitExplicitFreeSurface)
+    return (
+        η = prognostic_state(fs.η),
+        barotropic_velocities = prognostic_state(fs.barotropic_velocities),
+        filtered_state = prognostic_state(fs.filtered_state),
+        timestepper = prognostic_state(fs.timestepper),
+    )
+end
+
+function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
+    restore_prognostic_state!(fs.η, state.η)
+    restore_prognostic_state!(fs.barotropic_velocities, state.barotropic_velocities)
+    restore_prognostic_state!(fs.filtered_state, state.filtered_state)
+    restore_prognostic_state!(fs.timestepper, state.timestepper)
+    return fs
 end

@@ -4,6 +4,7 @@ using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
 
 import Base: show
+import Oceananigans: restore_prognostic_state!
 import Oceananigans.Units: Time
 import Oceananigans.Fields: set!
 
@@ -144,3 +145,13 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            last_stage_Δt = clock.last_stage_Δt,
                                            iteration     = clock.iteration,
                                            stage         = clock.stage)
+
+"""Restore the clock from a checkpointed state."""
+function restore_prognostic_state!(clock::Clock, state)
+    clock.time = state.time
+    clock.iteration = state.iteration
+    clock.last_Δt = state.last_Δt
+    clock.last_stage_Δt = state.last_stage_Δt
+    clock.stage = state.stage
+    return clock
+end
