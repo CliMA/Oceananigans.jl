@@ -93,7 +93,7 @@ function random_divergence_free_source_term(grid)
 
     arch = architecture(grid)
 
-    compute_w_from_continuity!(U, arch, grid)
+    compute_w_from_continuity!(U, grid)
     fill_halo_regions!(Rw)
 
     # Compute the right hand side R = ∇⋅U

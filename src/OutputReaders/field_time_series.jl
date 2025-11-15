@@ -656,6 +656,7 @@ function FieldTimeSeries(path::String, name::String;
 
         for part in 2:Nparts
             path = part_paths[part]
+            @show path
             file = jldopen(path; reader_kw...)
             part_iterations = parse.(Int, keys(file["timeseries/t"]))
             part_times = [file["timeseries/t/$i"] for i in part_iterations]

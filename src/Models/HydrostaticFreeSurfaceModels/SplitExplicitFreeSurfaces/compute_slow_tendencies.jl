@@ -48,33 +48,24 @@ end
 ##### Compute slow tendencies with a RK3 timestepper
 #####
 
-@inline function G_vertical_integral(i, j, grid, Gⁿ, ℓx, ℓy, ℓz)
-    immersed = peripheral_node(i, j, 1, grid, ℓx, ℓy, ℓz)
-
-    Gⁿ⁺¹ = Δz(i, j, 1, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, 1])
-
-    @inbounds for k in 2:grid.Nz
-        immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
-        Gⁿ⁺¹    += Δz(i, j, k, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, k])
-    end
-
-    return Gⁿ⁺¹
-end
-
-@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ)
+@kernel function _compute_integrated_rk_tendencies!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ)
     i, j = @index(Global, NTuple)
-    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
-    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+
+    locU = (Face(), Center(), Center())
+    locV = (Center(), Face(), Center())
+
+    @inbounds GUⁿ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * Guⁿ[i, j, 1] * !peripheral_node(i, j, 1, grid, locU...)
+    @inbounds GVⁿ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * Gvⁿ[i, j, 1] * !peripheral_node(i, j, 1, grid, locV...)
+
+    for k in 2:grid.Nz
+        @inbounds GUⁿ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * Guⁿ[i, j, k] * !peripheral_node(i, j, k, grid, locU...)
+        @inbounds GVⁿ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * Gvⁿ[i, j, k] * !peripheral_node(i, j, k, grid, locV...)
+    end
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::SplitRungeKutta3TimeStepper)
-
-    active_cells_map = get_active_column_map(grid)    
-    launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
-            GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map)
-
-    return nothing
-end
+@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper) = 
+    launch!(architecture(grid), grid, :xy, _compute_integrated_rk_tendencies!, 
+            GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_column_map(grid))
 
 #####
 ##### Free surface setup
@@ -93,9 +84,7 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
     baroclinic_timestepper = model.timestepper
 
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
-    
-    fields_to_fill = (GUⁿ, GVⁿ)
-    fill_halo_regions!(fields_to_fill; async=true)
+    fill_halo_regions!((GUⁿ, GVⁿ); async=true) 
 
     return nothing
 end

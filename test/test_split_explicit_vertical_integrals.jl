@@ -24,7 +24,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
         state = sefs.filtered_state
         barotropic_velocities = sefs.barotropic_velocities
-        η̅, U̅, V̅ = state.η, state.U, state.V
+        η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
         U, V = barotropic_velocities
 
         u = Field{Face, Center, Center}(grid)
