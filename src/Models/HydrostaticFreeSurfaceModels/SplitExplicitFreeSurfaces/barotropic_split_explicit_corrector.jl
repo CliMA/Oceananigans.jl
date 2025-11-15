@@ -27,8 +27,12 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
     η     = free_surface.η
     U, V  = free_surface.barotropic_velocities
-    U̅, V̅  = state.U, state.V
+    U̅, V̅  = state.U̅, state.V̅
     arch  = architecture(grid)
+
+    # Preparing velocities for the barotropic correction
+    mask_immersed_field!(u)
+    mask_immersed_field!(v)
 
     # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
     # so we use the filtered velocities as "work arrays" to store the vertical integrals
@@ -44,14 +48,9 @@ end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, grid)
     i, j, k = @index(Global, NTuple)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    @inbounds begin
-        Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
-        Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
-
-        u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
-        v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
-    end
+    @inbounds u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
+    @inbounds v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
 end
-
-
