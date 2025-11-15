@@ -188,12 +188,12 @@ function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     FT = eltype(data)
     Nx = size(grid, 1)
     if (ranks(arch)[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
-        send = on_architecture(arch, zeros(FT, H, Tx, Tz))
-        recv = on_architecture(arch, zeros(FT, H, Tx, Tz))
+        send = on_architecture(arch, zeros(FT, Tx, H, Tz))
+        recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
         return OneDBuffer(send, recv)
     else
-        send = on_architecture(arch, zeros(FT, H, Nx, Tz))
-        recv = on_architecture(arch, zeros(FT, H, Nx, Tz))
+        send = on_architecture(arch, zeros(FT, Nx, H, Tz))
+        recv = on_architecture(arch, zeros(FT, Nx, H, Tz))
         return TwoDBuffer(send, recv)
     end
 end
@@ -210,8 +210,8 @@ end
 function y_communication_buffer(arch, grid, data, H, ::MCBC) 
     Tx, _, Tz = size(parent(data))
     FT = eltype(data)
-    send = on_architecture(arch, zeros(FT, H, Tx, Tz))
-    recv = on_architecture(arch, zeros(FT, H, Tx, Tz))
+    send = on_architecture(arch, zeros(FT, Tx, H, Tz))
+    recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
     return OneDBuffer(send, recv)
 end
 
