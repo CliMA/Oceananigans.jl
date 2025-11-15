@@ -433,7 +433,7 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
     return nothing
 end
 
-for arch in [CPU(), GPU()]
+for arch in archs
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
             @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
