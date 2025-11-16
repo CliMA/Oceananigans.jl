@@ -77,6 +77,7 @@ const ScannedComputedField = Field{<:Any, <:Any, <:Any, <:Scan}
 function compute!(field::ScannedComputedField, time=nothing)
     s = field.operand
     compute_at!(s.operand, time)
+    set_status!(field.status, time)
 
     if s.type isa AbstractReducing
         s.scan!(field, s.operand)
