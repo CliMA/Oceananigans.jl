@@ -102,6 +102,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2025) [DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations](https://doi.org/10.22541/essoar.176314951.18114616/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176314951.18114616/v1](https://doi.org/10.22541/essoar.176314951.18114616/v1)
+
 1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI:[10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
 
 1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI:[10.31223/X51N08](https://doi.org/10.31223/X51N08).
