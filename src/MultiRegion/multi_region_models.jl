@@ -38,7 +38,6 @@ Types = (:HydrostaticFreeSurfaceModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
-         :SplitExplicitFreeSurface,
          :PrescribedVelocityFields,
          :ConjugateGradientSolver,
          :CrossAndSelfUpwinding,
@@ -56,6 +55,24 @@ for T in Types
     end
 end
 
+@inline _getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
+    SplitExplicitFreeSurface{E}(getregion(fs.η, r), 
+                                getregion(fs.barotropic_velocities, r),
+                                getregion(fs.filtered_state, r),
+                                getregion(fs.gravitational_acceleration, r),
+                                getregion(fs.kernel_parameters, r),
+                                getregion(fs.substepping, r),
+                                getregion(fs.timestepper, r))
+
+@inline getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
+    SplitExplicitFreeSurface{E}(_getregion(fs.η, r), 
+                                _getregion(fs.barotropic_velocities, r),
+                                _getregion(fs.filtered_state, r),
+                                _getregion(fs.gravitational_acceleration, r),
+                                _getregion(fs.kernel_parameters, r),
+                                _getregion(fs.substepping, r),
+                                _getregion(fs.timestepper, r))
+  
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
 function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation; 
                        gravity_unit_vector=NegativeZDirection(), 
