@@ -169,7 +169,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     # Fill all the barotropic state
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
-    fill_halo_regions!((U, V, η); async=true)
+    fill_halo_regions!((U, V); async=true)
+    fill_halo_regions!(η;  async=true)
 
     return nothing
 end
