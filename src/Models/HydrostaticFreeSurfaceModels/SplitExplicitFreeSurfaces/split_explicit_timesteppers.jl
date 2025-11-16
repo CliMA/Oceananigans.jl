@@ -149,7 +149,6 @@ end
     @inbounds t.Uᵐ⁻¹[i, j, k] =      U[i, j, k]
     @inbounds t.Vᵐ⁻²[i, j, k] = t.Vᵐ⁻¹[i, j, k]
     @inbounds t.Vᵐ⁻¹[i, j, k] =      V[i, j, k]
-
     return nothing
 end
 
@@ -157,6 +156,5 @@ end
     @inbounds t.ηᵐ⁻²[i, j, k] = t.ηᵐ⁻¹[i, j, k]
     @inbounds t.ηᵐ⁻¹[i, j, k] =   t.ηᵐ[i, j, k]
     @inbounds   t.ηᵐ[i, j, k] =      η[i, j, k]
-
     return nothing
 end
