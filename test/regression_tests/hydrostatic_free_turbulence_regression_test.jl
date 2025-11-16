@@ -114,7 +114,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     )
 
     if !regenerate_data
-        datadep_path = "regression_test_data_new/" * output_filename
+        datadep_path = "regression_test_data/" * output_filename
         regression_data_path = @datadep_str datadep_path
         file = jldopen(regression_data_path)
 
