@@ -320,12 +320,14 @@ end
 function scatter_local_grids(global_grid::RectilinearGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
+    global_sz = pop_flat_elements(global_sz, topo)
     return RectilinearGrid(arch, eltype(global_grid); size=global_sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
 function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
+    global_sz = pop_flat_elements(global_sz, topo)
     return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x,
                                  latitude=y, z=z, halo=halo, topology=topo, radius=global_grid.radius)
 end
