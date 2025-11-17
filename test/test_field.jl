@@ -531,7 +531,6 @@ end
         for arch in archs, FT in float_types
             # Make sure this doesn't require scalar indexing
             GPUArraysCore.allowscalar(false)
-            FT = Float32
 
             rect_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), x=(0, 1_000), y=(0, 1_000), z=(0, 1_000))
 
