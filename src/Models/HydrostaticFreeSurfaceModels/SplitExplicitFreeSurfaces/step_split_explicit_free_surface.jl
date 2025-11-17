@@ -95,7 +95,6 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, c
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
             
-            # Advance barotropic velocities
             barotropic_velocity_kernel!(transport_weight, converted_U_args...)
             free_surface_kernel!(averaging_weight, converted_η_args...)
         end
