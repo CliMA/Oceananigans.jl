@@ -153,7 +153,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
         time_step!(model, Δt, euler=false)
     end
 
-    datadep_path = "regression_test_data/" * prefix * "_iteration$(spinup_steps+test_steps).jld2"
+    datadep_path = "regression_truth_data/" * prefix * "_iteration$(spinup_steps+test_steps).jld2"
     final_filename = @datadep_str datadep_path
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
