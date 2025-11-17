@@ -132,7 +132,6 @@ end
 
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     # Convert to CPU array if needed to avoid scalar indexing errors on GPU arrays
-    Main.@infiltrate
     ξ_cpu = ξ isa Array ? ξ : Array(ξ)
     ξ = FT.(ξ_cpu)
 
