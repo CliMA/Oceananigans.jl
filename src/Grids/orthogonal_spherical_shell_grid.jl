@@ -349,7 +349,7 @@ end
     OrthogonalSphericalShellGrid(arch = CPU(), FT = Oceananigans.defaults.FloatType;
                                  size,
                                  z,
-                                 radius = R_Earth,
+                                 radius = Oceananigans.defaults.planet_radius,
                                  conformal_mapping = nothing,
                                  halo = (3, 3, 3),
                                  topology = (Bounded, Bounded, Bounded))
