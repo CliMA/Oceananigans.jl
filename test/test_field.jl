@@ -145,18 +145,24 @@ function run_field_interpolation_tests(grid)
 
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
-
     for f in (u, v, w, c)
-        x, y, z = nodes(f, reshape=true)
         loc = Tuple(L() for L in location(f))
 
+        result = true
         @allowscalar begin
-            ℑf = interpolate_xyz.(x, y, z, Ref(f.data), Ref(loc), Ref(f.grid))
-        end
+            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
+                x, y, z = node(i, j, k, f)
+                ℑf = interpolate((x, y, z), f, loc, f.grid)
+                true_value = interior(f, i, j, k)[]
 
-        ℑf_cpu = Array(ℑf)
-        f_interior_cpu = Array(interior(f))
-        @test all(isapprox.(ℑf_cpu, f_interior_cpu, atol=tolerance))
+                # If at last one of the points is not approximately equal to the true value, set result to false and break
+                if !isapprox(ℑf, true_value, atol=tolerance)
+                    result = false
+                    break
+                end
+            end
+        end
+        @test result
     end
 
     # Check that interpolating between grid points works as expected.
@@ -175,11 +181,19 @@ function run_field_interpolation_tests(grid)
     @allowscalar begin
         for f in (u, v, w, c)
             loc = Tuple(L() for L in location(f))
-            ℑf = interpolate_xyz.(xs, ys, zs, Ref(f.data), Ref(loc), Ref(f.grid))
-            F = func.(xs, ys, zs)
-            F = Array(F)
-            ℑf = Array(ℑf)
-            @test all(isapprox.(ℑf, F, atol=tolerance))
+            result = true
+            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
+                xi, yi, zi = node(i, j, k, f)
+                ℑf = interpolate((xi, yi, zi), f, loc, f.grid)
+                true_value = func(xi, yi, zi)
+
+                # If at last one of the points is not approximately equal to the true value, set result to false and break
+                if !isapprox(ℑf, true_value, atol=tolerance)
+                    result = false
+                    break
+                end
+            end
+            @test result
 
             # for the next test we first call fill_halo_regions! on the
             # original field `f`
