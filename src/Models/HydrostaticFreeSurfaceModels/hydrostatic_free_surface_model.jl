@@ -281,7 +281,7 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 function initialize!(model::HydrostaticFreeSurfaceModel) 
-    initialize_vertical_coordinate!(model.vertical_coordinate, grid)
+    initialize_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     initialize_free_surface!(model.free_surface, model.grid, model.velocities)
     return nothing
 end

@@ -153,7 +153,7 @@ end
 initialize_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
 # Update the grid spacings for ZStar. We assume that the vertical grid velocity (∂t_σ) is zero
-function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableVerticalDiscretization)
+function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
