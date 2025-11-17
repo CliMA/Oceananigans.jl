@@ -63,38 +63,42 @@ If you use Oceananigans for your research, teaching, or fun 🤩, everyone in ou
 if you credit Oceananigans by name.
 
 The community has published a number of articles describing the development of Oceananigans,
-including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://arxiv.org/abs/2502.14148) that presents an overview of all the things that make Oceananigans unique:
+including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://doi.org/10.48550/arXiv.2502.14148) that presents an overview of all the things that make Oceananigans unique:
 
 > "High-level, high-resolution ocean modeling at all scales with Oceananigans"
 >
 > by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
 > Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
-> John Marshall, Raffaele Ferrari
+> Siddhartha Bishnu, John Marshall, and Raffaele Ferrari
 >
-> submitted to the Journal of Advances in Modeling Earth Systems, arXiv:2502.14148
+> submitted to the Journal of Advances in Modeling Earth Systems, arXiv:[2502.14148](https://doi.org/10.48550/arXiv.2502.14148)
 
-Please cite this overview paper if you use Oceananigans in published work.
+Please cite this 👆 overview paper if you use Oceananigans in published work.
 
 We've also submitted a number of model development papers. Please cite these if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
-* **Silvestri et al., ["A new WENO-Based momentum advection scheme for simulations of ocean mesoscale turbulence"](https://doi.org/10.1029/2023MS004130).**
+* **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
+
+  *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
+
+* **Silvestri et al. (2025), ["A new WENO-Based momentum advection scheme for simulations of ocean mesoscale turbulence"](https://doi.org/10.1029/2023MS004130).**
 
   *This paper describes the development of `WENOVectorInvariant()` advection scheme, which can be used as the
   `momentum_advection` scheme for `HydrostaticFreeSurfaceModel`.*
 
-* **Silvestri et al., ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://doi.org/10.1029/2024MS004465).**
+* **Silvestri et al. (2025), ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://doi.org/10.1029/2024MS004465).**
 
   *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm, including the implementation
   of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
   global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
 
-* **Wagner et al., ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://doi.org/10.1029/2024MS004522).**
+* **Wagner et al. (2025), ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://doi.org/10.1029/2024MS004522).**
 
   *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was automatically calibrated to
   a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
 
-* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
+* **Ramadhan et al. (2020), ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
 
   *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
@@ -102,9 +106,11 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI:[10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
+1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2025) [DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations](https://doi.org/10.22541/essoar.176314951.18114616/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176314951.18114616/v1](https://doi.org/10.22541/essoar.176314951.18114616/v1)
 
-1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI:[10.31223/X51N08](https://doi.org/10.31223/X51N08).
+1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI: [10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
+
+1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI: [10.31223/X51N08](https://doi.org/10.31223/X51N08).
 
 1. Zhang, Y., Kang, W., and Marshall, J. (2025) [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.48550/arXiv.2510.25988), _arXiv preprint_, arXiv:2510.25988. DOI: [10.48550/arXiv.2510.25988](https://doi.org/10.48550/arXiv.2510.25988)
 
@@ -116,10 +122,10 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
 
-1. Wagner, G. L. and Constantinou, N. C. (2025) [Phenomenology of decaying turbulence beneath surface waves](https://doi.org/10.1017/jfm.2025.10649), _Journal of Fluid Mechanics_, **1020**, A51. DOI:[10.1017/jfm.2025.10649](https://doi.org/10.1017/jfm.2025.10649)
+1. Wagner, G. L. and Constantinou, N. C. (2025) [Phenomenology of decaying turbulence beneath surface waves](https://doi.org/10.1017/jfm.2025.10649), _Journal of Fluid Mechanics_, **1020**, A51. DOI: [10.1017/jfm.2025.10649](https://doi.org/10.1017/jfm.2025.10649)
 
 1. de la Calle, E. and García, C. (2025) [Evaluation of Juliana Tool: A translator for Julia’s CUDA.jl code into KernelAbstraction.jl](https://doi.org/10.1016/j.future.2025.107813), _Future Generation Computer Systems_,
-**171**, 107813. DOI:[10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
+**171**, 107813. DOI: [10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
 
 1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
 
