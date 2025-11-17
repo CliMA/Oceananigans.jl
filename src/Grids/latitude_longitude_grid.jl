@@ -652,10 +652,10 @@ end
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
-@inline λnodes(grid::LLG, ℓx::F; with_halos=false, indices=Colon()) = getindex(_property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
-@inline λnodes(grid::LLG, ℓx::C; with_halos=false, indices=Colon()) = getindex(_property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
-@inline φnodes(grid::LLG, ℓy::F; with_halos=false, indices=Colon()) = getindex(_property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
-@inline φnodes(grid::LLG, ℓy::C; with_halos=false, indices=Colon()) = getindex(_property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline λnodes(grid::LLG, ℓx::F; with_halos=false, indices=Colon()) = view(_property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline λnodes(grid::LLG, ℓx::C; with_halos=false, indices=Colon()) = view(_property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline φnodes(grid::LLG, ℓy::F; with_halos=false, indices=Colon()) = view(_property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline φnodes(grid::LLG, ℓy::C; with_halos=false, indices=Colon()) = view(_property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
 
 # Flat topologies
 XFlatLLG = LatitudeLongitudeGrid{<:Any, Flat}

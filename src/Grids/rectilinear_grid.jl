@@ -511,10 +511,10 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     return (x, y, z)
 end
 
-@inline xnodes(grid::RG, ℓx::F; with_halos=false, indices=Colon()) = getindex(_property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
-@inline xnodes(grid::RG, ℓx::C; with_halos=false, indices=Colon()) = getindex(_property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
-@inline ynodes(grid::RG, ℓy::F; with_halos=false, indices=Colon()) = getindex(_property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
-@inline ynodes(grid::RG, ℓy::C; with_halos=false, indices=Colon()) = getindex(_property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline xnodes(grid::RG, ℓx::F; with_halos=false, indices=Colon()) = view(_property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline xnodes(grid::RG, ℓx::C; with_halos=false, indices=Colon()) = view(_property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline ynodes(grid::RG, ℓy::F; with_halos=false, indices=Colon()) = view(_property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline ynodes(grid::RG, ℓy::C; with_halos=false, indices=Colon()) = view(_property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
 
 # convenience
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = xnodes(grid, ℓx; with_halos, indices)
