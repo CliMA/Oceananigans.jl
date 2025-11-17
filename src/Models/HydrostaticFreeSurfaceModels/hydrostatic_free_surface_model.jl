@@ -248,7 +248,7 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel; kw...)
         synchronize_communication!(field)
     end
 
-    # Finally, initialize the model (e.g., free surface)
+    # Finally, initialize the model (e.g., free surface, vertical coordinate...)
     initialize!(model)
     return nothing
 end
@@ -280,7 +280,11 @@ validate_momentum_advection(momentum_advection::Nothing,         grid::Orthogona
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+function initialize!(model::HydrostaticFreeSurfaceModel) 
+    initialize_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+    return nothing
+end
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities

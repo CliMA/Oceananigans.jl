@@ -144,3 +144,17 @@ end
 
 @inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
+
+#####
+##### Initialize vertical coordinate
+#####
+
+# Do nothing in case of a `ZCoordinate`
+initialize_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
+
+# Update the grid spacings for ZStar. We assume that the vertical grid velocity (∂t_σ) is zero
+function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    return nothing
+end
