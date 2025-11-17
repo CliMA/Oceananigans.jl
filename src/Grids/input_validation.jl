@@ -131,7 +131,10 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 end
 
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
-    ξ = FT.(ξ)
+    # Convert to CPU array if needed to avoid scalar indexing errors on GPU arrays
+    Main.@infiltrate
+    ξ_cpu = ξ isa Array ? ξ : Array(ξ)
+    ξ = FT.(ξ_cpu)
 
     ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should have increasing values."))
 
@@ -152,7 +155,11 @@ function validate_dimension_specification(T, ξ::Union{Function, CallableDiscret
     return ξ
 end
 
-validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT) = (FT(ξ[1]), FT(ξ[1]))
+function validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT)
+    # Convert to CPU array if needed to avoid scalar indexing errors on GPU arrays
+    ξ_cpu = ξ isa Array ? ξ : Array(ξ)
+    return (FT(ξ_cpu[1]), FT(ξ_cpu[1]))
+end
 validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) = (FT(ξ(1)), FT(ξ(1)))
 validate_dimension_specification(::Type{Flat}, ξ::Tuple,  dir, N, FT) = map(FT, ξ)
 validate_dimension_specification(::Type{Flat}, ::Nothing, dir, N, FT) = nothing
