@@ -72,4 +72,3 @@ iterate_split_explicit!(free_surface, grid::MultiRegionGrids, GUⁿ, GVⁿ, Δτ
 @inline augmented_kernel_offsets(grid, ::XPartition) = (- halo_size(grid)[1] + 1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, - halo_size(grid)[2] + 1)
 @inline augmented_kernel_offsets(grid, ::CubedSpherePartition) = (- halo_size(grid)[2] + 1, - halo_size(grid)[2] + 1)
-
