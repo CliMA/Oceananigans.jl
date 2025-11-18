@@ -239,6 +239,12 @@ function HydrostaticFreeSurfaceModel(; grid,
 end
 
 function initialization_update_state!(model::HydrostaticFreeSurfaceModel; kw...) 
+
+    # Finally, initialize the model (e.g., free surface, vertical coordinate...)
+    initialize!(model)
+
+    # Fill the halos of all prognostic fields synchronously for good measure
+    fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); async=false)
     
     # Update the state of the model
     update_state!(model; kw...)
@@ -248,8 +254,6 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel; kw...)
         synchronize_communication!(field)
     end
 
-    # Finally, initialize the model (e.g., free surface, vertical coordinate...)
-    initialize!(model)
     return nothing
 end
 
