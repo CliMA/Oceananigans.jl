@@ -37,7 +37,6 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
     for field in free_surface.filtered_state
         fill!(field, 0)
     end
-       
     return nothing
 end
 
@@ -61,6 +60,5 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
     for field in free_surface.filtered_state
         fill!(field, 0)
     end
-       
     return nothing
 end

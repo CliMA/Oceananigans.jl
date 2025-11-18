@@ -96,7 +96,6 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, c
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
             
-            # Advance barotropic velocities
             barotropic_velocity_kernel!(transport_weight, converted_U_args...)
             free_surface_kernel!(averaging_weight, converted_η_args...)
         end
@@ -170,7 +169,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     # Fill all the barotropic state
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
-    fill_halo_regions!((U, V, η); async=true)
+    fill_halo_regions!((U, V); async=true)
+    fill_halo_regions!(η;  async=true)
 
     return nothing
 end
