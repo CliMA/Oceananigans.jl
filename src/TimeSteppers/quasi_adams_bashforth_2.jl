@@ -121,12 +121,12 @@ Time step fields via the 2nd-order quasi Adams-Bashforth method
 
     FT = eltype(u)
     Δt = convert(FT, Δt)
-    one_point_five = convert(FT, 1.5)
-    oh_point_five  = convert(FT, 0.5)
+    α = 3*one(FT)/2 + χ
+    β = 1*one(FT)/2 + χ
     not_euler = χ != convert(FT, -0.5) # use to prevent corruption by leftover NaNs in G⁻
 
     @inbounds begin
-        Gu = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k] * not_euler
+        Gu = α * Gⁿ[i, j, k] - β * G⁻[i, j, k] * not_euler
         u[i, j, k] += Δt * Gu
     end
 end
