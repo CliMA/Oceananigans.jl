@@ -72,10 +72,11 @@ end
 defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-function defVar(ds, name, field::AbstractField;
+function defVar(ds, field_name, field::AbstractField;
                 time_dependent=false,
                 with_halos=false,
                 dimension_name_generator = trilocation_dim_name,
+                write_data=true,
                 kwargs...)
     field_cpu = on_architecture(CPU(), field) # Need to bring field to CPU in order to write it to NetCDF
     if with_halos
@@ -91,7 +92,11 @@ function defVar(ds, name, field::AbstractField;
 
     squeezed_field_data = squeeze_reduced_dimensions(field_data, effective_reduced_dimensions(field))
     squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
-    defVar(ds, name, squeezed_reshaped_field_data, all_dims; kwargs...)
+    if write_data
+        defVar(ds, field_name, squeezed_reshaped_field_data, all_dims; kwargs...)
+    else
+        defVar(ds, field_name, eltype(squeezed_reshaped_field_data), all_dims; kwargs...)
+    end
 end
 
 #####
@@ -1341,11 +1346,11 @@ function define_output_variable!(dataset, output, name, array_type,
 end
 
 """ Defines empty field variable. """
-function define_output_variable!(dataset, output::AbstractField, name, array_type,
+function define_output_variable!(dataset, output::AbstractField, field_name, array_type,
                                  deflatelevel, attrib, dimensions, filepath,
                                  dimension_name_generator, time_dependent, with_halos)
 
-    defVar(dataset, name, output; time_dependent, with_halos, deflatelevel, attrib)
+    defVar(dataset, field_name, output; time_dependent, with_halos, deflatelevel, attrib, write_data=false)
     return nothing
 end
 
