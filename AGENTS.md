@@ -85,6 +85,7 @@ Pkg.test("Oceananigans")
 
 # CPU-only (disable GPU)
 ENV["CUDA_VISIBLE_DEVICES"] = "-1"
+ENV["TEST_ARCHITECTURE"] = "CPU"
 Pkg.test("Oceananigans")
 ```
 
