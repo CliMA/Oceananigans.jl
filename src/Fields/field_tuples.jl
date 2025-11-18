@@ -56,8 +56,8 @@ Fill halo regions for all `fields`. The algorithm:
 """
 function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
 
-    for field in fields
-        fill_halo_regions!(field, args...; kwargs...)
+    for i in eachindex(fields)
+        @inbounds fill_halo_regions!(fields[i], args...; kwargs...)
     end
 
     return nothing
