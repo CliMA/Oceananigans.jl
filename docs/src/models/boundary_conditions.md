@@ -29,8 +29,8 @@ julia> grid = RectilinearGrid(size=(16, 16, 16), x=(0, 2π), y=(0, 1), z=(0, 1),
 ├── Bounded  y ∈ [0.0, 1.0]     regularly spaced with Δy=0.0625
 └── Bounded  z ∈ [0.0, 1.0]     regularly spaced with Δz=0.0625
 
-julia> no_slip_bc = ValueBoundaryCondition(0.0)
-ValueBoundaryCondition: 0.0
+julia> no_slip_bc = ValueBoundaryCondition(0)
+ValueBoundaryCondition: 0
 ```
 
 A "no-slip" [`BoundaryCondition`](@ref) specifies that velocity components tangential to `Bounded`
@@ -153,18 +153,18 @@ The default boundary condition can be changed by passing a positional argument t
 as in
 
 ```jldoctest
-julia> no_slip_bc = ValueBoundaryCondition(0.0)
-ValueBoundaryCondition: 0.0
+julia> no_slip_bc = ValueBoundaryCondition(0)
+ValueBoundaryCondition: 0
 
 julia> free_slip_surface_bcs = FieldBoundaryConditions(no_slip_bc, top=FluxBoundaryCondition(nothing))
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── east: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
-├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+├── west: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── east: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ├── top: FluxBoundaryCondition: Nothing
-└── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+└── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ```
 
 ## Boundary condition structures
@@ -195,8 +195,8 @@ In this section we illustrate usage of the different [`BoundaryCondition`](@ref)
 ### 1. Constant `Value` (Dirchlet) boundary condition
 
 ```jldoctest bcs
-julia> constant_T_bc = ValueBoundaryCondition(20.0)
-ValueBoundaryCondition: 20.0
+julia> constant_T_bc = ValueBoundaryCondition(20)
+ValueBoundaryCondition: 20
 ```
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
@@ -398,7 +398,7 @@ julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topo
 julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
                                        bottom = ValueBoundaryCondition(-0.1));
 
-julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20.0),
+julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01));
 
 julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)

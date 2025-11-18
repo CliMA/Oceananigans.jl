@@ -62,7 +62,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     Vⁿ   = dissipation.diffusive_fluxes.Vⁿ
     Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹
 
-    D = model.diffusivity_fields
+    D = model.closure_fields
     B = model.buoyancy
     clk  = model.clock
     clo  = model.closure

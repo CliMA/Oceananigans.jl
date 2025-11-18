@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Advection: VelocityStencil
-using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, R_Earth
+using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver
 
@@ -67,8 +67,6 @@ for N in 10:10:250
 
     implicit_free_surface_solvers = (:FastFourierTransform,
                                      :PreconditionedConjugateGradient,
-                                     :HeptadiagonalIterativeSolver,
-                                     :HeptadiagonalIterativeSolver_withMGpreconditioner,
                                      :PreconditionedConjugateGradient_withFFTpreconditioner,
                                     )
 
@@ -87,8 +85,6 @@ for N in 10:10:250
         if implicit_free_surface_solver == :PreconditionedConjugateGradient_withFFTpreconditioner
             fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner, reltol=sqrt(eps(eltype(grid))), abstol=0)
-        elseif implicit_free_surface_solver == :HeptadiagonalIterativeSolver
-            free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver, tolerance=sqrt(eps(eltype(grid))))
         else
             free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver, reltol=sqrt(eps(eltype(grid))), abstol=0)
         end
@@ -112,7 +108,8 @@ for N in 10:10:250
             δy = 50kilometers
         else
             δφ = 0.5 # degrees
-            δy = R_Earth * deg2rad(δφ)
+            R = Oceananigans.defaults.planet_radius
+            δy = R * deg2rad(δφ)
         end
 
         δb = δy * M²

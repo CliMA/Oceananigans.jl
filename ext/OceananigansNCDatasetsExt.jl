@@ -2,28 +2,26 @@ module OceananigansNCDatasetsExt
 
 using NCDatasets
 
-using Dates: AbstractTime, UTC, now
+using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
+using SeawaterPolynomials: BoussinesqEquationOfState
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.Architectures: CPU, GPU
-using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Architectures: CPU, GPU, on_architecture
+using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location
+using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-                          parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
+                          parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
                           constructor_arguments
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
                           versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
-using SeawaterPolynomials: BoussinesqEquationOfState
-
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
@@ -40,13 +38,72 @@ using Oceananigans.OutputWriters:
     fetch_and_convert_output,
     show_array_type
 
+import NCDatasets: defVar
 import Oceananigans: write_output!
-import Oceananigans.OutputWriters: NetCDFWriter, write_grid_reconstruction_data!, convert_for_netcdf, materialize_from_netcdf, reconstruct_grid
+import Oceananigans.OutputWriters:
+    NetCDFWriter,
+    write_grid_reconstruction_data!,
+    convert_for_netcdf,
+    materialize_from_netcdf,
+    reconstruct_grid,
+    trilocation_dim_name
 
 const c = Center()
 const f = Face()
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
+
+#####
+##### Extend defVar to be able to write fields to NetCDF directly
+#####
+
+defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+
+function defVar(ds, name, field::AbstractField;
+                time_dependent=false,
+                dimension_name_generator = trilocation_dim_name,
+                kwargs...)
+    field_cpu = on_architecture(CPU(), field) # Need to bring field to CPU in order to write it to NetCDF
+    field_data = Array{eltype(field)}(field_cpu)
+    dims = field_dimensions(field, dimension_name_generator)
+    all_dims = time_dependent ? (dims..., "time") : dims
+
+    # Validate that all dimensions exist and match the field
+    create_field_dimensions!(ds, field, all_dims, dimension_name_generator)
+    defVar(ds, name, field_data, all_dims; kwargs...)
+end
+
+#####
+##### Dimension validation
+#####
+
+"""
+    create_field_dimensions!(ds, field::AbstractField, all_dims, dimension_name_generator)
+
+Creates all dimensions for the given `field` in the NetCDF dataset `ds`. If the dimensions
+already exist, they are validated to match the expected dimensions for the given `field`.
+
+Arguments:
+- `ds`: NetCDF dataset
+- `field`: AbstractField being written
+- `all_dims`: Tuple of dimension names to create/validate
+- `dimension_name_generator`: Function to generate dimension names
+"""
+function create_field_dimensions!(ds, field::AbstractField, all_dims, dimension_name_generator)
+    dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
+    spatial_dims = all_dims[1:end-(("time" in all_dims) ? 1 : 0)]
+
+    spatial_dims_dict = Dict(dim_name => dim_data for (dim_name, dim_data) in zip(spatial_dims, nodes(field)))
+    create_spatial_dimensions!(ds, spatial_dims_dict, dimension_attributes; array_type=Array{eltype(field)})
+
+    # Create time dimension if needed
+    if "time" in all_dims && "time" ∉ keys(ds.dim)
+        create_time_dimension!(ds)
+    end
+
+    return nothing
+end
 
 #####
 ##### Utils
@@ -67,72 +124,69 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
     end
 end
 
-#####
-##### Dimension name generators
-#####
-
-function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX}, LX, LY, LZ, dim::Val{:x}; connector="_", location_letters) where {FT, TX}
-    if TX == Flat || isnothing(LX)
-        return ""
-    else
-        return "$(var_name)" * connector * location_letters
+function create_time_dimension!(dataset; attrib=nothing)
+    if "time" ∉ keys(dataset.dim)
+        # Create an unlimited dimension "time"
+        # Time should always be Float64 to be extra safe from rounding errors.
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
+        defDim(dataset, "time", Inf)
+        defVar(dataset, "time", Float64, ("time",), attrib=attrib)
     end
 end
 
-function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY}, LX, LY, LZ, dim::Val{:y}; connector="_", location_letters) where {FT, TX, TY}
-    if TY == Flat || isnothing(LY)
-        return ""
-    else
-        return "$(var_name)" * connector * location_letters
+
+"""
+    create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
+
+Create spatial dimensions in the NetCDF dataset and define corresponding variables to store
+their coordinate values. Each dimension variable has itself as its sole dimension (e.g., the
+`x` variable has dimension `x`). The dimensions are created if they don't exist, and validated
+against provided arrays if they do exist. An error is thrown if the dimension already exists
+but is different from the provided array.
+"""
+function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
+    for (i, (dim_name, dim_array)) in enumerate(dims)
+        if dim_name ∉ keys(dataset.dim)
+            # Create missing dimension
+            defVar(dataset, dim_name, array_type(dim_array), (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
+        else
+            # Validate existing dimension
+            if dataset[dim_name] != dim_array
+                throw(ArgumentError("Dimension '$dim_name' already exists in dataset but is different from expected.\n" *
+                                    "  Actual:   $(dataset[dim_name]) (length=$(length(dataset[dim_name])))\n" *
+                                    "  Expected: $(dim_array) (length=$(length(dim_array)))"))
+            end
+        end
     end
 end
 
-function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ}, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) where {FT, TX, TY, TZ}
-    if TZ == Flat || isnothing(LZ)
-        return ""
-    else
-        return "$(var_name)" * connector * location_letters
+"""
+    effective_reduced_dimensions(field)
+
+Return dimensions that are effectively reduced, considering both location-based reduction
+(e.g. a `Nothing` location) and index-based reduction at boundaries (e.g. free surface
+height fields with :, :, Nz+1:Nz+1 indices).
+```
+"""
+function effective_reduced_dimensions(field)
+    loc_reduced = reduced_dimensions(field)
+
+    idx_reduced = ()
+    inds = indices(field)
+    grid_size = size(field.grid)
+
+    for (dim, ind) in enumerate(inds)
+        if ind isa UnitRange && length(ind) == 1
+            index_value = first(ind)
+            if index_value > grid_size[dim]
+                idx_reduced = (idx_reduced..., dim)
+            end
+        end
     end
+
+    all_reduced = (loc_reduced..., idx_reduced...)
+    return Tuple(unique(all_reduced))
 end
-
-suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
-
-loc2letter(::Face, full=true) = "f"
-loc2letter(::Center, full=true) = "c"
-loc2letter(::Nothing, full=true) = full ? "a" : ""
-
-minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX, false)
-minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY, false)
-
-minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX, false) * loc2letter(LY, false)
-minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX, false) * loc2letter(LY, false)
-
-minimal_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = minimal_location_string(grid.z, LX, LY, LZ, dim)
-minimal_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = loc2letter(LZ, false)
-minimal_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX, false) * loc2letter(LY, false) * loc2letter(LZ, false)
-
-minimal_dim_name(var_name, grid, LX, LY, LZ, dim) =
-    suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=minimal_location_string(grid, LX, LY, LZ, dim))
-
-minimal_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = minimal_dim_name(var_name, grid.underlying_grid, args...)
-
-
-
-trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * "aa"
-trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "a" * loc2letter(LY) * "a"
-
-trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
-trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
-
-trilocation_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
-trilocation_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
-trilocation_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
-
-trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
-    suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=trilocation_location_string(grid, LX, LY, LZ, dim))
-
-trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocation_dim_name(var_name, grid.underlying_grid, args...)
-
 
 #####
 ##### Gathering of grid dimensions
@@ -401,10 +455,13 @@ end
 
 function field_dimensions(field::AbstractField, grid::RectilinearGrid, dim_name_generator)
     LX, LY, LZ = location(field)
+    TX, TY, TZ = topology(grid)
 
-    x_dim_name = dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
-    y_dim_name = dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
+    eff_reduced_dims = effective_reduced_dimensions(field)
+
+    x_dim_name = (1 ∈ eff_reduced_dims || TX == Flat) ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
+    y_dim_name = (2 ∈ eff_reduced_dims || TY == Flat) ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
+    z_dim_name = (3 ∈ eff_reduced_dims || TZ == Flat) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     x_dim_name = isempty(x_dim_name) ? tuple() : tuple(x_dim_name)
     y_dim_name = isempty(y_dim_name) ? tuple() : tuple(y_dim_name)
@@ -415,10 +472,13 @@ end
 
 function field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
     LΛ, LΦ, LZ = location(field)
+    TΛ, TΦ, TZ = topology(grid)
 
-    λ_dim_name = dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    φ_dim_name = dim_name_generator("φ",  grid, nothing, LΦ(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z",         grid, nothing, nothing, LZ(), Val(:z))
+    eff_reduced_dims = effective_reduced_dimensions(field)
+
+    λ_dim_name = (1 ∈ eff_reduced_dims || TΛ == Flat) ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
+    φ_dim_name = (2 ∈ eff_reduced_dims || TΦ == Flat) ? "" : dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
+    z_dim_name = (3 ∈ eff_reduced_dims || TZ == Flat) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     λ_dim_name = isempty(λ_dim_name) ? tuple() : tuple(λ_dim_name)
     φ_dim_name = isempty(φ_dim_name) ? tuple() : tuple(φ_dim_name)
@@ -1146,18 +1206,8 @@ function initialize_nc_file(model,
             Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
             Dict("long_name" => "Time", "units" => "seconds")
 
-        # Create an unlimited dimension "time"
-        # Time should always be Float64 to be extra safe from rounding errors.
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
-        defDim(dataset, "time", Inf)
-        defVar(dataset, "time", Float64, ("time",), attrib=time_attrib)
-
-        # Create spatial dimensions as variables whose dimensions are themselves.
-        # Each should already have a default attribute.
-        for (dim_name, dim_array) in dims
-            defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   deflatelevel=deflatelevel, attrib=output_attributes[dim_name])
-        end
+        create_time_dimension!(dataset, attrib=time_attrib)
+        create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, array_type)
 
         time_independent_vars = Dict()
 
@@ -1327,6 +1377,10 @@ function save_output!(ds, output::LagrangianParticles, model, ow, time_index, na
     return nothing
 end
 
+# Convert to a base Julia type (a float or DateTime).
+float_or_date_time(t) = t
+float_or_date_time(t::AbstractTime) = DateTime(t)
+
 """
     write_output!(ow::NetCDFWriter, model)
 
@@ -1385,11 +1439,15 @@ drop_output_dims(output, data) = data # fallback
 drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = drop_output_dims(output.operand, data)
 
 function drop_output_dims(field::Field, data)
-    reduced_dims = reduced_dimensions(field)
+    eff_reduced_dims = effective_reduced_dimensions(field)
     flat_dims = Tuple(i for (i, T) in enumerate(topology(field.grid)) if T == Flat)
-    dims = (reduced_dims..., flat_dims...)
+    dims = (eff_reduced_dims..., flat_dims...)
     dims = Tuple(Set(dims)) # ensure dims are unique
-    return dropdims(data; dims)
+
+    # Only drop dimensions that exist in the data and are size 1
+    dims = filter(d -> d <= ndims(data) && size(data, d) == 1, dims)
+
+    return isempty(dims) ? data : dropdims(data; dims=tuple(dims...))
 end
 
 #####

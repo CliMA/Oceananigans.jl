@@ -223,7 +223,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                  lat_lon_sector_grid, lat_lon_strip_grid,
                  lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched)
 
-        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface(), ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver))
+        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
 
         for grid in grids
             for free_surface in free_surfaces

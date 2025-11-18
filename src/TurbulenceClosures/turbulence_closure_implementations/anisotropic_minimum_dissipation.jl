@@ -22,11 +22,13 @@ const AMD = AnisotropicMinimumDissipation
 @inline viscosity(::AMD, K) = K.νₑ
 @inline diffusivity(::AMD, K, ::Val{id}) where id = K.κₑ[id]
 
-Base.show(io::IO, closure::AMD{TD}) where TD =
-    print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",
+function Base.show(io::IO, closure::AMD{TD}) where TD
+    td_str = summary(TD())
+    print(io, "AnisotropicMinimumDissipation{$td_str} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, "\n",
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, "\n",
               "                        Buoyancy modification multiplier Cb: ", closure.Cb)
+end
 
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
@@ -194,7 +196,7 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
+function compute_diffusivities!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
@@ -202,9 +204,9 @@ function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumD
     buoyancy = model.buoyancy
 
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+            closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
-    for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
+    for (tracer_index, κₑ) in enumerate(closure_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
         launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
@@ -349,10 +351,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### build_diffusivity_fields
+##### build_closure_fields
 #####
 
-function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
+function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)

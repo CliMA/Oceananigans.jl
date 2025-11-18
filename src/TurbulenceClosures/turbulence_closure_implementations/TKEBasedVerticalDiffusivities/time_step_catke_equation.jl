@@ -15,10 +15,10 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
         closure = first(model.closure)
-        diffusivity_fields = first(model.diffusivity_fields)
+        closure_fields = first(model.closure_fields)
     else
         closure = model.closure
-        diffusivity_fields = model.diffusivity_fields
+        closure_fields = model.closure_fields
     end
 
     e = model.tracers.e
@@ -27,9 +27,9 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
     Gⁿe = model.timestepper.Gⁿ.e
     G⁻e = model.timestepper.G⁻.e
 
-    κe = diffusivity_fields.κe
-    Le = diffusivity_fields.Le
-    previous_velocities = diffusivity_fields.previous_velocities
+    κe = closure_fields.κe
+    Le = closure_fields.Le
+    previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
@@ -57,14 +57,14 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, model.tracers, model.buoyancy, diffusivity_fields)
+                model.velocities, model.tracers, model.buoyancy, closure_fields)
                 
         # ... and step forward.
         launch!(arch, grid, :xyz,
                 _ab2_substep_turbulent_kinetic_energy!,
                 Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, diffusivity_fields,
+                model.tracers, model.buoyancy, closure_fields,
                 Δτ, χ, Gⁿe, G⁻e)
 
         # Good idea?
@@ -74,8 +74,10 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
         # previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
+                       closure_fields, Val(tracer_index),
+                       model.clock, 
+                       fields(model), 
+                       Δτ)
     end
 
     return nothing
@@ -90,10 +92,10 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
         closure = first(model.closure)
-        diffusivity_fields = first(model.diffusivity_fields)
+        closure_fields = first(model.closure_fields)
     else
         closure = model.closure
-        diffusivity_fields = model.diffusivity_fields
+        closure_fields = model.closure_fields
     end
 
     e = model.tracers.e
@@ -102,9 +104,9 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     Gⁿ = model.timestepper.Gⁿ.e
     e⁻ = model.timestepper.Ψ⁻.e
 
-    κe = diffusivity_fields.κe
-    Le = diffusivity_fields.Le
-    previous_velocities = diffusivity_fields.previous_velocities
+    κe = closure_fields.κe
+    Le = closure_fields.Le
+    previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
@@ -116,19 +118,21 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     launch!(arch, grid, :xyz,
             compute_TKE_diffusivity!,
             κe, grid, closure,
-            model.velocities, model.tracers, model.buoyancy, diffusivity_fields)
+            model.velocities, model.tracers, model.buoyancy, closure_fields)
                 
     # ... and step forward.
     launch!(arch, grid, :xyz,
             _euler_step_turbulent_kinetic_energy!,
             Le, grid, closure,
             model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-            model.tracers, model.buoyancy, diffusivity_fields,
+            model.tracers, model.buoyancy, closure_fields,
             Δt, Gⁿ)
 
     implicit_step!(e, implicit_solver, closure,
-                   diffusivity_fields, Val(tracer_index),
-                   model.clock, Δt)
+                   closure_fields, Val(tracer_index),
+                   model.clock, 
+                   fields(model), 
+                   Δt)
                    
     return nothing
 end
@@ -204,7 +208,6 @@ end
     #                  = Lⁱ
     #
     # where ω = ϵ / e ∼ √e / ℓ.
-
     @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
 
     # Compute fast TKE RHS
@@ -240,6 +243,7 @@ end
     # See below.    
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
+
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
@@ -286,15 +290,15 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 @inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
 @inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = compute_hydrostatic_free_surface_Ge!, c, K
 
-function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
+function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, closure_fields::Tuple)
     catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
 
     if isnothing(catke_index)
-        return compute_hydrostatic_free_surface_Gc!, closures, diffusivity_fields
+        return compute_hydrostatic_free_surface_Gc!, closures, closure_fields
     else
         catke_closure = closures[catke_index]
-        catke_diffusivity_fields = diffusivity_fields[catke_index]
-        return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields
+        catke_closure_fields = closure_fields[catke_index]
+        return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_closure_fields
     end
 end
 
