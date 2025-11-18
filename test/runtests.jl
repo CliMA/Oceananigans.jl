@@ -183,12 +183,19 @@ CUDA.allowscalar() do
         include("test_distributed_poisson_solvers.jl")
     end
 
-    if group == :distributed_hydrostatic_model || group == :all
+    if group == :distributed_hydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = test_architectures()
         include("test_hydrostatic_regression.jl")
+    end
+
+    if group == :distributed_hydrostatic_model || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
         include("test_distributed_hydrostatic_model.jl")
     end
 
@@ -232,7 +239,6 @@ CUDA.allowscalar() do
             include("test_mpi_tripolar.jl")
         end
     end
-
 
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
