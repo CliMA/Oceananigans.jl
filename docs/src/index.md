@@ -124,14 +124,13 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wagner, G. L. and Constantinou, N. C. (2025) [Phenomenology of decaying turbulence beneath surface waves](https://doi.org/10.1017/jfm.2025.10649), _Journal of Fluid Mechanics_, **1020**, A51. DOI: [10.1017/jfm.2025.10649](https://doi.org/10.1017/jfm.2025.10649)
 
-1. de la Calle, E. and García, C. (2025) [Evaluation of Juliana Tool: A translator for Julia’s CUDA.jl code into KernelAbstraction.jl](https://doi.org/10.1016/j.future.2025.107813), _Future Generation Computer Systems_,
-**171**, 107813. DOI: [10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
+1. de la Calle, E. and García, C. (2025) [Evaluation of Juliana Tool: A translator for Julia’s CUDA.jl code into KernelAbstraction.jl](https://doi.org/10.1016/j.future.2025.107813), _Future Generation Computer Systems_, **171**, 107813. DOI: [10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
 
 1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
 
 1. Bisits, J. I., Zika, J. D., and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)
 
-1. Whitley V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_, **55(6)**, 645-661. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
+1. Whitley, V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_, **55(6)**, 645-661. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
 
 1. Chor, T. and Wenegrat, J. (2025). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.1175/JPO-D-24-0139.1), _Journal of Physical Oceanography_, **55(6)**, 737–759. DOI: [10.1175/JPO-D-24-0139.1](https://doi.org/10.1175/JPO-D-24-0139.1)
 
@@ -149,7 +148,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1), _Journal of Physical Oceanography_, **54(12)**, 2419–2430. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
 
-1. Strong-Wright J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
+1. Strong-Wright, J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
 
 1. Silvestri, S., Wagner, G. L., Campin, J.-M., Constantinou, N. C., Hill, C., Souza, A., and Ferrari, R. (2024). [A new WENO-based momentum advection scheme for simulations of ocean mesoscale turbulence](https://doi.org/10.1029/2023MS004130), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2023MS004130. DOI: [10.1029/2023MS004130](https://doi.org/10.1029/2023MS004130)
 
@@ -159,9 +158,9 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wagner, G. L., Pizzo, N. E., Lenain, L., and Veron, F. (2023) [Transition to turbulence in wind-drift layers](https://doi.org/10.1017/jfm.2023.920), _Journal of Fluid Mechanics_, **976**, A8. DOI: [10.1017/jfm.2023.920](https://doi.org/10.1017/jfm.2023.920)
 
-1. Jiménez-Urias, M. A. and Haine T. W. N. (2023) [On the non-self-adjoint and multiscale character of passive scalar mixing under laminar advection](https://doi.org/10.1017/jfm.2023.748), _Journal of Fluid Mechanics_, **973**, A44. DOI: [10.1017/jfm.2023.748](https://doi.org/10.1017/jfm.2023.748)
+1. Jiménez-Urias, M. A. and Haine, T. W. N. (2023) [On the non-self-adjoint and multiscale character of passive scalar mixing under laminar advection](https://doi.org/10.1017/jfm.2023.748), _Journal of Fluid Mechanics_, **973**, A44. DOI: [10.1017/jfm.2023.748](https://doi.org/10.1017/jfm.2023.748)
 
-1. Strong-Wright, J, Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669), _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
+1. Strong-Wright, J., Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669), _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
 
 1. Ramadhan, A., Marshall, J. C., Souza, A. N., Lee, X. K., Piterbarg, U., Hillier, A., Wagner, G. L., Rackauckas, C., Hill, C., Campin, J.-M., and Ferrari, R. (2022). [Capturing missing physics in climate model parameterizations using neural differential equations](https://doi.org/10.1002/essoar.10512533.1), _ESS Open Archive_. DOI: [10.1002/essoar.10512533.1](https://doi.org/10.1002/essoar.10512533.1)
 
@@ -183,6 +182,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Buffett, B. A. (2021). [Conditions for turbulent Ekman layers in precessionally driven flow](https://doi.org/10.1093/gji/ggab088), _Geophysical Journal International_, **226(1)**, 56–65. DOI: [10.1093/gji/ggab088](https://doi.org/10.1093/gji/ggab088)
 
-1. Bhamidipati, N., Souza, A.N., and Flierl, G.R. (2020). [Turbulent mixing of a passive scalar in the ocean mixed layer](https://doi.org/10.1016/j.ocemod.2020.101615), _Ocean Modelling_, **149**, 101615. DOI: [10.1016/j.ocemod.2020.101615](https://doi.org/10.1016/j.ocemod.2020.101615)
+1. Bhamidipati, N., Souza, A. N., and Flierl, G. R. (2020). [Turbulent mixing of a passive scalar in the ocean mixed layer](https://doi.org/10.1016/j.ocemod.2020.101615), _Ocean Modelling_, **149**, 101615. DOI: [10.1016/j.ocemod.2020.101615](https://doi.org/10.1016/j.ocemod.2020.101615)
 
 1. Souza, A. N., Wagner, G. L., Ramadhan, A., Allen, B., Churavy, V., Schloss, J., Campin, J. M., Hill, C., Edelman, A., Marshall, J., Flierl, G., and Ferrari, R. (2020). [Uncertainty quantification of ocean parameterizations: Application to the K‐Profile‐Parameterization for penetrative convection](https://doi.org/10.1029/2020MS002108), _Journal of Advances in Modeling Earth Systems_, **12**, e2020MS002108. DOI: [10.1029/2020MS002108](https://doi.org/10.1029/2020MS002108)
