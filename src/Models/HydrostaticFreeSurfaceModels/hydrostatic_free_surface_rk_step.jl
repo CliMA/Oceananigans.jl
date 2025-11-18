@@ -26,19 +26,17 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     compute_transport_velocities!(model, free_surface)
 
     @apply_regionally begin
+        # compute tracer tendencies
+        compute_tracer_tendencies!(model)
+
         # Advance grid and velocities
-        rk_substep_velocities!(model.velocities, model, Δτ)
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
+        rk_substep_velocities!(model.velocities, model, Δτ)
 
         # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
-    end
-    
-    update_velocity_state!(model.velocities, model)
 
-    # Compute tracer tendencies and advance tracers
-    @apply_regionally begin
-        compute_tracer_tendencies!(model)
+        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
     
@@ -70,8 +68,6 @@ end
     # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
     @apply_regionally rk_substep_tracers!(model.tracers, model, Δτ)
 
-    update_velocity_state!(model.velocities, model)
-
     return nothing
 end
 
@@ -80,7 +76,7 @@ end
 #####
 
 # A Fallback to be extended for specific ztypes and grid types
-rk_substep_grid!(grid, model, ::ZCoordinate, Δt) = synchronize_communication!(model.free_surface)
+rk_substep_grid!(grid, model, ztype, Δt) = nothing
 
 #####
 ##### Step Velocities

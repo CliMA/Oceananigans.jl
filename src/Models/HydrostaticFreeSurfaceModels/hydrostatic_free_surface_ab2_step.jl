@@ -32,13 +32,9 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
         compute_tracer_tendencies!(model)
 
         # Advance grid and velocities
-        ab2_step_velocities!(model.velocities, model, Δt, χ)
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
-    end
-
-    update_velocity_state!(model.velocities, model)
-
-    @apply_regionally begin
+        ab2_step_velocities!(model.velocities, model, Δt, χ)
+    
         # Correct the barotropic mode
         correct_barotropic_mode!(model, Δt)
 
@@ -74,8 +70,6 @@ function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
     # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
     @apply_regionally ab2_step_tracers!(model.tracers, model, Δt, χ)
 
-    update_velocity_state!(model.velocities, model)
-
     return nothing
 end
 
@@ -84,7 +78,7 @@ end
 #####
 
 # A Fallback to be extended for specific ztypes and grid types
-ab2_step_grid!(grid, model, ztype, Δt, χ) = synchronize_communication!(model.free_surface)
+ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
 
 #####
 ##### Step velocities

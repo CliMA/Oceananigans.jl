@@ -77,11 +77,9 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     arch = architecture(grid)
 
     ũ, ṽ, _ = model.transport_velocities
-    u, v, _ = model.velocities
     synchronize_communication!(ũ)
     synchronize_communication!(ṽ)
-    synchronize_communication!(u)
-    synchronize_communication!(v)
+    synchronize_communication!(model.free_surface)
 
     w_parameters = buffer_w_kernel_parameters(grid, arch)
     update_vertical_velocities!(model.transport_velocities, grid, model; parameters=w_parameters)

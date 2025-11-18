@@ -27,37 +27,27 @@ they are called in the end.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) =  update_state!(model, model.grid, callbacks)
 
-function update_velocity_state!(velocities, model::HydrostaticFreeSurfaceModel)
-    u = velocities.u
-    v = velocities.v
-
-    @apply_regionally begin
-        mask_immersed_field!(u)
-        mask_immersed_field!(v)
-        update_boundary_conditions!((u, v), model)
-    end
-
-    fill_halo_regions!((u, v); async=true)
-
-    return nothing
-end
-
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     arch = architecture(grid)
 
     @apply_regionally begin
-        foreach(mask_immersed_field!, model.tracers)
+        mask_immersed_model_fields!(model)
         update_model_field_time_series!(model, model.clock)
-        update_boundary_conditions!(model.tracers, model)
+        update_boundary_conditions!(fields(model), model)
     end
     
+    u = model.velocities.u
+    v = model.velocities.v
+    tracers = model.tracers
+
     # Fill the halos
-    fill_halo_regions!(model.tracers, grid, model.clock, fields(model); async=true)
+    fill_halo_regions!((u, v),  grid, model.clock, fields(model); async=true)
+    fill_halo_regions!(tracers, grid, model.clock, fields(model); async=true)
 
     @apply_regionally begin
         surface_params = surface_kernel_parameters(model.grid)
-        compute_buoyancy_gradients!(model.buoyancy, grid, model.tracers, parameters=:xyz)
+        compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=:xyz)
         update_vertical_velocities!(model.velocities, model.grid, model, parameters=surface_params)    
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
         compute_diffusivities!(model.closure_fields, model.closure, model, parameters=:xyz)
@@ -72,3 +62,12 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     return nothing
 end
+
+# Mask immersed fields
+function mask_immersed_model_fields!(model)
+    mask_immersed_velocities!(model.velocities)
+    foreach(mask_immersed_field!, model.tracers)
+    return nothing
+end
+
+mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities)
