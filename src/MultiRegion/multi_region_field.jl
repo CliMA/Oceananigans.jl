@@ -6,7 +6,7 @@ using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
-import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
 import Oceananigans.Diagnostics: hasnan
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
@@ -66,7 +66,7 @@ Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """
 function reconstruct_global_field(mrf::MultiRegionField)
 
-    # TODO: Is this correct? Shall we reconstruct a global field on the architecture of the grid?
+    # TODO: Reconstruct global field on the architecture of the grid. Use on_architecture to switch from GPU to CPU.
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
     global_field = Field(instantiated_location(mrf), global_grid; indices)

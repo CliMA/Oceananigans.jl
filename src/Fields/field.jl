@@ -508,6 +508,10 @@ end
 FieldStatus() = FieldStatus(0.0)
 Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
 
+set_status!(status, time) = nothing
+set_status!(status::FieldStatus, time::Nothing) = nothing
+set_status!(status::FieldStatus, time) = status.time = time
+
 """
     FixedTime(time)
 
@@ -536,7 +540,6 @@ function compute_at!(field::Field, time)
     # Otherwise, compute only on initialization or if field.status.time is not current,
     elseif time == zero(time) || time != field.status.time
         compute!(field, time)
-        field.status.time = time
     end
 
     return field
@@ -829,13 +832,6 @@ end
 
 Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
-function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
-    conditional_a = condition_operand(a, nothing, one(eltype(a)))
-    conditional_b = condition_operand(b, nothing, one(eltype(b)))
-    # TODO: Make this non-allocating?
-    return all(isapprox.(conditional_a, conditional_b; kw...))
-end
-
 #####
 ##### fill_halo_regions!
 #####
@@ -859,3 +855,9 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     return nothing
 end
+
+#####
+##### nodes
+#####
+
+nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
