@@ -84,6 +84,8 @@ function compute!(field::ScannedComputedField, time=nothing)
         s.scan!(field, s.operand; dims=s.dims)
     end
 
+    set_status!(field.status, time)
+
     return field
 end
 
@@ -305,4 +307,3 @@ end
         @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, k])
     end
 end
-
