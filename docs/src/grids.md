@@ -76,7 +76,7 @@ In the stretched cell interfaces specified by `z_interfaces`, the number of
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
 
-A bit later in this tutorial, we'll give examples that illustrate how to build a grid thats [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
+A bit later in this tutorial, we'll give examples that illustrate how to build a grid that's [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
 ## Grid types: squares, shells, and mountains
 
