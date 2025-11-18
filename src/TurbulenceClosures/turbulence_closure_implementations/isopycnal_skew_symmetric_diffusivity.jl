@@ -206,7 +206,7 @@ end
     Sx = - bx / bz
     Sy = - by / bz
 
-    return ifelse(bz <= 0, 0, min(one(grid), slope_limiter.max_slope^2 / (Sx^2 + Sy^2)))
+    return ifelse(bz <= 0, zero(grid), min(one(grid), slope_limiter.max_slope^2 / (Sx^2 + Sy^2)))
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to
