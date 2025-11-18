@@ -57,41 +57,75 @@ const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
 
+"""
+    squeezed_data(fd::AbstractField; with_halos=false)
 
-function squeeze_reduced_dimensions(data, reduced_dims)
-    # Fill missing indices from the right with 1s
+Returns the data of the field with the any dimensions where location is Nothing squeezed. For example:
+```Julia
+infil> grid = RectilinearGrid(size=(2,3,4), extent=(1,1,1))
+2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.5
+├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=0.333333
+└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=0.25
+
+infil> c = Field{Center, Center, Nothing}(grid)
+2×3×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 1:1) with eltype Float64 with indices -1:4×-2:6×1:1
+    └── max=0.0, min=0.0, mean=0.0
+
+infil> interior(c) |> size
+(2, 3, 1)
+
+infil> squeezed_data(c)
+2×3 Matrix{Float64}:
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+infil> squeezed_data(c) |> size
+(2, 3)
+```
+
+Note that this will only remove (squeeze) singleton dimensions.
+"""
+function squeezed_data(fd::AbstractField; with_halos=false)
+    reduced_dims = effective_reduced_dimensions(fd)
+    field_data = with_halos ? parent(fd) : interior(fd)
+    field_data_cpu = Array{eltype(fd)}(field_data)
+
     indices = Any[:, :, :]
     for i in 1:3
         if i ∈ reduced_dims
             indices[i] = 1
         end
     end
-    return getindex(data, indices...)
+    return getindex(field_data_cpu, indices...)
 end
 
 defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-function defVar(ds, field_name, field::AbstractField;
+function defVar(ds, field_name, fd::AbstractField;
                 time_dependent=false,
                 with_halos=false,
                 dimension_name_generator = trilocation_dim_name,
                 write_data=true,
                 kwargs...)
-    field_cpu = on_architecture(CPU(), field) # Need to bring field to CPU in order to write it to NetCDF
-    if with_halos
-        field_data = Array{eltype(field)}(parent(field_cpu))
-    else
-        field_data = Array{eltype(field)}(interior(field_cpu))
-    end
-    dims = field_dimensions(field, dimension_name_generator)
+
+    # Assess and create the dimensions for the field
+    dims = field_dimensions(fd, dimension_name_generator)
     all_dims = time_dependent ? (dims..., "time") : dims
+    create_field_dimensions!(ds, fd, all_dims, dimension_name_generator; with_halos)
 
-    # Validate that all dimensions exist and match the field
-    create_field_dimensions!(ds, field, all_dims, dimension_name_generator; with_halos)
+    # Squeeze the data to remove dimensions where location is Nothing
+    squeezed_field_data = squeezed_data(fd; with_halos)
 
-    squeezed_field_data = squeeze_reduced_dimensions(field_data, effective_reduced_dimensions(field))
+    # If the field is time-dependent, we need to reshape the data to add a time dimension
     squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
+
+    # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
         defVar(ds, field_name, squeezed_reshaped_field_data, all_dims; kwargs...)
     else
