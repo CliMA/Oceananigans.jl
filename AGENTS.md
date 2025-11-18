@@ -7,7 +7,8 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
 - Nonhydrostatic models with free surfaces
 - Hydrostatic models for large-scale ocean simulations  
 - Shallow water models
-- Support for complex domains: lat-lon grids, cubed spheres, immersed boundaries, multi-region grids
+- Support for a variety of grids: RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid
+- Support for complex domains using ImmersedBoundaryGrid
 
 ## Language & Environment
 - **Language**: Julia 1.10+
