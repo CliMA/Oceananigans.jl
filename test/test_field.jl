@@ -115,9 +115,6 @@ function run_field_reduction_tests(grid)
     return nothing
 end
 
-@inline interpolate_xyz(x, y, z, from_field, from_loc, from_grid) =
-    interpolate((x, y, z), from_field, from_loc, from_grid)
-
 # Choose a trilinear function so trilinear interpolation can return values that
 # are exactly correct.
 @inline func(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
