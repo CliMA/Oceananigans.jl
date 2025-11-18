@@ -32,8 +32,10 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     V = Field{Center, Face, Nothing}(extended_grid, boundary_conditions = v_bcs)
     U̅ = Field{Face, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
     V̅ = Field{Center, Face, Nothing}(extended_grid, boundary_conditions = v_bcs)
+    Ũ = Field{Face, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
+    Ṽ = Field{Center, Face, Nothing}(extended_grid, boundary_conditions = v_bcs)
 
-    filtered_state = (η = η̅, U = U̅, V = V̅)
+    filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
     gravitational_acceleration = convert(eltype(extended_grid), free_surface.gravitational_acceleration)

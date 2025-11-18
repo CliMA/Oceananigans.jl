@@ -161,10 +161,10 @@ end
 
 @inline function fractional_y_index(y, locs, grid::LatitudeLongitudeGrid)
     loc = @inbounds locs[2]
-     Ty = topology(grid, 2)()
-     Ny = length(loc, Ty, grid.Ny)
-     yn = φnodes(grid, locs...)
-     FT = eltype(grid)
+    Ty = topology(grid, 2)()
+    Ny = length(loc, Ty, grid.Ny)
+    yn = φnodes(grid, locs...)
+    FT = eltype(grid)
     return convert(FT, fractional_index(y, yn, Ny))
 end
 
@@ -180,10 +180,10 @@ end
 
 @inline function fractional_z_index(z, locs, grid)
     loc = @inbounds locs[3]
-     Tz = topology(grid, 3)()
-     Nz = length(loc, Tz, grid.Nz)
-     zn = znodes(grid, loc)
-     FT = eltype(grid)
+    Tz = topology(grid, 3)()
+    Nz = length(loc, Tz, grid.Nz)
+    zn = znodes(grid, loc)
+    FT = eltype(grid)
     return convert(FT, fractional_index(z, zn, Nz))
 end
 
