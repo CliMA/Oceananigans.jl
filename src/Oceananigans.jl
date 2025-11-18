@@ -118,6 +118,8 @@ export
 using DocStringExtensions
 using FFTW
 
+const FFTW_NUM_THREADS = Ref{Int}(1)
+
 function __init__()
     if VERSION >= v"1.13.0"
         @warn """You are using Julia v1.13 or later!"
@@ -132,7 +134,9 @@ function __init__()
         @info "Oceananigans will use $threads threads"
 
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
+        # but don't affect global FFTW configuration for other packages using FFTW
+        # FFTW.set_num_threads(4threads)
+        FFTW_NUM_THREADS[] = 4threads
     end
 end
 
