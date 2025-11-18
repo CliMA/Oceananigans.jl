@@ -175,27 +175,6 @@ end
     @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
 end
 
-# If U and V exist, we use them
-@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]
-@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, k]
-
-# If either U or V are not available, we compute them
-@inline function barotropic_U(i, j, k, grid, ::Nothing, u)
-    U = 0
-    for k in 1:size(grid, 3)
-        @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
-    end
-    return U
-end
-
-@inline function barotropic_V(i, j, k, grid, ::Nothing, v)
-    V = 0
-    for k in 1:size(grid, 3)
-        @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
-    end
-    return V
-end
-
 #####
 ##### Multiply by grid scaling
 #####
