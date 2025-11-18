@@ -29,21 +29,16 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Computing tracer tendencies
     @apply_regionally begin
-        compute_tracer_tendencies!(model)
-
         # Advance grid and velocities
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+        correct_barotropic_mode!(model, Δt)
     end
 
     update_velocity_state!(model.velocities, model)
 
     @apply_regionally begin
-        # Correct the barotropic mode
-        correct_barotropic_mode!(model, Δt)
-
-        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
-        # Finally advance tracers:
+        compute_tracer_tendencies!(model)
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 

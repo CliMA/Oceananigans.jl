@@ -191,3 +191,13 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     return nothing
 end
+
+function compute_transport_velocities!(model, ::ExplicitFreeSurface) 
+
+    u, v, _ = model.velocities
+    ũ, ṽ, _ = model.transport_velocities
+    parent(ũ) .= parent(u)
+    parent(ṽ) .= parent(v)
+
+    return nothing
+end
