@@ -58,7 +58,7 @@ const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g
 #####
 
 """
-    squeezed_data(fd::AbstractField; with_halos=false)
+    squeezed_data(fd::AbstractField; array_type=Array{eltype(fd)}, with_halos=false)
 
 Returns the data of the field with the any dimensions where location is Nothing squeezed. For example:
 ```Julia
@@ -90,10 +90,10 @@ infil> squeezed_data(c) |> size
 
 Note that this will only remove (squeeze) singleton dimensions.
 """
-function squeezed_data(fd::AbstractField; with_halos=false)
+function squeezed_data(fd::AbstractField; array_type=Array{eltype(fd)}, with_halos=false)
     reduced_dims = effective_reduced_dimensions(fd)
     field_data = with_halos ? parent(fd) : interior(fd)
-    field_data_cpu = Array{eltype(fd)}(field_data)
+    field_data_cpu = array_type(field_data) # Need to convert to the array type of the field
 
     indices = Any[:, :, :]
     for i in 1:3
@@ -108,6 +108,7 @@ defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op);
 defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
 function defVar(ds, field_name, fd::AbstractField;
+                array_type=Array{eltype(fd)},
                 time_dependent=false,
                 with_halos=false,
                 dimension_name_generator = trilocation_dim_name,
@@ -120,7 +121,7 @@ function defVar(ds, field_name, fd::AbstractField;
     create_field_dimensions!(ds, fd, all_dims, dimension_name_generator; with_halos)
 
     # Squeeze the data to remove dimensions where location is Nothing
-    squeezed_field_data = squeezed_data(fd; with_halos)
+    squeezed_field_data = squeezed_data(fd; array_type, with_halos)
 
     # If the field is time-dependent, we need to reshape the data to add a time dimension
     squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
@@ -1293,19 +1294,19 @@ function initialize_nc_file(model,
         if !isempty(time_independent_vars)
             for (name, output) in sort(collect(pairs(time_independent_vars)), by=first)
                 output = construct_output(output, grid, indices, with_halos)
-                attributes = haskey(output_attributes, name) ? output_attributes[name] : Dict()
+                attrib = haskey(output_attributes, name) ? output_attributes[name] : Dict()
                 materialized = materialize_output(output, model)
 
                 define_output_variable!(dataset,
                                         materialized,
-                                        name,
+                                        name;
                                         array_type,
                                         deflatelevel,
-                                        attributes,
+                                        attrib,
                                         dimensions,
                                         filepath, # for better error messages
                                         dimension_name_generator,
-                                        false, # time_dependent = false
+                                        time_dependent = false,
                                         with_halos)
 
                 save_output!(dataset, output, model, name, array_type)
@@ -1313,19 +1314,19 @@ function initialize_nc_file(model,
         end
 
         for (name, output) in sort(collect(pairs(outputs)), by=first)
-            attributes = haskey(output_attributes, name) ? output_attributes[name] : Dict()
+            attrib = haskey(output_attributes, name) ? output_attributes[name] : Dict()
             materialized = materialize_output(output, model)
 
             define_output_variable!(dataset,
                                     materialized,
-                                    name,
+                                    name;
                                     array_type,
                                     deflatelevel,
-                                    attributes,
+                                    attrib,
                                     dimensions,
                                     filepath, # for better error messages
                                     dimension_name_generator,
-                                    true, # time_dependent = true)
+                                    time_dependent = true,
                                     with_halos)
         end
 
@@ -1362,9 +1363,10 @@ materialize_output(particles::LagrangianParticles, model) = particles
 materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type,
-                                 deflatelevel, attrib, dimensions, filepath,
-                                 dimension_name_generator, time_dependent, with_halos)
+function define_output_variable!(dataset, output, name; array_type,
+                                 deflatelevel, attrib, dimension_name_generator,
+                                 time_dependent, with_halos,
+                                 dimensions, filepath)
 
     if name ∉ keys(dimensions)
         msg = string("dimensions[$name] for output $name=$(typeof(output)) into $filepath" *
@@ -1374,17 +1376,19 @@ function define_output_variable!(dataset, output, name, array_type,
 
     dims = dimensions[name]
     FT = eltype(array_type)
-    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
+    all_dims = time_dependent ? (dims..., "time") : dims
+    defVar(dataset, name, FT, all_dims; deflatelevel, attrib)
 
     return nothing
 end
 
 """ Defines empty field variable. """
-function define_output_variable!(dataset, output::AbstractField, field_name, array_type,
-                                 deflatelevel, attrib, dimensions, filepath,
-                                 dimension_name_generator, time_dependent, with_halos)
+function define_output_variable!(dataset, output::AbstractField, field_name; array_type,
+                                 deflatelevel, attrib, dimension_name_generator,
+                                 time_dependent, with_halos,
+                                 dimensions, filepath)
 
-    defVar(dataset, field_name, output; time_dependent, with_halos, deflatelevel, attrib, write_data=false)
+    defVar(dataset, field_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, write_data=false)
     return nothing
 end
 
@@ -1394,7 +1398,7 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
+function define_output_variable!(dataset, output::LagrangianParticles, name; array_type,
                                  deflatelevel, args...)
 
     particle_fields = eltype(output.properties) |> fieldnames .|> string
