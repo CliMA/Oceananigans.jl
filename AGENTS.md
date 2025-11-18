@@ -104,7 +104,6 @@ Pkg.test("Oceananigans")
 ### Quality Assurance
 - Ensure doctests pass
 - Use Aqua.jl for package quality checks
-- Check CI passes before merging PRs
 
 ## Common Development Tasks
 
