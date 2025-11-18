@@ -61,7 +61,8 @@ src/
 ├── Models/                    # Model implementations
 │   ├── NonhydrostaticModels/
 │   ├── HydrostaticFreeSurfaceModels/
-│   └── ShallowWaterModels/
+│   ├── ShallowWaterModels/
+│   └── LagrangianParticleTracking/
 ├── TimeSteppers/              # Time stepping schemes
 ├── Solvers/                   # Poisson and tridiagonal solvers
 ├── TurbulenceClosures/        # LES and eddy viscosity models
