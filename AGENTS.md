@@ -1,4 +1,4 @@
-# Oceananigans.jl - Cursor AI Rules
+# Oceananigans.jl rules for agent-assisted development
 
 ## Project Overview
 
