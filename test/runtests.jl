@@ -295,6 +295,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Makie extension
+    if group == :makie || group == :all
+        @testset "Makie extension tests" begin
+            include("test_makie_ext.jl")
+        end
+    end
+
     if group == :convergence
         include("test_convergence.jl")
     end
