@@ -161,8 +161,6 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 We've also published/submitted several model development papers. Please cite these below 👇 if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
-Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2025) [DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations](https://doi.org/10.22541/essoar.176314951.18114616/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176314951.18114616/v1](https://doi.org/10.22541/essoar.176314951.18114616/v1)
-
 * **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
 
   *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
