@@ -119,14 +119,13 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     filepath_metrics_halos = "test_grid_metrics_rectilinear_halos_$(Arch)_$FT.nc"
     isfile(filepath_metrics_halos) && rm(filepath_metrics_halos)
 
-    simulation.output_writers[:with_metrics_and_halos] =
-        NetCDFWriter(model, fields(model),
-            filename = filepath_metrics_halos,
-            schedule = IterationInterval(1),
-            array_type = Array{FT},
-            with_halos = true,
-            include_grid_metrics = true,
-            verbose = true)
+    simulation.output_writers[:with_metrics_and_halos] = NetCDFWriter(model, fields(model),
+                                                                      filename = filepath_metrics_halos,
+                                                                      schedule = IterationInterval(1),
+                                                                      array_type = Array{FT},
+                                                                      with_halos = true,
+                                                                      include_grid_metrics = true,
+                                                                      verbose = true)
 
     filepath_metrics_nohalos = "test_grid_metrics_rectilinear_nohalos_$(Arch)_$FT.nc"
     isfile(filepath_metrics_nohalos) && rm(filepath_metrics_nohalos)

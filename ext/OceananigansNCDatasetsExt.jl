@@ -118,7 +118,7 @@ function defVar(ds, field_name, fd::AbstractField;
     # Assess and create the dimensions for the field
     dims = field_dimensions(fd, dimension_name_generator)
     all_dims = time_dependent ? (dims..., "time") : dims
-    create_field_dimensions!(ds, fd, all_dims, dimension_name_generator; with_halos)
+    create_field_dimensions!(ds, fd, all_dims, dimension_name_generator; with_halos, array_type)
 
     # Squeeze the data to remove dimensions where location is Nothing
     squeezed_field_data = squeezed_data(fd; array_type, with_halos)
@@ -150,7 +150,7 @@ Arguments:
 - `dim_names`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
-function create_field_dimensions!(ds, field::AbstractField, dim_names, dimension_name_generator; with_halos=false)
+function create_field_dimensions!(ds, field::AbstractField, dim_names, dimension_name_generator; with_halos=false, array_type=Array{eltype(field)})
     dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
     spatial_dim_names = dim_names[1:end-(("time" in dim_names) ? 1 : 0)]
 
@@ -165,7 +165,7 @@ function create_field_dimensions!(ds, field::AbstractField, dim_names, dimension
 
     # Create dictionary of spatial dimensions and their data
     spatial_dim_names_dict = Dict(dim_name => dim_data for (dim_name, dim_data) in zip(spatial_dim_names, spatial_dim_data))
-    create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; array_type=Array{eltype(field)})
+    create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; array_type)
 
     # Create time dimension if needed
     if "time" in dim_names && "time" ∉ keys(ds.dim)
@@ -214,16 +214,19 @@ their coordinate values. Each dimension variable has itself as its sole dimensio
 against provided arrays if they do exist. An error is thrown if the dimension already exists
 but is different from the provided array.
 """
-function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
+function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float64}, kwargs...)
+    FT = eltype(array_type)
     for (i, (dim_name, dim_array)) in enumerate(dims)
+        dim_array = FT.(dim_array) # Transform dim_array to the correct float type
         if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
-            defVar(dataset, dim_name, array_type(dim_array), (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
+            defVar(dataset, dim_name, dim_array, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
         else
             # Validate existing dimension
-            if collect(dataset[dim_name]) != collect(dim_array)
+            dataset_dim_array = collect(dataset[dim_name])
+            if dataset_dim_array != collect(dim_array)
                 throw(ArgumentError("Dimension '$dim_name' already exists in dataset but is different from expected.\n" *
-                                    "  Actual:   $(dataset[dim_name]) (length=$(length(dataset[dim_name])))\n" *
+                                    "  Actual:   $(dataset_dim_array) (length=$(length(dataset_dim_array)))\n" *
                                     "  Expected: $(dim_array) (length=$(length(dim_array)))"))
             end
         end
