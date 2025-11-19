@@ -154,7 +154,6 @@ function create_field_dimensions!(ds, field::AbstractField, dim_names, dimension
     dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
     spatial_dim_names = dim_names[1:end-(("time" in dim_names) ? 1 : 0)]
 
-    # Main.@infiltrate
     # Get spatial dimensions excluding reduced dimensions (i.e. dimensions where `loc isa Nothing``)
     reduced_dims = effective_reduced_dimensions(field)
 
@@ -1295,14 +1294,14 @@ function initialize_nc_file(model,
         end
 
         if !isempty(time_independent_vars)
-            for (name, output) in sort(collect(pairs(time_independent_vars)), by=first)
+            for (output_name, output) in sort(collect(pairs(time_independent_vars)), by=first)
                 output = construct_output(output, grid, indices, with_halos)
-                attrib = haskey(output_attributes, name) ? output_attributes[name] : Dict()
+                attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
                 materialized = materialize_output(output, model)
 
                 define_output_variable!(dataset,
                                         materialized,
-                                        name;
+                                        output_name;
                                         array_type,
                                         deflatelevel,
                                         attrib,
@@ -1312,17 +1311,17 @@ function initialize_nc_file(model,
                                         time_dependent = false,
                                         with_halos)
 
-                save_output!(dataset, output, model, name, array_type)
+                save_output!(dataset, output, model, output_name, array_type)
             end
         end
 
-        for (name, output) in sort(collect(pairs(outputs)), by=first)
-            attrib = haskey(output_attributes, name) ? output_attributes[name] : Dict()
+        for (output_name, output) in sort(collect(pairs(outputs)), by=first)
+            attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
             materialized = materialize_output(output, model)
 
             define_output_variable!(dataset,
                                     materialized,
-                                    name;
+                                    output_name;
                                     array_type,
                                     deflatelevel,
                                     attrib,
@@ -1422,21 +1421,21 @@ Base.open(nc::NetCDFWriter) = NCDataset(nc.filepath, "a")
 Base.close(nc::NetCDFWriter) = close(nc.dataset)
 
 # Saving outputs with no time dependence (e.g. grid metrics)
-function save_output!(ds, output, model, name, array_type)
+function save_output!(ds, output, model, output_name, array_type)
     fetched = fetch_output(output, model)
     data = convert_output(fetched, array_type)
     data = drop_output_dims(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
-    ds[name][colons...] = data
+    ds[output_name][colons...] = data
     return nothing
 end
 
 # Saving time-dependent outputs
-function save_output!(ds, output, model, ow, time_index, name)
+function save_output!(ds, output, model, ow, time_index, output_name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
-    ds[name][colons..., time_index:time_index] = data
+    ds[output_name][colons..., time_index:time_index] = data
     return nothing
 end
 
