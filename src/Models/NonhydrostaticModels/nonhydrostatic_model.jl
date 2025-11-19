@@ -115,26 +115,26 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 """
 function NonhydrostaticModel(; grid,
-                             clock = Clock(grid),
-                             advection = Centered(),
-                             buoyancy = nothing,
-                             coriolis = nothing,
-                             stokes_drift = nothing,
-                             forcing::NamedTuple = NamedTuple(),
-                             closure = nothing,
-                             free_surface = nothing,
-                             boundary_conditions::NamedTuple = NamedTuple(),
-                             tracers = (),
-                             timestepper = :RungeKutta3,
-                             background_fields::BFOrNamedTuple = NamedTuple(),
-                             particles::ParticlesOrNothing = nothing,
-                             biogeochemistry::AbstractBGCOrNothing = nothing,
-                             velocities = nothing,
-                             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                             nonhydrostatic_pressure = nothing,
-                             closure_fields = nothing,
-                             pressure_solver = nothing,
-                             auxiliary_fields = NamedTuple())
+                               clock = Clock(grid),
+                               advection = Centered(),
+                               buoyancy = nothing,
+                               coriolis = nothing,
+                               stokes_drift = nothing,
+                               forcing::NamedTuple = NamedTuple(),
+                               closure = nothing,
+                               free_surface = nothing,
+                               boundary_conditions::NamedTuple = NamedTuple(),
+                               tracers = (),
+                               timestepper = :RungeKutta3,
+                               background_fields::BFOrNamedTuple = NamedTuple(),
+                               particles::ParticlesOrNothing = nothing,
+                               biogeochemistry::AbstractBGCOrNothing = nothing,
+                               velocities = nothing,
+                               hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
+                               nonhydrostatic_pressure = nothing,
+                               closure_fields = nothing,
+                               pressure_solver = nothing,
+                               auxiliary_fields = NamedTuple())
 
     arch = architecture(grid)
 
@@ -273,7 +273,7 @@ function NonhydrostaticModel(; grid,
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
 
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     return model
 end

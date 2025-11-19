@@ -7,6 +7,8 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!
+
 using Adapt
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
@@ -109,7 +111,7 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
                                free_surface.solver_settings)
 end
 
-build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravitational_acceleration) =
+build_implicit_step_solver(::Val{:Default}, grid::XYRegularStaticRG, settings, gravitational_acceleration) =
     build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
 build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
@@ -148,7 +150,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
     parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
     return nothing

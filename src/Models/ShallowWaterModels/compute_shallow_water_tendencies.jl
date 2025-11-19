@@ -44,6 +44,8 @@ function compute_tendencies!(model::ShallowWaterModel, callbacks)
                                              model.clock,
                                              model.formulation)
 
+    compute_flux_bc_tendencies!(model)
+
     [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
     return nothing

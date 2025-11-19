@@ -1,10 +1,10 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.DistributedComputations: Distributed, DistributedGrid
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
+using Oceananigans.Models: surface_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
-                                                buffer_p_kernel_parameters,
                                                 buffer_κ_kernel_parameters,
                                                 buffer_parameters
 
@@ -12,31 +12,89 @@ const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
                                                           <:DistributedGrid, I, <:CellMaps, S,
                                                           <:Distributed} where {FT, TX, TY, TZ, I, S}
 
+# Fallback
+complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
+complete_communication_and_compute_momentum_buffer!(model, grid, arch) = nothing
+
 # We assume here that top/bottom BC are always synchronized (no partitioning in z)
-function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
+function complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
     grid = model.grid
     arch = architecture(grid)
 
+    # Synchronize tracers
+    for tracer in model.tracers
+        synchronize_communication!(tracer)
+    end
+    
+    # Synchronize velocities
+    synchronize_communication!(model.velocities.u)
+    synchronize_communication!(model.velocities.v)
+
     w_parameters = buffer_w_kernel_parameters(grid, arch)
-    p_parameters = buffer_p_kernel_parameters(grid, arch)
     κ_parameters = buffer_κ_kernel_parameters(grid, model.closure, arch)
 
-    # We need new values for `w`, `p` and `κ`
-    compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
+    update_vertical_velocities!(model.velocities, grid, model; parameters = w_parameters)
+    update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = w_parameters)
+    compute_diffusivities!(model.closure_fields, model.closure, model; parameters = κ_parameters)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     # parameters for communicating North / South / East / West side
-    compute_buffer_tendency_contributions!(grid, arch, model)
+    @apply_regionally compute_momentum_buffer_contributions!(grid, arch, model)
 
     return nothing
 end
 
-function compute_buffer_tendency_contributions!(grid, arch, model)
+function compute_momentum_buffer_contributions!(grid, arch, model)
     kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters)
     return nothing
 end
 
-function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
+function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
+    maps = grid.interior_active_cells
+
+    for name in (:west_halo_dependent_cells,
+                 :east_halo_dependent_cells,
+                 :south_halo_dependent_cells,
+                 :north_halo_dependent_cells)
+
+        active_cells_map = @inbounds maps[name]
+
+        # If the map == nothing, we don't need to compute the buffer because
+        # the buffer is not adjacent to a processor boundary. 
+        if !isnothing(active_cells_map)
+            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
+            compute_hydrostatic_momentum_tendencies!(model, model.velocities, nothing; active_cells_map)
+        end
+    end
+
+    return nothing
+end
+
+# We assume here that top/bottom BC are always synchronized (no partitioning in z)
+function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
+    grid = model.grid
+    arch = architecture(grid)
+
+    ũ, ṽ, _ = model.transport_velocities
+    synchronize_communication!(ũ)
+    synchronize_communication!(ṽ)
+    synchronize_communication!(model.free_surface)
+
+    w_parameters = buffer_w_kernel_parameters(grid, arch)
+    update_vertical_velocities!(model.transport_velocities, grid, model; parameters=w_parameters)
+    compute_tracer_buffer_contributions!(grid, arch, model)
+
+    return nothing
+end
+
+function compute_tracer_buffer_contributions!(grid, arch, model)
+    kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
+    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
+    return nothing
+end
+
+function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
     maps = grid.interior_active_cells
 
     for name in (:west_halo_dependent_cells,
@@ -48,7 +106,10 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorI
 
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
-        !isnothing(active_cells_map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+        if !isnothing(active_cells_map)
+            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
+            compute_hydrostatic_tracer_tendencies!(model, nothing; active_cells_map)
+        end
     end
 
     return nothing
@@ -59,15 +120,17 @@ function buffer_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
+    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(0, Nx+1)
+    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(0, Ny+1)
+
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    param_west  = (-Hx+2:1,    0:Ny+1)
-    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
-    param_south = (0:Nx+1,     -Hy+2:1)
-    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
+    param_west  = (-Hx+2:1,    yside)
+    param_east  = (Nx:Nx+Hx-1, yside)
+    param_south = (xside,     -Hy+2:1)
+    param_north = (xside,     Ny:Ny+Hy-1)
 
     params = (param_west, param_east, param_south, param_north)
 
     return buffer_parameters(params, grid, arch)
 end
-
