@@ -20,7 +20,7 @@ spacings of O(1 m), as well as direct numerical simulation. The NonhydrostaticMo
 idealized classroom problems, as in the [two-dimensional turbulence example](@ref "Two dimensional turbulence example").
 
 The [HydrostaticFreeSurfaceModel](@ref) integrates the hydrostatic or "primitive" Boussinesq equations
-with a free surface on its top boundary. The hydrostatic approximation allosw the HydrostaticFreeSurfaceModel
+with a free surface on its top boundary. The hydrostatic approximation allows the HydrostaticFreeSurfaceModel
 to achieve much higher efficiency in simulations on curvilinear grids used for large-scale regional or global
 simulations such as [LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
 and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
