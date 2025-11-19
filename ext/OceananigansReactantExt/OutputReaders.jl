@@ -24,7 +24,7 @@ import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indic
 end
 
 function cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t) 
-    cpu_times = on_architecture(CPU(), times)
+    cpu_times = on_architecture(Oceananigans.Architectures.CPU(), times)
     return TimeInterpolator(time_indexing, times, t)
 end
 
