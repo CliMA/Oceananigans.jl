@@ -17,8 +17,6 @@ for arch in archs
 
     @testset "set_to_function! with FunctionField" begin
         clock = Clock(time=1)
-
-
         for grid in (zero_d_grid, one_d_grid, two_d_grid, three_d_grid)
             c = CenterField(grid)
             Oceananigans.Fields.set_to_function!(c, function_of_time, clock)
