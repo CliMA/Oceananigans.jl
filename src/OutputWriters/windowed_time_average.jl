@@ -117,34 +117,55 @@ AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
 
 AveragedSpecifiedTimes(times; window, kw...) = AveragedSpecifiedTimes(times, window; kw...)
 
-determine_epsilon(eltype) = 0  
-determine_epsilon(::Type{T}) where T <: AbstractFloat = eps(T)  
+determine_epsilon(eltype) = 0
+determine_epsilon(::Type{T}) where T <: AbstractFloat = eps(T)
 determine_epsilon(::Type{<:Period}) = Second(0)
+
+const NumberTypeWindows = Union{Number, Vector{<:Number}}
+const PeriodTypeWindows = Union{Period, Vector{<:Period}}
+
+
+validate_windows(times, window) = nothing  # Fallback method
+
+function validate_windows(times, window::NumberTypeWindows)
+    tol = 10 * determine_epsilon(eltype(times))
+
+    gaps = diff(vcat(0, times))  # Prepend 0 to check first window against t=0
+    any(gaps .- window .< -tol) && throw(ArgumentError("Averaging windows overlap: some gaps between specified times are less than the window size."))
+end
+
+function validate_windows(times, window::PeriodTypeWindows)
+    if length(times) >= 2
+        window_starts = times .- window
+        prev_window_ends = times[1:end-1]
+        any(window_starts[2:end] .< prev_window_ends) && throw(ArgumentError("Averaging windows overlap: some gaps between specified times are less than the window size."))
+    end
+
+    # Note: We cannot check if the first window extends before the simulation start
+    # because the model clock is not available at construction time
+end
 
 function AveragedSpecifiedTimes(times, window::Vector; kw...)
     length(window) == length(times) || throw(ArgumentError("When providing a vector of windows, its length $(length(window)) must match the number of specified times $(length(times))."))
     perm = sortperm(times)
     sorted_times = times[perm]
     sorted_window = window[perm]
-    # time_diff = diff(vcat(0, sorted_times))
-    # time_diff = diff(sorted_times)
 
-    # epsilon = determine_epsilon(eltype(window))
-    # any(time_diff .- sorted_window .< -epsilon) && throw(ArgumentError("Averaging windows overlap. Ensure that for each specified time tᵢ, tᵢ - windowᵢ ≥ tᵢ₋₁."))
+    # Check for overlapping windows
+    validate_windows(sorted_times, sorted_window)
 
     return AveragedSpecifiedTimes(SpecifiedTimes(sorted_times); window=sorted_window, kw...)
 end
 
 function AveragedSpecifiedTimes(times, window; kw...)
-    sorted_times = sort(times)
-    # time_diff = diff(vcat(0, sorted_times))
-    # time_diff = diff(sorted_times)
+    specified_times = SpecifiedTimes(times)
 
-    # epsilon = determine_epsilon(typeof(window))
+    # Check for overlapping windows (scalar window case)
+    if length(specified_times.times) > 1
+        validate_windows(specified_times.times, window)
+    end
 
-    # any(time_diff .- window .< -epsilon) && throw(ArgumentError("Averaging window $window is too large and causes overlapping windows. Ensure that for each specified time tᵢ, tᵢ - window ≥ tᵢ₋₁."))
-
-    return AveragedSpecifiedTimes(SpecifiedTimes(times); window, kw...)
+    return AveragedSpecifiedTimes(specified_times; window, kw...)
 end
 
 get_next_window(schedule::VaryingWindowAveragedSpecifiedTimes) = schedule.window[schedule.specified_times.previous_actuation + 1]
