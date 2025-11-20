@@ -17,7 +17,6 @@ using Oceananigans.Operators
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Grids: peripheral_node, inactive_node, inactive_cell
 using Oceananigans.Fields: ZeroField
-using Oceananigans.Models: buoyancy_force
 
 using Oceananigans.BoundaryConditions:
     default_prognostic_bc,
@@ -25,9 +24,10 @@ using Oceananigans.BoundaryConditions:
     BoundaryCondition,
     FieldBoundaryConditions,
     DiscreteBoundaryFunction,
-    FluxBoundaryCondition,
+    FluxBoundaryCondition
 
 using Oceananigans.BuoyancyFormulations:
+    BuoyancyForce,
     BuoyancyTracer,
     SeawaterBuoyancy,
     TemperatureSeawaterBuoyancy,
@@ -49,6 +49,7 @@ import Oceananigans.TurbulenceClosures:
     shear_production,
     buoyancy_flux,
     dissipation,
+    buoyancy_force,
     add_closure_specific_boundary_conditions,
     compute_diffusivities!,
     build_closure_fields,

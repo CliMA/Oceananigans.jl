@@ -55,7 +55,6 @@ using Oceananigans.Utils
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
-using Oceananigans.Models: buoyancy_force
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
@@ -97,6 +96,7 @@ function shear_production end
 function buoyancy_flux end
 function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
+function buoyancy_force end # to be defined by models that want to use TurbulenceClosures
 
 #####
 ##### Fallback: flux = 0

@@ -3,11 +3,12 @@ module Smagorinskys
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Fields
-using Oceananigans.Models: buoyancy_force
 
 using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
+
+import Oceananigans.TurbulenceClosures: buoyancy_force
 
 include("smagorinsky.jl")
 include("dynamic_coefficient.jl")

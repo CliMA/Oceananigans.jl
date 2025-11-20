@@ -1,5 +1,11 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Fields: Field, ZeroField
+using Oceananigans.BuoyancyFormulations:
+    BuoyancyForce,
+    BuoyancyTracer,
+    AbstractBuoyancyFormulation,
+    ∂z_b,
+    buoyancy_perturbationᶜᶜᶜ
 
 """
     buoyancy_operation(model)

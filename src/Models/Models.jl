@@ -120,9 +120,6 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
 
 set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
-buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
-buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
-
 """
     possible_field_time_series(model::OceananigansModels)
 
