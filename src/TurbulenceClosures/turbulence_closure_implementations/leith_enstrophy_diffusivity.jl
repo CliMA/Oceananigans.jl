@@ -99,7 +99,7 @@ function compute_diffusivities!(closure_fields, closure::TwoDimensionalLeith, mo
     grid = model.grid
     velocities = model.velocities
     tracers = model.tracers
-    buoyancy = model.buoyancy
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters, _compute_leith_viscosity!,
             closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)

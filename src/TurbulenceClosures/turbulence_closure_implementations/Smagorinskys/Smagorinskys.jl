@@ -3,6 +3,7 @@ module Smagorinskys
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Fields
+using Oceananigans.Models: buoyancy_force
 
 using Oceananigans.Grids: AbstractGrid
 

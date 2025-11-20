@@ -120,7 +120,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; par
     arch = model.architecture
     grid = model.grid
     tracers = model.tracers
-    buoyancy = model.buoyancy
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,
             compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)

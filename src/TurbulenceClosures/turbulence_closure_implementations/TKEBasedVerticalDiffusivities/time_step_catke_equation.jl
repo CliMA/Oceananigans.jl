@@ -57,14 +57,14 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, model.tracers, model.buoyancy, closure_fields)
+                model.velocities, model.tracers, buoyancy_force(model), closure_fields)
                 
         # ... and step forward.
         launch!(arch, grid, :xyz,
                 _ab2_substep_turbulent_kinetic_energy!,
                 Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, closure_fields,
+                model.tracers, buoyancy_force(model), closure_fields,
                 Δτ, χ, Gⁿe, G⁻e)
 
         # Good idea?
@@ -118,14 +118,14 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     launch!(arch, grid, :xyz,
             compute_TKE_diffusivity!,
             κe, grid, closure,
-            model.velocities, model.tracers, model.buoyancy, closure_fields)
+            model.velocities, model.tracers, buoyancy_force(model), closure_fields)
                 
     # ... and step forward.
     launch!(arch, grid, :xyz,
             _euler_step_turbulent_kinetic_energy!,
             Le, grid, closure,
             model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-            model.tracers, model.buoyancy, closure_fields,
+            model.tracers, buoyancy_force(model), closure_fields,
             Δt, Gⁿ)
 
     implicit_step!(e, implicit_solver, closure,
