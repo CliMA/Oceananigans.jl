@@ -115,22 +115,19 @@ function defVar(ds, field_name, fd::AbstractField;
                 write_data=true,
                 kwargs...)
 
-    # Assess and create the dimensions for the field
-    dims = field_dimensions(fd, dimension_name_generator)
-    all_dims = time_dependent ? (dims..., "time") : dims
-    create_field_dimensions!(ds, fd, all_dims, dimension_name_generator; with_halos, array_type)
 
-    # Squeeze the data to remove dimensions where location is Nothing
-    squeezed_field_data = squeezed_data(fd; array_type, with_halos)
-
-    # If the field is time-dependent, we need to reshape the data to add a time dimension
-    squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
+    # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing-)
+    effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type)
 
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
-        defVar(ds, field_name, squeezed_reshaped_field_data, all_dims; kwargs...)
+        # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
+        squeezed_field_data = squeezed_data(fd; array_type, with_halos)
+        squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
+
+        defVar(ds, field_name, squeezed_reshaped_field_data, effective_dim_names; kwargs...)
     else
-        defVar(ds, field_name, eltype(squeezed_reshaped_field_data), all_dims; kwargs...)
+        defVar(ds, field_name, eltype(array_type), effective_dim_names; kwargs...)
     end
 end
 
@@ -139,39 +136,36 @@ end
 #####
 
 """
-    create_field_dimensions!(ds, field::AbstractField, dim_names, dimension_name_generator)
+    create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)})
 
-Creates all dimensions for the given `field` in the NetCDF dataset `ds`. If the dimensions
-already exist, they are validated to match the expected dimensions for the given `field`.
+Creates all dimensions for the given field `fd` in the NetCDF dataset `ds`. If the dimensions
+already exist, they are validated to match the expected dimensions.
 
 Arguments:
 - `ds`: NetCDF dataset
-- `field`: AbstractField being written
+- `fd`: AbstractField being written
 - `dim_names`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
-function create_field_dimensions!(ds, field::AbstractField, dim_names, dimension_name_generator; with_halos=false, array_type=Array{eltype(field)})
-    dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
+function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)})
+    # Assess and create the dimensions for the field
+    dim_names = field_dimensions(fd, dimension_name_generator)
+
+    dimension_attributes = default_dimension_attributes(fd.grid, dimension_name_generator)
     spatial_dim_names = dim_names[1:end-(("time" in dim_names) ? 1 : 0)]
-
-    # Get spatial dimensions excluding reduced dimensions (i.e. dimensions where `loc isa Nothing``)
-    reduced_dims = effective_reduced_dimensions(field)
-
-    # At the moment, this returns the full nodes even when the field is sliced.
-    # https://github.com/CliMA/Oceananigans.jl/pull/4814 will fix this in the future.
-    node_data = nodes(field; with_halos)
-    spatial_dim_data = [data for (i, data) in enumerate(node_data) if i ∉ reduced_dims]
+    spatial_dim_data = nodes(fd; with_halos)
 
     # Create dictionary of spatial dimensions and their data
-    spatial_dim_names_dict = Dict(dim_name => dim_data for (dim_name, dim_data) in zip(spatial_dim_names, spatial_dim_data))
-    create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; array_type)
+    spatial_dim_names_dict = Dict(spatial_dim_name => spatial_dim_array for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
+    effective_spatial_dim_names = create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; array_type)
 
     # Create time dimension if needed
-    if "time" in dim_names && "time" ∉ keys(ds.dim)
-        create_time_dimension!(ds)
+    if time_dependent
+        "time" ∉ keys(ds.dim) && create_time_dimension!(ds)
+        return (effective_spatial_dim_names..., "time") # Put "time" dimension if the field is time-dependent
+    else
+        return effective_spatial_dim_names
     end
-
-    return nothing
 end
 
 #####
@@ -215,7 +209,12 @@ but is different from the provided array.
 """
 function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float64}, kwargs...)
     FT = eltype(array_type)
+    effective_dim_names = []
     for (i, (dim_name, dim_array)) in enumerate(dims)
+        dim_array isa Nothing && continue # Don't create anything if dim_array is Nothing
+        dim_name == "nothing" && continue # Don't create anything if dim_name is "nothing"
+        push!(effective_dim_names, dim_name)
+
         dim_array = FT.(dim_array) # Transform dim_array to the correct float type
         if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
@@ -230,6 +229,7 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
             end
         end
     end
+    return tuple(effective_dim_names...)
 end
 
 """
@@ -525,45 +525,33 @@ end
 ##### Mapping outputs/fields to dimensions
 #####
 
-function field_dimensions(field::AbstractField, grid::RectilinearGrid, dim_name_generator)
-    LX, LY, LZ = location(field)
+function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_generator)
+    LX, LY, LZ = location(fd)
     TX, TY, TZ = topology(grid)
 
-    eff_reduced_dims = effective_reduced_dimensions(field)
+    x_dim_name = LX == Nothing ? "nothing" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
+    y_dim_name = LY == Nothing ? "nothing" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
+    z_dim_name = LZ == Nothing ? "nothing" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
-    x_dim_name = (1 ∈ eff_reduced_dims || TX == Flat) ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
-    y_dim_name = (2 ∈ eff_reduced_dims || TY == Flat) ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
-    z_dim_name = (3 ∈ eff_reduced_dims || TZ == Flat) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
-
-    x_dim_name = isempty(x_dim_name) ? tuple() : tuple(x_dim_name)
-    y_dim_name = isempty(y_dim_name) ? tuple() : tuple(y_dim_name)
-    z_dim_name = isempty(z_dim_name) ? tuple() : tuple(z_dim_name)
-
-    return tuple(x_dim_name..., y_dim_name..., z_dim_name...)
+    return tuple(x_dim_name, y_dim_name, z_dim_name)
 end
 
-function field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
-    LΛ, LΦ, LZ = location(field)
+function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
+    LΛ, LΦ, LZ = location(fd)
     TΛ, TΦ, TZ = topology(grid)
 
-    eff_reduced_dims = effective_reduced_dimensions(field)
+    λ_dim_name = dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
+    φ_dim_name = dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
+    z_dim_name = dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
-    λ_dim_name = (1 ∈ eff_reduced_dims || TΛ == Flat) ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    φ_dim_name = (2 ∈ eff_reduced_dims || TΦ == Flat) ? "" : dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
-    z_dim_name = (3 ∈ eff_reduced_dims || TZ == Flat) ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
-
-    λ_dim_name = isempty(λ_dim_name) ? tuple() : tuple(λ_dim_name)
-    φ_dim_name = isempty(φ_dim_name) ? tuple() : tuple(φ_dim_name)
-    z_dim_name = isempty(z_dim_name) ? tuple() : tuple(z_dim_name)
-
-    return tuple(λ_dim_name..., φ_dim_name..., z_dim_name...)
+    return tuple(λ_dim_name, φ_dim_name, z_dim_name)
 end
 
-field_dimensions(field::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator) =
-    field_dimensions(field, grid.underlying_grid, dim_name_generator)
+field_dimensions(fd::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator) =
+    field_dimensions(fd, grid.underlying_grid, dim_name_generator)
 
-field_dimensions(field::AbstractField, dim_name_generator) =
-    field_dimensions(field, field.grid, dim_name_generator)
+field_dimensions(fd::AbstractField, dim_name_generator) =
+    field_dimensions(fd, fd.grid, dim_name_generator)
 
 #####
 ##### Dimension attributes
@@ -1478,16 +1466,16 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
         t0, sz0 = time_ns(), filesize(filepath)
     end
 
-    for (name, output) in ow.outputs
+    for (output_name, output) in ow.outputs
         # Time before computing this output.
         verbose && (t0′ = time_ns())
 
-        save_output!(ds, output, model, ow, time_index, name)
+        save_output!(ds, output, model, ow, time_index, output_name)
 
         if verbose
             # Time after computing this output.
             t1′ = time_ns()
-            @info "Computing $name done: time=$(prettytime((t1′-t0′) / 1e9))"
+            @info "Computing $output_name done: time=$(prettytime((t1′-t0′) / 1e9))"
         end
     end
 
