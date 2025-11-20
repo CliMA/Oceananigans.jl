@@ -155,14 +155,14 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
     spatial_dim_names = dim_names[1:end-(("time" in dim_names) ? 1 : 0)]
     spatial_dim_data = nodes(fd; with_halos)
 
-    # Create dictionary of spatial dimensions and their data
-    spatial_dim_names_dict = Dict(spatial_dim_name => spatial_dim_array for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
+    # Create dictionary of spatial dimensions and their data. Using OrderedDict to ensure the order of the dimensions is preserved.
+    spatial_dim_names_dict = OrderedDict(spatial_dim_name => spatial_dim_array for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
     effective_spatial_dim_names = create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; array_type)
 
     # Create time dimension if needed
     if time_dependent
         "time" ∉ keys(ds.dim) && create_time_dimension!(ds)
-        return (effective_spatial_dim_names..., "time") # Put "time" dimension if the field is time-dependent
+        return (effective_spatial_dim_names..., "time") # Add "time" dimension if the field is time-dependent
     else
         return effective_spatial_dim_names
     end
