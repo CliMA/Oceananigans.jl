@@ -116,7 +116,7 @@ function defVar(ds, field_name, fd::AbstractField;
                 kwargs...)
 
 
-    # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing-)
+    # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
     effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type)
 
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
@@ -212,7 +212,7 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
     effective_dim_names = []
     for (i, (dim_name, dim_array)) in enumerate(dims)
         dim_array isa Nothing && continue # Don't create anything if dim_array is Nothing
-        dim_name == "nothing" && continue # Don't create anything if dim_name is "nothing"
+        dim_name == "" && continue # Don't create anything if dim_name is an empty string
         push!(effective_dim_names, dim_name)
 
         dim_array = FT.(dim_array) # Transform dim_array to the correct float type
@@ -529,9 +529,9 @@ function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_gen
     LX, LY, LZ = location(fd)
     TX, TY, TZ = topology(grid)
 
-    x_dim_name = LX == Nothing ? "nothing" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
-    y_dim_name = LY == Nothing ? "nothing" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
-    z_dim_name = LZ == Nothing ? "nothing" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
+    x_dim_name = LX == Nothing ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
+    y_dim_name = LY == Nothing ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
+    z_dim_name = LZ == Nothing ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     return tuple(x_dim_name, y_dim_name, z_dim_name)
 end
@@ -540,9 +540,9 @@ function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_na
     LΛ, LΦ, LZ = location(fd)
     TΛ, TΦ, TZ = topology(grid)
 
-    λ_dim_name = dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    φ_dim_name = dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
-    z_dim_name = dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
+    λ_dim_name = LΛ == Nothing ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
+    φ_dim_name = LΦ == Nothing ? "" : dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
+    z_dim_name = LZ == Nothing ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     return tuple(λ_dim_name, φ_dim_name, z_dim_name)
 end
