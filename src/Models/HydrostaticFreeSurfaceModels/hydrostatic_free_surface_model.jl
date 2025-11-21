@@ -16,7 +16,7 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_clo
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities, timestepper
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -261,3 +261,38 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
 
+# For checkpointing
+function prognostic_state(model::HydrostaticFreeSurfaceModel)
+    return (
+        clock = prognostic_state(model.clock),
+        particles = prognostic_state(model.particles),
+        velocities = prognostic_state(model.velocities),
+        tracers = prognostic_state(model.tracers),
+        closure_fields = prognostic_state(model.closure_fields),
+        timestepper = prognostic_state(model.timestepper),
+        free_surface = prognostic_state(model.free_surface),
+        auxiliary_fields = prognostic_state(model.auxiliary_fields),
+    )
+end
+
+function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.particles, state.particles)
+    restore_prognostic_state!(model.velocities, state.velocities)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+    restore_prognostic_state!(model.free_surface, state.free_surface)
+
+    if length(model.tracers) > 0
+        restore_prognostic_state!(model.tracers, state.tracers)
+    end
+
+    if !isnothing(model.closure_fields)
+        restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    end
+
+    if length(model.auxiliary_fields) > 0
+        restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
+    end
+
+    return model
+end

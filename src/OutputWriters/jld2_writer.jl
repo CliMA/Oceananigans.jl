@@ -4,6 +4,8 @@ using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
 using Oceananigans.Fields: boundary_conditions, indices
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 default_included_properties(model) = [:grid]
 
 mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
@@ -334,4 +336,21 @@ function Base.show(io::IO, ow::JLD2Writer)
               "├── including: ", ow.including, "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))
+end
+
+#####
+##### Checkpointing the JLD2Writer
+#####
+
+function prognostic_state(writer::JLD2Writer)
+    return (
+        schedule = prognostic_state(writer.schedule),
+        part = writer.part,
+    )
+end
+
+function restore_prognostic_state!(writer::JLD2Writer, state)
+    restore_prognostic_state!(writer.schedule, state.schedule)
+    writer.part = state.part
+    return writer
 end

@@ -39,7 +39,7 @@ using Oceananigans.OutputWriters:
     show_array_type
 
 import NCDatasets: defVar
-import Oceananigans: write_output!
+import Oceananigans: write_output!, prognostic_state, restore_prognostic_state!
 import Oceananigans.OutputWriters:
     NetCDFWriter,
     write_grid_reconstruction_data!,
@@ -1509,5 +1509,22 @@ end
 #####
 
 ext(::Type{NetCDFWriter}) = ".nc"
+
+#####
+##### Checkpointing the NetCDFWriter
+#####
+
+function prognostic_state(writer::NetCDFWriter)
+    return (
+        schedule = prognostic_state(writer.schedule),
+        part = writer.part,
+    )
+end
+
+function restore_prognostic_state!(writer::NetCDFWriter, state)
+    restore_prognostic_state!(writer.schedule, state.schedule)
+    writer.part = state.part
+    return writer
+end
 
 end # module
