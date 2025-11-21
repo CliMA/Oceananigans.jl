@@ -113,9 +113,9 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
     stage = model.clock.stage
-    β = (β¹, β², 1)[stage]
-
-    Δt = model.clock.last_Δt / β
+    β = (model.timestepper.β¹, model.timestepper.β², one(model.timestepper.β¹))
+    βn = β[stage]
+    Δt = model.clock.last_Δt / βn
 
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
