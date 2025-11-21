@@ -2577,7 +2577,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_h = NCDataset(filepath_with_halos)
 
     @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, time=Nt + 1)
+    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_η=1, time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -2585,7 +2585,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_n = NCDataset(filepath_no_halos)
 
     @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, time=Nt + 1)
+    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_η=1, time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)

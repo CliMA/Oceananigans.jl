@@ -46,7 +46,8 @@ import Oceananigans.OutputWriters:
     convert_for_netcdf,
     materialize_from_netcdf,
     reconstruct_grid,
-    trilocation_dim_name
+    trilocation_dim_name,
+    dimension_name_generator_free_surface
 
 const c = Center()
 const f = Face()
@@ -90,9 +91,8 @@ infil> squeezed_data(c) |> size
 
 Note that this will only remove (squeeze) singleton dimensions.
 """
-function squeezed_data(fd::AbstractField; array_type=Array{eltype(fd)}, with_halos=false)
-    reduced_dims = effective_reduced_dimensions(fd)
-    field_data = with_halos ? parent(fd) : interior(fd)
+function squeezed_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)}, with_halos=false)
+    reduced_dims = reduced_dimensions(fd)
     field_data_cpu = array_type(field_data) # Need to convert to the array type of the field
 
     indices = Any[:, :, :]
@@ -103,6 +103,13 @@ function squeezed_data(fd::AbstractField; array_type=Array{eltype(fd)}, with_hal
     end
     return getindex(field_data_cpu, indices...)
 end
+
+function squeezed_data(fd::AbstractField; with_halos=false, kwargs...)
+    field_data = with_halos ? parent(fd) : interior(fd)
+    return squeezed_data(fd, field_data; array_type, with_halos)
+end
+
+squeezed_data(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeezed_data(fd.operand; kwargs...)
 
 defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
@@ -230,34 +237,6 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=A
         end
     end
     return tuple(effective_dim_names...)
-end
-
-"""
-    effective_reduced_dimensions(field)
-
-Return dimensions that are effectively reduced, considering both location-based reduction
-(e.g. a `Nothing` location) and index-based reduction at boundaries (e.g. free surface
-height fields with :, :, Nz+1:Nz+1 indices).
-```
-"""
-function effective_reduced_dimensions(field)
-    loc_reduced = reduced_dimensions(field)
-
-    idx_reduced = ()
-    inds = indices(field)
-    grid_size = size(field.grid)
-
-    for (dim, ind) in enumerate(inds)
-        if ind isa UnitRange && length(ind) == 1
-            index_value = first(ind)
-            if index_value > grid_size[dim]
-                idx_reduced = (idx_reduced..., dim)
-            end
-        end
-    end
-
-    all_reduced = (loc_reduced..., idx_reduced...)
-    return Tuple(unique(all_reduced))
 end
 
 #####
@@ -1287,7 +1266,8 @@ function initialize_nc_file(model,
                 attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
                 materialized = materialize_output(output, model)
 
-                define_output_variable!(dataset,
+                define_output_variable!(model,
+                                        dataset,
                                         materialized,
                                         output_name;
                                         array_type,
@@ -1307,7 +1287,8 @@ function initialize_nc_file(model,
             attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
             materialized = materialize_output(output, model)
 
-            define_output_variable!(dataset,
+            define_output_variable!(model,
+                                    dataset,
                                     materialized,
                                     output_name;
                                     array_type,
@@ -1353,7 +1334,7 @@ materialize_output(particles::LagrangianParticles, model) = particles
 materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, output_name; array_type,
+function define_output_variable!(model, dataset, output, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos,
                                  dimensions, filepath)
@@ -1373,22 +1354,27 @@ function define_output_variable!(dataset, output, output_name; array_type,
 end
 
 """ Defines empty field variable. """
-function define_output_variable!(dataset, output::AbstractField, output_name; array_type,
+function define_output_variable!(model, dataset, output::AbstractField, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos,
                                  dimensions, filepath)
 
+    # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
+    if output_name == "η" && output == view(model.free_surface.η, output.indices...)
+        local default_dimension_name_generator = dimension_name_generator
+        dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
+    end
     defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, write_data=false)
     return nothing
 end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
-define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, output_name; kwargs...) =
-    define_output_variable!(dataset, output.operand, output_name; kwargs...)
+define_output_variable!(model, dataset, output::WindowedTimeAverage{<:AbstractField}, output_name; kwargs...) =
+    define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, output_name; array_type,
+function define_output_variable!(model, dataset, output::LagrangianParticles, output_name; array_type,
                                  deflatelevel, kwargs...)
 
     particle_fields = eltype(output.properties) |> fieldnames .|> string
@@ -1412,7 +1398,7 @@ Base.close(nc::NetCDFWriter) = close(nc.dataset)
 function save_output!(ds, output, model, output_name, array_type)
     fetched = fetch_output(output, model)
     data = convert_output(fetched, array_type)
-    data = drop_output_dims(output, data)
+    data = squeezed_data(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons...] = data
     return nothing
@@ -1421,7 +1407,7 @@ end
 # Saving time-dependent outputs
 function save_output!(ds, output, model, ow, time_index, output_name)
     data = fetch_and_convert_output(output, model, ow)
-    data = drop_output_dims(output, data)
+    data = squeezed_data(output, data; with_halos=ow.with_halos)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons..., time_index:time_index] = data
     return nothing
@@ -1492,21 +1478,6 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     end
 
     return nothing
-end
-
-drop_output_dims(output, data) = data # fallback
-drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = drop_output_dims(output.operand, data)
-
-function drop_output_dims(field::Field, data)
-    eff_reduced_dims = effective_reduced_dimensions(field)
-    flat_dims = Tuple(i for (i, T) in enumerate(topology(field.grid)) if T == Flat)
-    dims = (eff_reduced_dims..., flat_dims...)
-    dims = Tuple(Set(dims)) # ensure dims are unique
-
-    # Only drop dimensions that exist in the data and are size 1
-    dims = filter(d -> d <= ndims(data) && size(data, d) == 1, dims)
-
-    return isempty(dims) ? data : dropdims(data; dims=tuple(dims...))
 end
 
 #####
