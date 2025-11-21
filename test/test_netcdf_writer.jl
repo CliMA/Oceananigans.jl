@@ -2120,14 +2120,14 @@ function test_netcdf_time_averaging(arch)
             horizontal_average_nc_filepath = "decay_averaged_field_test_$Arch.nc"
 
             simulation.output_writers[:horizontal_average] =
-                NetCDFWriter(
-                    model,
-                    nc_outputs,
-                    array_type = Array{Float64},
-                    verbose = true,
-                    filename = horizontal_average_nc_filepath,
-                    schedule = TimeInterval(10Δt),
-                    include_grid_metrics = false)
+                NetCDFWriter(model,
+                             nc_outputs,
+                             array_type = Array{Float64},
+                             verbose = true,
+                             filename = horizontal_average_nc_filepath,
+                             schedule = TimeInterval(10Δt),
+                             include_grid_metrics = false,
+                             overwrite_existing = true)
 
             multiple_time_average_nc_filepath = "decay_windowed_time_average_test_$Arch.nc"
             single_time_average_nc_filepath = "single_decay_windowed_time_average_test_$Arch.nc"
@@ -2136,24 +2136,24 @@ function test_netcdf_time_averaging(arch)
             single_nc_output = Dict("c1" => ∫c1_dxdy)
 
             simulation.output_writers[:single_output_time_average] =
-                NetCDFWriter(
-                    model,
-                    single_nc_output,
-                    array_type = Array{Float64},
-                    verbose = true,
-                    filename = single_time_average_nc_filepath,
-                    schedule = AveragedTimeInterval(10Δt; window, stride),
-                    include_grid_metrics = false)
+                NetCDFWriter(model,
+                             single_nc_output,
+                             array_type = Array{Float64},
+                             verbose = true,
+                             filename = single_time_average_nc_filepath,
+                             schedule = AveragedTimeInterval(10Δt; window, stride),
+                             include_grid_metrics = false,
+                             overwrite_existing = true)
 
             simulation.output_writers[:multiple_output_time_average] =
-                NetCDFWriter(
-                    model,
-                    nc_outputs,
-                    array_type = Array{Float64},
-                    verbose = true,
-                    filename = multiple_time_average_nc_filepath,
-                    schedule = AveragedTimeInterval(10Δt; window, stride),
-                    include_grid_metrics = false)
+                NetCDFWriter(model,
+                             nc_outputs,
+                             array_type = Array{Float64},
+                             verbose = true,
+                             filename = multiple_time_average_nc_filepath,
+                             schedule = AveragedTimeInterval(10Δt; window, stride),
+                             include_grid_metrics = false,
+                             overwrite_existing = true)
 
             run!(simulation)
 
