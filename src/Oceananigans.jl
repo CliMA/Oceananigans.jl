@@ -52,7 +52,7 @@ export
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, TEOS10,
-    BuoyancyField,
+    buoyancy_field,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
