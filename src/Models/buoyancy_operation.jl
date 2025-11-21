@@ -25,7 +25,7 @@ buoyancy_operation(bm::AbstractBuoyancyFormulation, grid, tracers) =
 """
     buoyancy_field(model)
 
-Returns a `Field` that can `compute!` and store the buoyancy perturbation.
+Return a `Field` that can `compute!` and store the buoyancy perturbation.
 """
 buoyancy_field(model) = Field(buoyancy_operation(model))
 
