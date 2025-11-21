@@ -1353,43 +1353,43 @@ materialize_output(particles::LagrangianParticles, model) = particles
 materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name; array_type,
+function define_output_variable!(dataset, output, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos,
                                  dimensions, filepath)
 
-    if name ∉ keys(dimensions)
-        msg = string("dimensions[$name] for output $name=$(typeof(output)) into $filepath" *
+    if output_name ∉ keys(dimensions)
+        msg = string("dimensions[$output_name] for output $output_name=$(typeof(output)) into $filepath" *
                      " must be provided when constructing NetCDFWriter")
         throw(ArgumentError(msg))
     end
 
-    dims = dimensions[name]
+    dims = dimensions[output_name]
     FT = eltype(array_type)
     all_dims = time_dependent ? (dims..., "time") : dims
-    defVar(dataset, name, FT, all_dims; deflatelevel, attrib)
+    defVar(dataset, output_name, FT, all_dims; deflatelevel, attrib)
 
     return nothing
 end
 
 """ Defines empty field variable. """
-function define_output_variable!(dataset, output::AbstractField, field_name; array_type,
+function define_output_variable!(dataset, output::AbstractField, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos,
                                  dimensions, filepath)
 
-    defVar(dataset, field_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, write_data=false)
+    defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, write_data=false)
     return nothing
 end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
-define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
-    define_output_variable!(dataset, output.operand, args...)
+define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, output_name; kwargs...) =
+    define_output_variable!(dataset, output.operand, output_name; kwargs...)
 
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name; array_type,
-                                 deflatelevel, args...)
+function define_output_variable!(dataset, output::LagrangianParticles, output_name; array_type,
+                                 deflatelevel, kwargs...)
 
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     T = eltype(array_type)
