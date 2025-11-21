@@ -10,7 +10,7 @@ using Oceananigans.BuoyancyFormulations:
 """
     buoyancy_operation(model)
 
-Returns a `KernelFunctionOperation` that computes the buoyancy perturbation,
+Return a `KernelFunctionOperation` that computes the buoyancy perturbation,
 `Field` corresponding to the buoyancy perturbation directly, or `ZeroField` if buoyancy is `nothing`.
 """
 buoyancy_operation(model) = buoyancy_operation(model.buoyancy, model.grid, model.tracers)
