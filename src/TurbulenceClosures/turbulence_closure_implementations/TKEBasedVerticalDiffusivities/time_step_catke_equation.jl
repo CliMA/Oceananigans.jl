@@ -53,18 +53,21 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
             χ = model.timestepper.χ
         end
 
+        tracers = buoyancy_tracers(model)
+        buoyancy = buoyancy_force(model)
+
         # Compute the linear implicit component of the RHS (diffusivities, L)...
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, model.tracers, buoyancy_force(model), closure_fields)
+                model.velocities, tracers, buoyancy, closure_fields)
                 
         # ... and step forward.
         launch!(arch, grid, :xyz,
                 _ab2_substep_turbulent_kinetic_energy!,
                 Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, buoyancy_force(model), closure_fields,
+                tracers, buoyancy, closure_fields,
                 Δτ, χ, Gⁿe, G⁻e)
 
         # Good idea?
@@ -109,23 +112,26 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
+    stage = model.clock.stage
+    β = (β¹, β², 1)[stage]
 
-    β  = model.clock.stage == 1 ? model.timestepper.β¹ :
-         model.clock.stage == 2 ? model.timestepper.β² : 1
     Δt = model.clock.last_Δt / β
+
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     # Compute the linear implicit component of the RHS (diffusivities, L)...
     launch!(arch, grid, :xyz,
             compute_TKE_diffusivity!,
             κe, grid, closure,
-            model.velocities, model.tracers, buoyancy_force(model), closure_fields)
+            model.velocities, tracers, buoyancy, closure_fields)
                 
     # ... and step forward.
     launch!(arch, grid, :xyz,
             _euler_step_turbulent_kinetic_energy!,
             Le, grid, closure,
             model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-            model.tracers, buoyancy_force(model), closure_fields,
+            tracers, buoyancy, closure_fields,
             Δt, Gⁿ)
 
     implicit_step!(e, implicit_solver, closure,

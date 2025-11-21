@@ -50,6 +50,7 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_flux,
     dissipation,
     buoyancy_force,
+    buoyancy_tracers,
     add_closure_specific_boundary_conditions,
     compute_diffusivities!,
     build_closure_fields,

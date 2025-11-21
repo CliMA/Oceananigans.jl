@@ -92,7 +92,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; par
 
     arch = model.architecture
     grid = model.grid
-    tracers = model.tracers
+    tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,

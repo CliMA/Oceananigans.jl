@@ -232,7 +232,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
+    tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)

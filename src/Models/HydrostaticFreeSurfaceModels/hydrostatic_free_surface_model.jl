@@ -18,7 +18,7 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
 import Oceananigans.Models: total_velocities, timestepper
-import Oceananigans.TurbulenceClosures: buoyancy_force
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -260,3 +260,4 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
+buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers

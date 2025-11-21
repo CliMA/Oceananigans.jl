@@ -97,6 +97,7 @@ function buoyancy_flux end
 function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
 function buoyancy_force end # to be defined by models that want to use TurbulenceClosures
+function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
 
 #####
 ##### Fallback: flux = 0

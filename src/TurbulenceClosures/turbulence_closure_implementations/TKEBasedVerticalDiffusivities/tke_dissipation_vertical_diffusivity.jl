@@ -245,7 +245,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
+    tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
