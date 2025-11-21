@@ -33,7 +33,7 @@ buoyancy_field(model) = Field(buoyancy_operation(model))
     buoyancy_frequency(model)
 
 Returns a `KernelFunctionOperation` that computes the vertical derivative of buoyancy,
-which is also known as the buoyancy frequency.
+which is also known as the square of the buoyancy frequency.
 """
 buoyancy_frequency(model) = buoyancy_frequency(model.buoyancy, model.grid, model.tracers)
 buoyancy_frequency(b::BuoyancyForce, grid, tracers) = buoyancy_frequency(b.formulation, grid, tracers)
