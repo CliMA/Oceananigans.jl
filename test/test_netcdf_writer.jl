@@ -119,14 +119,13 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     filepath_metrics_halos = "test_grid_metrics_rectilinear_halos_$(Arch)_$FT.nc"
     isfile(filepath_metrics_halos) && rm(filepath_metrics_halos)
 
-    simulation.output_writers[:with_metrics_and_halos] =
-        NetCDFWriter(model, fields(model),
-            filename = filepath_metrics_halos,
-            schedule = IterationInterval(1),
-            array_type = Array{FT},
-            with_halos = true,
-            include_grid_metrics = true,
-            verbose = true)
+    simulation.output_writers[:with_metrics_and_halos] = NetCDFWriter(model, fields(model),
+                                                                      filename = filepath_metrics_halos,
+                                                                      schedule = IterationInterval(1),
+                                                                      array_type = Array{FT},
+                                                                      with_halos = true,
+                                                                      include_grid_metrics = true,
+                                                                      verbose = true)
 
     filepath_metrics_nohalos = "test_grid_metrics_rectilinear_nohalos_$(Arch)_$FT.nc"
     isfile(filepath_metrics_nohalos) && rm(filepath_metrics_nohalos)
@@ -2121,14 +2120,14 @@ function test_netcdf_time_averaging(arch)
             horizontal_average_nc_filepath = "decay_averaged_field_test_$Arch.nc"
 
             simulation.output_writers[:horizontal_average] =
-                NetCDFWriter(
-                    model,
-                    nc_outputs,
-                    array_type = Array{Float64},
-                    verbose = true,
-                    filename = horizontal_average_nc_filepath,
-                    schedule = TimeInterval(10Δt),
-                    include_grid_metrics = false)
+                NetCDFWriter(model,
+                             nc_outputs,
+                             array_type = Array{Float64},
+                             verbose = true,
+                             filename = horizontal_average_nc_filepath,
+                             schedule = TimeInterval(10Δt),
+                             include_grid_metrics = false,
+                             overwrite_existing = true)
 
             multiple_time_average_nc_filepath = "decay_windowed_time_average_test_$Arch.nc"
             single_time_average_nc_filepath = "single_decay_windowed_time_average_test_$Arch.nc"
@@ -2137,24 +2136,24 @@ function test_netcdf_time_averaging(arch)
             single_nc_output = Dict("c1" => ∫c1_dxdy)
 
             simulation.output_writers[:single_output_time_average] =
-                NetCDFWriter(
-                    model,
-                    single_nc_output,
-                    array_type = Array{Float64},
-                    verbose = true,
-                    filename = single_time_average_nc_filepath,
-                    schedule = AveragedTimeInterval(10Δt; window, stride),
-                    include_grid_metrics = false)
+                NetCDFWriter(model,
+                             single_nc_output,
+                             array_type = Array{Float64},
+                             verbose = true,
+                             filename = single_time_average_nc_filepath,
+                             schedule = AveragedTimeInterval(10Δt; window, stride),
+                             include_grid_metrics = false,
+                             overwrite_existing = true)
 
             simulation.output_writers[:multiple_output_time_average] =
-                NetCDFWriter(
-                    model,
-                    nc_outputs,
-                    array_type = Array{Float64},
-                    verbose = true,
-                    filename = multiple_time_average_nc_filepath,
-                    schedule = AveragedTimeInterval(10Δt; window, stride),
-                    include_grid_metrics = false)
+                NetCDFWriter(model,
+                             nc_outputs,
+                             array_type = Array{Float64},
+                             verbose = true,
+                             filename = multiple_time_average_nc_filepath,
+                             schedule = AveragedTimeInterval(10Δt; window, stride),
+                             include_grid_metrics = false,
+                             overwrite_existing = true)
 
             run!(simulation)
 
@@ -2578,7 +2577,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_h = NCDataset(filepath_with_halos)
 
     @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, time=Nt + 1)
+    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_η=1, time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -2586,7 +2585,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_n = NCDataset(filepath_no_halos)
 
     @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, time=Nt + 1)
+    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_η=1, time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
