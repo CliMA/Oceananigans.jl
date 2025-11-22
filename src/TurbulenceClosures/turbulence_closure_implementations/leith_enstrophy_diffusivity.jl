@@ -94,15 +94,15 @@ end
     @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
+function compute_diffusivities!(closure_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters, _compute_leith_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+            closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing
 end
@@ -110,7 +110,7 @@ end
 "Return the filter width for a Leith Diffusivity on a general grid."
 @inline Δᶠ(i, j, k, grid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid))
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::TwoDimensionalLeith)
+function build_closure_fields(grid, clock, tracer_names, bcs, ::TwoDimensionalLeith)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center(), Center(), Center())))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     return (; νₑ=CenterField(grid, boundary_conditions=bcs.νₑ))

@@ -176,27 +176,27 @@ struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
     _tupled_implicit_linear_coefficients :: LC
 end
 
-Adapt.adapt_structure(to, tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields) =
-    TKEDissipationDiffusivityFields(adapt(to, tke_dissipation_diffusivity_fields.κu),
-                                    adapt(to, tke_dissipation_diffusivity_fields.κc),
-                                    adapt(to, tke_dissipation_diffusivity_fields.κe),
-                                    adapt(to, tke_dissipation_diffusivity_fields.κϵ),
-                                    adapt(to, tke_dissipation_diffusivity_fields.Le),
-                                    adapt(to, tke_dissipation_diffusivity_fields.Lϵ),
-                                    adapt(to, tke_dissipation_diffusivity_fields.previous_velocities),
-                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_tracer_diffusivities),
-                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_implicit_linear_coefficients))
+Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusivityFields) =
+    TKEDissipationDiffusivityFields(adapt(to, tke_dissipation_closure_fields.κu),
+                                    adapt(to, tke_dissipation_closure_fields.κc),
+                                    adapt(to, tke_dissipation_closure_fields.κe),
+                                    adapt(to, tke_dissipation_closure_fields.κϵ),
+                                    adapt(to, tke_dissipation_closure_fields.Le),
+                                    adapt(to, tke_dissipation_closure_fields.Lϵ),
+                                    adapt(to, tke_dissipation_closure_fields.previous_velocities),
+                                    adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
+                                    adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
-    fields_with_halos_to_fill = (tke_dissipation_diffusivity_fields.κu,
-                                 tke_dissipation_diffusivity_fields.κc,
-                                 tke_dissipation_diffusivity_fields.κe,
-                                 tke_dissipation_diffusivity_fields.κϵ)
+function fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
+    fields_with_halos_to_fill = (tke_dissipation_closure_fields.κu,
+                                 tke_dissipation_closure_fields.κc,
+                                 tke_dissipation_closure_fields.κe,
+                                 tke_dissipation_closure_fields.κϵ)
 
     return fill_halo_regions!(fields_with_halos_to_fill, args...; kw...)
 end
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
                                κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
@@ -245,8 +245,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 

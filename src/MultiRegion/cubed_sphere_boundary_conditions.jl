@@ -259,7 +259,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                             field_2::CubedSphereField{<:Center, <:Center}; signed = true, kwargs...)
     grid = field_1.grid
 
-    signed ? plmn = -1 : plmn = 1
+    plmn = signed ? -1 : 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)
@@ -391,7 +391,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
 
-    signed ? plmn = -1 : plmn = 1
+    plmn = signed ? -1 : 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)
@@ -619,7 +619,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                             field_2::CubedSphereField{<:Face, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
 
-    signed ? plmn = -1 : plmn = 1
+    plmn = signed ? -1 : 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)

@@ -89,6 +89,9 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
+# Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
+function materialize_free_surface end
+
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
@@ -109,7 +112,6 @@ using .HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
-
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
@@ -127,7 +129,7 @@ function possible_field_time_series(model::OceananigansModels)
     forcing = model.forcing
     model_fields = fields(model)
     # Note: we may need to include other objects in the tuple below,
-    # such as model.diffusivity_fields
+    # such as model.closure_fields
     return tuple(model_fields, forcing)
 end
 
@@ -213,9 +215,9 @@ function required_checkpoint_properties(model::OceananigansModels)
     return properties
 end
 
-# Implementation of a `seawater_density` `KernelFunctionOperation
-# applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
+# Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
+include("buoyancy_operation.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
