@@ -1,19 +1,64 @@
 using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions
-using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver, closure_required_tracers
+
+using Oceananigans.Advection:
+    AbstractAdvectionScheme,
+    Centered,
+    VectorInvariant,
+    adapt_advection_order
+
+using Oceananigans.BuoyancyFormulations:
+    validate_buoyancy,
+    materialize_buoyancy,
+    SeawaterBuoyancy
+
+using Oceananigans.Biogeochemistry:
+    validate_biogeochemistry,
+    AbstractBiogeochemistry,
+    biogeochemical_auxiliary_fields
+
+using Oceananigans.Fields:
+    Field,
+    CenterField,
+    tracernames,
+    VelocityFields,
+    TracerFields
+
+using Oceananigans.Grids:
+    AbstractCurvilinearGrid,
+    AbstractHorizontallyCurvilinearGrid,
+    architecture,
+    halo_size,
+    MutableVerticalDiscretization
+
+using Oceananigans.Models:
+    AbstractModel,
+    validate_model_halo,
+    validate_tracer_advection,
+    extract_boundary_conditions,
+    initialization_update_state!
+
+using Oceananigans.TimeSteppers:
+    Clock,
+    TimeStepper,
+    update_state!,
+    AbstractLagrangianParticles,
+    SplitRungeKutta3TimeStepper
+
+using Oceananigans.TurbulenceClosures:
+    validate_closure,
+    with_tracers,
+    build_closure_fields,
+    add_closure_specific_boundary_conditions
+    time_discretization,
+    implicit_diffusion_solver,
+    closure_required_tracers
+
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
