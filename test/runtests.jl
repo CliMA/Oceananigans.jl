@@ -96,6 +96,7 @@ CUDA.allowscalar() do
             include("test_output_writers.jl")
             include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
+            include("test_set_field_time_series.jl")
         end
     end
 
@@ -137,6 +138,7 @@ CUDA.allowscalar() do
     if group == :turbulence_closures || group == :all
         @testset "Turbulence closures tests" begin
             include("test_turbulence_closures.jl")
+            include("test_gm_infinite_slope.jl")
         end
     end
 
@@ -292,6 +294,13 @@ CUDA.allowscalar() do
     if group == :oneapi || group == :all
         @testset "oneAPI extension tests" begin
             include("test_oneapi.jl")
+        end
+    end
+
+    # Tests for Makie extension
+    if group == :makie || group == :all
+        @testset "Makie extension tests" begin
+            include("test_makie_ext.jl")
         end
     end
 

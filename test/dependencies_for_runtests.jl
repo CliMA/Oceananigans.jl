@@ -49,7 +49,7 @@ using Oceananigans.Architectures: device, array_type # to resolve conflict with 
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.BuoyancyFormulations: BuoyancyField
+using Oceananigans.Models: buoyancy_field
 using Oceananigans.Grids: architecture
 using Oceananigans.Fields: ZeroField, ConstantField, FunctionField, compute_at!, indices, instantiated_location
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames

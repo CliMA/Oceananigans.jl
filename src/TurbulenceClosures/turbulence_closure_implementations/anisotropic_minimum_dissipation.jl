@@ -200,8 +200,8 @@ function compute_diffusivities!(closure_fields, closure::AnisotropicMinimumDissi
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
             closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
