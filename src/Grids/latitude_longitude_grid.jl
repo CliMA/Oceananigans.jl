@@ -108,7 +108,7 @@ regular_dimensions(::ZRegularLLG) = tuple(3)
                           longitude,
                           latitude,
                           z = nothing,
-                          radius = R_Earth,
+                          radius = Oceananigans.defaults.planet_radius,
                           topology = nothing,
                           precompute_metrics = true,
                           halo = nothing)
@@ -200,7 +200,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                longitude = nothing,
                                latitude = nothing,
                                z = nothing,
-                               radius = R_Earth,
+                               radius = Oceananigans.defaults.planet_radius,
                                topology = nothing,
                                precompute_metrics = true,
                                halo = nothing)
@@ -602,10 +602,10 @@ rname(::LLG) = :z
 @inline xnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
 @inline ynode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
 
-function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-    λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false, indices=(Colon(), Colon(), Colon()))
+    λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1])
+    φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[2])
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[3])
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
@@ -647,15 +647,23 @@ end
 end
 
 # Convenience
-@inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx; with_halos)
-@inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓy; with_halos)
+@inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = λnodes(grid, ℓx; with_halos, indices)
+@inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = φnodes(grid, ℓy; with_halos, indices)
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
-@inline λnodes(grid::LLG, ℓx::F; with_halos=false) = _property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline λnodes(grid::LLG, ℓx::C; with_halos=false) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline φnodes(grid::LLG, ℓy::F; with_halos=false) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
-@inline φnodes(grid::LLG, ℓy::C; with_halos=false) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline λnodes(grid::LLG, ℓx::F; with_halos=false, indices=Colon()) = view(_property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline λnodes(grid::LLG, ℓx::C; with_halos=false, indices=Colon()) = view(_property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline φnodes(grid::LLG, ℓy::F; with_halos=false, indices=Colon()) = view(_property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline φnodes(grid::LLG, ℓy::C; with_halos=false, indices=Colon()) = view(_property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+
+# Flat topologies
+XFlatLLG = LatitudeLongitudeGrid{<:Any, Flat}
+YFlatLLG = LatitudeLongitudeGrid{<:Any, <:Any, Flat}
+@inline λnodes(grid::XFlatLLG, ℓx::F; with_halos=false, indices=Colon()) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline λnodes(grid::XFlatLLG, ℓx::C; with_halos=false, indices=Colon()) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline φnodes(grid::YFlatLLG, ℓy::F; with_halos=false, indices=Colon()) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline φnodes(grid::YFlatLLG, ℓy::C; with_halos=false, indices=Colon()) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)
@@ -675,7 +683,9 @@ end
 @inline φspacings(grid::LLG, ℓy) = φspacings(grid, nothing, ℓy, nothing)
 
 """
-    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
+                          radius = Oceananigans.defaults.planet_radius,
+                          origin = (0, 0))
 
 Construct a `LatitudeLongitudeGrid` from a `RectilinearGrid`. The horizontal coordinates of the
 rectilinear grid are transformed to longitude-latitude coordinates in degrees, accounting for
@@ -688,7 +698,10 @@ Keyword Arguments
 - `radius`: The radius of the sphere, defaults to Earth's mean radius (≈ 6371 km)
 - `origin`: Tuple of (longitude, latitude) in degrees specifying the origin of the rectilinear grid
 """
-function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
+                               radius = Oceananigans.defaults.planet_radius,
+                               origin = (0, 0))
+
     arch = architecture(rectilinear_grid)
     Hx, Hy, Hz = halo_size(rectilinear_grid)
     Nx, Ny, Nz = size(rectilinear_grid)

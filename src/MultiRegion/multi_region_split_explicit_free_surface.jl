@@ -1,9 +1,8 @@
 using Oceananigans.Utils
-using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: free_surface_displacement_field
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps, 
-                                                                                  barotropic_velocity_boundary_conditions, 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
+                                                                                  barotropic_velocity_boundary_conditions,
                                                                                   materialize_timestepper
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
@@ -29,13 +28,14 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     @apply_regionally u_bcs = barotropic_velocity_boundary_conditions(u_baroclinic)
     @apply_regionally v_bcs = barotropic_velocity_boundary_conditions(v_baroclinic)
 
-    U = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
-    V = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bcs)
+    U = Field{Face, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
+    V = Field{Center, Face, Nothing}(extended_grid, boundary_conditions = v_bcs)
+    U̅ = Field{Face, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
+    V̅ = Field{Center, Face, Nothing}(extended_grid, boundary_conditions = v_bcs)
+    Ũ = Field{Face, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
+    Ṽ = Field{Center, Face, Nothing}(extended_grid, boundary_conditions = v_bcs)
 
-    U̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
-    V̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bcs)
-
-    filtered_state = (η = η̅, U = U̅, V = V̅)
+    filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
     gravitational_acceleration = convert(eltype(extended_grid), free_surface.gravitational_acceleration)
@@ -72,4 +72,3 @@ iterate_split_explicit!(free_surface, grid::MultiRegionGrids, GUⁿ, GVⁿ, Δτ
 @inline augmented_kernel_offsets(grid, ::XPartition) = (- halo_size(grid)[1] + 1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, - halo_size(grid)[2] + 1)
 @inline augmented_kernel_offsets(grid, ::CubedSpherePartition) = (- halo_size(grid)[2] + 1, - halo_size(grid)[2] + 1)
-

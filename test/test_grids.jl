@@ -6,7 +6,7 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
 
-using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid, rotate_coordinates
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -837,15 +837,15 @@ end
     end
 
     @testset "Coordinate utils" begin
-        @info "  Testing ExponentialCoordinate..."
+        @info "  Testing ExponentialDiscretization..."
 
         for arch in archs
             Nx = 10
             l, r = -1000, 100
             scale = (r - l) / 5
 
-            xₗ = ExponentialCoordinate(Nx, l, r; scale, bias =:left)
-            xᵣ = ExponentialCoordinate(Nx, l, r; scale, bias =:right)
+            xₗ = ExponentialDiscretization(Nx, l, r; scale, bias =:left)
+            xᵣ = ExponentialDiscretization(Nx, l, r; scale, bias =:right)
 
             for i in 1:Nx+1
                 @test xᵣ[i] == xᵣ(i)
@@ -867,11 +867,17 @@ end
                 end
             end
 
-            @info "  Testing ConstantToStretchedCoordinate..."
+            z = ExponentialDiscretization(Nx, l, r)
+            z_mutable = ExponentialDiscretization(Nx, l, r, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
+
+            @info "  Testing ReferenceToStretchedDiscretization..."
             extent = 200
             constant_spacing = 25
             constant_spacing_extent = 90
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             Nz = length(z)
 
@@ -897,7 +903,7 @@ end
             constant_spacing = 25.34
             constant_spacing_extent = Nz * constant_spacing
             extent = constant_spacing_extent
-            z = ConstantToStretchedCoordinate(; extent, constant_spacing, constant_spacing_extent)
+            z = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent)
 
             @test length(z) == Nz
             @test length(z.faces) == Nz+1
@@ -909,6 +915,11 @@ end
             grid = RectilinearGrid(arch; size=length(z), z, topology=(Flat, Flat, Bounded))
             @test grid.z.cᵃᵃᶠ[1:Nz+1] == on_architecture(arch, z.faces)
             @test grid.z.Δᵃᵃᶜ[1:Nz] == on_architecture(arch, Δz)
+
+            z_mutable = ReferenceToStretchedDiscretization(; extent, constant_spacing, constant_spacing_extent, mutable=true)
+
+            @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
+            @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
         end
     end
 
@@ -1232,12 +1243,37 @@ end
                                             north_pole = (0, 0),
                                             topology = (Bounded, Bounded, Bounded))
 
-        @show grid.conformal_mapping
-
         @test grid isa OrthogonalSphericalShellGrid
         @test grid isa RotatedLatitudeLongitudeGrid
         @test grid.Lz == 1000
         @test size(grid) == (10, 10, 1)
+
+        @testset "RotatedLatitudeLongitudeGrid: rotate_coordinates utility" begin
+            for φ₀ = (90, 30, 10, 0)
+                λ, φ = rotate_coordinates(0, 0, 0, φ₀)
+                @test λ ≈ 0
+                @test φ ≈ φ₀ - 90
+            end
+
+            λᴺ, φᴺ = rotate_coordinates(0, 90, 70, 55)
+            @test λᴺ ≈ 70
+            @test φᴺ ≈ 55
+        end
+
+        @testset "RotatedLatitudeLongitudeGrid respects north_pole argument" begin
+            test_kw = (size = (6, 6, 1),
+                       latitude = (-80, 80),
+                       longitude = (-120, 120),
+                       z = (-100, 0),
+                       topology = (Bounded, Bounded, Bounded))
+
+            tilted_pole = (70, 55)
+            tilted_grid = RotatedLatitudeLongitudeGrid(north_pole = tilted_pole; test_kw...)
+            @test tilted_grid.conformal_mapping.north_pole == tilted_pole
+
+            @test_throws ArgumentError RotatedLatitudeLongitudeGrid(north_pole=(0, 91); test_kw...)
+            @test_throws ArgumentError RotatedLatitudeLongitudeGrid(north_pole=(0, -1); test_kw...)
+        end
 
         for arch in archs
             for FT in float_types

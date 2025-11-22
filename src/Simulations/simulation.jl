@@ -1,8 +1,13 @@
 using Oceananigans: prognostic_fields, AbstractModel
+import Dates
+
+using Dates: AbstractTime
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
+using Oceananigans.Utils: period_to_seconds
 
+import Oceananigans.Diagnostics: CFL
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.OutputWriters: write_output!
@@ -94,6 +99,9 @@ function Simulation(model; Δt,
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
    TT = eltype(model)
+   if Δt isa Dates.Period
+       Δt = convert(TT, period_to_seconds(Δt))
+   end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
@@ -115,17 +123,22 @@ end
 
 function Base.show(io::IO, s::Simulation)
     modelstr = summary(s.model)
-    return print(io, "Simulation of ", modelstr, "\n",
-                     "├── Next time step: $(prettytime(s.Δt))", "\n",
-                     "├── Elapsed wall time: $(prettytime(s.run_wall_time))", "\n",
-                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", "\n",
-                     "├── Stop time: $(prettytime(s.stop_time))", "\n",
-                     "├── Stop iteration: $(s.stop_iteration)", "\n",
-                     "├── Wall time limit: $(s.wall_time_limit)", "\n",
-                     "├── Minimum relative step: ", prettysummary(s.minimum_relative_step), "\n",
-                     "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
-                     "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
-                     "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    print(io, "Simulation of ", modelstr, '\n',
+              "├── Next time step: $(prettytime(s.Δt))", '\n',
+              "├── run_wall_time: $(prettytime(s.run_wall_time))", '\n',
+              "├── run_wall_time / iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
+              "├── stop_time: $(prettytime(s.stop_time))", '\n',
+              "├── stop_iteration: $(s.stop_iteration)", '\n',
+              "├── wall_time_limit: $(s.wall_time_limit)", '\n',
+              "├── minimum_relative_step: ", prettysummary(s.minimum_relative_step), '\n',
+              "├── callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n')
+
+    if length(s.diagnostics) == 0
+        print(io, "└── output_writers: $(ordered_dict_show(s.output_writers, "│"))")
+    else
+        print(io, "├── output_writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
+                  "└── diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    end
 end
 
 #####
@@ -184,7 +197,14 @@ Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial stat
 function reset!(sim::Simulation)
     reset_clock!(sim.model)
     sim.stop_iteration = Inf
-    sim.stop_time = Inf
+
+    if sim.stop_time isa Number
+        sim.stop_time = Inf
+    elseif sim.stop_time isa AbstractTime
+        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+        sim.stop_time = max_datetime
+    end
+
     sim.wall_time_limit = Inf
     sim.run_wall_time = 0.0
     sim.initialized = false
@@ -257,3 +277,9 @@ end
 write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
 write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
 write_output!(writer::Checkpointer, sim::Simulation) = write_output!(writer, sim.model)
+
+#####
+##### Diagnostics
+#####
+
+(c::CFL)(sim::Simulation) = c(sim.model)

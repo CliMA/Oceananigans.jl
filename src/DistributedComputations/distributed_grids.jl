@@ -5,7 +5,7 @@ using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture,
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: R_Earth, metrics_precomputed
+using Oceananigans.Grids: metrics_precomputed
 
 using Oceananigans.Fields
 
@@ -129,8 +129,8 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                longitude,
                                z,
                                topology = nothing,
-                               radius = R_Earth,
-                               halo = (1, 1, 1))
+                               radius = Oceananigans.defaults.planet_radius,
+                               halo = nothing)
 
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -320,12 +320,14 @@ end
 function scatter_local_grids(global_grid::RectilinearGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
+    global_sz = pop_flat_elements(global_sz, topo)
     return RectilinearGrid(arch, eltype(global_grid); size=global_sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
 function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
+    global_sz = pop_flat_elements(global_sz, topo)
     return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x,
                                  latitude=y, z=z, halo=halo, topology=topo, radius=global_grid.radius)
 end

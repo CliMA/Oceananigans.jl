@@ -335,10 +335,10 @@ function Base.view(f::Field, i, j, k)
 
     # Check that the indices actually work here
     @apply_regionally valid_view_indices = map(index_range_contains, f.indices, view_indices)
-    
+
     all(getregion(valid_view_indices, 1)) ||
         throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
-    
+
     @apply_regionally begin
         view_indices = map(convert_colon_indices, view_indices, f.indices)
 
@@ -508,6 +508,10 @@ end
 FieldStatus() = FieldStatus(0.0)
 Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
 
+set_status!(status, time) = nothing
+set_status!(status::FieldStatus, time::Nothing) = nothing
+set_status!(status::FieldStatus, time) = status.time = time
+
 """
     FixedTime(time)
 
@@ -536,7 +540,6 @@ function compute_at!(field::Field, time)
     # Otherwise, compute only on initialization or if field.status.time is not current,
     elseif time == zero(time) || time != field.status.time
         compute!(field, time)
-        field.status.time = time
     end
 
     return field
@@ -713,12 +716,23 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 """
 @inline condition_operand(op::AbstractField, condition, mask) = condition_operand(nothing, op, condition, mask)
 
-# Do NOT condition if condition=nothing.
+# Do NOT condition if condition=nothing or for identity functions
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
+const Identity = typeof(Base.identity)
+@inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
 @inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
 
-@inline conditional_length(c::AbstractField)        = length(c)
-@inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+@inline conditional_length(c::AbstractField) = length(c)
+@inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
+@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
+@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
+@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
+
+@inline function conditional_length(c::AbstractField, dims::NTuple{2})
+    N = size(c)
+    d1, d2 = dims
+    return N[d1] * N[d2]
+end
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
@@ -792,8 +806,12 @@ end
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
-    n = conditional_length(operand, dims)
-    r ./= n
+    L = conditional_length(operand, dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
@@ -803,25 +821,22 @@ Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mea
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    n = conditional_length(condition_operand(f, a, condition, mask), dims)
-    r ./= n
+    L = conditional_length(condition_operand(f, a, condition, mask), dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
     return r
 end
 
 Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
-function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
-    conditional_a = condition_operand(a, nothing, one(eltype(a)))
-    conditional_b = condition_operand(b, nothing, one(eltype(b)))
-    # TODO: Make this non-allocating?
-    return all(isapprox.(conditional_a, conditional_b; kw...))
-end
-
 #####
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
+function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     arch = architecture(field.grid)
     args = (field.data,
@@ -830,8 +845,8 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
             instantiated_location(field),
             field.grid,
             positional_args...)
-    
-    # Manually convert args... to be 
+
+    # Manually convert args... to be
     # passed to the fill_halo_regions! function.
     GC.@preserve args begin
         converted_args = convert_to_device(arch, args)
@@ -840,3 +855,9 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     return nothing
 end
+
+#####
+##### nodes
+#####
+
+nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)

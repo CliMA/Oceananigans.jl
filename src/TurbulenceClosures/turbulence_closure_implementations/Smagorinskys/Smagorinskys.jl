@@ -8,6 +8,8 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
+
 include("smagorinsky.jl")
 include("dynamic_coefficient.jl")
 include("lilly_coefficient.jl")

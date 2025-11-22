@@ -246,7 +246,7 @@ arguments = (gent_mcwilliams_diffusivity,
              b,
              Val(1),
              model.clock,
-             model.diffusivity_fields,
+             model.closure_fields,
              model.tracers,
              model.buoyancy,
              model.velocities)

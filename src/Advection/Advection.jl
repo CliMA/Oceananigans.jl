@@ -64,6 +64,8 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
+struct DecreasingOrderAdvectionScheme end
+
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 

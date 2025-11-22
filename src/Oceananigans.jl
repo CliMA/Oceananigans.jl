@@ -12,7 +12,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
-    ExponentialCoordinate, ConstantToStretchedCoordinate, PowerLawStretching, LinearStretching,
+    ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
@@ -52,7 +52,7 @@ export
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, TEOS10,
-    BuoyancyField,
+    buoyancy_field,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
@@ -65,9 +65,7 @@ export
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
-    Smagorinsky,
-    LillyCoefficient,
-    DynamicCoefficient,
+    DynamicSmagorinsky,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
@@ -100,7 +98,7 @@ export
 
     # Output writers
     NetCDFWriter, JLD2Writer, Checkpointer,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
@@ -121,10 +119,10 @@ using DocStringExtensions
 using FFTW
 
 function __init__()
-    if VERSION >= v"1.11.0"
-        @warn """You are using Julia v1.11 or later!"
-                 Oceananigans is currently tested on Julia v1.10."
-                 If you find issues with Julia v1.11 or later,"
+    if VERSION >= v"1.13.0"
+        @warn """You are using Julia v1.13 or later!"
+                 Oceananigans is currently tested on Julia v1.12."
+                 If you find issues with Julia v1.13 or later,"
                  please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
 
     end
@@ -149,9 +147,27 @@ const fully_supported_float_types = (Float32, Float64)
 
 mutable struct Defaults
     FloatType :: DataType
+    gravitational_acceleration :: Float64
+    planet_radius :: Float64
+    planet_rotation_rate :: Float64
 end
 
-Defaults(; FloatType=Float64) = Defaults(FloatType)
+function Defaults(;
+    # Floating-point precision type (usually Float64 or Float32).
+    FloatType = Float64,
+    # [m s⁻²] conventional standard value for Earth's gravity; see https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
+    gravitational_acceleration = 9.80665,
+    # [m] Earth's radius; see https://en.wikipedia.org/wiki/Earth%27s_radius
+    planet_radius = 6.371e6,
+    # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+    planet_rotation_rate = 7.292115e-5)
+
+    return Defaults(FloatType,
+                    gravitational_acceleration,
+                    planet_radius,
+                    planet_rotation_rate)
+end
+
 const defaults = Defaults()
 
 #####

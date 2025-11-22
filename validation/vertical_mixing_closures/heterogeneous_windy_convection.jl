@@ -77,9 +77,9 @@ set!(model, b=bᵢ, e=1e-9)
 simulation = Simulation(model, Δt=5minute, stop_time=10days)
 
 κᶜ = if model.closure isa Tuple
-    model.diffusivity_fields[1].κᶜ
+    model.closure_fields[1].κᶜ
 else
-    model.diffusivity_fields.κᶜ
+    model.closure_fields.κᶜ
 end
 
 b = model.tracers.b

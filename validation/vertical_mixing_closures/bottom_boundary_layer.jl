@@ -46,8 +46,8 @@ set!(model, b=bᵢ, u=u₀, e=1e-6)
 
 simulation = Simulation(model; Δt=2minutes, stop_time)
 
-diffusivities = (κᵘ = model.diffusivity_fields.κᵘ,
-                 κᶜ = model.diffusivity_fields.κᶜ)
+diffusivities = (κᵘ = model.closure_fields.κᵘ,
+                 κᶜ = model.closure_fields.κᶜ)
 
 outputs = merge(model.velocities, model.tracers, diffusivities)
 
