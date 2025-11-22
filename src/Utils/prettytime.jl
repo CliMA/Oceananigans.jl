@@ -64,3 +64,4 @@ function prettytimeunits(t, longform=true)
 end
 
 prettytime(dt::AbstractTime) = "$dt"
+prettytime(t::Array) = prettytime.(t)
