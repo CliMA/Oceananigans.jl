@@ -2630,7 +2630,8 @@ function test_netcdf_free_surface_mixed_output(arch)
         NetCDFWriter(model, outputs;
             filename = filepath_with_halos,
             schedule = IterationInterval(1),
-            with_halos = true)
+            with_halos = true,
+            overwrite_existing = true)
 
     filepath_no_halos = "test_mixed_free_surface_no_halos_$Arch.nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
@@ -2639,14 +2640,15 @@ function test_netcdf_free_surface_mixed_output(arch)
         NetCDFWriter(model, outputs;
             filename = filepath_no_halos,
             schedule = IterationInterval(1),
-            with_halos = false)
+            with_halos = false,
+            overwrite_existing = true)
 
     run!(simulation)
 
     ds_h = NCDataset(filepath_with_halos)
 
     @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, time=Nt + 1)
+    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_η=1, time=Nt + 1)
 
     @test dimsize(ds_h[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
     @test dimsize(ds_h[:v]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
@@ -2660,7 +2662,7 @@ function test_netcdf_free_surface_mixed_output(arch)
     ds_n = NCDataset(filepath_no_halos)
 
     @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, time=Nt + 1)
+    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_η=1, time=Nt + 1)
 
     @test dimsize(ds_n[:u]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
     @test dimsize(ds_n[:v]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
