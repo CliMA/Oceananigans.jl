@@ -105,6 +105,7 @@ function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)
 end
 
 squeeze_data(func, func_data; kwargs...) = func_data
+squeeze_data(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_data(wta.operand, data; kwargs...)
 
 function squeeze_data(fd::AbstractField; with_halos=false, kwargs...)
     field_data = with_halos ? parent(fd) : interior(fd)

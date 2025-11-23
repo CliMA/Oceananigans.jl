@@ -1890,7 +1890,8 @@ function test_netcdf_function_output(arch)
             dimensions = dims,
             array_type = Array{Float64},
             include_grid_metrics = false,
-            verbose = true)
+            verbose = true,
+            overwrite_existing = true)
 
     run!(simulation)
 
