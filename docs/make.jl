@@ -154,7 +154,7 @@ pages = [
     # TODO:
     #   - Develop the following tutorials on reductions and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
-    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
+    "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
     # "FieldTimeSeries and post-processing" => field_time_series.md,
     "Models" => model_pages,
     "Simulations" => simulation_pages,
