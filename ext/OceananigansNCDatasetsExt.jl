@@ -107,7 +107,7 @@ end
 squeeze_data(func, func_data; kwargs...) = func_data
 squeeze_data(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_data(wta.operand, data; kwargs...)
 
-function squeeze_data(fd::AbstractField; with_halos=false, kwargs...)
+function squeeze_data(fd::AbstractField; array_type=Array{eltype(fd)}, with_halos=false)
     field_data = with_halos ? parent(fd) : interior(fd)
     return squeeze_data(fd, field_data; array_type, with_halos)
 end
@@ -124,7 +124,6 @@ function defVar(ds, field_name, fd::AbstractField;
                 dimension_name_generator = trilocation_dim_name,
                 write_data=true,
                 kwargs...)
-
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
     effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type)
