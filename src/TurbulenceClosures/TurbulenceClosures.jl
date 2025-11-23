@@ -42,24 +42,23 @@ export
 using KernelAbstractions
 using Adapt
 
-import Oceananigans.Utils: with_tracers, prettysummary
-
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
 using Oceananigans.BuoyancyFormulations
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
-using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
+import Oceananigans.Utils: with_tracers, prettysummary
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -97,6 +96,8 @@ function shear_production end
 function buoyancy_flux end
 function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
+function buoyancy_force end # to be defined by models that want to use TurbulenceClosures
+function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
 
 #####
 ##### Fallback: flux = 0

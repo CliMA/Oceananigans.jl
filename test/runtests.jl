@@ -138,6 +138,7 @@ CUDA.allowscalar() do
     if group == :turbulence_closures || group == :all
         @testset "Turbulence closures tests" begin
             include("test_turbulence_closures.jl")
+            include("test_gm_infinite_slope.jl")
         end
     end
 

@@ -47,7 +47,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     u, v, w = model.velocities
 
     computed_fields = (
-        b = BuoyancyField(model),
+        b = buoyancy_field(model),
         ζ = Field(∂x(v) - ∂y(u)),
         ke = Field(√(u^2 + v^2))
     )
