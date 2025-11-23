@@ -104,6 +104,8 @@ function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)
     return getindex(field_data_cpu, indices...)
 end
 
+squeeze_data(func, func_data; kwargs...) = func_data
+
 function squeeze_data(fd::AbstractField; with_halos=false, kwargs...)
     field_data = with_halos ? parent(fd) : interior(fd)
     return squeeze_data(fd, field_data; array_type, with_halos)
