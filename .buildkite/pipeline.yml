@@ -26,6 +26,8 @@ steps:
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
 
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.Registry.update()'
+
       echo "--------------------"
       ls -lhrt
       echo "--------------------"
