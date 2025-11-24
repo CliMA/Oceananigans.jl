@@ -29,6 +29,8 @@ steps:
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.Registry.update()'
 
       echo "--------------------"
+      cat \${HOME}/.julia-oceananigans/registries/General.toml
+      echo "--------------------"
       ls -lhrt
       echo "--------------------"
       rm -fv Manifest.toml
