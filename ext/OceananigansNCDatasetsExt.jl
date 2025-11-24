@@ -158,10 +158,9 @@ Arguments:
 """
 function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)})
     # Assess and create the dimensions for the field
-    dim_names = field_dimensions(fd, dimension_name_generator)
 
     dimension_attributes = default_dimension_attributes(fd.grid, dimension_name_generator)
-    spatial_dim_names = dim_names[1:end-(("time" in dim_names) ? 1 : 0)]
+    spatial_dim_names = field_dimensions(fd, dimension_name_generator)
     spatial_dim_data = nodes(fd; with_halos)
 
     # Create dictionary of spatial dimensions and their data. Using OrderedDict to ensure the order of the dimensions is preserved.
