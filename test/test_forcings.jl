@@ -163,13 +163,12 @@ function relaxed_time_stepping(arch, mask_type)
     return true
 end
 
-function advective_and_multiple_forcing(arch)
-    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+function advective_and_multiple_forcing(grid)
 
     constant_slip = AdvectiveForcing(w=1)
     zero_slip = AdvectiveForcing(w=0)
     no_penetration = ImpenetrableBoundaryCondition()
-    slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
+    slip_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
     set!(slip_velocity, 1)
     velocity_field_slip = AdvectiveForcing(w=slip_velocity)
@@ -285,7 +284,13 @@ end
 
             @testset "Advective and multiple forcing [$A]" begin
                 @info "      Testing advective and multiple forcing [$A]..."
-                @test advective_and_multiple_forcing(arch)
+
+                # Pre-build grids for testing
+                rectilinear_grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+                latlon_grid = LatitudeLongitudeGrid(arch, size=(4, 5, 6), longitude=(-180, 180), latitude=(-85, 85), z=(-1, 0), halo=(4, 4, 4))
+
+                @test advective_and_multiple_forcing(rectilinear_grid)
+                @test advective_and_multiple_forcing(latlon_grid)
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
             end
