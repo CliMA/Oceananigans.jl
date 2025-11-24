@@ -13,6 +13,7 @@ using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.OutputWriters: trilocation_dim_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
+using Oceananigans.Fields: interpolate!
 
 function test_datetime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -2882,6 +2883,51 @@ function test_netcdf_multiple_grids_defvar(grid1, grid2; immersed=false)
     return nothing
 end
 
+function test_netcdf_writer_different_grid(arch)
+
+    grid = RectilinearGrid(arch, size=(1, 1, 8), extent=(1, 1, 1))
+    model = NonhydrostaticModel(; grid)
+
+    coarse_grid = RectilinearGrid(arch, size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
+    coarse_u = Field{Face, Center, Center}(coarse_grid)
+
+    interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
+    outputs = (; u = interpolate_u)
+
+    Arch = typeof(arch)
+    filepath = "test_coarse_u_$Arch.nc"
+    isfile(filepath) && rm(filepath)
+
+    # This should work: NetCDFWriter should use coarse_grid for dimensions
+    # when grid parameter is provided, not model.grid
+    output_writer = NetCDFWriter(model, outputs;
+                                 grid = coarse_grid,
+                                 filename = filepath,
+                                 schedule = IterationInterval(1),
+                                 overwrite_existing = true)
+
+    # Run simulation to write output
+    simulation = Simulation(model, Δt=0.1, stop_iteration=2)
+    simulation.output_writers[:coarse] = output_writer
+    run!(simulation)
+
+    # Verify that dimensions match the coarse grid, not the model grid
+    ds = NCDataset(filepath)
+    @test length(ds["z_aac"]) == grid.Nz÷2  # Should be 4, not 8
+    @test length(ds["z_aaf"]) == grid.Nz÷2 + 1  # Should be 5, not 9
+
+    # Verify that the z coordinates match the coarse grid
+    expected_z_centers = znodes(coarse_grid, Center())
+    expected_z_faces = znodes(coarse_grid, Face())
+    @test ds["z_aac"][:] ≈ Array(expected_z_centers)
+    @test ds["z_aaf"][:] ≈ Array(expected_z_faces)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2940,6 +2986,8 @@ for arch in archs
         test_netcdf_free_surface_mixed_output(arch)
 
         test_netcdf_buoyancy_force(arch)
+
+        test_netcdf_writer_different_grid(arch)
 
         for grids in ((rectilinear_grid1, rectilinear_grid2),
                       (latlon_grid1, latlon_grid2))

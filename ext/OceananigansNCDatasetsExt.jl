@@ -1172,6 +1172,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
     global_attributes = Dict{Any, Any}(global_attributes)
 
     dataset, outputs, schedule = initialize_nc_file(model,
+                                                    grid,
                                                     filepath,
                                                     outputs,
                                                     schedule,
@@ -1211,6 +1212,7 @@ end
 #####
 
 function initialize_nc_file(model,
+                            grid,
                             filepath,
                             outputs,
                             schedule,
@@ -1225,7 +1227,6 @@ function initialize_nc_file(model,
                             deflatelevel,
                             dimension_name_generator)
 
-    grid = model.grid
     mode = overwrite_existing ? "c" : "a"
 
     # Add useful metadata
@@ -1332,6 +1333,7 @@ function initialize_nc_file(model,
 end
 
 initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
+                                                                 ow.grid,
                                                                  ow.filepath,
                                                                  ow.outputs,
                                                                  ow.schedule,
