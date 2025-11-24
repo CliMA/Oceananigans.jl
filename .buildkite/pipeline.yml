@@ -33,10 +33,6 @@ steps:
       echo "--------------------"
       ls -lhrt
       echo "--------------------"
-      if [[ -f Manifest.toml ]]; then
-          cat Manifest.toml
-      fi
-      echo "--------------------"
       rm -fv Manifest.toml
       echo "--------------------"
       ls -lhrt
