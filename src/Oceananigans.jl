@@ -297,5 +297,6 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
+using .Operators
 
 end # module
