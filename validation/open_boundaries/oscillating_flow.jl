@@ -8,7 +8,7 @@
 # This case also has a stretched grid to validate the matching scheme on a stretched grid.
 
 using Oceananigans, CairoMakie
-using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition, PerturbationAdvectionOpenBoundaryCondition
+#using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition, PerturbationAdvectionOpenBoundaryCondition
 
 @kwdef struct Cylinder{FT}
     D :: FT = 1.0
@@ -39,8 +39,8 @@ xzgrid = RectilinearGrid(architecture; topology = (Bounded, Flat, Bounded), size
 
 Δt = .5 * minimum_xspacing(xygrid) / abs(U)
 
-@inline u∞(y, t, p) = p.U * cos(t * 2π / p.T) * (1 + 0.01 * randn())
-@inline v∞(x, t, p) = p.U * sin(t * 2π / p.T) * (1 + 0.01 * randn())
+@inline u∞(y, t) = U * cos(t * 2π / T) * (1 + 0.01 * randn())
+@inline v∞(x, t) = U * sin(t * 2π / T) * (1 + 0.01 * randn())
 
 function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simname = "")
     @info "Testing $simname with grid" grid
@@ -115,7 +115,7 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
 
         end
         resize_to_layout!(fig)
-        record(fig, "ζ_$filename.mp4", 1:length(ζ_ts.times), framerate = 16) do i;
+        CairoMakie.record(fig, "ζ_$filename.mp4", 1:length(ζ_ts.times), framerate = 16) do i;
             n[] = i
             i % 10 == 0 && @info "$(n.val) of $(length(ζ_ts.times))"
         end
@@ -123,33 +123,34 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
 end
 
 inflow_timescale = outflow_timescale = 1/4
-matching_scheme_name(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
+
 for grid in (xygrid, xzgrid)
 
-    u_fe = FlatExtrapolationOpenBoundaryCondition(u∞, parameters = (; U, T), relaxation_timescale = 1)
-    v_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U, T), relaxation_timescale = 1)
-    w_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U, T), relaxation_timescale = 1)
+    u_fe = OpenBoundaryCondition(u∞, scheme = :flat)
+    v_fe = OpenBoundaryCondition(v∞, scheme = :flat)
+    w_fe = OpenBoundaryCondition(v∞, scheme = :flat)
 
     u_boundaries_fe = FieldBoundaryConditions(west = u_fe, east = u_fe)
     v_boundaries_fe = FieldBoundaryConditions(south = v_fe, north = v_fe)
     w_boundaries_fe = FieldBoundaryConditions(bottom = w_fe, top = w_fe)
     feobcs = (u = u_boundaries_fe, v = v_boundaries_fe, w = w_boundaries_fe)
 
-    u_boundaries_pa = FieldBoundaryConditions(west   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
-                                              east   = PerturbationAdvectionOpenBoundaryCondition(u∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
-    v_boundaries_pa = FieldBoundaryConditions(south  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
-                                              north  = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
-    w_boundaries_pa = FieldBoundaryConditions(bottom = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale),
-                                              top    = PerturbationAdvectionOpenBoundaryCondition(v∞; parameters = (; U, T), inflow_timescale, outflow_timescale))
+    u_boundaries_pa = FieldBoundaryConditions(west   = OpenBoundaryCondition(u∞; scheme = :flat),
+                                              east   = OpenBoundaryCondition(u∞; scheme = :flat))
+    v_boundaries_pa = FieldBoundaryConditions(south  = OpenBoundaryCondition(v∞; scheme = :flat),
+                                              north  = OpenBoundaryCondition(v∞; scheme = :flat))
+    w_boundaries_pa = FieldBoundaryConditions(bottom = OpenBoundaryCondition(v∞; scheme = :flat),
+                                              top    = OpenBoundaryCondition(v∞; scheme = :flat))
+
     paobcs = (u = u_boundaries_pa, v = v_boundaries_pa, w = w_boundaries_pa)
 
     for obcs in (feobcs, paobcs,)
         if grid isa Oceananigans.Grids.ZFlatGrid
             boundary_conditions = (u = obcs.u, v = obcs.v)
-            simname = "xy_" * matching_scheme_name(boundary_conditions.u.east)
+            simname = "xy_" * string(boundary_conditions.u.east)
         elseif grid isa Oceananigans.Grids.YFlatGrid
             boundary_conditions = (u = obcs.u, w = obcs.w)
-            simname = "xz_" * matching_scheme_name(boundary_conditions.u.east)
+            simname = "xz_" * string(boundary_conditions.u.east)
         end
         @info "Running $simname"
         run_cylinder(grid, boundary_conditions, simname = simname, stop_time = T)
