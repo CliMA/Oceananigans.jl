@@ -2928,6 +2928,75 @@ function test_netcdf_writer_different_grid(arch)
     return nothing
 end
 
+function test_singleton_dimension_behavior(arch)
+    Nx, Nz = 8, 8
+    Hx, Hz = 2, 3
+    Lx, H = 2, 1
+
+    # Create grid with Flat in y dimension
+    grid = RectilinearGrid(arch,
+                           topology = (Periodic, Flat, Bounded),
+                           size = (Nx, Nz),
+                           halo = (Hx, Hz),
+                           x = (-Lx, Lx),
+                           z = (-H, 0))
+
+    model = NonhydrostaticModel(; grid,
+                                  closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                  buoyancy = SeawaterBuoyancy(),
+                                  tracers = (:T, :S))
+    u_xavg = Field(Average(model.velocities.u, dims=(1)))
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    Arch = typeof(arch)
+    filepath_full = "test_singleton_full_u_$Arch.nc"
+    simulation.output_writers[:full] = NetCDFWriter(model, (; u = model.velocities.u, u_xavg),
+                                                    filename = filepath_full,
+                                                    schedule = IterationInterval(1),
+                                                    array_type = Array{Float64},
+                                                    with_halos = false,
+                                                    include_grid_metrics = false,
+                                                    overwrite_existing = true)
+
+    filepath_slice = "test_singleton_slice_u_$Arch.nc"
+    simulation.output_writers[:slice] = NetCDFWriter(model, (; u = model.velocities.u, u_xavg),
+                                                     filename = filepath_slice,
+                                                     indices = (:, :, 1),
+                                                     schedule = IterationInterval(1),
+                                                     array_type = Array{Float64},
+                                                     with_halos = false,
+                                                     include_grid_metrics = false,
+                                                     overwrite_existing = true)
+
+    run!(simulation)
+
+    # Verify full u output
+    ds_full = NCDataset(filepath_full)
+    @test haskey(ds_full, "u")
+    @test haskey(ds_full, "u_xavg")
+    @test dimsize(ds_full[:u]) == (x_faa=Nx, z_aac=Nz, time=Nt + 1)
+    @test dimsize(ds_full[:u_xavg]) == (z_aac=Nz, time=Nt + 1)
+    @test !haskey(ds_full, "y_aca")  # y dimension should not exist (Flat)
+    @test !haskey(ds_full, "y_afa")  # y dimension should not exist (Flat)
+    close(ds_full)
+    rm(filepath_full)
+
+    # Verify sliced u output (:, :, 1)
+    ds_slice = NCDataset(filepath_slice)
+    @test haskey(ds_slice, "u")
+    @test haskey(ds_slice, "u_xavg")
+    @test dimsize(ds_slice[:u]) == (x_faa=Nx, z_aac=1, time=Nt + 1)
+    @test dimsize(ds_slice[:u_xavg]) == (z_aac=1, time=Nt + 1)
+    @test !haskey(ds_slice, "y_aca")  # y dimension should not exist (Flat)
+    @test !haskey(ds_slice, "y_afa")  # y dimension should not exist (Flat)
+    close(ds_slice)
+    rm(filepath_slice)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2988,6 +3057,8 @@ for arch in archs
         test_netcdf_buoyancy_force(arch)
 
         test_netcdf_writer_different_grid(arch)
+
+        test_singleton_dimension_behavior(arch)
 
         for grids in ((rectilinear_grid1, rectilinear_grid2),
                       (latlon_grid1, latlon_grid2))
