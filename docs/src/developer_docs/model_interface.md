@@ -82,17 +82,20 @@ of the Oceananigans ecosystem to “see” the model:
 The example below shows a deliberately tiny model that integrates the Lorenz
 system on a 0D grid. The implementation demonstrates how little is required:
 store a `grid` and `clock`, provide `time_step!` and `update_state!`
-implementations, and rely on fallbacks for the rest.
+implementations, and rely on fallbacks for the rest. Here we use an explicit
+forward-Euler step so all of the logic lives directly inside `time_step!`.
 
 ### Implementing the interface
 
 ```@example model_interface
 using Oceananigans
+using Oceananigans.Models: AbstractModel
 using Oceananigans.Simulations: Simulation, run!
-using Oceananigans.TimeSteppers: Clock, tick!, update_state!, time_step!
+using Oceananigans.TimeSteppers: Clock, tick!
+import Oceananigans.TimeSteppers: update_state!, time_step!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
-mutable struct LorenzModel{FT, G, CLK} <: AbstractModel
+mutable struct LorenzModel{FT, G, CLK} <: AbstractModel{Nothing, Nothing}
     grid :: G
     clock :: CLK
     timestepper :: Nothing
@@ -118,37 +121,6 @@ end
 
 Base.summary(::LorenzModel) = "LorenzModel"
 
-@inline function lorenz_rhs(σ, ρ, β, x, y, z)
-    return (σ * (y - x),
-            x * (ρ - z) - y,
-            x * y - β * z)
-end
-
-function rk4_step!(model::LorenzModel, Δt)
-    σ, ρ, β = model.σ, model.ρ, model.β
-    x₁, y₁, z₁ = model.x, model.y, model.z
-
-    k₁x, k₁y, k₁z = lorenz_rhs(σ, ρ, β, x₁, y₁, z₁)
-    k₂x, k₂y, k₂z = lorenz_rhs(σ, ρ, β,
-                               x₁ + 0.5Δt * k₁x,
-                               y₁ + 0.5Δt * k₁y,
-                               z₁ + 0.5Δt * k₁z)
-    k₃x, k₃y, k₃z = lorenz_rhs(σ, ρ, β,
-                               x₁ + 0.5Δt * k₂x,
-                               y₁ + 0.5Δt * k₂y,
-                               z₁ + 0.5Δt * k₂z)
-    k₄x, k₄y, k₄z = lorenz_rhs(σ, ρ, β,
-                               x₁ + Δt * k₃x,
-                               y₁ + Δt * k₃y,
-                               z₁ + Δt * k₃z)
-
-    model.x = x₁ + Δt / 6 * (k₁x + 2k₂x + 2k₃x + k₄x)
-    model.y = y₁ + Δt / 6 * (k₁y + 2k₂y + 2k₃y + k₄y)
-    model.z = z₁ + Δt / 6 * (k₁z + 2k₂z + 2k₃z + k₄z)
-
-    return nothing
-end
-
 function update_state!(model::LorenzModel, callbacks = (); compute_tendencies = false)
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
@@ -163,7 +135,17 @@ function time_step!(model::LorenzModel, Δt; callbacks = ())
         callback.callsite isa TendencyCallsite && callback(model)
     end
 
-    rk4_step!(model, Δt)
+    x, y, z = model.x, model.y, model.z
+    σ, ρ, β = model.σ, model.ρ, model.β
+
+    dx = σ * (y - x)
+    dy = x * (ρ - z) - y
+    dz = x * y - β * z
+
+    model.x = x + Δt * dx
+    model.y = y + Δt * dy
+    model.z = z + Δt * dz
+
     tick!(model.clock, Δt)
 
     update_state!(model, callbacks; compute_tendencies = false)
