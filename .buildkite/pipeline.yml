@@ -26,7 +26,13 @@ steps:
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
 
+      echo "--------------------"
       ls -lhrt
+      echo "--------------------"
+      rm -fv Manifest.toml
+      echo "--------------------"
+      ls -lhrt
+      echo "--------------------"
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
       # After we have instantiated the general environment, move manifest to the
