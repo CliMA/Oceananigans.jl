@@ -65,7 +65,7 @@ trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocatio
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim)
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_η"
 
-mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
+mutable struct NetCDFWriter{G, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     grid :: G
     filepath :: String
     dataset :: D
@@ -84,6 +84,7 @@ mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     part :: Int
     file_splitting :: FS
     dimension_name_generator :: DN
+    dimension_type :: DT
 end
 
 function NetCDFWriter(model, outputs; kw...)

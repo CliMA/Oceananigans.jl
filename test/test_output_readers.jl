@@ -105,7 +105,7 @@ function test_pickup_with_inaccurate_times()
     grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
     times = collect(0:0.1:3)
     filename = "fts_inaccurate_times_test.jld2"
-    f_tmp = Field{Center,Center,Center}(grid) 
+    f_tmp = Field{Center,Center,Center}(grid)
     f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
 
     for (it, time) in enumerate(f.times)
@@ -313,7 +313,7 @@ end
                 @info "  Testing FieldTimeSeries pickup..."
                 Random.seed!(1234)
                 for n in -4:4
-                    Δt = (1.1 + rand()) * 10.0^n 
+                    Δt = (1.1 + rand()) * 10.0^n
                     Lx = 10 * Δt
                     for FT in (Float32, Float64)
                         filename = generate_nonzero_simulation_data(Lx, Δt, FT)
@@ -424,7 +424,7 @@ end
             end
         end
     end
-    
+
     @testset "Test chunked abstraction" begin
         @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
@@ -475,7 +475,7 @@ end
             end
         end
     end
-        
+
     for Backend in [InMemory, OnDisk]
         @testset "FieldDataset{$Backend} indexing" begin
             @info "  Testing FieldDataset{$Backend} indexing..."

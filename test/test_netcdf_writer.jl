@@ -2997,6 +2997,61 @@ function test_singleton_dimension_behavior(arch)
     return nothing
 end
 
+function test_netcdf_dimension_type(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(; grid)
+
+    Nt = 3
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    Arch = typeof(arch)
+
+    # Test with default dimension_type (Float64)
+    filepath_float64 = "test_dimension_type_float64_$Arch.nc"
+    simulation.output_writers[:float64] = NetCDFWriter(model, (; u = model.velocities.u),
+                                                       filename = filepath_float64,
+                                                       schedule = IterationInterval(1),
+                                                       include_grid_metrics = false,
+                                                       overwrite_existing = true)
+
+    # Test with Float32 dimension_type
+    filepath_float32 = "test_dimension_type_float32_$Arch.nc"
+    simulation.output_writers[:float32] = NetCDFWriter(model, (; u = model.velocities.u),
+                                                        filename = filepath_float32,
+                                                        schedule = IterationInterval(1),
+                                                        dimension_type = Float32,
+                                                        include_grid_metrics = false,
+                                                        overwrite_existing = true)
+
+    run!(simulation)
+
+    # Verify Float64 dimensions (default)
+    ds_float64 = NCDataset(filepath_float64)
+    @test eltype(ds_float64["time"]) == Float64
+    @test eltype(ds_float64["x_faa"]) == Float64
+    @test eltype(ds_float64["x_caa"]) == Float64
+    @test eltype(ds_float64["y_aca"]) == Float64
+    @test eltype(ds_float64["y_afa"]) == Float64
+    @test eltype(ds_float64["z_aac"]) == Float64
+    @test eltype(ds_float64["z_aaf"]) == Float64
+    close(ds_float64)
+    rm(filepath_float64)
+
+    # Verify Float32 dimensions
+    ds_float32 = NCDataset(filepath_float32)
+    @test eltype(ds_float32["time"]) == Float32
+    @test eltype(ds_float32["x_faa"]) == Float32
+    @test eltype(ds_float32["x_caa"]) == Float32
+    @test eltype(ds_float32["y_aca"]) == Float32
+    @test eltype(ds_float32["y_afa"]) == Float32
+    @test eltype(ds_float32["z_aac"]) == Float32
+    @test eltype(ds_float32["z_aaf"]) == Float32
+    close(ds_float32)
+    rm(filepath_float32)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -3012,6 +3067,7 @@ for arch in archs
 
         test_datetime_netcdf_output(arch)
         test_timedate_netcdf_output(arch)
+        test_netcdf_dimension_type(arch)
 
         test_netcdf_grid_metrics_rectilinear(arch, Float64)
         test_netcdf_grid_metrics_rectilinear(arch, Float32)

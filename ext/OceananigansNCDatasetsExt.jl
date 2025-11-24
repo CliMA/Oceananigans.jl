@@ -122,11 +122,12 @@ function defVar(ds, field_name, fd::AbstractField;
                 time_dependent=false,
                 with_halos=false,
                 dimension_name_generator = trilocation_dim_name,
+                dimension_type=Float64,
                 write_data=true,
                 kwargs...)
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
-    effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type)
+    effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
 
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
@@ -156,7 +157,7 @@ Arguments:
 - `dim_names`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
-function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)})
+function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64)
     # Assess and create the dimensions for the field
 
     dimension_attributes = default_dimension_attributes(fd.grid, dimension_name_generator)
@@ -165,11 +166,11 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
 
     # Create dictionary of spatial dimensions and their data. Using OrderedDict to ensure the order of the dimensions is preserved.
     spatial_dim_names_dict = OrderedDict(spatial_dim_name => spatial_dim_array for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
-    effective_spatial_dim_names = create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; array_type)
+    effective_spatial_dim_names = create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; dimension_type)
 
     # Create time dimension if needed
     if time_dependent
-        "time" ∉ keys(ds.dim) && create_time_dimension!(ds)
+        "time" ∉ keys(ds.dim) && create_time_dimension!(ds, dimension_type=dimension_type)
         return (effective_spatial_dim_names..., "time") # Add "time" dimension if the field is time-dependent
     else
         return effective_spatial_dim_names
@@ -195,13 +196,11 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
     end
 end
 
-function create_time_dimension!(dataset; attrib=nothing)
+function create_time_dimension!(dataset; attrib=nothing, dimension_type=Float64)
     if "time" ∉ keys(dataset.dim)
         # Create an unlimited dimension "time"
-        # Time should always be Float64 to be extra safe from rounding errors.
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", Float64, ("time",), attrib=attrib)
+        defVar(dataset, "time", dimension_type, ("time",), attrib=attrib)
     end
 end
 
@@ -215,15 +214,14 @@ their coordinate values. Each dimension variable has itself as its sole dimensio
 against provided arrays if they do exist. An error is thrown if the dimension already exists
 but is different from the provided array.
 """
-function create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float64}, kwargs...)
-    FT = eltype(array_type)
+function create_spatial_dimensions!(dataset, dims, attributes_dict; dimension_type=Float64, kwargs...)
     effective_dim_names = []
     for (i, (dim_name, dim_array)) in enumerate(dims)
         dim_array isa Nothing && continue # Don't create anything if dim_array is Nothing
         dim_name == "" && continue # Don't create anything if dim_name is an empty string
         push!(effective_dim_names, dim_name)
 
-        dim_array = FT.(dim_array) # Transform dim_array to the correct float type
+        dim_array = dimension_type.(dim_array) # Transform dim_array to the correct float type
         if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
             defVar(dataset, dim_name, dim_array, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
@@ -1130,7 +1128,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       deflatelevel = 0,
                       part = 1,
                       file_splitting = NoFileSplitting(),
-                      dimension_name_generator = trilocation_dim_name)
+                      dimension_name_generator = trilocation_dim_name,
+                      dimension_type = Float64)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -1184,7 +1183,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                                                     include_grid_metrics,
                                                     overwrite_existing,
                                                     deflatelevel,
-                                                    dimension_name_generator)
+                                                    dimension_name_generator,
+                                                    dimension_type)
 
     return NetCDFWriter(grid,
                         filepath,
@@ -1203,7 +1203,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                         deflatelevel,
                         part,
                         file_splitting,
-                        dimension_name_generator)
+                        dimension_name_generator,
+                        dimension_type)
 end
 
 #####
@@ -1224,7 +1225,8 @@ function initialize_nc_file(model,
                             include_grid_metrics,
                             overwrite_existing,
                             deflatelevel,
-                            dimension_name_generator)
+                            dimension_name_generator,
+                            dimension_type)
 
     mode = overwrite_existing ? "c" : "a"
 
@@ -1267,8 +1269,8 @@ function initialize_nc_file(model,
             Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
             Dict("long_name" => "Time", "units" => "seconds")
 
-        create_time_dimension!(dataset, attrib=time_attrib)
-        create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, array_type)
+        create_time_dimension!(dataset, attrib=time_attrib, dimension_type=dimension_type)
+        create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, dimension_type=dimension_type)
 
         time_independent_vars = Dict()
 
@@ -1299,7 +1301,8 @@ function initialize_nc_file(model,
                                         filepath, # for better error messages
                                         dimension_name_generator,
                                         time_dependent = false,
-                                        with_halos)
+                                        with_halos,
+                                        dimension_type)
 
                 save_output!(dataset, output, model, output_name, array_type)
             end
@@ -1320,7 +1323,8 @@ function initialize_nc_file(model,
                                     filepath, # for better error messages
                                     dimension_name_generator,
                                     time_dependent = true,
-                                    with_halos)
+                                    with_halos,
+                                    dimension_type)
         end
 
         sync(dataset)
@@ -1345,7 +1349,8 @@ initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
                                                                  ow.include_grid_metrics,
                                                                  ow.overwrite_existing,
                                                                  ow.deflatelevel,
-                                                                 ow.dimension_name_generator)
+                                                                 ow.dimension_name_generator,
+                                                                 ow.dimension_type)
 
 #####
 ##### Variable definition
@@ -1380,14 +1385,14 @@ end
 function define_output_variable!(model, dataset, output::AbstractField, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos,
-                                 dimensions, filepath)
+                                 dimensions, filepath, dimension_type=Float64)
 
     # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
     if output_name == "η" && output == view(model.free_surface.η, output.indices...)
         local default_dimension_name_generator = dimension_name_generator
         dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
     end
-    defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, write_data=false)
+    defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, dimension_type, write_data=false)
     return nothing
 end
 
