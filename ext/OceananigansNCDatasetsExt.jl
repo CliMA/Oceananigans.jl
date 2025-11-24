@@ -92,7 +92,7 @@ infil> squeeze_data(c) |> size
 Note that this will only remove (squeeze) singleton dimensions.
 """
 function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)}, with_halos=false)
-    reduced_dims = effective_reduced_dimensions(fd)
+    reduced_dims = reduced_dimensions(fd)
     field_data_cpu = array_type(field_data) # Need to convert to the array type of the field
 
     indices = Any[:, :, :]

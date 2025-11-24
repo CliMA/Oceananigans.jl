@@ -12,27 +12,15 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 #####
 
 function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX}, LX, LY, LZ, dim::Val{:x}; connector="_", location_letters) where {FT, TX}
-    if TX == Flat || isnothing(LX)
-        return ""
-    else
-        return "$(var_name)" * connector * location_letters
-    end
+    return "$(var_name)" * connector * location_letters
 end
 
 function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY}, LX, LY, LZ, dim::Val{:y}; connector="_", location_letters) where {FT, TX, TY}
-    if TY == Flat || isnothing(LY)
-        return ""
-    else
-        return "$(var_name)" * connector * location_letters
-    end
+    return "$(var_name)" * connector * location_letters
 end
 
 function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ}, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) where {FT, TX, TY, TZ}
-    if TZ == Flat || isnothing(LZ)
-        return ""
-    else
-        return "$(var_name)" * connector * location_letters
-    end
+    return "$(var_name)" * connector * location_letters
 end
 
 suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
