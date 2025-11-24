@@ -59,7 +59,7 @@ const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g
 #####
 
 """
-    squeeze_data(fd::AbstractField; array_type=Array{eltype(fd)}, with_halos=false)
+    squeeze_data(fd::AbstractField; array_type=Array{eltype(fd)})
 
 Returns the data of the field with the any dimensions where location is Nothing squeezed. For example:
 ```Julia
@@ -91,7 +91,7 @@ infil> squeeze_data(c) |> size
 
 Note that this will only remove (squeeze) singleton dimensions.
 """
-function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)}, with_halos=false)
+function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)})
     reduced_dims = effective_reduced_dimensions(fd)
     field_data_cpu = array_type(field_data) # Need to convert to the array type of the field
 
@@ -106,11 +106,7 @@ end
 
 squeeze_data(func, func_data; kwargs...) = func_data
 squeeze_data(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_data(wta.operand, data; kwargs...)
-
-function squeeze_data(fd::AbstractField; array_type=Array{eltype(fd)}, with_halos=false)
-    field_data = with_halos ? parent(fd) : interior(fd)
-    return squeeze_data(fd, field_data; array_type, with_halos)
-end
+squeeze_data(fd::AbstractField; kwargs...) = squeeze_data(fd, parent(fd); kwargs...)
 
 squeeze_data(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data(fd.operand; kwargs...)
 
@@ -132,7 +128,8 @@ function defVar(ds, field_name, fd::AbstractField;
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
-        squeezed_field_data = squeeze_data(fd; array_type, with_halos)
+        constructed_fd = construct_output(fd, fd.grid, (:, :, :), with_halos)
+        squeezed_field_data = squeeze_data(constructed_fd; array_type)
         squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
 
         defVar(ds, field_name, squeezed_reshaped_field_data, effective_dim_names; kwargs...)
@@ -1435,7 +1432,7 @@ end
 # Saving time-dependent outputs
 function save_output!(ds, output, model, ow, time_index, output_name)
     data = fetch_and_convert_output(output, model, ow)
-    data = squeeze_data(output, data; with_halos=ow.with_halos)
+    data = squeeze_data(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons..., time_index:time_index] = data
     return nothing
