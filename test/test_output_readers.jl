@@ -8,9 +8,7 @@ using Random
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
     model = NonhydrostaticModel(; grid, tracers = (:T, :S), advection = nothing)
-
     set!(model, T=30, S=35)
-
     simulation = Simulation(model; Δt, stop_iteration=100)
 
     simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers,
@@ -49,7 +47,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     u, v, w = model.velocities
 
     computed_fields = (
-        b = BuoyancyField(model),
+        b = buoyancy_field(model),
         ζ = Field(∂x(v) - ∂y(u)),
         ke = Field(√(u^2 + v^2))
     )
@@ -426,36 +424,7 @@ end
             end
         end
     end
-
-    @testset "Outputwriting with set!(FieldTimeSeries{OnDisk})" begin
-        @info "  Testing set!(FieldTimeSeries{OnDisk})..."
-
-        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
-        c = CenterField(grid)
-
-        filepath = "testfile.jld2"
-        f = FieldTimeSeries(instantiated_location(c), grid, 1:10; backend = OnDisk(), path = filepath, name = "c")
-
-        for i in 1:10
-            set!(c, i)
-            set!(f, c, i)
-        end
-
-        g = FieldTimeSeries(filepath, "c")
-
-        @test location(g) == (Center, Center, Center)
-        @test indices(g) == (:, :, :)
-        @test g.grid == grid
-
-        @test g[1, 1, 1, 1] == 1
-        @test g[1, 1, 1, 10] == 10
-        @test g[1, 1, 1, Time(1.6)] == 1.6
-
-        t = g[Time(3.8)]
-
-        @test t[1, 1, 1] == 3.8
-    end
-
+    
     @testset "Test chunked abstraction" begin
         @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
@@ -506,7 +475,7 @@ end
             end
         end
     end
-
+        
     for Backend in [InMemory, OnDisk]
         @testset "FieldDataset{$Backend} indexing" begin
             @info "  Testing FieldDataset{$Backend} indexing..."

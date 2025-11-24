@@ -251,3 +251,17 @@ end
                                     hydrostatic_model_kw,
                                     immersed_boundary_grid=true)
 end
+
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices
+
+@testset "Reactant FieldTimeSeries Tests" begin
+    @info "Testing the use of a `FieldTimeSeries` on a `ReactantState` arch..."
+
+    arch = ReactantState()
+    Nx, Ny, Nz = (10, 10, 10) # number of cells
+    grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    fts  = FieldTimeSeries{Center, Center, Center}(grid, sort(rand(10)))
+
+    # Test I can index into a Reactant FieldTimeSeries
+    @test fts[5] isa Field
+end
