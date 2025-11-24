@@ -1,3 +1,4 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: compute_at!
 using Oceananigans.OutputWriters: _saveproperty!
 
@@ -51,11 +52,17 @@ function fetch_output(csf::CubedSphereField, model)
     return parent(csf)
 end
 
-convert_output(mo::MultiRegionObject, writer) = 
-    MultiRegionObject(Tuple(convert(writer.array_type, obj) for obj in mo.regional_objects))
+function convert_output(mo::MultiRegionObject, writer)
+    array_type = writer.array_type
+    converted = Tuple(convert(array_type, obj) for obj in mo.regional_objects)
+    return MultiRegionObject(converted)
+end
 
-function construct_output(csf::CubedSphereField{LX, LY, LZ}, grid::ConformalCubedSphereGridOfSomeKind, user_indices,
+function construct_output(csf::CubedSphereField{LX, LY, LZ},
+                          grid::ConformalCubedSphereGridOfSomeKind,
+                          user_indices,
                           with_halos) where {LX, LY, LZ}
+
     multi_region_indices = output_indices(csf, grid, user_indices, with_halos)
     indices = getregion(multi_region_indices, 1)
 
@@ -75,3 +82,4 @@ end
 function serializeproperty!(file, location, csg::ConformalCubedSphereGridOfSomeKind)
     file[location] = on_architecture(CPU(), csg)
 end
+

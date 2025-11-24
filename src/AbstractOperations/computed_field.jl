@@ -4,7 +4,7 @@
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index
+using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -42,13 +42,13 @@ Keyword arguments
 function Field(operand::OperationOrFunctionField;
                data = nothing,
                indices = indices(operand),
-               boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
+               boundary_conditions = FieldBoundaryConditions(operand.grid, instantiated_location(operand)),
                status = nothing,
                compute = true,
                recompute_safely = true)
 
     grid = operand.grid
-    loc = location(operand)
+    loc = instantiated_location(operand)
     indices = validate_indices(indices, loc, grid)
 
     @apply_regionally boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
@@ -75,7 +75,7 @@ end
     compute!(comp::ComputedField, time=nothing)
 
 Compute `comp.operand` and store the result in `comp.data`.
-If `time` then computation happens if `time != field.status.time`.
+If `time` then only compute dependency fields with `time != field.status.time`.
 """
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
@@ -83,8 +83,10 @@ function compute!(comp::ComputedField, time=nothing)
 
     # Now perform the primary computation
     @apply_regionally compute_computed_field!(comp)
-
     fill_halo_regions!(comp)
+
+    # Update status
+    set_status!(comp.status, time)
 
     return comp
 end

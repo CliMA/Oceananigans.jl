@@ -34,7 +34,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
-    datadep_path = "regression_test_data/thermal_bubble_regression.nc"
+    datadep_path = "regression_truth_data/thermal_bubble_regression.nc"
     regression_data_filepath = @datadep_str datadep_path
 
     ####

@@ -82,7 +82,7 @@ const CAVDArray = AbstractArray{<:CAVD}
 const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
 with_tracers(tracers, closure::FlavorOfCAVD) = closure
-build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = ZFaceField(grid), κᵘ = ZFaceField(grid))
+build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = ZFaceField(grid), κᵘ = ZFaceField(grid))
 @inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.κᵘ
@@ -92,8 +92,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; par
 
     arch = model.architecture
     grid = model.grid
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,
             ## If we can figure out how to only precompute the "stability" of a cell:

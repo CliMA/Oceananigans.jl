@@ -1,7 +1,7 @@
-using Adapt, CUDA
+using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
 using Oceananigans.Fields: Center, Face
-using Oceananigans.AbstractOperations: GridMetricOperation, Ax, Ay, Az
+using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection
 
 import Adapt: adapt_structure
@@ -32,9 +32,9 @@ struct BoundaryAdjacentMean{FF, BV}
     16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
     ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
     ├── boundary conditions: FieldBoundaryConditions
-    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
     └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-        └── max=0.980785, min=-0.980785, mean=1.10534e-16
+        └── max=0.980785, min=-0.980785, mean=-5.52808e-17
 
     julia> bam = BoundaryAdjacentMean(grid, :east)
     BoundaryAdjacentMean: (0.0)
@@ -63,9 +63,9 @@ Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[])
 @inline boundary_reduced_field(::Union{Val{:south}, Val{:north}}, grid) = Field{Nothing, Center, Nothing}(grid)
 @inline boundary_reduced_field(::Union{Val{:bottom}, Val{:top}}, grid)  = Field{Nothing, Nothing, Center}(grid)
 
-@inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = GridMetricOperation((Face, Center, Center), Ax, grid)
-@inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = GridMetricOperation((Center, Face, Center), Ay, grid)
-@inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = GridMetricOperation((Center, Center, Face), Az, grid)
+@inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = grid_metric_operation((Face, Center, Center), Ax, grid)
+@inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = grid_metric_operation((Center, Face, Center), Ay, grid)
+@inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = grid_metric_operation((Center, Center, Face), Az, grid)
 
 @inline boundary_adjacent_indices(::Val{:east}, grid, loc) = size(grid, 1), 1, 1
 @inline boundary_adjacent_indices(val_side::Val{:west}, grid, loc) = first_interior_index(val_side, loc), 1, 1
@@ -98,12 +98,12 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     # get the total flux
     sum!(bam.flux_field, u * An)
 
-    bam.value[] = CUDA.@allowscalar bam.flux_field[iB, jB, kB]
+    bam.value[] = @allowscalar bam.flux_field[iB, jB, kB]
 
     # get the normalizing area
     sum!(bam.flux_field, An)
 
-    bam.value[] /= CUDA.@allowscalar bam.flux_field[iB, jB, kB]
+    bam.value[] /= @allowscalar bam.flux_field[iB, jB, kB]
 
     return nothing
 end

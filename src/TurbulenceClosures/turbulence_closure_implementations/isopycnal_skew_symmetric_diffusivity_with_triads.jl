@@ -93,8 +93,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model
     arch = model.architecture
     grid = model.grid
     clock = model.clock
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     if TD() isa VerticallyImplicitTimeDiscretization
         launch!(arch, grid, parameters,

@@ -282,7 +282,7 @@ end
 function test_triply_periodic_bc_injection_with_411_ranks()
     arch = Distributed(partition=Partition(4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -298,7 +298,7 @@ end
 function test_triply_periodic_bc_injection_with_141_ranks()
     arch = Distributed(partition=Partition(1, 4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -314,7 +314,7 @@ end
 function test_triply_periodic_bc_injection_with_221_ranks()
     arch = Distributed(partition=Partition(2, 2))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -333,8 +333,8 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(4))
-    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
+    model = NonhydrostaticModel(; grid)
 
     for field in merge(fields(model))
         fill!(field, arch.local_rank)
@@ -355,8 +355,8 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(1, 4))
-    grid  = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    grid  = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
+    model = NonhydrostaticModel(; grid)
 
     for field in (fields(model)..., model.pressures.pNHS)
         fill!(field, arch.local_rank)
@@ -377,8 +377,8 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(2, 2))
-    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3), halo)
+    model = NonhydrostaticModel(; grid)
 
     for field in merge(fields(model))
         fill!(field, arch.local_rank)
@@ -459,6 +459,24 @@ end
             @test child_architecture(architecture(cpurg))  == CPU()
             @test child_architecture(architecture(cpullg)) == CPU()
             @test child_architecture(architecture(cpuosg)) == CPU()
+
+            @info "Testing `minimum_*spacing` for distributed grids..."
+
+            grg  = reconstruct_global_grid(rg)
+            gllg = reconstruct_global_grid(llg)
+            gosg = reconstruct_global_grid(osg)
+
+            @test minimum_xspacing(rg) == minimum_xspacing(grg)
+            @test minimum_yspacing(rg) == minimum_yspacing(grg)
+            @test minimum_zspacing(rg) == minimum_zspacing(grg)
+
+            @test minimum_xspacing(llg) == minimum_xspacing(llg)
+            @test minimum_yspacing(llg) == minimum_yspacing(llg)
+            @test minimum_zspacing(llg) == minimum_zspacing(llg)
+
+            @test minimum_xspacing(osg) == minimum_xspacing(osg)
+            @test minimum_yspacing(osg) == minimum_yspacing(osg)
+            @test minimum_zspacing(osg) == minimum_zspacing(osg)
         end
     end
 
@@ -478,21 +496,21 @@ end
             @test sum(c) == 1*N + 2*N + 3*N + 4*N
 
             sum!(c_reduced, c)
-            @test CUDA.@allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
+            @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
-            bool_val = arch.local_rank == 0 ? true : false        
-            set!(cbool, bool_val)            
+            bool_val = arch.local_rank == 0 ? true : false
+            set!(cbool, bool_val)
 
             @test any(cbool) == true
             @test all(cbool) == false
 
             any!(cbool_reduced, cbool)
-            @test CUDA.@allowscalar cbool_reduced[1, 1, 1] == true
-            
+            @test @allowscalar cbool_reduced[1, 1, 1] == true
+
             all!(cbool_reduced, cbool)
-            @test CUDA.@allowscalar cbool_reduced[1, 1, 1] == false
+            @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
     end
 
@@ -534,4 +552,3 @@ end
         @test model.clock.time ≈ 2
     end
 end
-

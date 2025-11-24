@@ -4,14 +4,14 @@ export VarianceDissipation, flatten_dissipation_fields
 
 using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
-using Oceananigans.Grids: architecture
+using Oceananigans.Grids: architecture, AbstractGrid
 using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
-                                 RungeKutta3TimeStepper, 
+                                 RungeKutta3TimeStepper,
                                  SplitRungeKutta3TimeStepper
 
 using Oceananigans.TurbulenceClosures: viscosity,
@@ -35,13 +35,12 @@ using KernelAbstractions: @kernel, @index
 
 const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper}
 
-struct VarianceDissipation{P, K, A, D, S, G}
+struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
     diffusive_production :: K
     advective_fluxes :: A
     diffusive_fluxes :: D
     previous_state :: S
-    gradient_squared :: G
     tracer_name :: Symbol
 end
 
@@ -57,13 +56,13 @@ end
                         Uⁿ⁻¹ = VelocityFields(grid),
                         Uⁿ   = VelocityFields(grid))
 
-Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on a `grid`.
+Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on `grid`.
 This function computes the variance dissipation diagnostics for the specified tracer in the model.
 These include the numerical dissipation implicit to the advection scheme and the explicit
 dissipation associated to closures.
 
 This diagnostic is especially useful for models that use a dissipative advection scheme
-like [`WENO`](@ref Oceananigans.Advection.WENO) or [`UpwindBiased`](@ref Oceananigans.Advection.UpwindBiased).
+like [`WENO`](@ref) or [`UpwindBiased`](@ref).
 
 Arguments
 =========
@@ -99,9 +98,7 @@ function VarianceDissipation(tracer_name, grid;
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
     diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
 
-    gradients = deepcopy(P)
-
-    return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients, tracer_name)
+    return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, tracer_name)
 end
 
 function (ϵ::VarianceDissipation)(model)
@@ -182,4 +179,4 @@ function validate_schedule(::VarianceDissipation, schedule::ConsecutiveIteration
     return schedule
 end
 
-end
+end # module

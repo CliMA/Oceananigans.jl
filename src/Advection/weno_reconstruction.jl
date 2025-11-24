@@ -59,6 +59,7 @@ WENO{3, Float64, Float32}(order=5)
 To build a 9th-order scheme (often a good choice for a stable
 yet minimally-dissipative advection scheme):
 
+```jldoctest weno
 julia> WENO(order=9)
 WENO{5, Float64, Float32}(order=9)
 ├── buffer_scheme: WENO{4, Float64, Float32}(order=7)
@@ -71,9 +72,11 @@ WENO{5, Float64, Float32}(order=9)
 ├── bounds: (0, 1)
 ├── buffer_scheme: WENO{4, Float64, Float32}(order=7)
 └── advection_velocity_scheme: Centered(order=8)
+```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
+              buffer_scheme = DecreasingOrderAdvectionScheme(),
               bounds = nothing)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
@@ -83,7 +86,10 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
         return UpwindBiased(FT; order=1)
     else
         advecting_velocity_scheme = Centered(FT; order=order-1)
-        buffer_scheme = WENO(FT, FT2; order=order-2, bounds)
+        
+        if buffer_scheme isa DecreasingOrderAdvectionScheme
+            buffer_scheme = WENO(FT, FT2; order=order-2, bounds)
+        end
 
         N = Int((order + 1) ÷ 2)
         return WENO{N, FT, FT2}(bounds, buffer_scheme, advecting_velocity_scheme)
@@ -97,11 +103,11 @@ Base.summary(a::WENO{N, FT, FT2}) where {N, FT, FT2} = string("WENO{$N, $FT, $FT
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')
-    
+
     if !isnothing(a.bounds)
         print(io, "├── bounds: ", string(a.bounds), '\n')
     end
-    
+
     print(io, "├── buffer_scheme: ", summary(a.buffer_scheme) , '\n',
               "└── advection_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 end

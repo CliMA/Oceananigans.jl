@@ -1,5 +1,6 @@
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Advection: WENO, VectorInvariant
+using Oceananigans.BuoyancyFormulations: NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
@@ -9,7 +10,9 @@ using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: ConjugateGradientSolver
 
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
@@ -53,14 +56,22 @@ for T in Types
     end
 end
 
+# TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
+function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation; 
+                       gravity_unit_vector=NegativeZDirection(), 
+                       materialize_gradients=false) 
+
+    gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
+    return BuoyancyForce(formulation, gravity_unit_vector, nothing)
+end
+
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
-@inline devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
+@inline regions(pv::PrescribedVelocityFields)    = regions(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
-@inline isregional(mrm::MultiRegionModel)   = true
-@inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
-@inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
+@inline isregional(mrm::MultiRegionModel) = true
+@inline regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)

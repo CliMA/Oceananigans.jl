@@ -14,7 +14,6 @@ using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
-using CUDA: CuArray
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver
 

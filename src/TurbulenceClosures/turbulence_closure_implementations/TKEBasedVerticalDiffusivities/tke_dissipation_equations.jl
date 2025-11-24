@@ -2,10 +2,9 @@ using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: get_active_cells_map
-using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
+using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
-using CUDA
 
 Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
@@ -35,12 +34,12 @@ function time_step_tke_dissipation_equations!(model)
     Gⁿϵ = model.timestepper.Gⁿ.ϵ
     G⁻ϵ = model.timestepper.G⁻.ϵ
 
-    diffusivity_fields = model.diffusivity_fields
-    κe = diffusivity_fields.κe
-    κϵ = diffusivity_fields.κϵ
-    Le = diffusivity_fields.Le
-    Lϵ = diffusivity_fields.Lϵ
-    previous_velocities = diffusivity_fields.previous_velocities
+    closure_fields = model.closure_fields
+    κe = closure_fields.κe
+    κϵ = closure_fields.κϵ
+    Le = closure_fields.Le
+    Lϵ = closure_fields.Lϵ
+    previous_velocities = closure_fields.previous_velocities
     e_index = findfirst(k -> k == :e, keys(model.tracers))
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
@@ -69,7 +68,7 @@ function time_step_tke_dissipation_equations!(model)
                 compute_tke_dissipation_diffusivities!,
                 κe, κϵ,
                 grid, closure,
-                model.velocities, model.tracers, model.buoyancy)
+                model.velocities, model.tracers, buoyancy_force(model))
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
@@ -78,16 +77,20 @@ function time_step_tke_dissipation_equations!(model)
                 Le, Lϵ,
                 grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, diffusivity_fields,
+                model.tracers, buoyancy_force(model), closure_fields,
                 Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
 
         implicit_step!(e, implicit_solver, closure,
-                       model.diffusivity_fields, Val(e_index),
-                       model.clock, Δτ)
+                       model.closure_fields, Val(e_index),
+                       model.clock, 
+                       fields(model),
+                       Δτ)
 
         implicit_step!(ϵ, implicit_solver, closure,
-                       model.diffusivity_fields, Val(ϵ_index),
-                       model.clock, Δτ)
+                       model.closure_fields, Val(ϵ_index),
+                       model.clock, 
+                       fields(model),
+                       Δτ)
     end
 
     return nothing
@@ -280,7 +283,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
 
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,
                                           north = e_bcs.north,
@@ -288,13 +291,13 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
                                           east = e_bcs.east,
                                           west = e_bcs.west)
     else
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_tke_bc)
     end
 
     if :ϵ ∈ keys(user_bcs)
         ϵ_bcs = user_bcs[:ϵ]
 
-        dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+        dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                                   top = top_dissipation_bc,
                                                   bottom = e_bcs.bottom,
                                                   north = e_bcs.north,
@@ -302,7 +305,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
                                                   east = e_bcs.east,
                                                   west = e_bcs.west)
     else
-        dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_dissipation_bc)
+        dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_dissipation_bc)
     end
 
     new_boundary_conditions = merge(user_bcs, (e=tke_bcs, ϵ=dissipation_bcs))

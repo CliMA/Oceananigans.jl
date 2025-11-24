@@ -65,7 +65,9 @@ Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical m
 microscale ocean turbulence based on the prognostic evolution of two variables: the
 turbulent kinetic energy (TKE), and the turbulent kinetic energy dissipation.
 Elsewhere this is referred to as "k-ϵ". For more information about k-ϵ, see
-Burchard and Bolding (2001), Umlauf and Buchard (2003), and Umlauf and Burchard (2005).
+[Burchard and Bolding (2001)](@cite burchard2001comparative),
+[Umlauf and Burchard (2003)](@cite umlauf2003generic), and
+[Umlauf and Burchard (2005)](@cite umlauf2005second).
 
 Arguments
 =========
@@ -98,6 +100,19 @@ Keyword arguments
 Note that for numerical stability, it is recommended to either have a relative short
 `negative_turbulent_kinetic_energy_damping_time_scale` or a reasonable
 `minimum_turbulent_kinetic_energy`, or both.
+
+
+References
+==========
+
+Burchard, H., and Bolding, K. (2001). Comparative analysis of four second-moment turbulence closure
+    models for the oceanic mixed layer. Journal of Physical Oceanography, 31(8), 1943-1968.
+
+Umlauf, L., and H. Burchard. (2003). A generic length-scale equation for geophysical turbulence models.
+    Journal of Marine Research 61, (2). https://elischolar.library.yale.edu/journal_of_marine_research/9
+
+Umlauf, L., and Burchard, H. (2005). Second-order turbulence closure models for geophysical boundary layers.
+    A review of recent work. Continental Shelf Research, 25(7-8), 795-827.
 """
 function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                            FT = Oceananigans.defaults.FloatType;
@@ -161,32 +176,32 @@ struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
     _tupled_implicit_linear_coefficients :: LC
 end
 
-Adapt.adapt_structure(to, tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields) =
-    TKEDissipationDiffusivityFields(adapt(to, tke_dissipation_diffusivity_fields.κu),
-                                    adapt(to, tke_dissipation_diffusivity_fields.κc),
-                                    adapt(to, tke_dissipation_diffusivity_fields.κe),
-                                    adapt(to, tke_dissipation_diffusivity_fields.κϵ),
-                                    adapt(to, tke_dissipation_diffusivity_fields.Le),
-                                    adapt(to, tke_dissipation_diffusivity_fields.Lϵ),
-                                    adapt(to, tke_dissipation_diffusivity_fields.previous_velocities),
-                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_tracer_diffusivities),
-                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_implicit_linear_coefficients))
+Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusivityFields) =
+    TKEDissipationDiffusivityFields(adapt(to, tke_dissipation_closure_fields.κu),
+                                    adapt(to, tke_dissipation_closure_fields.κc),
+                                    adapt(to, tke_dissipation_closure_fields.κe),
+                                    adapt(to, tke_dissipation_closure_fields.κϵ),
+                                    adapt(to, tke_dissipation_closure_fields.Le),
+                                    adapt(to, tke_dissipation_closure_fields.Lϵ),
+                                    adapt(to, tke_dissipation_closure_fields.previous_velocities),
+                                    adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
+                                    adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
-    fields_with_halos_to_fill = (tke_dissipation_diffusivity_fields.κu,
-                                 tke_dissipation_diffusivity_fields.κc,
-                                 tke_dissipation_diffusivity_fields.κe,
-                                 tke_dissipation_diffusivity_fields.κϵ)
+function fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
+    fields_with_halos_to_fill = (tke_dissipation_closure_fields.κu,
+                                 tke_dissipation_closure_fields.κc,
+                                 tke_dissipation_closure_fields.κe,
+                                 tke_dissipation_closure_fields.κϵ)
 
     return fill_halo_regions!(fields_with_halos_to_fill, args...; kw...)
 end
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
 
-    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κe = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κϵ = FieldBoundaryConditions(grid, (Center, Center, Face)))
+    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κe = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κϵ = FieldBoundaryConditions(grid, (Center(), Center(), Face())))
 
     bcs = merge(default_diffusivity_bcs, bcs)
 
@@ -230,8 +245,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
@@ -384,4 +399,3 @@ function Base.show(io::IO, clo::TDVD)
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
-

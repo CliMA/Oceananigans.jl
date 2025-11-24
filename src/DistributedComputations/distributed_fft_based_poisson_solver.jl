@@ -1,6 +1,6 @@
 import FFTW
 
-using CUDA: @allowscalar
+using GPUArraysCore
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!

@@ -1,4 +1,4 @@
-using CUDA: @allowscalar
+using GPUArraysCore
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme
@@ -73,9 +73,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
-    compute_diffusivities!(model.diffusivity_fields, model.closure, model)
+    compute_diffusivities!(model.closure_fields, model.closure, model)
 
-    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
+    fill_halo_regions!(model.closure_fields, model.clock, fields(model))
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
