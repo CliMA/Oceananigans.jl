@@ -1,7 +1,6 @@
 module TurbulenceClosures
 
 export
-    AbstractEddyViscosityClosure,
     VerticalScalarDiffusivity,
     HorizontalScalarDiffusivity,
     HorizontalDivergenceScalarDiffusivity,
