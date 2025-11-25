@@ -176,7 +176,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_mh = NCDataset(filepath_metrics_halos)
 
     @test haskey(ds_mh, "time")
-    @test eltype(ds_mh["time"]) == Float64
+    @test eltype(ds_mh["time"]) == Float64 # All dimensions should be Float64 by default
 
     dims = ("x_faa", "x_caa", "y_afa", "y_aca", "z_aaf", "z_aac")
     metrics = ("Δx_faa", "Δx_caa", "Δy_afa", "Δy_aca", "Δy_afa", "Δy_aca")
@@ -186,7 +186,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
         @test haskey(ds_mh, var)
         @test haskey(ds_mh[var].attrib, "long_name")
         @test haskey(ds_mh[var].attrib, "units")
-        @test eltype(ds_mh[var]) == FT
+        @test eltype(ds_mh[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
@@ -218,13 +218,13 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_m = NCDataset(filepath_metrics_nohalos)
 
     @test haskey(ds_m, "time")
-    @test eltype(ds_m["time"]) == Float64
+    @test eltype(ds_m["time"]) == Float64 # All dimensions should be Float64 by default
 
     for var in (dims..., metrics..., vars...)
         @test haskey(ds_m, var)
         @test haskey(ds_m[var].attrib, "long_name")
         @test haskey(ds_m[var].attrib, "units")
-        @test eltype(ds_m[var]) == FT
+        @test eltype(ds_m[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     @test dimsize(ds_m[:x_faa]) == (x_faa=Nx,)
@@ -254,13 +254,13 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_h = NCDataset(filepath_nometrics)
 
     @test haskey(ds_h, "time")
-    @test eltype(ds_h["time"]) == Float64
+    @test eltype(ds_h["time"]) == Float64 # All dimensions should be Float64 by default
 
     for var in (dims..., vars...)
         @test haskey(ds_h, var)
         @test haskey(ds_h[var].attrib, "long_name")
         @test haskey(ds_h[var].attrib, "units")
-        @test eltype(ds_h[var]) == FT
+        @test eltype(ds_h[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     for metric in metrics
@@ -289,13 +289,13 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_s = NCDataset(filepath_sliced)
 
     @test haskey(ds_s, "time")
-    @test eltype(ds_s["time"]) == Float64
+    @test eltype(ds_s["time"]) == Float64 # All dimensions should be Float64 by default
 
     for var in (dims..., metrics..., vars...)
         @test haskey(ds_s, var)
         @test haskey(ds_s[var].attrib, "long_name")
         @test haskey(ds_s[var].attrib, "units")
-        @test eltype(ds_s[var]) == FT
+        @test eltype(ds_s[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     @test dimsize(ds_s[:x_faa]) == (x_faa=nx,)
