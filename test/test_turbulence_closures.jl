@@ -160,7 +160,7 @@ function time_step_with_variable_discrete_diffusivity(arch)
 end
 
 function time_step_with_variable_AMD_coefficient(arch; use_field_coefficient=false)
-    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 2, 3))
 
     Cν_func(x, y, z) = exp(z) * cos(x) * cos(y)
     Cκ_func(x, y, z) = exp(z) * cos(x) * cos(y)
@@ -411,6 +411,12 @@ end
             @test time_step_with_field_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
             @test time_step_with_variable_discrete_diffusivity(arch)
+        end
+    end
+
+    @testset "AnisotropicMinimumDissipation with variable coefficients" begin
+        @info "  Testing AnisotropicMinimumDissipation time stepping with variable coefficients..."
+        for arch in archs
             @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=false)
             @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=true)
         end
