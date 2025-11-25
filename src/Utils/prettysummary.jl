@@ -27,7 +27,7 @@ function Grids.prettysummary(nt::NamedTuple, args...)
         str = "("
         for i = 1:n
             f = nt[i]
-            str = string(str, fieldname(typeof(nt), i), "=", prettysummary(getfield(nt, i)))
+            str = string(str, fieldname(typeof(nt), i), "=", Grids.prettysummary(getfield(nt, i)))
             if n == 1
                 str = string(str, ",")
             elseif i < n
