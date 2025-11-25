@@ -292,16 +292,16 @@ end
 
             @testset "Advective and multiple forcing [$A]" begin
                 @info "      Testing advective and multiple forcing [$A]..."
-
-                # Pre-build grids for testing
                 rectilinear_grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
                 latlon_grid = LatitudeLongitudeGrid(arch, size=(4, 5, 6), longitude=(-180, 180), latitude=(-85, 85), z=(-1, 0), halo=(4, 4, 4))
 
-                @test advective_and_multiple_forcing(rectilinear_grid)
-                @test advective_and_multiple_forcing(latlon_grid)
+                for grid in (rectilinear_grid, latlon_grid), model_type in (NonhydrostaticModel, HydrostaticFreeSurfaceModel), immersed in (false, true)
+                    @test advective_and_multiple_forcing(grid; model_type=model_type, immersed=immersed)
+                end
+
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
-            end
+             end
 
             @testset "FieldTimeSeries forcing on [$A]" begin
                 @info "      Testing FieldTimeSeries forcing [$A]..."
