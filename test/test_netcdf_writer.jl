@@ -1404,13 +1404,15 @@ function test_netcdf_rectilinear_column(arch)
     return nothing
 end
 
-function test_thermal_bubble_netcdf_output(arch, FT)
+function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
+    Hx, Hy, Hz = 4, 3, 2
 
     grid = RectilinearGrid(arch,
         topology = (Periodic, Periodic, Bounded),
         size = (Nx, Ny, Nz),
+        halo = (Hx, Hy, Hz),
         extent = (Lx, Ly, Lz)
     )
 
@@ -1438,13 +1440,15 @@ function test_thermal_bubble_netcdf_output(arch, FT)
     )
 
     Arch = typeof(arch)
-    nc_filepath = "test_thermal_bubble_$(Arch)_$FT.nc"
+    halo_suffix = with_halos ? "_with_halos" : ""
+    nc_filepath = "test_thermal_bubble$(halo_suffix)_$(Arch)_$FT.nc"
     isfile(nc_filepath) && rm(nc_filepath)
 
     nc_writer = NetCDFWriter(model, outputs,
         filename = nc_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
+        with_halos = with_halos,
         include_grid_metrics = false,
         verbose = true)
 
@@ -1468,185 +1472,6 @@ function test_thermal_bubble_netcdf_output(arch, FT)
         verbose = true)
 
     push!(simulation.output_writers, nc_sliced_writer)
-
-    run!(simulation)
-
-    ds3 = NCDataset(nc_filepath)
-
-    @test haskey(ds3.attrib, "date")
-    @test haskey(ds3.attrib, "Julia")
-    @test haskey(ds3.attrib, "Oceananigans")
-    @test haskey(ds3.attrib, "schedule")
-    @test haskey(ds3.attrib, "interval")
-    @test haskey(ds3.attrib, "output iteration interval")
-
-    @test !isnothing(ds3.attrib["date"])
-    @test !isnothing(ds3.attrib["Julia"])
-    @test !isnothing(ds3.attrib["Oceananigans"])
-    @test ds3.attrib["schedule"] == "IterationInterval"
-    @test ds3.attrib["interval"] == 10
-    @test !isnothing(ds3.attrib["output iteration interval"])
-
-    # Dimensions should be Float64 by default
-    @test eltype(ds3["time"])  == Float64
-    @test eltype(ds3["x_caa"]) == Float64
-    @test eltype(ds3["x_faa"]) == Float64
-    @test eltype(ds3["y_aca"]) == Float64
-    @test eltype(ds3["y_afa"]) == Float64
-    @test eltype(ds3["z_aac"]) == Float64
-    @test eltype(ds3["z_aaf"]) == Float64
-
-    @test length(ds3["x_caa"]) == Nx
-    @test length(ds3["y_aca"]) == Ny
-    @test length(ds3["z_aac"]) == Nz
-    @test length(ds3["x_faa"]) == Nx
-    @test length(ds3["y_afa"]) == Ny
-    @test length(ds3["z_aaf"]) == Nz+1  # z is Bounded
-
-    @test ds3["x_caa"][1] == grid.xᶜᵃᵃ[1]
-    @test ds3["x_faa"][1] == grid.xᶠᵃᵃ[1]
-    @test ds3["y_aca"][1] == grid.yᵃᶜᵃ[1]
-    @test ds3["y_afa"][1] == grid.yᵃᶠᵃ[1]
-    @test ds3["z_aac"][1] == grid.z.cᵃᵃᶜ[1]
-    @test ds3["z_aaf"][1] == grid.z.cᵃᵃᶠ[1]
-
-    @test ds3["x_caa"][end] == grid.xᶜᵃᵃ[Nx]
-    @test ds3["x_faa"][end] == grid.xᶠᵃᵃ[Nx]
-    @test ds3["y_aca"][end] == grid.yᵃᶜᵃ[Ny]
-    @test ds3["y_afa"][end] == grid.yᵃᶠᵃ[Ny]
-    @test ds3["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz]
-    @test ds3["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
-
-    @test eltype(ds3["u"]) == FT
-    @test eltype(ds3["v"]) == FT
-    @test eltype(ds3["w"]) == FT
-    @test eltype(ds3["T"]) == FT
-    @test eltype(ds3["S"]) == FT
-
-    u = ds3["u"][:, :, :, end]
-    v = ds3["v"][:, :, :, end]
-    w = ds3["w"][:, :, :, end]
-    T = ds3["T"][:, :, :, end]
-    S = ds3["S"][:, :, :, end]
-
-    close(ds3)
-
-    @test all(u .≈ Array(interior(model.velocities.u)))
-    @test all(v .≈ Array(interior(model.velocities.v)))
-    @test all(w .≈ Array(interior(model.velocities.w)))
-    @test all(T .≈ Array(interior(model.tracers.T)))
-    @test all(S .≈ Array(interior(model.tracers.S)))
-
-    ds2 = NCDataset(nc_sliced_filepath)
-
-    @test haskey(ds2.attrib, "date")
-    @test haskey(ds2.attrib, "Julia")
-    @test haskey(ds2.attrib, "Oceananigans")
-    @test haskey(ds2.attrib, "schedule")
-    @test haskey(ds2.attrib, "interval")
-    @test haskey(ds2.attrib, "output iteration interval")
-
-    @test !isnothing(ds2.attrib["date"])
-    @test !isnothing(ds2.attrib["Julia"])
-    @test !isnothing(ds2.attrib["Oceananigans"])
-    @test ds2.attrib["schedule"] == "IterationInterval"
-    @test ds2.attrib["interval"] == 10
-    @test !isnothing(ds2.attrib["output iteration interval"])
-
-    # Dimensions should be Float64 by default
-    @test eltype(ds2["time"])  == Float64
-    @test eltype(ds2["x_caa"]) == Float64
-    @test eltype(ds2["x_faa"]) == Float64
-    @test eltype(ds2["y_aca"]) == Float64
-    @test eltype(ds2["y_afa"]) == Float64
-    @test eltype(ds2["z_aac"]) == Float64
-    @test eltype(ds2["z_aaf"]) == Float64
-
-    @test length(ds2["x_caa"]) == length(i_slice)
-    @test length(ds2["x_faa"]) == length(i_slice)
-    @test length(ds2["y_aca"]) == length(j_slice)
-    @test length(ds2["y_afa"]) == length(j_slice)
-    @test length(ds2["z_aac"]) == length(k_slice)
-    @test length(ds2["z_aaf"]) == length(k_slice)
-
-    @test ds2["x_caa"][1] == grid.xᶜᵃᵃ[i_slice[1]]
-    @test ds2["x_faa"][1] == grid.xᶠᵃᵃ[i_slice[1]]
-    @test ds2["y_aca"][1] == grid.yᵃᶜᵃ[j_slice[1]]
-    @test ds2["y_afa"][1] == grid.yᵃᶠᵃ[j_slice[1]]
-    @test ds2["z_aac"][1] == grid.z.cᵃᵃᶜ[k_slice[1]]
-    @test ds2["z_aaf"][1] == grid.z.cᵃᵃᶠ[k_slice[1]]
-
-    @test ds2["x_caa"][end] == grid.xᶜᵃᵃ[i_slice[end]]
-    @test ds2["x_faa"][end] == grid.xᶠᵃᵃ[i_slice[end]]
-    @test ds2["y_aca"][end] == grid.yᵃᶜᵃ[j_slice[end]]
-    @test ds2["y_afa"][end] == grid.yᵃᶠᵃ[j_slice[end]]
-    @test ds2["z_aac"][end] == grid.z.cᵃᵃᶜ[k_slice[end]]
-    @test ds2["z_aaf"][end] == grid.z.cᵃᵃᶠ[k_slice[end]]
-
-    @test eltype(ds2["u"]) == FT
-    @test eltype(ds2["v"]) == FT
-    @test eltype(ds2["w"]) == FT
-    @test eltype(ds2["T"]) == FT
-    @test eltype(ds2["S"]) == FT
-
-    u_sliced = ds2["u"][:, :, :, end]
-    v_sliced = ds2["v"][:, :, :, end]
-    w_sliced = ds2["w"][:, :, :, end]
-    T_sliced = ds2["T"][:, :, :, end]
-    S_sliced = ds2["S"][:, :, :, end]
-
-    close(ds2)
-
-    @test all(u_sliced .≈ Array(interior(model.velocities.u))[i_slice, j_slice, k_slice])
-    @test all(v_sliced .≈ Array(interior(model.velocities.v))[i_slice, j_slice, k_slice])
-    @test all(w_sliced .≈ Array(interior(model.velocities.w))[i_slice, j_slice, k_slice])
-    @test all(T_sliced .≈ Array(interior(model.tracers.T))[i_slice, j_slice, k_slice])
-    @test all(S_sliced .≈ Array(interior(model.tracers.S))[i_slice, j_slice, k_slice])
-
-    rm(nc_filepath)
-    rm(nc_sliced_filepath)
-
-    return nothing
-end
-
-function test_thermal_bubble_netcdf_output_with_halos(arch, FT)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 100, 100, 100
-    Hx, Hy, Hz = 4, 3, 2
-
-    grid = RectilinearGrid(arch,
-        topology = (Periodic, Periodic, Bounded),
-        size = (Nx, Ny, Nz),
-        halo = (Hx, Hy, Hz),
-        extent = (Lx, Ly, Lz),
-    )
-
-    model = NonhydrostaticModel(; grid,
-        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-        buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S)
-    )
-
-    simulation = Simulation(model, Δt=6, stop_iteration=10)
-
-    # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
-    # of the domain volume.
-    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
-    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
-    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
-
-    Arch = typeof(arch)
-    nc_filepath = "test_thermal_bubble_with_halos_$Arch.nc"
-
-    nc_writer = NetCDFWriter(model,
-        merge(model.velocities, model.tracers),
-        filename = nc_filepath,
-        schedule = IterationInterval(10),
-        array_type = Array{FT},
-        with_halos = true)
-
-    push!(simulation.output_writers, nc_writer)
 
     run!(simulation)
 
@@ -1675,26 +1500,49 @@ function test_thermal_bubble_netcdf_output_with_halos(arch, FT)
     @test eltype(ds["z_aac"]) == Float64
     @test eltype(ds["z_aaf"]) == Float64
 
-    @test length(ds["x_caa"]) == Nx+2Hx
-    @test length(ds["y_aca"]) == Ny+2Hy
-    @test length(ds["z_aac"]) == Nz+2Hz
-    @test length(ds["x_faa"]) == Nx+2Hx
-    @test length(ds["y_afa"]) == Ny+2Hy
-    @test length(ds["z_aaf"]) == Nz+2Hz+1  # z is Bounded
+    if with_halos
+        @test length(ds["x_caa"]) == Nx+2Hx
+        @test length(ds["y_aca"]) == Ny+2Hy
+        @test length(ds["z_aac"]) == Nz+2Hz
+        @test length(ds["x_faa"]) == Nx+2Hx
+        @test length(ds["y_afa"]) == Ny+2Hy
+        @test length(ds["z_aaf"]) == Nz+2Hz+1  # z is Bounded
 
-    @test ds["x_caa"][1] == grid.xᶜᵃᵃ[1-Hx]
-    @test ds["x_faa"][1] == grid.xᶠᵃᵃ[1-Hx]
-    @test ds["y_aca"][1] == grid.yᵃᶜᵃ[1-Hy]
-    @test ds["y_afa"][1] == grid.yᵃᶠᵃ[1-Hy]
-    @test ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1-Hz]
-    @test ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1-Hz]
+        @test ds["x_caa"][1] == grid.xᶜᵃᵃ[1-Hx]
+        @test ds["x_faa"][1] == grid.xᶠᵃᵃ[1-Hx]
+        @test ds["y_aca"][1] == grid.yᵃᶜᵃ[1-Hy]
+        @test ds["y_afa"][1] == grid.yᵃᶠᵃ[1-Hy]
+        @test ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1-Hz]
+        @test ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1-Hz]
 
-    @test ds["x_caa"][end] == grid.xᶜᵃᵃ[Nx+Hx]
-    @test ds["x_faa"][end] == grid.xᶠᵃᵃ[Nx+Hx]
-    @test ds["y_aca"][end] == grid.yᵃᶜᵃ[Ny+Hy]
-    @test ds["y_afa"][end] == grid.yᵃᶠᵃ[Ny+Hy]
-    @test ds["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz+Hz]
-    @test ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
+        @test ds["x_caa"][end] == grid.xᶜᵃᵃ[Nx+Hx]
+        @test ds["x_faa"][end] == grid.xᶠᵃᵃ[Nx+Hx]
+        @test ds["y_aca"][end] == grid.yᵃᶜᵃ[Ny+Hy]
+        @test ds["y_afa"][end] == grid.yᵃᶠᵃ[Ny+Hy]
+        @test ds["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz+Hz]
+        @test ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
+    else
+        @test length(ds["x_caa"]) == Nx
+        @test length(ds["y_aca"]) == Ny
+        @test length(ds["z_aac"]) == Nz
+        @test length(ds["x_faa"]) == Nx
+        @test length(ds["y_afa"]) == Ny
+        @test length(ds["z_aaf"]) == Nz+1  # z is Bounded
+
+        @test ds["x_caa"][1] == grid.xᶜᵃᵃ[1]
+        @test ds["x_faa"][1] == grid.xᶠᵃᵃ[1]
+        @test ds["y_aca"][1] == grid.yᵃᶜᵃ[1]
+        @test ds["y_afa"][1] == grid.yᵃᶠᵃ[1]
+        @test ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1]
+        @test ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1]
+
+        @test ds["x_caa"][end] == grid.xᶜᵃᵃ[Nx]
+        @test ds["x_faa"][end] == grid.xᶠᵃᵃ[Nx]
+        @test ds["y_aca"][end] == grid.yᵃᶜᵃ[Ny]
+        @test ds["y_afa"][end] == grid.yᵃᶠᵃ[Ny]
+        @test ds["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz]
+        @test ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
+    end
 
     @test eltype(ds["u"]) == FT
     @test eltype(ds["v"]) == FT
@@ -1710,13 +1558,92 @@ function test_thermal_bubble_netcdf_output_with_halos(arch, FT)
 
     close(ds)
 
-    @test all(u .≈ Array(model.velocities.u.data.parent))
-    @test all(v .≈ Array(model.velocities.v.data.parent))
-    @test all(w .≈ Array(model.velocities.w.data.parent))
-    @test all(T .≈ Array(model.tracers.T.data.parent))
-    @test all(S .≈ Array(model.tracers.S.data.parent))
+    if with_halos
+        @test all(u .≈ Array(model.velocities.u.data.parent))
+        @test all(v .≈ Array(model.velocities.v.data.parent))
+        @test all(w .≈ Array(model.velocities.w.data.parent))
+        @test all(T .≈ Array(model.tracers.T.data.parent))
+        @test all(S .≈ Array(model.tracers.S.data.parent))
+    else
+        @test all(u .≈ Array(interior(model.velocities.u)))
+        @test all(v .≈ Array(interior(model.velocities.v)))
+        @test all(w .≈ Array(interior(model.velocities.w)))
+        @test all(T .≈ Array(interior(model.tracers.T)))
+        @test all(S .≈ Array(interior(model.tracers.S)))
+    end
 
     rm(nc_filepath)
+
+    # Test sliced output only when not using halos
+    if !with_halos
+        ds2 = NCDataset(nc_sliced_filepath)
+
+        @test haskey(ds2.attrib, "date")
+        @test haskey(ds2.attrib, "Julia")
+        @test haskey(ds2.attrib, "Oceananigans")
+        @test haskey(ds2.attrib, "schedule")
+        @test haskey(ds2.attrib, "interval")
+        @test haskey(ds2.attrib, "output iteration interval")
+
+        @test !isnothing(ds2.attrib["date"])
+        @test !isnothing(ds2.attrib["Julia"])
+        @test !isnothing(ds2.attrib["Oceananigans"])
+        @test ds2.attrib["schedule"] == "IterationInterval"
+        @test ds2.attrib["interval"] == 10
+        @test !isnothing(ds2.attrib["output iteration interval"])
+
+        # Dimensions should be Float64 by default
+        @test eltype(ds2["time"])  == Float64
+        @test eltype(ds2["x_caa"]) == Float64
+        @test eltype(ds2["x_faa"]) == Float64
+        @test eltype(ds2["y_aca"]) == Float64
+        @test eltype(ds2["y_afa"]) == Float64
+        @test eltype(ds2["z_aac"]) == Float64
+        @test eltype(ds2["z_aaf"]) == Float64
+
+        @test length(ds2["x_caa"]) == length(i_slice)
+        @test length(ds2["x_faa"]) == length(i_slice)
+        @test length(ds2["y_aca"]) == length(j_slice)
+        @test length(ds2["y_afa"]) == length(j_slice)
+        @test length(ds2["z_aac"]) == length(k_slice)
+        @test length(ds2["z_aaf"]) == length(k_slice)
+
+        @test ds2["x_caa"][1] == grid.xᶜᵃᵃ[i_slice[1]]
+        @test ds2["x_faa"][1] == grid.xᶠᵃᵃ[i_slice[1]]
+        @test ds2["y_aca"][1] == grid.yᵃᶜᵃ[j_slice[1]]
+        @test ds2["y_afa"][1] == grid.yᵃᶠᵃ[j_slice[1]]
+        @test ds2["z_aac"][1] == grid.z.cᵃᵃᶜ[k_slice[1]]
+        @test ds2["z_aaf"][1] == grid.z.cᵃᵃᶠ[k_slice[1]]
+
+        @test ds2["x_caa"][end] == grid.xᶜᵃᵃ[i_slice[end]]
+        @test ds2["x_faa"][end] == grid.xᶠᵃᵃ[i_slice[end]]
+        @test ds2["y_aca"][end] == grid.yᵃᶜᵃ[j_slice[end]]
+        @test ds2["y_afa"][end] == grid.yᵃᶠᵃ[j_slice[end]]
+        @test ds2["z_aac"][end] == grid.z.cᵃᵃᶜ[k_slice[end]]
+        @test ds2["z_aaf"][end] == grid.z.cᵃᵃᶠ[k_slice[end]]
+
+        @test eltype(ds2["u"]) == FT
+        @test eltype(ds2["v"]) == FT
+        @test eltype(ds2["w"]) == FT
+        @test eltype(ds2["T"]) == FT
+        @test eltype(ds2["S"]) == FT
+
+        u_sliced = ds2["u"][:, :, :, end]
+        v_sliced = ds2["v"][:, :, :, end]
+        w_sliced = ds2["w"][:, :, :, end]
+        T_sliced = ds2["T"][:, :, :, end]
+        S_sliced = ds2["S"][:, :, :, end]
+
+        close(ds2)
+
+        @test all(u_sliced .≈ Array(interior(model.velocities.u))[i_slice, j_slice, k_slice])
+        @test all(v_sliced .≈ Array(interior(model.velocities.v))[i_slice, j_slice, k_slice])
+        @test all(w_sliced .≈ Array(interior(model.velocities.w))[i_slice, j_slice, k_slice])
+        @test all(T_sliced .≈ Array(interior(model.tracers.T))[i_slice, j_slice, k_slice])
+        @test all(S_sliced .≈ Array(interior(model.tracers.S))[i_slice, j_slice, k_slice])
+
+        rm(nc_sliced_filepath)
+    end
 
     return nothing
 end
@@ -3088,8 +3015,8 @@ for arch in archs
 
         test_thermal_bubble_netcdf_output(arch, Float64)
         test_thermal_bubble_netcdf_output(arch, Float32)
-        test_thermal_bubble_netcdf_output_with_halos(arch, Float64)
-        test_thermal_bubble_netcdf_output_with_halos(arch, Float32)
+        test_thermal_bubble_netcdf_output(arch, Float64, with_halos=true)
+        test_thermal_bubble_netcdf_output(arch, Float32, with_halos=true)
 
         test_netcdf_size_file_splitting(arch)
         test_netcdf_time_file_splitting(arch)
