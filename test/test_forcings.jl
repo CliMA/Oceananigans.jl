@@ -301,7 +301,7 @@ end
 
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
-             end
+            end
 
             @testset "FieldTimeSeries forcing on [$A]" begin
                 @info "      Testing FieldTimeSeries forcing [$A]..."
