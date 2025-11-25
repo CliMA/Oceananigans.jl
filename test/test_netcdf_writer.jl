@@ -182,12 +182,20 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     metrics = ("Δx_faa", "Δx_caa", "Δy_afa", "Δy_aca", "Δy_afa", "Δy_aca")
     vars = ("u", "v", "w", "T", "S")
 
-    for var in (dims..., metrics..., vars...)
+    for var in (metrics..., vars...)
+        @test haskey(ds_mh, var)
+        @test haskey(ds_mh[var].attrib, "long_name")
+        @test haskey(ds_mh[var].attrib, "units")
+        @test eltype(ds_mh[var]) == FT
+    end
+
+    for var in dims
         @test haskey(ds_mh, var)
         @test haskey(ds_mh[var].attrib, "long_name")
         @test haskey(ds_mh[var].attrib, "units")
         @test eltype(ds_mh[var]) == Float64 # All dimensions should be Float64 by default
     end
+
 
     @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
 
@@ -220,7 +228,14 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test haskey(ds_m, "time")
     @test eltype(ds_m["time"]) == Float64 # All dimensions should be Float64 by default
 
-    for var in (dims..., metrics..., vars...)
+    for var in (metrics..., vars...)
+        @test haskey(ds_m, var)
+        @test haskey(ds_m[var].attrib, "long_name")
+        @test haskey(ds_m[var].attrib, "units")
+        @test eltype(ds_m[var]) == FT
+    end
+
+    for var in dims
         @test haskey(ds_m, var)
         @test haskey(ds_m[var].attrib, "long_name")
         @test haskey(ds_m[var].attrib, "units")
@@ -256,7 +271,14 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test haskey(ds_h, "time")
     @test eltype(ds_h["time"]) == Float64 # All dimensions should be Float64 by default
 
-    for var in (dims..., vars...)
+    for var in vars
+        @test haskey(ds_h, var)
+        @test haskey(ds_h[var].attrib, "long_name")
+        @test haskey(ds_h[var].attrib, "units")
+        @test eltype(ds_h[var]) == FT
+    end
+
+    for var in dims
         @test haskey(ds_h, var)
         @test haskey(ds_h[var].attrib, "long_name")
         @test haskey(ds_h[var].attrib, "units")
@@ -291,7 +313,14 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test haskey(ds_s, "time")
     @test eltype(ds_s["time"]) == Float64 # All dimensions should be Float64 by default
 
-    for var in (dims..., metrics..., vars...)
+    for var in (metrics..., vars...)
+        @test haskey(ds_s, var)
+        @test haskey(ds_s[var].attrib, "long_name")
+        @test haskey(ds_s[var].attrib, "units")
+        @test eltype(ds_s[var]) == FT
+    end
+
+    for var in dims
         @test haskey(ds_s, var)
         @test haskey(ds_s[var].attrib, "long_name")
         @test haskey(ds_s[var].attrib, "units")
@@ -418,7 +447,14 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
                "Δy_ffa", "Δy_fca", "Δy_cfa", "Δy_cca")
     vars = ("u", "v", "w", "T", "S")
 
-    for var in (dims..., metrics..., vars...)
+    for var in (metrics..., vars...)
+        @test haskey(ds_mh, var)
+        @test haskey(ds_mh[var].attrib, "long_name")
+        @test haskey(ds_mh[var].attrib, "units")
+        @test eltype(ds_mh[var]) == FT
+    end
+
+    for var in dims
         @test haskey(ds_mh, var)
         @test haskey(ds_mh[var].attrib, "long_name")
         @test haskey(ds_mh[var].attrib, "units")
@@ -466,7 +502,14 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     @test haskey(ds_h, "time")
     @test eltype(ds_h["time"]) == Float64 # All dimensions should be Float64 by default
 
-    for var in (dims..., vars...)
+    for var in vars
+        @test haskey(ds_h, var)
+        @test haskey(ds_h[var].attrib, "long_name")
+        @test haskey(ds_h[var].attrib, "units")
+        @test eltype(ds_h[var]) == FT
+    end
+
+    for var in dims
         @test haskey(ds_h, var)
         @test haskey(ds_h[var].attrib, "long_name")
         @test haskey(ds_h[var].attrib, "units")
@@ -499,11 +542,18 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     # Test NetCDF output with metrics but no halos
     ds_m = NCDataset(filepath_metrics_nohalos)
 
-    for var in (dims..., metrics..., vars...)
+    for var in (metrics..., vars...)
         @test haskey(ds_m, var)
         @test haskey(ds_m[var].attrib, "long_name")
         @test haskey(ds_m[var].attrib, "units")
         @test eltype(ds_m[var]) == FT
+    end
+
+    for var in dims
+        @test haskey(ds_m, var)
+        @test haskey(ds_m[var].attrib, "long_name")
+        @test haskey(ds_m[var].attrib, "units")
+        @test eltype(ds_m[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     @test dimsize(ds_m[:λ_faa]) == (λ_faa=Nλ + 1,)
@@ -542,11 +592,18 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     # Test NetCDF sliced output with metrics
     ds_s = NCDataset(filepath_sliced)
 
-    for var in (dims..., metrics..., vars...)
+    for var in (metrics..., vars...)
         @test haskey(ds_s, var)
         @test haskey(ds_s[var].attrib, "long_name")
         @test haskey(ds_s[var].attrib, "units")
         @test eltype(ds_s[var]) == FT
+    end
+
+    for var in dims
+        @test haskey(ds_s, var)
+        @test haskey(ds_s[var].attrib, "long_name")
+        @test haskey(ds_s[var].attrib, "units")
+        @test eltype(ds_s[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     @test dimsize(ds_s[:λ_faa]) == (λ_faa=nx + 1,)
