@@ -1362,7 +1362,7 @@ materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 function define_output_variable!(model, dataset, output, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos,
-                                 dimensions, filepath)
+                                 dimensions, filepath, dimension_type=Float64)
 
     if output_name ∉ keys(dimensions)
         msg = string("dimensions[$output_name] for output $output_name=$(typeof(output)) into $filepath" *
