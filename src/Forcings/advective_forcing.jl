@@ -1,10 +1,18 @@
 using Oceananigans.Advection: div_Uc, div_𝐯u, div_𝐯v, div_𝐯w
 using Oceananigans.Fields: ZeroField, ConstantField
 using Oceananigans.Utils: sum_of_velocities
+using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition
 using Adapt
 
-maybe_constant_field(u) = u
-maybe_constant_field(u::Number) = ConstantField(u)
+maybe_field(u, args...) = u
+
+function maybe_field(u::Number, loc, grid, u_bcs)
+    bcs = FieldBoundaryConditions(grid, loc; u_bcs..., immersed = ImmersedBoundaryCondition(; u_bcs...))
+    u_field = Field(loc, grid; boundary_conditions = bcs)
+    set!(u_field, u)
+    return u_field
+end
 
 struct AdvectiveForcing{U, V, W}
     u :: U
@@ -48,8 +56,23 @@ AdvectiveForcing:
 └── w: ConstantField(-1.97096)
 ```
 """
-function AdvectiveForcing(; u=ZeroField(), v=ZeroField(), w=ZeroField())
-    u, v, w = maybe_constant_field.((u, v, w))
+function AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), normal_boundary_condition=OpenBoundaryCondition(nothing))
+    if any((isa(u, Number), isa(v, Number), isa(w, Number)))
+        if grid === nothing
+            throw(ArgumentError("If passing numbers for u, v, w, you must also pass a grid"))
+        else
+            u_bcs = (; east = normal_boundary_condition, west = normal_boundary_condition)
+            v_bcs = (; south = normal_boundary_condition, north = normal_boundary_condition)
+            w_bcs = (; bottom = normal_boundary_condition, top = normal_boundary_condition)
+
+            u = maybe_field(u, (Face(), Center(), Center()), grid, u_bcs)
+            v = maybe_field(v, (Center(), Face(), Center()), grid, v_bcs)
+            w = maybe_field(w, (Center(), Center(), Face()), grid, w_bcs)
+        end
+    else
+        u, v, w = maybe_field.((u, v, w))
+    end
+
     return AdvectiveForcing(u, v, w)
 end
 
