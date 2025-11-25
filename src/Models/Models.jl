@@ -17,7 +17,7 @@ using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, bounda
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
-using Dates: Time
+using Oceananigans.Units: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
