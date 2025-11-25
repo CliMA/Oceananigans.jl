@@ -1487,14 +1487,14 @@ function test_thermal_bubble_netcdf_output(arch, FT)
     @test ds3.attrib["interval"] == 10
     @test !isnothing(ds3.attrib["output iteration interval"])
 
-    @test eltype(ds3["time"]) == Float64
-
-    @test eltype(ds3["x_caa"]) == FT
-    @test eltype(ds3["x_faa"]) == FT
-    @test eltype(ds3["y_aca"]) == FT
-    @test eltype(ds3["y_afa"]) == FT
-    @test eltype(ds3["z_aac"]) == FT
-    @test eltype(ds3["z_aaf"]) == FT
+    # Dimensions should be Float64 by default
+    @test eltype(ds3["time"])  == Float64
+    @test eltype(ds3["x_caa"]) == Float64
+    @test eltype(ds3["x_faa"]) == Float64
+    @test eltype(ds3["y_aca"]) == Float64
+    @test eltype(ds3["y_afa"]) == Float64
+    @test eltype(ds3["z_aac"]) == Float64
+    @test eltype(ds3["z_aaf"]) == Float64
 
     @test length(ds3["x_caa"]) == Nx
     @test length(ds3["y_aca"]) == Ny
@@ -1553,14 +1553,14 @@ function test_thermal_bubble_netcdf_output(arch, FT)
     @test ds2.attrib["interval"] == 10
     @test !isnothing(ds2.attrib["output iteration interval"])
 
-    @test eltype(ds2["time"]) == Float64
-
-    @test eltype(ds2["x_caa"]) == FT
-    @test eltype(ds2["x_faa"]) == FT
-    @test eltype(ds2["y_aca"]) == FT
-    @test eltype(ds2["y_afa"]) == FT
-    @test eltype(ds2["z_aac"]) == FT
-    @test eltype(ds2["z_aaf"]) == FT
+    # Dimensions should be Float64 by default
+    @test eltype(ds2["time"])  == Float64
+    @test eltype(ds2["x_caa"]) == Float64
+    @test eltype(ds2["x_faa"]) == Float64
+    @test eltype(ds2["y_aca"]) == Float64
+    @test eltype(ds2["y_afa"]) == Float64
+    @test eltype(ds2["z_aac"]) == Float64
+    @test eltype(ds2["z_aaf"]) == Float64
 
     @test length(ds2["x_caa"]) == length(i_slice)
     @test length(ds2["x_faa"]) == length(i_slice)
@@ -1666,14 +1666,14 @@ function test_thermal_bubble_netcdf_output_with_halos(arch, FT)
     @test ds.attrib["interval"] == 10
     @test !isnothing(ds.attrib["output iteration interval"])
 
-    @test eltype(ds["time"]) == Float64
-
-    @test eltype(ds["x_caa"]) == FT
-    @test eltype(ds["x_faa"]) == FT
-    @test eltype(ds["y_aca"]) == FT
-    @test eltype(ds["y_afa"]) == FT
-    @test eltype(ds["z_aac"]) == FT
-    @test eltype(ds["z_aaf"]) == FT
+    # Dimensions should be Float64 by default
+    @test eltype(ds["time"])  == Float64
+    @test eltype(ds["x_caa"]) == Float64
+    @test eltype(ds["x_faa"]) == Float64
+    @test eltype(ds["y_aca"]) == Float64
+    @test eltype(ds["y_afa"]) == Float64
+    @test eltype(ds["z_aac"]) == Float64
+    @test eltype(ds["z_aaf"]) == Float64
 
     @test length(ds["x_caa"]) == Nx+2Hx
     @test length(ds["y_aca"]) == Ny+2Hy
