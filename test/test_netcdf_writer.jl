@@ -410,7 +410,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     ds_mh = NCDataset(filepath_metrics_halos)
 
     @test haskey(ds_mh, "time")
-    @test eltype(ds_mh["time"]) == Float64
+    @test eltype(ds_mh["time"]) == Float64 # All dimensions should be Float64 by default
 
     dims = ("λ_faa", "λ_caa", "φ_afa", "φ_aca", "z_aaf", "z_aac")
     metrics = ("Δλ_faa", "Δλ_caa", "Δλ_afa", "Δλ_aca", "Δz_aaf", "Δz_aac",
@@ -422,7 +422,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
         @test haskey(ds_mh, var)
         @test haskey(ds_mh[var].attrib, "long_name")
         @test haskey(ds_mh[var].attrib, "units")
-        @test eltype(ds_mh[var]) == FT
+        @test eltype(ds_mh[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
@@ -464,13 +464,13 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     ds_h = NCDataset(filepath_nometrics)
 
     @test haskey(ds_h, "time")
-    @test eltype(ds_h["time"]) == Float64
+    @test eltype(ds_h["time"]) == Float64 # All dimensions should be Float64 by default
 
     for var in (dims..., vars...)
         @test haskey(ds_h, var)
         @test haskey(ds_h[var].attrib, "long_name")
         @test haskey(ds_h[var].attrib, "units")
-        @test eltype(ds_h[var]) == FT
+        @test eltype(ds_h[var]) == Float64 # All dimensions should be Float64 by default
     end
 
     # Verify that metrics are not present
