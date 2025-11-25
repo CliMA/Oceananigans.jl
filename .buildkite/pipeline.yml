@@ -25,8 +25,6 @@ steps:
       mkdir -p "$OCEANANIGANS_DIR"
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
-      export TMPDIR="$OCEANANIGANS_DIR/tmp"
-      mkdir -vp \${TMPDIR}
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using InteractiveUtils; versioninfo(; verbose=true)'
 
@@ -42,7 +40,7 @@ steps:
       ls -lhrt
       echo "--------------------"
 
-      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()' || find \${TMPDIR} -name Manifest.toml
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
       # After we have instantiated the general environment, move manifest to the
       # version-specific filename, not to clash with the manifest for Enzyme.
       mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION}" | cut -d. -f1-2).toml
