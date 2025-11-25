@@ -184,6 +184,10 @@ include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
 # Only numbers, arrays, and functions supported now.
 @inline closure_coefficient(i, j, k, grid, C::Number) = C
 @inline closure_coefficient(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+@inline function closure_coefficient(i, j, k, grid, C)
+    x, y, z = node(i, j, k, grid, c, c, c)
+    return C(x, y, z)
+end
 
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")
