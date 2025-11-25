@@ -1,9 +1,9 @@
-import Oceananigans.Grids: prettysummary
+using Oceananigans.Grids: Grids
 
 shortsummary(x, args...) = string(typeof(x).name.wrapper)
-prettysummary(x, args...) = summary(x)
+Grids.prettysummary(x, args...) = summary(x)
 
-function prettysummary(f::Function, showmethods=true)
+function Grids.prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
     name = string(Base.nameof(f))
     n = length(methods(f))
@@ -15,10 +15,10 @@ function prettysummary(f::Function, showmethods=true)
     end
 end
 
-prettysummary(x::Int, args...) = string(x)
+Grids.prettysummary(x::Int, args...) = string(x)
 
 # This is very important
-function prettysummary(nt::NamedTuple, args...)
+function Grids.prettysummary(nt::NamedTuple, args...)
     n = nfields(nt)
 
     if n == 0

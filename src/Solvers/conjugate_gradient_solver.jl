@@ -1,7 +1,6 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: interior_parent_indices
-using Oceananigans.Utils: prettysummary
-using Statistics: norm, dot
+using Oceananigans.Grids: interior_parent_indices, prettysummary
+using LinearAlgebra: norm, dot
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 
