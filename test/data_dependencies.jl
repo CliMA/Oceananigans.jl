@@ -16,7 +16,7 @@ datadep"cubed_sphere_32_grid"
 
 path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/data_for_regression_tests/"
 
-dh = DataDep("regression_test_data",
+dh = DataDep("regression_truth_data",
     "Data for Regression tests",
     [path * "hydrostatic_free_turbulence_regression_Periodic_ImplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Periodic_ExplicitFreeSurface.jld2",
@@ -35,4 +35,4 @@ dh = DataDep("regression_test_data",
 
 DataDeps.register(dh)
 
-datadep"regression_test_data"
+datadep"regression_truth_data"

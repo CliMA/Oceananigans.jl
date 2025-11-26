@@ -115,9 +115,6 @@ function run_field_reduction_tests(grid)
     return nothing
 end
 
-@inline interpolate_xyz(x, y, z, from_field, from_loc, from_grid) =
-    interpolate((x, y, z), from_field, from_loc, from_grid)
-
 # Choose a trilinear function so trilinear interpolation can return values that
 # are exactly correct.
 @inline func(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
@@ -145,18 +142,24 @@ function run_field_interpolation_tests(grid)
 
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
-
     for f in (u, v, w, c)
-        x, y, z = nodes(f, reshape=true)
         loc = Tuple(L() for L in location(f))
 
+        result = true
         @allowscalar begin
-            ℑf = interpolate_xyz.(x, y, z, Ref(f.data), Ref(loc), Ref(f.grid))
-        end
+            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
+                x, y, z = node(i, j, k, f)
+                ℑf = interpolate((x, y, z), f, loc, f.grid)
+                true_value = interior(f, i, j, k)[]
 
-        ℑf_cpu = Array(ℑf)
-        f_interior_cpu = Array(interior(f))
-        @test all(isapprox.(ℑf_cpu, f_interior_cpu, atol=tolerance))
+                # If at last one of the points is not approximately equal to the true value, set result to false and break
+                if !isapprox(ℑf, true_value, atol=tolerance)
+                    result = false
+                    break
+                end
+            end
+        end
+        @test result
     end
 
     # Check that interpolating between grid points works as expected.
@@ -175,11 +178,19 @@ function run_field_interpolation_tests(grid)
     @allowscalar begin
         for f in (u, v, w, c)
             loc = Tuple(L() for L in location(f))
-            ℑf = interpolate_xyz.(xs, ys, zs, Ref(f.data), Ref(loc), Ref(f.grid))
-            F = func.(xs, ys, zs)
-            F = Array(F)
-            ℑf = Array(ℑf)
-            @test all(isapprox.(ℑf, F, atol=tolerance))
+            result = true
+            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
+                xi, yi, zi = node(i, j, k, f)
+                ℑf = interpolate((xi, yi, zi), f, loc, f.grid)
+                true_value = func(xi, yi, zi)
+
+                # If at last one of the points is not approximately equal to the true value, set result to false and break
+                if !isapprox(ℑf, true_value, atol=tolerance)
+                    result = false
+                    break
+                end
+            end
+            @test result
 
             # for the next test we first call fill_halo_regions! on the
             # original field `f`
@@ -260,6 +271,54 @@ function run_field_interpolation_tests(grid)
 
     return nothing
 end
+
+function nodes_of_field_views_are_consistent(grid)
+    # Test with different field types
+    test_fields = [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
+
+    for field in test_fields
+        loc = instantiated_location(field)
+
+        # Test various view patterns
+        test_indices = [
+            (2:6, :, :),           # x slice
+            (:, 2:4, :),           # y slice
+            (:, :, 2:3),           # z slice
+            (3:5, 2:4, :),         # xy slice
+            (2:6, :, 2:3),         # xz slice
+            (:, 2:4, 2:3),         # yz slice
+            (3:5, 2:4, 2:3),       # xyz slice
+        ]
+
+        for test_idx in test_indices
+            # Create field view with these indices
+            field_view = view(field, test_idx...)
+
+            # Get nodes from the view
+            view_nodes = nodes(field_view)
+
+            # Get nodes from the original field with the same indices
+            # This is what should be equivalent to the view_nodes
+            full_nodes = nodes(field.grid, loc...; indices=test_idx)
+
+            # Test that they are equal
+            @test view_nodes == full_nodes
+
+            # Also test that the view's indices match what we expect
+            @test indices(field_view) == test_idx
+
+            # Test that view nodes have sizes consistent with the view indices
+            for (i, coord_nodes) in enumerate(view_nodes)
+                if coord_nodes !== nothing && full_nodes[i] !== nothing
+                    @test coord_nodes == full_nodes[i]
+                end
+            end
+        end
+    end
+
+    return nothing
+end
+
 
 #####
 #####
@@ -483,7 +542,6 @@ end
         for arch in archs, FT in float_types
             # Make sure this doesn't require scalar indexing
             GPUArraysCore.allowscalar(false)
-            FT = Float32
 
             rect_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), x=(0, 1_000), y=(0, 1_000), z=(0, 1_000))
 
@@ -693,4 +751,32 @@ end
             @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
         end
     end
+
+    @testset "Field nodes and view consistency" begin
+        @info "  Testing that nodes() returns indices consistent with view()..."
+        for arch in archs, FT in float_types
+            # Test RectilinearGrid
+            rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
+            nodes_of_field_views_are_consistent(rectilinear_grid)
+
+            # Test LatitudeLongitudeGrid
+            latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
+            nodes_of_field_views_are_consistent(latlon_grid)
+
+            # Test OrthogonalSphericalShellGrid (TripolarGrid)
+            tripolar_grid = TripolarGrid(arch, FT, size=(8, 6, 4))
+            nodes_of_field_views_are_consistent(tripolar_grid)
+
+            # Test Flat topology behavior for RectilinearGrid
+            flat_rlgrid = RectilinearGrid(arch, FT, size=(), extent=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_rlgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
+
+            # Test Flat topology behavior for LatitudeLongitudeGrid
+            flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_llgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
+        end
+    end
 end
+

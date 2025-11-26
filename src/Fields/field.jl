@@ -512,6 +512,10 @@ end
 FieldStatus() = FieldStatus(0.0)
 Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
 
+set_status!(status, time) = nothing
+set_status!(status::FieldStatus, time::Nothing) = nothing
+set_status!(status::FieldStatus, time) = status.time = time
+
 """
     FixedTime(time)
 
@@ -540,7 +544,6 @@ function compute_at!(field::Field, time)
     # Otherwise, compute only on initialization or if field.status.time is not current,
     elseif time == zero(time) || time != field.status.time
         compute!(field, time)
-        field.status.time = time
     end
 
     return field
@@ -856,3 +859,9 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     return nothing
 end
+
+#####
+##### nodes
+#####
+
+nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
