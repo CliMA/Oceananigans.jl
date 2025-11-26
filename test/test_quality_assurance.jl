@@ -4,7 +4,7 @@ using ExplicitImports: ExplicitImports
 using Test: @testset, @test
 
 @testset "Aqua" begin
-    Aqua.test_all(Oceananigans; ambiguities=false, undefined_exports=false)
+    Aqua.test_all(Oceananigans; ambiguities=false)
 end
 
 @testset "ExplicitImports" begin
