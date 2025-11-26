@@ -61,7 +61,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 
 # ## A Gaussian wavepacket
 #
-# Next, we set up an initial condition that excites an internal wave that propates
+# Next, we set up an initial condition that excites an internal wave that progates
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math
@@ -69,7 +69,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # ```
 #
 # where ``m`` is the vertical wavenumber, ``k`` is the horizontal wavenumber,
-# ``ω`` is the wave frequncy, and ``a(x, z)`` is a Gaussian envelope.
+# ``ω`` is the wave frequency, and ``a(x, z)`` is a Gaussian envelope.
 # The internal wave dispersion relation links the wave numbers ``k`` and ``m``,
 # the Coriolis parameter ``f``, and the buoyancy frequency ``N``:
 

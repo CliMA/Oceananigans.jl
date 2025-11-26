@@ -3,20 +3,10 @@ module Advection
 export
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
-    momentum_flux_uu,
-    momentum_flux_uv,
-    momentum_flux_uw,
-    momentum_flux_vu,
-    momentum_flux_vv,
-    momentum_flux_vw,
-    momentum_flux_wu,
-    momentum_flux_wv,
-    momentum_flux_ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    AdvectionScheme,
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,

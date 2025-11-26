@@ -47,6 +47,29 @@ on_architecture(arch, buff::CommunicationBuffers) =
 
 communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
+"""
+    CommunicationBuffers(grid, data, boundary_conditions)
+
+Construct communication buffers for distributed halo exchange.
+
+`CommunicationBuffers` stores send/receive buffers for each spatial direction and corner 
+in a distributed grid. During halo exchange, data is copied from the interior domain into 
+send buffers, communicated via MPI to neighboring processes, and then unpacked from receive 
+buffers into halo regions.
+
+# Buffer Types
+Edge buffers (`west`, `east`, `south`, `north`) can be:
+- `OneDBuffer`: For 1D parallelization or when at domain edges (includes corners)
+- `TwoDBuffer`: For 2D parallelization interior processes (excludes corners)
+- `nothing`: When no communication is needed in that direction
+
+Corner buffers (`southwest`, `southeast`, `northwest`, `northeast`) can be:
+- `CornerBuffer`: For 2D parallelization where corners need separate communication
+- `nothing`: For 1D parallelization or when corners are handled by edge buffers
+
+# See also
+[`OneDBuffer`](@ref), [`TwoDBuffer`](@ref), [`CornerBuffer`](@ref)
+"""
 function CommunicationBuffers(grid, data, boundary_conditions::FieldBoundaryConditions)
     Hx, Hy, _ = halo_size(grid)
     arch = architecture(grid)
@@ -68,15 +91,74 @@ end
 CommunicationBuffers(grid, data, ::Missing) = nothing
 CommunicationBuffers(grid, data, ::Nothing) = nothing
 
-# OneDBuffers are associated with partitioning without corner passing,
-# therefore the "corner zones" are communicated within the one-dimensional pass.
+"""
+    OneDBuffer{B}
+
+Communication buffer for one-dimensional domain decomposition or edge boundaries.
+
+In a one-dimensional parallelization (e.g., only in x or only in y), `OneDBuffer` 
+contains the full extent of the halo region including the corners. This allows corner 
+data to be communicated in a single pass along with the edge data.
+
+`OneDBuffer` is also used in two-dimensional parallelizations for processes at domain 
+edges (e.g., boundaries with `RightConnected` or `LeftConnected` topologies), where 
+corner communication is not needed in that direction.
+
+# Size
+For x-direction: `(Hx, Ty, Tz)` where `Hx` is the halo size in x, `Ty` includes all y points (with halos)
+For y-direction: `(Tx, Hy, Tz)` where `Hy` is the halo size in y, `Tx` includes all x points (with halos)
+"""
 struct OneDBuffer{B}
+    send :: B
+    recv :: B
+end
+
+"""
+    TwoDBuffer{B}
+
+Communication buffer for two-dimensional domain decomposition without corner regions.
+
+In a two-dimensional parallelization where corners are communicated separately via 
+`CornerBuffer`, `TwoDBuffer` contains only the edge halo region excluding the corners. 
+This enables efficient communication patterns where edge and corner data are sent in 
+separate MPI passes.
+
+# Size
+For x-direction (west/east): `(Hx, Ny, Tz)` where `Hx` is the halo size in x, `Ny` is the interior size in y
+For y-direction (south/north): `(Nx, Hy, Tz)` where `Nx` is the interior size in x, `Hy` is the halo size in y
+"""
+struct TwoDBuffer{B}
+    send :: B
+    recv :: B
+end
+
+"""
+    CornerBuffer{B}
+
+Communication buffer for corner regions in two-dimensional domain decomposition.
+
+In a two-dimensional parallelization, `CornerBuffer` handles the communication of 
+diagonal corner regions (southwest, southeast, northwest, northeast) that are not 
+covered by the edge communication buffers (`TwoDBuffer`). Corner communication ensures 
+that all halo regions are properly synchronized between neighboring processes in both 
+x and y directions.
+
+# Size
+`(Hx, Hy, Tz)` where `Hx` is the halo size in x, `Hy` is the halo size in y, and `Tz` is the size in z
+
+# Note
+Corner buffers are only created for `Distributed` architectures with two-dimensional 
+parallelization and are `nothing` otherwise.
+"""
+struct CornerBuffer{B}
     send :: B
     recv :: B
 end
 
 # We never need to access buffers on the GPU!
 Adapt.adapt_structure(to, buff::OneDBuffer) = nothing
+Adapt.adapt_structure(to, buff::TwoDBuffer) = nothing
+Adapt.adapt_structure(to, buff::CornerBuffer) = nothing
 
 ####
 #### X and Y communication buffers
@@ -86,41 +168,52 @@ Adapt.adapt_structure(to, buff::OneDBuffer) = nothing
 x_communication_buffer(arch, grid, data, H, bc) = nothing
 y_communication_buffer(arch, grid, data, H, bc) = nothing
 
-# Either we pass corners or it is a 1D parallelization in x, note that, even for 2D parallelizations, we need a 
-# buffer that includes the corners (i.e. a OneDBuffer) if we are at the edge of the domain in y since we are not
-# passing all the corners in that case
-function x_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY}, data, H, ::DCBC) where {FT, TX, TY}
-    if (arch.ranks[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
-        return OneDBuffer(on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))),
-                          on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))
+function x_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX, TY}, data, H, ::DCBC) where {TX, TY}
+    _, Ty, Tz = size(parent(data))
+    Ny = size(grid, 2)
+    FT = eltype(data)
+    if (ranks(arch)[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
+        send = on_architecture(arch, zeros(FT, H, Ty, Tz))
+        recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
+        return OneDBuffer(send, recv)
     else
-        return (send = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))),
-                recv = on_architecture(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))))
+        send = on_architecture(arch, zeros(FT, H, Ny, Tz))
+        recv = on_architecture(arch, zeros(FT, H, Ny, Tz))
+        return TwoDBuffer(send, recv)
     end
 end
 
-# Either we pass corners or it is a 1D parallelization in y. Note that, even for 2D parallelizations, we need a 
-# buffer that includes the corners (i.e. a OneDBuffer) if we are at the edge of the domain in x since we are not
-# passing all the corners in that case
-function y_communication_buffer(arch::Distributed, grid::AbstractGrid{FT, TX, TY}, data, H, ::DCBC) where {FT, TX, TY}
-    # Either we pass corners or it is a 1D parallelization in y
-    if (arch.ranks[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
-        return OneDBuffer(on_architecture(arch, zeros(FT, size(parent(data), 1), H, size(parent(data), 3))),
-                          on_architecture(arch, zeros(FT, size(parent(data), 1), H, size(parent(data), 3))))
+function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX, TY}, data, H, ::DCBC) where {TX, TY}
+    Tx, _, Tz = size(parent(data))
+    FT = eltype(data)
+    Nx = size(grid, 1)
+    if (ranks(arch)[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
+        send = on_architecture(arch, zeros(FT, Tx, H, Tz))
+        recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
+        return OneDBuffer(send, recv)
     else
-        return (send = on_architecture(arch, zeros(FT, size(grid, 1), H, size(parent(data), 3))),
-                recv = on_architecture(arch, zeros(FT, size(grid, 1), H, size(parent(data), 3))))
+        send = on_architecture(arch, zeros(FT, Nx, H, Tz))
+        recv = on_architecture(arch, zeros(FT, Nx, H, Tz))
+        return TwoDBuffer(send, recv)
     end
 end
 
 # Never pass corners in a MCBC.
-x_communication_buffer(arch, grid, data, H, ::MCBC) = 
-           OneDBuffer(on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
-                      on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
+function x_communication_buffer(arch, grid, data, H, ::MCBC) 
+    _, Ty, Tz = size(parent(data))
+    FT = eltype(data)
+    send = on_architecture(arch, zeros(FT, H, Ty, Tz))
+    recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
+    return OneDBuffer(send, recv)
+end
 
-y_communication_buffer(arch, grid, data, H, ::MCBC) = 
-           OneDBuffer(on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
-                      on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
+function y_communication_buffer(arch, grid, data, H, ::MCBC) 
+    Tx, _, Tz = size(parent(data))
+    FT = eltype(data)
+    send = on_architecture(arch, zeros(FT, Tx, H, Tz))
+    recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
+    return OneDBuffer(send, recv)
+end
 
 #####
 ##### Corner communication buffers
@@ -134,12 +227,13 @@ corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Noth
 corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, ::Nothing, yedge) = nothing
 corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, ::Nothing) = nothing
     
-# Do not need disctinction between one or two dimensional partitioning since they are 
-# uniquely defined and only used in the two-dimensional partitioning case, in all other cases
-# they are equal to `nothing`
+# CornerBuffer are used only  in the two-dimensional partitioning case, in all other cases they are equal to `nothing`
 function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedge, yedge)
-    return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
-            recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
+    Tz = size(parent(data), 3)
+    FT = eltype(data)
+    send = on_architecture(arch, zeros(FT, Hx, Hy, Tz))
+    recv = on_architecture(arch, zeros(FT, Hx, Hy, Tz))
+    return CornerBuffer(send, recv)
 end
 
 """
@@ -320,23 +414,22 @@ _recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1
 ##### 2D Parallelizations (explicitly send all corners)
 #####
 
- _fill_west_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:Ny+Hy, :)
- _fill_east_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:Ny+Hy, :)
-_fill_south_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Hy:2Hy,  :)
-_fill_north_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Ny:Ny+Hy, :)
+ _fill_west_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:Ny+Hy, :)
+ _fill_east_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:Ny+Hy, :)
+_fill_south_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Hy:2Hy,  :)
+_fill_north_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
- _recv_from_west_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Hy:Ny+Hy,     :) .= buff.recv
- _recv_from_east_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :) .= buff.recv
-_recv_from_south_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1:Hy,           :) .= buff.recv
-_recv_from_north_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Hy:Ny+Hy,     :) .= buff.recv
+ _recv_from_east_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :) .= buff.recv
+_recv_from_south_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1:Hy,           :) .= buff.recv
+_recv_from_north_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-_fill_southwest_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:2Hy,   :)
-_fill_southeast_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:2Hy,   :)
-_fill_northwest_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Ny:Ny+Hy, :)
-_fill_northeast_send_buffer!(c, buff, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Ny:Ny+Hy, :)
+_fill_southwest_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:2Hy,   :)
+_fill_southeast_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:2Hy,   :)
+_fill_northwest_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Ny:Ny+Hy, :)
+_fill_northeast_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
-_recv_from_southwest_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1:Hy,           :) .= buff.recv
-_recv_from_southeast_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
-_recv_from_northwest_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-_recv_from_northeast_buffer!(c, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-
+_recv_from_southwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1:Hy,           :) .= buff.recv
+_recv_from_southeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
+_recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+_recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv

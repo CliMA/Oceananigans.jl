@@ -113,9 +113,9 @@ compute_coefficient_fields!(closure_fields, closure, model; parameters) = nothin
 function compute_diffusivities!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     velocities = model.velocities
-    tracers = model.tracers
 
     compute_coefficient_fields!(closure_fields, closure, model; parameters)
 

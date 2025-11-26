@@ -1,8 +1,8 @@
 module BoundaryConditions
 
 export
-    BCType, Flux, Gradient, Value, Open,
-    BoundaryCondition, getbc, setbc!,
+    Flux, Gradient, Value, Open,
+    BoundaryCondition, getbc,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     PerturbationAdvection,
