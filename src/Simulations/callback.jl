@@ -3,7 +3,7 @@ using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans.Utils: prettysummary, ConsecutiveIterations
 using Dates
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 struct Callback{P, F, S, CS}
     func :: F
@@ -137,3 +137,14 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
 end
 
 validate_schedule(func, schedule) = schedule
+
+function prognostic_state(callback::Callback)
+    return (
+        schedule = prognostic_state(callback.schedule),
+    )
+end
+
+function restore_prognostic_state!(callback::Callback, state)
+    restore_prognostic_state!(callback.schedule, state.schedule)
+    return callback
+end
