@@ -59,7 +59,7 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      kwargs...) where {TI, TG, PF}
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is experimental.\n" *
-          "Use at own risk, and report any issues encountered at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).")
+          "Use at own risk, and report any issues encountered at https://github.com/CliMA/Oceananigans.jl/issues.")
 
     FT = eltype(grid)
     β¹ = 3

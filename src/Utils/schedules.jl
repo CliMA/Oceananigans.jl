@@ -207,7 +207,7 @@ whenever the model's clock equals the specified values in `times`. For example,
     The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
-function SpecifiedTimes(times::Vararg{T}) where T
+function SpecifiedTimes(times...)
     length(times) == 0 && return SpecifiedTimes(Float64[], 0)
 
     first_time = times[1]

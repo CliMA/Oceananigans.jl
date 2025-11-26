@@ -44,6 +44,9 @@
   <a href="https://juliapkgstats.com/pkg/Oceananigans">
     <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FOceananigans&query=total_requests&&label=Total%20Downloads&style=flat-square">
   </a>
+  <a href="https://github.com/JuliaTesting/Aqua.jl" >
+    <img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg?style=flat-square"/>
+  </a>
 </p>
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
@@ -160,8 +163,6 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 
 We've also published/submitted several model development papers. Please cite these below 👇 if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
-
-Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2025) [DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations](https://doi.org/10.22541/essoar.176314951.18114616/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176314951.18114616/v1](https://doi.org/10.22541/essoar.176314951.18114616/v1)
 
 * **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
 

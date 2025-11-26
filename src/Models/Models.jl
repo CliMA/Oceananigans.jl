@@ -112,7 +112,6 @@ using .HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
-
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
@@ -204,9 +203,9 @@ checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-# Implementation of a `seawater_density` `KernelFunctionOperation
-# applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
+# Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
+include("buoyancy_operation.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")

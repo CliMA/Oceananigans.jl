@@ -18,6 +18,7 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities, timestepper
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -257,9 +258,10 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
-
-# return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+
+buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
+buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 
 # For checkpointing
 function prognostic_state(model::HydrostaticFreeSurfaceModel)
@@ -296,3 +298,5 @@ function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
 
     return model
 end
+
+  
