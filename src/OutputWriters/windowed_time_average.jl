@@ -48,7 +48,7 @@ Example
 
 ```jldoctest averaged_time_interval
 using Oceananigans.OutputWriters: AveragedTimeInterval
-using Oceananigans.Utils: days
+using Oceananigans.Units: days
 
 schedule = AveragedTimeInterval(4days, window=2days)
 

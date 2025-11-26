@@ -1,9 +1,12 @@
-using OrderedCollections: OrderedDict
-
 using Oceananigans.DistributedComputations
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
+using Oceananigans.Fields: Field, CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 using Oceananigans.Advection:
@@ -62,7 +65,7 @@ using Oceananigans.TurbulenceClosures:
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
-import Oceananigans.Models: total_velocities, timestepper
+import Oceananigans.Models: total_velocities
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -114,7 +117,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 clock = Clock{Float64}(time = 0),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
-                                buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                buoyancy = nothing,
                                 coriolis = nothing,
                                 free_surface = [default_free_surface],
                                 forcing::NamedTuple = NamedTuple(),

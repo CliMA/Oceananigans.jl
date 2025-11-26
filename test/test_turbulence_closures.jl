@@ -159,6 +159,28 @@ function time_step_with_variable_discrete_diffusivity(arch)
     return true
 end
 
+function time_step_with_variable_AMD_coefficient(arch; use_field_coefficient=false)
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 2, 3))
+
+    Cν_func(x, y, z) = exp(z) * cos(x) * cos(y)
+    Cκ_func(x, y, z) = exp(z) * cos(x) * cos(y)
+
+    if use_field_coefficient
+        Cν = CenterField(grid)
+        Cκ = CenterField(grid)
+        set!(Cν, Cν_func)
+        set!(Cκ, Cκ_func)
+    else
+        Cν = Cν_func
+        Cκ = Cκ_func
+    end
+
+    closure = AnisotropicMinimumDissipation(; Cν, Cκ)
+    model = NonhydrostaticModel(; grid, closure)
+    time_step!(model, 1)
+    return true
+end
+
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
 
@@ -391,6 +413,14 @@ end
             @test time_step_with_field_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
             @test time_step_with_variable_discrete_diffusivity(arch)
+        end
+    end
+
+    @testset "AnisotropicMinimumDissipation with variable coefficients" begin
+        @info "  Testing AnisotropicMinimumDissipation time stepping with variable coefficients..."
+        for arch in archs
+            @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=false)
+            @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=true)
         end
     end
 
