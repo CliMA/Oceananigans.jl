@@ -3,7 +3,7 @@
 #####
 
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
+using Oceananigans.Fields: FunctionField
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!

@@ -2,17 +2,13 @@
 ##### Utilities for launching kernels
 #####
 
-using Oceananigans: location
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Grids: AbstractGrid
-using Adapt
+using Oceananigans.Architectures: Architectures
+using Oceananigans.Grids: Bounded, Face, topology
+using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
-using KernelAbstractions.NDIteration: _Size, StaticSize
-using KernelAbstractions.NDIteration: NDRange
+using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
 
-using KernelAbstractions.NDIteration
 using KernelAbstractions: ndrange, workgroupsize
 
 using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds

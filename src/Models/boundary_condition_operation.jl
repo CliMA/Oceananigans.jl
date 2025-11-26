@@ -3,13 +3,13 @@ using Oceananigans.BoundaryConditions: getbc, bc_str
 using Oceananigans.Fields: Field, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
-import Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: Grids
 
 struct BoundaryConditionKernelFunction{Side, BC}
     bc :: BC
 end
 
-function prettysummary(kf::BoundaryConditionKernelFunction{Side}) where Side
+function Grids.prettysummary(kf::BoundaryConditionKernelFunction{Side}) where Side
     return string("BoundaryConditionKernelFunction{", Side, "}(", bc_str(kf.bc), ")")
 end
 
