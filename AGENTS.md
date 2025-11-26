@@ -142,6 +142,9 @@ serve(dir="docs/build")
 - Add references to papers from the literature by adding bibtex to `oceananigans.bib`, and then
   a corresponding citation
 - Make use of cross-references with equations
+- In example code, use explicit imports as sparingly as possible. NEVER explicitly import a name that
+  is already exported by the user interface. Always rely on `using Oceananigans` for imports and keep
+  imports clean. Explicit imports should only be used for source code.
 
 ### Writing examples
 - Explain at the top of the file what a simulation is doing
@@ -152,6 +155,9 @@ serve(dir="docs/build")
 - Look at previous examples. New examples should add as much value as possible while
   remaining simple. This requires judiciously introducing new features and doing creative
   and surprising things with simulations that will spark readers' imagination.
+- Don't "over import". Use names that are exported by `using Oceananigans`. If there are
+  names that are not exported, but are needed in common/basic examples, consider
+  exporting those names from `Oceananigans.jl`.
 
 ## Important Files to Know
 

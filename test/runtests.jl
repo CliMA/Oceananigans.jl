@@ -33,6 +33,7 @@ CUDA.allowscalar() do
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
+            include("test_quality_assurance.jl")
             include("test_grids.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
