@@ -1,7 +1,7 @@
 using Oceananigans.Advection: div_Uc, div_𝐯u, div_𝐯v, div_𝐯w
 using Oceananigans.Fields: ZeroField, ConstantField
 using Oceananigans.Utils: sum_of_velocities
-using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition
 using Adapt
 
@@ -11,6 +11,7 @@ function maybe_field(u::Number, loc, grid, u_bcs)
     bcs = FieldBoundaryConditions(grid, loc; u_bcs..., immersed = ImmersedBoundaryCondition(; u_bcs...))
     u_field = Field(loc, grid; boundary_conditions = bcs)
     set!(u_field, u)
+    fill_halo_regions!(u_field)
     return u_field
 end
 
@@ -57,21 +58,17 @@ AdvectiveForcing:
 ```
 """
 function AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), normal_boundary_condition=OpenBoundaryCondition(nothing))
-    if any((isa(u, Number), isa(v, Number), isa(w, Number)))
-        if grid === nothing
-            throw(ArgumentError("If passing numbers for u, v, w, you must also pass a grid"))
-        else
-            u_bcs = (; east = normal_boundary_condition, west = normal_boundary_condition)
-            v_bcs = (; south = normal_boundary_condition, north = normal_boundary_condition)
-            w_bcs = (; bottom = normal_boundary_condition, top = normal_boundary_condition)
-
-            u = maybe_field(u, (Face(), Center(), Center()), grid, u_bcs)
-            v = maybe_field(v, (Center(), Face(), Center()), grid, v_bcs)
-            w = maybe_field(w, (Center(), Center(), Face()), grid, w_bcs)
-        end
-    else
-        u, v, w = maybe_field.((u, v, w))
+    if any((isa(u, Number), isa(v, Number), isa(w, Number))) && grid === nothing
+        throw(ArgumentError("If passing numbers for u, v, w, you must also pass a grid"))
     end
+
+    u_bcs = (; east = normal_boundary_condition, west = normal_boundary_condition)
+    v_bcs = (; south = normal_boundary_condition, north = normal_boundary_condition)
+    w_bcs = (; bottom = normal_boundary_condition, top = normal_boundary_condition)
+
+    u = maybe_field(u, (Face(), Center(), Center()), grid, u_bcs)
+    v = maybe_field(v, (Center(), Face(), Center()), grid, v_bcs)
+    w = maybe_field(w, (Center(), Center(), Face()), grid, w_bcs)
 
     return AdvectiveForcing(u, v, w)
 end
