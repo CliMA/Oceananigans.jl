@@ -252,6 +252,64 @@ function seven_forcings(arch)
     return true
 end
 
+function test_settling_tracer_comparison(arch)
+    """
+    Test that compares settling tracer simulations on regular vs immersed boundary grids.
+    Both should conserve tracer mass and have similar maximum values.
+    """
+
+    Nz = 16
+    Lz = 1
+
+    regular_grid = RectilinearGrid(arch, topology = (Flat, Flat, Bounded), size = (Nz,), z = (-Lz, 0))
+    immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(-3Lz/4))
+
+    function build_settling_model(grid, w_settle)
+        # Create settling forcing
+        settling_forcing = AdvectiveForcing(w = w_settle; grid, normal_boundary_condition=OpenBoundaryCondition(nothing))
+        model = NonhydrostaticModel(; grid, advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
+
+        # Initial condition: patch of tracer c=1 in the upper part
+        z_center = -Lz/4  # Upper quarter of domain
+        z_width = Lz/8    # Width of initial patch
+        c_initial(z) = abs(z - z_center) <= z_width ? 1.0 : 0.0
+        set!(model, c = c_initial)
+        return model
+    end
+
+    # Create models
+    w_settle = -0.01
+    regular_model = build_settling_model(regular_grid, w_settle)
+    immersed_model = build_settling_model(immersed_grid, w_settle)
+
+    regular_initial_integral = Integral(regular_model.tracers.c) |> Field |> deepcopy
+    immersed_initial_integral = Integral(immersed_model.tracers.c) |> Field |> deepcopy
+    @test regular_initial_integral[] == immersed_initial_integral[]
+
+    # Create simulations
+    Δt = abs(w_settle) / minimum_zspacing(regular_grid)
+    stop_time = 250
+    regular_simulation = Simulation(regular_model, Δt=Δt, stop_time=stop_time)
+    immersed_simulation = Simulation(immersed_model, Δt=Δt, stop_time=stop_time)
+
+    # Run simulations
+    run!(regular_simulation)
+    run!(immersed_simulation)
+
+    # Compute diagnostics
+    regular_integral = Integral(regular_model.tracers.c) |> Field
+    immersed_integral = Integral(immersed_model.tracers.c) |> Field
+
+    regular_max = maximum(abs, regular_model.tracers.c)
+    immersed_max = maximum(abs, immersed_model.tracers.c)
+
+    # Test that mass is approximately conserved and max values are similar
+    @test regular_integral[] ≈ immersed_integral[] ≈ regular_initial_integral[] == immersed_initial_integral[]
+    @test regular_max ≈ immersed_max rtol=0.01
+
+    return true
+end
+
 @testset "Forcings" begin
     @info "Testing forcings..."
 
@@ -306,6 +364,11 @@ end
             @testset "FieldTimeSeries forcing on [$A]" begin
                 @info "      Testing FieldTimeSeries forcing [$A]..."
                 @test time_step_with_field_time_series_forcing(arch)
+            end
+
+            @testset "Settling tracer comparison [$A]" begin
+                @info "      Testing settling tracer on regular vs immersed grids [$A]..."
+                @test test_settling_tracer_comparison(arch)
             end
         end
     end
