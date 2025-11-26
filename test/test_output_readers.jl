@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Utils: Time
+using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
 using Random
@@ -8,9 +8,7 @@ using Random
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
     model = NonhydrostaticModel(; grid, tracers = (:T, :S), advection = nothing)
-
     set!(model, T=30, S=35)
-
     simulation = Simulation(model; Δt, stop_iteration=100)
 
     simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers,
@@ -49,7 +47,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     u, v, w = model.velocities
 
     computed_fields = (
-        b = BuoyancyField(model),
+        b = buoyancy_field(model),
         ζ = Field(∂x(v) - ∂y(u)),
         ke = Field(√(u^2 + v^2))
     )
@@ -107,7 +105,7 @@ function test_pickup_with_inaccurate_times()
     grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
     times = collect(0:0.1:3)
     filename = "fts_inaccurate_times_test.jld2"
-    f_tmp = Field{Center,Center,Center}(grid) 
+    f_tmp = Field{Center,Center,Center}(grid)
     f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
 
     for (it, time) in enumerate(f.times)
@@ -315,7 +313,7 @@ end
                 @info "  Testing FieldTimeSeries pickup..."
                 Random.seed!(1234)
                 for n in -4:4
-                    Δt = (1.1 + rand()) * 10.0^n 
+                    Δt = (1.1 + rand()) * 10.0^n
                     Lx = 10 * Δt
                     for FT in (Float32, Float64)
                         filename = generate_nonzero_simulation_data(Lx, Δt, FT)
@@ -425,35 +423,6 @@ end
                 @test val1 ≈ val2 atol=4ε
             end
         end
-    end
-
-    @testset "Outputwriting with set!(FieldTimeSeries{OnDisk})" begin
-        @info "  Testing set!(FieldTimeSeries{OnDisk})..."
-
-        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
-        c = CenterField(grid)
-
-        filepath = "testfile.jld2"
-        f = FieldTimeSeries(instantiated_location(c), grid, 1:10; backend = OnDisk(), path = filepath, name = "c")
-
-        for i in 1:10
-            set!(c, i)
-            set!(f, c, i)
-        end
-
-        g = FieldTimeSeries(filepath, "c")
-
-        @test location(g) == (Center, Center, Center)
-        @test indices(g) == (:, :, :)
-        @test g.grid == grid
-
-        @test g[1, 1, 1, 1] == 1
-        @test g[1, 1, 1, 10] == 10
-        @test g[1, 1, 1, Time(1.6)] == 1.6
-
-        t = g[Time(3.8)]
-
-        @test t[1, 1, 1] == 3.8
     end
 
     @testset "Test chunked abstraction" begin

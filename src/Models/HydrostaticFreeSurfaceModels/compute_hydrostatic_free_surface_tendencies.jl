@@ -4,14 +4,13 @@ import Oceananigans.Models: complete_communication_and_compute_buffer!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Utils: work_layout, KernelParameters
+using Oceananigans.Utils: KernelParameters
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
-                                       linear_index_to_tuple
+using Oceananigans.ImmersedBoundaries: get_active_cells_map
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -78,7 +77,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      model.velocities,
                      model.free_surface,
                      model.tracers,
-                     model.diffusivity_fields,
+                     model.closure_fields,
                      model.auxiliary_fields,
                      model.clock,
                      c_forcing)
@@ -114,7 +113,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.free_surface,
                                 model.tracers,
                                 model.buoyancy,
-                                model.diffusivity_fields,
+                                model.closure_fields,
                                 model.pressure.pHY′,
                                 model.auxiliary_fields,
                                 model.vertical_coordinate,

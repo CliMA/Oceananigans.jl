@@ -3,8 +3,10 @@ using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, s
 
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
+struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
+    tridiagonal_formulation :: F
+    poisson_eigenvalues :: Λ
     batched_tridiagonal_solver :: B
     source_term :: R
     storage :: S
@@ -34,15 +36,27 @@ main_diagonal_launch_configuration(::ZDirection) = :xy
 
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
-struct HomogeneousNeumannFormulation{D}
+abstract type AbstractHomogeneousNeumannFormulation end
+abstract type AbstractInhomogeneousNeumannFormulation end
+
+struct InhomogeneousFormulation{D} <: AbstractInhomogeneousNeumannFormulation
+    direction :: D
+end
+
+struct HomogeneousNeumannFormulation{D} <: AbstractHomogeneousNeumannFormulation
     direction :: D
 end
 
 tridiagonal_direction(formulation::HomogeneousNeumannFormulation) = formulation.direction
+tridiagonal_direction(formulation::InhomogeneousFormulation) = formulation.direction
 
 const HomogeneousXFormulation = HomogeneousNeumannFormulation{<:XDirection}
 const HomogeneousYFormulation = HomogeneousNeumannFormulation{<:YDirection}
 const HomogeneousZFormulation = HomogeneousNeumannFormulation{<:ZDirection}
+
+const InhomogeneousXFormulation = InhomogeneousFormulation{<:XDirection}
+const InhomogeneousYFormulation = InhomogeneousFormulation{<:YDirection}
+const InhomogeneousZFormulation = InhomogeneousFormulation{<:ZDirection}
 
 """
     FourierTridiagonalPoissonSolver(grid, planner_flag = FFTW.PATIENT; tridiagonal_formulation=nothing)
@@ -130,7 +144,10 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     CT = complex(eltype(grid))
     rhs = on_architecture(arch, zeros(CT, size(grid)...))
 
-    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
+    eigenvalues = (λ1, λ2)
+
+    return FourierTridiagonalPoissonSolver(grid, tridiagonal_formulation, eigenvalues, btsolver,
+                                           rhs, sol_storage, buffer, transforms)
 end
 
 #####
@@ -147,7 +164,11 @@ function compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ
     return nothing
 end
 
-@kernel function _compute_main_diagonal!(D, grid, λy, λz, ::HomogeneousXFormulation)
+const XFormulation = Union{HomogeneousXFormulation, InhomogeneousXFormulation}
+const YFormulation = Union{HomogeneousYFormulation, InhomogeneousYFormulation}
+const ZFormulation = Union{HomogeneousZFormulation, InhomogeneousZFormulation}
+
+@kernel function _compute_main_diagonal!(D, grid, λy, λz, ::XFormulation)
     j, k = @index(Global, NTuple)
     Nx = size(grid, 1)
 
@@ -162,7 +183,7 @@ end
     end
 end
 
-@kernel function _compute_main_diagonal!(D, grid, λx, λz, ::HomogeneousYFormulation)
+@kernel function _compute_main_diagonal!(D, grid, λx, λz, ::YFormulation)
     i, k = @index(Global, NTuple)
     Ny = size(grid, 2)
 
@@ -177,7 +198,7 @@ end
     end
 end
 
-@kernel function _compute_main_diagonal!(D, grid, λx, λy, ::HomogeneousZFormulation)
+@kernel function _compute_main_diagonal!(D, grid, λx, λy, ::ZFormulation)
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
 
@@ -230,7 +251,9 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
-    ϕ .= ϕ .- mean(ϕ)
+    if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
+        ϕ .= ϕ .- mean(ϕ)
+    end
 
     arch = architecture(solver)
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))

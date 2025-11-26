@@ -1,32 +1,24 @@
-import Oceananigans.Grids: prettysummary
+using Oceananigans.Grids: Grids
 
 shortsummary(x, args...) = string(typeof(x).name.wrapper)
-prettysummary(x, args...) = summary(x)
+Grids.prettysummary(x, args...) = summary(x)
 
-function prettysummary(f::Function, showmethods=true)
+function Grids.prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
-    if VERSION >= v"1.12.0"
-        name = ft.name.name
-    else
-        mt = ft.name.mt
-        name = mt.name
-    end
+    name = string(Base.nameof(f))
     n = length(methods(f))
     m = n==1 ? "method" : "methods"
-    sname = string(name)
-    isself = isdefined(ft.name.module, name) && ft == typeof(getfield(ft.name.module, name))
-    ns = (isself || '#' in sname) ? sname : string("(::", ft, ")")
     if showmethods
-        return string(ns, " (", "generic function", " with $n $m)")
+        return string(name, " (", "generic function", " with $n $m)")
     else
-        return string(ns)
+        return string(name)
     end
 end
 
-prettysummary(x::Int, args...) = string(x)
+Grids.prettysummary(x::Int, args...) = string(x)
 
 # This is very important
-function prettysummary(nt::NamedTuple, args...)
+function Grids.prettysummary(nt::NamedTuple, args...)
     n = nfields(nt)
 
     if n == 0
@@ -35,7 +27,7 @@ function prettysummary(nt::NamedTuple, args...)
         str = "("
         for i = 1:n
             f = nt[i]
-            str = string(str, fieldname(typeof(nt), i), "=", prettysummary(getfield(nt, i)))
+            str = string(str, fieldname(typeof(nt), i), "=", Grids.prettysummary(getfield(nt, i)))
             if n == 1
                 str = string(str, ",")
             elseif i < n

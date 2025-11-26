@@ -1,18 +1,15 @@
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Architectures: device
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
+using Oceananigans.Grids: AbstractGrid, prettysummary
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
-using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
 using Adapt
 
-struct ImplicitFreeSurface{E, G, B, I, M, S} <: AbstractFreeSurface{E, G}
+struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
     η :: E
     gravitational_acceleration :: G
-    barotropic_volume_flux :: B
     implicit_step_solver :: I
     solver_method :: M
     solver_settings :: S
@@ -80,17 +77,16 @@ function ImplicitFreeSurface(;
     gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
     solver_settings...)
 
-    return ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
+    return ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, solver_method, solver_settings)
 end
 
 Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
-                        nothing, nothing, nothing, nothing)
+                        nothing, nothing, nothing)
 
 on_architecture(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(on_architecture(to, free_surface.η),
                         on_architecture(to, free_surface.gravitational_acceleration),
-                        on_architecture(to, free_surface.barotropic_volume_flux),
                         on_architecture(to, free_surface.implicit_step_solver),
                         on_architecture(to, free_surface.solver_methods),
                         on_architecture(to, free_surface.solver_settings))
@@ -100,18 +96,12 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
     η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
-    # Initialize barotropic volume fluxes
-    barotropic_x_volume_flux = Field{Face, Center, Nothing}(grid)
-    barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
-    barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
-
     user_solver_method = free_surface.solver_method # could be = :Default
     solver = build_implicit_step_solver(Val(user_solver_method), grid, free_surface.solver_settings, gravitational_acceleration)
     solver_method = nameof(typeof(solver))
 
     return ImplicitFreeSurface(η,
                                gravitational_acceleration,
-                               barotropic_volume_flux,
                                solver,
                                solver_method,
                                free_surface.solver_settings)
@@ -133,17 +123,16 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     η      = free_surface.η
     g      = free_surface.gravitational_acceleration
     rhs    = free_surface.implicit_step_solver.right_hand_side
-    ∫ᶻQ    = free_surface.barotropic_volume_flux
     solver = free_surface.implicit_step_solver
-    arch   = model.architecture
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
+    
+    @apply_regionally begin
+        mask_immersed_field!(model.velocities.u)
+        mask_immersed_field!(model.velocities.v)
+    end
 
-    # Compute right hand side of implicit free surface equation
-    @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
-    fill_halo_regions!(∫ᶻQ)
-
-    compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
+    compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
@@ -160,15 +149,5 @@ end
 function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
     parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
-    return nothing
-end
-
-function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
-
-    foreach(mask_immersed_field!, velocities)
-
-    # Compute barotropic volume flux. Blocking.
-    compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
-
     return nothing
 end

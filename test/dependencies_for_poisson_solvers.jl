@@ -121,7 +121,7 @@ function divergence_free_poisson_solution(grid, planner_flag=FFTW.MEASURE)
     ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
-    solve_for_pressure!(ϕ.data, solver, 1, U)
+    solve_for_pressure!(ϕ.data, solver, nothing, U, 1)
 
     compute_∇²!(∇²ϕ, ϕ, arch, grid)
 

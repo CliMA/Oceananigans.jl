@@ -126,14 +126,14 @@ function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
 
+    initial_time_step = !(sim.initialized)
+    initial_time_step && initialize!(sim)
+
     Δt = if sim.align_time_step
         aligned_time_step(sim, sim.Δt)
     else
         sim.Δt
     end
-
-    initial_time_step = !(sim.initialized)
-    initial_time_step && initialize!(sim)
 
     if initial_time_step && sim.verbose
         @info "Executing initial time step..."

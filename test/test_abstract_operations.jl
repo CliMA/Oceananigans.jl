@@ -335,12 +335,12 @@ for arch in archs
             set!(c, 1)
             set!(w, 1)
 
-            c_z = Field(c * AbstractOperations.z)
+            c_z = Field(c * Operators.z)
             @test c_z.operand isa BinaryOperation
             @test c_z.operand.a isa Field
             @test c_z.operand.b isa KernelFunctionOperation
 
-            w_z = Field(w * AbstractOperations.z)
+            w_z = Field(w * Operators.z)
             @test w_z.operand isa BinaryOperation
             @test w_z.operand.a isa Field
             @test w_z.operand.b isa KernelFunctionOperation

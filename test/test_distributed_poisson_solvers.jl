@@ -80,7 +80,7 @@ function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     # Using Δt = 1.
-    solve_for_pressure!(ϕ, solver, 1, U)
+    solve_for_pressure!(ϕ, solver, nothing, U, 1)
 
     # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
@@ -117,7 +117,7 @@ function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, stretc
     solver = DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
     # Using Δt = 1.
-    solve_for_pressure!(ϕ, solver, 1, U)
+    solve_for_pressure!(ϕ, solver, nothing, U, 1)
 
     # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
