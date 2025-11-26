@@ -21,12 +21,12 @@ Oceananigans.defaults.FloatType = Float32
     @test architecture(grid) isa GPU
 
     model = HydrostaticFreeSurfaceModel(; grid,
-        coriolis=FPlane(latitude=45),
-        buoyancy=BuoyancyTracer(),
-        tracers=:b,
-        momentum_advection=WENO(order=5),
-        tracer_advection=WENO(order=5),
-        free_surface=SplitExplicitFreeSurface(grid; substeps=60))
+                                        coriolis = FPlane(latitude=45),
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = :b,
+                                        momentum_advection = WENO(order=5),
+                                        tracer_advection = WENO(order=5),
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps=60))
 
     @test parent(model.velocities.u) isa MtlArray
     @test parent(model.velocities.v) isa MtlArray
