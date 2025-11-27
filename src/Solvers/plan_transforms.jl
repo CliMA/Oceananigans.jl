@@ -11,7 +11,7 @@
 ##### efficient transforms. `A` will be mutated.
 #####
 
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, regular_dimensions, stretched_dimensions
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, regular_dimensions
 
 function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing

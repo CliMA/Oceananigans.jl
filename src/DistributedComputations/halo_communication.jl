@@ -5,7 +5,7 @@ using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
-    PBCT, DCBCT, get_boundary_kernels
+    get_boundary_kernels
 
 import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 

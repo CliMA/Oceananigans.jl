@@ -4,8 +4,6 @@ using OffsetArrays
 using Adapt
 using Distances
 
-using Adapt: adapt_structure
-
 using Oceananigans
 using GPUArraysCore
 

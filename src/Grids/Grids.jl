@@ -31,7 +31,7 @@ using Printf
 using Oceananigans
 using Oceananigans.Architectures
 
-import Base: size, length, eltype, show, -
+import Base: size, length, eltype, -
 import Oceananigans.Architectures: architecture, on_architecture
 
 #####
