@@ -1,5 +1,4 @@
 using Oceananigans.Operators
-using Oceananigans.Architectures: device
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
 using Oceananigans.TurbulenceClosures:

@@ -1,7 +1,6 @@
-using Oceananigans.BoundaryConditions: Flux, Value, Gradient, BoundaryCondition, ContinuousBoundaryFunction
-using Oceananigans.BoundaryConditions: getbc, regularize_boundary_condition, LeftBoundary, RightBoundary
+using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition
+using Oceananigans.BoundaryConditions: getbc
 using Oceananigans.BoundaryConditions: FBC, ZFBC
-using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
 using Oceananigans.Advection: conditional_flux

@@ -1,7 +1,6 @@
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: flattened_unique_values, Field
 using Oceananigans.Grids: AbstractGrid
-using Base: Returns
 
 #####
 ##### Utility for "extracting" FieldTimeSeries from large nested objects (eg models)
