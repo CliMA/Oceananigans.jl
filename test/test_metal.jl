@@ -87,9 +87,7 @@ end
     Qᵀ = Qʰ / (ρ₀ * cᴾ) # K m s⁻¹, surface _temperature_ flux
     T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵀ))
 
-    Cᴰ = FT(1.3e-3)
-    τₐ = ρₐ * Cᴰ * u10 * abs(u10)
-    Qᵘ = -τₐ / ρ₀ # m² s⁻²
+    Qᵘ = - FT(1e-4)
     u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵘ))
 
     model = HydrostaticFreeSurfaceModel(;
