@@ -2,10 +2,8 @@ import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 
 using Oceananigans.Utils: launch!
-using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans: fields, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel
-
-using Oceananigans.Architectures: device
 
 using Oceananigans.BoundaryConditions
 

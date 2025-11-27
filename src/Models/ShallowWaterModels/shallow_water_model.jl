@@ -1,13 +1,13 @@
-using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
+using Oceananigans: AbstractModel
 
-using Oceananigans.Architectures: AbstractArchitecture, CPU
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
 using Oceananigans.DistributedComputations
-using Oceananigans.Advection: Centered, VectorInvariant
+using Oceananigans.Advection: VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Face, Center
+using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
@@ -15,7 +15,6 @@ using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Simulations: timestepper
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 

@@ -17,12 +17,10 @@ export
 using Adapt
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: CPU, GPU, device
-using Oceananigans.Utils: work_layout, launch!
+using Oceananigans.Architectures: CPU, GPU
+using Oceananigans.Utils: launch!
 using Oceananigans.Operators: Ax, Ay, Az, volume
 using Oceananigans.Grids
-
-import Adapt: adapt_structure
 
 # All possible fill_halo! kernels
 struct WestAndEast end

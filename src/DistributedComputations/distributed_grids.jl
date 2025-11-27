@@ -2,7 +2,7 @@ using MPI
 using OffsetArrays
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
-using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
+using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: metrics_precomputed

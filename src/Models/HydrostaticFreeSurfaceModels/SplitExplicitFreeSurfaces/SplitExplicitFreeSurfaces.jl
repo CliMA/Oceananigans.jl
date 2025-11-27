@@ -12,8 +12,8 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries
-using Oceananigans.Grids: AbstractGrid, topology
-using Oceananigans.ImmersedBoundaries: linear_index_to_tuple, mask_immersed_field!
+using Oceananigans.Grids: topology
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
@@ -23,10 +23,8 @@ using Base
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Grids: column_depthᶜᶜᵃ,
-                          column_depthᶜᶠᵃ,
-                          column_depthᶠᶜᵃ,
-                          column_depthᶠᶠᵃ
+using Oceananigans.Grids: column_depthᶜᶠᵃ,
+                          column_depthᶠᶜᵃ
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
                                                          materialize_free_surface,

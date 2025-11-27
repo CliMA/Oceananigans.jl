@@ -14,10 +14,10 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range, AbstractGrid
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
-using Oceananigans.Fields: interior_view_indices, index_binary_search,
+using Oceananigans.Fields: interior_view_indices,
                            indices_summary, boundary_conditions, instantiate
 
 using Oceananigans.Units: Time
