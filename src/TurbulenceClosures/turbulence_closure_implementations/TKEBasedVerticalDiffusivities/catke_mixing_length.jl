@@ -1,6 +1,4 @@
 using ..TurbulenceClosures:
-    wall_vertical_distanceᶜᶜᶠ,
-    wall_vertical_distanceᶜᶜᶜ,
     depthᶜᶜᶠ,
     height_above_bottomᶜᶜᶠ,
     depthᶜᶜᶜ,
