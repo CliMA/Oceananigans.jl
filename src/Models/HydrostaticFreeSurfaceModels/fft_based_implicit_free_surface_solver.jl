@@ -4,7 +4,6 @@ using Oceananigans.Grids: x_domain, y_domain
 using Oceananigans.Solvers
 using Oceananigans.Operators
 using Oceananigans.Architectures
-using Oceananigans.Fields: ReducedField
 using Statistics
 
 import Oceananigans.Solvers: solve!

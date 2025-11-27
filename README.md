@@ -44,6 +44,9 @@
   <a href="https://juliapkgstats.com/pkg/Oceananigans">
     <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FOceananigans&query=total_requests&&label=Total%20Downloads&style=flat-square">
   </a>
+  <a href="https://github.com/JuliaTesting/Aqua.jl" >
+    <img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg?style=flat-square"/>
+  </a>
 </p>
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic

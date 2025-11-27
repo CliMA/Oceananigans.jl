@@ -104,7 +104,7 @@ macro unary(ops...)
             """
             function $op(Lop::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField)
                 L = instantiated_location(a)
-                return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
+                return $(_unary_operation)(Lop, $op, a, L, a.grid)
             end
 
             # instantiate location if types are passed
@@ -112,8 +112,8 @@ macro unary(ops...)
 
             $op(a::AbstractField) = $op(instantiated_location(a), a)
 
-            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            push!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))
+            push!($(operators), Symbol($op))
+            push!($(unary_operators), Symbol($op))
         end
 
         push!(expr.args, :($(esc(define_unary_operator))))
