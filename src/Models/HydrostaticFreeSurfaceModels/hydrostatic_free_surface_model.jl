@@ -57,7 +57,7 @@ using Oceananigans.TurbulenceClosures:
     validate_closure,
     with_tracers,
     build_closure_fields,
-    add_closure_specific_boundary_conditions
+    add_closure_specific_boundary_conditions,
     time_discretization,
     implicit_diffusion_solver,
     closure_required_tracers
