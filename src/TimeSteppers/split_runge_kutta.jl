@@ -1,4 +1,3 @@
-using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
