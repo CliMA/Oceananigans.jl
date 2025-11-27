@@ -1,5 +1,4 @@
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: prettysummary
 
 """
     struct ScalarBiharmonicDiffusivity{F, N, V, K} <: AbstractScalarBiharmonicDiffusivity{F}

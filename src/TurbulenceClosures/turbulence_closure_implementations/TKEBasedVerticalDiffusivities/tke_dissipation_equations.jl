@@ -68,7 +68,7 @@ function time_step_tke_dissipation_equations!(model)
                 compute_tke_dissipation_diffusivities!,
                 κe, κϵ,
                 grid, closure,
-                model.velocities, model.tracers, model.buoyancy)
+                model.velocities, model.tracers, buoyancy_force(model))
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
@@ -77,7 +77,7 @@ function time_step_tke_dissipation_equations!(model)
                 Le, Lϵ,
                 grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, closure_fields,
+                model.tracers, buoyancy_force(model), closure_fields,
                 Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
 
         implicit_step!(e, implicit_solver, closure,

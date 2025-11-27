@@ -21,6 +21,7 @@ using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities, timestepper
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -297,6 +298,6 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 end
 
 # return the total advective velocities
-@inline total_velocities(m::NonhydrostaticModel) =
-    sum_of_velocities(m.velocities, m.background_fields.velocities)
-
+@inline total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
+buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
+buoyancy_tracers(model::NonhydrostaticModel) = model.tracers

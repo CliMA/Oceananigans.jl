@@ -1,7 +1,5 @@
-using Oceananigans.Architectures: device
 using Oceananigans.Grids: halo_size, topology
-using Oceananigans.Grids: XFlatGrid, YFlatGrid
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, div_xyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Models: surface_kernel_parameters
 

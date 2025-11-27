@@ -5,8 +5,7 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
-    Clock,
-    tendencies
+    Clock
 
 using KernelAbstractions
 using Oceananigans: AbstractModel, initialize!, prognostic_fields

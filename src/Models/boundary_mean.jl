@@ -5,7 +5,6 @@ using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection
 
 import Adapt: adapt_structure
-import Base: summary, show
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
 struct BoundaryAdjacentMean{FF, BV}

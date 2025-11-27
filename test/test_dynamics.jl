@@ -327,12 +327,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
 
     T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, T=T₀)
-
     simulation = Simulation(model, Δt=10minute, stop_time=1hour)
     run!(simulation)
 
-    @compute ∂y_T = Field(∂y(model.tracers.T))
-    @compute ∂z_T = Field(∂z(model.tracers.T))
+    ∂y_T = Field(∂y(model.tracers.T))
+    ∂z_T = Field(∂z(model.tracers.T))
 
     mean_∂y_T = mean(∂y_T)
     mean_∂z_T = mean(∂z_T)
