@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: prettysummary
 
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
@@ -43,7 +43,8 @@ fieldify_function(L, a, grid) = a
 fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 
 # This is a convenience form with `L` as positional argument.
-@inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
+@inline FunctionField(L::Tuple{<:Type, <:Type, <:Type}, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
+@inline FunctionField(L::Tuple{LX, LY, LZ}, func, grid) where {LX, LY, LZ}= FunctionField{LX, LY, LZ}(func, grid)
 
 @inline indices(::FunctionField) = (:, :, :)
 

@@ -3,7 +3,7 @@
 #####
 
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
+using Oceananigans.Fields: FunctionField
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -108,7 +108,7 @@ materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFie
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
-apply_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
+compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
@@ -128,7 +128,6 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end

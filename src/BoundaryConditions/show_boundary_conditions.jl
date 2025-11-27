@@ -1,5 +1,4 @@
-import Base: show
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: prettysummary
 
 const DFBC = DefaultBoundaryCondition
 const IBC = BoundaryCondition{Open, Nothing} # ImpenetrableBoundaryCondition
@@ -9,6 +8,7 @@ bc_str(::PBC)                    = "Periodic"
 bc_str(::OBC{Open{MS}}) where MS = "Open{$MS}"
 bc_str(::VBC)                    = "Value"
 bc_str(::GBC)                    = "Gradient"
+bc_str(::MBC)                    = "Mixed"
 bc_str(::ZFBC)                   = "ZeroFlux"
 bc_str(::IBC)                    = "Impenetrable"
 bc_str(::DFBC)                   = "Default"
@@ -31,7 +31,13 @@ Base.summary(::PBC)                       = string("PeriodicBoundaryCondition")
 Base.summary(bc::DCBC)                    = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::ZBC)                     = string("ZipperBoundaryCondition: ", prettysummary(bc.condition))
 
-show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
+function Base.summary(bc::MBC)
+    string("MixedBoundaryCondition: ",
+           prettysummary(bc.condition.coefficient), " c + ",
+           prettysummary(bc.condition.inhomogeneity))
+end
+
+Base.show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
 
 #####
 ##### FieldBoundaryConditions

@@ -96,11 +96,10 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     ab2_timestepper.χ = χ
 
     # Full step for tracers, fractional step for velocities.
+    compute_flux_bc_tendencies!(model)
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
-    model.clock.last_stage_Δt = Δt # just one stage
 
     compute_pressure_correction!(model, Δt)
     @apply_regionally correct_velocities_and_cache_previous_tendencies!(model, Δt)
@@ -144,9 +143,10 @@ function ab2_step!(model, Δt)
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
-                       model.diffusivity_fields,
+                       model.closure_fields,
                        tracer_index,
                        model.clock,
+                       fields(model),
                        Δt)
     end
 
@@ -175,4 +175,3 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 end
 
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
-

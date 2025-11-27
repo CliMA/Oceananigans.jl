@@ -6,7 +6,6 @@ export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 
-using CUDA
 using Base: @propagate_inbounds
 
 using Oceananigans.Architectures
@@ -16,9 +15,9 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Utils
 
-using Oceananigans: location, AbstractModel
+using Oceananigans: location
+using Oceananigans.Fields: instantiated_location
 using Oceananigans.Operators: interpolation_operator
-using Oceananigans.Architectures: device
 
 import Adapt
 
@@ -33,6 +32,8 @@ import Oceananigans.Fields: compute_at!, indices
 abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
+
+const Location = Union{Face, Center, Nothing}
 
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing

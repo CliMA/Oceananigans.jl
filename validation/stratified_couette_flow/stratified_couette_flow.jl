@@ -186,8 +186,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
         :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivity_fields[n_amd].κₑ.T.data.parent),
-       :nu => model -> Array(model.diffusivity_fields[n_amd].νₑ.data.parent))
+   :kappaT => model -> Array(model.closure_fields[n_amd].κₑ.T.data.parent),
+       :nu => model -> Array(model.closure_fields[n_amd].νₑ.data.parent))
 
     field_writer = JLD2Writer(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
                               init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
@@ -201,8 +201,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     Vavg = Field(Average(model.velocities.v,               dims=(1, 2)))
     Wavg = Field(Average(model.velocities.w,               dims=(1, 2)))
     Tavg = Field(Average(model.tracers.T,                  dims=(1, 2)))
-    νavg = Field(Average(model.diffusivity_fields[n_amd].νₑ,   dims=(1, 2)))
-    κavg = Field(Average(model.diffusivity_fields[n_amd].κₑ.T, dims=(1, 2)))
+    νavg = Field(Average(model.closure_fields[n_amd].νₑ,   dims=(1, 2)))
+    κavg = Field(Average(model.closure_fields[n_amd].κₑ.T, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,
@@ -259,8 +259,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         CFL = simulation.Δt / cell_advection_timescale(model)
 
         Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.z.Δᵃᵃᶜ)
-        νmax = maximum(model.diffusivity_fields[n_amd].νₑ.data.parent)
-        κmax = maximum(model.diffusivity_fields[n_amd].κₑ.T.data.parent)
+        νmax = maximum(model.closure_fields[n_amd].νₑ.data.parent)
+        κmax = maximum(model.closure_fields[n_amd].κₑ.T.data.parent)
         νCFL = simulation.Δt / (Δ^2 / νmax)
         κCFL = simulation.Δt / (Δ^2 / κmax)
 

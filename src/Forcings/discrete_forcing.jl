@@ -1,6 +1,6 @@
 import Adapt
 
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: prettysummary
 
 """
     struct DiscreteForcing{P, F}

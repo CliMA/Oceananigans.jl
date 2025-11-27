@@ -7,10 +7,9 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-using Makie: Observable
-using MakieCore: AbstractPlot
-import MakieCore: convert_arguments, _create_plot
-import Makie: args_preferred_axis
+using Makie: Observable, AbstractPlot
+
+import Makie: convert_arguments, _create_plot, args_preferred_axis
 
 # Extending args_preferred_axis here ensures that Field
 # do not overstate a preference for being plotted in a 3D LScene.
@@ -76,7 +75,7 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
 
         # if longitude wraps around the globe then adjust the longitude ticks
         if grid isa LLGOrIBLLG && grid.Lx == 360 && topology(grid, 1) == Periodic
-            axis = merge(axis, (xticks = -360:60:360,))
+            axis = merge(axis, (; xticks = -360:60:360))
         end
 
         attributes[:axis] = axis
@@ -87,8 +86,7 @@ end
 
 function _create_plot(F::Function, attributes::Dict, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
-    return _create_plot(F::Function, attributes::Dict, f)
+    return _create_plot(F, attributes, f)
 end
 
 _create_plot(F::Function, attributes::Dict, f::Observable{<:Field}) =
@@ -99,19 +97,16 @@ convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
 
 function convert_arguments(pl::Type{<:AbstractPlot}, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, ξ1, f)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, op::AbstractOperation)
     f = Field(op)
-    compute!(f)
     return convert_arguments(pl, ξ1, ξ2, f)
 end
 

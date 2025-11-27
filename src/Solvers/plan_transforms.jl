@@ -33,18 +33,8 @@ function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PA
     return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 end
 
-function plan_forward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
-    length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_fft!(A, dims)
-end
-
-function plan_backward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
-    length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_ifft!(A, dims)
-end
-
-plan_backward_transform(A::Union{Array, CuArray}, ::Flat, args...) = nothing
-plan_forward_transform(A::Union{Array, CuArray}, ::Flat, args...) = nothing
+plan_forward_transform(A::AbstractArray, ::Flat, args...) = nothing
+plan_backward_transform(A::AbstractArray, ::Flat, args...) = nothing
 
 batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
                             (Periodic, Periodic, Bounded),
@@ -164,7 +154,7 @@ function plan_transforms(grid, storage, planner_flag, untransformed_dim)
         dim ∈ regular_dimensions(grid) ||
             error("Transform directions must be regularly spaced.")
     end
-        
+
     !(topo[untransformed_dim] === Bounded) && error("Transforms can be planned only when the untransformed direction's topology is `Bounded`.")
     periodic_dims = Tuple(dim for dim in findall(t -> t == Periodic, topo) if dim ≠ untransformed_dim)
     bounded_dims  = Tuple(dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ untransformed_dim)

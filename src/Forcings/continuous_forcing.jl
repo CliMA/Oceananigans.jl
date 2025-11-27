@@ -1,9 +1,9 @@
 import Adapt
 
-using Oceananigans.Grids: node
+using Oceananigans.Grids: node, prettysummary
 using Oceananigans.Operators: assumed_field_location, index_and_interp_dependencies
 using Oceananigans.Fields: show_location
-using Oceananigans.Utils: user_function_arguments, tupleit, prettysummary
+using Oceananigans.Utils: user_function_arguments, tupleit
 
 """
     ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
@@ -110,13 +110,13 @@ ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     ContinuousForcing(func, parameters, field_dependencies)
 
 """
-    regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
+    materialize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
 
 Regularize `forcing::ContinuousForcing` by determining the indices of `forcing.field_dependencies`
 in `model_field_names`, and associated interpolation functions so `forcing` can be used during
 time-stepping `NonhydrostaticModel`.
 """
-function regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
+function materialize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
 
     LX, LY, LZ = location(field)
 

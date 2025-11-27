@@ -4,19 +4,19 @@ indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
 indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
 function interior_x_indices(f::Field)
-    loc = map(instantiate, location(f))
+    loc = instantiated_location(f)
     interior_indices = interior_x_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[1])
 end
 
 function interior_y_indices(f::Field)
-    loc = map(instantiate, location(f))
+    loc = instantiated_location(f)
     interior_indices = interior_y_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[2])
 end
 
 function interior_z_indices(f::Field)
-    loc = map(instantiate, location(f))
+    loc = instantiated_location(f)
     interior_indices = interior_z_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[3])
 end

@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: prettysummary
 
 """
     struct FPlane{FT} <: AbstractRotation
@@ -10,7 +10,10 @@ struct FPlane{FT} <: AbstractRotation
 end
 
 """
-    FPlane([FT=Float64;] f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
+    FPlane([FT = Oceananigans.defaults.FloatType;]
+           f = nothing,
+           rotation_rate = Oceananigans.defaults.planet_rotation_rate,
+           latitude = nothing)
 
 Return a parameter object for constant rotation at the angular frequency
 `f/2`, and therefore with background vorticity `f`, around a vertical axis.
@@ -22,7 +25,10 @@ By default, `rotation_rate` is assumed to be Earth's.
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 a planet's rotation in a planar coordinate system tangent to the planet's surface.
 """
-function FPlane(FT::DataType=Oceananigans.defaults.FloatType; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
+function FPlane(FT::DataType=Oceananigans.defaults.FloatType;
+                f = nothing,
+                rotation_rate = Oceananigans.defaults.planet_rotation_rate,
+                latitude = nothing)
 
     use_f = !isnothing(f)
     use_planet_parameters = !isnothing(latitude)

@@ -58,7 +58,7 @@ Turbulent Kinetic Energy (TKE).
 !!! note "CATKE vertical diffusivity"
     `CATKEVerticalDiffusivity` is a new turbulence closure diffusivity. The default
     values for its free parameters are obtained from calibration against large eddy
-    simulations. For more details please refer to [Wagner25catke](@citet).
+    simulations. For more details please refer to [Wagner et al. (2025)](@cite Wagner25catke).
 
     Use with caution and report any issues with the physics at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).
 
@@ -102,8 +102,8 @@ References
 ==========
 
 Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill,
-    C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). "Formulation and calibration of CATKE,
-    a one-equation parameterization for microscale ocean mixing." J. Adv. Model. Earth Sy., 17, e2024MS004522.
+    C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). Formulation and calibration of CATKE,
+    a one-equation parameterization for microscale ocean mixing. J. Adv. Model. Earth Sy., 17, e2024MS004522.
 """
 function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                   FT = Oceananigans.defaults.FloatType;
@@ -168,32 +168,32 @@ struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
     _tupled_implicit_linear_coefficients :: LC
 end
 
-Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
-    CATKEDiffusivityFields(adapt(to, catke_diffusivity_fields.κu),
-                           adapt(to, catke_diffusivity_fields.κc),
-                           adapt(to, catke_diffusivity_fields.κe),
-                           adapt(to, catke_diffusivity_fields.Le),
-                           adapt(to, catke_diffusivity_fields.Jᵇ),
-                           catke_diffusivity_fields.previous_compute_time[],
-                           adapt(to, catke_diffusivity_fields.previous_velocities),
-                           adapt(to, catke_diffusivity_fields._tupled_tracer_diffusivities),
-                           adapt(to, catke_diffusivity_fields._tupled_implicit_linear_coefficients))
+Adapt.adapt_structure(to, catke_closure_fields::CATKEDiffusivityFields) =
+    CATKEDiffusivityFields(adapt(to, catke_closure_fields.κu),
+                           adapt(to, catke_closure_fields.κc),
+                           adapt(to, catke_closure_fields.κe),
+                           adapt(to, catke_closure_fields.Le),
+                           adapt(to, catke_closure_fields.Jᵇ),
+                           catke_closure_fields.previous_compute_time[],
+                           adapt(to, catke_closure_fields.previous_velocities),
+                           adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
+                           adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, args...; kw...)
-    grid = catke_diffusivity_fields.κu.grid
+function fill_halo_regions!(catke_closure_fields::CATKEDiffusivityFields, args...; kw...)
+    grid = catke_closure_fields.κu.grid
 
-    κ = (catke_diffusivity_fields.κu,
-         catke_diffusivity_fields.κc,
-         catke_diffusivity_fields.κe)
+    κ = (catke_closure_fields.κu,
+         catke_closure_fields.κc,
+         catke_closure_fields.κe)
 
     return fill_halo_regions!(κ, grid, args...; kw...)
 end
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
-    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κe = FieldBoundaryConditions(grid, (Center, Center, Face)))
+    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κe = FieldBoundaryConditions(grid, (Center(), Center(), Face())))
 
     bcs = merge(default_diffusivity_bcs, bcs)
 
@@ -232,17 +232,17 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     clock = model.clock
-    top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
+    top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
     Δt = update_previous_compute_time!(diffusivities, model)
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
-        time_step_catke_equation!(model)
+        time_step_catke_equation!(model, model.timestepper)
     end
 
     # Update "previous velocities"
@@ -333,7 +333,7 @@ end
     κe_max = closure.maximum_tke_diffusivity
     κe★ = min(κe, κe_max)
     FT = eltype(grid)
-    return FT(κe)
+    return FT(κe★)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu

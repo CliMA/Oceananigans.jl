@@ -72,9 +72,9 @@ Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
 Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
 
 """ Wrap `forcing::Relaxation` in `ContinuousForcing` and add the appropriate field dependency. """
-function regularize_forcing(forcing::Relaxation, field, field_name, model_field_names)
+function materialize_forcing(forcing::Relaxation, field, field_name, model_field_names)
     continuous_relaxation = ContinuousForcing(forcing, field_dependencies=field_name)
-    return regularize_forcing(continuous_relaxation, field, field_name, model_field_names)
+    return materialize_forcing(continuous_relaxation, field, field_name, model_field_names)
 end
 
 @inline (f::Relaxation)(x, y, z, t, field) =

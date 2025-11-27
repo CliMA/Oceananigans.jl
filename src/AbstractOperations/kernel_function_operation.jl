@@ -1,4 +1,5 @@
-using Oceananigans.Utils: prettysummary, shortsummary
+using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: shortsummary
 
 struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
@@ -69,7 +70,7 @@ end
 indices(κ::KernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.arguments...)
 compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
 
-"Adapt `KernelFunctionOperation` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `KernelFunctionOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.grid),

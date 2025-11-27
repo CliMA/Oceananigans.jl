@@ -2,7 +2,7 @@ module Coriolis
 
 export
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
-    HydrostaticSphericalCoriolis, ActiveCellEnstrophyConserving,
+    HydrostaticSphericalCoriolis,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf
@@ -11,12 +11,6 @@ using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-
-# Physical constants for constructors.
-using Oceananigans.Grids: R_Earth
-
-"Earth's rotation rate [s⁻¹]; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed"
-const Ω_Earth = 7.292115e-5
 
 """
     AbstractRotation

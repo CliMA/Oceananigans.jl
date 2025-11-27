@@ -1,4 +1,3 @@
-using CUDA
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
@@ -33,7 +32,7 @@ end
 
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, CuArray, OffsetArray}) = set_to_array!(u, a)
+set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
 set!(u::Field, v::Field) = set_to_field!(u, v)
 
 function set!(u::Field, a::Number)
@@ -52,7 +51,7 @@ set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
 ##### Setting to specific things
 #####
 
-function set_to_function!(u, f)
+function set_to_function!(u, f, clock=nothing)
     # Supports serial and distributed
     arch = architecture(u)
     child_arch = child_architecture(u)
@@ -61,7 +60,7 @@ function set_to_function!(u, f)
     if child_arch isa GPU || child_arch isa ReactantState
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
-        cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
+        cpu_u    = Field(instantiated_location(u), cpu_grid; indices = indices(u))
 
     elseif child_arch isa CPU
         cpu_grid = u.grid
@@ -69,7 +68,8 @@ function set_to_function!(u, f)
     end
 
     # Form a FunctionField from `f`
-    f_field = field(location(u), f, cpu_grid)
+    LX, LY, LZ = location(u)
+    f_field = FunctionField{LX, LY, LZ}(f, cpu_grid; clock)
 
     # Try to set the FunctionField to cpu_u
     try

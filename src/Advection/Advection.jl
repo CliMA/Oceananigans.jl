@@ -3,20 +3,10 @@ module Advection
 export
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
-    momentum_flux_uu,
-    momentum_flux_uv,
-    momentum_flux_uw,
-    momentum_flux_vu,
-    momentum_flux_vv,
-    momentum_flux_vw,
-    momentum_flux_wu,
-    momentum_flux_wv,
-    momentum_flux_ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    AdvectionScheme,
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
@@ -63,6 +53,8 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
 @inline required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
+
+struct DecreasingOrderAdvectionScheme end
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
