@@ -1,6 +1,5 @@
-using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
+using Oceananigans.ImmersedBoundaries: get_active_cells_map
 
 import Oceananigans.TimeSteppers: split_rk3_substep!, _euler_substep_field!, cache_previous_fields!
 

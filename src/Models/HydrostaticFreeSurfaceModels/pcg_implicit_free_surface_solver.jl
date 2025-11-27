@@ -1,9 +1,8 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Architectures
-using Oceananigans.Grids: with_halo, isrectilinear, halo_size
-using Oceananigans.Architectures: device
+using Oceananigans.Grids: isrectilinear, halo_size
 
 import Oceananigans.Solvers: solve!, precondition!, perform_linear_operation!
 import Oceananigans.Architectures: architecture

@@ -2,7 +2,7 @@ using GPUArraysCore
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Grids: Flat, Bounded, ColumnEnsembleSize
+using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure

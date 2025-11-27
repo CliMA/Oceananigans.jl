@@ -1,12 +1,12 @@
 module OceananigansCUDAExt
 
-using Oceananigans
-using InteractiveUtils
-using CUDA, CUDA.CUSPARSE, CUDA.CUFFT
+using InteractiveUtils: versioninfo
+using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
+    context!, cu, CUDA.CUDAKernels.CUDABackend
+using CUDA.CUSPARSE: CuSparseMatrixCSC
+using GPUArraysCore: allowscalar
+using GPUArrays: unsafe_free!
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
-using KernelAbstractions: __dynamic_checkbounds, __iterspace
-using KernelAbstractions
-using SparseArrays
 
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
@@ -16,8 +16,7 @@ import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
 import SparseArrays: SparseMatrixCSC
-import KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds,
-                           __validindex, CompilerMetadata
+import KernelAbstractions: __iterspace, __dynamic_checkbounds, __validindex
 import Oceananigans.DistributedComputations: Distributed
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
@@ -29,7 +28,7 @@ function __init__()
             @debug "$dev: $(CUDA.name(dev))"
         end
 
-        CUDA.allowscalar(false)
+        allowscalar(false)
     end
 end
 
@@ -99,7 +98,7 @@ AC.unified_array(::CUDAGPU, a::AbstractArray) = map(eltype(a), cu(a; unified = t
     return dst
 end
 
-@inline AC.unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
+@inline AC.unsafe_free!(a::CuArray) = unsafe_free!(a)
 
 @inline AC.convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
@@ -114,8 +113,8 @@ function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic},
     return CUDA.CUFFT.plan_fft!(A, dims)
 end
 
-FD.set!(v::Field, a::CuArray) = FD.set_to_array!(v, a)
-DC.set!(v::DC.DistributedField, a::CuArray) = DC.set_to_array!(v, a)
+FD.set!(v::FD.Field, a::CuArray) = FD.set_to_array!(v, a)
+FD.set!(v::DC.DistributedField, a::CuArray) = FD.set_to_array!(v, a)
 
 function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
