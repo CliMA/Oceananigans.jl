@@ -27,7 +27,7 @@ end
         @test ExplicitImports.check_all_qualified_accesses_via_owners(Oceananigans) === nothing
     end
 
-    @testset "Self Qualified Accesses [$(mod)]" for mod in modules
-        @test ExplicitImports.check_no_self_qualified_accesses(mod) === nothing
+    @testset "Self Qualified Accesses" begin
+        @test ExplicitImports.check_no_self_qualified_accesses(Oceananigans) === nothing
     end
 end
