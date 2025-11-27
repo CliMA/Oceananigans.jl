@@ -9,7 +9,7 @@ end
 
 @testset "ExplicitImports" begin
 
-    modules = (Oceananigans.Utils, Oceananigans.OrthogonalSphericalShellGrids, Oceananigans.Diagnostics, Oceananigans.AbstractOperations)
+    modules = (Oceananigans.Utils, Oceananigans.OrthogonalSphericalShellGrids, Oceananigans.Diagnostics, Oceananigans.AbstractOperations, Oceananigans.Models.HydrostaticFreeSurfaceModels)
 
     @testset "Explicit Imports [$(mod)]" for mod in modules
         @test ExplicitImports.check_no_implicit_imports(mod) === nothing

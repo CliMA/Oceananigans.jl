@@ -1,9 +1,9 @@
-using GPUArraysCore
+using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Grids: Flat, Bounded
-using Oceananigans.Fields: ZeroField
+using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
