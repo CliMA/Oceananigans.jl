@@ -1,5 +1,3 @@
-using Statistics: sum!
-
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
 using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing

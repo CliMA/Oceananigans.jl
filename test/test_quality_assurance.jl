@@ -15,8 +15,8 @@ end
         @test ExplicitImports.check_no_implicit_imports(mod) === nothing
     end
 
-    @testset "Import via Owner [$(mod)]" for mod in modules
-        @test ExplicitImports.check_all_explicit_imports_via_owners(mod) === nothing
+    @testset "Import via Owner" begin
+        @test ExplicitImports.check_all_explicit_imports_via_owners(Oceananigans) === nothing
     end
 
     @testset "Stale Explicit Imports" begin
