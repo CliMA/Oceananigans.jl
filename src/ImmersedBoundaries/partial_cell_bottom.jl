@@ -72,7 +72,7 @@ function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
     new_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height)
   
-    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, new_ib)
     fill_halo_regions!(bottom_field)
   
     return new_ib

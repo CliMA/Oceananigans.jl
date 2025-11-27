@@ -10,6 +10,7 @@ Oceananigans.defaults.FloatType = Float32
 # * https://github.com/CliMA/Oceananigans.jl/pull/4124#discussion_r1976449272
 # * https://github.com/CliMA/Oceananigans.jl/pull/4152
 
+#! format: off
 @testset "MetalGPU extension" begin
     metal = Metal.MetalBackend()
     arch = GPU(metal)
@@ -39,14 +40,9 @@ Oceananigans.defaults.FloatType = Float32
     @test iteration(simulation) == 3
     @test time(simulation) == 3minutes
 end
+#! format: on
 
 @testset "MetalGPU: ImmersedBoundaryGrid" begin
-    using Oceananigans
-    using Oceananigans.Units
-    using Oceananigans.BoundaryConditions: fill_halo_regions!
-    using Metal
-
-    Oceananigans.defaults.FloatType = Float32
     arch = GPU(Metal.MetalBackend())
     FT = Oceananigans.defaults.FloatType
 
@@ -78,26 +74,9 @@ end
         return r² ≤ FT(1) ? -Lz * (FT(1) - r²) : FT(1)
     end
 
-    H = Array{FT}(undef, Nx, Ny)
-    H .= FT(0.0)
-    Δx = Lx / FT(Nx - 1)
-    Δy = Ly / FT(Ny - 1)
-    for i = 1:Nx
-        x = (i - 1) * Δx
-        for j = 1:Ny
-            y = (j - 1) * Δy
-            H[i, j] = depth(x, y)
-        end
-    end
-
-    bathymetry = Field{Center,Center,Nothing}(underlying_grid)
-    set!(bathymetry, coalesce.(H, FT(0.0)))
-    fill_halo_regions!(bathymetry)
-
     grid = ImmersedBoundaryGrid(
         underlying_grid,
-        # PartialCellBottom(depth; minimum_fractional_cell_height = FT(0.2)); #TODO does not work in the @testset env
-        PartialCellBottom(bathymetry; minimum_fractional_cell_height=FT(0.2)); #TODO minimum_fractional_cell_height = FT(0.2) is required
+        PartialCellBottom(depth);
         active_cells_map=false,
     )
     @test eltype(grid) == Float32
@@ -130,25 +109,15 @@ end
     @test parent(model.tracers.T) isa MtlArray
     @test parent(model.tracers.S) isa MtlArray
 
-    sim = Simulation(model, Δt=5seconds, stop_iteration=20)
+    simulation = Simulation(model, Δt=5seconds, stop_iteration=20)
+    run!(simulation)
 
-    wizard = TimeStepWizard(cfl=FT(0.7), min_Δt=FT(1second), max_Δt=FT(15seconds))
-    # sim.callbacks[:wizard] = Callback(wizard, IterationInterval(5)) #TODO does not work with MetalGPU
-
-    run!(sim)
-
-    @test iteration(sim) == 20
-    @test time(sim) ≥ 100seconds
+    @test iteration(simulation) == 20
+    @test time(simulation) == 100seconds
 end
 
 @testset "MetalGPU: TimeStepWizard" begin
-    using Oceananigans
-    using Metal
-
-    #! format: off
-    arch = GPU(Metal.MetalBackend()); Oceananigans.defaults.FloatType = Float32
-    #! format: on
-    # arch = CPU()
+    arch = GPU(Metal.MetalBackend())
     FT = Oceananigans.defaults.FloatType
 
     grid = RectilinearGrid(arch; size=(64, 64, 16), x=(0, 5000), y=(0, 5000), z=(-20, 0))
