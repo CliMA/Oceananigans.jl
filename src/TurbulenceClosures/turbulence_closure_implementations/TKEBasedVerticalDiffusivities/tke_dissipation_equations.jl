@@ -129,7 +129,7 @@ end
 
     # Different destruction time-scales for TKE vs dissipation for numerical reasons
     ω★  = ϵ★ / e★ # target / physical dissipation time scale
-    ωe⁻ = closure_ij.negative_tke_damping_time_scale
+    ωe⁻ = 1 / closure_ij.negative_tke_damping_time_scale  # frequency = 1/timescale
     ωe  = ifelse(eⁱʲᵏ < 0, ωe⁻, ω★)
     ωϵ  = ϵⁱʲᵏ / e★
 
@@ -299,11 +299,11 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
         dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                                   top = top_dissipation_bc,
-                                                  bottom = e_bcs.bottom,
-                                                  north = e_bcs.north,
-                                                  south = e_bcs.south,
-                                                  east = e_bcs.east,
-                                                  west = e_bcs.west)
+                                                  bottom = ϵ_bcs.bottom,
+                                                  north = ϵ_bcs.north,
+                                                  south = ϵ_bcs.south,
+                                                  east = ϵ_bcs.east,
+                                                  west = ϵ_bcs.west)
     else
         dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_dissipation_bc)
     end

@@ -326,8 +326,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
 
             # Test HydrostaticFreeSurfaceModel
-            # for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
-            for closure in (nothing, CATKEVerticalDiffusivity(FT))
+            for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
                 @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $(typeof(closure))]"
                 tracers = (:b, :c, :e, :ϵ)
                 clock = Clock(time=DateTime(2020, 1, 1))
