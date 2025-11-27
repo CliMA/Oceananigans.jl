@@ -5,7 +5,6 @@ using Adapt
 using Distances
 
 using Oceananigans
-using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 using GPUArraysCore
 
 const AHCG = AbstractHorizontallyCurvilinearGrid
