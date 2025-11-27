@@ -68,8 +68,8 @@ for (d, ξ) in enumerate((:x, :y, :z))
         end
 
         @eval begin
-            @inline $δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, args...)
-            @inline $δξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, f, args...)
+            @inline Operators.$δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, args...)
+            @inline Operators.$δξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, f, args...)
        end
     end
 end
