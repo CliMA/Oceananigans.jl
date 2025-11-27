@@ -111,9 +111,9 @@ function define_binary_operator(op)
             Lb = Oceananigans.Fields.instantiated_location(b)
             Lab = choose_location.(La, Lb, Lc)
 
-            grid = Oceananigans.AbstractOperations.validate_grid(a, b)
+            grid = $(validate_grid)(a, b)
 
-            return Oceananigans.AbstractOperations._binary_operation(Lab, $op, a, b, La, Lb, grid)
+            return $(_binary_operation)(Lab, $op, a, b, La, Lb, grid)
         end
 
         # Numbers are not fields...
@@ -200,8 +200,8 @@ macro binary(ops...)
         push!(expr.args, :($(esc(defexpr))))
 
         add_to_operator_lists = quote
-            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            push!(Oceananigans.AbstractOperations.binary_operators, Symbol($op))
+            push!($(operators), Symbol($op))
+            push!($(binary_operators), Symbol($op))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))

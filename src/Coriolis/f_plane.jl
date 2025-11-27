@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: prettysummary
 
 """
     struct FPlane{FT} <: AbstractRotation

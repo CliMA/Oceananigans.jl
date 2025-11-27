@@ -1,6 +1,3 @@
-using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-using Oceananigans.Fields: instantiated_location
-
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
