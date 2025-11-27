@@ -1,5 +1,4 @@
 using Adapt
-using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
 using Oceananigans.Fields: AbstractField, default_indices, location

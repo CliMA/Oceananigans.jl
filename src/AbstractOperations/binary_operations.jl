@@ -1,5 +1,3 @@
-using Oceananigans.Operators
-
 const binary_operators = Set()
 
 struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
@@ -234,7 +232,7 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.grid))
 
 
-on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     BinaryOperation{LX, LY, LZ}(on_architecture(to, binary.op),
                                 on_architecture(to, binary.a),
                                 on_architecture(to, binary.b),

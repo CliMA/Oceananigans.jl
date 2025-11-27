@@ -131,7 +131,7 @@ Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            nothing,
                            Adapt.adapt(to, deriv.grid))
 
-on_architecture(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
     Derivative{LX, LY, LZ}(on_architecture(to, deriv.∂),
                            on_architecture(to, deriv.arg),
                            on_architecture(to, deriv.▶),
