@@ -21,8 +21,7 @@ function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGr
 end
 
 # Utility to generate the inputs to complex `getregion`s
-function getregionalproperties(T, inner=true)
-    type = getglobal(@__MODULE__, T)
+function getregionalproperties(type, inner=true)
     names = fieldnames(type)
     args  = Vector(undef, length(names))
     for (n, name) in enumerate(names)
