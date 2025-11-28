@@ -5,7 +5,6 @@ using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
 using Oceananigans.Fields: AbstractField, default_indices, location
 using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
 using Oceananigans.Operators: XNode, YNode, ZNode, ΛNode, ΦNode, RNode
-using Oceananigans.Operators: x, y, z, λ, φ, r
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 

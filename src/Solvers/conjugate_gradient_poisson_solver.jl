@@ -1,5 +1,5 @@
 using Oceananigans.Operators
-using Oceananigans.Operators: Ax_∂xᶠᵃᵃ, Ay_∂yᵃᶠᵃ, Az_∂zᵃᵃᶠ, ∇²ᶜᶜᶜ, Vᶜᶜᶜ
+using Oceananigans.Operators: Vᶜᶜᶜ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
 

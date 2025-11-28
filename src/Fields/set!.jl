@@ -1,9 +1,7 @@
 using KernelAbstractions: @kernel, @index
-using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture, node_names
-using Oceananigans.Architectures: child_architecture, cpu_architecture, device, GPU, CPU
-using Oceananigans.Utils: work_layout
+using Oceananigans.Architectures: child_architecture, cpu_architecture, GPU, CPU
 
 #####
 ##### Utilities

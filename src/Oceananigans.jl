@@ -113,8 +113,7 @@ export
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
-using DocStringExtensions
-using FFTW
+using FFTW: FFTW
 
 function __init__()
     if VERSION >= v"1.13.0"

@@ -11,7 +11,7 @@ using Oceananigans.Fields: ReducedAbstractField,
                            reduced_dimensions,
                            reduced_location
 
-import Oceananigans.Fields: Field, location, set!
+import Oceananigans.Fields: Field, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
