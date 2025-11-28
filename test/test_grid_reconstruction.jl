@@ -361,8 +361,8 @@ N = 6
             test_netcdf_grid_reconstruction(stretched_latlon_grid)
 
             # TODO: Make the functionality below work
-            # test_netcdf_grid_reconstruction(gfboundary_rectilinear_grid)
-            # test_netcdf_grid_reconstruction(gfboundary_latlon_grid)
+            test_netcdf_grid_reconstruction(gfboundary_rectilinear_grid)
+            test_netcdf_grid_reconstruction(gfboundary_latlon_grid)
 
             test_netcdf_grid_reconstruction(gfbottom_rectilinear_grid)
             test_netcdf_grid_reconstruction(gfbottom_latlon_grid)

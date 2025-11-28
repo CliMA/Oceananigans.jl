@@ -37,6 +37,7 @@ using Oceananigans.OutputWriters:
     convert_output,
     fetch_and_convert_output,
     show_array_type
+using NCDatasets: AbstractDataset
 
 import NCDatasets: defVar
 import Oceananigans: write_output!
@@ -113,7 +114,7 @@ squeeze_data(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data
 defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-function defVar(ds, field_name, fd::AbstractField;
+function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
                 array_type=Array{eltype(fd)},
                 time_dependent=false,
                 with_halos=false,
@@ -137,6 +138,8 @@ function defVar(ds, field_name, fd::AbstractField;
         defVar(ds, field_name, eltype(array_type), effective_dim_names; kwargs...)
     end
 end
+
+defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
 
 #####
 ##### Dimension validation
@@ -894,9 +897,9 @@ end
 
 function reconstruct_grid(ds)
     # Read back the grid reconstruction metadata
-    underlying_grid_reconstruction_args = ds.group["underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_args   = ds.group["underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
     underlying_grid_reconstruction_kwargs = ds.group["underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
-    grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+    grid_reconstruction_metadata          = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
     # Pop out infomration about the underlying grid
     underlying_grid_type = grid_reconstruction_metadata[:underlying_grid_type]
