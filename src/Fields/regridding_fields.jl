@@ -1,8 +1,8 @@
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: on_architecture, architecture
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
-using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode, total_length
+using Oceananigans.Operators: Δzᶜᶜᶜ, Azᶜᶜᶜ
+using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode
 using LinearAlgebra
 
 using Base: ForwardOrdering

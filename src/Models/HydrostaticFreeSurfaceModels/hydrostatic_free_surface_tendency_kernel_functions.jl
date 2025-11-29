@@ -1,6 +1,3 @@
-using Oceananigans.BuoyancyFormulations
-using Oceananigans.Coriolis
-using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity

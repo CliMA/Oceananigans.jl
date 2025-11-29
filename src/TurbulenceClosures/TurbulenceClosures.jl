@@ -51,7 +51,6 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.BuoyancyFormulations
 using Oceananigans.Utils
 
-using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 
