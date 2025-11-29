@@ -2,8 +2,7 @@ module Diagnostics
 
 export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
 
-using Oceananigans
-using Oceananigans.Operators
+using Oceananigans: fields
 
 using Oceananigans: AbstractDiagnostic
 

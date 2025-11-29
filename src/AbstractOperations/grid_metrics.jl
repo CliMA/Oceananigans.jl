@@ -1,10 +1,9 @@
 using Adapt
-using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
 using Oceananigans.Fields: AbstractField, default_indices, location
 using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
-using Oceananigans.Operators: XNode, YNode, ZNode, ΛNode, ΦNode, RNode
+using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
@@ -39,7 +38,7 @@ function metric_function(loc, metric)
     else
         metric_function_symbol = Symbol(metric, code...)
     end
-    return getglobal(@__MODULE__, metric_function_symbol)
+    return getglobal(Operators, metric_function_symbol)
 end
 
 """

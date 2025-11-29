@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: interior_parent_indices, prettysummary
+using Oceananigans.Grids: prettysummary
 using LinearAlgebra: norm, dot
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index

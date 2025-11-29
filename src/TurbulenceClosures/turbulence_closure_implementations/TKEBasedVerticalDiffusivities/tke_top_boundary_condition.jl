@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, BoundaryCondition, Flux
+using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction
 
 struct TKETopBoundaryConditionParameters{C, U}
     top_tracer_boundary_conditions :: C
