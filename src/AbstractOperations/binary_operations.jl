@@ -1,5 +1,3 @@
-using Oceananigans.Operators
-
 const binary_operators = Set()
 
 struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
@@ -111,9 +109,9 @@ function define_binary_operator(op)
             Lb = Oceananigans.Fields.instantiated_location(b)
             Lab = choose_location.(La, Lb, Lc)
 
-            grid = Oceananigans.AbstractOperations.validate_grid(a, b)
+            grid = $(validate_grid)(a, b)
 
-            return Oceananigans.AbstractOperations._binary_operation(Lab, $op, a, b, La, Lb, grid)
+            return $(_binary_operation)(Lab, $op, a, b, La, Lb, grid)
         end
 
         # Numbers are not fields...
@@ -200,8 +198,8 @@ macro binary(ops...)
         push!(expr.args, :($(esc(defexpr))))
 
         add_to_operator_lists = quote
-            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            push!(Oceananigans.AbstractOperations.binary_operators, Symbol($op))
+            push!($(operators), Symbol($op))
+            push!($(binary_operators), Symbol($op))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))
@@ -234,7 +232,7 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.grid))
 
 
-on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     BinaryOperation{LX, LY, LZ}(on_architecture(to, binary.op),
                                 on_architecture(to, binary.a),
                                 on_architecture(to, binary.b),

@@ -16,7 +16,6 @@ export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes, rnodes
-export spacings
 export xspacings, yspacings, zspacings, λspacings, φspacings, rspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
@@ -32,7 +31,7 @@ using Printf
 using Oceananigans
 using Oceananigans.Architectures
 
-import Base: size, length, eltype, show, -
+import Base: size, length, eltype, -
 import Oceananigans.Architectures: architecture, on_architecture
 
 #####

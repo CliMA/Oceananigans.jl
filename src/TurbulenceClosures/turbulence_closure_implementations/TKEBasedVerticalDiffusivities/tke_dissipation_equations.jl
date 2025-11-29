@@ -1,10 +1,5 @@
 using Oceananigans: fields
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
-using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: get_active_cells_map
-using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
-using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
+using Oceananigans.TimeSteppers: implicit_step!
 
 Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
@@ -68,7 +63,7 @@ function time_step_tke_dissipation_equations!(model)
                 compute_tke_dissipation_diffusivities!,
                 κe, κϵ,
                 grid, closure,
-                model.velocities, model.tracers, model.buoyancy)
+                model.velocities, model.tracers, buoyancy_force(model))
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
@@ -77,7 +72,7 @@ function time_step_tke_dissipation_equations!(model)
                 Le, Lϵ,
                 grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, closure_fields,
+                model.tracers, buoyancy_force(model), closure_fields,
                 Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
 
         implicit_step!(e, implicit_solver, closure,

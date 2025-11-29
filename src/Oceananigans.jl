@@ -51,8 +51,7 @@ export
 
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, TEOS10,
-    BuoyancyField,
+    LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
@@ -91,7 +90,6 @@ export
 
     # Simulations
     Simulation, run!, Callback, add_callback!, iteration,
-    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
@@ -290,5 +288,6 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
+using .Operators
 
 end # module

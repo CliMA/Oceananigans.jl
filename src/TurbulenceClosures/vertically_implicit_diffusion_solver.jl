@@ -1,6 +1,6 @@
-using Oceananigans.Operators: Δz⁻¹, Δr⁻¹
+using Oceananigans.Operators: Δz⁻¹
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
 
 import Oceananigans.Solvers: get_coefficient

@@ -5,7 +5,6 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
-    HeptadiagonalIterativeSolver,
     KrylovSolver
 
 using Statistics
@@ -14,14 +13,14 @@ using GPUArraysCore
 using SparseArrays
 using KernelAbstractions
 
-using Oceananigans.Architectures: device, CPU, GPU, array_type, on_architecture
+using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 
-using Oceananigans.Grids: unpack_grid, inactive_cell
+using Oceananigans.Grids: inactive_cell
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 
 """
