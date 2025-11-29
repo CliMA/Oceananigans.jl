@@ -1,5 +1,5 @@
 using Oceananigans.Grids: prettysummary
-using Oceananigans.Utils: shortsummary
+using Oceananigans.Utils: shortsummary, construct_regionally
 
 struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
@@ -76,7 +76,7 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
                                         Adapt.adapt(to, κ.grid),
                                         Tuple(Adapt.adapt(to, a) for a in κ.arguments)...)
 
-on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(on_architecture(to, κ.kernel_function),
                                         on_architecture(to, κ.grid),
                                         Tuple(on_architecture(to, a) for a in κ.arguments)...)
