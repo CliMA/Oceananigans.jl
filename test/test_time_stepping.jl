@@ -323,7 +323,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            clock = Clock(time=TimeDate(2020))
+            clock = Clock(; time=TimeDate(2020))
             model = NonhydrostaticModel(; grid, clock)
             time_step!(model, 123e-9)  # 123 nanoseconds
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
@@ -334,7 +334,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
 
                 tracers = (:b, :c, :e, :ϵ)
-                clock = Clock(time=DateTime(2020, 1, 1))
+                last_Δt = convert(FT, Inf)
+                last_stage_Δt = convert(FT, Inf)
+                clock = Clock(; time=DateTime(2020, 1, 1), last_Δt, last_stage_Δt)
                 grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
                 @test eltype(grid) == FT
 
