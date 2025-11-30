@@ -310,10 +310,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     for arch in archs, FT in float_types
         A = typeof(arch)
+        Oceananigans.defaults.FloatType = FT
         @testset "Time stepping with DateTimes [$A, $FT]" begin
             @info "  Testing NonhydrostaticModel time stepping with datetime clocks [$A, $FT]"
 
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+            @test eltype(grid) == FT
+
             clock = Clock(time=DateTime(2020))
             model = NonhydrostaticModel(; grid, clock)
 
@@ -329,11 +332,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
                 C = nameof(typeof(closure))
                 @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
+
                 tracers = (:b, :c, :e, :ϵ)
                 clock = Clock(time=DateTime(2020, 1, 1))
-                grid = RectilinearGrid(arch, FT; size=(2, 2, 2), extent=(1, 1, 1))
-                model = HydrostaticFreeSurfaceModel(; grid, clock, closure, tracers,
-                                                    buoyancy = BuoyancyTracer())
+                grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
+                @test eltype(grid) == FT
+
+                model = HydrostaticFreeSurfaceModel(; grid, clock, closure, tracers, buoyancy = BuoyancyTracer())
                 time_step!(model, 1)
                 @test model.clock.time == DateTime("2020-01-01T00:00:01")
             end
