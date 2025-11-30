@@ -111,8 +111,8 @@ squeeze_data(fd::AbstractField; kwargs...) = squeeze_data(fd, parent(fd); kwargs
 
 squeeze_data(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data(fd.operand; kwargs...)
 
-defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
-defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
 function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
                 array_type=Array{eltype(fd)},
