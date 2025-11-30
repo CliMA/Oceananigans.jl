@@ -39,7 +39,8 @@ function time_step_tke_dissipation_equations!(model)
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt
+    FT = eltype(model.tracers.e)
+    Δt = convert(FT, model.clock.last_Δt)
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
@@ -49,8 +50,6 @@ function time_step_tke_dissipation_equations!(model)
         M = ceil(Int, Δt / Δτ) # number of substeps
         Δτ = Δt / M
     end
-
-    FT = eltype(grid)
 
     for m = 1:M # substep
         if m == 1 && M != 1
@@ -171,8 +170,9 @@ end
     end
 
     # Advance TKE and store tendency
-    FT = eltype(χ)
+    FT = eltype(e)
     Δτ = convert(FT, Δτ)
+    χ = convert(FT, χ)
 
     # See below.
     α = convert(FT, 1.5) + χ
@@ -271,9 +271,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
     parameters = TKETopBoundaryConditionParameters(top_tracer_bcs, top_velocity_bcs)
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
-
     top_dissipation_bc = FluxBoundaryCondition(top_dissipation_flux, discrete_form=true, parameters=parameters)
-
 
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
