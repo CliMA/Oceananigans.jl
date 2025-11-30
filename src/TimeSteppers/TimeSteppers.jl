@@ -9,8 +9,6 @@ export
 
 using KernelAbstractions
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
-using Oceananigans.Architectures: device
-using Oceananigans.Utils: work_layout
 
 """
     abstract type AbstractTimeStepper

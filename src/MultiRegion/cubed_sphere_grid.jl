@@ -1,7 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: halo_size,
                           size_summary,
-                          total_length,
                           topology
 
 using CubedSphere

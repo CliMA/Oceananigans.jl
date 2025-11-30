@@ -1,4 +1,3 @@
-using Oceananigans.Fields: AbstractField
 using Oceananigans.Grids: znode, ZFlatGrid
 using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ
 

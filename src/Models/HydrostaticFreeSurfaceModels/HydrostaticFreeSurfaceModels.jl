@@ -7,21 +7,21 @@ export
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
-using Adapt
+using Adapt: Adapt
 
-using Oceananigans.Utils
-using Oceananigans.Utils: launch!
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Utils: launch!, @apply_regionally
+using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans.Fields: ZFaceField
+using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 
-using DocStringExtensions
+using DocStringExtensions: TYPEDFIELDS
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Models: materialize_free_surface
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
-import Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, architecture
 
-using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -37,7 +37,7 @@ Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
 Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
 
 Adapt.adapt_structure(to, coord::ZStarCoordinate) = ZStarCoordinate(Adapt.adapt(to, coord.storage))
-on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
+Architectures.on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -163,7 +163,7 @@ displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
