@@ -910,6 +910,7 @@ function reconstruct_grid(ds)
         grid = underlying_grid
     else
         immersed_boundary = reconstruct_immersed_boundary(ds)
+        immersed_boundary = on_architecture(architecture(underlying_grid), immersed_boundary)
         grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
     end
 
