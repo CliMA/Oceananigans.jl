@@ -1,5 +1,4 @@
 using Oceananigans.Grids: topology, node, _node, φnode, λnode,
-                          xspacings, yspacings, zspacings, λspacings, φspacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,

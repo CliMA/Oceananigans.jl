@@ -61,7 +61,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 
 # ## A Gaussian wavepacket
 #
-# Next, we set up an initial condition that excites an internal wave that progates
+# Next, we set up an initial condition that excites an internal wave that propagates
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math

@@ -51,13 +51,12 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.BuoyancyFormulations
 using Oceananigans.Utils
 
-using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z, prettysummary
 import Oceananigans.Architectures: on_architecture
-import Oceananigans.Utils: with_tracers, prettysummary
+import Oceananigans.Utils: with_tracers
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -184,6 +183,10 @@ include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
 # Only numbers, arrays, and functions supported now.
 @inline closure_coefficient(i, j, k, grid, C::Number) = C
 @inline closure_coefficient(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+@inline function closure_coefficient(i, j, k, grid, C)
+    x, y, z = node(i, j, k, grid, c, c, c)
+    return C(x, y, z)
+end
 
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")

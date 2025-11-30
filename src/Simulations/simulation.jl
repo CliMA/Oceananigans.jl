@@ -1,4 +1,4 @@
-using Oceananigans: prognostic_fields, AbstractModel
+using Oceananigans: AbstractModel
 import Dates
 
 using Dates: AbstractTime
