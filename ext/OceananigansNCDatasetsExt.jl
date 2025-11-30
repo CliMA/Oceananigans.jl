@@ -736,57 +736,6 @@ function default_output_attributes(model)
     return merge(velocity_attrs, tracer_attrs)
 end
 
-#####
-##### Gather grid reconstruction attributes (also used for FieldTimeSeries support)
-#####
-
-function grid_attributes(grid::RectilinearGrid)
-    TX, TY, TZ = topology(grid)
-
-    dims = Dict()
-
-    attrs = Dict("type" => string(nameof(typeof(grid))),
-                 "eltype" => string(eltype(grid)),
-                 "TX" => string(TX),
-                 "TY" => string(TY),
-                 "TZ" => string(TZ),
-                 "Nx" => grid.Nx,
-                 "Ny" => grid.Ny,
-                 "Nz" => grid.Nz,
-                 "Hx" => grid.Hx,
-                 "Hy" => grid.Hy,
-                 "Hz" => grid.Hz)
-
-    return attrs, dims
-end
-
-function grid_attributes(grid::LatitudeLongitudeGrid)
-    TX, TY, TZ = topology(grid)
-
-    dims = Dict()
-
-    attrs = Dict("type" => string(nameof(typeof(grid))),
-                 "eltype" => string(eltype(grid)),
-                 "TX" => string(TX),
-                 "TY" => string(TY),
-                 "TZ" => string(TZ),
-                 "Nx" => grid.Nx,
-                 "Ny" => grid.Ny,
-                 "Nz" => grid.Nz,
-                 "Hx" => grid.Hx,
-                 "Hy" => grid.Hy,
-                 "Hz" => grid.Hz)
-
-    return attrs, dims
-end
-
-function grid_attributes(ibg::ImmersedBoundaryGrid)
-    attrs, dims = grid_attributes(ibg.underlying_grid)
-    immersed_attrs = Dict("immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary))))
-    attrs = merge(attrs, immersed_attrs)
-    return attrs, dims
-end
-
 # Using OrderedDict to preserve order of keys (important when saving positional arguments), and string(key) because that's what NetCDF supports as global_attributes.
 convert_for_netcdf(dict::AbstractDict) = OrderedDict(string(key) => convert_for_netcdf(value) for (key, value) in dict)
 convert_for_netcdf(x::Number) = x
@@ -840,16 +789,6 @@ end
 write_immersed_boundary_data!(ds, grid, immersed_grid_args) = nothing
 
 function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
-
-    # Save buman-readable grid attributes for inspection. Not used for reconstruction.
-    # TODO: Remove this once we have a better way to save grid attributes.
-    grid_attrs, grid_dims = grid_attributes(grid)
-    sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first) # Organizes attributes to make it more easily human-readable
-    ds_grid = defGroup(ds, "grid_attributes"; attrib = sorted_grid_attrs)
-    for (dim_name, dim_array) in grid_dims
-        defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
-    end
-
     underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata = netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs, grid_metadata = map(convert_for_netcdf, (underlying_grid_args, underlying_grid_kwargs, grid_metadata))
 
@@ -877,8 +816,6 @@ function reconstruct_immersed_boundary(ds)
     if immersed_boundary_type == GridFittedBottom
         bottom_height = Array(ibg_group["bottom_height"])
         immersed_boundary = immersed_boundary_type(bottom_height)
-        # immersed_grid_reconstruction_kwargs = ibg_group.attrib |> materialize_from_netcdf
-        # immersed_boundary = immersed_boundary_type(bottom_height; immersed_grid_reconstruction_kwargs...)
 
     elseif immersed_boundary_type == PartialCellBottom
         bottom_height = Array(ibg_group["bottom_height"])
