@@ -334,9 +334,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
 
                 tracers = (:b, :c, :e, :ϵ)
-                last_Δt = convert(FT, Inf)
-                last_stage_Δt = convert(FT, Inf)
-                clock = Clock(; time=DateTime(2020, 1, 1), last_Δt, last_stage_Δt)
+                clock = Clock(; time=DateTime(2020, 1, 1))
                 grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
                 @test eltype(grid) == FT
 
