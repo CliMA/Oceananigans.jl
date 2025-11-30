@@ -8,7 +8,8 @@ using Adapt
 maybe_field(u, args...) = u
 
 function maybe_field(u::Number, loc, grid, u_bcs)
-    bcs = FieldBoundaryConditions(grid, loc; u_bcs..., immersed = ImmersedBoundaryCondition(; u_bcs...))
+    immersed_bcs = ImmersedBoundaryCondition(; u_bcs...)
+    bcs = FieldBoundaryConditions(grid, loc; u_bcs..., immersed = immersed_bcs)
     u_field = Field(loc, grid; boundary_conditions = bcs)
     set!(u_field, u)
     fill_halo_regions!(u_field)

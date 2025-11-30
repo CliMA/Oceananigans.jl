@@ -9,7 +9,7 @@ using CairoMakie
 function build_grid(use_immersed_grid::Bool;
     Nx = 16,
     Nz = 16,
-    Lx = 1/2,
+    Lx = 1,
     Lz = 1,
     )
     underlying_grid = RectilinearGrid(CPU();
@@ -33,7 +33,7 @@ function build_simulation(grid;
     output_filename::String="nonhydrostatic_tracer_circle_2d.nc",
     progress_label::String="")
 
-    c_forcing = AdvectiveForcing(w = w₀; grid)
+    c_forcing = AdvectiveForcing(w = w₀; grid, normal_boundary_condition=OpenBoundaryCondition(w₀))
 
     model = NonhydrostaticModel(
         grid = grid,
