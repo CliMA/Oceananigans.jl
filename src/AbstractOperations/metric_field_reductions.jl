@@ -1,7 +1,7 @@
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
-using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
-using Oceananigans.Fields: filter_nothing_dims, instantiated_location
+using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
+using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
 #####
 ##### Metric inference

@@ -1,4 +1,4 @@
-using Oceananigans
+using Oceananigans: Oceananigans
 using Oceananigans.Fields: default_indices, compute_index_intersection
 
 """
