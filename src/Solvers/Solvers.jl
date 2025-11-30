@@ -52,4 +52,14 @@ fft_poisson_solver(grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
 fft_poisson_solver(grid::GridWithFourierTridiagonalSolver) =
     FourierTridiagonalPoissonSolver(grid)
 
+const FFTW_NUM_THREADS = Ref{Int}(1)
+
+function __init__()
+
+    # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
+    # but don't affect global FFTW configuration for other packages using FFTW
+    # FFTW.set_num_threads(4threads)
+    FFTW_NUM_THREADS[] = 4 * Threads.nthreads()
+end
+
 end # module

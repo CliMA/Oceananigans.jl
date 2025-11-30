@@ -309,22 +309,43 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @info "Testing time stepping..."
 
     for arch in archs, FT in float_types
-        @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
-            @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
+        A = typeof(arch)
+        Oceananigans.defaults.FloatType = FT
+        @testset "Time stepping with DateTimes [$A, $FT]" begin
+            @info "  Testing NonhydrostaticModel time stepping with datetime clocks [$A, $FT]"
 
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+            @test eltype(grid) == FT
+
             clock = Clock(time=DateTime(2020))
-            model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2)
+            model = NonhydrostaticModel(; grid, clock)
 
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            model = NonhydrostaticModel(grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1)),
-                                        timestepper = :QuasiAdamsBashforth2,
-                                        clock = Clock(time=TimeDate(2020)))
-
+            clock = Clock(; time=TimeDate(2020))
+            model = NonhydrostaticModel(; grid, clock)
             time_step!(model, 123e-9)  # 123 nanoseconds
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
+
+            # Test HydrostaticFreeSurfaceModel
+            for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
+                if closure isa TKEDissipationVerticalDiffusivity && FT == Float32
+                    # skip --- TKEDissipationVerticalDiffusivity may not work with Float32 yet
+                else
+                    C = nameof(typeof(closure))
+                    @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
+
+                    tracers = (:b, :c, :e, :ϵ)
+                    clock = Clock(; time=DateTime(2020, 1, 1))
+                    grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
+                    @test eltype(grid) == FT
+
+                    model = HydrostaticFreeSurfaceModel(; grid, clock, closure, tracers, buoyancy = BuoyancyTracer())
+                    time_step!(model, 1)
+                    @test model.clock.time == DateTime("2020-01-01T00:00:01")
+                end
+            end
         end
     end
 
