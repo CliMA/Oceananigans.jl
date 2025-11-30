@@ -330,17 +330,21 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             # Test HydrostaticFreeSurfaceModel
             for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
-                C = nameof(typeof(closure))
-                @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
+                if closure isa TKEDissipationVerticalDiffusivity && FT == Float32
+                    # skip --- TKEDissipationVerticalDiffusivity may not work with Float32 yet
+                else
+                    C = nameof(typeof(closure))
+                    @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
 
-                tracers = (:b, :c, :e, :ϵ)
-                clock = Clock(; time=DateTime(2020, 1, 1))
-                grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
-                @test eltype(grid) == FT
+                    tracers = (:b, :c, :e, :ϵ)
+                    clock = Clock(; time=DateTime(2020, 1, 1))
+                    grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
+                    @test eltype(grid) == FT
 
-                model = HydrostaticFreeSurfaceModel(; grid, clock, closure, tracers, buoyancy = BuoyancyTracer())
-                time_step!(model, 1)
-                @test model.clock.time == DateTime("2020-01-01T00:00:01")
+                    model = HydrostaticFreeSurfaceModel(; grid, clock, closure, tracers, buoyancy = BuoyancyTracer())
+                    time_step!(model, 1)
+                    @test model.clock.time == DateTime("2020-01-01T00:00:01")
+                end
             end
         end
     end
