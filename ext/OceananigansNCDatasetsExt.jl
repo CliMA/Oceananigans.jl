@@ -17,7 +17,7 @@ using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
                           parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
-                          constructor_arguments
+                          constructor_arguments, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
