@@ -52,6 +52,12 @@ using Oceananigans.Grids: Flat
 ##### 3D and 2D differences
 #####
 
+# Export one dimensional difference operators
+export δxᶠᵃᵃ, δxᶜᵃᵃ
+export δyᵃᶠᵃ, δyᵃᶜᵃ
+export δzᵃᵃᶠ, δzᵃᵃᶜ
+
+# Define and export 2D and 3D differences
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
     if !(ℓ2 == ℓ3 == :ᵃ) # 1D differences are defined above!
         δx = Symbol(:δx, ℓ1, ℓ2, ℓ3)
