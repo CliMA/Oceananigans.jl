@@ -3,7 +3,6 @@
 #####
 
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Grids: Bounded, Face, topology
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
@@ -138,8 +137,9 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
-periphery_offset(loc, topo, N) = 0
-periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
+# To be extended in the `Grids` modules for non-trivial peripheries,
+# for all other cases, `periphery_offset` is zero.
+periphery_offset(loc, grid, side) = 0
 
 """
     interior_work_layout(grid, dims, location)
@@ -162,13 +162,11 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     ℓx = instantiate(LX)
     ℓy = instantiate(LY)
     ℓz = instantiate(LZ)
-    TX, TY, TZ = topology(grid)
-    tx, ty, tz = TX(), TY(), TZ()
 
     # Offsets
-    ox = periphery_offset(ℓx, tx, Nx)
-    oy = periphery_offset(ℓy, ty, Ny)
-    oz = periphery_offset(ℓz, tz, Nz)
+    ox = periphery_offset(ℓx, grid, 1)
+    oy = periphery_offset(ℓy, grid, 2)
+    oz = periphery_offset(ℓz, grid, 3)
 
     # Worksize
     Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
