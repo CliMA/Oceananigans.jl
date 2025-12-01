@@ -439,7 +439,7 @@ end
 
 import Oceananigans.Utils: periphery_offset
 
-function periphery_offset(loc, grid::AbstractGrid, side::Int) 
+function periphery_offset(loc, grid::AbstractGrid, side::Int)
     T = topology(grid, side)
     N = size(grid, side)
 
