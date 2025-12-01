@@ -1,14 +1,12 @@
-using OrderedCollections: OrderedDict
-
-using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy, SeawaterBuoyancy
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
+using Oceananigans.DistributedComputations: Distributed
+using Oceananigans.Fields: Field, CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
@@ -17,7 +15,8 @@ using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_s
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
-import Oceananigans.Models: total_velocities, timestepper
+import Oceananigans.Models: total_velocities
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -68,7 +67,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 clock = Clock{Float64}(time = 0),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
-                                buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                buoyancy = nothing,
                                 coriolis = nothing,
                                 free_surface = [default_free_surface],
                                 forcing::NamedTuple = NamedTuple(),
@@ -220,9 +219,9 @@ function HydrostaticFreeSurfaceModel(; grid,
     G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
 
-    # Regularize forcing for model tracer and velocity fields.
+    # Materialize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)
-    forcing = model_forcing(model_fields; forcing...)
+    forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
@@ -257,7 +256,6 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
-
-# return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
-
+buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
+buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers

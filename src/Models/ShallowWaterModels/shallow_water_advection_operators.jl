@@ -11,8 +11,6 @@ using Oceananigans.Advection:
     bernoulli_head_V
 
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
-
 
 #####
 ##### Momentum flux operators

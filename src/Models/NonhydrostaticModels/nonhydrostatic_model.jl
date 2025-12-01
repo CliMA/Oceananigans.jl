@@ -1,9 +1,7 @@
-using OrderedCollections: OrderedDict
-
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: Centered, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy, SeawaterBuoyancy
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -20,7 +18,8 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities, timestepper
+import Oceananigans.Models: total_velocities
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -261,8 +260,8 @@ function NonhydrostaticModel(; grid,
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
 
-    # Regularize forcing for model tracer and velocity fields.
-    forcing = model_forcing(model_fields; forcing...)
+    # Materialize forcing for model tracer and velocity fields.
+    forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
     # Initialize boundary mass fluxes container
     boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)
@@ -297,6 +296,6 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 end
 
 # return the total advective velocities
-@inline total_velocities(m::NonhydrostaticModel) =
-    sum_of_velocities(m.velocities, m.background_fields.velocities)
-
+@inline total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
+buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
+buoyancy_tracers(model::NonhydrostaticModel) = model.tracers

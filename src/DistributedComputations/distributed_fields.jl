@@ -11,7 +11,7 @@ using Oceananigans.Fields: ReducedAbstractField,
                            reduced_dimensions,
                            reduced_location
 
-import Oceananigans.Fields: Field, location, set!
+import Oceananigans.Fields: Field, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
@@ -62,13 +62,24 @@ function set!(u::DistributedField, V::Field)
     end
 end
 
+# Fallback -> not implemented
+synchronize_communication!(var) = throw(ArgumentError("`synchronize_communication!` not implemented for variables of type $(typeof(var))"))
+
+# Methods for types that do not require synchronization
+synchronize_communication!(::AbstractField) = nothing
+synchronize_communication!(::AbstractArray) = nothing   
+synchronize_communication!(::Number)        = nothing
+synchronize_communication!(::Nothing)       = nothing
+
+# Distribute synchronize_communication! over tuples and named tuples
+synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)
 
 """
     synchronize_communication!(field)
 
 complete the halo passing of `field` among processors.
 """
-function synchronize_communication!(field)
+function synchronize_communication!(field::DistributedField)
     arch = architecture(field.grid)
 
     # Wait for outstanding requests
