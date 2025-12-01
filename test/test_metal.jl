@@ -81,10 +81,7 @@ end
     )
     @test eltype(grid) == Float32
 
-    cᴾ = FT(4184.0) # J K⁻¹ kg⁻¹, typical heat capacity for fresh water 
-    ρₐ = FT(1.0)    # kg m⁻³, 
-    ρ₀ = FT(1000.0) # kg m⁻³,
-    Qᵀ = Qʰ / (ρ₀ * cᴾ) # K m s⁻¹, surface _temperature_ flux
+    Qᵀ = FT(0.01)
     T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵀ))
 
     Qᵘ = - FT(1e-4)
