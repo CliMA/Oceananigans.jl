@@ -163,40 +163,47 @@ function relaxed_time_stepping(arch, mask_type)
     return true
 end
 
-function advective_and_multiple_forcing(arch)
-    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, immersed=false)
+
+    if immersed
+        zmin, zmax = znodes(grid, Face()) |> extrema
+        bottom = (zmin + zmax) / 2
+        grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+    end
 
     constant_slip = AdvectiveForcing(w=1)
     zero_slip = AdvectiveForcing(w=0)
     no_penetration = ImpenetrableBoundaryCondition()
-    slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
+    slip_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
     set!(slip_velocity, 1)
     velocity_field_slip = AdvectiveForcing(w=slip_velocity)
     zero_forcing(x, y, z, t) = 0
     one_forcing(x, y, z, t) = 1
 
-    model = NonhydrostaticModel(; grid,
-                                timestepper = :QuasiAdamsBashforth2,
-                                tracers = (:a, :b, :c),
-                                forcing = (a = constant_slip,
-                                           b = (zero_forcing, velocity_field_slip),
-                                           c = (one_forcing, zero_slip)))
+    model = model_type(; grid,
+                       timestepper = :QuasiAdamsBashforth2,
+                       tracers = (:a, :b, :c),
+                       forcing = (a = constant_slip,
+                                  b = (zero_forcing, velocity_field_slip),
+                                  c = (one_forcing, zero_slip)))
 
-    a₀ = rand(size(grid)...)
-    b₀ = rand(size(grid)...)
-    set!(model, a=a₀, b=b₀, c=0)
+    noise(x, y, z) = rand()
+    set!(model, a=noise, b=noise, c=0)
+    a₀ = model.tracers.a |> deepcopy
+    b₀ = model.tracers.b |> deepcopy
 
     # Time-step without an error?
     time_step!(model, 1, euler=true)
 
-    a₁ = Array(interior(model.tracers.a))
-    b₁ = Array(interior(model.tracers.b))
-    c₁ = Array(interior(model.tracers.c))
+    a₁ = model.tracers.a
+    b₁ = model.tracers.b
+    c₁ = model.tracers.c
 
     a_changed = a₁ ≠ a₀
     b_changed = b₁ ≠ b₀
-    c_correct = all(c₁ .== model.clock.time)
+    effective_bottom = immersed ? (grid.Nz÷2 + 1) : 1
+    c_correct = all(interior(c₁, :, :, effective_bottom:grid.Nz) .== model.clock.time)
 
     return a_changed & b_changed & c_correct
 end
@@ -285,7 +292,13 @@ end
 
             @testset "Advective and multiple forcing [$A]" begin
                 @info "      Testing advective and multiple forcing [$A]..."
-                @test advective_and_multiple_forcing(arch)
+                rectilinear_grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+                latlon_grid = LatitudeLongitudeGrid(arch, size=(4, 5, 6), longitude=(-180, 180), latitude=(-85, 85), z=(-1, 0), halo=(4, 4, 4))
+
+                for grid in (rectilinear_grid, latlon_grid), model_type in (NonhydrostaticModel, HydrostaticFreeSurfaceModel), immersed in (false, true)
+                    @test advective_and_multiple_forcing(grid; model_type=model_type, immersed=immersed)
+                end
+
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
             end

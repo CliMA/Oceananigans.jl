@@ -1,7 +1,6 @@
 using Oceananigans.Fields: validate_indices, Reduction
-using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
-using Oceananigans.Utils: getregion, @apply_regionally
+using Oceananigans.Utils: @apply_regionally
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)

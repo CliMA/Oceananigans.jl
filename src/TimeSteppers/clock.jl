@@ -1,9 +1,8 @@
 using Adapt
-using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
+using Dates: AbstractTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
 
-import Base: show
 import Oceananigans.Units: Time
 import Oceananigans.Fields: set!
 

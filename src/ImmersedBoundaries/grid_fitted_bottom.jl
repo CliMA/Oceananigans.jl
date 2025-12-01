@@ -1,7 +1,5 @@
 using Adapt
-using OffsetArrays: OffsetArray
-using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: total_size, rnode
+using Oceananigans.Grids: rnode
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
