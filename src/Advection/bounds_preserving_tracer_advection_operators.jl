@@ -10,6 +10,8 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
 @inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, U, ::ZeroField) = zero(grid)
 
 # Is this immersed-boundary safe without having to extend it in ImmersedBoundaries.jl? I think so... (velocity on immmersed boundaries is masked to 0)
+# For bounds preserving advection, we need fluxes at both cell-faces to compute the flux on one face.
+# So we extend div_Uc in order to compute the fluxes at i and i+1 in one go and avoid recomputation.
 @inline function div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, U, c)
     div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, 1, U.u, c)
     div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, 1, U.v, c)
