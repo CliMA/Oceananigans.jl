@@ -382,7 +382,7 @@ end
 ##### We also use the function "volume" rather than `V`.
 #####
 
-function interpolate_location(val::Symbol) 
+function location_from_superscript(val::Symbol) 
     if val == :ᶜ 
         return :Center 
     elseif val == :ᶠ 
@@ -396,9 +396,9 @@ export Δx, Δy, Δz, Δλ, Δφ, Δr, Ax, Ay, Az
 
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
 
-    L1 = interpolate_location(ℓ1)
-    L2 = interpolate_location(ℓ2)
-    L3 = interpolate_location(ℓ3)
+    L1 = location_from_superscript(ℓ1)
+    L2 = location_from_superscript(ℓ2)
+    L3 = location_from_superscript(ℓ3)
 
     spacing_x = Symbol(:Δx, ℓ1, ℓ2, ℓ3)
     spacing_λ = Symbol(:Δλ, ℓ1, ℓ2, ℓ3) 
@@ -421,9 +421,9 @@ end
 
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
 
-    L1 = interpolate_location(ℓ1)
-    L2 = interpolate_location(ℓ2)
-    L3 = interpolate_location(ℓ3)
+    L1 = location_from_superscript(ℓ1)
+    L2 = location_from_superscript(ℓ2)
+    L3 = location_from_superscript(ℓ3)
 
     area_x = Symbol(:Ax, ℓ3, ℓ1, ℓ2)
     area_y = Symbol(:Ay, ℓ1, ℓ3, ℓ2)
@@ -440,9 +440,9 @@ end
 
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ)
 
-    L1 = interpolate_location(ℓ1)
-    L2 = interpolate_location(ℓ2)
-    L3 = interpolate_location(ℓ3)
+    L1 = location_from_superscript(ℓ1)
+    L2 = location_from_superscript(ℓ2)
+    L3 = location_from_superscript(ℓ3)
     V  =  Symbol(:V, ℓ1, ℓ2, ℓ3)
 
     @eval begin
