@@ -1,6 +1,5 @@
-using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
+using Oceananigans.ImmersedBoundaries: get_active_cells_map
 
 import Oceananigans.TimeSteppers: split_rk3_substep!, _euler_substep_field!, cache_previous_fields!
 
@@ -44,7 +43,7 @@ function rk3_substep_velocities!(velocities, model, Δt)
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
-                       model.diffusivity_fields,
+                       model.closure_fields,
                        nothing,
                        model.clock, 
                        fields(model),
@@ -84,7 +83,7 @@ function rk3_substep_tracers!(tracers, model, Δt)
             implicit_step!(c,
                            model.timestepper.implicit_solver,
                            closure,
-                           model.diffusivity_fields,
+                           model.closure_fields,
                            Val(tracer_index),
                            model.clock,
                            fields(model),

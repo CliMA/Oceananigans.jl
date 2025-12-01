@@ -1,9 +1,7 @@
 using KernelAbstractions: @kernel, @index
-using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture, node_names
-using Oceananigans.Architectures: child_architecture, cpu_architecture, device, GPU, CPU
-using Oceananigans.Utils: work_layout
+using Oceananigans.Architectures: child_architecture, cpu_architecture, GPU, CPU
 
 #####
 ##### Utilities
@@ -51,7 +49,7 @@ set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
 ##### Setting to specific things
 #####
 
-function set_to_function!(u, f)
+function set_to_function!(u, f, clock=nothing)
     # Supports serial and distributed
     arch = architecture(u)
     child_arch = child_architecture(u)
@@ -68,7 +66,8 @@ function set_to_function!(u, f)
     end
 
     # Form a FunctionField from `f`
-    f_field = field(location(u), f, cpu_grid)
+    LX, LY, LZ = location(u)
+    f_field = FunctionField{LX, LY, LZ}(f, cpu_grid; clock)
 
     # Try to set the FunctionField to cpu_u
     try

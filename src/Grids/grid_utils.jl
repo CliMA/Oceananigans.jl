@@ -1,12 +1,11 @@
 using Base.Ryu: writeshortest
-using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
 """
-    _property(ξ, T, ℓ, N, with_halos)
+    _property(ξ, ℓ, T, N, H, with_halos)
 
 Return the grid property `ξ`, either `with_halos` or without,
-for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
+for (instantiated) location `ℓ`, topology `T`, dimension length `N` and halo size `H`.
 """
 @inline function _property(ξ, ℓ, T, N, H, with_halos)
     if with_halos

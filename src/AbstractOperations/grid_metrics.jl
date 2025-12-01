@@ -1,11 +1,9 @@
 using Adapt
-using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
 using Oceananigans.Fields: AbstractField, default_indices, location
 using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
-using Oceananigans.Operators: XNode, YNode, ZNode, ΛNode, ΦNode, RNode
-using Oceananigans.Operators: x, y, z, λ, φ, r
+using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
@@ -40,7 +38,7 @@ function metric_function(loc, metric)
     else
         metric_function_symbol = Symbol(metric, code...)
     end
-    return getglobal(@__MODULE__, metric_function_symbol)
+    return getglobal(Operators, metric_function_symbol)
 end
 
 """
@@ -79,14 +77,16 @@ julia> c_dz[1, 1, 1]
 3.0
 ```
 """
-grid_metric_operation(loc, metric, grid) =
-    KernelFunctionOperation{loc[1], loc[2], loc[3]}(metric_function(loc, metric), grid)
+grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric, grid) where {LX<:Location, LY<:Location, LZ<:Location} =
+    KernelFunctionOperation{LX, LY, LZ}(metric_function(loc, metric), grid)
+
+# Instantiated location if location types are passed as values
+grid_metric_operation(Loc::Tuple, metric, grid) = grid_metric_operation((Loc[1](), Loc[2](), Loc[3]()), metric, grid)
 
 const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
 
-function grid_metric_operation(loc, metric::NodeMetric, grid)
-    LX, LY, LZ = loc
-    ℓx, ℓy, ℓz = LX(), LY(), LZ()
+function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX<:Location, LY<:Location, LZ<:Location} 
+    ℓx, ℓy, ℓz = loc
     ξnode = metric_function(loc, metric)
     return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
 end

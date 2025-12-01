@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.DistributedComputations: reconstruct_global_grid
 import Oceananigans.Grids: architecture, size, new_data, halo_size,
-                           with_halo, on_architecture, destantiate,
+                           with_halo, on_architecture,
                            minimum_xspacing, minimum_yspacing, minimum_zspacing
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 

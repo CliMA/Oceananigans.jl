@@ -1,11 +1,11 @@
-using MPI
 using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition
 using Oceananigans.Fields: validate_indices, validate_field_data
-using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations:
+    DistributedComputations,
+    Distributed,
     local_size,
-    barrier,
     all_reduce,
+    child_architecture,
     ranks,
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
@@ -13,7 +13,6 @@ using Oceananigans.DistributedComputations:
 
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
-import Oceananigans.DistributedComputations: reconstruct_global_grid
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
@@ -325,7 +324,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
 end
 
 # Reconstruction the global tripolar grid for visualization purposes
-function reconstruct_global_grid(grid::MPITripolarGrid)
+function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
 
     arch = grid.architecture
 
@@ -352,7 +351,8 @@ function reconstruct_global_grid(grid::MPITripolarGrid)
                         z)
 end
 
-function with_halo(new_halo, old_grid::MPITripolarGrid) 
+function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
+
     arch = old_grid.architecture
 
     n  = size(old_grid)

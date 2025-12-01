@@ -7,10 +7,9 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-using Makie: Observable
-using MakieCore: AbstractPlot
-import MakieCore: convert_arguments, _create_plot
-import Makie: args_preferred_axis
+using Makie: Observable, AbstractPlot
+
+import Makie: convert_arguments, _create_plot, args_preferred_axis
 
 # Extending args_preferred_axis here ensures that Field
 # do not overstate a preference for being plotted in a 3D LScene.

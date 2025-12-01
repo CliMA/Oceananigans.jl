@@ -51,8 +51,7 @@ export
 
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, TEOS10,
-    BuoyancyField,
+    LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
@@ -65,9 +64,7 @@ export
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
-    Smagorinsky,
-    LillyCoefficient,
-    DynamicCoefficient,
+    DynamicSmagorinsky,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
@@ -93,7 +90,6 @@ export
 
     # Simulations
     Simulation, run!, Callback, add_callback!, iteration,
-    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
@@ -118,24 +114,17 @@ export
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using DocStringExtensions
-using FFTW
 
 function __init__()
-    if VERSION >= v"1.11.0"
-        @warn """You are using Julia v1.11 or later!"
-                 Oceananigans is currently tested on Julia v1.10."
-                 If you find issues with Julia v1.11 or later,"
+    if VERSION >= v"1.13.0"
+        @warn """You are using Julia v1.13 or later!"
+                 Oceananigans is currently tested on Julia v1.12."
+                 If you find issues with Julia v1.13 or later,"
                  please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
 
     end
 
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
-    end
+    Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 
 # List of fully-supported floating point types where applicable.
@@ -299,5 +288,6 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
+using .Operators
 
 end # module
