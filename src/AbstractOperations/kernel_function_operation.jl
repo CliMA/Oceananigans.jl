@@ -1,5 +1,4 @@
-using Oceananigans.Grids: prettysummary
-using Oceananigans.Utils: shortsummary, construct_regionally
+using Oceananigans.Utils: shortsummary, construct_regionally, prettysummary
 
 struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K

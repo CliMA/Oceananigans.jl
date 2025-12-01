@@ -1,4 +1,4 @@
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 
 """
     struct ScalarBiharmonicDiffusivity{F, N, V, K} <: AbstractScalarBiharmonicDiffusivity{F}

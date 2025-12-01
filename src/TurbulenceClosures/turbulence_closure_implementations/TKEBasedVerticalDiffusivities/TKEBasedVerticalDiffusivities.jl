@@ -14,8 +14,9 @@ using Oceananigans.Units
 using Oceananigans.Fields
 using Oceananigans.Operators
 
-using Oceananigans.Grids: prettysummary, peripheral_node, inactive_node, inactive_cell
+using Oceananigans.Grids: peripheral_node, inactive_node, inactive_cell
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Utils: prettysummary
 
 using Oceananigans.BoundaryConditions:
     default_prognostic_bc,

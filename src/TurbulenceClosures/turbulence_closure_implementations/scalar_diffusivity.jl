@@ -1,5 +1,5 @@
 import Adapt
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 
 struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V

@@ -1,3 +1,6 @@
+using CubedSphere.SphericalGeometry: lat_lon_to_x, lat_lon_to_y, lat_lon_to_z
+using GPUArraysCore: @allowscalar
+
 abstract type CallableDiscretization end
 
 # Callable coordinates can be indexed just like arrays!

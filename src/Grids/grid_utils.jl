@@ -1,5 +1,6 @@
 using Base.Ryu: writeshortest
 using OffsetArrays: IdOffsetRange
+using Oceananigans.Utils: Utils, prettysummary, heuristic_workgroup
 
 """
     _property(ξ, ℓ, T, N, H, with_halos)
@@ -278,7 +279,7 @@ Base.summary(::NegativeZDirection) = "NegativeZDirection()"
 Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
-prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
 domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
 domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
@@ -430,4 +431,60 @@ end
 function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; warnings=true)
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
+end
+
+#####
+##### Kernel launching
+#####
+
+periphery_offset(loc, topo, N) = 0
+periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
+
+"""
+    interior_work_layout(grid, dims, location)
+
+Returns the `workgroup` and `worksize` for launching a kernel over `dims`
+on `grid` that excludes peripheral nodes.
+The `workgroup` is a tuple specifying the threads per block in each
+dimension. The `worksize` specifies the range of the loop in each dimension.
+
+Specifying `include_right_boundaries=true` will ensure the work layout includes the
+right face end points along bounded dimensions. This requires the field `location`
+to be specified.
+
+For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
+"""
+@inline function Utils.interior_work_layout(grid, workdims::Symbol, (LX, LY, LZ))
+    Nx, Ny, Nz = size(grid)
+
+    # just an example for :xyz
+    ℓx = instantiate(LX)
+    ℓy = instantiate(LY)
+    ℓz = instantiate(LZ)
+    TX, TY, TZ = topology(grid)
+    tx, ty, tz = TX(), TY(), TZ()
+
+    # Offsets
+    ox = periphery_offset(ℓx, tx, Nx)
+    oy = periphery_offset(ℓy, ty, Ny)
+    oz = periphery_offset(ℓz, tz, Nz)
+
+    # Worksize
+    Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
+    workgroup = heuristic_workgroup(Wx, Wy, Wz)
+    workgroup = StaticSize(workgroup)
+
+    # Adapt to workdims
+    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
+               ifelse(workdims == :xy,  (Wx, Wy),
+               ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
+
+    offsets = ifelse(workdims == :xyz, (ox, oy, oz),
+              ifelse(workdims == :xy,  (ox, oy),
+              ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
+
+    range = contiguousrange(worksize, offsets)
+    worksize = OffsetStaticSize(range)
+
+    return workgroup, worksize
 end

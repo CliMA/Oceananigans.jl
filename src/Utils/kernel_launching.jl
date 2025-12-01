@@ -3,7 +3,6 @@
 #####
 
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Grids: Bounded, Face, topology
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
@@ -138,57 +137,8 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
-periphery_offset(loc, topo, N) = 0
-periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
-
-"""
-    interior_work_layout(grid, dims, location)
-
-Returns the `workgroup` and `worksize` for launching a kernel over `dims`
-on `grid` that excludes peripheral nodes.
-The `workgroup` is a tuple specifying the threads per block in each
-dimension. The `worksize` specifies the range of the loop in each dimension.
-
-Specifying `include_right_boundaries=true` will ensure the work layout includes the
-right face end points along bounded dimensions. This requires the field `location`
-to be specified.
-
-For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
-"""
-@inline function interior_work_layout(grid, workdims::Symbol, (LX, LY, LZ))
-    Nx, Ny, Nz = size(grid)
-
-    # just an example for :xyz
-    ℓx = instantiate(LX)
-    ℓy = instantiate(LY)
-    ℓz = instantiate(LZ)
-    TX, TY, TZ = topology(grid)
-    tx, ty, tz = TX(), TY(), TZ()
-
-    # Offsets
-    ox = periphery_offset(ℓx, tx, Nx)
-    oy = periphery_offset(ℓy, ty, Ny)
-    oz = periphery_offset(ℓz, tz, Nz)
-
-    # Worksize
-    Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
-    workgroup = heuristic_workgroup(Wx, Wy, Wz)
-    workgroup = StaticSize(workgroup)
-
-    # Adapt to workdims
-    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-               ifelse(workdims == :xy,  (Wx, Wy),
-               ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
-
-    offsets = ifelse(workdims == :xyz, (ox, oy, oz),
-              ifelse(workdims == :xy,  (ox, oy),
-              ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
-
-    range = contiguousrange(worksize, offsets)
-    worksize = OffsetStaticSize(range)
-
-    return workgroup, worksize
-end
+# To be implemented in `Grids`
+function interior_work_layout end
 
 """
     work_layout(grid, dims, location)
