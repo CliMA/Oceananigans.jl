@@ -6,7 +6,7 @@ using Oceananigans.DistributedComputations: cooperative_waitall!,
                                             fill_corners!,
                                             loc_id
 
-using Oceananigans.Fields: location, instantiated_location
+using Oceananigans.Fields: instantiated_location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
