@@ -1,8 +1,8 @@
-using Oceananigans.Grids: AbstractGrid, prettysummary, XYRegularRG
+using Oceananigans.Grids: AbstractGrid, XYRegularRG
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: prettytime, prettysummary
 
 using Adapt: Adapt
 
