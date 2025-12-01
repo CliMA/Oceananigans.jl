@@ -47,7 +47,7 @@ end
     FT = Oceananigans.defaults.FloatType
 
     Lx, Ly, Lz = FT(5000meters), FT(5000meters), FT(20meters)
-    Nx, Ny, Nz = 128, 128, 32
+    Nx, Ny, Nz = 16, 16, 8
 
     underlying_grid = RectilinearGrid(
         arch;
