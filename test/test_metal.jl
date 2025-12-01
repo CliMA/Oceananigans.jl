@@ -86,14 +86,14 @@ end
 
     model = HydrostaticFreeSurfaceModel(;
         grid,
-        coriolis=FPlane(latitude=60),
-        tracers=(:T, :S),
-        buoyancy=SeawaterBuoyancy(),
-        momentum_advection=WENO(),
-        tracer_advection=WENO(),
-        free_surface=SplitExplicitFreeSurface(grid; substeps=30), # default does not work on MetalGPU
-        closure=ConvectiveAdjustmentVerticalDiffusivity(convective_κz=FT(1.0), background_κz=FT(1e-3)),
-        boundary_conditions=(u=u_bcs, T=T_bcs),
+        coriolis = FPlane(latitude=60),
+        tracers = (:T, :S),
+        buoyancy = SeawaterBuoyancy(),
+        momentum_advection = WENO(),
+        tracer_advection = WENO(),
+        free_surface = SplitExplicitFreeSurface(grid; substeps=30), # default does not work on MetalGPU
+        closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-3),
+        boundary_conditions = (u=u_bcs, T=T_bcs),
     )
     @test parent(model.velocities.u) isa MtlArray
     @test parent(model.velocities.v) isa MtlArray
