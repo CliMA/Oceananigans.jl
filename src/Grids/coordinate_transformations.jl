@@ -1,3 +1,6 @@
+using CubedSphere.SphericalGeometry: lat_lon_to_x, lat_lon_to_y, lat_lon_to_z
+using GPUArraysCore: @allowscalar
+
 longitude_in_same_window(λ₁, λ₂) = mod(λ₁ - λ₂ + 180, 360) + λ₂ - 180
 
 flip_location(::Center) = Face()
