@@ -1,4 +1,4 @@
-using CubedSphere.SphericalGeometry
+using CubedSphere.SphericalGeometry: lat_lon_to_cartesian, spherical_area_quadrilateral
 
 """
     _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,

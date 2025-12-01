@@ -13,14 +13,14 @@ using GPUArraysCore
 using SparseArrays
 using KernelAbstractions
 
-using Oceananigans.Architectures: device, CPU, GPU, array_type, on_architecture
+using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 
-using Oceananigans.Grids: unpack_grid, inactive_cell
+using Oceananigans.Grids: inactive_cell
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 
 """
@@ -51,5 +51,15 @@ const GridWithFourierTridiagonalSolver = Union{XYRegularRG, XZRegularRG, YZRegul
 fft_poisson_solver(grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
 fft_poisson_solver(grid::GridWithFourierTridiagonalSolver) =
     FourierTridiagonalPoissonSolver(grid)
+
+const FFTW_NUM_THREADS = Ref{Int}(1)
+
+function __init__()
+
+    # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
+    # but don't affect global FFTW configuration for other packages using FFTW
+    # FFTW.set_num_threads(4threads)
+    FFTW_NUM_THREADS[] = 4 * Threads.nthreads()
+end
 
 end # module

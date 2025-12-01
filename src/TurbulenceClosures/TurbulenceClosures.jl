@@ -51,13 +51,12 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.BuoyancyFormulations
 using Oceananigans.Utils
 
-using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z, prettysummary
 import Oceananigans.Architectures: on_architecture
-import Oceananigans.Utils: with_tracers, prettysummary
+import Oceananigans.Utils: with_tracers
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 

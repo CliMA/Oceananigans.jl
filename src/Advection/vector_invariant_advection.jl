@@ -79,13 +79,14 @@ VectorInvariant
 └── vertical_advection_scheme: Oceananigans.Advection.EnergyConserving{Float64}
 ```
 """
-function VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
-                           vorticity_stencil = VelocityStencil(),
-                           vertical_advection_scheme = EnergyConserving(),
-                           divergence_scheme = vertical_advection_scheme,
-                           kinetic_energy_gradient_scheme = divergence_scheme,
-                           upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
-                           multi_dimensional_stencil = false)
+function VectorInvariant(FT = Oceananigans.defaults.FloatType;
+                         vorticity_scheme = EnstrophyConserving(FT),
+                         vorticity_stencil = VelocityStencil(),
+                         vertical_advection_scheme = EnergyConserving(FT),
+                         divergence_scheme = vertical_advection_scheme,
+                         kinetic_energy_gradient_scheme = divergence_scheme,
+                         upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
+                         multi_dimensional_stencil = false)
 
     N = max(required_halo_size_x(vorticity_scheme),
             required_halo_size_y(vorticity_scheme),

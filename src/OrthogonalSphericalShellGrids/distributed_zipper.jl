@@ -1,17 +1,17 @@
-using Oceananigans.BoundaryConditions: permute_boundary_conditions,
-                                       fill_halo_event!, get_boundary_kernels,
+using Oceananigans.BoundaryConditions: fill_halo_event!, get_boundary_kernels,
                                        DistributedCommunication
 
 using Oceananigans.DistributedComputations: cooperative_waitall!,
                                             recv_from_buffers!,
                                             fill_corners!,
-                                            loc_id,
-                                            DCBCT
+                                            loc_id
 
 using Oceananigans.Fields: location, instantiated_location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
+
+using OffsetArrays: OffsetArray
 
 @inline instantiate(T::DataType) = T()
 @inline instantiate(T) = T

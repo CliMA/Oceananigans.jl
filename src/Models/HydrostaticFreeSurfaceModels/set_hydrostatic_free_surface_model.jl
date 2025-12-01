@@ -1,6 +1,6 @@
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
-using Oceananigans.Utils: @apply_regionally, apply_regionally!
+using Oceananigans.Utils: @apply_regionally
 
 import Oceananigans.Fields: set!
 
