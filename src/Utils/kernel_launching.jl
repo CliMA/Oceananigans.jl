@@ -137,8 +137,56 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
-# To be implemented in `Grids`
-function interior_work_layout end
+# To be extended in the `Grids` modules for non-trivial peripheries,
+# for all other cases, `periphery_offset` is zero.
+periphery_offset(loc, grid, side) = 0
+
+"""
+    interior_work_layout(grid, dims, location)
+
+Returns the `workgroup` and `worksize` for launching a kernel over `dims`
+on `grid` that excludes peripheral nodes.
+The `workgroup` is a tuple specifying the threads per block in each
+dimension. The `worksize` specifies the range of the loop in each dimension.
+
+Specifying `include_right_boundaries=true` will ensure the work layout includes the
+right face end points along bounded dimensions. This requires the field `location`
+to be specified.
+
+For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
+"""
+@inline function interior_work_layout(grid, workdims::Symbol, (LX, LY, LZ))
+    Nx, Ny, Nz = size(grid)
+
+    # just an example for :xyz
+    ℓx = instantiate(LX)
+    ℓy = instantiate(LY)
+    ℓz = instantiate(LZ)
+
+    # Offsets
+    ox = periphery_offset(ℓx, grid, 1)
+    oy = periphery_offset(ℓy, grid, 2)
+    oz = periphery_offset(ℓz, grid, 3)
+
+    # Worksize
+    Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
+    workgroup = heuristic_workgroup(Wx, Wy, Wz)
+    workgroup = StaticSize(workgroup)
+
+    # Adapt to workdims
+    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
+               ifelse(workdims == :xy,  (Wx, Wy),
+               ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
+
+    offsets = ifelse(workdims == :xyz, (ox, oy, oz),
+              ifelse(workdims == :xy,  (ox, oy),
+              ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
+
+    range = contiguousrange(worksize, offsets)
+    worksize = OffsetStaticSize(range)
+
+    return workgroup, worksize
+end
 
 """
     work_layout(grid, dims, location)
