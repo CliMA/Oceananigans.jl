@@ -1,5 +1,5 @@
 using Oceananigans.Grids: halo_size, topology
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Az⁻¹ᶜᶜᶜ, Δrᶜᶜᶜ, ∂t_σ
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Models: surface_kernel_parameters
 

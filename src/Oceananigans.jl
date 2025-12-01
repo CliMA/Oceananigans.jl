@@ -115,7 +115,6 @@ export
 
 using DocStringExtensions
 using DoubleFloats: Double64
-using FFTW: FFTW
 
 function __init__()
     if VERSION >= v"1.13.0"
@@ -126,13 +125,7 @@ function __init__()
 
     end
 
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
-    end
+    Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 
 # List of fully-supported floating point types where applicable.
@@ -222,8 +215,8 @@ function boundary_conditions end
 # Basics
 include("Architectures.jl")
 include("Units.jl")
-include("Grids/Grids.jl")
 include("Utils/Utils.jl")
+include("Grids/Grids.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")

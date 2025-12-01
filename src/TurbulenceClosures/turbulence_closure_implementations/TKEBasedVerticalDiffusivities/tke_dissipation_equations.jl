@@ -44,7 +44,8 @@ function time_step_tke_dissipation_equations!(model)
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt
+    FT = eltype(model.tracers.e)
+    Δt = convert(FT, model.clock.last_Δt)
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
@@ -54,8 +55,6 @@ function time_step_tke_dissipation_equations!(model)
         M = ceil(Int, Δt / Δτ) # number of substeps
         Δτ = Δt / M
     end
-
-    FT = eltype(grid)
 
     for m = 1:M # substep
         if m == 1 && M != 1
@@ -129,7 +128,7 @@ end
 
     # Different destruction time-scales for TKE vs dissipation for numerical reasons
     ω★  = ϵ★ / e★ # target / physical dissipation time scale
-    ωe⁻ = closure_ij.negative_tke_damping_time_scale
+    ωe⁻ = 1 / closure_ij.negative_tke_damping_time_scale  # frequency = 1/timescale
     ωe  = ifelse(eⁱʲᵏ < 0, ωe⁻, ω★)
     ωϵ  = ϵⁱʲᵏ / e★
 
@@ -176,8 +175,9 @@ end
     end
 
     # Advance TKE and store tendency
-    FT = eltype(χ)
+    FT = eltype(e)
     Δτ = convert(FT, Δτ)
+    χ = convert(FT, χ)
 
     # See below.
     α = convert(FT, 1.5) + χ
@@ -276,9 +276,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
     parameters = TKETopBoundaryConditionParameters(top_tracer_bcs, top_velocity_bcs)
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
-
     top_dissipation_bc = FluxBoundaryCondition(top_dissipation_flux, discrete_form=true, parameters=parameters)
-
 
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
@@ -299,11 +297,11 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
         dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                                   top = top_dissipation_bc,
-                                                  bottom = e_bcs.bottom,
-                                                  north = e_bcs.north,
-                                                  south = e_bcs.south,
-                                                  east = e_bcs.east,
-                                                  west = e_bcs.west)
+                                                  bottom = ϵ_bcs.bottom,
+                                                  north = ϵ_bcs.north,
+                                                  south = ϵ_bcs.south,
+                                                  east = ϵ_bcs.east,
+                                                  west = ϵ_bcs.west)
     else
         dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_dissipation_bc)
     end

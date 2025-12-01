@@ -1,4 +1,5 @@
-import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
+using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
+using Oceananigans.TimeSteppers: TimeSteppers
 
 #####
 ##### Boundary contributions to hydrostatic free surface model

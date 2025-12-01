@@ -7,20 +7,22 @@ export
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
-using Adapt
+using Adapt: Adapt
 
 using Oceananigans.Utils
-using Oceananigans.Grids
 using Oceananigans.Utils: launch!
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization
+using Oceananigans.Utils: launch!, @apply_regionally
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans.Fields: ZFaceField
+using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 
-using DocStringExtensions
+using DocStringExtensions: TYPEDFIELDS
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Models: materialize_free_surface
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
-import Oceananigans.Architectures: on_architecture
+import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
@@ -161,7 +163,7 @@ displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")

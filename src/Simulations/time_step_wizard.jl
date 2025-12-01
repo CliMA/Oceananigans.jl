@@ -1,4 +1,5 @@
-using Oceananigans.Grids: prettysummary, architecture
+using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: prettysummary
 import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}

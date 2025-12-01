@@ -1,5 +1,6 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: _ab2_step_field!
+using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map
 

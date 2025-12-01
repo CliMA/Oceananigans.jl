@@ -3,23 +3,17 @@ module SplitExplicitFreeSurfaces
 export SplitExplicitFreeSurface, ForwardBackwardScheme, AdamsBashforth3Scheme
 export FixedSubstepNumber, FixedTimeStepSize
 
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Architectures: convert_to_device
-using Oceananigans.Fields
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions
-using Oceananigans.ImmersedBoundaries
-using Oceananigans.Grids: topology
+using Oceananigans.Architectures: convert_to_device, architecture
+using Oceananigans.Utils: KernelParameters, configure_kernel, launch!, @apply_regionally
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
+using Oceananigans.Fields: Field
+using Oceananigans.Grids: Center, Face, topology
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
 
-using Adapt
-using Base
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 

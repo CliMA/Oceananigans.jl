@@ -11,6 +11,8 @@ using Oceananigans.Fields: instantiated_location
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
 
+using OffsetArrays: OffsetArray
+
 @inline instantiate(T::DataType) = T()
 @inline instantiate(T) = T
 
