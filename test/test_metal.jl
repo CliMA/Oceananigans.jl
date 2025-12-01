@@ -46,9 +46,6 @@ end
     arch = GPU(Metal.MetalBackend())
     FT = Oceananigans.defaults.FloatType
 
-    Qʰ = FT(-400.0)  # W m⁻², surface _heat_ flux (negative value - downward!)
-    u10 = FT(5.0)    # Wind m/s
-
     Lx, Ly, Lz = FT(5000meters), FT(5000meters), FT(20meters)
     Nx, Ny, Nz = 128, 128, 32
 
