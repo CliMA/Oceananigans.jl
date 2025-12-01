@@ -437,14 +437,12 @@ end
 ##### Extensions for kernel launching
 #####
 
-import Oceananigans.Utils: periphery_offset
-
-function periphery_offset(loc, grid::AbstractGrid, side::Int)
+function Utils.periphery_offset(loc, grid::AbstractGrid, side::Int)
     T = topology(grid, side)
     N = size(grid, side)
 
-    return periphery_offset(loc, T(), N)
+    return Utils.periphery_offset(loc, T(), N)
 end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
-periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
+Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
