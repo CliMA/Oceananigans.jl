@@ -114,7 +114,7 @@ export
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using DocStringExtensions
-using DoubleFloats
+using DoubleFloats: Double64
 using FFTW: FFTW
 
 function __init__()
