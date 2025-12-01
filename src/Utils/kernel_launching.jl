@@ -265,8 +265,8 @@ Keyword Arguments
 
     # Transform keyword arguments into arguments to be able to dispatch correctly
     return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
-                                  reduced_dimensions,
-                                  location = nothing)
+                            reduced_dimensions,
+                            location)
 end
 
 @inline function configure_kernel(arch, grid, workspec, kernel!, ::Nothing, args...;
