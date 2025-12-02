@@ -25,7 +25,7 @@ import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 
 # The only grid type that can support an FFT implicit free-surface solver 
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
