@@ -10,7 +10,6 @@ using StructArrays
 using Oceananigans.Grids
 using Oceananigans.ImmersedBoundaries
 
-using Oceananigans.Grids: prettysummary
 using Oceananigans.Grids: AbstractGrid, hack_cosd
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
@@ -18,7 +17,7 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, prettysummary
 
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.OutputWriters: serializeproperty!, fetch_output

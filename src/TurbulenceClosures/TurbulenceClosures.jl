@@ -54,9 +54,9 @@ using Oceananigans.Utils
 using Oceananigans.Fields: FunctionField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z, prettysummary
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
-import Oceananigans.Utils: with_tracers
+import Oceananigans.Utils: with_tracers, prettysummary
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 

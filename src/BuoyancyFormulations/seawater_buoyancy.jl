@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyFormulation{EOS}

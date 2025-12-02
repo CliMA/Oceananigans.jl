@@ -1,9 +1,7 @@
-using Oceananigans.Grids: Grids
-
 shortsummary(x, args...) = string(typeof(x).name.wrapper)
-Grids.prettysummary(x, args...) = summary(x)
+prettysummary(x, args...) = summary(x)
 
-function Grids.prettysummary(f::Function, showmethods=true)
+function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
     name = string(Base.nameof(f))
     n = length(methods(f))
@@ -15,10 +13,10 @@ function Grids.prettysummary(f::Function, showmethods=true)
     end
 end
 
-Grids.prettysummary(x::Int, args...) = string(x)
+prettysummary(x::Int, args...) = string(x)
 
 # This is very important
-function Grids.prettysummary(nt::NamedTuple, args...)
+function prettysummary(nt::NamedTuple, args...)
     n = nfields(nt)
 
     if n == 0
@@ -27,7 +25,7 @@ function Grids.prettysummary(nt::NamedTuple, args...)
         str = "("
         for i = 1:n
             f = nt[i]
-            str = string(str, fieldname(typeof(nt), i), "=", Grids.prettysummary(getfield(nt, i)))
+            str = string(str, fieldname(typeof(nt), i), "=", prettysummary(getfield(nt, i)))
             if n == 1
                 str = string(str, ",")
             elseif i < n

@@ -1,6 +1,6 @@
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 using Dates
 
 import Oceananigans: initialize!

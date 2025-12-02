@@ -1,5 +1,6 @@
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Grids: bottommost_active_node, AbstractStaticGrid, prettysummary
+using Oceananigans.Grids: bottommost_active_node, AbstractStaticGrid
+using Oceananigans.Utils: prettysummary
 using Printf: @sprintf
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,

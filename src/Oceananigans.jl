@@ -214,8 +214,8 @@ function boundary_conditions end
 # Basics
 include("Architectures.jl")
 include("Units.jl")
-include("Grids/Grids.jl")
 include("Utils/Utils.jl")
+include("Grids/Grids.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")

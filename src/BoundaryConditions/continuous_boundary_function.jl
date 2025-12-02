@@ -1,11 +1,10 @@
 using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Operators: index_and_interp_dependencies
-using Oceananigans.Utils: tupleit, user_function_arguments
+using Oceananigans.Utils: Utils, tupleit, user_function_arguments, prettysummary
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid, YZFlatGrid, XZFlatGrid, XYFlatGrid
 using Oceananigans.Grids: ξnode, ηnode, rnode
 
 import Oceananigans: location
-using Oceananigans.Grids: Grids, prettysummary
 
 struct LeftBoundary end
 struct RightBoundary end
@@ -204,7 +203,7 @@ function Base.summary(bf::ContinuousBoundaryFunction)
     return string("ContinuousBoundaryFunction ", prettysummary(bf.func, false), " at ", loc)
 end
 
-Grids.prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
+Utils.prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
 
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
     ContinuousBoundaryFunction{LX, LY, LZ, S}(Adapt.adapt(to, bf.func),
