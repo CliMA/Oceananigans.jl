@@ -347,9 +347,7 @@ update_field_time_series!(fts, n₁::Int, n₂=n₁) = nothing
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     t = time_index.time
-    @show t, fts.times
     indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
-    @show indices
     n₁ = indices.first_index
     n₂ = indices.second_index
     return update_field_time_series!(fts, n₁, n₂)
