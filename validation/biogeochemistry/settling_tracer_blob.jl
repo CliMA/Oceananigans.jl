@@ -52,7 +52,7 @@ function build_simulation(grid;
     set!(model; c = c_initial)
 
     # Simple simulation configuration
-    simulation = Simulation(model; Δt=w₀ / minimum_zspacing(grid), stop_time = 45seconds)
+    simulation = Simulation(model; Δt=w₀ / minimum_zspacing(grid), stop_time = 50seconds)
 
     wizard = TimeStepWizard(
         cfl = 0.7,
