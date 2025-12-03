@@ -1,9 +1,8 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node, φnode
-using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind, hack_cosd
+using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, φnode, hack_sind, hack_cosd
+using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δz_qᶠᶜᶜ, Δx_qᶜᶜᶠ
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
-using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.ImmersedBoundaries
 
 struct HydrostaticFormulation end
