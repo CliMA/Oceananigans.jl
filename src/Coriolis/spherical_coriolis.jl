@@ -102,7 +102,7 @@ const CoriolisEnstrophyConserving = SphericalCoriolis{<:HydrostaticFormulation, 
 ##### Energy-conserving scheme
 #####
 
-const CoriolisEnergyConserving = SphericalCoriolis{<:HydrostaticFormulation, <:EnergyConserving}
+const CoriolisEnergyConserving = SphericalCoriolis{<:EnergyConserving, <:Any, <:HydrostaticFormulation}
 
 #@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 #@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
