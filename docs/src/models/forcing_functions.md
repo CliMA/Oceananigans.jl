@@ -309,7 +309,7 @@ sinking = AdvectiveForcing(w=w_sediment; grid)
 AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
-└── w: ConstantField(-0.00352102)
+└── w: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
 ```
 
 The three keyword arguments specify the `u`, `v`, and `w` components of the separate
