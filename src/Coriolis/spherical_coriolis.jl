@@ -52,10 +52,6 @@ function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.Float
     return SphericalCoriolis(rotation_rate, scheme, HydrostaticFormulation())
 end
 
-# using Oceananigans.Coriolis: HydrostaticFormulation, NonhydrostaticFormulation
-# model_hy = HydrostaticFreeSurfaceModel(; grid, coriolis=SphericalCoriolis(scheme=EnstrophyConserving(), formulation=HydrostaticFormulation()))
-# model_nh = NonhydrostaticModel(; grid=grid, coriolis=SphericalCoriolis(formulation=NonhydrostaticFormulation()))
-
 Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
     SphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate),
                       Adapt.adapt(to, coriolis.scheme),
