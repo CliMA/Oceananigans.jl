@@ -1,4 +1,4 @@
-using Oceananigans.Fields: ZeroField, ConstantField
+using Oceananigans.Fields: ZeroField
 using Oceananigans.Utils: sum_of_velocities
 using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition
