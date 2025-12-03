@@ -815,11 +815,13 @@ function reconstruct_immersed_boundary(ds)
     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
     if immersed_boundary_type == GridFittedBottom
         bottom_height = Array(ibg_group["bottom_height"])
-        immersed_boundary = immersed_boundary_type(bottom_height)
+        immersed_condition = ibg_group["immersed_condition"]
+        immersed_boundary = immersed_boundary_type(bottom_height, immersed_condition)
 
     elseif immersed_boundary_type == PartialCellBottom
         bottom_height = Array(ibg_group["bottom_height"])
-        immersed_boundary = immersed_boundary_type(bottom_height)
+        minimum_fractional_cell_height = ibg_group["minimum_fractional_cell_height"]
+        immersed_boundary = immersed_boundary_type(bottom_height, minimum_fractional_cell_height)
 
     elseif immersed_boundary_type == GridFittedBoundary
         mask = Array(ibg_group["mask"])
