@@ -44,7 +44,6 @@ function SphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
 end
 
 const HydrostaticSphericalCoriolis{S, FT}    = SphericalCoriolis{S, FT, <:HydrostaticFormulation} where {S, FT}
-const NonhydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{S, FT, <:NonhydrostaticFormulation} where {S, FT}
 
 function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
