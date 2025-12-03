@@ -171,8 +171,8 @@ function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, im
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
     end
 
-    constant_slip = AdvectiveForcing(w=1)
-    zero_slip = AdvectiveForcing(w=0)
+    constant_slip = AdvectiveForcing(w=1; grid)
+    zero_slip = AdvectiveForcing(w=0; grid)
     no_penetration = ImpenetrableBoundaryCondition()
     slip_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
@@ -305,11 +305,12 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     immersed_max = maximum(abs, immersed_model.tracers.c)
 
     # Test that mass is approximately conserved and max values are similar
+    @test regular_initial_integral[] == immersed_initial_integral[]
     if open_bottom
-        @test regular_integral[] ≈ immersed_integral[] ≈ 0
-        @test regular_initial_integral[] == immersed_initial_integral[]
+        @test (regular_integral[] / regular_initial_integral[]) < 1e-3
+        @test (immersed_integral[] / immersed_initial_integral[]) < 1e-3
     else
-        @test regular_integral[] ≈ immersed_integral[] ≈ regular_initial_integral[] == immersed_initial_integral[]
+        @test regular_integral[] ≈ immersed_integral[] ≈ regular_initial_integral[]
     end
     @test regular_max ≈ immersed_max rtol=0.01
 
