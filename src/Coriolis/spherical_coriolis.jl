@@ -78,7 +78,7 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 @inline y_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 @inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶠᵃ, coriolis, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
 
-@inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, U) = zero(grid)
+@inline z_f_cross_U(i, j, k, grid, ::HydrostaticSphericalCoriolis, U) = zero(grid)
 
 #####
 ##### Active Point Enstrophy-conserving scheme
