@@ -61,22 +61,27 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, face, face)
 @inline φᶠᶠᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶠᶠᵃ(i, j, k, grid.underlying_grid)
 
+@inline φᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, center)
+@inline φᶠᶜᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, face, center)
+@inline φᶠᶜᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶠᶜᵃ(i, j, k, grid.underlying_grid)
+
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis) = 2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
-@inline f̃ᶠᶠᵃ(i, j, k, grid, coriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶠᶠᵃ(i, j, k, grid))
+@inline f̃ᶠᶜᵃ(i, j, k, grid, coriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶠᶜᵃ(i, j, k, grid))
 
 @inline f_ℑy_uᶠᶠᶜ(i, j, k, grid, coriolis::SphericalCoriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
 @inline f_ℑx_vᶠᶠᶜ(i, j, k, grid, coriolis::SphericalCoriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 
-@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
-@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, w) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
+@inline f̃_ℑz_uᶠᶜᶠ(i, j, k, grid, coriolis::SphericalCoriolis, u) = f̃ᶠᶜᵃ(i, j, k, grid, coriolis) * ℑzᵃᵃᶠ(i, j, k, grid, Δz_qᶠᶜᶜ, u)
+@inline f̃_ℑx_wᶠᶜᶠ(i, j, k, grid, coriolis::SphericalCoriolis, w) = f̃ᶠᶜᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶜᶠ, w)
 
-@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, ::HydrostaticSphericalCoriolis, u) = zero(grid)
-@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, ::HydrostaticSphericalCoriolis, w) = zero(grid)
+@inline f̃_ℑz_uᶠᶜᶠ(i, j, k, grid, ::HydrostaticSphericalCoriolis, u) = zero(grid)
+@inline f̃_ℑx_wᶠᶜᶠ(i, j, k, grid, ::HydrostaticSphericalCoriolis, w) = zero(grid)
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid) +
-                                                                                 ℑyᵃᶜᵃ(i, j, k, grid, f̃_ℑx_wᶠᶠᵃ, coriolis, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-@inline y_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-@inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶠᵃ, coriolis, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᶜ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid) +
+                                                                                 ℑzᵃᵃᶜ(i, j, k, grid, f̃_ℑx_wᶠᶜᶠ, coriolis, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+
+@inline y_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᶜ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶜᶠ, coriolis, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
 
 @inline z_f_cross_U(i, j, k, grid, ::HydrostaticSphericalCoriolis, U) = zero(grid)
 
