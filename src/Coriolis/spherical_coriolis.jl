@@ -8,11 +8,6 @@ using Oceananigans.ImmersedBoundaries
 struct HydrostaticFormulation end
 struct NonhydrostaticFormulation end
 
-"""
-    struct SphericalCoriolis{S, FT, F} <: AbstractRotation 
-
-A parameter object for constant rotation around a vertical axis on the sphere.
-"""
 struct SphericalCoriolis{S, FT, F}
     rotation_rate :: FT
     scheme :: S
