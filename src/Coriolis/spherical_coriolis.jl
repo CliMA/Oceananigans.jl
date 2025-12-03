@@ -88,7 +88,7 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 # (an example is a 1-cell large channel)
 # In that case the Coriolis force is equal to zero
 
-const CoriolisEnstrophyConserving = SphericalCoriolis{<:HydrostaticFormulation, <:EnstrophyConserving}
+const CoriolisEnstrophyConserving = SphericalCoriolis{<:EnstrophyConserving, <:Any, <:HydrostaticFormulation}
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
