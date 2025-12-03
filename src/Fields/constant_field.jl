@@ -1,5 +1,3 @@
-using Oceananigans.Utils: prettysummary
-
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 struct ZeroField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end

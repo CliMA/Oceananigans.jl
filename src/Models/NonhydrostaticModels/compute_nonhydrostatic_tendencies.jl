@@ -1,10 +1,8 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
-using Oceananigans.Utils: work_layout
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
-                                       linear_index_to_tuple
+using Oceananigans.ImmersedBoundaries: get_active_cells_map
 
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!

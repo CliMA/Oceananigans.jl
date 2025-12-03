@@ -1,5 +1,7 @@
 using Printf
 using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Fields: set_to_function!
 
 #####
 ##### set!
@@ -118,3 +120,16 @@ function initialize_file!(file, name, fts)
 end
 
 set!(fts::OnDiskFTS, path::String, name::String) = nothing
+
+function set!(fts::InMemoryFTS, f::Function)
+    cpu_times = on_architecture(CPU(), fts.times)
+    n1 = first(time_indices(fts))
+    clock = Clock(time=cpu_times[n1])
+
+    for n in time_indices(fts)
+        clock.time = cpu_times[n]
+        set_to_function!(fts[n], f, clock)
+    end
+
+    return fts
+end

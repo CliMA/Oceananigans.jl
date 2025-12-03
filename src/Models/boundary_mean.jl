@@ -2,10 +2,8 @@ using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
 using Oceananigans.Fields: Center, Face
 using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection
+using Oceananigans.BoundaryConditions: BoundaryCondition, Open
 
-import Adapt: adapt_structure
-import Base: summary, show
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
 struct BoundaryAdjacentMean{FF, BV}

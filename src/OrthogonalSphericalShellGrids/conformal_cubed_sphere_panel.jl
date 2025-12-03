@@ -1,6 +1,8 @@
-using CubedSphere
-using CubedSphere.SphericalGeometry
-using JLD2
+using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes
+using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
+using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
+using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
+using JLD2: jldopen
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
@@ -145,7 +147,7 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     conformal_mapping)
 end
 
-function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
+function Grids.with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
