@@ -7,12 +7,8 @@ grid = RectilinearGrid(arch, size = (32, 32, 32), extent = (1, 1, 1))
 closure = AnisotropicMinimumDissipation(VerticallyImplicitTimeDiscretization(), C=1/3)
 model = NonhydrostaticModel(; grid, closure)
 
-u, v, w = model.velocities
-
-set!(u, (args...)->randn())
-set!(v, (args...)->randn())
-
-compute_w_from_continuity!((; u, v, w), arch, grid)
+ϵ(x, y, z) = randn()
+set!(model, u=ϵ, v=ϵ)
 
 function extract_energy(u, v, w, grid)
     û = fftshift(fft(@at (Center, Center, Center) u))
