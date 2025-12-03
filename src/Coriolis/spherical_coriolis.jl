@@ -35,16 +35,22 @@ Keyword arguments
 - `scheme`: Either `EnergyConserving()` or `EnstrophyConserving()` (default).
 - `formulation`: `HydrostaticFormulation` or `NonhydrostaticFormulation`.
 """
-function SphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
-                           rotation_rate = Ω_Earth,
+function SphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
+                           rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                            scheme = EnstrophyConserving(FT),
-                           formulation = HydrostaticFormulation())   # change defaults???
+                           formulation = NonhydrostaticFormulation())
 
     return SphericalCoriolis(rotation_rate, scheme, formulation)
 end
 
 const HydrostaticSphericalCoriolis{S, FT}    = SphericalCoriolis{S, FT, <:HydrostaticFormulation} where {S, FT}
 const NonhydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{S, FT, <:NonhydrostaticFormulation} where {S, FT}
+
+function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
+                                      rotation_rate = Oceananigans.defaults.planet_rotation_rate,
+                                      scheme = EnstrophyConserving(FT))
+    return SphericalCoriolis(rotation_rate, scheme, HydrostaticFormulation())
+end
 
 # using Oceananigans.Coriolis: HydrostaticFormulation, NonhydrostaticFormulation
 # model_hy = HydrostaticFreeSurfaceModel(; grid, coriolis=SphericalCoriolis(scheme=EnstrophyConserving(), formulation=HydrostaticFormulation()))
