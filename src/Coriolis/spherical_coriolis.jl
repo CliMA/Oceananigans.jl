@@ -64,8 +64,8 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis) = 2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
 @inline f̃ᶠᶠᵃ(i, j, k, grid, coriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶠᶠᵃ(i, j, k, grid))
 
-@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
-@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
+@inline f_ℑy_uᶠᶠᶜ(i, j, k, grid, coriolis::SphericalCoriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+@inline f_ℑx_vᶠᶠᶜ(i, j, k, grid, coriolis::SphericalCoriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 
 @inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
 @inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, w) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
