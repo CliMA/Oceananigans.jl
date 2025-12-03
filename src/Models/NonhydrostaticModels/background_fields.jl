@@ -1,5 +1,5 @@
 using Oceananigans.Fields: ZeroField, ConstantField, AbstractField, FunctionField, location
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 
 using Adapt
 
