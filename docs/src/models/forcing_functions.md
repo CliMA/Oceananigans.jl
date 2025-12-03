@@ -294,6 +294,8 @@ As an example, consider a model for sediment settling at a constant rate:
 ```jldoctest
 using Oceananigans
 
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
 r_sediment = 1e-4 # [m] "Fine sand"
 ρ_sediment = 1200 # kg m⁻³
 ρ_ocean = 1026 # kg m⁻³
@@ -301,7 +303,7 @@ r_sediment = 1e-4 # [m] "Fine sand"
 ν_molecular = 1.05e-6 # m² s⁻¹
 w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2 # m s⁻¹
 
-sinking = AdvectiveForcing(w=w_sediment)
+sinking = AdvectiveForcing(w=w_sediment; grid)
 
 # output
 AdvectiveForcing:
