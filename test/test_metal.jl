@@ -104,8 +104,8 @@ end
     simulation = Simulation(model, Δt=1seconds, stop_iteration=1)
     run!(simulation)
 
-    @test iteration(simulation) == 20
-    @test time(simulation) == 100seconds
+    @test iteration(simulation) == 1
+    @test time(simulation) == 1seconds
 end
 
 @testset "MetalGPU: TimeStepWizard" begin
