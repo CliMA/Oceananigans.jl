@@ -140,7 +140,7 @@ save("enceladus_density.png", fig)
 # the ocean beneath the ice shell.
 
 # Low resolution for quick test
-grid = LatitudeLongitudeGrid(size = (16, 16, 16),
+grid = LatitudeLongitudeGrid(size = (256, 16, 128),
                              longitude = (0, 360),      # degrees, 60° sector
                              latitude = (-85, 85),      # degrees, 60° sector
                              z = (-40e3, -30e3),            # m, 10 km deep ocean
@@ -169,7 +169,6 @@ model = NonhydrostaticModel(; grid, coriolis,
 uᵢ(λ, φ, z) = 1e-4 * randn()
 vᵢ(λ, φ, z) = 1e-4 * randn()
 wᵢ(λ, φ, z) = 1e-4 * randn()
-
 set!(model, u=uᵢ, v=vᵢ, w=wᵢ)
 
 # ## Simulation
