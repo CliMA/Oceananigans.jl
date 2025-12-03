@@ -73,8 +73,8 @@ hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, trac
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
-@inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
-@inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...; kwargs...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
