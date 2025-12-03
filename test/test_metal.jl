@@ -78,7 +78,7 @@ end
     )
     @test eltype(grid) == Float32
 
-    Qᵀ = FT(0.01)
+    Qᵀ = FT(1e-4)
     T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵀ))
 
     Qᵘ = - FT(1e-4)
