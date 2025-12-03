@@ -1,6 +1,6 @@
 using Printf
-using Oceananigans.Grids: size_summary
 using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: size_summary
 using Oceananigans.BoundaryConditions: bc_str
 
 import Oceananigans.Grids: grid_name

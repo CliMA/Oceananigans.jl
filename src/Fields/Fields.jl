@@ -1,9 +1,8 @@
 module Fields
 
 export Face, Center, location
-export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
+export AbstractField, Field, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
-export BackgroundField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
@@ -20,11 +19,10 @@ import Oceananigans: location, instantiated_location
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
 @inline location(a, i) = location(a)[i]
-@inline function instantiated_location(a) 
+@inline function instantiated_location(a)
     LX, LY, LZ = location(a)
     return (LX(), LY(), LZ())
 end
-
 
 include("abstract_field.jl")
 include("constant_field.jl")

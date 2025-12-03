@@ -1,5 +1,4 @@
-using Oceananigans.Fields: AbstractField, OneField, indices, instantiated_location
-using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Fields: AbstractField, OneField, instantiated_location
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -126,6 +125,12 @@ end
     immersed_condition = NotImmersedColumn(immersed_column(op), nothing)
     return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
 end
+
+condition_operand(::typeof(identity), op::IF, ::Nothing, mask) =
+    condition_operand(nothing, op, nothing, mask)
+
+condition_operand(::typeof(identity), op::IRF, ::Nothing, mask) =
+    condition_operand(nothing, op, nothing, mask)
 
 @inline function condition_operand(func, op::IF, condition, mask)
     immersed_condition = NotImmersed(condition)

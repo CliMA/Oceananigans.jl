@@ -166,7 +166,7 @@ end
     region_N = connections.north.from_rank
     region_W = connections.west.from_rank
     region_S = connections.south.from_rank
-    
+
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
 
@@ -214,7 +214,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                             field_2::CubedSphereField{<:Center, <:Center}; signed = true, kwargs...)
     grid = field_1.grid
 
-    signed ? plmn = -1 : plmn = 1
+    plmn = signed ? -1 : 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)
@@ -233,7 +233,7 @@ end
 @inline function fill_cubed_sphere_field_pairs_halo_event!(grid, field_1, multiregion_field_1, field_2,
                                                            multiregion_field_2, region, connections, plmn,
                                                            side, _fill_halo_kernel!)
-    
+
     sz = fill_halo_size(field_1.data, side, field_1.indices, FullyConnected, location(field_1), grid)
     of = fill_halo_offset(sz, side, field_1.indices)
     kernel_parameters = KernelParameters(sz, of)
@@ -346,7 +346,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
 
-    signed ? plmn = -1 : plmn = 1
+    plmn = signed ? -1 : 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)
@@ -382,7 +382,7 @@ end
     of = vertical_offset(field_1.indices)
     kernel_parameters = KernelParameters(Nz, of)
     reduced_dims = reduced_dimensions(field_1)
-    
+
     return launch!(grid.architecture, grid, kernel_parameters, _fill_halo_kernel!, field_1, field_2, grid.Nx, grid.Hx,
                    plmn; reduced_dimensions = reduced_dims)
 end
@@ -575,7 +575,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                             field_2::CubedSphereField{<:Face, <:Face}; signed = true, kwargs...)
     grid = field_1.grid
 
-    signed ? plmn = -1 : plmn = 1
+    plmn = signed ? -1 : 1
 
     multiregion_field_1 = Reference(field_1.data.regional_objects)
     multiregion_field_2 = Reference(field_2.data.regional_objects)

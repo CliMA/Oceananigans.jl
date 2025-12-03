@@ -342,7 +342,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  model,
                                                  clock)
 
-    time = (typeof(clock) <: Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+    time = (typeof(clock) <: Const) ? Const(Oceananigans.Units.Time(clock.val.time)) : Duplicated(Oceananigans.Units.Time(clock.val.time), Oceananigans.Units.Time(clock.dval.time))
 
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 
@@ -390,7 +390,7 @@ function EnzymeCore.EnzymeRules.reverse(config,
                                         model,
                                         clock)
 
-    time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+    time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Units.Time(clock.val.time)) : Duplicated(Oceananigans.Units.Time(clock.val.time), Oceananigans.Units.Time(clock.dval.time))
 
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 

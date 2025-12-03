@@ -10,7 +10,7 @@ const PossibleDiffusivity = Union{Number, Function, DiscreteDiffusionFunction, A
         throw(ArgumentError("Tracer diffusivities or diffusivity parameters must either be a constants
                             or a `NamedTuple` with a value for every tracer!"))
 
-    materialized_κ = NamedTuple(name => user_κ[name] for name in tracer_names)                                
+    materialized_κ = NamedTuple(name => user_κ[name] for name in tracer_names)
     return materialized_κ
 end
 

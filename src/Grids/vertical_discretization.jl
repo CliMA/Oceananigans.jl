@@ -63,12 +63,15 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 """
     MutableVerticalDiscretization(r_faces)
 
-Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`, a function of an index `k`,
-or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coordinate that might evolve in time
-following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates,
-or sigma coordinates.
+Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
+a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
+defines a vertical coordinate that can evolve in time following certain rules.
+Examples of `MutableVerticalDiscretization`s are the free-surface following coordinates
+(also known as "zee-star") or the terrain following coordinates (also known as "sigma"
+coordinates).
 """
-MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:9)...)
+MutableVerticalDiscretization(r_faces) =
+    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -194,12 +197,16 @@ end
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline rnodes(grid::AUG, ℓz::F; with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓz::C; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
+@inline rnodes(grid::AUG, ℓz::F; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓz::C; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = rnodes(grid, ℓz; with_halos, indices)
 
-rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
-znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+
+ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
+@inline rnodes(grid::ZFlatAUG, ℓz::F; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
+@inline rnodes(grid::ZFlatAUG, ℓz::C; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
 
 # TODO: extend in the Operators module
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)

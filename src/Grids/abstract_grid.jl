@@ -75,7 +75,7 @@ Center cells have the location (Center, Center, Center).
 """
 @inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.eltype(::AbstractGrid{FT}) where FT = FT
-Base.eltype(::Type{<:Oceananigans.Grids.AbstractGrid{FT}}) where FT = FT
+Base.eltype(::Type{<:AbstractGrid{FT}}) where FT = FT
 Base.eps(::AbstractGrid{FT}) where FT = eps(FT)
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
@@ -106,6 +106,5 @@ grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
 # For summary/show methods
 @inline function topology_strs(grid::AbstractGrid)
     TX, TY, TZ = topology(grid)
-    return (topology_str(TX), topology_str(TY), topology_str(TZ)) 
+    return (topology_str(TX), topology_str(TY), topology_str(TZ))
 end
-

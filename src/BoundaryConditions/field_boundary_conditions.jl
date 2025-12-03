@@ -97,7 +97,7 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.north),
                             on_architecture(arch, fbcs.bottom),
                             on_architecture(arch, fbcs.top),
-                            on_architecture(arch, fbcs.immersed), 
+                            on_architecture(arch, fbcs.immersed),
                             fbcs.kernels,
                             on_architecture(arch, fbcs.ordered_bcs))
 
@@ -218,11 +218,20 @@ function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, 
     return regularize_boundary_condition(default_bc, grid, loc, dim, args...)
 end
 
-regularize_boundary_condition(bc, args...) = bc # fallback
+function regularize_boundary_condition(bc::BoundaryCondition, grid, loc, dim, args...)
+    regularized = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
+    return BoundaryCondition(bc.classification, regularized)
+end
 
 # Convert all `Number` boundary conditions to `eltype(grid)`
-regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...) where C =
-    BoundaryCondition(bc.classification, convert(eltype(grid), bc.condition))
+regularize_boundary_condition(condition::Number, grid, args...) = convert(eltype(grid), condition)
+regularize_boundary_condition(condition, grid, args...) = condition # fallback
+
+function regularize_boundary_condition(mc::MixedCondition, grid, args...)
+    coefficient = regularize_boundary_condition(mc.coefficient, grid, args...)
+    inhomogeneity = regularize_boundary_condition(mc.inhomogeneity, grid, args...)
+    return MixedCondition(coefficient, inhomogeneity)
+end
 
 """
     regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
@@ -251,7 +260,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               loc::Tuple,
                                               prognostic_names=nothing,
                                               field_name=nothing)
-    
+
     west   = regularize_west_boundary_condition(bcs.west,     grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_east_boundary_condition(bcs.east,     grid, loc, 1, RightBoundary, prognostic_names)
     south  = regularize_south_boundary_condition(bcs.south,   grid, loc, 2, LeftBoundary,  prognostic_names)

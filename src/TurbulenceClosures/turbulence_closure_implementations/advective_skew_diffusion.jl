@@ -1,4 +1,4 @@
-using Oceananigans.Fields: VelocityFields, ZeroField
+using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 
@@ -65,7 +65,7 @@ end
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
     Sy = ifelse(inactive, zero(grid), Sy)
     
-    return ifelse(bz == 0, zero(grid), - by / bz)
+    return Sy
 end
 
 # tapered slope in x-direction at F, C, F locations

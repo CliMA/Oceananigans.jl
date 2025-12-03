@@ -1,17 +1,17 @@
 using Adapt
-using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
-using Oceananigans.Utils: prettytime
+using Dates: AbstractTime, Nanosecond, Millisecond
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
 
-import Base: show
 import Oceananigans.Units: Time
+import Oceananigans.Fields: set!
 
 """
-    mutable struct Clock{T, FT}
+    mutable struct Clock{TT, DT, IT, S}
 
 Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
-The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
-either a number or a `DateTime` object.
+The `stage` is updated only for multi-stage time-stepping methods. The `time :: TT` is
+either a `Number` or a `DateTime` object.
 """
 mutable struct Clock{TT, DT, IT, S}
     time :: TT
@@ -50,11 +50,11 @@ function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
 end
 
 """
-    set_clock!(clock::Clock, new_clock::Clock)
+    set!(clock::Clock, new_clock::Clock)
 
 Set `clock` to the `new_clock`.
 """
-function set_clock!(clock::Clock, new_clock::Clock)
+function set!(clock::Clock, new_clock::Clock)
     clock.time = new_clock.time
     clock.iteration = new_clock.iteration
     clock.last_Δt = new_clock.last_Δt
@@ -108,10 +108,10 @@ function Base.show(io::IO, clock::Clock)
 end
 
 next_time(clock, Δt) = clock.time + Δt
-next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
+next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + seconds_to_nanosecond(Δt)
 
 tick_time!(clock, Δt) = clock.time += Δt
-tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
+tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += seconds_to_nanosecond(Δt)
 
 Time(clock::Clock) = Time(clock.time)
 
@@ -119,10 +119,6 @@ Time(clock::Clock) = Time(clock.time)
 unit_time(t) = t
 unit_time(t::Millisecond) = t.value / 1_000
 unit_time(t::Nanosecond) = t.value / 1_000_000_000
-
-# Convert to a base Julia type (a float or DateTime). Mainly used by NetCDFWriter.
-float_or_date_time(t) = t
-float_or_date_time(t::AbstractTime) = DateTime(t)
 
 function tick!(clock, Δt; stage=false)
 

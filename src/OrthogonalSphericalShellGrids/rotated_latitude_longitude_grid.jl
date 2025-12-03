@@ -1,7 +1,6 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded
-using Oceananigans.Utils: KernelParameters
-using StaticArrays
-using LinearAlgebra
+using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
+using Oceananigans.Utils: KernelParameters, launch!
+using StaticArrays: @SMatrix, SVector
 
 struct LatitudeLongitudeRotation{FT}
     north_pole :: FT
@@ -32,7 +31,7 @@ end
                                  latitude,
                                  z,
                                  halo = (3, 3, 3),
-                                 radius = R_Earth,
+                                 radius = Oceananigans.defaults.planet_radius,
                                  topology = (Bounded, Bounded, Bounded))
 
 Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
@@ -58,24 +57,26 @@ z = (0, 1)
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(70, 55))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── centered at (λ, φ) = (146.656, 11.3134)
-├── longitude: Bounded  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
-├── latitude:  Bounded  extent 160.0 degrees variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
-└── z:         Bounded  z ∈ [0.0, 1.0]       regularly spaced with Δz=1.0
+90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── centered at (λ, φ) = (-110.0, 35.0)
+├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
+├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
+└── z:         Bounded  z ∈ [0.0, 1.0]        regularly spaced with Δz=1.0
 ```
 
-We can also make an ordinary LatitudeLongitudeGrid using `north_polar = (0, 90)`:
+Note that the center latitude ``λ = -110`` follows from ``180 + 70 - 360 = -110``:
+a clockwise rotation of 70 degrees modulo 360 degrees.
+We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
 
 ```jldoctest rllg
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(0, 90))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── centered at (λ, φ) = (180.0, 0.0)
-├── longitude: Bounded  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
-├── latitude:  Bounded  extent 160.0 degrees variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
-└── z:         Bounded  z ∈ [0.0, 1.0]       regularly spaced with Δz=1.0
+├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
+├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
+└── z:         Bounded  z ∈ [0.0, 1.0]        regularly spaced with Δz=1.0
 ```
 """
 function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
@@ -86,16 +87,24 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
                                       latitude,
                                       z,
                                       halo = (3, 3, 3),
-                                      radius = R_Earth,
-                                      topology = (Bounded, Bounded, Bounded))
+                                      radius = Oceananigans.defaults.planet_radius,
+                                      topology = nothing)
+
+    precompute_metrics = true
+    topology, size, halo, latitude, longitude, z, precompute_metrics =
+        validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+
+    _, φ₀ = north_pole
+
+    if φ₀ < 0
+        throw(ArgumentError("North pole latitude must be >= 0."))
+    elseif φ₀ > 90
+        throw(ArgumentError("North pole latitude must be <= 90 degrees."))
+    end
 
     shifted_halo = halo .+ 1
-    source_grid = LatitudeLongitudeGrid(arch, FT; size, z, topology, radius,
-                                        latitude, longitude, halo = shifted_halo)
-
-    Nx, Ny, Nz = size
-    Hx, Hy, Hz = halo_size(source_grid)
-    Lz = source_grid.Lz
+    source_grid = LatitudeLongitudeGrid(arch, FT; halo=shifted_halo, precompute_metrics,
+                                        size, z, topology, radius, latitude, longitude)
 
     conformal_mapping = LatitudeLongitudeRotation(north_pole)
     grid = OrthogonalSphericalShellGrid(arch, FT; size, z, radius, halo, topology, conformal_mapping)
@@ -114,62 +123,71 @@ function rotate_metrics!(grid, shifted_lat_lon_grid)
 end
 
 # Convert from Spherical to Cartesian
-function spherical_to_cartesian(λ, φ, r=1)
-    x = r * cos(φ) * cos(λ)
-    y = r * cos(φ) * sin(λ)
-    z = r * sin(φ)
-    return SVector(x, y, z)
+function spherical_to_cartesian(φ, λ; radius = 1, check_latitude_bounds = true)
+    check_latitude_bounds && abs(φ) > π/2 && error("Latitude φ must be within -90 ≤ φ ≤ 90 degrees.")
+    x = radius * cos(λ) * cos(φ)
+    y = radius * sin(λ) * cos(φ)
+    z = radius * sin(φ)
+    return x, y, z
 end
 
 # Convert from Cartesian to Spherical
+function cartesian_to_spherical(x, y, z)
+    φ = atan(z, sqrt(x*x + y*y))
+    λ = atan(y, x)
+    return φ, λ
+end
+
 function cartesian_to_spherical(X)
     x, y, z = X
-    r = norm(X)
-    φ = asin(z / r)
-    λ = atan(y, x)
-    return λ, φ
+    return cartesian_to_spherical(x, y, z)
 end
 
 # Rotation about x-axis by dλ (Change in Longitude)
-x_rotation(dλ) = @SMatrix [1        0       0
-                           0  cos(dλ) -sin(dλ)
-                           0  sin(dλ)  cos(dλ)]
+x_rotation_matrix(dλ) = @SMatrix [1        0       0
+                                  0  cos(dλ) -sin(dλ)
+                                  0  sin(dλ)  cos(dλ)]
 
 # Rotation about y-axis by dφ (Change in Latitude)
-y_rotation(dφ) = @SMatrix [ cos(dφ)  0  sin(dφ)
-                            0        1  0
-                           -sin(dφ)  0  cos(dφ)]
+y_rotation_matrix(dφ) = @SMatrix [ cos(dφ)  0  sin(dφ)
+                                   0        1  0
+                                  -sin(dφ)  0  cos(dφ)]
 
 # Rotation about z-axis by dλ (Change in Longitude)
-z_rotation(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
-                           sin(dλ)  cos(dλ) 0
-                           0        0       1]
+z_rotation_matrix(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
+                                  sin(dλ)  cos(dλ) 0
+                                  0        0       1]
 
-# Perform the rotation
+"""
+    rotate_coordinates(λ′, φ′, λ₀, φ₀)
+
+Return the geographic longitude and latitude `(λ, φ)` corresponding to the rotated
+coordinates `(λ′, φ′)` on a grid whose north pole is located at `(λ₀, φ₀)`. All
+arguments are interpreted in degrees. The rotation aligns the grid pole with the
+geographic pole, then maps the rotated point back to geographic coordinates.
+"""
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
-    λ′ *= π/180
-    φ′ *= π/180
-    λ₀ *= π/180
-    φ₀ *= π/180
+    λ′ *= π / 180
+    φ′ *= π / 180
+    λ₀ *= π / 180
+    φ₀ *= π / 180
 
-    dλ = - λ₀
+    dλ = λ₀
     dφ = π/2 - φ₀
 
     # Convert to Cartesian
-    X′ = spherical_to_cartesian(λ′, φ′)
+    X′ = SVector(spherical_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
 
     # Rotate Cartesian coordinates
-    Rx = x_rotation(dλ)
-    Ry = y_rotation(dφ)
-    Rz = z_rotation(dλ)
-    #X = Rz * Ry * X′
-    X = Rx * Ry * X′
+    Ry = y_rotation_matrix(dφ)
+    Rz = z_rotation_matrix(dλ)
+    X = Rz * Ry * X′
 
     # Convert back to Spherical
-    λ, φ = cartesian_to_spherical(X)
+    φ, λ = cartesian_to_spherical(X)
 
-    λ *= 180/π
-    φ *= 180/π
+    λ *= 180 / π
+    φ *= 180 / π
 
     return λ, φ
 end
@@ -224,4 +242,3 @@ end
         grid.Δyᶠᶠᵃ[i, j] = lat_lon_metric(source_grid.Δyᶜᶠᵃ, i, j)
     end
 end
-

@@ -1,5 +1,7 @@
 using Printf
 using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Fields: set_to_function!
 
 #####
 ##### set!
@@ -23,10 +25,10 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
-    
+
     # Compute a timescale for comparisons
     Δt = mean(diff(file_times))
-    
+
     arch = architecture(fts)
 
     # TODO: a potential optimization here might be to load
@@ -35,7 +37,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
 
     # Index times on the CPU
     cpu_times = on_architecture(CPU(), fts.times)
-    
+
     for n in time_indices(fts)
         t = cpu_times[n]
         file_index = find_time_index(t, file_times, Δt)
@@ -118,3 +120,16 @@ function initialize_file!(file, name, fts)
 end
 
 set!(fts::OnDiskFTS, path::String, name::String) = nothing
+
+function set!(fts::InMemoryFTS, f::Function)
+    cpu_times = on_architecture(CPU(), fts.times)
+    n1 = first(time_indices(fts))
+    clock = Clock(time=cpu_times[n1])
+
+    for n in time_indices(fts)
+        clock.time = cpu_times[n]
+        set_to_function!(fts[n], f, clock)
+    end
+
+    return fts
+end

@@ -17,13 +17,13 @@ using DocStringExtensions
 using OffsetArrays
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: Reference, Iterate, getnamewrapper
+using Oceananigans.Utils: Reference, Iterate
 using Oceananigans.Grids: AbstractUnderlyingGrid
 
 import KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 
-import Base: show, length, size
+import Base: length, size
 
 import Oceananigans.Utils:
                 isregional,

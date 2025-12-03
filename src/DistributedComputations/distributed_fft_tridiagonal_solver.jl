@@ -1,6 +1,5 @@
 using GPUArraysCore
 using Oceananigans.Grids: stretched_dimensions
-using Oceananigans.Grids: XDirection, YDirection
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
@@ -203,7 +202,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     main_diagonal = zeros(grid, size(grid)...)
 
     Nd = size(grid, tridiagonal_dim) - 1
-    lower_diagonal = zeros(grid, Nd) 
+    lower_diagonal = zeros(grid, Nd)
     upper_diagonal = lower_diagonal
 
     compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)

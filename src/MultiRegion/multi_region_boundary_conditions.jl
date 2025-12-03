@@ -7,9 +7,8 @@ using Oceananigans.DistributedComputations: fill_send_buffers!
 using Oceananigans.BoundaryConditions:
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
-    fill_halo_event!, get_boundary_kernels,
-    MultiRegionFillHalo,
-    MCBCT, MCBC
+    fill_halo_event!,
+    MultiRegionFillHalo
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
 
@@ -40,7 +39,7 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
     return nothing
 end
 
-fill_halo_regions!(field::MultiRegionField, args...; kwargs...) = 
+fill_halo_regions!(field::MultiRegionField, args...; kwargs...) =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -83,7 +82,7 @@ getside(x, ::South) = x.south
 getside(x, ::West)  = x.west
 getside(x, ::East)  = x.east
 
-##### 
+#####
 ##### Double-sided MultiRegion filling kernels
 #####
 
@@ -185,7 +184,7 @@ function (::MultiRegionFillHalo{<:North})(c, bc, loc, grid, buffers)
 
     p = view(parent(c), :, N+H+1:N+2H, :)
     p .= dst
-    
+
     return nothing
 end
 
