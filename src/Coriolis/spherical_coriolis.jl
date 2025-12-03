@@ -70,8 +70,8 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 @inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
 @inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, w) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
 
-@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, u) = zero(grid)
-@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, w) = zero(grid)
+@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, ::HydrostaticSphericalCoriolis, u) = zero(grid)
+@inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, ::HydrostaticSphericalCoriolis, w) = zero(grid)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid) +
                                                                                  ℑyᵃᶜᵃ(i, j, k, grid, f̃_ℑx_wᶠᶠᵃ, coriolis, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
