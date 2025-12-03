@@ -34,6 +34,8 @@ Example
 ```jldoctest
 using Oceananigans
 
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
 # Physical parameters
 gravitational_acceleration          = 9.81     # m s⁻²
 ocean_density                       = 1026     # kg m⁻³
@@ -48,13 +50,13 @@ R = mean_particle_radius
 
 w_Stokes = - 2/9 * Δb / ν * R^2 # m s⁻¹
 
-settling = AdvectiveForcing(w=w_Stokes)
+settling = AdvectiveForcing(w=w_Stokes; grid)
 
 # output
 AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
-└── w: ConstantField(-1.97096)
+└── w: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
 ```
 """
 function AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), normal_boundary_condition=OpenBoundaryCondition(nothing))
