@@ -89,7 +89,7 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 ##### Active Point Enstrophy-conserving scheme
 #####
 
-# It might happen that a cell is active but all the neighbouring staggered nodes are inactive,
+# It might happen that a cell is active but all the neighboring staggered nodes are inactive,
 # (an example is a 1-cell large channel)
 # In that case the Coriolis force is equal to zero
 
@@ -109,15 +109,11 @@ const CoriolisEnstrophyConserving = SphericalCoriolis{<:EnstrophyConserving, <:A
 
 const CoriolisEnergyConserving = SphericalCoriolis{<:EnergyConserving, <:Any, <:HydrostaticFormulation}
 
-#@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
-#@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
-
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnergyConserving, U) =
-    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᶜ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnergyConserving, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᶜ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Show
