@@ -22,9 +22,9 @@ end
 
 """
     SphericalCoriolis([FT=Float64;]
-                                 rotation_rate = Ω_Earth,
-                                 scheme = EnstrophyConserving())
-                                 formulation = HydrostaticFormulation()
+                      rotation_rate = Ω_Earth,
+                      scheme = EnstrophyConserving())
+                      formulation = HydrostaticFormulation()
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 
@@ -39,6 +39,7 @@ function SphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                            scheme = EnstrophyConserving(FT),
                            formulation = NonhydrostaticFormulation())
+    rotation_rate = convert(FT, rotation_rate)
 
     return SphericalCoriolis(rotation_rate, scheme, formulation)
 end
@@ -49,7 +50,7 @@ const NonhydrostaticSphericalCoriolis{S, FT} = SphericalCoriolis{S, FT, <:Nonhyd
 function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                                       scheme = EnstrophyConserving(FT))
-    return SphericalCoriolis(rotation_rate, scheme, HydrostaticFormulation())
+    return SphericalCoriolis(FT; rotation_rate, scheme, formulation=HydrostaticFormulation())
 end
 
 Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
