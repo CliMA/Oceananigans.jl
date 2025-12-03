@@ -765,7 +765,7 @@ function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
     underlying_grid_args, underlying_grid_kwargs, immersed_grid_args = constructor_arguments(grid)
 
     immersed_boundary_type = typeof(grid.immersed_boundary).name.wrapper |> string # Save type of immersed boundary for reconstruction
-    underlying_grid_type   = typeof(grid.underlying_grid).name.wrapper |> string # Save type of underlyinh grid for reconstruction
+    underlying_grid_type   = typeof(grid.underlying_grid).name.wrapper |> string # Save type of underlying grid for reconstruction
 
     grid_metadata = Dict(:immersed_boundary_type => immersed_boundary_type,
                          :underlying_grid_type => underlying_grid_type)
