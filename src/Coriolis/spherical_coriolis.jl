@@ -65,15 +65,16 @@ Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
 @inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
 @inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 
-@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑzᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
+@inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, u) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δz_qᶜᶜᶠ, u)
 @inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, w) = f̃ᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, w)
 
 @inline f̃_ℑz_uᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, u) = zero(grid)
 @inline f̃_ℑx_wᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, w) = zero(grid)
 
-@inline x_f_cross_U(i, j, k, grid, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid) + ℑzᵃᶜᵃ(i, j, k, grid, f̃_ℑx_wᶠᶠᵃ, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-@inline y_f_cross_U(i, j, k, grid, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-@inline z_f_cross_U(i, j, k, grid, U) = @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶠᵃ, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid) +
+                                                                                 ℑyᵃᶜᵃ(i, j, k, grid, f̃_ℑx_wᶠᶠᵃ, coriolis, U[3]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline y_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, U) = @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃_ℑz_uᶠᶠᵃ, coriolis, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::SphericalCoriolis, formulation::HydrostaticFormulation, U) = zero(grid)
 
