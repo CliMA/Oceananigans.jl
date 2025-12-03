@@ -18,7 +18,8 @@ using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
                           parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
                           constructor_arguments, architecture
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
+                                       CenterImmersedCondition, InterfaceImmersedCondition
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
                           versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
@@ -743,12 +744,13 @@ convert_for_netcdf(x::Bool) = string(x)
 convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
 convert_for_netcdf(x) = string(x)
 convert_for_netcdf(::GPU) = "GPU()"
+convert_for_netcdf(::CenterImmersedCondition) = "CenterImmersedCondition()"
+convert_for_netcdf(::InterfaceImmersedCondition) = "InterfaceImmersedCondition()"
 
 materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
 materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
-
 
 function netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid)
@@ -773,16 +775,18 @@ function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
 end
 
 function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args)
-    ibg_group = defGroup(ds, "immersed_grid_reconstruction_args")
-
+    group_name = "immersed_grid_reconstruction_args"
     if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
         bottom_height = pop!(immersed_grid_args, :bottom_height)
-        defVar(ibg_group, "bottom_height", bottom_height; attrib=convert_for_netcdf(immersed_grid_args))
+        ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
+        defVar(ibg_group, "bottom_height", bottom_height)
 
     elseif grid.immersed_boundary isa GridFittedBoundary
         mask = pop!(immersed_grid_args, :mask)
-        defVar(ibg_group, "mask", mask; attrib=convert_for_netcdf(immersed_grid_args))
+        ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
+        defVar(ibg_group, "mask", mask)
     end
+
     return ds
 end
 
@@ -815,12 +819,12 @@ function reconstruct_immersed_boundary(ds)
     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
     if immersed_boundary_type == GridFittedBottom
         bottom_height = Array(ibg_group["bottom_height"])
-        immersed_condition = ibg_group["immersed_condition"]
+        immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
         immersed_boundary = immersed_boundary_type(bottom_height, immersed_condition)
 
     elseif immersed_boundary_type == PartialCellBottom
         bottom_height = Array(ibg_group["bottom_height"])
-        minimum_fractional_cell_height = ibg_group["minimum_fractional_cell_height"]
+        minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
         immersed_boundary = immersed_boundary_type(bottom_height, minimum_fractional_cell_height)
 
     elseif immersed_boundary_type == GridFittedBoundary
