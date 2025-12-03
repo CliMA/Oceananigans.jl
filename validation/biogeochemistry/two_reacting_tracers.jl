@@ -52,7 +52,7 @@ function update_plot!(sim)
     ax.title[] = @sprintf("Tracer reactions at t=%.2e", time(sim))
 end
 
-record(fig, "tracer_reactions.mp4", 1:100, framerate=24) do nn
+record(fig, "tracer_reactions.mp4", 1:100, framerate=24) do _
     simulation.stop_iteration += 10
     run!(simulation)
     update_plot!(simulation)

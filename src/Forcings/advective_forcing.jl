@@ -1,17 +1,22 @@
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Utils: sum_of_velocities
 using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition, mask_immersed_field!
 using Adapt
 
-maybe_field(u, args...) = u
+maybe_field(u::AbstractField, args...) = u
 
-function maybe_field(u::Number, loc, grid, u_bcs)
+function maybe_field(u::Number, loc, grid, u_bcs, open_boundaries)
     immersed_bcs = ImmersedBoundaryCondition(; u_bcs...)
     bcs = FieldBoundaryConditions(grid, loc; u_bcs..., immersed = immersed_bcs)
     u_field = Field(loc, grid; boundary_conditions = bcs)
     set!(u_field, u)
     fill_halo_regions!(u_field)
+    if open_boundaries
+        mask_immersed_field!(u_field, u)
+    else
+        mask_immersed_field!(u_field, zero(eltype(grid)))
+    end
     return u_field
 end
 
@@ -22,9 +27,15 @@ struct AdvectiveForcing{U, V, W}
 end
 
 """
-    AdvectiveForcing(u=ZeroField(), v=ZeroField(), w=ZeroField())
+    AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), open_boundaries=false)
 
-Build a forcing term representing advection by the velocity field `u, v, w` with an advection `scheme`.
+Build a forcing term representing advection by the velocity field `u, v, w`.
+
+# Keyword Arguments
+- `grid`: Required when `u`, `v`, or `w` are numbers rather than fields
+- `u`, `v`, `w`: Velocity components (can be numbers, fields, or functions)
+- `open_boundaries`: If `true`, uses `OpenBoundaryCondition(velocity)` for boundary conditions.
+                     If `false` (default), uses `OpenBoundaryCondition(nothing)`.
 
 Example
 =======
@@ -59,18 +70,28 @@ AdvectiveForcing:
 └── w: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
 ```
 """
-function AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), normal_boundary_condition=OpenBoundaryCondition(nothing))
+function AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), open_boundaries=false)
     if any((isa(u, Number), isa(v, Number), isa(w, Number))) && grid === nothing
         throw(ArgumentError("If passing numbers for u, v, w, you must also pass a grid"))
     end
 
-    u_bcs = (; east = normal_boundary_condition, west = normal_boundary_condition)
-    v_bcs = (; south = normal_boundary_condition, north = normal_boundary_condition)
-    w_bcs = (; bottom = normal_boundary_condition, top = normal_boundary_condition)
+    if open_boundaries
+        u_bc = OpenBoundaryCondition(u)
+        v_bc = OpenBoundaryCondition(v)
+        w_bc = OpenBoundaryCondition(w)
+    else
+        u_bc = OpenBoundaryCondition(nothing)
+        v_bc = OpenBoundaryCondition(nothing)
+        w_bc = OpenBoundaryCondition(nothing)
+    end
 
-    u = maybe_field(u, (Face(), Center(), Center()), grid, u_bcs)
-    v = maybe_field(v, (Center(), Face(), Center()), grid, v_bcs)
-    w = maybe_field(w, (Center(), Center(), Face()), grid, w_bcs)
+    u_bcs = (; east = u_bc, west = u_bc)
+    v_bcs = (; south = v_bc, north = v_bc)
+    w_bcs = (; bottom = w_bc, top = w_bc)
+
+    u = maybe_field(u, (Face(), Center(), Center()), grid, u_bcs, open_boundaries)
+    v = maybe_field(v, (Center(), Face(), Center()), grid, v_bcs, open_boundaries)
+    w = maybe_field(w, (Center(), Center(), Face()), grid, w_bcs, open_boundaries)
 
     return AdvectiveForcing(u, v, w)
 end

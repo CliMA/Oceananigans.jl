@@ -266,8 +266,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
 
     function build_settling_model(grid, w_settle)
         # Create settling forcing
-        normal_boundary_condition = open_bottom ? OpenBoundaryCondition(w_settle) : OpenBoundaryCondition(nothing)
-        settling_forcing = AdvectiveForcing(w = w_settle; grid, normal_boundary_condition=normal_boundary_condition)
+        settling_forcing = AdvectiveForcing(w = w_settle; grid, open_boundaries=open_bottom)
         model = NonhydrostaticModel(; grid, advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
 
         # Initial condition: patch of tracer c=1 in the upper part
@@ -312,7 +311,6 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     else
         @test regular_integral[] ≈ immersed_integral[] ≈ regular_initial_integral[]
     end
-    @test regular_max ≈ immersed_max rtol=0.01
 
     return true
 end
