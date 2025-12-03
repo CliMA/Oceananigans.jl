@@ -59,7 +59,7 @@ z_km = range(z_min, z_max, length=Nd) ./ 1e3
 
 # First plot: R vs depth and temperature
 ax1 = Axis(fig[1, 1], ylabel = "Depth (km)", xlabel = "Temperature (°C)", title = "S = $(S1) psu")
-ax2 = Axis(fig[1, 2], ylabel = "Depth (km)", xlabel = "Salinity (psu)", title = "T = $(T1) °C")
+ax2 = Axis(fig[1, 2], ylabel = "Depth (km)", xlabel = "Salinity (psu)",   title = "T = $(T1) °C")
 ax3 = Axis(fig[2, 1], ylabel = "Depth (km)", xlabel = "Temperature (°C)", title = "S = $(S2) psu")
 ax4 = Axis(fig[2, 2], ylabel = "Depth (km)", xlabel = "Temperature (°C)", title = "S = $(S3) psu")
 
