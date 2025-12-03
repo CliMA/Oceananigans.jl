@@ -843,7 +843,7 @@ function reconstruct_grid(ds)
     underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
 
     # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary, otherwise underlying grid is the final grid
-    if grid_reconstruction_metadata[:immersed_boundary_type] isa Nothing
+    if isnothing(grid_reconstruction_metadata[:immersed_boundary_type])
         grid = underlying_grid
     else
         immersed_boundary = reconstruct_immersed_boundary(ds)
