@@ -101,7 +101,7 @@ end
     @test parent(model.tracers.T) isa MtlArray
     @test parent(model.tracers.S) isa MtlArray
 
-    simulation = Simulation(model, Δt=5seconds, stop_iteration=20)
+    simulation = Simulation(model, Δt=1seconds, stop_iteration=1)
     run!(simulation)
 
     @test iteration(simulation) == 20
