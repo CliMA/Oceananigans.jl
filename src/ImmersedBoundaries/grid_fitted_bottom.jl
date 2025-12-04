@@ -140,6 +140,7 @@ end
 ##### Static column depth
 #####
 
+# AbstractGridFittedBottomImmersedBoundaryGrid
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
 @inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
@@ -157,11 +158,10 @@ YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Abstrac
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
 
 function constructor_arguments(grid::AGFBIBG)
-    args, kwargs = constructor_arguments(grid.underlying_grid)
-    args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,
-                            :immersed_condition => grid.immersed_boundary.immersed_condition,
-                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
-    return args, kwargs
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
+    grid_fitted_bottom_args = Dict(:bottom_height      => grid.immersed_boundary.bottom_height,
+                                   :immersed_condition => grid.immersed_boundary.immersed_condition)
+    return underlying_grid_args, underlying_grid_kwargs, grid_fitted_bottom_args
 end
 
 function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
