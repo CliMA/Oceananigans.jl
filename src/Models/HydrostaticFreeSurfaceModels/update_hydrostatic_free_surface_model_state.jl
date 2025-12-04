@@ -4,11 +4,10 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_condi
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, surface_kernel_parameters
 
-import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)

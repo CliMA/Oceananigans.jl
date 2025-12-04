@@ -1,10 +1,7 @@
 import Oceananigans: tracer_tendency_kernel_function
-import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans.Models: complete_communication_and_compute_buffer!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Utils: KernelParameters
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!

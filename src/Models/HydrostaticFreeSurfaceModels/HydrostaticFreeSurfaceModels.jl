@@ -9,12 +9,12 @@ using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt: Adapt
 
-using Oceananigans.Utils
 using Oceananigans.Utils: launch!
 using Oceananigans.Utils: launch!, @apply_regionally
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.Utils: Utils, @apply_regionally
 
 using DocStringExtensions: TYPEDFIELDS
 

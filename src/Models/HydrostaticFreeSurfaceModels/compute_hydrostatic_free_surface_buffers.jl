@@ -1,5 +1,3 @@
-import Oceananigans.Models: compute_buffer_tendencies!
-
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
