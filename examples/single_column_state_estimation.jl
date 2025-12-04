@@ -78,39 +78,35 @@ function take_12_steps!(model, uᵢ, bᵢ)
     model.clock.time = 0
 
     Δt = model.clock.last_Δt
-    @trace mincut = true checkpointing = true track_numbers = false for i = 1:12
+    @trace mincut = true checkpointing = true track_numbers = false for n = 1:12
         time_step!(model, Δt)
     end
 
     return nothing
 end
 
-model.clock.last_Δt = 10minutes
+model.clock.last_Δt = 1minutes
 uᵢ = set!(CenterField(grid), u_jet)
 bᵢ = set!(CenterField(grid), b_stratified)
-# r_12_steps! = @compile sync=true raise=true take_12_steps!(model, interior(uᵢ), interior(bᵢ))
-r_12_steps! = @compile sync=true raise=true take_12_steps!(model, uᵢ, b))
-r_12_steps!(model)
+r_12_steps! = @compile sync=true raise=true take_12_steps!(model, uᵢ, bᵢ)
 
-u₀ = Array(interior(model.velocities.u, 1, 1, :))
-b₀ = Array(interior(model.tracers.b, 1, 1, :))
+u₀ = interior(uᵢ, 1, 1, :) |> Array
+b₀ = interior(bᵢ, 1, 1, :) |> Array
 
-run!(simulation)
+r_12_steps!(model, uᵢ, bᵢ)
 
-u₁ = Array(interior(model.velocities.u, 1, 1, :))
-b₁ = Array(interior(model.tracers.b, 1, 1, :))
-
+u₁ = interior(model.velocities.u, 1, 1, :) |> Array
+b₁ = interior(model.tracers.b, 1, 1, :) |> Array
 
 # ## Visualization of Truth Simulation
 #
 # Plot the initial and final velocity profiles from the truth simulation.
 
-z = znodes(model.velocities.u)
-
 fig_truth = Figure(size=(800, 400))
 ax_u = Axis(fig_truth[1, 1]; xlabel="Velocity [m/s]", ylabel="Depth [m]", title="Truth Simulation")
 ax_b = Axis(fig_truth[1, 2]; xlabel="Buoyancy [m/s²]", ylabel="Depth [m]", title="Buoyancy Profile")
 
+z = znodes(model.velocities.u) |> Array
 lines!(ax_u, u₀, z, label="Initial")
 lines!(ax_u, u₁, z, label="Final")
 axislegend(ax_u)
