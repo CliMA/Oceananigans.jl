@@ -5,7 +5,7 @@ using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
-using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.DistributedComputations: DistributedGrid, @root
 
 grid_type(::RectilinearGrid{F, X, Y}) where {F, X, Y} = "Rect{$X, $Y}"
 grid_type(::LatitudeLongitudeGrid{F, X, Y}) where {F, X, Y} = "LatLon{$X, $Y}"
@@ -67,7 +67,7 @@ function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
 end
 
 function info_message(grid, free_surface, timestepper)
-    msg1 = "$(typeof(architecture(grid))) "
+    msg1 = "$(summary(architecture(grid))) "
     msg2 = grid_type(grid)
     msg3 = " with $(timestepper)"
     msg4 = " using a " * string(getnamewrapper(free_surface))
@@ -101,7 +101,7 @@ end
                 grids = [rtgv, irtgv] #, prtgv]
             end
 
-            @info "  Skipping local conservation test for QuasiAdamsBashforth2 time stepping, which does not guarantee conservation of tracers."
+            @root @info "  Skipping local conservation test for QuasiAdamsBashforth2 time stepping, which does not guarantee conservation of tracers."
 
             for grid in grids
                 # Preconditioned conjugate gradient solver does not satisfy local conservation stricly to machine precision.
@@ -111,14 +111,14 @@ end
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
 
                     if (free_surface isa ImplicitFreeSurface) && (grid isa DistributedGrid) 
-                        @info "  Skipping ImplicitFreeSurface on DistributedGrids because not supported"
+                        @root @info "  Skipping ImplicitFreeSurface on DistributedGrids because not supported"
                         continue
                     end
 
                     timestepper = :SplitRungeKutta3
                     info_msg = info_message(grid, free_surface, timestepper)
                     @testset "$info_msg" begin
-                        @info "  Testing a $info_msg"
+                        @root @info "  Testing a $info_msg"
                         model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
                                                             free_surface,
                                                             tracers = (:b, :c, :constant),

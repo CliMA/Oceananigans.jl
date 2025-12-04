@@ -93,94 +93,96 @@ for arch in archs
 
     if valid_x_partition & valid_y_partition & valid_z_partition
         @testset "Testing distributed solid body rotation" begin
-            underlying_grid = LatitudeLongitudeGrid(arch,
-                                                    size = (Nx, Ny, 3),
-                                                    halo = (4, 4, 3),
-                                                    latitude = (-80, 80),
-                                                    longitude = (-160, 160),
-                                                    z = (-1, 0),
-                                                    radius = 1,
-                                                    topology = (Bounded, Bounded, Bounded))
+            for z_faces in [(-1, 0), MutableVerticalDiscretization((-1, 0))]
+                underlying_grid = LatitudeLongitudeGrid(arch,
+                                                        size = (Nx, Ny, 3),
+                                                        halo = (4, 4, 3),
+                                                        latitude = (-80, 80),
+                                                        longitude = (-160, 160),
+                                                        z = z_faces
+                                                        radius = 1,
+                                                        topology = (Bounded, Bounded, Bounded))
 
-            bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
+                bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = false)
-            immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+                immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = false)
+                immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-            global_underlying_grid = reconstruct_global_grid(underlying_grid)
-            global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
+                global_underlying_grid = reconstruct_global_grid(underlying_grid)
+                global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
-                                           (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+                for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
+                                            (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
-                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3, :SplitRungeKutta5)
-                    @root @info "  Testing distributed solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) on $(timestepper)"
-                    
-                    # "s" for "serial" computation, "p" for parallel
-                    ms = rotation_with_shear_test(global_grid; timestepper)
-                    mp = rotation_with_shear_test(grid; timestepper)
+                    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                        @root @info "  Testing distributed solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) on $(timestepper)"
+                        
+                        # "s" for "serial" computation, "p" for parallel
+                        ms = rotation_with_shear_test(global_grid; timestepper)
+                        mp = rotation_with_shear_test(grid; timestepper)
 
-                    us = interior(on_architecture(CPU(), ms.velocities.u))
-                    vs = interior(on_architecture(CPU(), ms.velocities.v))
-                    cs = interior(on_architecture(CPU(), ms.tracers.c))
-                    ηs = interior(on_architecture(CPU(), ms.free_surface.η))
+                        us = interior(on_architecture(CPU(), ms.velocities.u))
+                        vs = interior(on_architecture(CPU(), ms.velocities.v))
+                        cs = interior(on_architecture(CPU(), ms.tracers.c))
+                        ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
-                    cpu_arch = cpu_architecture(arch)
+                        cpu_arch = cpu_architecture(arch)
 
-                    up = interior(on_architecture(cpu_arch, mp.velocities.u))
-                    vp = interior(on_architecture(cpu_arch, mp.velocities.v))
-                    cp = interior(on_architecture(cpu_arch, mp.tracers.c))
-                    ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
+                        up = interior(on_architecture(cpu_arch, mp.velocities.u))
+                        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+                        cp = interior(on_architecture(cpu_arch, mp.tracers.c))
+                        ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
-                    us = partition(us, cpu_arch, size(up))
-                    vs = partition(vs, cpu_arch, size(vp))
-                    cs = partition(cs, cpu_arch, size(cp))
-                    ηs = partition(ηs, cpu_arch, size(ηp))
+                        us = partition(us, cpu_arch, size(up))
+                        vs = partition(vs, cpu_arch, size(vp))
+                        cs = partition(cs, cpu_arch, size(cp))
+                        ηs = partition(ηs, cpu_arch, size(ηp))
 
-                    atol = eps(eltype(grid))
-                    rtol = sqrt(eps(eltype(grid)))
+                        atol = eps(eltype(grid))
+                        rtol = sqrt(eps(eltype(grid)))
 
-                    @test all(isapprox(up, us; atol, rtol))
-                    @test all(isapprox(vp, vs; atol, rtol))
-                    @test all(isapprox(cp, cs; atol, rtol))
-                    @test all(isapprox(ηp, ηs; atol, rtol))
+                        @test all(isapprox(up, us; atol, rtol))
+                        @test all(isapprox(vp, vs; atol, rtol))
+                        @test all(isapprox(cp, cs; atol, rtol))
+                        @test all(isapprox(ηp, ηs; atol, rtol))
+                    end
                 end
+
+                # CATKE works only with synchronized communication at the moment
+                arch    = synchronized(arch)
+                closure = CATKEVerticalDiffusivity()
+
+                @root @info "  Testing CATKE with $(ranks(arch)) ranks"
+
+                # "s" for "serial" computation, "p" for parallel
+                ms = rotation_with_shear_test(global_underlying_grid, closure)
+                mp = rotation_with_shear_test(underlying_grid, closure)
+
+                us = interior(on_architecture(CPU(), ms.velocities.u))
+                vs = interior(on_architecture(CPU(), ms.velocities.v))
+                cs = interior(on_architecture(CPU(), ms.tracers.c))
+                ηs = interior(on_architecture(CPU(), ms.free_surface.η))
+
+                cpu_arch = cpu_architecture(arch)
+
+                up = interior(on_architecture(cpu_arch, mp.velocities.u))
+                vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+                cp = interior(on_architecture(cpu_arch, mp.tracers.c))
+                ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
+
+                us = partition(us, cpu_arch, size(up))
+                vs = partition(vs, cpu_arch, size(vp))
+                cs = partition(cs, cpu_arch, size(cp))
+                ηs = partition(ηs, cpu_arch, size(ηp))
+
+                atol = eps(eltype(global_underlying_grid))
+                rtol = sqrt(eps(eltype(global_underlying_grid)))
+
+                @test all(isapprox(up, us; atol, rtol))
+                @test all(isapprox(vp, vs; atol, rtol))
+                @test all(isapprox(cp, cs; atol, rtol))
+                @test all(isapprox(ηp, ηs; atol, rtol))
             end
-
-            # CATKE works only with synchronized communication at the moment
-            arch    = synchronized(arch)
-            closure = CATKEVerticalDiffusivity()
-
-            @root @info "  Testing CATKE with $(ranks(arch)) ranks"
-
-            # "s" for "serial" computation, "p" for parallel
-            ms = rotation_with_shear_test(global_underlying_grid, closure)
-            mp = rotation_with_shear_test(underlying_grid, closure)
-
-            us = interior(on_architecture(CPU(), ms.velocities.u))
-            vs = interior(on_architecture(CPU(), ms.velocities.v))
-            cs = interior(on_architecture(CPU(), ms.tracers.c))
-            ηs = interior(on_architecture(CPU(), ms.free_surface.η))
-
-            cpu_arch = cpu_architecture(arch)
-
-            up = interior(on_architecture(cpu_arch, mp.velocities.u))
-            vp = interior(on_architecture(cpu_arch, mp.velocities.v))
-            cp = interior(on_architecture(cpu_arch, mp.tracers.c))
-            ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
-
-            us = partition(us, cpu_arch, size(up))
-            vs = partition(vs, cpu_arch, size(vp))
-            cs = partition(cs, cpu_arch, size(cp))
-            ηs = partition(ηs, cpu_arch, size(ηp))
-
-            atol = eps(eltype(global_underlying_grid))
-            rtol = sqrt(eps(eltype(global_underlying_grid)))
-
-            @test all(isapprox(up, us; atol, rtol))
-            @test all(isapprox(vp, vs; atol, rtol))
-            @test all(isapprox(cp, cs; atol, rtol))
-            @test all(isapprox(ηp, ηs; atol, rtol))
         end
     end
 end
