@@ -9,7 +9,7 @@ using Base: @propagate_inbounds
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
 import Oceananigans.Grids: xnodes, ynodes
-import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: set!, compute!, compute_at!, interior
 import Oceananigans.Fields: validate_indices, communication_buffers
 import Oceananigans.Diagnostics: hasnan
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers

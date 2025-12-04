@@ -1,5 +1,3 @@
-using Oceananigans.Architectures: architecture
-using Oceananigans: fields
 using Oceananigans.Utils: time_difference_seconds
 
 """

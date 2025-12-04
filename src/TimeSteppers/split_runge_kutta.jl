@@ -1,5 +1,3 @@
-using Oceananigans: fields
-
 """
     SplitRungeKuttaTimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
 

@@ -39,8 +39,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     tracers = model.tracers
 
     # Fill the halos
-    fill_halo_regions!((u, v),  grid, model.clock, fields(model); async=true)
-    fill_halo_regions!(tracers, grid, model.clock, fields(model); async=true)
+    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    fill_halo_regions!(tracers, model.clock, fields(model); async=true)
 
     @apply_regionally begin
         surface_params = surface_kernel_parameters(model.grid)

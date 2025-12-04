@@ -1,5 +1,3 @@
-using Oceananigans.Utils: work_layout
-using Oceananigans.Architectures: device
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Oceananigans.TimeSteppers: cache_previous_tendencies!
