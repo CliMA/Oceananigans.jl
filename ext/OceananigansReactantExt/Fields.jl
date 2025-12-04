@@ -35,7 +35,7 @@ function set_to_function!(u::ReactantField, f)
     f_field = Oceananigans.Fields.field(Oceananigans.Fields.instantiated_location(u), f, cpu_grid)
     set!(cpu_u, f_field)
     copyto!(interior(u), interior(cpu_u))
-    return nothing
+    return u
 end
 
 function set_to_function!(u::ShardedDistributedField, f)
@@ -43,7 +43,7 @@ function set_to_function!(u::ShardedDistributedField, f)
     arch = grid.architecture
     Oceananigans.Utils.launch!(arch, grid, size(u), _set_to_function_on_device!,
                                u, f, grid, Oceananigans.Fields.location(u))
-    return nothing
+    return u
 end
 
 @kernel function _set_to_function_on_device!(u, f, grid, loc)
