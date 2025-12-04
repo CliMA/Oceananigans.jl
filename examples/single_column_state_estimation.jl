@@ -23,11 +23,13 @@
 # ```
 
 using Oceananigans
+using Oceananigans.Units
 using Oceananigans.TimeSteppers: reset!
 using Enzyme
 using Reactant
 using CairoMakie
 using Printf
+using CUDA
 
 # Required for Enzyme
 Enzyme.API.looseTypeAnalysis!(true)
@@ -39,63 +41,65 @@ Enzyme.API.maxtypeoffset!(2032)
 # The model uses `TKEDissipationVerticalDiffusivity` (k-epsilon) closure for
 # turbulent mixing in a stratified environment.
 
-# Oceanographic parameters
-const H = 200.0        # Depth [m]
-const N² = 1e-5        # Buoyancy frequency squared [s⁻²]
-const U₀ = 0.1         # Jet amplitude [m/s]
-const z₀ = -100.0      # Jet center depth [m]
-const σ = 20.0         # Jet width [m]
-
-# Grid resolution (start small for testing)
+# Parameters
 Nz = 128
-grid = RectilinearGrid(size=Nz, z=(-H, 0), topology=(Flat, Flat, Bounded))
+H = 200          # Depth [m]
+U₀ = 0.2         # Jet amplitude [m/s]
+du = 10
+z₀ = -100        # Jet center depth [m]
 
-# Closure with k-epsilon turbulence model
+N² = 1e-5        # Buoyancy frequency squared [s⁻²]
+db = 20          # Buoyancy transition width [m]
+b₀ = N² * db     # Buoyancy scale
+z₁ = -90         # Buoyancy transition center [m] (slightly offset from jet)
+
+arch = Oceananigans.Architectures.ReactantState()
+grid = RectilinearGrid(arch, size=Nz, z=(-H, 0), topology=(Flat, Flat, Bounded))
 closure = TKEDissipationVerticalDiffusivity()
-
-# Model with required tracers for k-epsilon closure
-model = HydrostaticFreeSurfaceModel(; grid, closure,
-                                    tracers = (:b, :e, :ϵ),
-                                    buoyancy = BuoyancyTracer())
+model = HydrostaticFreeSurfaceModel(; grid, closure, tracers=(:b, :e, :ϵ), buoyancy=BuoyancyTracer())
 
 # ## Initial Conditions
 #
 # We define a Gaussian jet velocity profile and a tanh-stratified buoyancy field.
 
-# Gaussian jet initial condition
-du = 10
 u_jet(z) = U₀ * exp(-(z - z₀)^2 / 2du^2)
-
-# Stratified buoyancy background with tanh profile
-# b(z) = b0 * tanh((z - z1) / dz), where N² = b0 / dz
-# Make dz broader than jet and displace center for asymmetry
-dz = 20        # Buoyancy transition width [m]
-z₁ = -90       # Buoyancy transition center [m] (slightly offset from jet)
-b₀ = N² * dz     # Buoyancy scale
-
-b_stratified(z) = b₀ * tanh((z - z₁) / dz)
+b_stratified(z) = b₀ * tanh((z - z₁) / db)
 
 # Set initial conditions
-set!(model, u=u_jet, b=b_stratified)
+# set!(model, u=u_jet, b=b_stratified)
 
 # ## Truth Simulation
 #
 # Run the model forward to generate "truth" data that we'll try to match.
+function take_12_steps!(model, uᵢ, bᵢ)
+    set!(model, u=uᵢ, b=bᵢ)        
 
-simulation = Simulation(model, Δt=5minutes, stop_time=6hours)
+    model.clock.iteration = 0
+    model.clock.time = 0
+
+    Δt = model.clock.last_Δt
+    @trace mincut = true checkpointing = true track_numbers = false for i = 1:12
+        time_step!(model, Δt)
+    end
+
+    return nothing
+end
+
+model.clock.last_Δt = 10minutes
+uᵢ = set!(CenterField(grid), u_jet)
+bᵢ = set!(CenterField(grid), b_stratified)
+# r_12_steps! = @compile sync=true raise=true take_12_steps!(model, interior(uᵢ), interior(bᵢ))
+r_12_steps! = @compile sync=true raise=true take_12_steps!(model, uᵢ, b))
+r_12_steps!(model)
+
+u₀ = Array(interior(model.velocities.u, 1, 1, :))
+b₀ = Array(interior(model.tracers.b, 1, 1, :))
+
 run!(simulation)
 
-# Extract truth data (final velocity profile)
-# For single column, extract 1D array: [1, 1, :]
-u_truth = Array(interior(model.velocities.u, 1, 1, :))
-b_truth = Array(interior(model.tracers.b, 1, 1, :))
+u₁ = Array(interior(model.velocities.u, 1, 1, :))
+b₁ = Array(interior(model.tracers.b, 1, 1, :))
 
-# Store initial condition for reference
-u_init_truth = Array(interior(model.velocities.u, 1, 1, :))
-b_init_truth = Array(interior(model.tracers.b, 1, 1, :))
-
-# Reset model clock for cost function evaluation
-reset!(model.clock)
 
 # ## Visualization of Truth Simulation
 #
@@ -107,12 +111,12 @@ fig_truth = Figure(size=(800, 400))
 ax_u = Axis(fig_truth[1, 1]; xlabel="Velocity [m/s]", ylabel="Depth [m]", title="Truth Simulation")
 ax_b = Axis(fig_truth[1, 2]; xlabel="Buoyancy [m/s²]", ylabel="Depth [m]", title="Buoyancy Profile")
 
-lines!(ax_u, u_init_truth, z, label="Initial")
-lines!(ax_u, u_truth, z, label="Final")
+lines!(ax_u, u₀, z, label="Initial")
+lines!(ax_u, u₁, z, label="Final")
 axislegend(ax_u)
 
-lines!(ax_b, b_init_truth, z, label="Initial")
-lines!(ax_b, b_truth, z, label="Final")
+lines!(ax_b, b₀, z, label="Initial")
+lines!(ax_b, b₁, z, label="Final")
 axislegend(ax_b)
 
 current_figure() #hide
