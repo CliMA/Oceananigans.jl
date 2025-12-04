@@ -108,17 +108,7 @@ end
                 implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient) 
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps=20)
                 explicit_free_surface = ExplicitFreeSurface()
-                for free_surface in [explicit_free_surface, split_free_surface]
-
-                    # TODO: There are parameter space issues with ImplicitFreeSurface and a immersed LatitudeLongitudeGrid
-                    # For the moment we are skipping these tests.
-                    if (arch isa GPU) &&
-                       (free_surface isa ImplicitFreeSurface) &&
-                       (grid isa ImmersedBoundaryGrid) &&
-                       (grid.underlying_grid isa LatitudeLongitudeGrid)
-                        @info "  Skipping $(info_message(grid, free_surface, :timestepper)) because of parameter space issues"
-                        continue
-                    end
+                for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
 
                     if (free_surface isa ImplicitFreeSurface) && (grid isa DistributedGrid) 
                         @info "  Skipping ImplicitFreeSurface on DistributedGrids because not supported"
