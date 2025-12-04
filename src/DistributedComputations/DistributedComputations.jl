@@ -45,16 +45,15 @@ fft_poisson_solver(local_grid::DistributedGrid, global_grid::GridWithFourierTrid
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
 import Oceananigans.Solvers: compute_preconditioner_rhs!, precondition!
-using Oceananigans.Solvers: fft_preconditioner_rhs!
 
-function compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
-    grid = solver.local_grid
-    arch = architecture(grid)
-    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage.zfield, rhs)
-    return nothing
+# But we need to define the precondition! methods here
+function precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
+    compute_preconditioner_rhs!(preconditioner, r)
+    solve!(p, preconditioner)
+    return p
 end
 
-function precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
+function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSolver, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner)
     return p

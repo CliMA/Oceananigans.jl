@@ -3,7 +3,7 @@ import FFTW
 using GPUArraysCore
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 
-import Oceananigans.Solvers: poisson_eigenvalues, solve!
+import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: interior
 
@@ -185,6 +185,25 @@ end
 @kernel function _copy_real_component!(ϕ, ϕc)
     i, j, k = @index(Global, NTuple)
     @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
+end
+
+#####
+##### Preconditioning support for ConjugateGradientPoissonSolver
+#####
+
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
+
+@kernel function distributed_fft_preconditioner_rhs!(preconditioner_rhs, rhs, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
+function compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
+    grid = solver.local_grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, distributed_fft_preconditioner_rhs!,
+            solver.storage.zfield, rhs, grid)
+    return nothing
 end
 
 # TODO: bring up to speed the PCG to remove this error
