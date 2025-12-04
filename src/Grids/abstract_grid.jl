@@ -73,7 +73,7 @@ Return the architecture that the `grid` lives on.
 Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
 Center cells have the location (Center, Center, Center).
 """
-@inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+@inline Base.size(grid::AbstractGrid) = map(Int, (grid.Nx, grid.Ny, grid.Nz))
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.eltype(::Type{<:AbstractGrid{FT}}) where FT = FT
 Base.eps(::AbstractGrid{FT}) where FT = eps(FT)
@@ -96,7 +96,7 @@ end
 Return a 3-tuple with the number of halo cells on either side of the
 domain in (x, y, z).
 """
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+halo_size(grid) = map(Int, (grid.Hx, grid.Hy, grid.Hz))
 halo_size(grid, d) = halo_size(grid)[d]
 
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
