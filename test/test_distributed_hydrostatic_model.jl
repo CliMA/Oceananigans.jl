@@ -100,7 +100,7 @@ for arch in archs
                                                         latitude = (-80, 80),
                                                         longitude = (-160, 160),
                                                         z = z_faces,
-                                                        radius = 1,
+                                                        radius = 10,
                                                         topology = (Bounded, Bounded, Bounded))
 
                 bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
