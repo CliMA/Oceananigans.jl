@@ -20,6 +20,8 @@ function maybe_field(u::Number, loc, grid, u_bcs, open_boundaries)
     return u_field
 end
 
+maybe_field(u, args...) = throw(ArgumentError("For now only `Field`s and `Number`s are supported in AdvectiveForcing."))
+
 struct AdvectiveForcing{U, V, W}
     u :: U
     v :: V
