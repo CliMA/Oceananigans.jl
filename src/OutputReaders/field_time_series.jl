@@ -262,7 +262,6 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            times = on_architecture(CPU(), times)
             times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end
@@ -657,7 +656,6 @@ function FieldTimeSeries(path::String, name::String;
 
         for part in 2:Nparts
             path = part_paths[part]
-            @show path
             file = jldopen(path; reader_kw...)
             part_iterations = parse.(Int, keys(file["timeseries/t"]))
             part_times = [file["timeseries/t/$i"] for i in part_iterations]
