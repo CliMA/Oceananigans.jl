@@ -117,68 +117,38 @@ axislegend(ax_b)
 
 current_figure() #hide
 
-#=
 # ## Cost Function
 #
 # Define a cost function that takes an initial velocity array, runs the model forward,
 # and computes the mean square error with respect to the truth data.
 
-function cost_function(u_init_array, model, u_truth, b_truth, Δt, n_steps)
-    # Reset model clock
-    reset!(model.clock)
-    
-    # Set initial condition from array
-    # Note: u_init_array should match the size of the velocity field interior
-    set!(model, u=u_init_array, b=b_stratified)
-    
-    # Run model forward
-    for n = 1:n_steps
-        time_step!(model, Δt)
-    end
-    
-    # Compute mean square error using loops (required for Enzyme compatibility)
-    u_model = model.velocities.u
-    b_model = model.tracers.b
-    
-    Nz = size(model.grid, 3)
-    
-    # MSE for velocity (using loops instead of broadcasting)
-    mse_u = 0.0
-    for k = 1:Nz
-        mse_u += (u_model[1, 1, k] - u_truth[k])^2
-    end
-    mse_u /= Nz
-    
-    # MSE for buoyancy (with constant stratification)
-    mse_b = 0.0
-    for k = 1:Nz
-        mse_b += (b_model[1, 1, k] - b_truth[k])^2
-    end
-    mse_b /= Nz
-    
-    # Total cost
-    cost = mse_u + mse_b
-    
-    return cost::Float64
+function J(model, uᵢ, bᵢ, u★)
+    take_12_steps!(model, uᵢ, bᵢ)
+    u₁ = interior(model.velocities.u, 1, 1, :)
+    ϵ² = (u₁ - u★).^2 ./ maximum(u★)^2
+    return sqrt(sum(ϵ²) / length(ϵ²))
 end
 
-# ## Gradient Computation with Enzyme
-#
-# Use Enzyme to compute gradients of the cost function with respect to the initial
-# velocity field array.
+function dJ(model, uᵢ, bᵢ, u★)
+    dJ_db = autodiff(set_strong_zero(Enzyme.ReverseWithPrimal),
+                     J, Active,
+                     Duplicated(model, dmodel),
+                     Duplicated(uᵢ, duᵢ),
+                     Duplicated(bᵢ, dbᵢ),
+                     Const(u★))
 
-# Create a copy of the model for differentiation
-model_for_gradient = deepcopy(model)
-
-# Initial guess (perturbed from truth)
+    return dJ_db
+end
+  
 # Need to create a 3D array for set! function
-u_init_guess_1d = copy(u_init_truth) .+ 0.01 * randn(length(u_init_truth))
-u_init_guess = reshape(u_init_guess_1d, (1, 1, length(u_init_guess_1d)))
-
+bᵍ = set!(CenterField(grid), z -> N² * z)
+bᵍ = interior(bᵍ, 1, 1, :)
 # Compute cost at initial guess
-cost_initial = cost_function(u_init_guess, model_for_gradient, u_truth, b_truth, Δt, n_steps)
-@info "Initial cost: $cost_initial"
+rJ = @compile sync=true raise=true J(model, uᵢ, bᵍ, u₁)
+J₀ = rJ(model, uᵢ, bᵍ, u₁)
+@info "Initial cost: $J₀"
 
+#=
 # Prepare for Enzyme autodiff
 dmodel = Enzyme.make_zero(model_for_gradient)
 
