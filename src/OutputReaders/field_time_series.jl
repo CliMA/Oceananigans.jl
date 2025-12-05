@@ -15,6 +15,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid
+using Oceananigans.OutputWriters: reconstruct_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices,
@@ -505,7 +506,13 @@ function FieldTimeSeries(path::String, name::String;
     if !isfile(path)
         start = path[1:end-5]
         # Look for part1, etc
-        lookfor = string(start, "_part*.jld2")
+        if endswith(path, ".jld2")
+            lookfor = string(start, "_part*.jld2")
+        elseif endswith(path, ".nc")
+            lookfor = string(start, "_part*.nc")
+        else
+            error("Unsupported file extension: $(path)")
+        end
         part_paths = glob(lookfor)
         part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
@@ -530,7 +537,15 @@ function FieldTimeSeries(path::String, name::String;
         end
     end
 
-    isnothing(grid) && (grid = file["serialized/grid"])
+    if isnothing(grid)
+        if endswith(path, ".jld2")
+            grid = file["serialized/grid"]
+        elseif endswith(path, ".nc")
+            grid = reconstruct_grid(path)
+        else
+            error("Unsupported file extension: $(path)")
+        end
+    end
 
     # If isreconstructed(grid), it probably means that the data was generated prior to
     # Oceananigans version 0.95.0 (12/13/2024). In this case, the best we can do is to try to rebuild
