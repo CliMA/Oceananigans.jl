@@ -37,7 +37,7 @@ u_bcs = FieldBoundaryConditions(bottom = u_bottom_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_bottom_bc)
 
 model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                    tracers = (:b, :e),
+                                    tracers = (:b,),
                                     buoyancy = BuoyancyTracer(),
                                     boundary_conditions = (; u=u_bcs, v=v_bcs))
 
@@ -112,5 +112,4 @@ display(fig)
 record(fig, "bottom_boundary_layer.mp4", 1:Nt, framerate=12) do nn
     n[] = nn
 end
-
 
