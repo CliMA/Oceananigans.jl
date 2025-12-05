@@ -51,6 +51,19 @@ import Oceananigans.OutputWriters:
     trilocation_dim_name,
     dimension_name_generator_free_surface
 
+import Oceananigans.OutputReaders: FieldTimeSeries_from_netcdf
+
+using Oceananigans.OutputReaders:
+    FieldTimeSeries,
+    InMemory,
+    OnDisk,
+    Linear,
+    time_indices_length,
+    new_data,
+    UnspecifiedBoundaryConditions
+
+using Oceananigans.Fields: set!
+
 const c = Center()
 const f = Face()
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
@@ -1588,5 +1601,61 @@ end
 #####
 
 ext(::Type{NetCDFWriter}) = ".nc"
+
+#####
+##### FieldTimeSeries from NetCDF
+#####
+
+function FieldTimeSeries_from_netcdf(path::String, name::String;
+                                     backend = InMemory(),
+                                     architecture = nothing,
+                                     grid = nothing,
+                                     location = nothing,
+                                     boundary_conditions = UnspecifiedBoundaryConditions(),
+                                     time_indexing = Linear(),
+                                     iterations = nothing,
+                                     times = nothing,
+                                     reader_kw = NamedTuple())
+
+    file = NCDataset(path; reader_kw...)
+
+    indices = try
+        file[name].attrib["indices"] |> materialize_from_netcdf
+    catch
+        (:, :, :)
+    end
+
+    if isnothing(architecture) # determine architecture
+        if isnothing(grid) # go to default
+            architecture = CPU()
+        else # there's a grid, use that architecture
+            architecture = Oceananigans.Architectures.architecture(grid)
+        end
+    end
+
+    isnothing(grid) && (grid = reconstruct_grid(file))
+
+    # if boundary_conditions isa UnspecifiedBoundaryConditions
+    #     boundary_conditions = file[name].attrib["boundary_conditions"] |> materialize_from_netcdf
+    #     boundary_conditions = on_architecture(architecture, boundary_conditions)
+    # end
+
+    isnothing(location) && (location = file[name].attrib["location"] |> materialize_from_netcdf)
+    LX, LY, LZ = location
+    loc = (LX(), LY(), LZ())
+
+    isnothing(times) && (times = file["time"] |> collect)
+    close(file)
+
+    Nt = time_indices_length(backend, times)
+    data = new_data(eltype(grid), grid, loc, indices, Nt)
+
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+                                              times, path, name, time_indexing, reader_kw)
+
+    set!(time_series, path, name)
+
+    return time_series
+end
 
 end # module

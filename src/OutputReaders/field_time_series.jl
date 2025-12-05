@@ -9,14 +9,12 @@ using GPUArraysCore
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
-using NCDatasets: NCDataset
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid
-using Oceananigans.OutputWriters: reconstruct_grid, materialize_from_netcdf
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices,
@@ -696,72 +694,20 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     return time_series
 end
 
-
-function FieldTimeSeries(file::NCDataset, name::String;
-    backend = InMemory(),
-    architecture = nothing,
-    grid = nothing,
-    location = nothing,
-    boundary_conditions = UnspecifiedBoundaryConditions(),
-    time_indexing = Linear(),
-    iterations = nothing,
-    times = nothing,
-    Nparts = nothing,
-    path = nothing,
-    reader_kw = NamedTuple())
-
-
-    indices = try
-        file[name].attrib["indices"] |> materialize_from_netcdf
-    catch
-        (:, :, :)
-    end
-
-    if isnothing(architecture) # determine architecture
-        if isnothing(grid) # go to default
-            architecture = CPU()
-        else # there's a grid, use that architecture
-            architecture = Architectures.architecture(grid)
-        end
-    end
-
-    isnothing(grid) && (grid = reconstruct_grid(file))
-
-    # if boundary_conditions isa UnspecifiedBoundaryConditions
-    #     boundary_conditions = file[name].attrib["boundary_conditions"] |> materialize_from_netcdf
-    #     boundary_conditions = on_architecture(architecture, boundary_conditions)
-    # end
-
-    isnothing(location) && (location = file[name].attrib["location"] |> materialize_from_netcdf)
-    LX, LY, LZ = location
-    loc = (LX(), LY(), LZ())
-
-    Main.@infiltrate
-    isnothing(times) && (times = file["time"] |> collect)
-    close(file)
-
-
-    Nt = time_indices_length(backend, times)
-    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
-
-    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
-                                              times, path, name, time_indexing, reader_kw)
-
-    set!(time_series, file, name)
-
-    return time_series
+# Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
+function FieldTimeSeries_from_netcdf(path::String, args...; kwargs...)
+    error("Loading FieldTimeSeries from NetCDF files requires NCDatasets. " *
+          "Please load NCDatasets: `using NCDatasets`")
 end
 
-
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
-     path = auto_extension(path, ".jld2") # JLD2 is the default extension
+    path = auto_extension(path, ".jld2") # JLD2 is the default extension
 
-     if endswith(path, ".nc")
-         file = NCDataset(path; reader_kw...)
-         Nparts = nothing
-     elseif endswith(path, ".jld2")
-         file = jldopen(path; reader_kw...)
-         if !isfile(path)
+    if endswith(path, ".nc")
+        return FieldTimeSeries_from_netcdf(path, args...; reader_kw, kwargs...)
+    elseif endswith(path, ".jld2")
+        file = jldopen(path; reader_kw...)
+        if !isfile(path)
             start = path[1:end-5] # Remove filepath extension
             lookfor = string(start, "_part*.jld2") # Look for part1, etc
             part_paths = glob(lookfor) |> naturalsort
@@ -769,12 +715,11 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
             path = first(part_paths) # part1 is first?
         else
             Nparts = nothing
-        end    
-     else
-         error("Unsupported file extension: $(path)")
-     end
-
-    return FieldTimeSeries(file, args...; Nparts, path, kwargs...)
+        end
+        return FieldTimeSeries(file, args...; Nparts, path, reader_kw, kwargs...)
+    else
+        error("Unsupported file extension: $(path)")
+    end
 end
 
 """
