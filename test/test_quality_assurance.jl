@@ -10,7 +10,7 @@ end
 
 @testset "ExplicitImports" begin
 
-    modules = (Oceananigans.Utils, Oceananigans.OrthogonalSphericalShellGrids, Oceananigans.Diagnostics, Oceananigans.AbstractOperations, Oceananigans.Models.HydrostaticFreeSurfaceModels, Oceananigans.TimeSteppers)
+    modules = (Oceananigans.Utils, Oceananigans.OrthogonalSphericalShellGrids, Oceananigans.Diagnostics, Oceananigans.AbstractOperations, Oceananigans.Models.HydrostaticFreeSurfaceModels, Oceananigans.TimeSteppers, Oceananigans.ImmersedBoundaries)
 
     @testset "Explicit Imports [$(mod)]" for mod in modules
         @info "Testing no implicit imports for module $(mod)"
