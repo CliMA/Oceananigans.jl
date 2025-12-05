@@ -14,15 +14,25 @@ using Oceananigans.Units
 using Oceananigans.Fields
 using Oceananigans.Operators
 
-using Oceananigans.Utils: prettysummary
 using Oceananigans.Grids: peripheral_node, inactive_node, inactive_cell
 using Oceananigans.Fields: ZeroField
-using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
-using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
-using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
-using Oceananigans.BuoyancyFormulations: BuoyancyTracer, SeawaterBuoyancy
-using Oceananigans.BuoyancyFormulations: TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy
-using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
+using Oceananigans.Utils: prettysummary
+
+using Oceananigans.BoundaryConditions:
+    default_prognostic_bc,
+    DefaultBoundaryCondition,
+    FieldBoundaryConditions,
+    DiscreteBoundaryFunction,
+    FluxBoundaryCondition
+
+using Oceananigans.BuoyancyFormulations:
+    BuoyancyForce,
+    BuoyancyTracer,
+    SeawaterBuoyancy,
+    TemperatureSeawaterBuoyancy,
+    SalinitySeawaterBuoyancy,
+    ∂z_b,
+    top_buoyancy_flux
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
@@ -36,8 +46,9 @@ import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
     validate_closure,
     shear_production,
-    buoyancy_flux,
     dissipation,
+    buoyancy_force,
+    buoyancy_tracers,
     add_closure_specific_boundary_conditions,
     compute_diffusivities!,
     build_closure_fields,
@@ -45,10 +56,7 @@ import Oceananigans.TurbulenceClosures:
     viscosity,
     diffusivity,
     viscosity_location,
-    diffusivity_location,
-    diffusive_flux_x,
-    diffusive_flux_y,
-    diffusive_flux_z
+    diffusivity_location
 
 const c = Center()
 const f = Face()
@@ -163,6 +171,7 @@ function get_time_step(closure_array::AbstractArray)
     return get_time_step(closure)
 end
 
+get_top_tracer_bcs(bf::BuoyancyForce, tracers) = get_top_tracer_bcs(bf.formulation, tracers)
 get_top_tracer_bcs(::Nothing, tracers) = NamedTuple()
 get_top_tracer_bcs(::BuoyancyTracer, tracers) = (; b=tracers.b.boundary_conditions.top)
 get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_conditions.top,

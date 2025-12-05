@@ -1,7 +1,7 @@
-using Printf
+using Printf: @sprintf
 using Dates: AbstractTime
 
-using Oceananigans.Units
+using Oceananigans.Units: day, hour, minute
 
 maybe_int(t) = isinteger(t) ? Int(t) : t
 

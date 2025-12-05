@@ -3,7 +3,7 @@ module Utils
 using Oceananigans
 using Reactant
 
-import Oceananigans.Utils: prettysummary, prettytime
+import Oceananigans.Utils: prettytime, prettysummary
 
 function prettytime(concrete_number::Union{ConcretePJRTNumber,ConcreteIFRTNumber})
     number = Reactant.to_number(concrete_number)

@@ -1,3 +1,5 @@
+using Oceananigans.Utils: time_difference_seconds
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -223,7 +225,7 @@ end
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
 function update_previous_compute_time!(diffusivities, model)
-    Δt = model.clock.time - diffusivities.previous_compute_time[]
+    Δt = time_difference_seconds(model.clock.time, diffusivities.previous_compute_time[])
     diffusivities.previous_compute_time[] = model.clock.time
     return Δt
 end
@@ -232,10 +234,10 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     clock = model.clock
-    top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
+    top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
     Δt = update_previous_compute_time!(diffusivities, model)
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.

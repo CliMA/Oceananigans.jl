@@ -1,4 +1,4 @@
-using Oceananigans.Fields: VelocityFields, ZeroField
+using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 

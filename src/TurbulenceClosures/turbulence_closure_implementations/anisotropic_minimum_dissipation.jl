@@ -1,4 +1,5 @@
 using Oceananigans.Operators
+using Adapt: Adapt
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
@@ -16,6 +17,11 @@ struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivit
         return new{TD, PK, PN, PB}(Cν, Cκ, Cb)
     end
 end
+
+Adapt.adapt_structure(to, closure::AnisotropicMinimumDissipation{TD}) where TD =
+    AnisotropicMinimumDissipation{TD}(adapt(to, closure.Cν),
+                                      adapt(to, closure.Cκ),
+                                      adapt(to, closure.Cb))
 
 const AMD = AnisotropicMinimumDissipation
 
@@ -200,8 +206,8 @@ function compute_diffusivities!(closure_fields, closure::AnisotropicMinimumDissi
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
             closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
