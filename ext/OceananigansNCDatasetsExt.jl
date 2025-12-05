@@ -51,6 +51,19 @@ import Oceananigans.OutputWriters:
     trilocation_dim_name,
     dimension_name_generator_free_surface
 
+import Oceananigans.OutputReaders: FieldTimeSeries_from_netcdf
+
+using Oceananigans.OutputReaders:
+    FieldTimeSeries,
+    InMemory,
+    OnDisk,
+    Linear,
+    time_indices_length,
+    new_data,
+    UnspecifiedBoundaryConditions
+
+using Oceananigans.Fields: set!
+
 const c = Center()
 const f = Face()
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
@@ -126,6 +139,19 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
     effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
+
+    # Add location to attributes
+    loc = location(fd) |> convert_for_netcdf
+    loc_attrib = Dict("location" => loc)
+    if :attrib ∈ keys(kwargs)
+        attrib = merge(loc_attrib, kwargs[:attrib])
+    else
+        attrib = loc_attrib
+    end
+
+    # Add indices to attributes
+    attrib = merge(attrib, Dict("indices" => convert_for_netcdf(indices(fd))))
+    kwargs = merge(kwargs, pairs((; attrib,)))
 
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
@@ -1575,5 +1601,61 @@ end
 #####
 
 ext(::Type{NetCDFWriter}) = ".nc"
+
+#####
+##### FieldTimeSeries from NetCDF
+#####
+
+function FieldTimeSeries_from_netcdf(path::String, name::String;
+                                     backend = InMemory(),
+                                     architecture = nothing,
+                                     grid = nothing,
+                                     location = nothing,
+                                     boundary_conditions = UnspecifiedBoundaryConditions(),
+                                     time_indexing = Linear(),
+                                     iterations = nothing,
+                                     times = nothing,
+                                     reader_kw = NamedTuple())
+
+    file = NCDataset(path; reader_kw...)
+
+    indices = try
+        file[name].attrib["indices"] |> materialize_from_netcdf
+    catch
+        (:, :, :)
+    end
+
+    if isnothing(architecture) # determine architecture
+        if isnothing(grid) # go to default
+            architecture = CPU()
+        else # there's a grid, use that architecture
+            architecture = Oceananigans.Architectures.architecture(grid)
+        end
+    end
+
+    isnothing(grid) && (grid = reconstruct_grid(file))
+
+    # if boundary_conditions isa UnspecifiedBoundaryConditions
+    #     boundary_conditions = file[name].attrib["boundary_conditions"] |> materialize_from_netcdf
+    #     boundary_conditions = on_architecture(architecture, boundary_conditions)
+    # end
+
+    isnothing(location) && (location = file[name].attrib["location"] |> materialize_from_netcdf)
+    LX, LY, LZ = location
+    loc = (LX(), LY(), LZ())
+
+    isnothing(times) && (times = file["time"] |> collect)
+    close(file)
+
+    Nt = time_indices_length(backend, times)
+    data = new_data(eltype(grid), grid, loc, indices, Nt)
+
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+                                              times, path, name, time_indexing, reader_kw)
+
+    set!(time_series, path, name)
+
+    return time_series
+end
 
 end # module
