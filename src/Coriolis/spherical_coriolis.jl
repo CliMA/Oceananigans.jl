@@ -4,7 +4,6 @@ using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.ImmersedBoundaries
-using Oceananigans: defaults
 
 struct HydrostaticFormulation end
 struct NonhydrostaticFormulation end
