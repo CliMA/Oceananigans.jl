@@ -303,7 +303,7 @@ r_sediment = 1e-4 # [m] "Fine sand"
 ν_molecular = 1.05e-6 # m² s⁻¹
 w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2 # m s⁻¹
 
-sinking = AdvectiveForcing(w=w_sediment; grid)
+sinking = AdvectiveForcing(w=w_sediment)
 
 # output
 AdvectiveForcing:

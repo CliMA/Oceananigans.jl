@@ -33,7 +33,7 @@ function build_simulation(grid;
     output_filename::String="nonhydrostatic_tracer_circle_2d.nc",
     progress_label::String="")
 
-    c_forcing = AdvectiveForcing(w = w₀; grid, open_boundaries=false)
+    c_forcing = AdvectiveForcing(w = w₀)
 
     model = NonhydrostaticModel(
         grid = grid,

@@ -4,8 +4,8 @@ using Printf
 using CairoMakie
 
 grid = RectilinearGrid(size=128, z=(-10, 10), topology=(Flat, Flat, Bounded))
-sinking = AdvectiveForcing(w=-1; grid)
-rising = AdvectiveForcing(w=+1; grid)
+sinking = AdvectiveForcing(w=-1)
+rising = AdvectiveForcing(w=+1)
 
 b_to_a(z, t, a, b) = + a * b
 a_to_b(z, t, a, b) = - a * b

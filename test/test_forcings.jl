@@ -172,8 +172,8 @@ function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, im
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
     end
 
-    constant_slip = AdvectiveForcing(w=1; grid)
-    zero_slip = AdvectiveForcing(w=0; grid)
+    constant_slip = AdvectiveForcing(w=1)
+    zero_slip = AdvectiveForcing(w=0)
     no_penetration = ImpenetrableBoundaryCondition()
     slip_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
