@@ -4,23 +4,8 @@ using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryCondi
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition, mask_immersed_field!
 using Adapt
 
-maybe_field(u::AbstractField, args...) = u
-
-function maybe_field(u::Number, loc, grid, u_bcs, open_boundaries)
-    immersed_bcs = ImmersedBoundaryCondition(; u_bcs...)
-    bcs = FieldBoundaryConditions(grid, loc; u_bcs..., immersed = immersed_bcs)
-    u_field = Field(loc, grid; boundary_conditions = bcs)
-    set!(u_field, u)
-    fill_halo_regions!(u_field)
-    if open_boundaries
-        mask_immersed_field!(u_field, u)
-    else
-        mask_immersed_field!(u_field, zero(eltype(grid)))
-    end
-    return u_field
-end
-
-maybe_field(u, args...) = throw(ArgumentError("For now only `Field`s and `Number`s are supported in AdvectiveForcing."))
+maybe_constant_field(u) = u
+maybe_constant_field(u::Number) = ConstantField(u)
 
 struct AdvectiveForcing{U, V, W}
     u :: U
@@ -29,15 +14,9 @@ struct AdvectiveForcing{U, V, W}
 end
 
 """
-    AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), open_boundaries=false)
+    AdvectiveForcing(u=ZeroField(), v=ZeroField(), w=ZeroField())
 
 Build a forcing term representing advection by the velocity field `u, v, w`.
-
-# Keyword Arguments
-- `grid`: Required when `u`, `v`, or `w` are numbers rather than fields
-- `u`, `v`, `w`: Velocity components (can be numbers, fields, or functions)
-- `open_boundaries`: If `true`, uses `OpenBoundaryCondition(velocity)` for boundary conditions.
-                     If `false` (default), uses `OpenBoundaryCondition(nothing)`.
 
 Example
 =======
@@ -46,9 +25,6 @@ Example
 
 ```jldoctest
 using Oceananigans
-
-grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-
 # Physical parameters
 gravitational_acceleration          = 9.81     # m s⁻²
 ocean_density                       = 1026     # kg m⁻³
@@ -60,41 +36,17 @@ ocean_molecular_kinematic_viscosity = 1.05e-6  # m² s⁻¹
 Δb = gravitational_acceleration * (mean_particle_density - ocean_density) / ocean_density
 ν = ocean_molecular_kinematic_viscosity
 R = mean_particle_radius
-
 w_Stokes = - 2/9 * Δb / ν * R^2 # m s⁻¹
-
-settling = AdvectiveForcing(w=w_Stokes; grid)
-
+settling = AdvectiveForcing(w=w_Stokes)
 # output
 AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
-└── w: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
+└── w: ConstantField(-1.97096)
 ```
 """
-function AdvectiveForcing(; grid=nothing, u=ZeroField(), v=ZeroField(), w=ZeroField(), open_boundaries=false)
-    if any((isa(u, Number), isa(v, Number), isa(w, Number))) && grid === nothing
-        throw(ArgumentError("If passing numbers for u, v, w, you must also pass a grid"))
-    end
-
-    if open_boundaries
-        u_bc = OpenBoundaryCondition(u)
-        v_bc = OpenBoundaryCondition(v)
-        w_bc = OpenBoundaryCondition(w)
-    else
-        u_bc = OpenBoundaryCondition(nothing)
-        v_bc = OpenBoundaryCondition(nothing)
-        w_bc = OpenBoundaryCondition(nothing)
-    end
-
-    u_bcs = (; east = u_bc, west = u_bc)
-    v_bcs = (; south = v_bc, north = v_bc)
-    w_bcs = (; bottom = w_bc, top = w_bc)
-
-    u = maybe_field(u, (Face(), Center(), Center()), grid, u_bcs, open_boundaries)
-    v = maybe_field(v, (Center(), Face(), Center()), grid, v_bcs, open_boundaries)
-    w = maybe_field(w, (Center(), Center(), Face()), grid, w_bcs, open_boundaries)
-
+function AdvectiveForcing(; u=ZeroField(), v=ZeroField(), w=ZeroField())
+    u, v, w = maybe_constant_field.((u, v, w))
     return AdvectiveForcing(u, v, w)
 end
 

@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 """ Take one time step with three forcing arrays on u, v, w. """
 function time_step_with_forcing_array(arch)
@@ -265,8 +266,24 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(-3Lz/4))
 
     function build_settling_model(grid, w_settle)
-        # Create settling forcing
-        settling_forcing = AdvectiveForcing(w = w_settle; grid, open_boundaries=open_bottom)
+        # Create settling velocity as a field with appropriate boundary conditions
+        bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w_settle) : OpenBoundaryCondition(nothing)
+        boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
+        w_settle_field = ZFaceField(grid; boundary_conditions)
+
+        # Set the velocity and apply boundary conditions to domain boundaries
+        set!(w_settle_field, w_settle)
+        fill_halo_regions!(w_settle_field)
+
+        # Apply boundary condition to immersed boundaries
+        if open_bottom
+            mask_immersed_field!(w_settle_field, w_settle)
+        else
+            mask_immersed_field!(w_settle_field, 0)
+        end
+
+        # Create settling forcing with the velocity field
+        settling_forcing = AdvectiveForcing(w = w_settle_field)
         model = NonhydrostaticModel(; grid, advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
 
         # Initial condition: patch of tracer c=1 in the upper part
