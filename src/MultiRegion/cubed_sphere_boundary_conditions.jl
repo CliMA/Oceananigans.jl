@@ -124,6 +124,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; kwargs...)
     @apply_regionally fill_cubed_sphere_field_horizontal_halo_event!(grid, field, multiregion_field, regions,
         grid.connectivity.connections, SouthAndNorth(),
         _fill_cubed_sphere_face_face_field_north_south_halo_regions!)
+    @apply_regionally fill_cubed_sphere_field_vertical_halo_event!(grid, field)
 
     return nothing
 end
