@@ -34,7 +34,7 @@ Nz = 80
 
 save_fields_interval = 7days
 stop_time = 5years
-stop_time = 70 days
+stop_time = 70days
 Δt₀ = 5minutes
 
 
