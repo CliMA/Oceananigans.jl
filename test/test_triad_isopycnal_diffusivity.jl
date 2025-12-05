@@ -37,11 +37,10 @@ end
 
     for arch in archs
         @testset "Time stepping with TriadIsopycnalSkewSymmetricDiffusivity [$arch]" begin
-            @info "  Testing time stepping with explicit time discretization on $arch..."
-            @test time_step_with_triad_isopycnal_diffusivity(arch, ExplicitTimeDiscretization())
-
-            @info "  Testing time stepping with vertically implicit time discretization on $arch..."
-            @test time_step_with_triad_isopycnal_diffusivity(arch, VerticallyImplicitTimeDiscretization())
+            for time_discretization in [ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization()]
+                @info "  Testing time stepping with $(typeof(time_discretization)) on $arch..."
+                @test time_step_with_triad_isopycnal_diffusivity(arch, time_discretization)
+           end
         end
     end
 end
