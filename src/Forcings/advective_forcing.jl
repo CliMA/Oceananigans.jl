@@ -1,7 +1,5 @@
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Utils: sum_of_velocities
-using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryCondition, mask_immersed_field!
 using Adapt
 
 maybe_constant_field(u) = u
@@ -25,6 +23,7 @@ Example
 
 ```jldoctest
 using Oceananigans
+
 # Physical parameters
 gravitational_acceleration          = 9.81     # m s⁻²
 ocean_density                       = 1026     # kg m⁻³
@@ -36,8 +35,11 @@ ocean_molecular_kinematic_viscosity = 1.05e-6  # m² s⁻¹
 Δb = gravitational_acceleration * (mean_particle_density - ocean_density) / ocean_density
 ν = ocean_molecular_kinematic_viscosity
 R = mean_particle_radius
+
 w_Stokes = - 2/9 * Δb / ν * R^2 # m s⁻¹
+
 settling = AdvectiveForcing(w=w_Stokes)
+
 # output
 AdvectiveForcing:
 ├── u: ZeroField{Int64}
