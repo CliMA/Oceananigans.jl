@@ -294,8 +294,6 @@ As an example, consider a model for sediment settling at a constant rate:
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-
 r_sediment = 1e-4 # [m] "Fine sand"
 ρ_sediment = 1200 # kg m⁻³
 ρ_ocean = 1026 # kg m⁻³
@@ -309,7 +307,7 @@ sinking = AdvectiveForcing(w=w_sediment)
 AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
-└── w: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
+└── w: ConstantField(-0.00352102)
 ```
 
 The three keyword arguments specify the `u`, `v`, and `w` components of the separate
