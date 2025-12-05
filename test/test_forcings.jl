@@ -262,7 +262,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     Nz = 16
     Lz = 1
 
-    regular_grid = RectilinearGrid(arch, topology = (Flat, Flat, Bounded), size = (Nz,), z = (-Lz, 0))
+    regular_grid = RectilinearGrid(arch, topology = (Flat, Flat, Bounded), size = Nz, z = (-Lz, 0))
     immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(-3Lz/4))
 
     function build_settling_model(grid, w_settle)

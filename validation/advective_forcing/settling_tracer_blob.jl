@@ -19,8 +19,7 @@ function build_grid(use_immersed_grid::Bool;
         size = (Nx, Nz),
         x = (0, Lx),
         z = (-Lz, 0),
-        halo = (5, 5)
-    )
+        halo = (5, 5))
 
     if use_immersed_grid
         return ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-3Lz/4))
