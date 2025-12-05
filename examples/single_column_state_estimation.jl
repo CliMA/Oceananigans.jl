@@ -24,7 +24,6 @@
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TimeSteppers: reset!
 using Enzyme
 using Reactant
 using CairoMakie
