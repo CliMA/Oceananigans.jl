@@ -1,5 +1,6 @@
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Grids: bottommost_active_node, AbstractStaticGrid, prettysummary
+using Oceananigans.Grids: bottommost_active_node, AbstractStaticGrid
+using Oceananigans.Utils: prettysummary
 using Printf: @sprintf
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
@@ -209,11 +210,10 @@ VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
 
 function constructor_arguments(grid::PCBIBG)
-    args, kwargs = constructor_arguments(grid.underlying_grid)
-    args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,
-                            :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height,
-                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
-    return args, kwargs
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
+    partial_cell_bottom_args = Dict(:bottom_height => grid.immersed_boundary.bottom_height,
+                                    :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height)
+    return underlying_grid_args, underlying_grid_kwargs, partial_cell_bottom_args
 end
 
 function Base.:(==)(pcb1::PartialCellBottom, pcb2::PartialCellBottom)
