@@ -3,9 +3,9 @@
 #####
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
-using Oceananigans.Utils: launch!
+using Oceananigans.Grids: default_indices, new_data
+using Oceananigans.Fields: FunctionField, FieldBoundaryConditions, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
+using Oceananigans.Utils: KernelParameters, launch!, @apply_regionally
 
 import Oceananigans.Fields: Field, compute!
 

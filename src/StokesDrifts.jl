@@ -14,7 +14,6 @@ using Adapt: adapt
 
 using Oceananigans.Fields
 using Oceananigans.Operators
-
 using Oceananigans.Grids: AbstractGrid, node
 using Oceananigans.Utils: prettysummary
 

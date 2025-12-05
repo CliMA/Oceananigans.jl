@@ -14,7 +14,7 @@ using Oceananigans.Fields: condition_operand, conditional_length
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
-import Oceananigans.Fields: Field, location, set!
+import Oceananigans.Fields: Field, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean

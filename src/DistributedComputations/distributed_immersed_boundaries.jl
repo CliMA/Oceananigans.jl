@@ -2,10 +2,8 @@ using Oceananigans.Utils: getnamewrapper
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
-    GridFittedBottom,
     GridFittedBoundary,
     compute_mask,
-    CellMaps,
     has_active_cells_map,
     has_active_z_columns,
     serially_build_active_cells_map,

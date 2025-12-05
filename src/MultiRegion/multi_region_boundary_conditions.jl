@@ -7,9 +7,8 @@ using Oceananigans.DistributedComputations: fill_send_buffers!
 using Oceananigans.BoundaryConditions:
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
-    fill_halo_event!, get_boundary_kernels,
-    MultiRegionFillHalo,
-    MCBCT, MCBC
+    fill_halo_event!,
+    MultiRegionFillHalo
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
 
