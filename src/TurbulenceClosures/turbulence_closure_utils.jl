@@ -34,4 +34,3 @@ end
 
     return NamedTuple{κ_names}(κ_values)
 end
-

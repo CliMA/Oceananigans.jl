@@ -262,6 +262,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
+            times = on_architecture(CPU(), times)
             times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end

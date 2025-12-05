@@ -1,5 +1,5 @@
+using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
-using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map
 
@@ -9,27 +9,76 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
-function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
+ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
+    ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
-    grid = model.grid
-    compute_free_surface_tendency!(grid, model, model.free_surface)
-
+function ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Step locally velocity and tracers
+    # Computing Baroclinic and Barotropic tendencies
+    @apply_regionally compute_momentum_tendencies!(model, callbacks)
+    
+    # Advance the free surface
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+
+    # Update transport velocities
+    compute_transport_velocities!(model, model.free_surface)
+
+    # Computing tracer tendencies
     @apply_regionally begin
-        scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
+        compute_tracer_tendencies!(model)
+
+        # Advance grid and velocities
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
+    
+        # Correct the barotropic mode
+        correct_barotropic_mode!(model, Δt)
+
+        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+        # Finally advance tracers:
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 
+    return nothing
+end
+
+function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
+    FT = eltype(grid)
+    χ  = convert(FT, model.timestepper.χ)
+    Δt = convert(FT, Δt)
+
+    @apply_regionally begin
+        # Computing Baroclinic and Barotropic tendencies
+        compute_momentum_tendencies!(model, callbacks)
+        compute_tracer_tendencies!(model)
+    
+        # Finally Substep! Advance grid, tracers, and momentum
+        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+        ab2_step_velocities!(model.velocities, model, Δt, χ)
+    end
+
+    # Advance the free surface
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+    
+    # Correct the barotropic mode
+    @apply_regionally correct_barotropic_mode!(model, Δt)
+
+    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
+    @apply_regionally ab2_step_tracers!(model.tracers, model, Δt, χ)
 
     return nothing
 end
+
+#####
+##### Step grid
+#####
+
+# A Fallback to be extended for specific ztypes and grid types
+ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
 
 #####
 ##### Step velocities
@@ -43,7 +92,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
+                _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
@@ -117,8 +166,8 @@ end
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
-    α = convert(FT, 1.5) + χ
-    β = convert(FT, 0.5) + χ
+    α = 3*one(FT)/2 + χ
+    β = 1*one(FT)/2 + χ
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
