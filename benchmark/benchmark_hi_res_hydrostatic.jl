@@ -1,5 +1,6 @@
 using Oceananigans
 using SeawaterPolynomials: TEOS10EquationOfState
+using NVTX
 using CUDA
 
 function many_steps!(model, Nt; Δt=1e-3)
@@ -53,6 +54,7 @@ end
 Return a tripolar grid with Gaussian islands over the two north poles.
 """
 function tripolar_grid(arch, Nx, Ny, Nz; halo=(7, 7, 7), kw...)
+    H = - z[2]
     dφ, dλ = 4, 8
     λ₀, φ₀ = 70, 55
     h = 100
