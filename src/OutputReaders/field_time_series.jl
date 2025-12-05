@@ -600,6 +600,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
                          iterations = nothing,
                          times = nothing,
                          Nparts = nothing,
+                         part_paths = nothing,
                          path = nothing,
                          reader_kw = NamedTuple())
 
@@ -706,7 +707,6 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
     if endswith(path, ".nc")
         return FieldTimeSeries_from_netcdf(path, args...; reader_kw, kwargs...)
     elseif endswith(path, ".jld2")
-        file = jldopen(path; reader_kw...)
         if !isfile(path)
             start = path[1:end-5] # Remove filepath extension
             lookfor = string(start, "_part*.jld2") # Look for part1, etc
@@ -715,8 +715,11 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
             path = first(part_paths) # part1 is first?
         else
             Nparts = nothing
+            part_paths = nothing
         end
-        return FieldTimeSeries(file, args...; Nparts, path, reader_kw, kwargs...)
+
+        file = jldopen(path; reader_kw...)
+        return FieldTimeSeries(file, args...; Nparts, part_paths, path, reader_kw, kwargs...)
     else
         error("Unsupported file extension: $(path)")
     end
