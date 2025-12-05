@@ -282,8 +282,11 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     regular_model = build_settling_model(regular_grid, w_settle)
     immersed_model = build_settling_model(immersed_grid, w_settle)
 
-    regular_initial_integral = Integral(regular_model.tracers.c) |> Field |> deepcopy
-    immersed_initial_integral = Integral(immersed_model.tracers.c) |> Field |> deepcopy
+    ∫c_regular = Integral(regular_model.tracers.c) |> Field
+    ∫c_immersed = Integral(immersed_model.tracers.c) |> Field
+
+    regular_initial_integral = ∫c_regular |> deepcopy
+    immersed_initial_integral = ∫c_immersed |> deepcopy
     @test regular_initial_integral[] == immersed_initial_integral[]
 
     # Create simulations
@@ -297,8 +300,8 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     run!(immersed_simulation)
 
     # Compute diagnostics
-    regular_integral = Integral(regular_model.tracers.c) |> Field
-    immersed_integral = Integral(immersed_model.tracers.c) |> Field
+    regular_integral = ∫c_regular |> compute!
+    immersed_integral = ∫c_immersed |> compute!
 
     regular_max = maximum(abs, regular_model.tracers.c)
     immersed_max = maximum(abs, immersed_model.tracers.c)
