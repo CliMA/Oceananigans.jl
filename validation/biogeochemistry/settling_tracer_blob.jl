@@ -2,6 +2,8 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputWriters: NetCDFWriter
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using NCDatasets
 using CairoMakie
@@ -31,9 +33,28 @@ end
 function build_simulation(grid;
     w₀ = -0.02meter/second,
     output_filename::String="nonhydrostatic_tracer_circle_2d.nc",
-    progress_label::String="")
+    progress_label::String="",
+    open_bottom::Bool=false,
+    )
 
-    c_forcing = AdvectiveForcing(w = w₀)
+    # Create settling velocity as a field with appropriate boundary conditions
+    bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w₀) : OpenBoundaryCondition(nothing)
+    boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
+    w_settle_field = ZFaceField(grid; boundary_conditions)
+
+    # Set the velocity and apply boundary conditions to domain boundaries
+    set!(w_settle_field, w₀)
+    fill_halo_regions!(w_settle_field)
+
+    # Apply boundary condition to immersed boundaries
+    if open_bottom
+        mask_immersed_field!(w_settle_field, w₀)
+    else
+        mask_immersed_field!(w_settle_field, 0)
+    end
+
+    # Create settling forcing with the velocity field
+    c_forcing = AdvectiveForcing(w = w_settle_field)
 
     model = NonhydrostaticModel(
         grid = grid,
@@ -88,8 +109,8 @@ grid_plain    = build_grid(false)
 
 immersed_filename = "settling_tracer_blob_immersed.nc"
 plain_filename = "settling_tracer_blob_plain.nc"
-sim_immersed = build_simulation(grid_immersed; output_filename=immersed_filename, progress_label="[Immersed]")
-sim_plain    = build_simulation(grid_plain;    output_filename=plain_filename,    progress_label="[Plain]")
+sim_immersed = build_simulation(grid_immersed; output_filename=immersed_filename, progress_label="[Immersed]", open_bottom=false)
+sim_plain    = build_simulation(grid_plain;    output_filename=plain_filename,    progress_label="[Plain]",    open_bottom=false)
 
 @info "Starting simulation with immersed grid"
 run!(sim_immersed)
@@ -98,7 +119,7 @@ run!(sim_plain)
 
 @info "Both simulations completed."
 
-#+++ Create side-by-side comparison animation from NetCDF outputs
+# Create side-by-side comparison animation from NetCDF outputs
 let adv_file = immersed_filename, fun_file = plain_filename
     @info "Rendering comparison animation"
 
@@ -118,7 +139,7 @@ let adv_file = immersed_filename, fun_file = plain_filename
     Colorbar(fig[1, 3], heat1, label = "c")
 
     outfile = "nonhydrostatic_tracer_circle_2d_compare.mp4"
-    record(fig, outfile, 1:nframes) do it
+    CairoMakie.record(fig, outfile, 1:nframes) do it
         dsa = NCDataset(adv_file); cvara = dsa["c"]; frame_a = cvara[:, :, it]; close(dsa)
         dsf = NCDataset(fun_file); cvarf = dsf["c"]; frame_f = cvarf[:, :, it]; close(dsf)
         heat1[3] = frame_a
@@ -128,4 +149,3 @@ let adv_file = immersed_filename, fun_file = plain_filename
     end
     @info "Saved comparison animation to $(outfile)"
 end
-#---
