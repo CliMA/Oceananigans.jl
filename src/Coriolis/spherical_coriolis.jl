@@ -4,6 +4,7 @@ using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.ImmersedBoundaries
+using Oceananigans: defaults
 
 struct HydrostaticFormulation end
 struct NonhydrostaticFormulation end
@@ -117,7 +118,7 @@ function Base.show(io::IO, spherical_coriolis::SphericalCoriolis)
     coriolis_scheme = spherical_coriolis.scheme
     coriolis_formulation = spherical_coriolis.formulation
     rotation_rate   = spherical_coriolis.rotation_rate
-    rotation_rate_Earth = rotation_rate / Ω_Earth
+    rotation_rate_Earth = Oceananigans.defaults.planet_rotation_rate
     rotation_rate_str = @sprintf("%.2e s⁻¹ = %.2e Ω_Earth", rotation_rate, rotation_rate_Earth)
 
     return print(io, "SphericalCoriolis", '\n',

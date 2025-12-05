@@ -113,7 +113,7 @@ end
     @info "Testing Coriolis..."
     # Save for later use
     FT₀ = Oceananigans.defaults.FloatType
-
+    
     for FT in float_types
         @test instantiate_fplane_1(FT)
         @test instantiate_fplane_2(FT)
@@ -176,7 +176,7 @@ end
         show(✈); println()
         @test ✈ isa NonTraditionalBetaPlane{FT}
 
-        ✈ = SphericalCoriolis(FT)
+        ✈ = SphericalCoriolis(FT, rotation_rate = 1e-4)
         show(✈); println()
         @test ✈ isa SphericalCoriolis
 
