@@ -240,36 +240,33 @@ end
     return all_reduce(+, dot_local, arch)
 end
 
-@inline function _mean(f, c::DistributedField, ::Colon; condition=nothing, mask=0)
-    arch = architecture(c)
+@inline function _mean(f, c::DistributedAbstractField, ::Colon; condition=nothing, mask=0)
     operand = condition_operand(f, c, condition, mask)
-    
-    local_sum = sum(operand)
-    local_length = conditional_length(operand)
-    
-    global_sum = all_reduce(+, local_sum, arch)
-    global_length = all_reduce(+, local_length, arch)
-    
+
+    global_sum = sum(operand)
+    global_length = conditional_length(operand)
+
     return global_sum / global_length
 end
 
-@inline function _mean(f, c::DistributedField, dims; condition=nothing, mask=0)
-    arch = architecture(c)
+@inline function _mean(f, c::DistributedAbstractField, dims; condition=nothing, mask=0)
     operand = condition_operand(f, c, condition, mask)
+    r = sum(operand; dims)
+    L = conditional_length(operand, dims)
 
-    local_sum = sum(operand; dims)
-    local_length = conditional_length(operand, dims)
+    if L isa Field
+        parent(r) ./= parent(L)
+    else
+        parent(r) ./= L
+    end
 
-    global_sum = all_reduce(+, local_sum, arch)
-    global_length = all_reduce(+, local_length, arch)
-
-    return global_sum ./ global_length
+    return r
 end
 
-@inline mean(f::Function, c::DistributedField; condition=nothing, dims=:) = 
+@inline mean(f::Function, c::DistributedAbstractField; condition=nothing, dims=:) =
     _mean(f, c, dims; condition)
 
-@inline mean(f::Function, c::DistributedField, dims; condition=nothing, mask=0) =
+@inline mean(f::Function, c::DistributedAbstractField, dims; condition=nothing, mask=0) =
     _mean(f, c, dims; condition, mask)
 
-@inline mean(c::DistributedField; condition=nothing, dims=:) = _mean(identity, c, dims; condition)
+@inline mean(c::DistributedAbstractField; condition=nothing, dims=:) = _mean(identity, c, dims; condition)
