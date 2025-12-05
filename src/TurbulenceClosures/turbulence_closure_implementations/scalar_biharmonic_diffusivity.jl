@@ -1,4 +1,3 @@
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.Utils: prettysummary
 
 """

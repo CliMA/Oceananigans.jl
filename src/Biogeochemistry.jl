@@ -1,7 +1,6 @@
 module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
-using Oceananigans.Fields: ZeroField
 
 import Oceananigans.Fields: CenterField
 

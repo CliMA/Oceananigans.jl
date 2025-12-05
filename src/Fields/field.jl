@@ -1,5 +1,5 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper, construct_boundary_conditions_kernels
-using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
+using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, construct_boundary_conditions_kernels
+using Oceananigans.Grids: parent_index_range, default_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 using Oceananigans.Architectures: convert_to_device
 
@@ -12,8 +12,7 @@ using GPUArraysCore: @allowscalar
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
-import Statistics: mean, mean!
-import LinearAlgebra: dot, norm
+import Statistics: mean
 import Base: ==
 
 #####

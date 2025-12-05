@@ -75,13 +75,13 @@ function define_multiary_operator(op)
                      d::Union{Function, Number, Oceananigans.Fields.AbstractField}...)
 
             args = tuple(a, b, c, d...)
-            grid = Oceananigans.AbstractOperations.validate_grid(args...)
+            grid = $(validate_grid)(args...)
 
             # Convert any functions to FunctionFields
             args = Tuple(Oceananigans.Fields.fieldify_function(Lop, a, grid) for a in args)
             Largs = Tuple(Oceananigans.Fields.location(a) for a in args)
 
-            return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
+            return $(_multiary_operation)(Lop, $op, args, Largs, grid)
         end
 
         # Instantiate location if types are passed
@@ -161,8 +161,8 @@ macro multiary(ops...)
         push!(expr.args, :($(esc(defexpr))))
 
         add_to_operator_lists = quote
-            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            push!(Oceananigans.AbstractOperations.multiary_operators, Symbol($op))
+            push!($(operators), Symbol($op))
+            push!($(multiary_operators), Symbol($op))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))
@@ -193,7 +193,7 @@ Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY
                                   Adapt.adapt(to, multiary.▶),
                                   Adapt.adapt(to, multiary.grid))
 
-on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     MultiaryOperation{LX, LY, LZ}(on_architecture(to, multiary.op),
                                   on_architecture(to, multiary.args),
                                   on_architecture(to, multiary.▶),
