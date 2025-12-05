@@ -127,6 +127,19 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
     effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
 
+    # Add location to attributes
+    loc = location(fd) |> convert_for_netcdf
+    loc_attrib = Dict("location" => loc)
+    if :attrib ∈ keys(kwargs)
+        attrib = merge(loc_attrib, kwargs[:attrib])
+    else
+        attrib = loc_attrib
+    end
+
+    # Add indices to attributes
+    attrib = merge(attrib, Dict("indices" => convert_for_netcdf(indices(fd))))
+    kwargs = merge(kwargs, pairs((; attrib,)))
+
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
