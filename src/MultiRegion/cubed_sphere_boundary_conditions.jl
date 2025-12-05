@@ -108,8 +108,8 @@ end
     side = sides[idx]
     bc = select_bc(ordered_bcs[idx])
 
-    sz = fill_halo_size(field.data, side, field.indices, bc, instantiated_location(field), grid)
-    of = fill_halo_offset(sz, side, field.indices)
+    sz = (grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy)
+    of = (-grid.Hx, -grid.Hy)
     kernel! = fill_halo_kernel!(side, bc, grid, sz, of, field.data, reduced_dims)
 
     fill_halo_event!(field.data, kernel!, ordered_bcs[idx], instantiated_location(field), grid)
@@ -369,8 +369,8 @@ end
         side = sides[idx]
         bc = select_bc(ordered_bcs[idx])
 
-        sz = fill_halo_size(field.data, side, field.indices, bc, instantiated_location(field), grid)
-        of = fill_halo_offset(sz, side, field.indices)
+        sz = (grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy)
+        of = (-grid.Hx, -grid.Hy)
         kernel! = fill_halo_kernel!(side, bc, grid, sz, of, field.data, reduced_dims)
 
         fill_halo_event!(field.data, kernel!, ordered_bcs[idx], instantiated_location(field), grid)
