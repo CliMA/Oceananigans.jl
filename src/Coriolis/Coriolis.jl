@@ -2,7 +2,7 @@ module Coriolis
 
 export
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
-    HydrostaticSphericalCoriolis,
+    SphericalCoriolis, HydrostaticSphericalCoriolis,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf
@@ -27,6 +27,6 @@ include("f_plane.jl")
 include("constant_cartesian_coriolis.jl")
 include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
-include("hydrostatic_spherical_coriolis.jl")
+include("spherical_coriolis.jl")
 
 end # module
