@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.BuoyancyFormulations: ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -180,7 +180,7 @@ const f = Face()
 @inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κu
 @inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κc
 
-with_tracers(tracers, closure::FlavorOfRBVD) = closure
+Utils.with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfRBVD)

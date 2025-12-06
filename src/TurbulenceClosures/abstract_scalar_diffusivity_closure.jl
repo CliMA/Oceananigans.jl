@@ -1,3 +1,4 @@
+using Oceananigans.Grids: node
 using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
 
 """

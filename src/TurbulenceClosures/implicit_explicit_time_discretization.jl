@@ -1,5 +1,3 @@
-using Oceananigans.Grids: AbstractGrid
-
 abstract type AbstractTimeDiscretization end
 
 """

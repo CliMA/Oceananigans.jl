@@ -1,7 +1,8 @@
 using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Grids: ZDirection
+using Oceananigans.Fields: location
+using Oceananigans.Grids: Periodic, ZDirection, topology
 
 import Oceananigans.Solvers: get_coefficient
 import Oceananigans.TimeSteppers: implicit_step!

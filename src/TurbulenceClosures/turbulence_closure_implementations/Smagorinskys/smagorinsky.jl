@@ -1,8 +1,8 @@
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: FieldBoundaryConditions
-using Oceananigans.Utils: launch!, IterationInterval
+using Oceananigans.Utils: Utils, launch!, IterationInterval
 
-using Adapt
+using Adapt: Adapt, adapt
 
 using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
@@ -10,8 +10,6 @@ using ..TurbulenceClosures:
     ExplicitTimeDiscretization,
     closure_coefficient,
     convert_diffusivity
-
-import Oceananigans.Utils: with_tracers
 
 import ..TurbulenceClosures:
     viscosity,
@@ -84,7 +82,7 @@ end
 
 Smagorinsky(FT::DataType; kwargs...) = Smagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
-function with_tracers(tracers, closure::Smagorinsky{TD}) where TD
+function Utils.with_tracers(tracers, closure::Smagorinsky{TD}) where TD
     Pr = tracer_diffusivities(tracers, closure.Pr)
     return Smagorinsky{TD}(closure.coefficient, Pr)
 end
@@ -149,4 +147,3 @@ function Base.show(io::IO, closure::Smagorinsky)
               "├── coefficient = ", coefficient_summary, "\n",
               "└── Pr = ", closure.Pr)
 end
-

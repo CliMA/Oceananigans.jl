@@ -2,17 +2,14 @@ module ImmersedBoundaries
 
 export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ImmersedBoundaryCondition
 
-using Adapt
+using Printf: @sprintf
+using Statistics: mean
 
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.Fields
-using Oceananigans.Utils
-using Oceananigans.Architectures
+using Oceananigans.Architectures: Architectures, on_architecture
+using Oceananigans.Grids: Center, Face, Flat, size_summary, inactive_node, peripheral_node, AbstractGrid
+using Oceananigans.Utils: launch!, @apply_regionally
 
-using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid
-
-import Base: show, summary
+using Adapt: Adapt, adapt
 
 import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                            x_domain, y_domain, z_domain
@@ -25,9 +22,6 @@ import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimens
                            ξnodes, ηnodes, rnodes,
                            static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ,
                            inactive_cell
-
-
-import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
 

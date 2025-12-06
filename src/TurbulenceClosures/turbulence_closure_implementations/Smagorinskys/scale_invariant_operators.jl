@@ -1,6 +1,6 @@
 using Oceananigans.TurbulenceClosures: Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃
 using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²
-using Oceananigans.Operators: volume
+using Oceananigans.Operators: volume, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 #####
 ##### Double dot product of strain on cell edges (currently unused)
@@ -186,4 +186,3 @@ const β  = 1
 @inline L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₁u₂ᶜᶜᶜ, u, v, w) - ū₁ū₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₁u₃ᶜᶜᶜ, u, v, w) - ū₁ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = filter(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
-

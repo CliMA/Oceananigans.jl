@@ -1,4 +1,4 @@
-using Adapt
+using Adapt: Adapt
 using Dates: AbstractTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid

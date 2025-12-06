@@ -67,8 +67,8 @@ end
     @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 end
 
-@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKutta3TimeStepper) = 
-    launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
+@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKutta3TimeStepper) =
+    launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!,
             GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_column_map(grid))
 
 #####
@@ -88,7 +88,7 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
     baroclinic_timestepper = model.timestepper
 
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
-    fill_halo_regions!((GUⁿ, GVⁿ); async=true) 
+    fill_halo_regions!((GUⁿ, GVⁿ); async=true)
 
     return nothing
 end

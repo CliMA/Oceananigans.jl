@@ -1,5 +1,6 @@
+using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Operators
-using Adapt: Adapt
+using Adapt: Adapt, adapt
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
@@ -147,7 +148,7 @@ end
 
 AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
+function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{TD}(closure.Cν, Cκ, closure.Cb)
 end

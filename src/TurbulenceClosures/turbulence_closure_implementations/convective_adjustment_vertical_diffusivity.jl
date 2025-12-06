@@ -81,7 +81,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 const CAVDArray = AbstractArray{<:CAVD}
 const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
-with_tracers(tracers, closure::FlavorOfCAVD) = closure
+Utils.with_tracers(tracers, closure::FlavorOfCAVD) = closure
 build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = ZFaceField(grid), κᵘ = ZFaceField(grid))
 @inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
@@ -133,4 +133,3 @@ function Base.summary(closure::ConvectiveAdjustmentVerticalDiffusivity{TD}) wher
 end
 
 Base.show(io::IO, closure::ConvectiveAdjustmentVerticalDiffusivity) = print(io, summary(closure))
-

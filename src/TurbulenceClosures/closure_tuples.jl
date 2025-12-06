@@ -71,7 +71,7 @@ end
 ##### Utilities
 #####
 
-with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
+Utils.with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
 function compute_diffusivities!(closure_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
     for (α, closure) in enumerate(closure_tuple)

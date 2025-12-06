@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Fields: interpolate
-using Statistics
+using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
+using Statistics: mean
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
