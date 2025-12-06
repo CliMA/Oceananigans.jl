@@ -14,13 +14,9 @@ end
 using Oceananigans
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-
 simulation = Simulation(model, Δt=1, stop_iteration=10)
-
 show_time(sim) = @info "Time is $(prettytime(sim.model.clock.time))"
-
 simulation.callbacks[:total_A] = Callback(show_time, IterationInterval(2))
-
 simulation
 ```
 
