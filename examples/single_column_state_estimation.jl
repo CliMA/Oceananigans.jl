@@ -41,7 +41,7 @@ Enzyme.API.maxtypeoffset!(2032)
 # turbulent mixing in a stratified environment.
 
 # Parameters
-Nz = 128
+Nz = 16
 H = 200          # Depth [m]
 U₀ = 0.2         # Jet amplitude [m/s]
 du = 10
@@ -53,6 +53,7 @@ b₀ = N² * db     # Buoyancy scale
 z₁ = -90         # Buoyancy transition center [m] (slightly offset from jet)
 
 arch = Oceananigans.Architectures.ReactantState()
+# arch = CPU()
 grid = RectilinearGrid(arch, size=Nz, z=(-H, 0), topology=(Flat, Flat, Bounded))
 closure = TKEDissipationVerticalDiffusivity()
 model = HydrostaticFreeSurfaceModel(; grid, closure, tracers=(:b, :e, :ϵ), buoyancy=BuoyancyTracer())
@@ -87,15 +88,20 @@ end
 model.clock.last_Δt = 1minutes
 uᵢ = set!(CenterField(grid), u_jet)
 bᵢ = set!(CenterField(grid), b_stratified)
-r_12_steps! = @compile sync=true raise=true take_12_steps!(model, uᵢ, bᵢ)
 
-u₀ = interior(uᵢ, 1, 1, :) |> Array
-b₀ = interior(bᵢ, 1, 1, :) |> Array
+u₀ = interior(uᵢ) |> Array
+b₀ = interior(bᵢ) |> Array
 
-r_12_steps!(model, uᵢ, bᵢ)
+if arch isa Oceananigans.Architectures.ReactantState
+    #r_12_steps! = @compile sync=true raise=true take_12_steps!(model, u₀, b₀)
+    r_12_steps! = @compile sync=true raise=true take_12_steps!(model, uᵢ, bᵢ)
+    r_12_steps!(model, uᵢ, bᵢ)
+else
+    take_12_steps!(model, uᵢ, bᵢ)
+end
 
-u₁ = interior(model.velocities.u, 1, 1, :) |> Array
-b₁ = interior(model.tracers.b, 1, 1, :) |> Array
+u₁ = interior(model.velocities.u) |> Array
+b₁ = interior(model.tracers.b) |> Array
 
 # ## Visualization of Truth Simulation
 #
@@ -106,12 +112,12 @@ ax_u = Axis(fig_truth[1, 1]; xlabel="Velocity [m/s]", ylabel="Depth [m]", title=
 ax_b = Axis(fig_truth[1, 2]; xlabel="Buoyancy [m/s²]", ylabel="Depth [m]", title="Buoyancy Profile")
 
 z = znodes(model.velocities.u) |> Array
-lines!(ax_u, u₀, z, label="Initial")
-lines!(ax_u, u₁, z, label="Final")
+lines!(ax_u, u₀[:], z, label="Initial")
+lines!(ax_u, u₁[:], z, label="Final")
 axislegend(ax_u)
 
-lines!(ax_b, b₀, z, label="Initial")
-lines!(ax_b, b₁, z, label="Final")
+lines!(ax_b, b₀[:], z, label="Initial")
+lines!(ax_b, b₁[:], z, label="Final")
 axislegend(ax_b)
 
 current_figure() #hide
@@ -123,33 +129,44 @@ current_figure() #hide
 
 function J(model, uᵢ, bᵢ, u★)
     take_12_steps!(model, uᵢ, bᵢ)
-    u₁ = interior(model.velocities.u, 1, 1, :)
+    u₁ = interior(model.velocities.u)
     ϵ² = (u₁ - u★).^2 ./ maximum(u★)^2
     return sqrt(sum(ϵ²) / length(ϵ²))
 end
 
-function dJ(model, uᵢ, bᵢ, u★)
-    dJ_db = autodiff(set_strong_zero(Enzyme.ReverseWithPrimal),
-                     J, Active,
-                     Duplicated(model, dmodel),
-                     Duplicated(uᵢ, duᵢ),
-                     Duplicated(bᵢ, dbᵢ),
-                     Const(u★))
-
-    return dJ_db
-end
-  
 # Need to create a 3D array for set! function
 bᵍ = set!(CenterField(grid), z -> N² * z)
-bᵍ = interior(bᵍ, 1, 1, :)
+bᵍ = interior(bᵍ)
 # Compute cost at initial guess
-rJ = @compile sync=true raise=true J(model, uᵢ, bᵍ, u₁)
-J₀ = rJ(model, uᵢ, bᵍ, u₁)
+
+J₀ = if arch isa Oceananigans.Architectures.ReactantState
+    Jᶜ = @compile sync=true raise=true J(model, uᵢ, bᵍ, u₁)
+    Jᶜ(model, uᵢ, bᵍ, u₁)
+else
+    J(model, uᵢ, bᵍ, u₁)
+end
+
 @info "Initial cost: $J₀"
+
+function dJ(model, uᵢ, bᵢ, u★)
+    mode = set_strong_zero(Enzyme.ReverseWithPrimal)
+    dJ_db = autodiff(mode, J, Active,
+                     Duplicated(model, Enzyme.make_zero(model)),
+                     Duplicated(uᵢ, Enzyme.make_zero(uᵢ)),
+                     Duplicated(bᵢ, Enzyme.make_zero(bᵢ)),
+                     Const(u★))
+    return dJ_db
+end
+
+dJ₀ = if arch isa Oceananigans.Architectures.ReactantState
+    dJᶜ = @compile sync=true raise=true dJ(model, uᵢ, bᵍ, u₁)
+    dJᶜ(model, uᵢ, bᵍ, u₁)
+else
+    dJ(model, uᵢ, bᵍ, u₁)
+end
 
 #=
 # Prepare for Enzyme autodiff
-dmodel = Enzyme.make_zero(model_for_gradient)
 
 # Compute gradient
 @info "Computing gradient with Enzyme..."
