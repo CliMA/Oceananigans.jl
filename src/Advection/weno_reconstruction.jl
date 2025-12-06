@@ -20,7 +20,7 @@ end
     WENO([FT=Float64, FT2=Float32;]
          order = 5,
          bounds = nothing,
-         minimum_buffer_upwind_order = 1)
+         minimum_buffer_upwind_order = 3)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -53,7 +53,7 @@ julia> using Oceananigans
 julia> WENO()
 WENO{3, Float64, Float32}(order=5)
 ├── buffer_scheme: WENO{2, Float64, Float32}(order=3)
-│   └── buffer_scheme: UpwindBiased(order=1)
+│   └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=4)
 ```
 
@@ -66,7 +66,7 @@ WENO{5, Float64, Float32}(order=9)
 ├── buffer_scheme: WENO{4, Float64, Float32}(order=7)
 │   └── buffer_scheme: WENO{3, Float64, Float32}(order=5)
 │       └── buffer_scheme: WENO{2, Float64, Float32}(order=3)
-│           └── buffer_scheme: UpwindBiased(order=1)
+│           └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
@@ -89,7 +89,7 @@ WENO{5, Float64, Float32}(order=9)
 ├── buffer_scheme: WENO{4, Float64, Float32}(order=7)
 │   └── buffer_scheme: WENO{3, Float64, Float32}(order=5)
 │       └── buffer_scheme: WENO{2, Float64, Float32}(order=3)
-│           └── buffer_scheme: UpwindBiased(order=1)
+│           └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 """
@@ -97,7 +97,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               bounds = nothing,
-              minimum_buffer_upwind_order = 1)
+              minimum_buffer_upwind_order = 3)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
