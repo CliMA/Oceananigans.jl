@@ -1,4 +1,4 @@
-using Oceananigans.Fields: ZeroField
+using Oceananigans.Fields: ZeroField, ConstantField
 using Oceananigans.Utils: sum_of_velocities
 using Adapt
 
