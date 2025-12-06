@@ -211,6 +211,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              divergence_order = nothing,
                              kinetic_energy_gradient_order = nothing,
                              multi_dimensional_stencil = false,
+                             minimum_buffer_upwind_order = 1,
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
