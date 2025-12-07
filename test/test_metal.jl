@@ -81,19 +81,19 @@ end
     Qᵀ = FT(1e-4)
     T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵀ))
 
-    Qᵘ = - FT(1e-4)
+    Qᵘ = -FT(1e-4)
     u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵘ))
 
     model = HydrostaticFreeSurfaceModel(;
         grid,
-        coriolis = FPlane(latitude=60),
-        tracers = (:T, :S),
-        buoyancy = SeawaterBuoyancy(),
-        momentum_advection = WENO(),
-        tracer_advection = WENO(),
-        free_surface = SplitExplicitFreeSurface(grid; substeps=30), # default does not work on MetalGPU
-        closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-3),
-        boundary_conditions = (u=u_bcs, T=T_bcs),
+        coriolis=FPlane(latitude=60),
+        tracers=(:T, :S),
+        buoyancy=SeawaterBuoyancy(),
+        momentum_advection=WENO(),
+        tracer_advection=WENO(),
+        free_surface=SplitExplicitFreeSurface(grid; substeps=30), # default does not work on MetalGPU
+        closure=ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-3),
+        boundary_conditions=(u=u_bcs, T=T_bcs),
     )
     @test parent(model.velocities.u) isa MtlArray
     @test parent(model.velocities.v) isa MtlArray
@@ -106,6 +106,21 @@ end
 
     @test iteration(simulation) == 1
     @test time(simulation) == 1seconds
+end
+
+@testset "MetalGPU: test for reductions" begin
+    arch = GPU(Metal.MetalBackend())
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+
+    # Test reduction of Field
+    c = CenterField(grid)
+    set!(c, 1)
+    @test minimum(c) == 1
+
+    # Test reduction of KernelFunctionOperation
+    add_2(i, j, k, grid, c) = @inbounds c[i, j, k] + 2
+    add_2_kfo = KernelFunctionOperation{Center,Center,Center}(add_2, grid, c)
+    @test minimum(add_2_kfo) == 3
 end
 
 @testset "MetalGPU: TimeStepWizard" begin
