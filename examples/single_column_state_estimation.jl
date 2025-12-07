@@ -71,14 +71,16 @@ b_stratified(z) = b₀ * tanh((z - z₁) / db)
 # ## Truth Simulation
 #
 # Run the model forward to generate "truth" data that we'll try to match.
-function take_12_steps!(model, uᵢ, bᵢ)
+# 
+# Note the number of time steps must be square!
+function take_25_steps!(model, uᵢ, bᵢ)
     set!(model, u=uᵢ, b=bᵢ)        
 
     model.clock.iteration = 0
     model.clock.time = 0
 
     Δt = model.clock.last_Δt
-    @trace mincut = true checkpointing = true track_numbers = false for n = 1:12
+    @trace mincut = true checkpointing = true track_numbers = false for n = 1:25
         time_step!(model, Δt)
     end
 
@@ -86,18 +88,14 @@ function take_12_steps!(model, uᵢ, bᵢ)
 end
 
 model.clock.last_Δt = 1minutes
-uᵢ = set!(CenterField(grid), u_jet)
-bᵢ = set!(CenterField(grid), b_stratified)
-
-u₀ = interior(uᵢ) |> Array
-b₀ = interior(bᵢ) |> Array
+u₀ = set!(CenterField(grid), u_jet)
+b₀ = set!(CenterField(grid), b_stratified)
 
 if arch isa Oceananigans.Architectures.ReactantState
-    #r_12_steps! = @compile sync=true raise=true take_12_steps!(model, u₀, b₀)
-    r_12_steps! = @compile sync=true raise=true take_12_steps!(model, uᵢ, bᵢ)
-    r_12_steps!(model, uᵢ, bᵢ)
+    r_25_steps! = @compile sync=true raise=true take_25_steps!(model, u₀, b₀)
+    r_25_steps!(model, u₀, b₀)
 else
-    take_12_steps!(model, uᵢ, bᵢ)
+    take_25_steps!(model, u₀, b₀)
 end
 
 u₁ = interior(model.velocities.u) |> Array
@@ -112,11 +110,11 @@ ax_u = Axis(fig_truth[1, 1]; xlabel="Velocity [m/s]", ylabel="Depth [m]", title=
 ax_b = Axis(fig_truth[1, 2]; xlabel="Buoyancy [m/s²]", ylabel="Depth [m]", title="Buoyancy Profile")
 
 z = znodes(model.velocities.u) |> Array
-lines!(ax_u, u₀[:], z, label="Initial")
+lines!(ax_u, u₀, label="Initial")
 lines!(ax_u, u₁[:], z, label="Final")
 axislegend(ax_u)
 
-lines!(ax_b, b₀[:], z, label="Initial")
+lines!(ax_b, b₀, label="Initial")
 lines!(ax_b, b₁[:], z, label="Final")
 axislegend(ax_b)
 
@@ -128,7 +126,7 @@ current_figure() #hide
 # and computes the mean square error with respect to the truth data.
 
 function J(model, uᵢ, bᵢ, u★)
-    take_12_steps!(model, uᵢ, bᵢ)
+    take_25_steps!(model, uᵢ, bᵢ)
     u₁ = interior(model.velocities.u)
     ϵ² = (u₁ - u★).^2 ./ maximum(u★)^2
     return sqrt(sum(ϵ²) / length(ϵ²))
@@ -140,30 +138,46 @@ bᵍ = interior(bᵍ)
 # Compute cost at initial guess
 
 J₀ = if arch isa Oceananigans.Architectures.ReactantState
-    Jᶜ = @compile sync=true raise=true J(model, uᵢ, bᵍ, u₁)
-    Jᶜ(model, uᵢ, bᵍ, u₁)
+    Jᶜ = @compile sync=true raise=true J(model, u₀, bᵍ, u₁)
+    Jᶜ(model, u₀, bᵍ, u₁)
 else
-    J(model, uᵢ, bᵍ, u₁)
+    J(model, u₀, bᵍ, u₁)
 end
 
 @info "Initial cost: $J₀"
 
-function dJ(model, uᵢ, bᵢ, u★)
+function compute_gradients(model, u₀, b₀, u★)
     mode = set_strong_zero(Enzyme.ReverseWithPrimal)
-    dJ_db = autodiff(mode, J, Active,
-                     Duplicated(model, Enzyme.make_zero(model)),
-                     Duplicated(uᵢ, Enzyme.make_zero(uᵢ)),
-                     Duplicated(bᵢ, Enzyme.make_zero(bᵢ)),
-                     Const(u★))
-    return dJ_db
+    
+    # Create shadow arrays to accumulate gradients
+    du = Enzyme.make_zero(u₀)
+    db = Enzyme.make_zero(b₀)  # ∂J/∂bᵢ will be accumulated here
+    
+    dJ = autodiff(mode, J, Active,
+                  Duplicated(model, Enzyme.make_zero(model)),
+                  Duplicated(u₀, du),
+                  Duplicated(b₀, db),
+                  Const(u★))
+    
+    # result contains the primal value; gradients are in the shadow arrays
+    return dJ, du, db
 end
 
-dJ₀ = if arch isa Oceananigans.Architectures.ReactantState
-    dJᶜ = @compile sync=true raise=true dJ(model, uᵢ, bᵍ, u₁)
-    dJᶜ(model, uᵢ, bᵍ, u₁)
+dJ, du, db = if arch isa Oceananigans.Architectures.ReactantState
+    compute_gradientsᶜ = @compile sync=true raise=true compute_gradients(model, u₀, b₀, u₁)
+    compute_gradientsᶜ(model, u₀, b₀, u₁)
 else
-    dJ(model, uᵢ, bᵍ, u₁)
+    compute_gradients(model, u₀, b₀, u₁)
 end
+
+#=
+# Extract the gradient arrays
+∂J_∂u = interior(du) |> Array  # Sensitivity wrt initial velocity
+∂J_∂b = interior(db) |> Array  # Sensitivity wrt initial buoyancy
+
+@info "Primal cost value: $(result[2])"
+@info "Size of ∂J/∂b: $(size(∂J_∂b))"
+=#
 
 #=
 # Prepare for Enzyme autodiff
