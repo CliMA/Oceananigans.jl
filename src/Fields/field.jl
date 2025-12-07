@@ -747,7 +747,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
-
+            mask = convert(eltype(a), mask)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
@@ -762,6 +762,8 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
+            
+            mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
                                       interior(r),
                                       condition_operand(a, condition, mask);
@@ -775,12 +777,15 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    mask = get_neutral_mask(Base.$(reduction!)),
                                    dims = :)
 
+            mask = convert(eltype(c), mask)
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            println("Hi there")
+            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false) # Here we have a problem on MetalGPU
+            println("Hello")
 
             if dims isa Colon
                 return @allowscalar first(r)
@@ -798,11 +803,13 @@ Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; k
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
+    mask = convert(eltype(c), mask)
     operator = condition_operand(f, c, condition, mask)
     return sum(operator) / conditional_length(operator)
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
+    mask = convert(eltype(c), mask)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
     L = conditional_length(operand, dims)
@@ -818,6 +825,7 @@ Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = St
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
+    mask = convert(eltype(a), mask)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     L = conditional_length(condition_operand(f, a, condition, mask), dims)
