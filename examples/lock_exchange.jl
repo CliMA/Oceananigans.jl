@@ -7,6 +7,33 @@
 #  * Including variable density initial conditions 
 #  * Saving outputs of the simulation 
 #  * Creating an animation with CairoMakie
+# 
+# ### The Lock Exchange Problem 
+#     This use case is a basic example where there are fluids of two different densities (due to temperature, salinity, etc.) 
+# that are separated by a ‘lock’ at time t=0. This lock exchange implementation can be a representation of 
+# scenarios where water of different salinities or temperatures meet and form sharp density gradients. 
+# For example, in estuaries or in the Denmark Strait overflow.
+# Solutions of this problem describe how the fluids interact with each other as time evolves and can be described by 
+# hydrostatic Boussinesq equations: 
+# ```math
+# \frac{\partial \rho}{\partial t} + \nabla \cdot (\rho \textbf{v}) = 0
+# ```
+# where `ρ` represents density. In the case of this model, we use boyancy as a tracer, which relates to the density: 
+# ```math
+# b = -g \frac{\rho - \rho_{0}}{\rho_{0}}
+# ```
+# 
+# [Source URL](https://www.sciencedirect.com/science/article/abs/pii/S0093641322000842)
+
+
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, CairoMakie"
+# ```
 
 
 # ## Import Required Packages 
@@ -35,7 +62,17 @@ H = 50meters      # depth
 z_disc  = MutableVerticalDiscretization((-50, 0))
 x = (0, L)
 
-# Initialize the grid 
+# Initialize the grid: 
+#  For the RectilinearGrid, the different parameters represent: 
+#  * size: N dimensional tuple to set number of cells in the x and z directions 
+#  * halo: Padding of grid cells used to exchange boundary information between cells 
+#  * x: Physical size of grid representation in the x direction 
+#  * z: Physical size of grid representation in the z direction. Since MutableVerticalDiscretization is applied 
+#       to z, it allows for the height of the surface to be adjusted during the simulation 
+#  * topology: Describes the boundary structure in each (x, y, z) direction; a flat topology means that no 
+#       boundary conditions are applied as that dimension is not represented in the simulation, while a 
+#       bounded topology represents represents a physical boundary 
+
 underlying_grid = RectilinearGrid(
                     size = (Nx, Nz),
                     halo = (5, 5),
@@ -63,7 +100,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 #  * Runge Kutta method is good for integrating multiple processes 
 
 model = HydrostaticFreeSurfaceModel(; grid,
-    tracers = :b,
+    tracers = :b,      
     buoyancy = BuoyancyTracer(),
     momentum_advection = WENO(order=5), 
     tracer_advection = WENO(order=7), 
@@ -72,25 +109,38 @@ model = HydrostaticFreeSurfaceModel(; grid,
     timestepper = :SplitRungeKutta3 
 )
 
+
 # ## Set Variable Density Initial Conditions 
 
-# Set initial conditions for lock exchange with different densities 
+# Set initial conditions for lock exchange with different boyancies  
 bᵢ(x, z) = x > 4kilometers ? 0.06 : 0.01
 set!(model, b=bᵢ)
 
+
 # ## Defining Simulation Timestep 
 # 
-# Note that we have a small time step because of a small Courant-Friedrichs-Lewy (CLF) condition 
+# Fast wave speeds make the equations stiff, so the CFL condition forces a small timestep Δt
+# when using explicit time-stepping to maintain numerical stability.
 
 # Set the timesteps 
 Δt = 1seconds 
-stop_time = 1days
+stop_time = 3days 
 simulation = Simulation(model; Δt, stop_time)
+
+# The TimeStepWizard helps ensure stable time-stepping with a (CFL) number of 0.7. Since the stability region 
+# of the numerical time stepper extends only up to CFL ≈ 1. , we keep the CFL condition at a conservative value 
+# of 0.7 to ensure robust and stable time stepping.
+
+wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=1.0)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+
 
 # ## Track Simulation Progress 
 
+# Wall clock represents the real world time as opposed to simulation time 
 wall_clock = Ref(time_ns())
 
+# Define callback function to log simulation iterations and time every 30 mins in simulation time 
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
     msg = @sprintf("Iter: %7d, time: %s, wall: %s, max|w| = %6.3e m s⁻¹",
@@ -109,6 +159,14 @@ add_callback!(simulation, progress, name = :progress, TimeInterval(save_interval
 
 # ## Add Tracers and Diagnostics 
 
+# Here we define the fields that we want to save a snapshot of at every 30 minutes of simulation time. 
+# The JLD2Writer saves: 
+#  * b: buoyancy tracer
+#  * u: x component velocity (horizontal) 
+#  * u′: deviation of u from average of horizontal u
+#  * w: z component velocity (vertical)
+#  * N²: buoyancy stratification
+
 b = model.tracers.b
 u, v, w = model.velocities
 
@@ -126,40 +184,49 @@ simulation.output_writers[:fields] = JLD2Writer(model,
     overwrite_existing = true
 )
 
+
 # ## Run Simulation
 
 run!(simulation)
 @info "Simulation finished. Output saved to $(filename)"
 
-b_t = FieldTimeSeries("lock_exchange.jld2", "b")
+
+# ## Load Saved TimeSeries Values 
+
+u_t  = FieldTimeSeries(filename, "u")
+u′_t = FieldTimeSeries(filename, "u′")
+w_t  = FieldTimeSeries(filename, "w")
+N²_t = FieldTimeSeries(filename, "N²")
+b_t = FieldTimeSeries(filename, "b")
 times = b_t.times
 
 @info "Saved times: $(times)"
 @info "Number of snapshots: $(length(times))"
 
 
-# ## Load Saved TimeSeries Values 
-
-b_t  = FieldTimeSeries(filename, "b")
-u_t  = FieldTimeSeries(filename, "u")
-u′_t = FieldTimeSeries(filename, "u′")
-w_t  = FieldTimeSeries(filename, "w")
-N²_t = FieldTimeSeries(filename, "N²")
-
-umax = maximum(abs, u′_t[end])
-wmax = maximum(abs, w_t[end])
-
-
 # ## Visualize Simulation Outputs 
+
+# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
+# refer to [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 
-title = @lift @sprintf("t = %3.2f hours", times[$n] / hour)
+title = @lift @sprintf("t = %5.2f hours", times[$n] / hour)
+
 
 u′ₙ = @lift u′_t[$n]
 wₙ  = @lift w_t[$n]
 N²ₙ = @lift N²_t[$n]
+bₙ = @lift b_t[$n]
 
+# For visualization color ranges (use last snapshot)
+umax = maximum(abs, u′_t[end])
+wmax = maximum(abs, w_t[end])
+bmax = maximum(abs, b_t[end])
+N2max = maximum(abs, N²_t[end])
+nothing #hide
+
+# Use snapshots to create Makie visualization for b, N², u′, and w fields 
 
 axis_kwargs = (xlabel = "x [m]",
                ylabel = "z [m]",
@@ -170,21 +237,29 @@ fig = Figure(size = (800, 900))
 
 fig[1, :] = Label(fig, title, fontsize = 24, tellwidth = false)
 
-ax_u = Axis(fig[2, 1]; title = "u′ (along-slope velocity)", axis_kwargs...)
+ax_b = Axis(fig[2, 1]; title = "b (Buoyancy)", axis_kwargs...)
+hm_b = heatmap!(ax_b, bₙ; nan_color = :black, 
+                colorrange = (0, bmax), colormap = :magma)
+Colorbar(fig[2, 2], hm_b, label = "m s⁻²")
+
+ax_N2 = Axis(fig[3, 1]; title = "N² (stratification)", axis_kwargs...)
+hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color = :black, 
+                colorrange = (-0.25N2max, N2max), colormap = :magma)
+Colorbar(fig[3, 2], hm_N2, label = "s⁻²")
+
+ax_u = Axis(fig[4, 1]; title = "u′ (along-slope velocity)", axis_kwargs...)
 hm_u = heatmap!(ax_u, u′ₙ; nan_color = :black,
-                colorrange = (-umax, umax), colormap = :balance)
-Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
+                colorrange = (-umax, umax), colormap = :magma)
+Colorbar(fig[4, 2], hm_u, label = "m s⁻¹")
 
-ax_w = Axis(fig[3, 1]; title = "w (vertical velocity)", axis_kwargs...)
+ax_w = Axis(fig[5, 1]; title = "w (vertical velocity)", axis_kwargs...)
 hm_w = heatmap!(ax_w, wₙ; nan_color = :black,
-                colorrange = (-wmax, wmax), colormap = :balance)
-Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
+                colorrange = (-wmax, wmax), colormap = :magma)
+Colorbar(fig[5, 2], hm_w, label = "m s⁻¹")
 
-ax_N2 = Axis(fig[4, 1]; title = "N² (stratification)", axis_kwargs...)
-hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color = :black, colormap = :magma)
-Colorbar(fig[4, 2], hm_N2, label = "s⁻²")
 
 display(fig)
+
 
 # ### Create Animation
 
@@ -198,3 +273,5 @@ record(fig, "lock_exchange.mp4", frames; framerate = 10) do i
 end
 
 @info "Animation created in lock_exchange.mp4"
+
+# ![](lock_exchange.mp4)
