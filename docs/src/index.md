@@ -6,7 +6,8 @@ Oceananigans is a fast, friendly, flexible software package for finite volume si
 and hydrostatic Boussinesq equations on CPUs and GPUs.
 It runs on GPUs (wow, [fast!](https://doi.org/10.1029/2024MS004465)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
-Oceananigans development is community-driven with contributors from academia and industry.
+Oceananigans development is community-driven with contributors from academia and industry -
+see [jobs discussions](https://github.com/CliMA/Oceananigans.jl/discussions/categories/jobs) for developer and user opportunities!
 Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the [Climate Modeling Alliance](https://clima.caltech.edu).
 
 ## Quick install
@@ -105,6 +106,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Lee, X. K., Ramadhan, A., Souza, A., Wagner, G. L., Silvestri, S., Marshall, J. and Ferrari, R. (2025) [NORi: An ML-augmented ocean boundary layer parameterization](https://doi.org/10.48550/arXiv.2512.04452), _arXiv preprint_, arXiv:2512.04452. DOI: [10.48550/arXiv.2512.04452](https://doi.org/10.48550/arXiv.2512.04452)
 
 1. Brenner, S., Thompson, A., and Gupta, M. (2025) [Patterns of sea ice floes shape ocean turbulence in the marginal ice zone](https://doi.org/10.21203/rs.3.rs-8099873/v1
 ), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-8099873/v1](https://doi.org/10.21203/rs.3.rs-8099873/v1)

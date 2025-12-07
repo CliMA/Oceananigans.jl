@@ -227,22 +227,28 @@ function test_latitude_longitude_grid_reconstruction(original_grid)
 end
 
 function test_immersed_grid_reconstruction(original_grid)
-    args, kwargs = constructor_arguments(original_grid)
+    underlying_grid_args, underlying_grid_kwargs, immersed_boundary_args = constructor_arguments(original_grid)
 
-    @test :immersed_boundary_type in keys(args)
-    @test :architecture in keys(args)
-    @test :number_type in keys(args)
+    @test :architecture in keys(underlying_grid_args)
+    @test :number_type in keys(underlying_grid_args)
 
     # Reconstruct the immersed boundary and then the grid
     original_ib = original_grid.immersed_boundary
     if original_ib isa GridFittedBottom
-        reconstructed_ib = GridFittedBottom(args[:bottom_height], args[:immersed_condition])
+        @test :bottom_height in keys(immersed_boundary_args)
+        @test :immersed_condition in keys(immersed_boundary_args)
+        reconstructed_ib = GridFittedBottom(immersed_boundary_args[:bottom_height], immersed_boundary_args[:immersed_condition])
+
     elseif original_ib isa PartialCellBottom
-        reconstructed_ib = PartialCellBottom(args[:bottom_height], args[:minimum_fractional_cell_height])
+        @test :bottom_height in keys(immersed_boundary_args)
+        @test :minimum_fractional_cell_height in keys(immersed_boundary_args)
+        reconstructed_ib = PartialCellBottom(immersed_boundary_args[:bottom_height], immersed_boundary_args[:minimum_fractional_cell_height])
+
     elseif original_ib isa GridFittedBoundary
-        reconstructed_ib = GridFittedBoundary(args[:mask])
+        @test :mask in keys(immersed_boundary_args)
+        reconstructed_ib = GridFittedBoundary(immersed_boundary_args[:mask])
     end
-    reconstructed_underlying_grid = RectilinearGrid(args[:architecture], args[:number_type]; kwargs...)
+    reconstructed_underlying_grid = RectilinearGrid(values(underlying_grid_args)...; underlying_grid_kwargs...)
     reconstructed_grid = ImmersedBoundaryGrid(reconstructed_underlying_grid, reconstructed_ib)
 
     # Test that key properties match
@@ -354,15 +360,14 @@ N = 6
             test_netcdf_grid_reconstruction(stretched_rectilinear_grid)
             test_netcdf_grid_reconstruction(stretched_latlon_grid)
 
-            # TODO: Make the functionality below work
-            # test_netcdf_grid_reconstruction(gfboundary_rectilinear_grid)
-            # test_netcdf_grid_reconstruction(gfboundary_latlon_grid)
+            test_netcdf_grid_reconstruction(gfboundary_rectilinear_grid)
+            test_netcdf_grid_reconstruction(gfboundary_latlon_grid)
 
-            # test_netcdf_grid_reconstruction(gfbottom_rectilinear_grid)
-            # test_netcdf_grid_reconstruction(gfbottom_latlon_grid)
+            test_netcdf_grid_reconstruction(gfbottom_rectilinear_grid)
+            test_netcdf_grid_reconstruction(gfbottom_latlon_grid)
 
-            # test_netcdf_grid_reconstruction(pcbottom_rectilinear_grid)
-            # test_netcdf_grid_reconstruction(pcbottom_latlon_grid)
+            test_netcdf_grid_reconstruction(pcbottom_rectilinear_grid)
+            test_netcdf_grid_reconstruction(pcbottom_latlon_grid)
         end
     end
 end
