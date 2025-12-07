@@ -92,7 +92,7 @@ end
         momentum_advection = WENO(),
         tracer_advection = WENO(),
         free_surface = SplitExplicitFreeSurface(grid; substeps=30), # default does not work on MetalGPU
-        closure = nothing, # ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-3),
+        closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-3),
         boundary_conditions = (u=u_bcs, T=T_bcs),
     )
     @test parent(model.velocities.u) isa MtlArray
