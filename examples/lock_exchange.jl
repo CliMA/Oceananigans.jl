@@ -274,4 +274,11 @@ end
 
 @info "Animation created in lock_exchange.mp4"
 
+
+# The visualization shows the time evolution of buoyancy b, stratification N², and the
+# velocity fields u′ and w. Initially, the two water masses are separated horizontally
+# by a sharp density interface. As the flow evolves, gravity currents form and the dense
+# fluid moves beneath the lighter fluid. This shows the characteristic transition from
+# horizontal to vertical density separation for the lock exchange problem. 
+
 # ![](lock_exchange.mp4)
