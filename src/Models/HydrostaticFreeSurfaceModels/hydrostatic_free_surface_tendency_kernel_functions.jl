@@ -1,13 +1,10 @@
-using Oceananigans.BuoyancyFormulations
-using Oceananigans.Coriolis
-using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
-using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, closure_auxiliary_velocity
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
 using KernelAbstractions: @private
 

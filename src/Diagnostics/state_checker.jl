@@ -1,5 +1,5 @@
-using Printf
-using Statistics
+using Printf: @sprintf
+using Statistics: mean
 
 struct StateChecker{T, F} <: AbstractDiagnostic
     schedule :: T

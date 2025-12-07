@@ -7,11 +7,9 @@ using Oceananigans.Architectures
 using Oceananigans.Utils
 using Oceananigans.Grids: interior_parent_indices
 
-import Base: minimum, maximum, extrema
 import Oceananigans.Architectures: architecture, child_architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices, interior_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, rnodes, node, xnode, ynode, znode, rnode
-import Oceananigans.Utils: datatuple
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
 const GridOrNothing = Union{AbstractGrid, Nothing}

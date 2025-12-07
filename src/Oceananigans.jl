@@ -51,8 +51,7 @@ export
 
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, TEOS10,
-    buoyancy_field,
+    LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
@@ -91,7 +90,6 @@ export
 
     # Simulations
     Simulation, run!, Callback, add_callback!, iteration,
-    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
@@ -116,7 +114,6 @@ export
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using DocStringExtensions
-using FFTW
 
 function __init__()
     if VERSION >= v"1.13.0"
@@ -127,13 +124,7 @@ function __init__()
 
     end
 
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
-    end
+    Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 
 # List of fully-supported floating point types where applicable.
@@ -223,8 +214,8 @@ function boundary_conditions end
 # Basics
 include("Architectures.jl")
 include("Units.jl")
-include("Grids/Grids.jl")
 include("Utils/Utils.jl")
+include("Grids/Grids.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
@@ -297,5 +288,6 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
+using .Operators
 
 end # module

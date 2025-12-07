@@ -4,10 +4,7 @@ using OffsetArrays
 using Adapt
 using Distances
 
-using Adapt: adapt_structure
-
 using Oceananigans
-using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 using GPUArraysCore
 
 const AHCG = AbstractHorizontallyCurvilinearGrid
