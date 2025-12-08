@@ -39,9 +39,9 @@
 # ## Import Required Packages 
 
 using Oceananigans
-using Oceananigans.Units: kilometers, meters, seconds, minutes, days, hour
-using Oceananigans.Grids: MutableVerticalDiscretization
-using Oceananigans.Diagnostics: FieldTimeSeries, Average
+using Oceananigans.Units
+using Oceananigans.Grids
+using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.Operators
 
@@ -52,15 +52,15 @@ using CairoMakie
 # ## Set up 2D Rectilinear Grid
 
 # Set resolution of the simulation grid 
-Nx, Nz = 256, 64
+Nx, Nz = 128, 32
 
 # Set grid size 
 L = 8kilometers   # horizontal length
 H = 50meters      # depth  
 
 # Allow for mutable surface height 
-z_disc  = MutableVerticalDiscretization((-50, 0))
 x = (0, L)
+z  = MutableVerticalDiscretization((-50, 0))
 
 # Initialize the grid: 
 #  For the RectilinearGrid, the different parameters represent: 
@@ -73,13 +73,8 @@ x = (0, L)
 #       boundary conditions are applied as that dimension is not represented in the simulation, while a 
 #       bounded topology represents represents a physical boundary 
 
-underlying_grid = RectilinearGrid(
-                    size = (Nx, Nz),
-                    halo = (5, 5),
-                    x = x,
-                    z = z_disc,
-                    topology = (Bounded, Flat, Bounded)
-)
+underlying_grid = RectilinearGrid(size=(Nx, Nz); x, z, halo=(5, 5), topology=(Bounded, Flat, Bounded))
+
 
 # Add a slope at the bottom of the grid 
 h_left = -H
@@ -100,20 +95,21 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 #  * Runge Kutta method is good for integrating multiple processes 
 
 model = HydrostaticFreeSurfaceModel(; grid,
-    tracers = :b,      
+    tracers = (:b, :e),      
     buoyancy = BuoyancyTracer(),
+    closure = CATKEVerticalDiffusivity(),
     momentum_advection = WENO(order=5), 
     tracer_advection = WENO(order=7), 
     vertical_coordinate = ZStarCoordinate(grid), 
     free_surface = SplitExplicitFreeSurface(grid; substeps=10), 
-    timestepper = :SplitRungeKutta3 
+    timestepper = :SplitRungeKutta3
 )
 
 
 # ## Set Variable Density Initial Conditions 
 
 # Set initial conditions for lock exchange with different boyancies  
-bᵢ(x, z) = x > 4kilometers ? 0.06 : 0.01
+bᵢ(x, z) = x > 4kilometers ? 0.01 : 0.06
 set!(model, b=bᵢ)
 
 
@@ -124,15 +120,17 @@ set!(model, b=bᵢ)
 
 # Set the timesteps 
 Δt = 1seconds 
-stop_time = 3days 
+stop_time = 20hours
 simulation = Simulation(model; Δt, stop_time)
 
 # The TimeStepWizard helps ensure stable time-stepping with a (CFL) number of 0.7. Since the stability region 
-# of the numerical time stepper extends only up to CFL ≈ 1. , we keep the CFL condition at a conservative value 
-# of 0.7 to ensure robust and stable time stepping.
+# of the numerical time stepper extends only up to CFL ≈ 1, we keep the CFL condition at a value 
+# of 0.3 to ensure robust and stable time stepping.
 
-wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=1.0)
+clf_value = 0.7
+wizard = TimeStepWizard(cfl=clf_value, max_change=1.1, max_Δt=5.0)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=clf_value)
 
 
 # ## Track Simulation Progress 
@@ -193,12 +191,12 @@ run!(simulation)
 
 # ## Load Saved TimeSeries Values 
 
-u_t  = FieldTimeSeries(filename, "u")
-u′_t = FieldTimeSeries(filename, "u′")
-w_t  = FieldTimeSeries(filename, "w")
-N²_t = FieldTimeSeries(filename, "N²")
-b_t = FieldTimeSeries(filename, "b")
-times = b_t.times
+u_series  = FieldTimeSeries(filename, "u")
+u′_series = FieldTimeSeries(filename, "u′")
+w_series  = FieldTimeSeries(filename, "w")
+N²_series = FieldTimeSeries(filename, "N²")
+b_series = FieldTimeSeries(filename, "b")
+times = b_series.times
 
 @info "Saved times: $(times)"
 @info "Number of snapshots: $(length(times))"
@@ -213,17 +211,16 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %5.2f hours", times[$n] / hour)
 
-
-u′ₙ = @lift u′_t[$n]
-wₙ  = @lift w_t[$n]
-N²ₙ = @lift N²_t[$n]
-bₙ = @lift b_t[$n]
+u′ₙ = @lift u′_series[$n]
+wₙ  = @lift w_series[$n]
+N²ₙ = @lift N²_series[$n]
+bₙ = @lift b_series[$n]
 
 # For visualization color ranges (use last snapshot)
-umax = maximum(abs, u′_t[end])
-wmax = maximum(abs, w_t[end])
-bmax = maximum(abs, b_t[end])
-N2max = maximum(abs, N²_t[end])
+umax = maximum(abs, u′_series[end])
+wmax = maximum(abs, w_series[end])
+bmax = maximum(abs, b_series[end])
+N2max = maximum(abs, N²_series[end])
 nothing #hide
 
 # Use snapshots to create Makie visualization for b, N², u′, and w fields 
@@ -267,7 +264,7 @@ display(fig)
 
 frames = 1:length(times)
 
-record(fig, "lock_exchange.mp4", frames; framerate = 10) do i
+record(fig, "lock_exchange.mp4", frames; framerate = 8) do i
     @info "Plotting frame $i / $(frames[end])"
     n[] = i
 end
