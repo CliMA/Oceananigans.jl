@@ -191,12 +191,12 @@ run!(simulation)
 
 # ## Load Saved TimeSeries Values 
 
-u_series  = FieldTimeSeries(filename, "u")
-u′_series = FieldTimeSeries(filename, "u′")
-w_series  = FieldTimeSeries(filename, "w")
-N²_series = FieldTimeSeries(filename, "N²")
-b_series = FieldTimeSeries(filename, "b")
-times = b_series.times
+ut  = FieldTimeSeries(filename, "u")
+u′t = FieldTimeSeries(filename, "u′")
+wt  = FieldTimeSeries(filename, "w")
+N²t = FieldTimeSeries(filename, "N²")
+bt = FieldTimeSeries(filename, "b")
+times = bt.times
 
 @info "Saved times: $(times)"
 @info "Number of snapshots: $(length(times))"
@@ -211,16 +211,16 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %5.2f hours", times[$n] / hour)
 
-u′ₙ = @lift u′_series[$n]
-wₙ  = @lift w_series[$n]
-N²ₙ = @lift N²_series[$n]
-bₙ = @lift b_series[$n]
+u′ₙ = @lift u′t[$n]
+wₙ  = @lift wt[$n]
+N²ₙ = @lift N²t[$n]
+bₙ = @lift bt[$n]
 
 # For visualization color ranges (use last snapshot)
-umax = maximum(abs, u′_series[end])
-wmax = maximum(abs, w_series[end])
-bmax = maximum(abs, b_series[end])
-N2max = maximum(abs, N²_series[end])
+umax = maximum(abs, u′t[end])
+wmax = maximum(abs, wt[end])
+bmax = maximum(abs, bt[end])
+N2max = maximum(abs, N²t[end])
 nothing #hide
 
 # Use snapshots to create Makie visualization for b, N², u′, and w fields 
