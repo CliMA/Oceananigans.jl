@@ -88,6 +88,10 @@ function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfTISSD{TD}) where T
     return K
 end
 
+# Build closure fields for model initialization
+build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTISSD) =
+    DiffusivityFields(grid, tracer_names, bcs, closure)
+
 function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
