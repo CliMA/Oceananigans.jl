@@ -2513,18 +2513,22 @@ function test_netcdf_overriding_attributes(arch)
     return nothing
 end
 
-function test_netcdf_free_surface_only_output(arch)
+function test_netcdf_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
 
-    grid = LatitudeLongitudeGrid(arch;
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = LatitudeLongitudeGrid(arch;
         topology = (Bounded, Bounded, Bounded),
         size = (Nλ, Nφ, Nz),
         halo = (Hλ, Hφ, Hz),
         longitude = (-1, 1),
         latitude = (-1, 1),
-        z = (-100, 0)
+        z
     )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
     model = HydrostaticFreeSurfaceModel(; grid,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
@@ -2540,7 +2544,9 @@ function test_netcdf_free_surface_only_output(arch)
     )
 
     Arch = typeof(arch)
-    filepath_with_halos = "test_free_surface_with_halos_$Arch.nc"
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
@@ -2549,7 +2555,7 @@ function test_netcdf_free_surface_only_output(arch)
             schedule = IterationInterval(1),
             with_halos = true)
 
-    filepath_no_halos = "test_free_surface_no_halos_$Arch.nc"
+    filepath_no_halos = "test_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
     simulation.output_writers[:no_halos] =
@@ -2579,18 +2585,22 @@ function test_netcdf_free_surface_only_output(arch)
     return nothing
 end
 
-function test_netcdf_free_surface_mixed_output(arch)
+function test_netcdf_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
 
-    grid = LatitudeLongitudeGrid(arch;
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = LatitudeLongitudeGrid(arch;
         topology = (Bounded, Bounded, Bounded),
         size = (Nλ, Nφ, Nz),
         halo = (Hλ, Hφ, Hz),
         longitude = (-1, 1),
         latitude = (-1, 1),
-        z = (-100, 0)
+        z
     )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
     model = HydrostaticFreeSurfaceModel(; grid,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
@@ -2608,7 +2618,9 @@ function test_netcdf_free_surface_mixed_output(arch)
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)
 
     Arch = typeof(arch)
-    filepath_with_halos = "test_mixed_free_surface_with_halos_$Arch.nc"
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_mixed_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
@@ -2618,7 +2630,7 @@ function test_netcdf_free_surface_mixed_output(arch)
             with_halos = true,
             overwrite_existing = true)
 
-    filepath_no_halos = "test_mixed_free_surface_no_halos_$Arch.nc"
+    filepath_no_halos = "test_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
     simulation.output_writers[:no_halos] =
@@ -3091,8 +3103,10 @@ for arch in archs
 
         test_netcdf_overriding_attributes(arch)
 
-        test_netcdf_free_surface_only_output(arch)
-        test_netcdf_free_surface_mixed_output(arch)
+        for immersed in (false, true), vertically_stretched in (false, true)
+            test_netcdf_free_surface_only_output(arch; immersed, vertically_stretched)
+            test_netcdf_free_surface_mixed_output(arch; immersed, vertically_stretched)
+        end
 
         test_netcdf_buoyancy_force(arch)
 
