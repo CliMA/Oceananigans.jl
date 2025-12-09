@@ -313,6 +313,7 @@ end
 @inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
 @inline νᶠᶠᶜ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
 
+@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
