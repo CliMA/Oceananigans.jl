@@ -223,7 +223,7 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; dimension_ty
         push!(effective_dim_names, dim_name)
 
         # Transform dim_array to the correct float type and ensure it's on the CPU
-        dim_array = Array(dimension_type.(dim_array))
+        dim_array = collect(dimension_type.(dim_array))
 
         if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
