@@ -10,7 +10,7 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 using SeawaterPolynomials.SecondOrderSeawaterPolynomials: RoquetEquationOfState
 
 using Oceananigans: Clock
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ImplicitFreeSurface
 using Oceananigans.OutputWriters: trilocation_dim_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
 using Oceananigans.Fields: interpolate!
@@ -2513,7 +2513,7 @@ function test_netcdf_overriding_attributes(arch)
     return nothing
 end
 
-function test_netcdf_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
+function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
 
@@ -2585,7 +2585,7 @@ function test_netcdf_free_surface_only_output(arch; immersed=false, vertically_s
     return nothing
 end
 
-function test_netcdf_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
+function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
 
@@ -2666,6 +2666,159 @@ function test_netcdf_free_surface_mixed_output(arch; immersed=false, vertically_
     @test dimsize(ds_n[:w]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
     @test dimsize(ds_n[:T]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
     @test dimsize(ds_n[:S]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+
+    close(ds_n)
+    rm(filepath_no_halos)
+
+    return nothing
+end
+
+function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
+    Nx, Ny, Nz = 8, 8, 4
+    Hx, Hy, Hz = 3, 4, 2
+
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = RectilinearGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nx, Ny, Nz),
+        halo = (Hx, Hy, Hz),
+        x = (-1, 1),
+        y = (-1, 1),
+        z
+    )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
+
+    model = NonhydrostaticModel(; grid,
+        free_surface = ImplicitFreeSurface(),
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    outputs = (; η = model.free_surface.η)
+
+    Arch = typeof(arch)
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_nonhydrostatic_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    simulation.output_writers[:with_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            with_halos = true)
+
+    filepath_no_halos = "test_nonhydrostatic_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_no_halos) && rm(filepath_no_halos)
+
+    simulation.output_writers[:no_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_no_halos,
+            schedule = IterationInterval(1),
+            with_halos = false)
+
+    run!(simulation)
+
+    ds_h = NCDataset(filepath_with_halos)
+    @test haskey(ds_h, "η")
+    @test dimsize(ds_h["η"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_η=1, time=Nt + 1)
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    ds_n = NCDataset(filepath_no_halos)
+    @test haskey(ds_n, "η")
+    @test dimsize(ds_n["η"]) == (x_caa=Nx, y_aca=Ny, z_aaf_η=1, time=Nt + 1)
+    close(ds_n)
+    rm(filepath_no_halos)
+
+    return nothing
+end
+
+function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
+    Nx, Ny, Nz = 8, 8, 4
+    Hx, Hy, Hz = 3, 4, 2
+
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = RectilinearGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nx, Ny, Nz),
+        halo = (Hx, Hy, Hz),
+        x = (-1, 1),
+        y = (-1, 1),
+        z
+    )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
+
+    model = NonhydrostaticModel(; grid,
+        free_surface = ImplicitFreeSurface(),
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    free_surface_outputs = (; η = model.free_surface.η)
+    outputs = merge(model.velocities, model.tracers, free_surface_outputs)
+
+    Arch = typeof(arch)
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_nonhydrostatic_mixed_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    simulation.output_writers[:with_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            with_halos = true,
+            overwrite_existing = true)
+
+    filepath_no_halos = "test_nonhydrostatic_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_no_halos) && rm(filepath_no_halos)
+
+    simulation.output_writers[:no_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_no_halos,
+            schedule = IterationInterval(1),
+            with_halos = false,
+            overwrite_existing = true)
+
+    run!(simulation)
+
+    ds_h = NCDataset(filepath_with_halos)
+
+    @test haskey(ds_h, "η")
+    @test dimsize(ds_h["η"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_η=1, time=Nt + 1)
+
+    @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    ds_n = NCDataset(filepath_no_halos)
+
+    @test haskey(ds_n, "η")
+    @test dimsize(ds_n["η"]) == (x_caa=Nx, y_aca=Ny, z_aaf_η=1, time=Nt + 1)
+
+    @test dimsize(ds_n[:u]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:v]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:w]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_n[:T]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:S]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -3153,8 +3306,12 @@ end
         @testset "Free surface output [$A]" begin
             @info "  Testing free surface output [$A]..."
             for immersed in (false, true), vertically_stretched in (false, true)
-                test_netcdf_free_surface_only_output(arch; immersed, vertically_stretched)
-                test_netcdf_free_surface_mixed_output(arch; immersed, vertically_stretched)
+                test_netcdf_hydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
+                test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
+                if arch isa CPU
+                    test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
+                    test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
+                end
             end
         end
 
