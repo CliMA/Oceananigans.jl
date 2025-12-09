@@ -1,10 +1,11 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-authors = ["Climate Modeling Alliance and contributors"]
 version = "0.102.2"
+authors = ["Climate Modeling Alliance and contributors"]
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 CubedSphere = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -45,12 +46,15 @@ Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
-ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+
+[sources]
+ConservativeRegridding = {path = "/Users/gregorywagner/Projects/ConservativeRegridding.jl"}
 
 [extensions]
 OceananigansAMDGPUExt = "AMDGPU"
 OceananigansCUDAExt = ["CUDA", "GPUArrays", "GPUArraysCore"]
+OceananigansConservativeRegriddingExt = ["ConservativeRegridding"]
 OceananigansEnzymeExt = "Enzyme"
 OceananigansMakieExt = "Makie"
 OceananigansMetalExt = "Metal"
@@ -58,21 +62,20 @@ OceananigansNCDatasetsExt = "NCDatasets"
 OceananigansOneAPIExt = "oneAPI"
 OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
 OceananigansXESMFExt = ["XESMF"]
-OceananigansConservativeRegriddingExt = ["ConservativeRegridding"]
 
 [compat]
 AMDGPU = "1.3.6, 2"
 Adapt = "4.1.1"
 Aqua = "0.8"
-CairoMakie = "0.15"
 CUDA = "=5.8.5, 5.9.1"
 CUDA_Runtime_jll = "0.19"
+CairoMakie = "0.15"
 ConservativeRegridding = "0.1"
 ConstructionBase = "1"
 Crayons = "4"
 CubedSphere = "0.3.4"
-Dates = "1.9"
 DataDeps = "0.7"
+Dates = "1.9"
 Distances = "0.10"
 DocStringExtensions = "0.8, 0.9"
 Enzyme = "0.13.78"
@@ -115,11 +118,11 @@ oneAPI = "2.0.1"
 
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
