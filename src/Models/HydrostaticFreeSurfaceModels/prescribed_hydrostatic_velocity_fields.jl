@@ -3,16 +3,15 @@
 #####
 
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
+using Oceananigans.Fields: FunctionField, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
-
-using Adapt
 
 struct PrescribedVelocityFields{U, V, W, P}
     u :: U
@@ -76,8 +75,8 @@ hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, trac
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
-@inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
-@inline fill_halo_regions!(::FunctionField, args...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)

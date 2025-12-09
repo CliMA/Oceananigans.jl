@@ -1,4 +1,3 @@
-using Oceananigans.Advection: div_Uc, div_𝐯u, div_𝐯v, div_𝐯w
 using Oceananigans.Fields: ZeroField, ConstantField
 using Oceananigans.Utils: sum_of_velocities
 using Adapt
@@ -15,7 +14,7 @@ end
 """
     AdvectiveForcing(u=ZeroField(), v=ZeroField(), w=ZeroField())
 
-Build a forcing term representing advection by the velocity field `u, v, w` with an advection `scheme`.
+Build a forcing term representing advection by the velocity field `u, v, w`.
 
 Example
 =======

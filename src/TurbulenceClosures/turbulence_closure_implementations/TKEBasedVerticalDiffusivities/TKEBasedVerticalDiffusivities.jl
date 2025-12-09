@@ -14,14 +14,13 @@ using Oceananigans.Units
 using Oceananigans.Fields
 using Oceananigans.Operators
 
-using Oceananigans.Utils: prettysummary
 using Oceananigans.Grids: peripheral_node, inactive_node, inactive_cell
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Utils: prettysummary
 
 using Oceananigans.BoundaryConditions:
     default_prognostic_bc,
     DefaultBoundaryCondition,
-    BoundaryCondition,
     FieldBoundaryConditions,
     DiscreteBoundaryFunction,
     FluxBoundaryCondition
@@ -47,7 +46,6 @@ import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
     validate_closure,
     shear_production,
-    buoyancy_flux,
     dissipation,
     buoyancy_force,
     buoyancy_tracers,
@@ -58,10 +56,7 @@ import Oceananigans.TurbulenceClosures:
     viscosity,
     diffusivity,
     viscosity_location,
-    diffusivity_location,
-    diffusive_flux_x,
-    diffusive_flux_y,
-    diffusive_flux_z
+    diffusivity_location
 
 const c = Center()
 const f = Face()

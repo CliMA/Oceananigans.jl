@@ -1,11 +1,8 @@
-using OffsetArrays
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Architectures: Architectures, on_architecture, CPU
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Architectures: on_architecture
-import KernelAbstractions as KA
-import Base: length
 
+import KernelAbstractions as KA
 
 #####
 ##### Multi Region Object
@@ -80,7 +77,7 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
-on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(on_architecture(arch, mo.regional_objects))
+Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(on_architecture(arch, mo.regional_objects))
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)

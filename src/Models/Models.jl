@@ -12,12 +12,12 @@ export
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
-using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
-using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered
+using Oceananigans.Fields: Field, flattened_unique_values
+using Oceananigans.Grids: halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
-using Oceananigans.Utils: Time
+using Oceananigans.TimeSteppers: Clock, update_state!
+using Oceananigans.Units: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture

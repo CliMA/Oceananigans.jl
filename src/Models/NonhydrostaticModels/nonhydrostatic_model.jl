@@ -1,9 +1,7 @@
-using OrderedCollections: OrderedDict
-
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: Centered, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy, SeawaterBuoyancy
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -21,7 +19,7 @@ using Oceananigans.Grids: topology
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities, timestepper
+import Oceananigans.Models: total_velocities
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}

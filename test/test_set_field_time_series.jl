@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Utils: Time
+using Oceananigans.Units: Time
 using Oceananigans.Fields: indices
 
 function_of_time(x, y, z, t) = t

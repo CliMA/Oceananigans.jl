@@ -1,5 +1,5 @@
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
+using Oceananigans.OutputWriters: WindowedTimeAverage
+using Oceananigans.TimeSteppers: update_state!, unit_time
 
 using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
 using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state

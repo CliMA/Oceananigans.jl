@@ -53,7 +53,8 @@ Oceananigans is a fast, friendly, flexible software package for finite volume si
 and hydrostatic Boussinesq equations on CPUs and GPUs.
 It runs on GPUs (wow, [fast!](https://doi.org/10.1029/2024MS004465)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
-Oceananigans development is community-driven with contributors from academia and industry.
+Oceananigans development is community-driven with contributors from academia and industry -
+see [jobs discussions](https://github.com/CliMA/Oceananigans.jl/discussions/categories/jobs) for developer and user opportunities!
 Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the [Climate Modeling Alliance](https://clima.caltech.edu).
 
 ## Contents
@@ -127,7 +128,8 @@ It's _deep_ and includes:
 
     If you've got a question or something, anything! to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?).
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Accessing-GPUs-and-using-Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
-* The `#oceananigans` channel on the [Julia Slack](https://julialang.org/slack/), which accesses "institutional knowledge" stored in the minds of the amazing Oceananigans community.
+* The [NumericalEarth slack](https://join.slack.com/t/numericalearth/shared_invite/zt-3kjcowmpg-B0s3nalWkvZg8IBc~BIJEA) where one may access institutional knowledge stored in the minds of the Oceananigans community!
+* Consider also joining the [Julia Slack](https://julialang.org/slack/), yet another powerful community resource for the Julia package ecosystem, using GPUs, writing great Julia code, and hanging out.
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
 
 ## Citing and otherwise spreading the word

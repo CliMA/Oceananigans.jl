@@ -95,7 +95,6 @@ CUDA.allowscalar() do
             include("test_diagnostics.jl")
             include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
             include("test_set_field_time_series.jl")
         end
@@ -139,6 +138,7 @@ CUDA.allowscalar() do
     if group == :turbulence_closures || group == :all
         @testset "Turbulence closures tests" begin
             include("test_turbulence_closures.jl")
+            include("test_triad_isopycnal_diffusivity.jl")
             include("test_gm_infinite_slope.jl")
         end
     end

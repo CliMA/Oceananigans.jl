@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettytime, ordered_dict_show, prettykeys
+using Oceananigans.Utils: prettytime, prettykeys
 using Oceananigans.TurbulenceClosures: closure_summary
 
 function Base.summary(model::NonhydrostaticModel)

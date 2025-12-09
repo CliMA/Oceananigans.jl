@@ -1,10 +1,10 @@
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
-using Adapt
+using Adapt: Adapt
 
 """
     struct ExplicitFreeSurface{E, T}

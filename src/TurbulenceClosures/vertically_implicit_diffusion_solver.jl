@@ -1,6 +1,6 @@
-using Oceananigans.Operators: Δz⁻¹, Δr⁻¹
+using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
 
 import Oceananigans.Solvers: get_coefficient
@@ -53,6 +53,9 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Solver kernel functions for tracers / horizontal velocities and for vertical velocities
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
+
+# local definition of the generic reciprocal function Δz⁻¹
+@inline Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz) = 1 / Δz(i, j, k, grid, ℓx, ℓy, ℓz)
 
 # Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)

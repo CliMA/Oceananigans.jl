@@ -1,3 +1,5 @@
+using Adapt: Adapt
+
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
