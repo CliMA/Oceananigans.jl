@@ -10,7 +10,8 @@
 # 
 # ### The Lock Exchange Problem 
 #     This use case is a basic example where there are fluids of two different densities (due to temperature, salinity, etc.) 
-# that are separated by a ‘lock’ at time t=0. This lock exchange implementation can be a representation of 
+# that are separated by a ‘lock’ at time t=0, and we calculate the evolution of how these fluids interact as time progresses. 
+# This lock exchange implementation can be a representation of 
 # scenarios where water of different salinities or temperatures meet and form sharp density gradients. 
 # For example, in estuaries or in the Denmark Strait overflow.
 # Solutions of this problem describe how the fluids interact with each other as time evolves and can be described by 
@@ -52,7 +53,7 @@ using CairoMakie
 # ## Set up 2D Rectilinear Grid
 
 # Set resolution of the simulation grid 
-Nx, Nz = 128, 32
+Nx, Nz = 128, 64
 
 # Set grid size 
 L = 8kilometers   # horizontal length
@@ -83,13 +84,14 @@ slope = (h_right - h_left) / L
 bottom(x) = h_left + slope * x
 
 # Use an immersed boundary with grid fitted bottom to describe the sloped bottom of the domain 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 
 # ## Initialize the Model 
 #
 #  * Want to use a hydrostatic model since horizontal motion may be more significant than verticle motion 
 #  * Tracers act as markers within the fluid to track movement and dispersion
+#  * Vertical closure CATKEVerticalDiffusivity handles small-scale vertical turbulence 
 #  * Weighted Essentially Non-Oscillatory (WENO) methods are useful for capturing sharp changes in density
 #  * ZStarCoordinate method allows for the top of the grid to move with the free surface
 #  * Runge Kutta method is good for integrating multiple processes 
@@ -125,7 +127,7 @@ simulation = Simulation(model; Δt, stop_time)
 
 # The TimeStepWizard helps ensure stable time-stepping with a (CFL) number of 0.7. Since the stability region 
 # of the numerical time stepper extends only up to CFL ≈ 1, we keep the CFL condition at a value 
-# of 0.3 to ensure robust and stable time stepping.
+# of 0.7 to ensure robust and stable time stepping.
 
 clf_value = 0.7
 wizard = TimeStepWizard(cfl=clf_value, max_change=1.1, max_Δt=5.0)
@@ -166,6 +168,7 @@ add_callback!(simulation, progress, name = :progress, TimeInterval(save_interval
 #  * N²: buoyancy stratification
 
 b = model.tracers.b
+e = model.tracers.e 
 u, v, w = model.velocities
 
 U = Field(Average(u)) 
@@ -176,7 +179,7 @@ N² = ∂z(b)
 filename = "lock_exchange.jld2"
 
 simulation.output_writers[:fields] = JLD2Writer(model,
-    (; b, u, u′, w, N²);              
+    (; b, e, u, u′, w, N²);              
     filename = filename,
     schedule = TimeInterval(save_interval),
     overwrite_existing = true
@@ -196,6 +199,7 @@ u′t = FieldTimeSeries(filename, "u′")
 wt  = FieldTimeSeries(filename, "w")
 N²t = FieldTimeSeries(filename, "N²")
 bt = FieldTimeSeries(filename, "b")
+et = FieldTimeSeries(filename, "e")
 times = bt.times
 
 @info "Saved times: $(times)"
@@ -215,12 +219,14 @@ u′ₙ = @lift u′t[$n]
 wₙ  = @lift wt[$n]
 N²ₙ = @lift N²t[$n]
 bₙ = @lift bt[$n]
+eₙ = @lift et[$n]
 
 # For visualization color ranges (use last snapshot)
 umax = maximum(abs, u′t[end])
 wmax = maximum(abs, wt[end])
-bmax = maximum(abs, bt[end])
 N2max = maximum(abs, N²t[end])
+bmax = maximum(abs, bt[end])
+emax = maximum(abs, et[end])
 nothing #hide
 
 # Use snapshots to create Makie visualization for b, N², u′, and w fields 
@@ -239,21 +245,20 @@ hm_b = heatmap!(ax_b, bₙ; nan_color = :black,
                 colorrange = (0, bmax), colormap = :magma)
 Colorbar(fig[2, 2], hm_b, label = "m s⁻²")
 
-ax_N2 = Axis(fig[3, 1]; title = "N² (stratification)", axis_kwargs...)
-hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color = :black, 
-                colorrange = (-0.25N2max, N2max), colormap = :magma)
-Colorbar(fig[3, 2], hm_N2, label = "s⁻²")
+ax_e = Axis(fig[3, 1]; title = "e (turbulent kinetic energy)", axis_kwargs...)
+hm_e = heatmap!(ax_e, eₙ; nan_color = :black,
+                colorrange = (-0.25emax, emax), colormap = :magma)
+Colorbar(fig[3, 2], hm_e, label = "m² s⁻²")
 
 ax_u = Axis(fig[4, 1]; title = "u′ (along-slope velocity)", axis_kwargs...)
 hm_u = heatmap!(ax_u, u′ₙ; nan_color = :black,
                 colorrange = (-umax, umax), colormap = :magma)
 Colorbar(fig[4, 2], hm_u, label = "m s⁻¹")
 
-ax_w = Axis(fig[5, 1]; title = "w (vertical velocity)", axis_kwargs...)
-hm_w = heatmap!(ax_w, wₙ; nan_color = :black,
-                colorrange = (-wmax, wmax), colormap = :magma)
-Colorbar(fig[5, 2], hm_w, label = "m s⁻¹")
-
+ax_N2 = Axis(fig[5, 1]; title = "N² (stratification)", axis_kwargs...)
+hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color = :black, 
+                colorrange = (-0.25N2max, N2max), colormap = :magma)
+Colorbar(fig[5, 2], hm_N2, label = "s⁻²")
 
 display(fig)
 
@@ -272,8 +277,9 @@ end
 @info "Animation created in lock_exchange.mp4"
 
 
-# The visualization shows the time evolution of buoyancy b, stratification N², and the
-# velocity fields u′ and w. Initially, the two water masses are separated horizontally
+# The visualization shows the time evolution of buoyancy b, turbulent kinetic energy e, 
+# stratification N²,and  velocity field u′. 
+# Initially, the two water masses are separated horizontally
 # by a sharp density interface. As the flow evolves, gravity currents form and the dense
 # fluid moves beneath the lighter fluid. This shows the characteristic transition from
 # horizontal to vertical density separation for the lock exchange problem. 
