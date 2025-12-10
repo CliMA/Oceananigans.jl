@@ -37,7 +37,7 @@ function hi_res_hydrostatic_model(grid;
 end
 
 function latitude_longitude_grid(arch, Nx, Ny, Nz; immersed=true, halo=(7, 7, 7), kw...)
-    grid = LatitudeLongitudeGrid(arch; topology=(Periodic, Bounded, Bounded), halo, kw...)
+    grid = LatitudeLongitudeGrid(arch; topology=(Periodic, Bounded, Bounded), halo=halo, size=(Nx,Ny,Nz), kw...)
 
     if immersed
         dλ = 20 # ridge width in degrees
@@ -45,7 +45,7 @@ function latitude_longitude_grid(arch, Nx, Ny, Nz; immersed=true, halo=(7, 7, 7)
         grid = ImmersedBoundaryGrid(grid, PartialCellBottom(ridge))
     end
 
-    return gride
+    return grid
 end
 
 """
