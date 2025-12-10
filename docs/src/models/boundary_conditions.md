@@ -361,7 +361,7 @@ When running on the GPU, `Q` must be converted to a `CuArray`.
 
 ### 10. Open boundary condition with mathcing scheme
 
-As discussed in [here](@ref numerical_bcs) it is often neccessary to specify a matching scheme
+As discussed in [the numerical description of open boundary conditions](@ref numerical_bcs) it is often neccessary to specify a matching scheme
 on open boundaries to approximate the behaviour of the boundary nodes given the interior state
 and specificed external conditions. For example if we want to specify an outflowing boundary
 with a mean velocity ``U=1`` and damp the exiting flow to this speed we can setup a 
