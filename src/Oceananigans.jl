@@ -113,8 +113,6 @@ export
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
-using DocStringExtensions
-
 function __init__()
     if VERSION >= v"1.13.0"
         @warn """You are using Julia v1.13 or later!"

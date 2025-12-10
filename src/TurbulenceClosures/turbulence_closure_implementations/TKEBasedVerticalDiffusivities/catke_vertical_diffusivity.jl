@@ -1,4 +1,6 @@
+using Oceananigans.Fields: Field
 using Oceananigans.Utils: time_difference_seconds
+using Oceananigans.Units: minute
 
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
@@ -133,7 +135,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                         tke_time_step)
 end
 
-function with_tracers(tracer_names, closure::FlavorOfCATKE)
+function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
     :e ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
                             "for `CATKEVerticalDiffusivity`."))
@@ -181,7 +183,7 @@ Adapt.adapt_structure(to, catke_closure_fields::CATKEDiffusivityFields) =
                            adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
                            adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(catke_closure_fields::CATKEDiffusivityFields, args...; kw...)
+function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEDiffusivityFields, args...; kw...)
     grid = catke_closure_fields.κu.grid
 
     κ = (catke_closure_fields.κu,

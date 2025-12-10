@@ -1,4 +1,5 @@
 using Oceananigans.Grids: peripheral_node
+using Oceananigans.Operators: div_xyᶜᶜᶜ
 
 """
     abstract type AbstractScalarBiharmonicDiffusivity <: AbstractTurbulenceClosure end
