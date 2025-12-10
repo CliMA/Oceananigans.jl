@@ -2,7 +2,6 @@ using Glob
 using StructArrays: StructArray
 
 using Oceananigans
-using Oceananigans: prognostic_fields
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
