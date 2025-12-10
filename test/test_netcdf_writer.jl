@@ -3308,10 +3308,8 @@ end
             for immersed in (false, true), vertically_stretched in (false, true)
                 test_netcdf_hydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
                 test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
-                if arch isa CPU
-                    test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
-                    test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
-                end
+                test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
+                test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
             end
         end
 
