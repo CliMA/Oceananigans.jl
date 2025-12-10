@@ -6,6 +6,7 @@ using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -41,6 +42,20 @@ function time_step_nonhydrostatic_model_works(grid; coriolis = nothing)
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
     run!(simulation)
     return model.clock.iteration == 1
+end
+
+function time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, FT)
+    grid = RectilinearGrid(arch, FT; topology=(Bounded, Bounded, Bounded),
+                           size=(8, 8, 4), x=(-1, 1), y=(-1, 1), z=(-1, 0))
+
+    model = NonhydrostaticModel(; grid,
+                                free_surface=ImplicitFreeSurface(),
+                                closure=ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                buoyancy=SeawaterBuoyancy(),
+                                tracers=(:T, :S))
+
+    time_step!(model, 0.1)
+    return true
 end
 
 function time_stepping_works_with_closure(arch, FT, Closure; Model=NonhydrostaticModel, buoyancy=BuoyancyForce(SeawaterBuoyancy(FT)))
@@ -396,6 +411,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @test time_step_nonhydrostatic_model_works(lat_lon_strip_grid; coriolis)
                 end
             end
+        end
+    end
+
+    @testset "NonhydrostaticModel with ImplicitFreeSurface" begin
+        for arch in archs, FT in float_types
+            @info "  Testing NonhydrostaticModel with ImplicitFreeSurface time stepping [$FT, $arch]..."
+            @test time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, FT)
         end
     end
 
