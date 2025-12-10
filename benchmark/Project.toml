@@ -1,0 +1,9 @@
+[deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+ClimaOcean = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
+NVTX = "5da4648a-3479-48b8-97b9-01cb529c0a1f"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
+
+[sources]
+Oceananigans = {path = ".."}
