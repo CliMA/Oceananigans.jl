@@ -150,7 +150,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; s, b, ζ),
                                                 schedule = TimeInterval(0.5),
                                                 filename = saved_output_filename,
                                                 with_halos = true,
-                                                      overwrite_existing = true)
+                                                overwrite_existing = true)
 nothing #hide
 
 # Ready to press the big red button:

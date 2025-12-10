@@ -100,7 +100,6 @@ function test_creating_and_appending(model, output_writer)
     output = fields(model)
     filename = "test_creating_and_appending"
 
-    # Create a simulation with `overwrite_existing = true` and run it
     simulation.output_writers[:writer] = writer = output_writer(model, output,
                                                                 filename = filename,
                                                                 schedule = IterationInterval(1),

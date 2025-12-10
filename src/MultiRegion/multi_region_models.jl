@@ -1,17 +1,16 @@
-using Oceananigans.Models: AbstractModel
 using Oceananigans.Advection: WENO, VectorInvariant
-using Oceananigans.BuoyancyFormulations: BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
-using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.BuoyancyFormulations: NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
-using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: ConjugateGradientSolver
 
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
@@ -22,8 +21,7 @@ function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGr
 end
 
 # Utility to generate the inputs to complex `getregion`s
-function getregionalproperties(T, inner=true)
-    type = getglobal(@__MODULE__, T)
+function getregionalproperties(type, inner=true)
     names = fieldnames(type)
     args  = Vector(undef, length(names))
     for (n, name) in enumerate(names)
@@ -32,18 +30,18 @@ function getregionalproperties(T, inner=true)
     return args
 end
 
-Types = (:HydrostaticFreeSurfaceModel,
-         :ImplicitFreeSurface,
-         :ExplicitFreeSurface,
-         :QuasiAdamsBashforth2TimeStepper,
-         :SplitExplicitFreeSurface,
-         :PrescribedVelocityFields,
-         :ConjugateGradientSolver,
-         :CrossAndSelfUpwinding,
-         :OnlySelfUpwinding,
-         :GridFittedBoundary,
-         :GridFittedBottom,
-         :PartialCellBottom)
+Types = (HydrostaticFreeSurfaceModel,
+         ImplicitFreeSurface,
+         ExplicitFreeSurface,
+         QuasiAdamsBashforth2TimeStepper,
+         SplitExplicitFreeSurface,
+         PrescribedVelocityFields,
+         ConjugateGradientSolver,
+         CrossAndSelfUpwinding,
+         OnlySelfUpwinding,
+         GridFittedBoundary,
+         GridFittedBottom,
+         PartialCellBottom)
 
 for T in Types
     @eval begin

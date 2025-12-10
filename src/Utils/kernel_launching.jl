@@ -2,17 +2,12 @@
 ##### Utilities for launching kernels
 #####
 
-using Oceananigans: location
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Grids: AbstractGrid
-using Adapt
+using Oceananigans.Architectures: Architectures
+using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
-using KernelAbstractions.NDIteration: _Size, StaticSize
-using KernelAbstractions.NDIteration: NDRange
+using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
 
-using KernelAbstractions.NDIteration
 using KernelAbstractions: ndrange, workgroupsize
 
 using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
@@ -142,8 +137,9 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
-periphery_offset(loc, topo, N) = 0
-periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
+# To be extended in the `Grids` modules for non-trivial peripheries,
+# for all other cases, `periphery_offset` is zero.
+periphery_offset(loc, grid, side) = 0
 
 """
     interior_work_layout(grid, dims, location)
@@ -166,13 +162,11 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     ℓx = instantiate(LX)
     ℓy = instantiate(LY)
     ℓz = instantiate(LZ)
-    TX, TY, TZ = topology(grid)
-    tx, ty, tz = TX(), TY(), TZ()
 
     # Offsets
-    ox = periphery_offset(ℓx, tx, Nx)
-    oy = periphery_offset(ℓy, ty, Ny)
-    oz = periphery_offset(ℓz, tz, Nz)
+    ox = periphery_offset(ℓx, grid, 1)
+    oy = periphery_offset(ℓy, grid, 2)
+    oz = periphery_offset(ℓz, grid, 3)
 
     # Worksize
     Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
@@ -271,8 +265,8 @@ Keyword Arguments
 
     # Transform keyword arguments into arguments to be able to dispatch correctly
     return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
-                                  reduced_dimensions,
-                                  location = nothing)
+                            reduced_dimensions,
+                            location)
 end
 
 @inline function configure_kernel(arch, grid, workspec, kernel!, ::Nothing, args...;

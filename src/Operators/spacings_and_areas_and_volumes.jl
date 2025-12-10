@@ -1,7 +1,4 @@
-using Oceananigans.Grids: Center, Face, AbstractGrid
-
-@inline hack_cosd(φ) = cos(π * φ / 180)
-@inline hack_sind(φ) = sin(π * φ / 180)
+using Oceananigans.Grids: Center, Face, AbstractGrid, hack_cosd, hack_sind
 
 """
 Notes:
@@ -385,53 +382,72 @@ end
 ##### We also use the function "volume" rather than `V`.
 #####
 
-location_code(LX, LY, LZ) = Symbol(interpolation_code(LX), interpolation_code(LY), interpolation_code(LZ))
+function location_from_superscript(val::Symbol) 
+    if val == :ᶜ 
+        return :Center 
+    elseif val == :ᶠ 
+        return :Face 
+    else 
+        return :Nothing
+    end
+end
 
-for LX in (:Center, :Face, :Nothing)
-    for LY in (:Center, :Face, :Nothing)
-        for LZ in (:Center, :Face, :Nothing)
-            LXe = @eval $LX
-            LYe = @eval $LY
-            LZe = @eval $LZ
+export Δx, Δy, Δz, Δλ, Δφ, Δr, Ax, Ay, Az
 
-            # General spacing functions
-            for dir in (:x, :y, :λ, :φ, :z, :r)
-                func   = Symbol(:Δ, dir)
-                metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe))
-                rcp_func   = Symbol(:Δ, dir, :⁻¹)
-                rcp_metric = Symbol(:Δ, dir, :⁻¹, location_code(LXe, LYe, LZe))
+for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
 
-                @eval begin
-                    @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
-                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
-                    export $metric, $rcp_metric
-                end
-            end
+    L1 = location_from_superscript(ℓ1)
+    L2 = location_from_superscript(ℓ2)
+    L3 = location_from_superscript(ℓ3)
 
-            # General area functions
-            for dir in (:x, :y, :z)
-                func   = Symbol(:A, dir)
-                metric = Symbol(:A, dir, location_code(LXe, LYe, LZe))
-                rcp_func   = Symbol(:A, dir, :⁻¹)
-                rcp_metric = Symbol(:A, dir, :⁻¹, location_code(LXe, LYe, LZe))
+    spacing_x = Symbol(:Δx, ℓ1, ℓ2, ℓ3)
+    spacing_λ = Symbol(:Δλ, ℓ1, ℓ2, ℓ3) 
+    spacing_y = Symbol(:Δy, ℓ2, ℓ1, ℓ3)
+    spacing_φ = Symbol(:Δφ, ℓ2, ℓ1, ℓ3) 
+    spacing_z = Symbol(:Δz, ℓ2, ℓ3, ℓ1) 
+    spacing_r = Symbol(:Δr, ℓ2, ℓ3, ℓ1)
 
-                @eval begin
-                    @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
-                    @inline $rcp_func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $rcp_metric(i, j, k, grid)
-                    export $metric, $rcp_metric
-                end
-            end
+    @eval begin
+        Δx(i, j, k, grid, ::$L1, ::$L2, ::$L3) = $spacing_x(i, j, k, grid)
+        Δλ(i, j, k, grid, ::$L1, ::$L2, ::$L3) = $spacing_λ(i, j, k, grid)
+        Δy(i, j, k, grid, ::$L2, ::$L1, ::$L3) = $spacing_y(i, j, k, grid)
+        Δφ(i, j, k, grid, ::$L2, ::$L1, ::$L3) = $spacing_φ(i, j, k, grid)
+        Δz(i, j, k, grid, ::$L2, ::$L3, ::$L1) = $spacing_z(i, j, k, grid)
+        Δr(i, j, k, grid, ::$L2, ::$L3, ::$L1) = $spacing_r(i, j, k, grid)
 
-            # General volume function
-            volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
-            rcp_volume_function = Symbol(:V⁻¹, location_code(LXe, LYe, LZe))
+        export $spacing_x, $spacing_λ, $spacing_y, $spacing_φ, $spacing_z, $spacing_r
+    end
+end
 
-            @eval begin
-                @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
-                @inline rcp_volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
-                export $volume_function, $rcp_volume_function
-            end
-        end
+for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
+
+    L1 = location_from_superscript(ℓ1)
+    L2 = location_from_superscript(ℓ2)
+    L3 = location_from_superscript(ℓ3)
+
+    area_x = Symbol(:Ax, ℓ3, ℓ1, ℓ2)
+    area_y = Symbol(:Ay, ℓ1, ℓ3, ℓ2)
+    area_z = Symbol(:Az, ℓ1, ℓ2, ℓ3)
+ 
+    @eval begin
+        @eval Ax(i, j, k, grid, ::$L3, ::$L1, ::$L2) = $area_x(i, j, k, grid)
+        @eval Ay(i, j, k, grid, ::$L1, ::$L3, ::$L2) = $area_y(i, j, k, grid)
+        @eval Az(i, j, k, grid, ::$L1, ::$L2, ::$L3) = $area_z(i, j, k, grid)
+
+        export $area_x, $area_y, $area_z
+    end
+end
+
+for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ)
+
+    L1 = location_from_superscript(ℓ1)
+    L2 = location_from_superscript(ℓ2)
+    L3 = location_from_superscript(ℓ3)
+    V  =  Symbol(:V, ℓ1, ℓ2, ℓ3)
+
+    @eval begin
+        @inline volume(i, j, k, grid, ::$L1, ::$L2, ::$L3) = $V(i, j, k, grid)
+        export $V
     end
 end
 

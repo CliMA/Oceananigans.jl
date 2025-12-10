@@ -1,9 +1,8 @@
 module Fields
 
 export Face, Center, location
-export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
+export AbstractField, Field, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
-export BackgroundField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
@@ -24,7 +23,6 @@ import Oceananigans: location, instantiated_location
     LX, LY, LZ = location(a)
     return (LX(), LY(), LZ())
 end
-
 
 include("abstract_field.jl")
 include("constant_field.jl")

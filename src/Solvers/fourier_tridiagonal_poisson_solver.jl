@@ -1,5 +1,5 @@
 using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, stretched_dimensions
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 
 import Oceananigans.Architectures: architecture
 
@@ -36,11 +36,14 @@ main_diagonal_launch_configuration(::ZDirection) = :xy
 
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
-struct InhomogeneousFormulation{D}
+abstract type AbstractHomogeneousNeumannFormulation end
+abstract type AbstractInhomogeneousNeumannFormulation end
+
+struct InhomogeneousFormulation{D} <: AbstractInhomogeneousNeumannFormulation
     direction :: D
 end
 
-struct HomogeneousNeumannFormulation{D}
+struct HomogeneousNeumannFormulation{D} <: AbstractHomogeneousNeumannFormulation
     direction :: D
 end
 
@@ -248,7 +251,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
-    if solver.tridiagonal_formulation isa HomogeneousNeumannFormulation
+    if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
         ϕ .= ϕ .- mean(ϕ)
     end
 

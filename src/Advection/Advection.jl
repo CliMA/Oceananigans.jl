@@ -3,20 +3,10 @@ module Advection
 export
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
-    momentum_flux_uu,
-    momentum_flux_uv,
-    momentum_flux_uw,
-    momentum_flux_vu,
-    momentum_flux_vv,
-    momentum_flux_vw,
-    momentum_flux_wu,
-    momentum_flux_wv,
-    momentum_flux_ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    AdvectionScheme,
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
@@ -37,10 +27,10 @@ using Oceananigans.Operators
 using Oceananigans: fully_supported_float_types
 using Oceananigans.Architectures: architecture, CPU
 using Oceananigans.Grids: with_halo
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_σ
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
-import Base: show, summary, Callable
+import Base: summary, Callable
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
@@ -64,7 +54,7 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
-struct DescreasingOrderAdvectionScheme end
+struct DecreasingOrderAdvectionScheme end
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")

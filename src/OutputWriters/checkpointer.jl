@@ -1,8 +1,7 @@
 using Glob
 
 using Oceananigans
-using Oceananigans: fields, prognostic_fields
-using Oceananigans.Fields: offset_data
+using Oceananigans: prognostic_fields
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans.Fields: set!

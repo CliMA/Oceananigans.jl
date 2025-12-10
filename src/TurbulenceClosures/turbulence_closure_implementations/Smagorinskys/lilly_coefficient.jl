@@ -133,7 +133,7 @@ when ``N^2 > 0``, and 1 otherwise.
 end
 
 @inline function square_smagorinsky_coefficient(i, j, k, grid, closure::SmagorinskyLilly,
-                                                diffusivity_fields, Σ², buoyancy, tracers)
+                                                closure_fields, Σ², buoyancy, tracers)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     c₀ = closure_coefficient(i, j, k, grid, closure.coefficient.smagorinsky)
     cᵇ = closure.coefficient.reduction_factor

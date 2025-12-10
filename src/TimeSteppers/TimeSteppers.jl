@@ -5,13 +5,10 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKutta3TimeStepper,
     time_step!,
-    Clock,
-    tendencies
+    Clock
 
-using KernelAbstractions
+using KernelAbstractions: @kernel, @index
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
-using Oceananigans.Architectures: device
-using Oceananigans.Utils: work_layout
 
 """
     abstract type AbstractTimeStepper

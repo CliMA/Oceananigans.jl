@@ -5,7 +5,7 @@ using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
     DistributedFillHalo,
-    PBCT, DCBCT, get_boundary_kernels
+    get_boundary_kernels
 
 import Oceananigans.BoundaryConditions: fill_halo_event!, fill_halo_regions!
 
@@ -84,8 +84,7 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        args...;
                        kwargs...)
 
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args...;
-                            fill_open_bcs=true, kwargs...)
+function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...)
 
     arch = architecture(grid)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
@@ -94,10 +93,10 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, buffers, args...; kwargs...)
+        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
 
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
