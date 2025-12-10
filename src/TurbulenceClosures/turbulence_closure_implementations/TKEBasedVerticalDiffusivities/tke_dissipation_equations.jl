@@ -1,4 +1,5 @@
 using Oceananigans: fields
+using Oceananigans.Fields: znode
 using Oceananigans.TimeSteppers: implicit_step!
 
 Base.@kwdef struct TKEDissipationEquations{FT}
@@ -76,13 +77,13 @@ function time_step_tke_dissipation_equations!(model)
 
         implicit_step!(e, implicit_solver, closure,
                        model.closure_fields, Val(e_index),
-                       model.clock, 
+                       model.clock,
                        fields(model),
                        Δτ)
 
         implicit_step!(ϵ, implicit_solver, closure,
                        model.closure_fields, Val(ϵ_index),
-                       model.clock, 
+                       model.clock,
                        fields(model),
                        Δτ)
     end
@@ -305,4 +306,3 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     return new_boundary_conditions
 end
-

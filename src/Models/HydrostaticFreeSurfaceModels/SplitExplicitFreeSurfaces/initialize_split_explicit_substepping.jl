@@ -1,4 +1,4 @@
-using Oceananigans.ImmersedBoundaries: get_active_column_map, peripheral_node
+using Oceananigans.ImmersedBoundaries: peripheral_node
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 using Oceananigans.Operators: Δz
 

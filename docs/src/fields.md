@@ -191,7 +191,7 @@ Let's visualize the situation:
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(fontsize=20))
-CairoMakie.activate!(type="svg")
+CairoMakie.activate!(type="png")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                        size = (4, 4, 4),
