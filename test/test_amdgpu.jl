@@ -12,12 +12,16 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
         grid = LatitudeLongitudeGrid(arch, FT, size=(4, 8, 16), longitude=(-60, 60), latitude=(0, 60), z=(0, 1))
 
-        @test parent(grid.λᶠᵃᵃ) isa ROCArray
-        @test parent(grid.λᶜᵃᵃ) isa ROCArray
-        @test parent(grid.φᵃᶠᵃ) isa ROCArray
-        @test parent(grid.φᵃᶜᵃ) isa ROCArray
-        @test parent(grid.zᵃᵃᶠ) isa ROCArray
-        @test parent(grid.zᵃᵃᶜ) isa ROCArray
+        @test parent(grid.Δxᶜᶜᵃ) isa ROCArray
+        @test parent(grid.Δxᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Δxᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Δxᶠᶠᵃ) isa ROCArray
+        @test parent(grid.Δyᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Δyᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Azᶜᶜᵃ) isa ROCArray
+        @test parent(grid.Azᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Azᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Azᶠᶠᵃ) isa ROCArray
         @test eltype(grid) == FT
         @test architecture(grid) isa GPU
 
@@ -53,8 +57,8 @@ end
         z = 0:16 |> collect
         grid = RectilinearGrid(arch, FT, size=(4, 8, 16), x=(0, 1), y=(0, 1), z=z)
 
-        @test parent(grid.xᶠᵃᵃ) isa ROCArray
-        @test parent(grid.xᶜᵃᵃ) isa ROCArray
+        @test parent(grid.z.cᵃᵃᶠ) isa ROCArray
+        @test parent(grid.z.cᵃᵃᶜ) isa ROCArray
         @test eltype(grid) == FT
         @test architecture(grid) isa GPU
 
