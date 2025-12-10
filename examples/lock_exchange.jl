@@ -24,7 +24,9 @@
 # b = -g \frac{\rho - \rho_{0}}{\rho_{0}}
 # ```
 # 
-# [Source URL](https://www.sciencedirect.com/science/article/abs/pii/S0093641322000842)
+# For a detailed explanation of the Boussinesq formulation for buoyant flows,
+# see Barletta (2022), *The Boussinesq approximation for buoyant flows*,
+# *Mechanics Research Communications* 124, 103939.
 
 
 # ## Install dependencies
@@ -59,20 +61,14 @@ Nx, Nz = 128, 64
 L = 8kilometers   # horizontal length
 H = 50meters      # depth  
 
-# Allow for mutable surface height 
+# Set domain 
+# MutableVerticalDiscretization defines a time-evolving vertical coordinate,
+# for example free-surface–following or terrain-following (sigma) coordinates.
 x = (0, L)
 z  = MutableVerticalDiscretization((-50, 0))
 
 # Initialize the grid: 
-#  For the RectilinearGrid, the different parameters represent: 
-#  * size: N dimensional tuple to set number of cells in the x and z directions 
-#  * halo: Padding of grid cells used to exchange boundary information between cells 
-#  * x: Physical size of grid representation in the x direction 
-#  * z: Physical size of grid representation in the z direction. Since MutableVerticalDiscretization is applied 
-#       to z, it allows for the height of the surface to be adjusted during the simulation 
-#  * topology: Describes the boundary structure in each (x, y, z) direction; a flat topology means that no 
-#       boundary conditions are applied as that dimension is not represented in the simulation, while a 
-#       bounded topology represents represents a physical boundary 
+# Additional details on the grid set up can be found in Grids section of the documentation 
 
 underlying_grid = RectilinearGrid(size=(Nx, Nz); x, z, halo=(5, 5), topology=(Bounded, Flat, Bounded))
 
@@ -94,7 +90,6 @@ grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 #  * Vertical closure CATKEVerticalDiffusivity handles small-scale vertical turbulence 
 #  * Weighted Essentially Non-Oscillatory (WENO) methods are useful for capturing sharp changes in density
 #  * ZStarCoordinate method allows for the top of the grid to move with the free surface
-#  * Runge Kutta method is good for integrating multiple processes 
 
 model = HydrostaticFreeSurfaceModel(; grid,
     tracers = (:b, :e),      
@@ -103,8 +98,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
     momentum_advection = WENO(order=5), 
     tracer_advection = WENO(order=7), 
     vertical_coordinate = ZStarCoordinate(grid), 
-    free_surface = SplitExplicitFreeSurface(grid; substeps=10), 
-    timestepper = :SplitRungeKutta3
+    free_surface = SplitExplicitFreeSurface(grid; substeps=10)
 )
 
 
@@ -122,17 +116,11 @@ set!(model, b=bᵢ)
 
 # Set the timesteps 
 Δt = 1seconds 
-stop_time = 20hours
+stop_time = 5hours
 simulation = Simulation(model; Δt, stop_time)
 
-# The TimeStepWizard helps ensure stable time-stepping with a (CFL) number of 0.7. Since the stability region 
-# of the numerical time stepper extends only up to CFL ≈ 1, we keep the CFL condition at a value 
-# of 0.7 to ensure robust and stable time stepping.
-
-clf_value = 0.7
-wizard = TimeStepWizard(cfl=clf_value, max_change=1.1, max_Δt=5.0)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
-conjure_time_step_wizard!(simulation, cfl=clf_value)
+# The TimeStepWizard helps ensure stable time-stepping with a default Courant-Freidrichs-Lewy (CFL) number of 0.7. 
+conjure_time_step_wizard!(simulation)
 
 
 # ## Track Simulation Progress 
@@ -140,7 +128,7 @@ conjure_time_step_wizard!(simulation, cfl=clf_value)
 # Wall clock represents the real world time as opposed to simulation time 
 wall_clock = Ref(time_ns())
 
-# Define callback function to log simulation iterations and time every 30 mins in simulation time 
+# Define callback function to log simulation iterations and time every 2 mins in simulation time 
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
     msg = @sprintf("Iter: %7d, time: %s, wall: %s, max|w| = %6.3e m s⁻¹",
@@ -153,15 +141,16 @@ function progress(sim)
     return nothing
 end
 
-save_interval = 30minutes
+save_interval = 2minutes
 add_callback!(simulation, progress, name = :progress, TimeInterval(save_interval))
 
 
 # ## Add Tracers and Diagnostics 
 
-# Here we define the fields that we want to save a snapshot of at every 30 minutes of simulation time. 
+# Here we define the fields that we want to save a snapshot of at every 2minutes of simulation time. 
 # The JLD2Writer saves: 
 #  * b: buoyancy tracer
+#  * e: turbulent kinetic energy tracer 
 #  * u: x component velocity (horizontal) 
 #  * u′: deviation of u from average of horizontal u
 #  * w: z component velocity (vertical)
@@ -171,15 +160,12 @@ b = model.tracers.b
 e = model.tracers.e 
 u, v, w = model.velocities
 
-U = Field(Average(u)) 
-u′ = u - U            
-
 N² = ∂z(b)
 
 filename = "lock_exchange.jld2"
 
 simulation.output_writers[:fields] = JLD2Writer(model,
-    (; b, e, u, u′, w, N²);              
+    (; b, e, u, w, N²);              
     filename = filename,
     schedule = TimeInterval(save_interval),
     overwrite_existing = true
@@ -195,7 +181,6 @@ run!(simulation)
 # ## Load Saved TimeSeries Values 
 
 ut  = FieldTimeSeries(filename, "u")
-u′t = FieldTimeSeries(filename, "u′")
 wt  = FieldTimeSeries(filename, "w")
 N²t = FieldTimeSeries(filename, "N²")
 bt = FieldTimeSeries(filename, "b")
@@ -215,14 +200,14 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %5.2f hours", times[$n] / hour)
 
-u′ₙ = @lift u′t[$n]
+uₙ = @lift ut[$n]
 wₙ  = @lift wt[$n]
 N²ₙ = @lift N²t[$n]
 bₙ = @lift bt[$n]
 eₙ = @lift et[$n]
 
 # For visualization color ranges (use last snapshot)
-umax = maximum(abs, u′t[end])
+umax = maximum(abs, ut[end])
 wmax = maximum(abs, wt[end])
 N2max = maximum(abs, N²t[end])
 bmax = maximum(abs, bt[end])
@@ -250,8 +235,8 @@ hm_e = heatmap!(ax_e, eₙ; nan_color = :black,
                 colorrange = (-0.25emax, emax), colormap = :magma)
 Colorbar(fig[3, 2], hm_e, label = "m² s⁻²")
 
-ax_u = Axis(fig[4, 1]; title = "u′ (along-slope velocity)", axis_kwargs...)
-hm_u = heatmap!(ax_u, u′ₙ; nan_color = :black,
+ax_u = Axis(fig[4, 1]; title = "u (horizontal velocity)", axis_kwargs...)
+hm_u = heatmap!(ax_u, uₙ; nan_color = :black,
                 colorrange = (-umax, umax), colormap = :magma)
 Colorbar(fig[4, 2], hm_u, label = "m s⁻¹")
 
@@ -260,10 +245,10 @@ hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color = :black,
                 colorrange = (-0.25N2max, N2max), colormap = :magma)
 Colorbar(fig[5, 2], hm_N2, label = "s⁻²")
 
-display(fig)
+fig
 
 
-# ### Create Animation
+# ## Create Animation
 
 @info "Making animation from saved simulation data..."
 
@@ -278,7 +263,7 @@ end
 
 
 # The visualization shows the time evolution of buoyancy b, turbulent kinetic energy e, 
-# stratification N²,and  velocity field u′. 
+# stratification N²,and  velocity field u. 
 # Initially, the two water masses are separated horizontally
 # by a sharp density interface. As the flow evolves, gravity currents form and the dense
 # fluid moves beneath the lighter fluid. This shows the characteristic transition from
