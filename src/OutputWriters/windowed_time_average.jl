@@ -3,7 +3,7 @@ using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 using Oceananigans.TimeSteppers: Clock
 
-import Oceananigans: run_diagnostic!
+import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
 import Oceananigans.Fields: location, indices, set!
 
@@ -97,7 +97,21 @@ end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_t
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
 
+# Checkpointing
+function prognostic_state(schedule::AveragedTimeInterval)
+    return (
+        first_actuation_time = schedule.first_actuation_time,
+        actuations = schedule.actuations,
+        collecting = schedule.collecting,
+    )
+end
 
+function restore_prognostic_state!(schedule::AveragedTimeInterval, state)
+    schedule.first_actuation_time = state.first_actuation_time
+    schedule.actuations = state.actuations
+    schedule.collecting = state.collecting
+    return schedule
+end
 
 """
     mutable struct AveragedSpecifiedTimes <: AbstractSchedule
@@ -142,6 +156,20 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     next > length(schedule.specified_times.times) && return true
     next_time = schedule.specified_times.times[next]
     return clock.time >= next_time
+end
+
+# Checkpointing
+function prognostic_state(schedule::AveragedSpecifiedTimes)
+    return (
+        specified_times = prognostic_state(schedule.specified_times),
+        collecting = schedule.collecting,
+    )
+end
+
+function restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
+    restore_prognostic_state!(schedule.specified_times, state.specified_times)
+    schedule.collecting = state.collecting
+    return schedule
 end
 
 #####
@@ -264,6 +292,26 @@ end
 # So it can be used as a Diagnostic
 run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
 
+# Checkpointing
+function prognostic_state(wta::WindowedTimeAverage)
+    return (
+        result = prognostic_state(wta.result),
+        window_start_time = wta.window_start_time,
+        window_start_iteration = wta.window_start_iteration,
+        previous_collection_time = wta.previous_collection_time,
+        schedule = prognostic_state(wta.schedule),
+    )
+end
+
+function restore_prognostic_state!(wta::WindowedTimeAverage, state)
+    restore_prognostic_state!(wta.result, state.result)
+    wta.window_start_time = state.window_start_time
+    wta.window_start_iteration = state.window_start_iteration
+    wta.previous_collection_time = state.previous_collection_time
+    restore_prognostic_state!(wta.schedule, state.schedule)
+    return wta
+end
+
 Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, summary(schedule))
 
 Base.summary(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
@@ -303,4 +351,3 @@ function time_average_outputs(schedule::AveragedTimeInterval, outputs::NamedTupl
 
     return TimeInterval(schedule), averaged_outputs
 end
-

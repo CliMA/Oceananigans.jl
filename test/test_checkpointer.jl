@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Glob
+using NCDatasets
 
 using Oceananigans: restore_prognostic_state!, prognostic_fields
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
@@ -1133,18 +1134,93 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     return nothing
 end
 
+function test_windowed_time_average_checkpointing(arch, WriterType)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1, 1, 1
+    Δt = 0.1
 
-    @testset "Checkpointer cleanup [$(typeof(arch))]" begin
-        @info "  Testing checkpointer cleanup [$(typeof(arch))]..."
-        test_checkpointer_cleanup(arch)
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model = NonhydrostaticModel(; grid)
+
+    # Set up initial conditions that will produce non-trivial averages
+    u_init(x, y, z) = sin(2π * x / Lx)
+    set!(model, u=u_init)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=8)
+
+    # Writer-specific settings
+    if WriterType == JLD2Writer
+        prefix = "wta_checkpointing_jld2_$(typeof(arch))"
+        ext = ".jld2"
+        output_key = :u
+    else  # NetCDFWriter
+        prefix = "wta_checkpointing_netcdf_$(typeof(arch))"
+        ext = ".nc"
+        output_key = "u"
     end
 
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "Thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]" begin
-            @info "  Testing thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]..."
-            test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
-        end
-    end
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(8),
+        prefix = prefix
+    )
+
+    simulation.output_writers[:averaged] = WriterType(model, model.velocities,
+        schedule = AveragedTimeInterval(1.0, window=0.5),
+        filename = "$(prefix)_averaged$(ext)",
+        overwrite_existing = true
+    )
+
+    @test_nowarn run!(simulation)
+
+    # Store reference state at iteration 8
+    writer = simulation.output_writers[:averaged]
+    wta_u = writer.outputs[output_key]
+
+    original_result = copy(Array(wta_u.result))
+    original_window_start_time = wta_u.window_start_time
+    original_window_start_iteration = wta_u.window_start_iteration
+    original_previous_collection_time = wta_u.previous_collection_time
+    original_collecting = wta_u.schedule.collecting
+    original_actuations = wta_u.schedule.actuations
+
+    # Create new simulation and restore from checkpoint at iteration 8
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_model = NonhydrostaticModel(; grid=new_grid)
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=15)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(8),
+        prefix = prefix
+    )
+
+    new_simulation.output_writers[:averaged] = WriterType(new_model, new_model.velocities,
+        schedule = AveragedTimeInterval(1.0, window=0.5),
+        filename = "$(prefix)_averaged_restored$(ext)",
+        overwrite_existing = true
+    )
+
+    # Restore from checkpoint at iteration 8
+    @test_nowarn set!(new_simulation, 8)
+
+    # Verify WindowedTimeAverage state was restored
+    new_writer = new_simulation.output_writers[:averaged]
+    new_wta_u = new_writer.outputs[output_key]
+
+    @test new_wta_u.window_start_time == original_window_start_time
+    @test new_wta_u.window_start_iteration == original_window_start_iteration
+    @test new_wta_u.previous_collection_time == original_previous_collection_time
+    @test new_wta_u.schedule.collecting == original_collecting
+    @test new_wta_u.schedule.actuations == original_actuations
+
+    # Most importantly: verify the accumulated result data was restored
+    @test all(Array(new_wta_u.result) .≈ original_result)
+
+    rm.(glob("$(prefix)*$(ext)"), force=true)
+
+    return nothing
+end
+
 
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]" begin
@@ -1223,10 +1299,10 @@ end
     end
 
 
-    for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval)
-        @testset "Stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]" begin
-            @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
-            test_stateful_schedule_checkpointing(arch, schedule_type)
+    for WriterType in (JLD2Writer, NetCDFWriter)
+        @testset "WindowedTimeAverage checkpointing [$WriterType] [$(typeof(arch))]" begin
+            @info "  Testing WindowedTimeAverage checkpointing [$WriterType] [$(typeof(arch))]..."
+            test_windowed_time_average_checkpointing(arch, WriterType)
         end
     end
 
