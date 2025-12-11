@@ -10,7 +10,7 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 using SeawaterPolynomials.SecondOrderSeawaterPolynomials: RoquetEquationOfState
 
 using Oceananigans: Clock
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ImplicitFreeSurface
 using Oceananigans.OutputWriters: trilocation_dim_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
 using Oceananigans.Fields: interpolate!
@@ -2513,18 +2513,22 @@ function test_netcdf_overriding_attributes(arch)
     return nothing
 end
 
-function test_netcdf_free_surface_only_output(arch)
+function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
 
-    grid = LatitudeLongitudeGrid(arch;
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = LatitudeLongitudeGrid(arch;
         topology = (Bounded, Bounded, Bounded),
         size = (Nλ, Nφ, Nz),
         halo = (Hλ, Hφ, Hz),
         longitude = (-1, 1),
         latitude = (-1, 1),
-        z = (-100, 0)
+        z
     )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
     model = HydrostaticFreeSurfaceModel(; grid,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
@@ -2540,7 +2544,9 @@ function test_netcdf_free_surface_only_output(arch)
     )
 
     Arch = typeof(arch)
-    filepath_with_halos = "test_free_surface_with_halos_$Arch.nc"
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
@@ -2549,7 +2555,7 @@ function test_netcdf_free_surface_only_output(arch)
             schedule = IterationInterval(1),
             with_halos = true)
 
-    filepath_no_halos = "test_free_surface_no_halos_$Arch.nc"
+    filepath_no_halos = "test_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
     simulation.output_writers[:no_halos] =
@@ -2579,18 +2585,22 @@ function test_netcdf_free_surface_only_output(arch)
     return nothing
 end
 
-function test_netcdf_free_surface_mixed_output(arch)
+function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
 
-    grid = LatitudeLongitudeGrid(arch;
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = LatitudeLongitudeGrid(arch;
         topology = (Bounded, Bounded, Bounded),
         size = (Nλ, Nφ, Nz),
         halo = (Hλ, Hφ, Hz),
         longitude = (-1, 1),
         latitude = (-1, 1),
-        z = (-100, 0)
+        z
     )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
     model = HydrostaticFreeSurfaceModel(; grid,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
@@ -2608,7 +2618,9 @@ function test_netcdf_free_surface_mixed_output(arch)
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)
 
     Arch = typeof(arch)
-    filepath_with_halos = "test_mixed_free_surface_with_halos_$Arch.nc"
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_mixed_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
@@ -2618,7 +2630,7 @@ function test_netcdf_free_surface_mixed_output(arch)
             with_halos = true,
             overwrite_existing = true)
 
-    filepath_no_halos = "test_mixed_free_surface_no_halos_$Arch.nc"
+    filepath_no_halos = "test_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
     simulation.output_writers[:no_halos] =
@@ -2654,6 +2666,159 @@ function test_netcdf_free_surface_mixed_output(arch)
     @test dimsize(ds_n[:w]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
     @test dimsize(ds_n[:T]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
     @test dimsize(ds_n[:S]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+
+    close(ds_n)
+    rm(filepath_no_halos)
+
+    return nothing
+end
+
+function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
+    Nx, Ny, Nz = 8, 8, 4
+    Hx, Hy, Hz = 3, 4, 2
+
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = RectilinearGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nx, Ny, Nz),
+        halo = (Hx, Hy, Hz),
+        x = (-1, 1),
+        y = (-1, 1),
+        z
+    )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
+
+    model = NonhydrostaticModel(; grid,
+        free_surface = ImplicitFreeSurface(),
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    outputs = (; η = model.free_surface.η)
+
+    Arch = typeof(arch)
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_nonhydrostatic_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    simulation.output_writers[:with_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            with_halos = true)
+
+    filepath_no_halos = "test_nonhydrostatic_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_no_halos) && rm(filepath_no_halos)
+
+    simulation.output_writers[:no_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_no_halos,
+            schedule = IterationInterval(1),
+            with_halos = false)
+
+    run!(simulation)
+
+    ds_h = NCDataset(filepath_with_halos)
+    @test haskey(ds_h, "η")
+    @test dimsize(ds_h["η"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_η=1, time=Nt + 1)
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    ds_n = NCDataset(filepath_no_halos)
+    @test haskey(ds_n, "η")
+    @test dimsize(ds_n["η"]) == (x_caa=Nx, y_aca=Ny, z_aaf_η=1, time=Nt + 1)
+    close(ds_n)
+    rm(filepath_no_halos)
+
+    return nothing
+end
+
+function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
+    Nx, Ny, Nz = 8, 8, 4
+    Hx, Hy, Hz = 3, 4, 2
+
+    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+
+    underlying_grid = RectilinearGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nx, Ny, Nz),
+        halo = (Hx, Hy, Hz),
+        x = (-1, 1),
+        y = (-1, 1),
+        z
+    )
+
+    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
+
+    model = NonhydrostaticModel(; grid,
+        free_surface = ImplicitFreeSurface(),
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    free_surface_outputs = (; η = model.free_surface.η)
+    outputs = merge(model.velocities, model.tracers, free_surface_outputs)
+
+    Arch = typeof(arch)
+    immersed_str = immersed ? "_immersed" : ""
+    stretched_str = vertically_stretched ? "_stretched" : ""
+    filepath_with_halos = "test_nonhydrostatic_mixed_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    simulation.output_writers[:with_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            with_halos = true,
+            overwrite_existing = true)
+
+    filepath_no_halos = "test_nonhydrostatic_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
+    isfile(filepath_no_halos) && rm(filepath_no_halos)
+
+    simulation.output_writers[:no_halos] =
+        NetCDFWriter(model, outputs;
+            filename = filepath_no_halos,
+            schedule = IterationInterval(1),
+            with_halos = false,
+            overwrite_existing = true)
+
+    run!(simulation)
+
+    ds_h = NCDataset(filepath_with_halos)
+
+    @test haskey(ds_h, "η")
+    @test dimsize(ds_h["η"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_η=1, time=Nt + 1)
+
+    @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    ds_n = NCDataset(filepath_no_halos)
+
+    @test haskey(ds_n, "η")
+    @test dimsize(ds_n["η"]) == (x_caa=Nx, y_aca=Ny, z_aaf_η=1, time=Nt + 1)
+
+    @test dimsize(ds_n[:u]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:v]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:w]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_n[:T]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:S]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -3036,9 +3201,11 @@ function test_netcdf_dimension_type(arch)
     return nothing
 end
 
-for arch in archs
-    @testset "NetCDF output writer [$(typeof(arch))]" begin
-        @info "  Testing NetCDF output writer [$(typeof(arch))]..."
+@testset "NetCDF output writer" begin
+    @info "Testing NetCDF output writer..."
+
+    for arch in archs
+        A = typeof(arch)
 
         # Pre-build RectilinearGrids with different sizes
         N = 4
@@ -3049,66 +3216,130 @@ for arch in archs
         latlon_grid1 = LatitudeLongitudeGrid(arch, size=(N, N, N), longitude=(-180, 180), latitude=(-90, 90), z=(-1, 0))
         latlon_grid2 = LatitudeLongitudeGrid(arch, size=(8, 6, 4), longitude=(-120, 60), latitude=(-60, 60), z=(-2, 0))
 
-        test_datetime_netcdf_output(arch)
-        test_timedate_netcdf_output(arch)
-        test_netcdf_dimension_type(arch)
+        @testset "DateTime and TimeDate output [$A]" begin
+            @info "  Testing DateTime and TimeDate output [$A]..."
+            test_datetime_netcdf_output(arch)
+            test_timedate_netcdf_output(arch)
+            test_netcdf_dimension_type(arch)
+        end
 
-        test_netcdf_grid_metrics_rectilinear(arch, Float64)
-        test_netcdf_grid_metrics_rectilinear(arch, Float32)
-        test_netcdf_grid_metrics_latlon(arch, Float64)
-        test_netcdf_grid_metrics_latlon(arch, Float32)
+        @testset "Grid metrics [$A]" begin
+            @info "  Testing grid metrics [$A]..."
 
-        test_netcdf_rectilinear_grid_fitted_bottom(arch, GridFittedBottom)
-        test_netcdf_rectilinear_grid_fitted_bottom(arch, PartialCellBottom)
-        test_netcdf_latlon_grid_fitted_bottom(arch, GridFittedBottom)
-        test_netcdf_latlon_grid_fitted_bottom(arch, PartialCellBottom)
+            @testset "Rectilinear grid metrics [$A]" begin
+                test_netcdf_grid_metrics_rectilinear(arch, Float64)
+                test_netcdf_grid_metrics_rectilinear(arch, Float32)
+            end
 
-        test_netcdf_rectilinear_flat_xy(arch)
-        test_netcdf_rectilinear_flat_xz(arch, immersed=false)
-        test_netcdf_rectilinear_flat_xz(arch, immersed=true)
-        test_netcdf_rectilinear_flat_yz(arch, immersed=false)
-        test_netcdf_rectilinear_flat_yz(arch, immersed=true)
-        test_netcdf_rectilinear_column(arch)
+            @testset "LatitudeLongitude grid metrics [$A]" begin
+                test_netcdf_grid_metrics_latlon(arch, Float64)
+                test_netcdf_grid_metrics_latlon(arch, Float32)
+            end
+        end
 
-        test_thermal_bubble_netcdf_output(arch, Float64)
-        test_thermal_bubble_netcdf_output(arch, Float32)
-        test_thermal_bubble_netcdf_output(arch, Float64, with_halos=true)
-        test_thermal_bubble_netcdf_output(arch, Float32, with_halos=true)
+        @testset "Immersed boundary grids [$A]" begin
+            @info "  Testing immersed boundary grids [$A]..."
 
-        test_netcdf_size_file_splitting(arch)
-        test_netcdf_time_file_splitting(arch)
+            @testset "Rectilinear grid fitted bottom [$A]" begin
+                test_netcdf_rectilinear_grid_fitted_bottom(arch, GridFittedBottom)
+                test_netcdf_rectilinear_grid_fitted_bottom(arch, PartialCellBottom)
+            end
 
-        test_netcdf_function_output(arch)
-        test_netcdf_output_alignment(arch)
+            @testset "LatitudeLongitude grid fitted bottom [$A]" begin
+                test_netcdf_latlon_grid_fitted_bottom(arch, GridFittedBottom)
+                test_netcdf_latlon_grid_fitted_bottom(arch, PartialCellBottom)
+            end
+        end
 
-        test_netcdf_spatial_average(arch)
-        test_netcdf_time_averaging(arch)
+        @testset "Flat dimensions [$A]" begin
+            @info "  Testing flat dimensions [$A]..."
+            test_netcdf_rectilinear_flat_xy(arch)
+            test_netcdf_rectilinear_flat_xz(arch, immersed=false)
+            test_netcdf_rectilinear_flat_xz(arch, immersed=true)
+            test_netcdf_rectilinear_flat_yz(arch, immersed=false)
+            test_netcdf_rectilinear_flat_yz(arch, immersed=true)
+            test_netcdf_rectilinear_column(arch)
+        end
 
-        test_netcdf_output_just_particles(arch)
-        test_netcdf_output_particles_and_fields(arch)
+        @testset "Thermal bubble output [$A]" begin
+            @info "  Testing thermal bubble output [$A]..."
+            test_thermal_bubble_netcdf_output(arch, Float64)
+            test_thermal_bubble_netcdf_output(arch, Float32)
+            test_thermal_bubble_netcdf_output(arch, Float64, with_halos=true)
+            test_thermal_bubble_netcdf_output(arch, Float32, with_halos=true)
+        end
 
-        test_netcdf_vertically_stretched_grid_output(arch)
+        @testset "File splitting [$A]" begin
+            @info "  Testing file splitting [$A]..."
+            test_netcdf_size_file_splitting(arch)
+            test_netcdf_time_file_splitting(arch)
+        end
 
-        test_netcdf_overriding_attributes(arch)
+        @testset "Function and alignment output [$A]" begin
+            @info "  Testing function and alignment output [$A]..."
+            test_netcdf_function_output(arch)
+            test_netcdf_output_alignment(arch)
+        end
 
-        test_netcdf_free_surface_only_output(arch)
-        test_netcdf_free_surface_mixed_output(arch)
+        @testset "Averaging [$A]" begin
+            @info "  Testing averaging [$A]..."
+            test_netcdf_spatial_average(arch)
+            test_netcdf_time_averaging(arch)
+        end
 
-        test_netcdf_buoyancy_force(arch)
+        @testset "Lagrangian particles [$A]" begin
+            @info "  Testing Lagrangian particles [$A]..."
+            test_netcdf_output_just_particles(arch)
+            test_netcdf_output_particles_and_fields(arch)
+        end
 
-        test_netcdf_writer_different_grid(arch)
+        @testset "Vertically stretched grid [$A]" begin
+            @info "  Testing vertically stretched grid [$A]..."
+            test_netcdf_vertically_stretched_grid_output(arch)
+        end
 
-        test_singleton_dimension_behavior(arch)
+        @testset "Overriding attributes [$A]" begin
+            @info "  Testing overriding attributes [$A]..."
+            test_netcdf_overriding_attributes(arch)
+        end
 
-        for grids in ((rectilinear_grid1, rectilinear_grid2),
-                      (latlon_grid1, latlon_grid2))
-            grid1, grid2 = grids
-            test_netcdf_single_field_defvar(grid1, immersed=false)
-            test_netcdf_single_field_defvar(grid1, immersed=true)
-            test_netcdf_field_dimension_validation(grid1, immersed=false)
-            test_netcdf_field_dimension_validation(grid1, immersed=true)
-            test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=false)
-            test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=true)
+        @testset "Free surface output [$A]" begin
+            @info "  Testing free surface output [$A]..."
+            for immersed in (false, true), vertically_stretched in (false, true)
+                test_netcdf_hydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
+                test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
+                test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
+                test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
+            end
+        end
+
+        @testset "Buoyancy force [$A]" begin
+            @info "  Testing buoyancy force [$A]..."
+            test_netcdf_buoyancy_force(arch)
+        end
+
+        @testset "Different grid output [$A]" begin
+            @info "  Testing different grid output [$A]..."
+            test_netcdf_writer_different_grid(arch)
+        end
+
+        @testset "Singleton dimension behavior [$A]" begin
+            @info "  Testing singleton dimension behavior [$A]..."
+            test_singleton_dimension_behavior(arch)
+        end
+
+        @testset "Field defvar and dimension validation [$A]" begin
+            @info "  Testing field defvar and dimension validation [$A]..."
+            for grids in ((rectilinear_grid1, rectilinear_grid2),
+                          (latlon_grid1, latlon_grid2))
+                grid1, grid2 = grids
+                test_netcdf_single_field_defvar(grid1, immersed=false)
+                test_netcdf_single_field_defvar(grid1, immersed=true)
+                test_netcdf_field_dimension_validation(grid1, immersed=false)
+                test_netcdf_field_dimension_validation(grid1, immersed=true)
+                test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=false)
+                test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=true)
+            end
         end
     end
 end
