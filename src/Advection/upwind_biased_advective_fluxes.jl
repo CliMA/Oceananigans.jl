@@ -17,6 +17,7 @@ const UpwindScheme = AbstractUpwindBiasedAdvectionScheme
 
 struct LeftBias end
 struct RightBias end
+struct NoBias end
 
 @inline bias(u::Number) = ifelse(u > 0, LeftBias(), RightBias())
 
