@@ -196,4 +196,10 @@ function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::Ab
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
 
+# For vertical plots
+function convert_arguments(pl::Type{<:AbstractPlot}, f::Field, ξ1::AbstractArray)
+    fi_cpu = make_plottable_array(f)
+    return convert_arguments(pl, fi_cpu, ξ1)
+end
+
 end # module
