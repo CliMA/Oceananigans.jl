@@ -20,7 +20,7 @@ end
 
 find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)
 
-set_from_netcdf!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from NetCDF files requires NCDatasets. Please load NCDatasets: `using NCDatasets`")
+set_from_netcdf!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from NetCDF files requires NCDatasets")
 
 function set!(fts::InMemoryFTS, path::String=fts.path, args...; kwargs...)
     if endswith(path, ".jld2")
