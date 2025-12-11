@@ -110,7 +110,7 @@ end
 
 @testset "MetalGPU: test for reductions" begin
     arch = GPU(Metal.MetalBackend())
-    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(32, 32, 32), extent=(1, 1, 1))
 
     # Test reduction of Field
     c = CenterField(grid)
