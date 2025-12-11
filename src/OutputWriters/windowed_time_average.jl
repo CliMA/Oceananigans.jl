@@ -123,8 +123,6 @@ determine_epsilon(::Type{<:Period}) = Second(0)
 
 const NumberTypeWindows = Union{Number, Vector{<:Number}}
 const PeriodTypeWindows = Union{Period, Vector{<:Period}}
-
-
 validate_windows(times, window) = nothing  # Fallback method
 
 function validate_windows(times, window::NumberTypeWindows)
