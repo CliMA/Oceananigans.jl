@@ -209,6 +209,34 @@ ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
 @inline rnodes(grid::ZFlatAUG, ℓz::C; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
 
 # TODO: extend in the Operators module
+"""
+    znodes(grid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest znodes
+julia> using Oceananigans
+
+julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
+                                            topology=(Periodic, Periodic, Bounded));
+
+julia> zC = znodes(horz_periodic_grid, Center())
+3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
+ -0.8333333333333334
+ -0.5
+ -0.16666666666666666
+
+julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
+3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
+ -0.8333333333333334
+ -0.5
+ -0.16666666666666666
+
+julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
+-1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
+```
+"""
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 @inline znodes(grid::AUG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
 
