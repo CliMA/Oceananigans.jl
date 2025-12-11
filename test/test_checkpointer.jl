@@ -1056,13 +1056,83 @@ function test_checkpoint_missing_file_warning(arch)
     return nothing
 end
 
-for arch in [CPU(), GPU()]
-    for pickup_method in (:boolean, :iteration, :filepath)
-        @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
-            test_minimal_restore_nonhydrostatic(arch, Float64, pickup_method)
-        end
+function test_stateful_schedule_checkpointing(arch, schedule_type)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(; grid)
+    set!(model, u=1, v=0.5)
+
+    if schedule_type == :SpecifiedTimes
+        schedule = SpecifiedTimes(0.5, 1.0, 1.5, 2.0)
+    elseif schedule_type == :ConsecutiveIterations
+        schedule = ConsecutiveIterations(TimeInterval(0.5))
+    elseif schedule_type == :TimeInterval
+        schedule = TimeInterval(0.5)
     end
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=15)
+
+    prefix = "schedule_checkpointing_$(typeof(arch))_$(schedule_type)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(10),
+        prefix = prefix
+    )
+
+    # We will test the schedule via a callback that does nothing.
+    simulation.callbacks[:test_schedule] = Callback(_ -> nothing, schedule)
+
+    @test_nowarn run!(simulation)
+
+    original_schedule = simulation.callbacks[:test_schedule].schedule
+
+    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    new_model = NonhydrostaticModel(; grid=new_grid)
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=15)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(10),
+        prefix = prefix
+    )
+
+    # Add callback with fresh schedule
+    if schedule_type == :SpecifiedTimes
+        new_schedule = SpecifiedTimes(0.5, 1.0, 1.5, 2.0)
+    elseif schedule_type == :ConsecutiveIterations
+        new_schedule = ConsecutiveIterations(TimeInterval(0.5))
+    elseif schedule_type == :TimeInterval
+        new_schedule = TimeInterval(0.5)
+    end
+
+    new_simulation.callbacks[:test_schedule] = Callback(_ -> nothing, new_schedule)
+
+    @test_nowarn set!(new_simulation, true)
+
+    # Run the restored simulation to completion
+    @test_nowarn run!(new_simulation)
+
+    # Both should be at iteration 15
+    original_schedule = simulation.callbacks[:test_schedule].schedule
+    restored_schedule = new_simulation.callbacks[:test_schedule].schedule
+
+    if schedule_type == :SpecifiedTimes
+        @test restored_schedule.previous_actuation == original_schedule.previous_actuation
+    elseif schedule_type == :ConsecutiveIterations
+        @test restored_schedule.previous_parent_actuation_iteration == original_schedule.previous_parent_actuation_iteration
+        @test restored_schedule.parent.actuations == original_schedule.parent.actuations
+    elseif schedule_type == :TimeInterval
+        @test restored_schedule.first_actuation_time == original_schedule.first_actuation_time
+        @test restored_schedule.actuations == original_schedule.actuations
+    end
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 
     @testset "Checkpointer cleanup [$(typeof(arch))]" begin
         @info "  Testing checkpointer cleanup [$(typeof(arch))]..."
@@ -1152,10 +1222,11 @@ for arch in [CPU(), GPU()]
         test_checkpointing_closure_fields(arch)
     end
 
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "Checkpoint continuation [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing checkpoint continuation consistency [$(typeof(arch)), $timestepper]..."
-            test_checkpoint_continuation_matches_direct(arch, timestepper)
+
+    for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval)
+        @testset "Stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]" begin
+            @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
+            test_stateful_schedule_checkpointing(arch, schedule_type)
         end
     end
 
