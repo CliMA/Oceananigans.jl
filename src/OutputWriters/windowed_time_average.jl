@@ -247,8 +247,14 @@ function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=tru
         result .= operand
     end
 
-    return WindowedTimeAverage(result, operand, model.clock.time, 0, model.clock.time, schedule, fetch_operand)
+    time = isnothing(model) ? get_default_time(schedule) : model.clock.time
+
+    return WindowedTimeAverage(result, operand, time, 0, time, schedule, fetch_operand)
 end
+
+# Helper functions to get default time based on schedule type
+get_default_time(schedule::AveragedTimeInterval) = zero(typeof(schedule.interval))
+get_default_time(schedule::AveragedSpecifiedTimes) = zero(eltype(schedule.specified_times.times))
 
 # Time-averaging doesn't change spatial location
 location(wta::WindowedTimeAverage) = location(wta.operand)
