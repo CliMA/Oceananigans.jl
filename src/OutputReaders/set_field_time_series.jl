@@ -36,7 +36,6 @@ end
 function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
-    close(file)
 
     # Compute a timescale for comparisons
     Δt = mean(diff(file_times))
@@ -64,7 +63,7 @@ function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_
             file_iter = file_iterations[file_index]
 
             # Note: use the CPU for this step
-            field_n = Field(instantiated_location(fts), file.path, name, file_iter,
+            field_n = Field(instantiated_location(fts), file, name, file_iter,
                             grid = on_architecture(CPU(), fts.grid),
                             architecture = cpu_architecture(arch),
                             indices = fts.indices,
@@ -74,6 +73,7 @@ function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_
             set!(fts[n], field_n)
         end
     end
+    close(file)
 
     return nothing
 end

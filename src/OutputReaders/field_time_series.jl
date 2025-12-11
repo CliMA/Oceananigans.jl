@@ -696,10 +696,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
 end
 
 # Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
-function FieldTimeSeries_from_netcdf(path::String, args...; kwargs...)
-    error("Loading FieldTimeSeries from NetCDF files requires NCDatasets. " *
-          "Please load NCDatasets: `using NCDatasets`")
-end
+FieldTimeSeries_from_netcdf(path::String, args...; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
 
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
     path = auto_extension(path, ".jld2") # JLD2 is the default extension
@@ -736,7 +733,7 @@ end
 Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
-function Field(location, path::String, name::String, iter;
+function Field(location, file::JLD2.JLDFile, name::String, iter;
                grid = nothing,
                architecture = nothing,
                indices = (:, :, :),
@@ -752,13 +749,8 @@ function Field(location, path::String, name::String, iter;
         end
     end
 
-    # Load the grid and data from file
-    file = jldopen(path; reader_kw...)
-
     isnothing(grid) && (grid = file["serialized/grid"])
     raw_data = file["timeseries/$name/$iter"]
-
-    close(file)
 
     # Change grid to specified architecture?
     grid = on_architecture(architecture, grid)
