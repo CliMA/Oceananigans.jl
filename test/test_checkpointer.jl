@@ -651,6 +651,70 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
     return nothing
 end
 
+function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
+    Nx, Ny, Nz = 16, 16, 8
+    Lx, Ly, Lz = 100, 100, 50
+    Δt = 0.1
+
+    underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+
+    bottom(x, y) = -40 + 10 * sin(2π * x / Lx)
+
+    if boundary_type == :GridFittedBottom
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+    elseif boundary_type == :PartialCellBottom
+        grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
+    end
+
+    model = NonhydrostaticModel(; grid,
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z + Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+    set!(model, T=bubble, S=bubble)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "immersed_boundary_checkpointing_$(typeof(arch))_$(boundary_type)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    new_underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    if boundary_type == :GridFittedBottom
+        new_grid = ImmersedBoundaryGrid(new_underlying_grid, GridFittedBottom(bottom))
+    elseif boundary_type == :PartialCellBottom
+        new_grid = ImmersedBoundaryGrid(new_underlying_grid, PartialCellBottom(bottom))
+    end
+
+    new_model = NonhydrostaticModel(;
+        grid = new_grid,
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
     checkpointer = Checkpointer(model,
         schedule = IterationInterval(5),
         prefix = prefix
@@ -706,10 +770,11 @@ end
         end
     end
 
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]..."
-            test_checkpointing_lagrangian_particles(arch, timestepper)
+
+    for boundary_type in (:GridFittedBottom, :PartialCellBottom)
+        @testset "ImmersedBoundaryGrid checkpointing [$(typeof(arch)), $boundary_type]" begin
+            @info "  Testing ImmersedBoundaryGrid checkpointing [$(typeof(arch)), $boundary_type]..."
+            test_checkpointing_immersed_boundary_grid(arch, boundary_type)
         end
     end
 
