@@ -498,6 +498,7 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper)
 
     @test_nowarn run!(simulation)
 
+    # Create new model with same setup
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
 
@@ -552,6 +553,7 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
 
     @test_nowarn run!(simulation)
 
+    # Create new model with same setup
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz),
                               topology=(Bounded, Bounded, Bounded))
 
@@ -579,6 +581,76 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
 
     return nothing
 end
+
+function test_checkpointing_lagrangian_particles(arch, timestepper)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1, 1, 1
+    Δt = 0.01
+
+    grid = RectilinearGrid(arch,
+        size = (Nx, Ny, Nz),
+        extent = (Lx, Ly, Lz),
+        topology = (Periodic, Periodic, Bounded)
+    )
+
+    P = 10  # number of particles
+    xs = on_architecture(arch, 0.5 * ones(P))
+    ys = on_architecture(arch, 0.5 * ones(P))
+    zs = on_architecture(arch, -0.5 * ones(P))
+
+    particles = LagrangianParticles(x=xs, y=ys, z=zs)
+
+    model = NonhydrostaticModel(; grid, timestepper, particles,
+        closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
+    )
+
+    # Set some initial velocity to move particles
+    set!(model, u=1, v=0.5, w=0)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "lagrangian_particles_checkpointing_$(typeof(arch))_$(timestepper)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    # Create new model with same setup
+    new_grid = RectilinearGrid(arch,
+        size = (Nx, Ny, Nz),
+        extent = (Lx, Ly, Lz),
+        topology = (Periodic, Periodic, Bounded)
+    )
+
+    new_xs = on_architecture(arch, 0.5 * ones(P))
+    new_ys = on_architecture(arch, 0.5 * ones(P))
+    new_zs = on_architecture(arch, -0.5 * ones(P))
+    new_particles = LagrangianParticles(x=new_xs, y=new_ys, z=new_zs)
+
+    new_model = NonhydrostaticModel(; timestepper,
+        grid = new_grid,
+        particles = new_particles,
+        closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
     checkpointer = Checkpointer(model,
         schedule = IterationInterval(5),
         prefix = prefix
@@ -631,6 +703,13 @@ end
         @testset "ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]" begin
             @info "  Testing ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]..."
             test_checkpointing_implicit_free_surface(arch, solver_method)
+        end
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]..."
+            test_checkpointing_lagrangian_particles(arch, timestepper)
         end
     end
 
