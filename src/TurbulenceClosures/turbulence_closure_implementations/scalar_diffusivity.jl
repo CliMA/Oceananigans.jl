@@ -1,4 +1,3 @@
-import Adapt
 using Oceananigans.Utils: prettysummary
 
 struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
@@ -185,7 +184,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. Se
           HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalDivergenceFormulation(), FT; kwargs...)
 
-@inline function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
+@inline function Utils.with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
 end
@@ -224,7 +223,7 @@ function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, <:Any, <:An
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
+function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)

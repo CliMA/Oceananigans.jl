@@ -119,6 +119,18 @@ struct MixedCondition{A, B}
     inhomogeneity :: B
 end
 
+# Helper to unwrap Ref values (Ref is not isbits and can't be passed to GPU kernels)
+_unwrap_for_gpu(r::Base.RefValue) = r[]
+_unwrap_for_gpu(x) = x
+
+Adapt.adapt_structure(to, mc::MixedCondition) =
+    MixedCondition(_unwrap_for_gpu(mc.coefficient),
+                   Adapt.adapt(to, mc.inhomogeneity))
+
+on_architecture(to, mc::MixedCondition) =
+    MixedCondition(on_architecture(to, mc.coefficient),
+                   on_architecture(to, mc.inhomogeneity))
+
 """
     MixedBoundaryCondition(coefficient, inhomogeneity=0; kwargs...)
 

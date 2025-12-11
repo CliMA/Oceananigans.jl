@@ -84,7 +84,7 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
     baroclinic_timestepper = model.timestepper
 
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
-    fill_halo_regions!((GUⁿ, GVⁿ); async=true) 
+    fill_halo_regions!((GUⁿ, GVⁿ); async=true)
 
     return nothing
 end

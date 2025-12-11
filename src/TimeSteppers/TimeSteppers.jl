@@ -7,7 +7,7 @@ export
     time_step!,
     Clock
 
-using KernelAbstractions
+using KernelAbstractions: @kernel, @index
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
 
 """

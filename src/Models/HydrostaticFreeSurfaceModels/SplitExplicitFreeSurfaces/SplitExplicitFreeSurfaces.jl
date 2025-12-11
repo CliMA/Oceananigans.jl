@@ -8,7 +8,7 @@ using Oceananigans.Utils: KernelParameters, configure_kernel, launch!, @apply_re
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Fields: Field
-using Oceananigans.Grids: Center, Face, topology
+using Oceananigans.Grids: Center, Face, get_active_column_map, topology
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
