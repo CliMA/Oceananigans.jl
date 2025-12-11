@@ -130,6 +130,8 @@ function validate_windows(times, window::NumberTypeWindows)
 
     gaps = diff(vcat(0, times))  # Prepend 0 to check first window against t=0
     any(gaps .- window .< -tol) && throw(ArgumentError("Averaging windows overlap: some gaps between specified times are less than the window size."))
+
+    return nothing
 end
 
 function validate_windows(times, window::PeriodTypeWindows)
@@ -141,6 +143,8 @@ function validate_windows(times, window::PeriodTypeWindows)
 
     # Note: We cannot check if the first window extends before the simulation start
     # because the model clock is not available at construction time
+
+    return nothing
 end
 
 function AveragedSpecifiedTimes(times, window::Vector; kw...)
