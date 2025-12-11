@@ -1,6 +1,4 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: get_active_cells_map
-
 import Oceananigans.TimeSteppers: rk_substep!, cache_previous_fields!
 
 rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
