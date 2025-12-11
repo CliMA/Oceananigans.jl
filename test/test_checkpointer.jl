@@ -491,6 +491,94 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "split_explicit_checkpointing_$(typeof(arch))_$(timestepper)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
+
+    new_model = HydrostaticFreeSurfaceModel(; timestepper,
+        grid = new_grid,
+        free_surface = new_free_surface,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpointing_implicit_free_surface(arch, solver_method)
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 1000, 1000, 1000
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz),
+                          topology=(Bounded, Bounded, Bounded))
+
+    free_surface = ImplicitFreeSurface(solver_method=solver_method)
+
+    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+    set!(model, T=bubble, S=bubble)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "implicit_free_surface_checkpointing_$(typeof(arch))_$(solver_method)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz),
+                              topology=(Bounded, Bounded, Bounded))
+
+    new_free_surface = ImplicitFreeSurface(solver_method=solver_method)
+
+    new_model = HydrostaticFreeSurfaceModel(;
+        grid = new_grid,
+        free_surface = new_free_surface,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
     checkpointer = Checkpointer(model,
         schedule = IterationInterval(5),
         prefix = prefix
@@ -536,6 +624,13 @@ end
         @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper]" begin
             @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper]..."
             test_checkpointing_split_explicit_free_surface(arch, timestepper)
+        end
+    end
+
+    for solver_method in (:PreconditionedConjugateGradient,)
+        @testset "ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]" begin
+            @info "  Testing ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]..."
+            test_checkpointing_implicit_free_surface(arch, solver_method)
         end
     end
 
