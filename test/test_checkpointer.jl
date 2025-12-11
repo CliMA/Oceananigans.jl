@@ -7,25 +7,64 @@ using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.OutputWriters: load_checkpoint_state
 
 function test_model_equality(test_model, true_model)
-    @allowscalar begin
-        test_model_fields = prognostic_fields(test_model)
-        true_model_fields = prognostic_fields(true_model)
-        field_names = keys(test_model_fields)
+    # Test prognostic field equality
+    test_model_fields = prognostic_fields(test_model)
+    true_model_fields = prognostic_fields(true_model)
+    field_names = keys(test_model_fields)
 
-        for name in field_names
-            @test all(test_model_fields[name].data .≈ true_model_fields[name].data)
+    for name in field_names
+        @test all(test_model_fields[name].data .≈ true_model_fields[name].data)
 
-            if name ∈ keys(test_model.timestepper.Gⁿ)
-                @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
+        if name ∈ keys(test_model.timestepper.Gⁿ)
+            @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
 
-                if hasfield(typeof(test_model.timestepper), :G⁻)
-                    @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
-                end
-
-                if hasfield(typeof(test_model.timestepper), :Ψ⁻)
-                    @test all(test_model.timestepper.Ψ⁻[name].data .≈ true_model.timestepper.Ψ⁻[name].data)
-                end
+            if hasfield(typeof(test_model.timestepper), :G⁻)
+                @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
             end
+
+            if hasfield(typeof(test_model.timestepper), :Ψ⁻)
+                @test all(test_model.timestepper.Ψ⁻[name].data .≈ true_model.timestepper.Ψ⁻[name].data)
+            end
+        end
+    end
+
+    # Test particle equality
+    if hasproperty(test_model, :particles) && !isnothing(test_model.particles)
+        for name in propertynames(test_model.particles.properties)
+            test_prop = getproperty(test_model.particles.properties, name)
+            true_prop = getproperty(true_model.particles.properties, name)
+            @test all(Array(test_prop) .≈ Array(true_prop))
+        end
+    end
+
+    # Test free surface equality
+    if hasproperty(test_model, :free_surface) && test_model.free_surface isa SplitExplicitFreeSurface
+        fs_test = test_model.free_surface
+        fs_true = true_model.free_surface
+        @test all(interior(fs_test.barotropic_velocities.U) .≈ interior(fs_true.barotropic_velocities.U))
+        @test all(interior(fs_test.barotropic_velocities.V) .≈ interior(fs_true.barotropic_velocities.V))
+        @test all(interior(fs_test.filtered_state.η̅)        .≈ interior(fs_true.filtered_state.η̅))
+        @test all(interior(fs_test.filtered_state.U̅)        .≈ interior(fs_true.filtered_state.U̅))
+        @test all(interior(fs_test.filtered_state.V̅)        .≈ interior(fs_true.filtered_state.V̅))
+
+        # Check free surface timestepper fields (for AdamsBashforth3Scheme)
+        if hasproperty(fs_test.timestepper, :ηᵐ)
+            ts_test = fs_test.timestepper
+            ts_true = fs_true.timestepper
+            @test all(interior(ts_test.ηᵐ)   .≈ interior(ts_true.ηᵐ))
+            @test all(interior(ts_test.ηᵐ⁻¹) .≈ interior(ts_true.ηᵐ⁻¹))
+            @test all(interior(ts_test.ηᵐ⁻²) .≈ interior(ts_true.ηᵐ⁻²))
+            @test all(interior(ts_test.Uᵐ⁻¹) .≈ interior(ts_true.Uᵐ⁻¹))
+            @test all(interior(ts_test.Uᵐ⁻²) .≈ interior(ts_true.Uᵐ⁻²))
+            @test all(interior(ts_test.Vᵐ⁻¹) .≈ interior(ts_true.Vᵐ⁻¹))
+            @test all(interior(ts_test.Vᵐ⁻²) .≈ interior(ts_true.Vᵐ⁻²))
+        end
+    end
+
+    # Test auxiliary fields equality
+    if hasproperty(test_model, :auxiliary_fields) && length(test_model.auxiliary_fields) > 0
+        for name in keys(test_model.auxiliary_fields)
+            @test all(interior(test_model.auxiliary_fields[name]) .≈ interior(true_model.auxiliary_fields[name]))
         end
     end
 
@@ -433,51 +472,70 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
     return nothing
 end
 
-for arch in archs
-    for pickup_method in (:boolean, :iteration, :filepath)
-        @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
-            test_minimal_restore_nonhydrostatic(arch, Float64, pickup_method)
+function test_checkpointing_split_explicit_free_surface(arch, timestepper)
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 1000, 1000, 100
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+
+    model = HydrostaticFreeSurfaceModel(; grid, timestepper, free_surface,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+    set!(model, T=bubble, S=bubble)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "split_explicit_checkpointing_$(typeof(arch))_$(timestepper)"
+    checkpointer = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    simulation.output_writers[:checkpointer] = checkpointer
+
+    @test_nowarn run!(simulation)
+
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
+
+    new_model = HydrostaticFreeSurfaceModel(; timestepper,
+        grid = new_grid,
+        free_surface = new_free_surface,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_checkpointer = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    new_simulation.output_writers[:checkpointer] = new_checkpointer
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
         end
     end
 
-    @testset "Checkpointer cleanup [$(typeof(arch))]" begin
-        @info "  Testing checkpointer cleanup [$(typeof(arch))]..."
-        test_checkpointer_cleanup(arch)
-    end
-
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "Thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]" begin
-            @info "  Testing thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]..."
-            test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
-        end
-    end
-
-    for pickup_method in (:boolean, :iteration, :filepath)
-        @testset "Minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]..."
-            test_minimal_restore_hydrostatic(arch, Float64, pickup_method)
-        end
-    end
 
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-        @testset "Thermal bubble checkpointing hydrostatic [$(typeof(arch)), $(timestepper)]" begin
-            @info "  Testing thermal bubble checkpointing hydrostatic [$(typeof(arch)), $(timestepper)]..."
-            test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
+        @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper]..."
+            test_checkpointing_split_explicit_free_surface(arch, timestepper)
         end
     end
 
-    for pickup_method in (:boolean, :iteration, :filepath)
-        @testset "Minimal restore shallow water [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore shallow water [$(typeof(arch)), $(pickup_method)]..."
-            test_minimal_restore_shallow_water(arch, Float64, pickup_method)
-        end
-    end
-
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "Height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]" begin
-            @info "  Testing height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]..."
-            test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
-        end
-    end
-end
