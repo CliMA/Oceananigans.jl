@@ -778,13 +778,35 @@ function test_checkpointing_latitude_longitude_grid(arch)
     return nothing
 end
 
+function test_checkpointing_float32(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
 
-    new_checkpointer = Checkpointer(new_model,
+    grid = RectilinearGrid(arch, Float32, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(; grid)
+
+    set!(model, u=1, v=0.5)
+
+    simulation = Simulation(model, Δt=Float32(Δt), stop_iteration=5)
+
+    prefix = "float32_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
         schedule = IterationInterval(5),
         prefix = prefix
     )
 
-    new_simulation.output_writers[:checkpointer] = new_checkpointer
+    @test_nowarn run!(simulation)
+
+    new_grid = RectilinearGrid(arch, Float32, size=(N, N, N), extent=(L, L, L))
+    new_model = NonhydrostaticModel(; grid=new_grid)
+
+    new_simulation = Simulation(new_model, Δt=Float32(Δt), stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
 
     @test_nowarn set!(new_simulation, true)
 
@@ -795,9 +817,292 @@ end
     return nothing
 end
 
+function test_checkpointing_auxiliary_fields(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+
+    auxiliary_fields = (custom_field = CenterField(grid),)
+
+    model = NonhydrostaticModel(; grid, auxiliary_fields)
+
+    # Set custom_field data
+    set!(model.auxiliary_fields.custom_field, (x, y, z) -> x + y + z)
+    set!(model, u=1, v=0.5)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "auxiliary_fields_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    new_auxiliary_fields = (custom_field = CenterField(new_grid),)
+    new_model = NonhydrostaticModel(; grid=new_grid, auxiliary_fields=new_auxiliary_fields)
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpointing_closure_fields(arch)
+    N = 8
+    L = 1
+    Δt = 0.01
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+
+    closure = SmagorinskyLilly()
+
+    model = NonhydrostaticModel(; grid, closure,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    # Set initial conditions to generate turbulent closure fields
+    u₀(x, y, z) = sin(2π*x)
+    v₀(x, y, z) = cos(2π*y)
+    T₀(x, y, z) = 20
+    S₀(x, y, z) = 35
+    set!(model, u=u₀, v=v₀, T=T₀, S=S₀)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "closure_fields_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    new_model = NonhydrostaticModel(;
+        grid = new_grid,
+        closure = SmagorinskyLilly(),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpoint_continuation_matches_direct(arch, timestepper)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1, 1, 1
+    Δt = 0.01
+
+    # Run A: Direct run for 10 iterations
+    grid_A = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model_A = NonhydrostaticModel(; grid=grid_A, timestepper,
+        closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+    set!(model_A, T=bubble, S=bubble, u=0.1)
+
+    simulation_A = Simulation(model_A, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(simulation_A)
+
+    # Run B: Run 5 iterations, checkpoint, restore, run 5 more
+    grid_B = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model_B = NonhydrostaticModel(; grid=grid_B, timestepper,
+        closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    set!(model_B, T=bubble, S=bubble, u=0.1)
+
+    simulation_B = Simulation(model_B, Δt=Δt, stop_iteration=5)
+
+    prefix = "continuation_test_$(typeof(arch))_$(timestepper)"
+    simulation_B.output_writers[:checkpointer] = Checkpointer(model_B,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation_B)
+
+    # Create fresh model and restore from checkpoint
+    grid_B_new = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model_B_new = NonhydrostaticModel(; grid=grid_B_new, timestepper,
+        closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    simulation_B_new = Simulation(model_B_new, Δt=Δt, stop_iteration=10)
+
+    simulation_B_new.output_writers[:checkpointer] = Checkpointer(model_B_new,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(simulation_B_new, true)
+
+    # Continue running for 5 more iterations (to iteration 10)
+    @test_nowarn run!(simulation_B_new)
+
+    # Verify both models have the same final state
+    @test iteration(simulation_A) == iteration(simulation_B_new) == 10
+
+    fields_A = prognostic_fields(model_A)
+    fields_B = prognostic_fields(model_B_new)
+
+    for name in keys(fields_A)
+        @test all(fields_A[name].data .≈ fields_B[name].data)
+    end
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpoint_empty_tracers(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(; grid, tracers=())
+
+    set!(model, u=1, v=0.5)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "empty_tracers_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    new_model = NonhydrostaticModel(; grid=new_grid, tracers=())
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpoint_missing_file_warning(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(; grid)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    # Use a unique prefix that doesn't have any checkpoint files
+    prefix = "nonexistent_checkpoint_$(typeof(arch))_$(rand(1:100000))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    # Should warn but not error when no checkpoint files exist
+    @test_logs (:warn,) set!(simulation, true)
+
+    # Simulation should still be at iteration 0
+    @test iteration(simulation) == 0
+
+    return nothing
+end
+
+for arch in [CPU(), GPU()]
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
+            @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
+            test_minimal_restore_nonhydrostatic(arch, Float64, pickup_method)
         end
     end
 
+    @testset "Checkpointer cleanup [$(typeof(arch))]" begin
+        @info "  Testing checkpointer cleanup [$(typeof(arch))]..."
+        test_checkpointer_cleanup(arch)
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]" begin
+            @info "  Testing thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]..."
+            test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
+        end
+    end
+
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]" begin
+            @info "  Testing minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]..."
+            test_minimal_restore_hydrostatic(arch, Float64, pickup_method)
+        end
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        @testset "Thermal bubble checkpointing hydrostatic [$(typeof(arch)), $(timestepper)]" begin
+            @info "  Testing thermal bubble checkpointing hydrostatic [$(typeof(arch)), $(timestepper)]..."
+            test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
+        end
+    end
+
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Minimal restore shallow water [$(typeof(arch)), $(pickup_method)]" begin
+            @info "  Testing minimal restore shallow water [$(typeof(arch)), $(pickup_method)]..."
+            test_minimal_restore_shallow_water(arch, Float64, pickup_method)
+        end
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]" begin
+            @info "  Testing height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]..."
+            test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
+        end
+    end
 
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
         @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper]" begin
@@ -813,6 +1118,12 @@ end
         end
     end
 
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing Lagrangian particles checkpointing [$(typeof(arch)), $timestepper]..."
+            test_checkpointing_lagrangian_particles(arch, timestepper)
+        end
+    end
 
     for boundary_type in (:GridFittedBottom, :PartialCellBottom)
         @testset "ImmersedBoundaryGrid checkpointing [$(typeof(arch)), $boundary_type]" begin
@@ -826,3 +1137,31 @@ end
         test_checkpointing_latitude_longitude_grid(arch)
     end
 
+    @testset "Float32 checkpointing [$(typeof(arch))]" begin
+        @info "  Testing Float32 checkpointing [$(typeof(arch))]..."
+        test_checkpointing_float32(arch)
+    end
+
+    @testset "Auxiliary fields checkpointing [$(typeof(arch))]" begin
+        @info "  Testing auxiliary fields checkpointing [$(typeof(arch))]..."
+        test_checkpointing_auxiliary_fields(arch)
+    end
+
+    @testset "Closure fields checkpointing [$(typeof(arch))]" begin
+        @info "  Testing closure fields checkpointing [$(typeof(arch))]..."
+        test_checkpointing_closure_fields(arch)
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Checkpoint continuation [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing checkpoint continuation consistency [$(typeof(arch)), $timestepper]..."
+            test_checkpoint_continuation_matches_direct(arch, timestepper)
+        end
+    end
+
+    @testset "Edge cases [$(typeof(arch))]" begin
+        @info "  Testing edge cases [$(typeof(arch))]..."
+        test_checkpoint_empty_tracers(arch)
+        test_checkpoint_missing_file_warning(arch)
+    end
+end

@@ -315,6 +315,9 @@ function restore_prognostic_state!(sim::Simulation, state)
     return sim
 end
 
+# Disambiguation: handle case when no checkpoint file exists
+restore_prognostic_state!(::Simulation, ::Nothing) = nothing
+
 #####
 ##### Diagnostics
 #####

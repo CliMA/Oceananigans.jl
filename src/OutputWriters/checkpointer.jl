@@ -192,6 +192,9 @@ function load_checkpoint_state(filepath; base_path="simulation")
     end
 end
 
+# Handle case when no checkpoint file exists (filepath is nothing)
+load_checkpoint_state(::Nothing; base_path="simulation") = nothing
+
 restore_prognostic_state!(obj, ::Nothing) = nothing
 
 function restore_prognostic_state!(arr::AbstractArray, state)
