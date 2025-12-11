@@ -1664,7 +1664,6 @@ iterations_from_file(file::NCDataset) = parse.(Int, keys(file["time"]))
 function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
     file = NCDataset(path)
     file_iterations = iterations_from_file(file)
-    Main.@infiltrate
     file_times = file["time"]
     close(file)
 
