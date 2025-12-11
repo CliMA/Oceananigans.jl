@@ -715,26 +715,69 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
     return nothing
 end
 
-    checkpointer = Checkpointer(model,
+function test_checkpointing_latitude_longitude_grid(arch)
+    # Use parameters that ensure numerical stability
+    Nx, Ny, Nz = 8, 8, 4
+    Δt = 300  # 5 minute timestep
+
+    grid = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
+                                 longitude=(0, 60),
+                                 latitude=(-30, 30),
+                                 z=(-1000, 0))
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+
+    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+        coriolis = HydrostaticSphericalCoriolis(),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    # Stable initial conditions: linear temperature profile
+    T_init(λ, φ, z) = 20 + 5 * (z + 1000) / 1000
+    set!(model, T=T_init, S=35)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "lat_lon_grid_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
         schedule = IterationInterval(5),
         prefix = prefix
     )
 
-    simulation.output_writers[:checkpointer] = checkpointer
-
     @test_nowarn run!(simulation)
 
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_grid = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
+                                     longitude=(0, 60),
+                                     latitude=(-30, 30),
+                                     z=(-1000, 0))
+
     new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
 
-    new_model = HydrostaticFreeSurfaceModel(; timestepper,
+    new_model = HydrostaticFreeSurfaceModel(;
         grid = new_grid,
         free_surface = new_free_surface,
+        coriolis = HydrostaticSphericalCoriolis(),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
     )
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 
     new_checkpointer = Checkpointer(new_model,
         schedule = IterationInterval(5),
@@ -776,5 +819,10 @@ end
             @info "  Testing ImmersedBoundaryGrid checkpointing [$(typeof(arch)), $boundary_type]..."
             test_checkpointing_immersed_boundary_grid(arch, boundary_type)
         end
+    end
+
+    @testset "LatitudeLongitudeGrid checkpointing [$(typeof(arch))]" begin
+        @info "  Testing LatitudeLongitudeGrid checkpointing [$(typeof(arch))]..."
+        test_checkpointing_latitude_longitude_grid(arch)
     end
 
