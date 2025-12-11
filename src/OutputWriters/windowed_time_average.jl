@@ -126,7 +126,7 @@ const PeriodTypeWindows = Union{Period, Vector{<:Period}}
 validate_windows(times, window) = nothing  # Fallback method
 
 function validate_windows(times, window::NumberTypeWindows)
-    tol = 10 * determine_epsilon(eltype(times))
+    tol = 100 * determine_epsilon(eltype(times))
 
     gaps = diff(vcat(0, times))  # Prepend 0 to check first window against t=0
     any(gaps .- window .< -tol) && throw(ArgumentError("Averaging windows overlap: some gaps between specified times are less than the window size."))
