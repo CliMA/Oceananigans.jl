@@ -402,3 +402,20 @@ function Base.show(io::IO, clo::TDVD)
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── stability_functions: ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
+
+#####
+##### Checkpointing
+#####
+
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
+function prognostic_state(cf::TKEDissipationDiffusivityFields)
+    return (
+        previous_velocities = prognostic_state(cf.previous_velocities),
+    )
+end
+
+function restore_prognostic_state!(cf::TKEDissipationDiffusivityFields, state)
+    restore_prognostic_state!(cf.previous_velocities, state.previous_velocities)
+    return cf
+end

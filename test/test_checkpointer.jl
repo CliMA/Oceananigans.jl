@@ -1085,6 +1085,66 @@ function test_checkpointing_ri_based_closure(arch)
     return nothing
 end
 
+function test_checkpointing_tke_dissipation_closure(arch)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 100, 100, 100
+    Δt = 60
+
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = TKEDissipationVerticalDiffusivity()
+
+    model = HydrostaticFreeSurfaceModel(; grid, closure,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S, :e, :ϵ)
+    )
+
+    # Linear stratification + noisy velocity to generate turbulence
+    T_init(x, y, z) = 20 + 0.01 * z
+    u_init(x, y, z) = 0.01 * randn()
+    set!(model, T=T_init, S=35, u=u_init)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "tke_dissipation_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    # Store original previous_velocities state
+    original_u⁻ = copy(Array(interior(model.closure_fields.previous_velocities.u)))
+    original_v⁻ = copy(Array(interior(model.closure_fields.previous_velocities.v)))
+
+    # Create new model and restore
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_model = HydrostaticFreeSurfaceModel(;
+        grid = new_grid,
+        closure = TKEDissipationVerticalDiffusivity(),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S, :e, :ϵ)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    # Verify previous_velocities state was restored
+    @test all(Array(interior(new_model.closure_fields.previous_velocities.u)) .≈ original_u⁻)
+    @test all(Array(interior(new_model.closure_fields.previous_velocities.v)) .≈ original_v⁻)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpoint_continuation_matches_direct(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
@@ -1744,6 +1804,11 @@ for arch in archs
     @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch))]" begin
         @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch))]..."
         test_checkpointing_ri_based_closure(arch)
+    end
+
+    @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch))]" begin
+        @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch))]..."
+        test_checkpointing_tke_dissipation_closure(arch)
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
