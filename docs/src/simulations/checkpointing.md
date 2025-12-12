@@ -22,6 +22,13 @@ simulation = Simulation(model, Δt=1, stop_iteration=8)
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5), prefix="model_checkpoint")
 ```
 
+For long simulations, use `cleanup=true` to automatically delete old checkpoint files
+when a new one is written, keeping only the latest checkpoint:
+
+```julia
+Checkpointer(model, schedule=IterationInterval(1000), prefix="checkpoint", cleanup=true)
+```
+
 Again, for illustration purposes of this example, we also add another callback so we can see the iteration
 of the simulation
 
@@ -67,6 +74,18 @@ set!(simulation, filepath)   # restore from specific file (no Checkpointer requi
 set!(simulation, true)       # restore from latest checkpoint (requires Checkpointer)
 set!(simulation, iteration)  # restore from specific iteration (requires Checkpointer)
 ```
+
+## Checkpointing on wall-clock time
+
+For cluster jobs with time limits, use `WallTimeInterval` to checkpoint based on elapsed
+wall-clock time rather than simulation time or iterations:
+
+```julia
+# Checkpoint every 30 minutes of wall-clock time
+Checkpointer(model, schedule=WallTimeInterval(30minute), prefix="checkpoint")
+```
+
+This ensures checkpoints are saved regularly even if individual time steps vary significantly.
 
 ## Manual checkpointing
 
