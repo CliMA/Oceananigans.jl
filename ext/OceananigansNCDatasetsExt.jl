@@ -1588,11 +1588,9 @@ function prognostic_state(writer::NetCDFWriter)
                              for (name, output) in pairs(writer.outputs)
                              if output isa WindowedTimeAverage)
 
-    return (
-        schedule = prognostic_state(writer.schedule),
-        part = writer.part,
-        windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs,
-    )
+    return (schedule = prognostic_state(writer.schedule),
+            part = writer.part,
+            windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
 end
 
 function restore_prognostic_state!(writer::NetCDFWriter, state)
