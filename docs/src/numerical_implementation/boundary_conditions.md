@@ -222,3 +222,49 @@ are typlically already unphysical and only used in an attempt to allow informati
 the domain.
 
 Open boundary conditions are represented by the [`Open`](@ref) type.
+
+## Open boundary condition "schemes"
+
+Except for trivial cases (i.e. no-penetration) the velocity on the boundary point has to be 
+approximated as it is outside the computed domain. There is insufficient information to step the 
+full equation of motion as gradients across the boundary can not be computed and simply prescribing
+a boundary normal velocity is unphysical and reflects energy leaving the domain [Orlanksi1976](@citep).
+
+### Perturbation advection 
+
+A common method for allowing information to exit is to perform a one-sided advection operation. 
+For example in the [Orlanksi1976](@citet) boundary condition fields are advected out of the domain by a 
+locally determined phase speed. We can show that this is the first order approximation of the full equations
+of motion in the predictor velocity step. Consider a right boundary normal to the `u` velocity 
+component (the east boundary):
+```math
+    \partial_tu + u\partial_xu + v\partial_yu + w\partial_zu = (\nabla\cdot\vec{\tau})_x + F,
+```
+let ``\vec{u} = \vec{U} + \vec{u}\prime`` with ``\vec{U} = U(x, y, z, t)\hat{x}`` where ``U`` is an externally
+determined ``background" wall normal flow in the proximity of the boundary, and assume that the 
+stress tensor gradient is small,
+```math
+    \partial_tu = -(U + u\prime)\partial_x(U+u\prime) - v\partial_y(U+u\prime) - w\partial_z(U + u\prime) + F,
+```
+then, taking only first order terms:
+```math
+    \partial_tu = -U\partial_x u\prime - v\partial_yU - w\partial_zU + F.
+```
+Now consider the dominant forcing to be relaxation to the background state (we will explain why later) so 
+that ``F = (U - u)/\tau``, and recall that when we compute the boundary normal point the interior domain is
+already stepped, we can take an upwind backward Euler step:
+```math
+    \frac{u^{n+1} - u^n}{\Delta t} = -\max(0, U)\frac{u^{n+1}_i - u^{n+1}_{i-1}}{\Delta x} - \min(0, U) \frac{u^{n+1}_{i+1} - u^{n+1}_{i}}{\Delta x} - v^{n+1}\partial_yU - w^{n+1}\partial_zU + \frac{U - u^{n+1}}{\tau},
+```
+where ``i`` is the boundary point and ``v`` and ``w`` are interpolated to the boundary point. Of course if ``U<0`` 
+(i.e. it is directed into the domain), then we need ``u_{i+1}`` which is outside of the domain, so this scheme 
+cannot be used. We therefore disregard this term, taking ``\bar{U} = \max(0, U)\Delta t/ \Delta x`` and 
+``\bar{\tau} = \Delta t/\tau``, and rearranging we recover:
+```math
+    u^{n+1} = \frac{u^{n} + \bar{U}u^{n+1}_{i-1} + U\bar{\tau} - v^{n+1}\Delta t\partial_yU - w^{n+1}\Delta t\partial_z U}{1 + \bar{\tau} + \bar{U}}.
+```
+For numerical stability, we also need to apply a CFL like constraint and set ``\bar{U} = \min(1, \max(0, U)\Delta t/ \Delta x)``.
+
+Previously we considered the dominant forcing to be relaxation to ``U`` so that we can take the backward Euler
+step. And because it is useful to prescribe relaxation on the boundary both to damp numerical oscillations, 
+and to prevent inconsistency when ``U`` is directed into the domain.
