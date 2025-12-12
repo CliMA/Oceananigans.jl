@@ -91,8 +91,17 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <=  next_actuation_time(sch) - sch.window
-end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch)
+
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <= next_actuation_time(sch) - sch.window
+
+# Accumulated clock time from repeated Δt additions may fall just short of target times
+# due to floating point arithmetic. For example, 10 iterations of Δt=0.1 yields
+# clock.time = 0.9999999999999999 rather than 1.0, causing (0.999... >= 1.0) = false.
+# Using eps(t★) as tolerance ensures times within one floating point increment are accepted.
+function end_of_window(sch::AveragedTimeInterval, clock)
+    t★ = next_actuation_time(sch)
+    return clock.time >= t★ - eps(t★)
+end
 
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
@@ -155,7 +164,8 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     next = schedule.specified_times.previous_actuation + 1
     next > length(schedule.specified_times.times) && return true
     next_time = schedule.specified_times.times[next]
-    return clock.time >= next_time
+    # Use tolerance to handle floating point accumulation errors in clock.time
+    return clock.time >= next_time - eps(next_time)
 end
 
 # Checkpointing

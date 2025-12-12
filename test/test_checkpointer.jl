@@ -1221,6 +1221,145 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     return nothing
 end
 
+# This test verifies that checkpointing in the middle of a time-averaging window
+# produces the exact same result as a continuous (uninterrupted) run.
+#
+# With AveragedTimeInterval(1.0, window=0.5) and Δt=0.1:
+# - Output is written every 1.0 time units
+# - Each output is the time-average over the preceding 0.5 time window
+# - The first averaging window spans time 0.5 → 1.0 (iterations 5-10)
+#
+# Timeline:  0.0 -------- 0.5 ======== 0.7 ======== 1.0
+#                          ↑            ↑            ↑
+#                     window starts  CHECKPOINT   window ends
+#                     collecting=true              (output written)
+#
+# Test strategy:
+# 1. Run A (continuous): Runs from iteration 0 → 10 without interruption
+# 2. Run B (checkpointed):
+#    - Runs from iteration 0 → 7, checkpoints at iteration 7 (time 0.7)
+#    - At this point, the WTA is actively collecting (collecting=true)
+#    - The result field contains a partial average (accumulated from time 0.5 to 0.7)
+# 3. Run B_new (restored): Creates a fresh simulation, restores from checkpoint,
+#    continues to iteration 10
+#
+# At iteration 10, the test verifies:
+# - Both runs completed exactly 1 averaging window (actuations == 1)
+# - The final time-averaged results are identical (wta_A.result ≈ wta_B.result)
+#
+# If the WindowedTimeAverage state isn't properly checkpointed/restored, the restored
+# simulation would lose the partial accumulated average and produce incorrect output.
+function test_windowed_time_average_continuation_correctness(arch, WriterType)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1, 1, 1
+    Δt = 0.1
+
+    if WriterType == JLD2Writer
+        prefix_A = "wta_continuous_jld2_$(typeof(arch))"
+        prefix_B = "wta_checkpoint_jld2_$(typeof(arch))"
+        ext = ".jld2"
+        output_key = :u
+    elseif WriterType == NetCDFWriter
+        prefix_A = "wta_continuous_netcdf_$(typeof(arch))"
+        prefix_B = "wta_checkpoint_netcdf_$(typeof(arch))"
+        ext = ".nc"
+        output_key = "u"
+    end
+
+    # Run A: Continuous run from 0 to iteration 10
+    grid_A = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model_A = NonhydrostaticModel(; grid=grid_A)
+    u_init(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly)
+    set!(model_A, u=u_init, v=0.1)
+
+    simulation_A = Simulation(model_A, Δt=Δt, stop_iteration=10)
+
+    simulation_A.output_writers[:averaged] = WriterType(model_A, model_A.velocities,
+        schedule = AveragedTimeInterval(1.0, window=0.5),
+        filename = "$(prefix_A)$(ext)",
+        overwrite_existing = true
+    )
+
+    @test_nowarn run!(simulation_A)
+
+    # Run B: From 0 to iteration 7, checkpoint in middle of first window
+    grid_B = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model_B = NonhydrostaticModel(; grid=grid_B)
+    set!(model_B, u=u_init, v=0.1)
+
+    simulation_B = Simulation(model_B, Δt=Δt, stop_iteration=7)
+
+    simulation_B.output_writers[:checkpointer] = Checkpointer(model_B,
+        schedule = IterationInterval(7),
+        prefix = prefix_B
+    )
+    simulation_B.output_writers[:averaged] = WriterType(model_B, model_B.velocities,
+        schedule = AveragedTimeInterval(1.0, window=0.5),
+        filename = "$(prefix_B)$(ext)",
+        overwrite_existing = true
+    )
+
+    @test_nowarn run!(simulation_B)
+
+    # Verify checkpoint was taken during active collection
+    wta_B_at_checkpoint = simulation_B.output_writers[:averaged].outputs[output_key]
+    @test wta_B_at_checkpoint.schedule.collecting == true
+
+    # Run B_new: Restore from iteration 7, continue to iteration 10
+    grid_B_new = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model_B_new = NonhydrostaticModel(; grid=grid_B_new)
+
+    simulation_B_new = Simulation(model_B_new, Δt=Δt, stop_iteration=10)
+
+    simulation_B_new.output_writers[:checkpointer] = Checkpointer(model_B_new,
+        schedule = IterationInterval(7),
+        prefix = prefix_B
+    )
+    simulation_B_new.output_writers[:averaged] = WriterType(model_B_new, model_B_new.velocities,
+        schedule = AveragedTimeInterval(1.0, window=0.5),
+        filename = "$(prefix_B)_restored$(ext)",
+        overwrite_existing = true
+    )
+
+    @test_nowarn set!(simulation_B_new, true)
+    @test_nowarn run!(simulation_B_new)
+
+    # Compare at iteration 10 (time 1.0) - first window just completed
+    wta_A = simulation_A.output_writers[:averaged].outputs[output_key]
+    wta_B = simulation_B_new.output_writers[:averaged].outputs[output_key]
+
+    # Both should have completed exactly 1 averaging window
+    @test wta_A.schedule.actuations == 1
+    @test wta_B.schedule.actuations == 1
+
+    # The accumulated averages should be identical
+    @test all(Array(wta_A.result) .≈ Array(wta_B.result))
+
+    rm.(glob("$(prefix_A)*$(ext)"), force=true)
+    rm.(glob("$(prefix_B)*$(ext)"), force=true)
+
+    return nothing
+end
+
+for arch in archs
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
+            @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
+            test_minimal_restore_nonhydrostatic(arch, Float64, pickup_method)
+        end
+    end
+
+    @testset "Checkpointer cleanup [$(typeof(arch))]" begin
+        @info "  Testing checkpointer cleanup [$(typeof(arch))]..."
+        test_checkpointer_cleanup(arch)
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]" begin
+            @info "  Testing thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]..."
+            test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
+        end
+    end
 
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]" begin
@@ -1298,11 +1437,31 @@ end
         test_checkpointing_closure_fields(arch)
     end
 
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "Checkpoint continuation [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing checkpoint continuation consistency [$(typeof(arch)), $timestepper]..."
+            test_checkpoint_continuation_matches_direct(arch, timestepper)
+        end
+    end
+
+    for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval)
+        @testset "Stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]" begin
+            @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
+            test_stateful_schedule_checkpointing(arch, schedule_type)
+        end
+    end
 
     for WriterType in (JLD2Writer, NetCDFWriter)
         @testset "WindowedTimeAverage checkpointing [$WriterType] [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage checkpointing [$WriterType] [$(typeof(arch))]..."
             test_windowed_time_average_checkpointing(arch, WriterType)
+        end
+    end
+
+    for WriterType in (JLD2Writer, NetCDFWriter)
+        @testset "WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]" begin
+            @info "  Testing WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]..."
+            test_windowed_time_average_continuation_correctness(arch, WriterType)
         end
     end
 
@@ -1312,3 +1471,87 @@ end
         test_checkpoint_missing_file_warning(arch)
     end
 end
+
+# #####
+# ##### Distributed-specific checkpointing tests
+# ##### These tests only run when MPI_TEST=true and verify distributed checkpoint correctness
+# #####
+
+# function test_checkpoint_distributed_hydrostatic(arch)
+#     Nx, Ny, Nz = 32, 32, 8
+#     Lx, Ly, Lz = 100, 100, 50
+#     Δt = 10
+
+#     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+#     free_surface = SplitExplicitFreeSurface(grid; substeps=10)
+
+#     model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+#         buoyancy = SeawaterBuoyancy(),
+#         tracers = (:T, :S)
+#     )
+
+#     bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z + Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+#     set!(model, T=bubble, S=bubble)
+
+#     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+#     prefix = "distributed_checkpointing_$(typeof(arch))"
+#     checkpointer = Checkpointer(model,
+#         schedule = IterationInterval(5),
+#         prefix = prefix
+#     )
+
+#     simulation.output_writers[:checkpointer] = checkpointer
+
+#     @test_nowarn run!(simulation)
+
+#     # Create new model and restore
+#     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+#     new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=10)
+
+#     new_model = HydrostaticFreeSurfaceModel(;
+#         grid = new_grid,
+#         free_surface = new_free_surface,
+#         buoyancy = SeawaterBuoyancy(),
+#         tracers = (:T, :S)
+#     )
+
+#     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+
+#     new_checkpointer = Checkpointer(new_model,
+#         schedule = IterationInterval(5),
+#         prefix = prefix
+#     )
+
+#     new_simulation.output_writers[:checkpointer] = new_checkpointer
+
+#     @test_nowarn set!(new_simulation, true)
+
+#     test_model_equality(new_model, model)
+
+#     # For distributed architectures, also verify global field reconstruction
+#     if arch isa Distributed
+#         T_global = reconstruct_global_field(model.tracers.T)
+#         T_new_global = reconstruct_global_field(new_model.tracers.T)
+
+#         @allowscalar begin
+#             @test all(interior(T_global) .≈ interior(T_new_global))
+#         end
+#     end
+
+#     rm.(glob("$(prefix)*.jld2"), force=true)
+
+#     return nothing
+# end
+
+# # Run distributed-specific tests when in MPI mode
+# if mpi_test
+#     for arch in archs
+#         if arch isa Distributed
+#             @testset "Distributed checkpointing [$(arch.partition)]" begin
+#                 @info "  Testing distributed checkpointing with partition $(arch.partition)..."
+#                 test_checkpoint_distributed_hydrostatic(arch)
+#             end
+#         end
+#     end
+# end
