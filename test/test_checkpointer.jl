@@ -918,6 +918,58 @@ function test_checkpointing_closure_fields(arch)
     return nothing
 end
 
+function test_checkpointing_catke_closure(arch)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 100, 100, 100
+    Δt = 60
+
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = CATKEVerticalDiffusivity()
+
+    model = HydrostaticFreeSurfaceModel(; grid, closure,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S, :e)
+    )
+
+    # Linear stratification + noisy velocity to generate TKE
+    T_init(x, y, z) = 20 + 0.01 * z
+    u_init(x, y, z) = 0.01 * randn()
+    set!(model, T=T_init, S=35, u=u_init)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "catke_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    # Create new model and restore
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_model = HydrostaticFreeSurfaceModel(;
+        grid = new_grid,
+        closure = CATKEVerticalDiffusivity(),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S, :e)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpoint_continuation_matches_direct(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
@@ -1435,6 +1487,11 @@ for arch in archs
     @testset "Closure fields checkpointing [$(typeof(arch))]" begin
         @info "  Testing closure fields checkpointing [$(typeof(arch))]..."
         test_checkpointing_closure_fields(arch)
+    end
+
+    @testset "CATKE closure checkpointing [$(typeof(arch))]" begin
+        @info "  Testing CATKE closure checkpointing [$(typeof(arch))]..."
+        test_checkpointing_catke_closure(arch)
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
