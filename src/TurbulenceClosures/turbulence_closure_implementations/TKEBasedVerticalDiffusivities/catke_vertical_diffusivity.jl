@@ -2,6 +2,8 @@ using Oceananigans.Fields: Field
 using Oceananigans.Utils: time_difference_seconds
 using Oceananigans.Units: minute
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -391,4 +393,21 @@ function Base.show(io::IO, clo::CATKEVD)
               "    ├── Cᵂu★: ", prettysummary(clo.turbulent_kinetic_energy_equation.Cᵂu★), '\n',
               "    ├── CᵂwΔ: ", prettysummary(clo.turbulent_kinetic_energy_equation.CᵂwΔ), '\n',
               "    └── Cᵂϵ:  ", prettysummary(clo.turbulent_kinetic_energy_equation.Cᵂϵ))
+end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(cf::CATKEDiffusivityFields)
+    return (
+        previous_compute_time = cf.previous_compute_time[],
+        previous_velocities = prognostic_state(cf.previous_velocities),
+    )
+end
+
+function restore_prognostic_state!(cf::CATKEDiffusivityFields, state)
+    cf.previous_compute_time[] = state.previous_compute_time
+    restore_prognostic_state!(cf.previous_velocities, state.previous_velocities)
+    return cf
 end
