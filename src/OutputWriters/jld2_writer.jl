@@ -4,6 +4,8 @@ using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
 using Oceananigans.Fields: boundary_conditions, indices
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 default_included_properties(model) = [:grid]
 
 mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
@@ -334,4 +336,37 @@ function Base.show(io::IO, ow::JLD2Writer)
               "├── including: ", ow.including, "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))
+end
+
+#####
+##### Checkpointing the JLD2Writer
+#####
+
+function prognostic_state(writer::JLD2Writer)
+    # Only checkpoint WindowedTimeAverage outputs (which have accumulated state).
+    wta_outputs = NamedTuple(name => prognostic_state(output)
+                             for (name, output) in pairs(writer.outputs)
+                             if output isa WindowedTimeAverage)
+
+    return (
+        schedule = prognostic_state(writer.schedule),
+        part = writer.part,
+        windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs,
+    )
+end
+
+function restore_prognostic_state!(writer::JLD2Writer, state)
+    restore_prognostic_state!(writer.schedule, state.schedule)
+    writer.part = state.part
+
+    # Restore WindowedTimeAverage outputs if present
+    if hasproperty(state, :windowed_time_averages) && !isnothing(state.windowed_time_averages)
+        for (name, wta_state) in pairs(state.windowed_time_averages)
+            if haskey(writer.outputs, name) && writer.outputs[name] isa WindowedTimeAverage
+                restore_prognostic_state!(writer.outputs[name], wta_state)
+            end
+        end
+    end
+
+    return writer
 end

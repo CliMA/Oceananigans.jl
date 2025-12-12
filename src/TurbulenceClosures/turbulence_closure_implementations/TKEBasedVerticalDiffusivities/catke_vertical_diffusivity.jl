@@ -392,3 +392,20 @@ function Base.show(io::IO, clo::CATKEVD)
               "    ├── CᵂwΔ: ", prettysummary(clo.turbulent_kinetic_energy_equation.CᵂwΔ), '\n',
               "    └── Cᵂϵ:  ", prettysummary(clo.turbulent_kinetic_energy_equation.Cᵂϵ))
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(cf::CATKEDiffusivityFields)
+    return (
+        previous_compute_time = cf.previous_compute_time[],
+        previous_velocities = prognostic_state(cf.previous_velocities),
+    )
+end
+
+function restore_prognostic_state!(cf::CATKEDiffusivityFields, state)
+    cf.previous_compute_time[] = state.previous_compute_time
+    restore_prognostic_state!(cf.previous_velocities, state.previous_velocities)
+    return cf
+end
