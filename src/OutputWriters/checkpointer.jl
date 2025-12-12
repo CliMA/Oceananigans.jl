@@ -263,3 +263,43 @@ function restore_prognostic_state!(checkpointer::Checkpointer, state)
     restore_prognostic_state!(checkpointer.schedule, state.schedule)
     return checkpointer
 end
+
+#####
+##### Manual checkpointing
+#####
+
+"""
+    checkpoint(simulation; filepath=nothing)
+
+Manually checkpoint `simulation` state to a JLD2 file.
+
+If `simulation.output_writers` contains a `Checkpointer`, it will be used
+(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings).
+
+Otherwise, the checkpoint is written to `filepath`, or to
+`"checkpoint_iteration{N}.jld2"` in the current directory if `filepath` is not specified.
+"""
+function checkpoint(simulation; filepath=nothing)
+    checkpointers = filter(w -> w isa Checkpointer, values(simulation.output_writers))
+
+    if !isnothing(filepath)
+        write_checkpoint_file(filepath, simulation)
+    elseif length(checkpointers) == 1
+        write_output!(first(checkpointers), simulation)
+    else
+        iter = iteration(simulation)
+        default_filepath = "checkpoint_iteration$(iter).jld2"
+        @warn "No checkpointer (or multiple checkpointers) found, using default filepath: $default_filepath"
+        write_checkpoint_file(default_filepath, simulation)
+    end
+
+    return nothing
+end
+
+function write_checkpoint_file(filepath, simulation)
+    state = prognostic_state(simulation)
+    jldopen(filepath, "w") do file
+        serializeproperty!(file, "simulation", state)
+    end
+    return filepath
+end
