@@ -970,6 +970,121 @@ function test_checkpointing_catke_closure(arch)
     return nothing
 end
 
+function test_checkpointing_dynamic_smagorinsky_closure(arch)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1, 1, 1
+    Δt = 0.001
+
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = DynamicSmagorinsky()
+
+    model = NonhydrostaticModel(; grid, closure)
+
+    # Sheared flow to generate non-trivial dynamic coefficients
+    u_init(x, y, z) = sin(2π * z / Lz)
+    set!(model, u=u_init)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "dynamic_smagorinsky_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    # Get original closure field state
+    original_cf = model.closure_fields
+    original_previous_time = original_cf.previous_compute_time[]
+    original_𝒥ᴸᴹ = copy(Array(interior(original_cf.𝒥ᴸᴹ)))
+    original_𝒥ᴹᴹ = copy(Array(interior(original_cf.𝒥ᴹᴹ)))
+
+    # Create new model and restore
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_model = NonhydrostaticModel(; grid=new_grid, closure=DynamicSmagorinsky())
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    # Verify closure field state was restored
+    new_cf = new_model.closure_fields
+    @test new_cf.previous_compute_time[] ≈ original_previous_time
+    @test all(Array(interior(new_cf.𝒥ᴸᴹ)) .≈ original_𝒥ᴸᴹ)
+    @test all(Array(interior(new_cf.𝒥ᴹᴹ)) .≈ original_𝒥ᴹᴹ)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpointing_ri_based_closure(arch)
+    Nx, Ny, Nz = 8, 8, 16
+    Lx, Ly, Lz = 100, 100, 100
+    Δt = 60
+
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6)  # Time averaging enabled
+
+    model = HydrostaticFreeSurfaceModel(; grid, closure,
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    # Stratified with shear to generate non-trivial Ri-based diffusivities
+    T_init(x, y, z) = 20 + 0.01 * z
+    u_init(x, y, z) = 0.1 * z / Lz
+    set!(model, T=T_init, S=35, u=u_init)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "ri_based_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    # Get original closure field state
+    original_κc = copy(Array(interior(model.closure_fields.κc)))
+    original_κu = copy(Array(interior(model.closure_fields.κu)))
+
+    # Create new model and restore
+    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    new_model = HydrostaticFreeSurfaceModel(;
+        grid = new_grid,
+        closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(5),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, true)
+
+    # Verify closure field state was restored
+    @test all(Array(interior(new_model.closure_fields.κc)) .≈ original_κc)
+    @test all(Array(interior(new_model.closure_fields.κu)) .≈ original_κu)
+
+    test_model_equality(new_model, model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpoint_continuation_matches_direct(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
@@ -1498,6 +1613,16 @@ for arch in archs
     @testset "CATKE closure checkpointing [$(typeof(arch))]" begin
         @info "  Testing CATKE closure checkpointing [$(typeof(arch))]..."
         test_checkpointing_catke_closure(arch)
+    end
+
+    @testset "DynamicSmagorinsky closure checkpointing [$(typeof(arch))]" begin
+        @info "  Testing DynamicSmagorinsky closure checkpointing [$(typeof(arch))]..."
+        test_checkpointing_dynamic_smagorinsky_closure(arch)
+    end
+
+    @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch))]" begin
+        @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch))]..."
+        test_checkpointing_ri_based_closure(arch)
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
