@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using AMDGPU
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
 function build_and_timestep_simulation(model)
     FT = eltype(model)
@@ -18,7 +19,7 @@ function build_and_timestep_simulation(model)
     return nothing
 end
 
-@testset "AMDGPU extension" begin
+@testset "AMDGPU on RectilinearGrids" begin
     roc = AMDGPU.ROCBackend()
     arch = GPU(roc)
 
@@ -64,7 +65,8 @@ end
         @info "Testing NonhydrostaticModel on $arch with $FT..."
 
         for grid in (regular_grid, vertically_stretched_grid)
-            pressure_solvers = (Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid, maxiter=10; reltol=1e-7, abstol=1e-7, preconditioner=nothing),
+            cg_kw = (maxiter=10, reltol=1e-7, abstol=1e-7, preconditioner=nothing)
+            pressure_solvers = (Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid; cg_kw...),
                                 Oceananigans.Solvers.FFTBasedPoissonSolver(grid))
 
             for pressure_solver in pressure_solvers
@@ -77,3 +79,40 @@ end
         end
     end
 end
+
+@testset "AMDGPU on LatitudeLongitudeGrid with HydrostaticFreeSurfaceModel" begin
+    roc = AMDGPU.ROCBackend()
+    arch = GPU(roc)
+
+    for FT in float_types
+        @info "    Testing on $arch with $FT"
+
+        grid = LatitudeLongitudeGrid(arch, FT, size=(4, 8, 16), longitude=(-60, 60), latitude=(0, 60), z=(0, 1))
+
+        @test parent(grid.Δxᶜᶜᵃ) isa ROCArray
+        @test parent(grid.Δxᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Δxᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Δxᶠᶠᵃ) isa ROCArray
+        @test parent(grid.Δyᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Δyᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Azᶜᶜᵃ) isa ROCArray
+        @test parent(grid.Azᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Azᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Azᶠᶠᵃ) isa ROCArray
+        @test eltype(grid) == FT
+        @test architecture(grid) isa GPU
+
+        equation_of_state = TEOS10EquationOfState()
+        buoyancy = SeawaterBuoyancy(; equation_of_state)
+
+        model = HydrostaticFreeSurfaceModel(; grid, buoyancy,
+                                            coriolis = FPlane(latitude=45),
+                                            tracers = (:T, :S),
+                                            momentum_advection = WENO(order=5),
+                                            tracer_advection = WENO(order=5),
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=60))
+
+        build_and_time_step_simulation(model)
+    end
+end
+
