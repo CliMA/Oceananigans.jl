@@ -280,7 +280,7 @@ Otherwise, the checkpoint is written to `filepath`, or to
 `"checkpoint_iteration{N}.jld2"` in the current directory if `filepath` is not specified.
 """
 function checkpoint(simulation; filepath=nothing)
-    checkpointers = filter(w -> w isa Checkpointer, values(simulation.output_writers))
+    checkpointers = filter(w -> w isa Checkpointer, collect(values(simulation.output_writers)))
 
     if !isnothing(filepath)
         write_checkpoint_file(filepath, simulation)

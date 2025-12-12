@@ -1514,6 +1514,127 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     return nothing
 end
 
+function test_manual_checkpoint_with_checkpointer(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(; grid)
+    set!(model, u=1, v=0.5)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "manual_checkpoint_with_checkpointer_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(10),  # Won't trigger during this test
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+    @test_nowarn checkpoint(simulation)
+
+    expected_filepath = "$(prefix)_iteration5.jld2"
+    @test isfile(expected_filepath)
+
+    # Verify we can restore from it
+    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+        schedule = IterationInterval(10),
+        prefix = prefix
+    )
+
+    @test_nowarn set!(new_simulation, expected_filepath)
+    @test iteration(new_simulation) == 5
+
+    test_model_equality(new_model, model)
+
+    rm(expected_filepath, force=true)
+
+    return nothing
+end
+
+function test_manual_checkpoint_without_checkpointer(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(; grid)
+    set!(model, u=1, v=0.5)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    # No Checkpointer configured
+    @test_nowarn run!(simulation)
+
+    # Manually checkpoint - should use default path
+    @test_nowarn checkpoint(simulation)
+
+    # Verify file was created with default naming
+    expected_filepath = "checkpoint_iteration5.jld2"
+    @test isfile(expected_filepath)
+
+    # Verify we can restore from it
+    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+
+    @test_nowarn set!(new_simulation, expected_filepath)
+    @test iteration(new_simulation) == 5
+
+    test_model_equality(new_model, model)
+
+    rm(expected_filepath, force=true)
+
+    return nothing
+end
+
+function test_manual_checkpoint_with_filepath(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(; grid)
+    set!(model, u=1, v=0.5)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    # Add a Checkpointer with a different prefix
+    prefix = "should_not_use_this_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+        schedule = IterationInterval(10),
+        prefix = prefix
+    )
+
+    @test_nowarn run!(simulation)
+
+    # Manually checkpoint with explicit filepath
+    custom_filepath = "custom_checkpoint_$(typeof(arch)).jld2"
+    @test_nowarn checkpoint(simulation, filepath=custom_filepath)
+
+    @test isfile(custom_filepath)
+    @test !isfile("$(prefix)_iteration5.jld2")
+
+    # Verify we can restore from it
+    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+
+    @test_nowarn set!(new_simulation, custom_filepath)
+    @test iteration(new_simulation) == 5
+
+    test_model_equality(new_model, model)
+
+    rm(custom_filepath, force=true)
+
+    return nothing
+end
+
 for arch in archs
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
@@ -1657,5 +1778,12 @@ for arch in archs
         @info "  Testing edge cases [$(typeof(arch))]..."
         test_checkpoint_empty_tracers(arch)
         test_checkpoint_missing_file_warning(arch)
+    end
+
+    @testset "Manual checkpointing [$(typeof(arch))]" begin
+        @info "  Testing manual checkpointing [$(typeof(arch))]..."
+        test_manual_checkpoint_with_checkpointer(arch)
+        test_manual_checkpoint_without_checkpointer(arch)
+        test_manual_checkpoint_with_filepath(arch)
     end
 end
