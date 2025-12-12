@@ -1,6 +1,4 @@
 using Oceananigans
-using Oceananigans.TurbulenceClosures: Horizontal
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, PrescribedVelocityFields
 
 using Statistics
 using JLD2
