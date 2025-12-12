@@ -176,7 +176,7 @@ end
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(zonal_wind_stress))
 
 model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, coriolis, closure, buoyancy,
-                                    boundary_conditions = (; u=u_bcs), tracers=(:T, :S, :e))
+                                    boundary_conditions = (; u=u_bcs), tracers=(:T, :S))
 ```
 
 Mutating the state of the HydrostaticFreeSurfaceModel works similarly as for the NonhydrostaticModel ---
