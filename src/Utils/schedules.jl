@@ -175,16 +175,10 @@ function (schedule::WallTimeInterval)(model)
     end
 end
 
-function prognostic_state(schedule::WallTimeInterval)
-    return (
-        previous_actuation_time = schedule.previous_actuation_time,
-    )
-end
-
-function restore_prognostic_state!(schedule::WallTimeInterval, state)
-    schedule.previous_actuation_time = state.previous_actuation_time
-    return schedule
-end
+# WallTimeInterval uses absolute wall clock time, which doesn't make sense to checkpoint.
+# On restore, the schedule starts fresh from the current wall time.
+prognostic_state(::WallTimeInterval) = nothing
+restore_prognostic_state!(schedule::WallTimeInterval, ::Nothing) = schedule
 
 #####
 ##### SpecifiedTimes

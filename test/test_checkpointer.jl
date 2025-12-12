@@ -1299,7 +1299,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
         @test restored_schedule.first_actuation_time == original_schedule.first_actuation_time
         @test restored_schedule.actuations == original_schedule.actuations
     elseif schedule_type == :WallTimeInterval
-        @test restored_schedule.previous_actuation_time ≈ original_schedule.previous_actuation_time
+        @test restored_schedule.interval == original_schedule.interval
     end
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
