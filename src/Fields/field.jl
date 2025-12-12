@@ -866,9 +866,7 @@ nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=
 #####
 
 function prognostic_state(field::Field)
-    return (
-        data = prognostic_state(field.data),
-    )
+    return (; data = prognostic_state(field.data))
 end
 
 function restore_prognostic_state!(field::Field, state)
