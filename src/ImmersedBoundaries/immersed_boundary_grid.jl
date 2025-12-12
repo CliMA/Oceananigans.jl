@@ -1,3 +1,5 @@
+using Oceananigans.Grids: Grids, AbstractUnderlyingGrid, halo_size, topology
+
 """
     abstract type AbstractImmersedBoundary
 
@@ -107,14 +109,14 @@ inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = Grids.topology_strs(grid)
 
     return string(size_summary(size(grid)),
                   " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-function show(io::IO, ibg::ImmersedBoundaryGrid)
+function Base.show(io::IO, ibg::ImmersedBoundaryGrid)
     print(io, summary(ibg), ":", "\n",
              "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
              "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
@@ -124,10 +126,17 @@ end
 
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 
-function on_architecture(arch, ibg::IBG)
+function Architectures.on_architecture(arch, ibg::IBG)
     underlying_grid   = on_architecture(arch, ibg.underlying_grid)
     immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
+
+function Base.:(==)(grid1::IBG, grid2::IBG)
+    equal_underlying_grids = grid1.underlying_grid == grid2.underlying_grid
+    equal_immersed_boundaries = grid1.immersed_boundary == grid2.immersed_boundary
+
+    return equal_underlying_grids && equal_immersed_boundaries
+end

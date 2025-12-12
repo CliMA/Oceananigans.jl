@@ -3,7 +3,7 @@ module Models
 export
     NonhydrostaticModel, BackgroundField, BackgroundFields,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
-    HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
+    HydrostaticFreeSurfaceModel, ZStarCoordinate, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
     LagrangianParticles, DroguedParticleDynamics,
@@ -12,18 +12,19 @@ export
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
-using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
-using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered
+using Oceananigans.Fields: Field, flattened_unique_values
+using Oceananigans.Grids: halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
-using Oceananigans.Utils: Time
+using Oceananigans.TimeSteppers: Clock, update_state!
+using Oceananigans.Units: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
+import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: reset!, set_clock!
+import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
@@ -88,6 +89,9 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
+# Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
+function materialize_free_surface end
+
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
@@ -105,17 +109,16 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField, BackgroundField
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStar, ZCoordinate
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
-
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
 
-set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
+set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
 """
     possible_field_time_series(model::OceananigansModels)
@@ -126,7 +129,7 @@ function possible_field_time_series(model::OceananigansModels)
     forcing = model.forcing
     model_fields = fields(model)
     # Note: we may need to include other objects in the tuple below,
-    # such as model.diffusivity_fields
+    # such as model.closure_fields
     return tuple(model_fields, forcing)
 end
 
@@ -212,12 +215,13 @@ function required_checkpoint_properties(model::OceananigansModels)
     return properties
 end
 
-# Implementation of a `seawater_density` `KernelFunctionOperation
-# applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
+# Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
+include("buoyancy_operation.jl")
 include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
+include("set_model.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")

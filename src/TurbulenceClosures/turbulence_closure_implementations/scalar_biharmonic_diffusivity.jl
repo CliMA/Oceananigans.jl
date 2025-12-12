@@ -1,4 +1,3 @@
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.Utils: prettysummary
 
 """
@@ -96,7 +95,7 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
     return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
+function Utils.with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(closure.ν, κ)
 end
@@ -126,7 +125,7 @@ function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, N, <:
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
+function Architectures.on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)

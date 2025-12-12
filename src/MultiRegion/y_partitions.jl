@@ -1,5 +1,4 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
-using Oceananigans.BoundaryConditions: MCBC, PBC
 
 const EqualYPartition = YPartition{<:Number}
 
@@ -76,7 +75,6 @@ function reconstruct_size(mrg, p::YPartition)
 end
 
 function reconstruct_extent(mrg, p::YPartition)
-    switch_device!(mrg.devices[1])
     x = cpu_face_constructor_x(mrg.region_grids.regional_objects[1])
     z = cpu_face_constructor_z(mrg.region_grids.regional_objects[1])
 
@@ -86,7 +84,6 @@ function reconstruct_extent(mrg, p::YPartition)
     else
         y = [cpu_face_constructor_y(mrg.region_grids.regional_objects[1])...]
         for (idx, grid) in enumerate(mrg.region_grids.regional_objects[2:end])
-            switch_device!(mrg.devices[idx])
             y = [y..., cpu_face_constructor_y(grid)[2:end]...]
         end
     end

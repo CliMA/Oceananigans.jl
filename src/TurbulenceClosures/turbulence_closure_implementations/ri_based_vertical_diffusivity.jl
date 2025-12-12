@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.BuoyancyFormulations: ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -180,13 +180,13 @@ const f = Face()
 @inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κu
 @inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κc
 
-with_tracers(tracers, closure::FlavorOfRBVD) = closure
+Utils.with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfRBVD)
-    κc = Field((Center, Center, Face), grid)
-    κu = Field((Center, Center, Face), grid)
-    Ri = Field((Center, Center, Face), grid)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfRBVD)
+    κc = Field{Center, Center, Face}(grid)
+    κu = Field{Center, Center, Face}(grid)
+    Ri = Field{Center, Center, Face}(grid)
     return (; κc, κu, Ri)
 end
 
@@ -194,8 +194,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
     arch = model.architecture
     grid = model.grid
     clock = model.clock
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 

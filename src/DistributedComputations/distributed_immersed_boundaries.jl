@@ -2,10 +2,8 @@ using Oceananigans.Utils: getnamewrapper
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
-    GridFittedBottom,
     GridFittedBoundary,
     compute_mask,
-    CellMaps,
     has_active_cells_map,
     has_active_z_columns,
     serially_build_active_cells_map,
@@ -96,7 +94,7 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     # consistent with the size of the grid
     if any(size(ib.bottom_height) .!= bottom_heigth_size)
         @warn "Resizing the bottom field to match the grids' halos"
-        bottom_field = Field((Center, Center, Nothing), grid)
+        bottom_field = Field{Center, Center, Nothing}(grid)
         cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny]
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)

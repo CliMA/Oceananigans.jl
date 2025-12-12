@@ -1,6 +1,6 @@
 env:
-  JULIA_VERSION: "1.10.10"
-  JULIA_MINOR_VERSION: "1.10"
+  JULIA_VERSION: "1.12.2"
+  JULIA_MINOR_VERSION: "1.12"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -54,7 +54,7 @@ steps:
         export BENCHMARK_GROUP
         OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
 
-        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS profile --output=\${OUTPUT_PREFIX} --force-overwrite true --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
         $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
 
         # Remove generated output files

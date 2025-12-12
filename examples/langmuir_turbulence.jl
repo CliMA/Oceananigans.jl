@@ -45,12 +45,12 @@ grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
 # (half the distance from wave crest to wave trough), which determine the wave
 # frequency and the vertical scale of the Stokes drift profile.
 
-using Oceananigans.BuoyancyFormulations: g_Earth
+g = Oceananigans.defaults.gravitational_acceleration
 
- amplitude = 0.8 # m
+amplitude = 0.8 # m
 wavelength = 60  # m
 wavenumber = 2π / wavelength # m⁻¹
- frequency = sqrt(g_Earth * wavenumber) # s⁻¹
+frequency = sqrt(g * wavenumber) # s⁻¹
 
 ## The vertical scale over which the Stokes drift of a monochromatic surface wave
 ## decays away from the surface is `1/2wavenumber`, or
@@ -60,7 +60,7 @@ const vertical_scale = wavelength / 4π
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
-# To run this example on the GPU, include `GPU()` in the `RectilinearGrid` constructor above.
+# To run this example on the CPU, replace `GPU()` with `CPU()` in the `RectilinearGrid` constructor above.
 #
 # The Stokes drift profile is
 

@@ -1,17 +1,12 @@
-using Oceananigans.BuoyancyFormulations
-using Oceananigans.Coriolis
-using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
-using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, closure_turbulent_velocity
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
 using KernelAbstractions: @private
-
-import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
@@ -129,7 +124,7 @@ where `c = C[tracer_index]`.
                          biogeochemical_auxiliary_fields(biogeochemistry))
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
-    closure_velocities = closure_turbulent_velocity(closure, diffusivities, val_tracer_name)
+    closure_velocities = closure_auxiliary_velocity(closure, diffusivities, val_tracer_name)
 
     total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
