@@ -126,8 +126,10 @@ end
 #####
 
 prognostic_state(obj) = obj
+prognostic_state(::NamedTuple{()}) = nothing
 
 function prognostic_state(dict::AbstractDict)
+    isempty(dict) && return nothing
     ks = tuple(keys(dict)...)
     vs = Tuple(prognostic_state(v) for v in values(dict))
     return NamedTuple{ks}(vs)
@@ -197,6 +199,8 @@ load_checkpoint_state(::Nothing; base_path="simulation") = nothing
 
 restore_prognostic_state!(obj, ::Nothing) = nothing
 restore_prognostic_state!(::NamedTuple{()}, state) = nothing
+restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
+restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
 restore_prognostic_state!(::Nothing, state) = nothing
 restore_prognostic_state!(::Nothing, ::Nothing) = nothing
 
@@ -209,7 +213,7 @@ end
 
 function restore_prognostic_state!(dict::AbstractDict, state)
     for (name, value) in pairs(state)
-        restore_prognostic_state!(dict[name], value)
+        haskey(dict, name) && restore_prognostic_state!(dict[name], value)
     end
     return dict
 end
