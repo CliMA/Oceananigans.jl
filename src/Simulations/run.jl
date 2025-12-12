@@ -56,6 +56,26 @@ function aligned_time_step(sim::Simulation, Δt)
     return aligned_Δt
 end
 
+"""
+    set!(simulation, pickup)
+
+Restore `simulation` state from a checkpoint file.
+
+Possible values for `pickup` are:
+
+  * `pickup=true` restores from the latest checkpoint associated with
+    the `Checkpointer` in `simulation.output_writers`.
+
+  * `pickup=iteration::Int` restores from the checkpointed file associated
+    with `iteration` and the `Checkpointer` in `simulation.output_writers`.
+
+  * `pickup=filepath::String` restores from checkpointer data in `filepath`.
+
+Note: `pickup=true` and `pickup=iteration` require that `simulation.output_writers`
+contains exactly one checkpointer.
+
+See also [`run!`](@ref), which accepts a `pickup` keyword argument.
+"""
 function set!(sim::Simulation, pickup::Union{Bool, Integer, String})
     checkpoint_filepath = checkpoint_path(pickup, sim.output_writers)
     state = load_checkpoint_state(checkpoint_filepath)
