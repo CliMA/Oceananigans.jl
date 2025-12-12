@@ -320,22 +320,9 @@ function restore_prognostic_state!(model::NonhydrostaticModel, state)
     restore_prognostic_state!(model.particles, state.particles)
     restore_prognostic_state!(model.velocities, state.velocities)
     restore_prognostic_state!(model.timestepper, state.timestepper)
-
-    if length(model.tracers) > 0
-        restore_prognostic_state!(model.tracers, state.tracers)
-    end
-
-    if !isnothing(model.closure_fields)
-        restore_prognostic_state!(model.closure_fields, state.closure_fields)
-    end
-
-    if length(model.auxiliary_fields) > 0
-        restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
-    end
-
-    if !isnothing(model.boundary_mass_fluxes)
-        restore_prognostic_state!(model.boundary_mass_fluxes, state.boundary_mass_fluxes)
-    end
-
+    restore_prognostic_state!(model.tracers, state.tracers)
+    restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
+    restore_prognostic_state!(model.boundary_mass_fluxes, state.boundary_mass_fluxes)
     return model
 end

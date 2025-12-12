@@ -254,14 +254,7 @@ function restore_prognostic_state!(model::ShallowWaterModel, state)
     restore_prognostic_state!(model.solution, state.solution)
     restore_prognostic_state!(model.velocities, state.velocities)
     restore_prognostic_state!(model.timestepper, state.timestepper)
-
-    if length(model.tracers) > 0
-        restore_prognostic_state!(model.tracers, state.tracers)
-    end
-
-    if !isnothing(model.closure_fields)
-        restore_prognostic_state!(model.closure_fields, state.closure_fields)
-    end
-
+    restore_prognostic_state!(model.tracers, state.tracers)
+    restore_prognostic_state!(model.closure_fields, state.closure_fields)
     return model
 end

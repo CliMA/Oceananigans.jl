@@ -295,19 +295,9 @@ end
 function restore_prognostic_state!(sim::Simulation, state)
     restore_prognostic_state!(sim.model, state.model)
     sim.Δt = state.Δt
-
-    if length(sim.diagnostics) > 0
-        restore_prognostic_state!(sim.diagnostics, state.diagnostics)
-    end
-
-    if length(sim.output_writers) > 0
-        restore_prognostic_state!(sim.output_writers, state.output_writers)
-    end
-
-    if length(sim.callbacks) > 0
-        restore_prognostic_state!(sim.callbacks, state.callbacks)
-    end
-
+    restore_prognostic_state!(sim.diagnostics, state.diagnostics)
+    restore_prognostic_state!(sim.output_writers, state.output_writers)
+    restore_prognostic_state!(sim.callbacks, state.callbacks)
     sim.run_wall_time = state.run_wall_time
     sim.align_time_step = state.align_time_step
     sim.verbose = state.verbose

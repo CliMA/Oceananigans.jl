@@ -196,6 +196,8 @@ end
 load_checkpoint_state(::Nothing; base_path="simulation") = nothing
 
 restore_prognostic_state!(obj, ::Nothing) = nothing
+restore_prognostic_state!(::NamedTuple{()}, state) = nothing
+restore_prognostic_state!(::Nothing, state) = nothing
 
 function restore_prognostic_state!(arr::AbstractArray, state)
     arch = architecture(arr)
