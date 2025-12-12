@@ -128,6 +128,12 @@ end
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
 
+function prognostic_state(nt::NamedTuple)
+    ks = keys(nt)
+    vs = Tuple(prognostic_state(v) for v in values(nt))
+    return NamedTuple{ks}(vs)
+end
+
 function prognostic_state(dict::AbstractDict)
     isempty(dict) && return nothing
     ks = tuple(keys(dict)...)
@@ -238,6 +244,10 @@ function restore_prognostic_state!(sa::StructArray, state)
 
     return sa
 end
+
+# Ref handling: dereference on save, set on restore
+prognostic_state(r::Ref) = r[]
+restore_prognostic_state!(r::Ref, value) = (r[] = value; r)
 
 #####
 ##### Checkpointing the checkpointer

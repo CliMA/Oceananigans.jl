@@ -448,32 +448,3 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
 
     return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
-
-#####
-##### Checkpointing
-#####
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-
-# Type alias for LagrangianAveragedDynamicSmagorinsky closure fields
-# The model prepends νₑ to the closure-specific fields
-const LagrangianSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
-
-function prognostic_state(cf::LagrangianSmagorinskyFields)
-    return (
-        previous_compute_time = cf.previous_compute_time[],
-        𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
-        𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
-        𝒥ᴸᴹ⁻ = prognostic_state(cf.𝒥ᴸᴹ⁻),
-        𝒥ᴹᴹ⁻ = prognostic_state(cf.𝒥ᴹᴹ⁻),
-    )
-end
-
-function restore_prognostic_state!(cf::LagrangianSmagorinskyFields, state)
-    cf.previous_compute_time[] = state.previous_compute_time
-    restore_prognostic_state!(cf.𝒥ᴸᴹ, state.𝒥ᴸᴹ)
-    restore_prognostic_state!(cf.𝒥ᴹᴹ, state.𝒥ᴹᴹ)
-    restore_prognostic_state!(cf.𝒥ᴸᴹ⁻, state.𝒥ᴸᴹ⁻)
-    restore_prognostic_state!(cf.𝒥ᴹᴹ⁻, state.𝒥ᴹᴹ⁻)
-    return cf
-end

@@ -359,25 +359,3 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n')
     print(io, "└── maximum_viscosity: ", prettysummary(closure.maximum_viscosity))
 end
-
-#####
-##### Checkpointing
-#####
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-
-# Type alias for RiBasedVerticalDiffusivity closure fields
-const RiBasedDiffusivityFields = NamedTuple{(:κc, :κu, :Ri)}
-
-function prognostic_state(cf::RiBasedDiffusivityFields)
-    return (
-        κc = prognostic_state(cf.κc),
-        κu = prognostic_state(cf.κu),
-    )
-end
-
-function restore_prognostic_state!(cf::RiBasedDiffusivityFields, state)
-    restore_prognostic_state!(cf.κc, state.κc)
-    restore_prognostic_state!(cf.κu, state.κu)
-    return cf
-end
