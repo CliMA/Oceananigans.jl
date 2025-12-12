@@ -221,20 +221,19 @@ julia> using Oceananigans
 julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
                                             topology=(Periodic, Periodic, Bounded));
 
-julia> zC = znodes(horz_periodic_grid, Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
+julia> z = znodes(horz_periodic_grid, Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
+5-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), :) with eltype Float64 with indices 0:4:
+ -1.1666666666666667
  -0.8333333333333334
  -0.5
  -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
--1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
+  0.16666666666666666
 ```
 """
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
