@@ -1124,6 +1124,8 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
         schedule = ConsecutiveIterations(TimeInterval(0.5))
     elseif schedule_type == :TimeInterval
         schedule = TimeInterval(0.5)
+    elseif schedule_type == :WallTimeInterval
+        schedule = WallTimeInterval(0.5)  # 0.5 seconds
     end
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=15)
@@ -1158,6 +1160,8 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
         new_schedule = ConsecutiveIterations(TimeInterval(0.5))
     elseif schedule_type == :TimeInterval
         new_schedule = TimeInterval(0.5)
+    elseif schedule_type == :WallTimeInterval
+        new_schedule = WallTimeInterval(0.5)
     end
 
     new_simulation.callbacks[:test_schedule] = Callback(_ -> nothing, new_schedule)
@@ -1179,6 +1183,8 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     elseif schedule_type == :TimeInterval
         @test restored_schedule.first_actuation_time == original_schedule.first_actuation_time
         @test restored_schedule.actuations == original_schedule.actuations
+    elseif schedule_type == :WallTimeInterval
+        @test restored_schedule.previous_actuation_time == original_schedule.previous_actuation_time
     end
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
@@ -1501,7 +1507,7 @@ for arch in archs
         end
     end
 
-    for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval)
+    for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval, :WallTimeInterval)
         @testset "Stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]" begin
             @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
             test_stateful_schedule_checkpointing(arch, schedule_type)
