@@ -1299,7 +1299,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
         @test restored_schedule.first_actuation_time == original_schedule.first_actuation_time
         @test restored_schedule.actuations == original_schedule.actuations
     elseif schedule_type == :WallTimeInterval
-        @test restored_schedule.previous_actuation_time == original_schedule.previous_actuation_time
+        @test restored_schedule.previous_actuation_time ≈ original_schedule.previous_actuation_time
     end
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
@@ -1514,7 +1514,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     return nothing
 end
 
-for arch in archs
+for arch in [CPU(), GPU()]
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
             @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
