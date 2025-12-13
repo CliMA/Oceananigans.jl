@@ -211,9 +211,9 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     @testset "Testing WENO reconstruction" begin
         for s in (scheme, rscheme1, rscheme2, rscheme3, rscheme4)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme5, 1, c)
-                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme5, 1, c)
-                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme5, 1, c)
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme5, 1, bias, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_yᵃᶠᵃ(i, j, k, grid, rscheme5, 1, bias, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme5, 1, bias, c)
             end
         end
             
