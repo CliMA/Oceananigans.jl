@@ -36,12 +36,12 @@ include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
 
-fft_poisson_solver(grid::DistributedGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
+fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
 
-fft_poisson_solver(local_grid::DistributedGrid, global_grid::XYZRegularRG) =
+fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::XYZRegularRG) =
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-fft_poisson_solver(local_grid::DistributedGrid, global_grid::GridWithFourierTridiagonalSolver) =
+fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::GridWithFourierTridiagonalSolver) =
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
 import Oceananigans.Solvers: compute_preconditioner_rhs!, precondition!
