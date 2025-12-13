@@ -374,3 +374,12 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
         return Bounded
     end
 end
+
+function with_number_type(FT, local_grid::DistributedRectilinearGrid)
+    global_grid = reconstruct_global_grid(local_grid)
+    args_local, _ = constructor_arguments(local_grid)
+    _, kwargs_global = constructor_arguments(global_grid)
+    arch = args_local[:architecture]
+    kwargs = kwargs_global
+    return RectilinearGrid(arch, FT; kwargs...)
+end
