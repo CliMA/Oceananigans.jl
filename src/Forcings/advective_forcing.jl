@@ -14,7 +14,7 @@ end
 """
     AdvectiveForcing(u=ZeroField(), v=ZeroField(), w=ZeroField())
 
-Build a forcing term representing advection by the velocity field `u, v, w` with an advection `scheme`.
+Build a forcing term representing advection by the velocity field `u, v, w`.
 
 Example
 =======
