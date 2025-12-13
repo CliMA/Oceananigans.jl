@@ -700,7 +700,7 @@ get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
-# TODO make this Float32 friendly
+# TODO make this Float32 friendly.
 get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
@@ -742,15 +742,10 @@ Return the interior view of `r`, materialized if necessary to be GPU-native on M
 MetalGPU does not support ReshapedArray in kernels,
 so copying ensures the reduction operates on a GPU-native array.
 """
-function safe_interior(r::AbstractField)
-    interior_r = interior(r)
+safe_interior(r::AbstractField) = safe_interior(architecture(r), r)
 
-    # Only materialize if the field uses Float32 (MetalGPU) and interior_r is a wrapper
-    if eltype(r) == Float32 && parent(interior_r) !== interior_r
-        interior_r = copy(interior_r)
-    end
-    return interior_r
-end
+# Extended in the OceananigansMetalExt for compatibility with Metal
+safe_interior(arch, r) = interior(r)
 
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
