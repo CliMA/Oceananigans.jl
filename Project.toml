@@ -51,7 +51,7 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 [extensions]
 OceananigansAMDGPUExt = "AMDGPU"
 OceananigansCUDAExt = ["CUDA", "GPUArrays", "GPUArraysCore"]
-OceananigansConservativeRegriddingExt = ["ConservativeRegridding"]
+OceananigansConservativeRegriddingExt = "ConservativeRegridding"
 OceananigansEnzymeExt = "Enzyme"
 OceananigansMakieExt = "Makie"
 OceananigansMetalExt = "Metal"
