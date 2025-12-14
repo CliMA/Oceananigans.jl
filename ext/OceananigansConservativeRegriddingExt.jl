@@ -2,9 +2,9 @@ module OceananigansConservativeRegriddingExt
 
 using ConservativeRegridding
 using Oceananigans
-using Oceananigans.Grids: ξnode, ηnode
 using Oceananigans.Architectures: architecture, array_type
 using Oceananigans.Fields: AbstractField, location
+using Oceananigans.Grids: ξnode, ηnode
 using Oceananigans.Utils: launch!
 
 using KernelAbstractions: @index, @kernel
