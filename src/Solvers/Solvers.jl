@@ -13,7 +13,7 @@ using GPUArraysCore
 using SparseArrays
 using KernelAbstractions
 
-using Oceananigans.Architectures: CPU, GPU, on_architecture, AbstractArchitecture
+using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils
 using Oceananigans.Grids
