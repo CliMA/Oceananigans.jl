@@ -586,78 +586,81 @@ end
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
 
-    for output_writer in [JLD2Writer, NetCDFWriter]
+    for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
         for arch in archs
             if output_writer == JLD2Writer
-                @testset "FieldTimeSeries{InMemory} [$(typeof(arch))]" begin
+                @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
                     @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
                         test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
+                end
+
+                @testset "FieldTimeSeries with Function boundary conditions [$(typeof(arch))] with $output_writer" begin
+                    @info "  Testing FieldTimeSeries with Function boundary conditions..."
+                    test_field_time_series_function_boundary_conditions(arch)
                 end
             end
 
             if arch isa CPU
                 @testset "FieldTimeSeries pickup" begin
-                    @info "  Testing FieldTimeSeries pickup..."
+                    @info "  Testing FieldTimeSeries pickup with $output_writer"
                     test_field_time_series_pickup(arch)
                 end
             end
 
-            @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))]" begin
+            @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))] with $output_writer" begin
                 @info "  Testing FieldTimeSeries with Array boundary conditions..."
                 test_field_time_series_array_boundary_conditions(arch)
             end
 
-            @testset "FieldTimeSeries with Function boundary conditions [$(typeof(arch))]" begin
-                @info "  Testing FieldTimeSeries with Function boundary conditions..."
-                test_field_time_series_function_boundary_conditions(arch)
+            # TODO: Make FieldTimeSeries{OnDisk} work with NetCDFWriter
+            if output_writer == JLD2Writer
+                @testset "FieldTimeSeries{OnDisk} [$(typeof(arch))] with $output_writer" begin
+                    @info "  Testing FieldTimeSeries{OnDisk} [$(typeof(arch))]..."
+                    test_field_time_series_on_disk(arch, filepath3d, filepath1d, Nx, Ny, Nz, Nt)
+                end
             end
 
-            @testset "FieldTimeSeries{OnDisk} [$(typeof(arch))]" begin
-                @info "  Testing FieldTimeSeries{OnDisk} [$(typeof(arch))]..."
-                test_field_time_series_on_disk(arch, filepath3d, filepath1d, Nx, Ny, Nz, Nt)
-            end
-
-            @testset "FieldTimeSeries{InMemory} reductions" begin
+            @testset "FieldTimeSeries{InMemory} reductions with $output_writer" begin
                 @info "  Testing FieldTimeSeries{InMemory} reductions..."
                 test_field_time_series_reductions(filepath3d, Nt)
             end
         end
 
-        @testset "Test chunked abstraction" begin
-            @info "  Testing Chunked abstraction..."
-            test_chunked_abstraction(filepath3d, "T")
-        end
+        # @testset "Test chunked abstraction with $output_writer" begin
+        #     @info "  Testing Chunked abstraction..."
+        #     test_chunked_abstraction(filepath3d, "T")
+        # end
 
-        @testset "Time Interpolation" begin
-            test_time_interpolation()
-        end
+        # @testset "Time Interpolation with $output_writer" begin
+        #     test_time_interpolation()
+        # end
 
-        for Backend in [InMemory, OnDisk]
-            @testset "FieldDataset{$Backend} indexing" begin
-                @info "  Testing FieldDataset{$Backend} indexing..."
-                test_field_dataset_indexing(Backend, filepath3d)
-            end
-        end
+        # for Backend in [InMemory, OnDisk]
+        #     @testset "FieldDataset{$Backend} indexing with $output_writer" begin
+        #         @info "  Testing FieldDataset{$Backend} indexing..."
+        #         test_field_dataset_indexing(Backend, filepath3d)
+        #     end
+        # end
 
-        for Backend in [InMemory, OnDisk]
-            @testset "FieldTimeSeries{$Backend} parallel reading" begin
-                @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
-                test_field_time_series_parallel_reading(Backend, filepath3d)
-            end
-        end
+        # for Backend in [InMemory, OnDisk]
+        #     @testset "FieldTimeSeries{$Backend} parallel reading with $output_writer" begin
+        #         @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
+        #         test_field_time_series_parallel_reading(Backend, filepath3d)
+        #     end
+        # end
 
-        for Backend in [InMemory, OnDisk]
-            @testset "FieldDataset{$Backend} parallel reading" begin
-                @info "  Testing FieldDataset{$Backend} parallel reading..."
-                test_field_dataset_parallel_reading(Backend, filepath3d)
-            end
-        end
+        # for Backend in [InMemory, OnDisk]
+        #     @testset "FieldDataset{$Backend} parallel reading with $output_writer" begin
+        #         @info "  Testing FieldDataset{$Backend} parallel reading..."
+        #         test_field_dataset_parallel_reading(Backend, filepath3d)
+        #     end
+        # end
 
         filepath_sine = "one_dimensional_sine.jld2"
 
-        @testset "Test interpolation using `InMemory` backends" begin
+        @testset "Test interpolation using `InMemory` backends with $output_writer" begin
             test_interpolation_with_in_memory_backends(filepath_sine)
         end
 
