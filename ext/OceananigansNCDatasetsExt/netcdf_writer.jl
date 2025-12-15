@@ -34,7 +34,7 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
         constructed_fd = construct_output(fd, fd.grid, (:, :, :), with_halos)
-        squeezed_field_data = squeeze_data(constructed_fd; array_type)
+        squeezed_field_data = squeeze_nothing_dimensions(constructed_fd; array_type)
         squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
 
         defVar(ds, field_name, squeezed_reshaped_field_data, effective_dim_names; kwargs...)
@@ -449,7 +449,7 @@ Base.close(nc::NetCDFWriter) = close(nc.dataset)
 function save_output!(ds, output, model, output_name, array_type)
     fetched = fetch_output(output, model)
     data = convert_output(fetched, array_type)
-    data = squeeze_data(output, data)
+    data = squeeze_nothing_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons...] = data
     return nothing
@@ -458,7 +458,7 @@ end
 # Saving time-dependent outputs
 function save_output!(ds, output, model, ow, time_index, output_name)
     data = fetch_and_convert_output(output, model, ow)
-    data = squeeze_data(output, data)
+    data = squeeze_nothing_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons..., time_index:time_index] = data
     return nothing

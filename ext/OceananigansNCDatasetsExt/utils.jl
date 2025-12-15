@@ -3,7 +3,7 @@
 #####
 
 """
-    squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)})
+    squeeze_nothing_dimensions(fd::AbstractField, field_data; array_type=Array{eltype(fd)})
 
 Returns the data of the field with the any dimensions where location is Nothing squeezed. For example:
 ```Julia
@@ -24,18 +24,18 @@ infil> c = Field{Center, Center, Nothing}(grid)
 infil> interior(c) |> size
 (2, 3, 1)
 
-infil> squeeze_data(c)
+infil> squeeze_nothing_dimensions(c)
 2×3 Matrix{Float64}:
  0.0  0.0  0.0
  0.0  0.0  0.0
 
-infil> squeeze_data(c) |> size
+infil> squeeze_nothing_dimensions(c) |> size
 (2, 3)
 ```
 
 Note that this will only remove (squeeze) singleton dimensions.
 """
-function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)})
+function squeeze_nothing_dimensions(fd::AbstractField, field_data; array_type=Array{eltype(fd)})
     reduced_dims = effective_reduced_dimensions(fd)
     field_data_cpu = array_type(field_data) # Need to convert to the array type of the field
 
@@ -48,10 +48,10 @@ function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)
     return getindex(field_data_cpu, indices...)
 end
 
-squeeze_data(func, func_data; kwargs...) = func_data
-squeeze_data(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_data(wta.operand, data; kwargs...)
-squeeze_data(fd::AbstractField; kwargs...) = squeeze_data(fd, parent(fd); kwargs...)
-squeeze_data(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data(fd.operand; kwargs...)
+squeeze_nothing_dimensions(func, func_data; kwargs...) = func_data
+squeeze_nothing_dimensions(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_nothing_dimensions(wta.operand, data; kwargs...)
+squeeze_nothing_dimensions(fd::AbstractField; kwargs...) = squeeze_nothing_dimensions(fd, parent(fd); kwargs...)
+squeeze_nothing_dimensions(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_nothing_dimensions(fd.operand; kwargs...)
 
 """
     effective_reduced_dimensions(field)
