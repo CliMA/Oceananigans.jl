@@ -2,6 +2,7 @@ using Oceananigans.Fields: instantiated_location
 using Oceananigans.Architectures: cpu_architecture
 using Oceananigans.Utils: @apply_regionally
 using Oceananigans.Grids: offset_data
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
 import Oceananigans.Fields: Field
 
@@ -39,12 +40,13 @@ function FieldTimeSeries_from_netcdf(path::String, name::String;
 
     isnothing(grid) && (grid = reconstruct_grid(file))
 
-    @warn "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. Defaulting to UnspecifiedBoundaryConditions."
-    boundary_conditions = UnspecifiedBoundaryConditions()
 
     isnothing(location) && (location = file[name].attrib["location"] |> materialize_from_netcdf)
     LX, LY, LZ = location
     loc = (LX(), LY(), LZ())
+
+    @warn "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. Using default FieldBoundaryConditions for `grid` and `location`."
+    boundary_conditions = FieldBoundaryConditions(grid, loc)
 
     isnothing(times) && (times = file["time"] |> collect)
 
@@ -155,10 +157,7 @@ function Field(location, file::NCDataset, name::String, iter;
     grid = on_architecture(architecture, grid)
     raw_data = on_architecture(architecture, raw_data)
     # The following line is commented out because I can't make it work with @apply_regionally
-    #@apply_regionally data = offset_data(raw_data, grid, location, indices)
-    Main.@infiltrate
-    data = offset_data(raw_data, grid, location, indices)
+    @apply_regionally data = offset_data(raw_data, grid, location, indices)
 
-    Main.@infiltrate
     return Field(location, grid; boundary_conditions, indices, data)
 end
