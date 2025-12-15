@@ -1,3 +1,11 @@
+using Oceananigans.Fields: instantiated_location
+using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.Utils: @apply_regionally
+using Oceananigans.Grids: offset_data
+
+import Oceananigans.Fields: Field
+
+
 #####
 ##### FieldTimeSeries from NetCDF
 #####
@@ -95,6 +103,7 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
             file_iter = file_iterations[file_index]
 
             # Note: use the CPU for this step
+            # Main.@infiltrate
             field_n = Field(instantiated_location(fts), file, name, file_iter,
                             grid = on_architecture(CPU(), fts.grid),
                             architecture = cpu_architecture(arch),
@@ -108,4 +117,48 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
     close(file)
 
     return nothing
+end
+
+"""
+    Field(location, file::NCDataset, name::String, iter;
+          grid = nothing,
+          architecture = nothing,
+          indices = (:, :, :),
+          boundary_conditions = nothing,
+          reader_kw = NamedTuple())
+
+Load a field called `name` saved in a NetCDF file at `path` at `iter`ation.
+Unless specified, the `grid` is loaded from `path`.
+"""
+function Field(location, file::NCDataset, name::String, iter;
+               grid = nothing,
+               architecture = nothing,
+               indices = (:, :, :),
+               boundary_conditions = nothing,
+               reader_kw = NamedTuple())
+
+    # Default to CPU if neither architecture nor grid is specified
+    if isnothing(architecture)
+        if isnothing(grid)
+            architecture = CPU()
+        else
+            architecture = Architectures.architecture(grid)
+        end
+    end
+
+    isnothing(grid) && (grid = reconstruct_grid(file))
+    variable_dimensions = dimnames(file[name])
+    time_slice = (ntuple(_ -> :, length(variable_dimensions)-1)..., iter)
+    raw_data = file[name][time_slice...]
+
+    # Change grid to specified architecture?
+    grid = on_architecture(architecture, grid)
+    raw_data = on_architecture(architecture, raw_data)
+    # The following line is commented out because I can't make it work with @apply_regionally
+    #@apply_regionally data = offset_data(raw_data, grid, location, indices)
+    Main.@infiltrate
+    data = offset_data(raw_data, grid, location, indices)
+
+    Main.@infiltrate
+    return Field(location, grid; boundary_conditions, indices, data)
 end

@@ -723,14 +723,14 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
 end
 
 """
-    Field(location, path, name, iter;
+    Field(location, file::JLD2.JLDFile, name::String, iter;
           grid = nothing,
           architecture = nothing,
           indices = (:, :, :),
           boundary_conditions = nothing,
           reader_kw = NamedTuple())
 
-Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
+Load a field called `name` saved in a JLD2 file at `file` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
 function Field(location, file::JLD2.JLDFile, name::String, iter;
