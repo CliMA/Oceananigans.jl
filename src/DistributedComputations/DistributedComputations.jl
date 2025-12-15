@@ -15,7 +15,7 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
 using Oceananigans.Grids: XYZRegularRG
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver
+using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
 import Oceananigans.Solvers: fft_poisson_solver
 
