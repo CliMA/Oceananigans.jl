@@ -22,7 +22,7 @@ function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     return simulation.output_writers[:constant_fields].filepath
 end
 
-function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
+function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(), output_writer=JLD2Writer)
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
     T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(5e-5), bottom = GradientBoundaryCondition(0.01))
@@ -54,45 +54,48 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     fields_to_output = merge(model.velocities, model.tracers, computed_fields)
 
-    filepath3d = "test_3d_output_with_halos.jld2"
-    filepath2d = "test_2d_output_with_halos.jld2"
-    filepath1d = "test_1d_output_with_halos.jld2"
-    split_filepath = "test_split_output.jld2"
-    unsplit_filepath = "test_unsplit_output.jld2"
+    # Determine file extension based on output writer type
+    file_ext = output_writer == JLD2Writer ? ".jld2" : ".nc"
 
-    simulation.output_writers[:jld2_3d_with_halos] = JLD2Writer(model, fields_to_output,
-                                                                filename = filepath3d,
-                                                                with_halos = true,
-                                                                schedule = TimeInterval(30seconds),
-                                                                overwrite_existing = true)
+    filepath3d = "test_3d_output_with_halos" * file_ext
+    filepath2d = "test_2d_output_with_halos" * file_ext
+    filepath1d = "test_1d_output_with_halos" * file_ext
+    split_filepath = "test_split_output" * file_ext
+    unsplit_filepath = "test_unsplit_output" * file_ext
 
-    simulation.output_writers[:jld2_2d_with_halos] = JLD2Writer(model, fields_to_output,
-                                                                filename = filepath2d,
-                                                                indices = (:, :, grid.Nz),
-                                                                with_halos = true,
-                                                                schedule = TimeInterval(30seconds),
-                                                                overwrite_existing = true)
+    simulation.output_writers[:writer_3d_with_halos] = output_writer(model, fields_to_output,
+                                                                     filename = filepath3d,
+                                                                     with_halos = true,
+                                                                     schedule = TimeInterval(30seconds),
+                                                                     overwrite_existing = true)
+
+    simulation.output_writers[:writer_2d_with_halos] = output_writer(model, fields_to_output,
+                                                                     filename = filepath2d,
+                                                                     indices = (:, :, grid.Nz),
+                                                                     with_halos = true,
+                                                                     schedule = TimeInterval(30seconds),
+                                                                     overwrite_existing = true)
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
-    simulation.output_writers[:jld2_1d_with_halos] = JLD2Writer(model, profiles,
-                                                                filename = filepath1d,
-                                                                with_halos = true,
-                                                                schedule = TimeInterval(30seconds),
-                                                                overwrite_existing = true)
+    simulation.output_writers[:writer_1d_with_halos] = output_writer(model, profiles,
+                                                                     filename = filepath1d,
+                                                                     with_halos = true,
+                                                                     schedule = TimeInterval(30seconds),
+                                                                     overwrite_existing = true)
 
-    simulation.output_writers[:unsplit_jld2] = JLD2Writer(model, profiles,
-                                                          filename = unsplit_filepath,
-                                                          with_halos = true,
-                                                          schedule = TimeInterval(10seconds),
-                                                          overwrite_existing = true)
+    simulation.output_writers[:unsplit_writer] = output_writer(model, profiles,
+                                                               filename = unsplit_filepath,
+                                                               with_halos = true,
+                                                               schedule = TimeInterval(10seconds),
+                                                               overwrite_existing = true)
 
-    simulation.output_writers[:split_jld2] = JLD2Writer(model, profiles,
-                                                        filename = split_filepath,
-                                                        with_halos = true,
-                                                        schedule = TimeInterval(10seconds),
-                                                        file_splitting = TimeInterval(30seconds),
-                                                        overwrite_existing = true)
+    simulation.output_writers[:split_writer] = output_writer(model, profiles,
+                                                             filename = split_filepath,
+                                                             with_halos = true,
+                                                             schedule = TimeInterval(10seconds),
+                                                             file_splitting = TimeInterval(30seconds),
+                                                             overwrite_existing = true)
 
     run!(simulation)
 

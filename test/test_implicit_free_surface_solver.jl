@@ -147,7 +147,7 @@ end
 
         Δt₁ = 900
         Δt₂ = 920.0
-        
+
         for m in (pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
@@ -157,7 +157,7 @@ end
 
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
-     
+
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))
 
