@@ -64,6 +64,55 @@ end
 
 iterations_from_file(file::NCDataset) = 1:length(keys(file["time"][:]))
 
+"""
+    inflate_nothing_dimensions(data, location)
+
+Add singleton dimensions to `data` where `location` is `Nothing`. This is the inverse
+operation of `squeeze_nothing_dimensions`.
+
+For example, if `location = (Center, Center, Nothing)`, the data will have a singleton
+dimension added in the third (z) direction, transforming data of size `(Nx, Ny)` to
+size `(Nx, Ny, 1)`.
+
+# Arguments
+- `data`: Array data to inflate
+- `location`: Tuple of location types (e.g., `(Center, Face, Nothing)`)
+
+# Returns
+Reshaped array with singleton dimensions added where location is `Nothing`.
+"""
+function inflate_nothing_dimensions(data, location, grid)
+    # Determine which dimensions need to be inflated (where location is Nothing)
+    inflated_dims = []
+    for (i, loc) in enumerate(location)
+        if loc == Nothing || topology(grid, i) == Flat
+            push!(inflated_dims, i)
+        end
+    end
+
+    # If no dimensions need inflating, return original data
+    isempty(inflated_dims) && return data
+
+    # Build new shape by inserting singleton dimensions
+    original_shape = collect(size(data))
+    new_shape = Int[]
+    original_dim_idx = 1
+
+    for i in 1:3
+        if i ∈ inflated_dims
+            push!(new_shape, 1)
+        else
+            if original_dim_idx <= length(original_shape)
+                push!(new_shape, original_shape[original_dim_idx])
+                original_dim_idx += 1
+            end
+        end
+    end
+
+    # Reshape the data to add singleton dimensions
+    return reshape(data, new_shape...)
+end
+
 function find_time_index(t, file_times, Δt)
     # Find the index in file_times that is closest to t
     for (i, file_time) in enumerate(file_times)
@@ -152,12 +201,12 @@ function Field(location, file::NCDataset, name::String, iter;
     variable_dimensions = dimnames(file[name])
     time_slice = (ntuple(_ -> :, length(variable_dimensions)-1)..., iter)
     raw_data = file[name][time_slice...]
+    raw_inflated_data = inflate_nothing_dimensions(raw_data, location, grid)
 
     # Change grid to specified architecture?
     grid = on_architecture(architecture, grid)
-    raw_data = on_architecture(architecture, raw_data)
-    # The following line is commented out because I can't make it work with @apply_regionally
-    @apply_regionally data = offset_data(raw_data, grid, location, indices)
+    raw_inflated_data = on_architecture(architecture, raw_inflated_data)
+    @apply_regionally data = offset_data(raw_inflated_data, grid, location, indices)
 
     return Field(location, grid; boundary_conditions, indices, data)
 end
