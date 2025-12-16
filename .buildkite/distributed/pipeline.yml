@@ -20,6 +20,9 @@ steps:
       TEST_ARCHITECTURE: "GPU"
       MPI_TEST: "false" # initialization is not an MPI test
     command:
+      - |
+        echo "--- Clearing depot"
+        rm -rf ${JULIA_DEPOT_PATH}
       - echo "--- Initialize distributed tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
