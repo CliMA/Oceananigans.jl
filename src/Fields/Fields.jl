@@ -48,9 +48,9 @@ Build a field from array `a` at `loc` and on `grid`.
     f = Field(loc, grid)
     a = on_architecture(architecture(grid), a)
     try
-        copyto!(parent(f), a)
+        set!(f, a)
     catch
-        f .= a
+        parent(f) .= parent(a)
     end
     return f
 end

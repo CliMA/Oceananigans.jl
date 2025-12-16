@@ -480,7 +480,7 @@ end
 
             @info "  Testing field construction with `field` function..."
 
-            array_data = on_architecture(architecture(grid), ones(FT, Nx, Nx, Nx))
+            array_data = ones(FT, Nx, Nx, Nx)
             f = field((Center, Center, Center), array_data, grid)
             @test @allowscalar all(interior(f) .== 1)
 
