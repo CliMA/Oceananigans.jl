@@ -3,7 +3,9 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
+
 using Random
+using NCDatasets
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
@@ -628,43 +630,46 @@ end
             end
         end
 
-        @testset "Test chunked abstraction with $output_writer" begin
-            @info "  Testing Chunked abstraction..."
-            test_chunked_abstraction(filepath3d, "T")
-        end
+        # TODO: Make all of these features work with NetCDFWriter
+        if output_writer == JLD2Writer
+            @testset "Test chunked abstraction with $output_writer" begin
+                @info "  Testing Chunked abstraction..."
+                test_chunked_abstraction(filepath3d, "T")
+            end
 
-        for Backend in [InMemory, OnDisk]
-            @testset "FieldDataset{$Backend} indexing with $output_writer" begin
-                @info "  Testing FieldDataset{$Backend} indexing..."
-                test_field_dataset_indexing(Backend, filepath3d)
+            for Backend in [InMemory, OnDisk]
+                @testset "FieldTimeSeries{$Backend} parallel reading with $output_writer" begin
+                    @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
+                    test_field_time_series_parallel_reading(Backend, filepath3d)
+                end
+            end
+
+            for Backend in [InMemory, OnDisk]
+                @testset "FieldDataset{$Backend} indexing with $output_writer" begin
+                    @info "  Testing FieldDataset{$Backend} indexing..."
+                    test_field_dataset_indexing(Backend, filepath3d)
+                end
+            end
+
+            for Backend in [InMemory, OnDisk]
+                @testset "FieldDataset{$Backend} parallel reading with $output_writer" begin
+                    @info "  Testing FieldDataset{$Backend} parallel reading..."
+                    test_field_dataset_parallel_reading(Backend, filepath3d)
+                end
             end
         end
-
-        # for Backend in [InMemory, OnDisk]
-        #     @testset "FieldTimeSeries{$Backend} parallel reading with $output_writer" begin
-        #         @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
-        #         test_field_time_series_parallel_reading(Backend, filepath3d)
-        #     end
-        # end
-
-        # for Backend in [InMemory, OnDisk]
-        #     @testset "FieldDataset{$Backend} parallel reading with $output_writer" begin
-        #         @info "  Testing FieldDataset{$Backend} parallel reading..."
-        #         test_field_dataset_parallel_reading(Backend, filepath3d)
-        #     end
-        # end
 
         rm(filepath1d)
         rm(filepath2d, force=true) # This file doesn't exist if we use NetCDFWriter
         rm(filepath3d)
     end
 
-    @testset "Time Interpolation with $output_writer" begin
+    @testset "Time Interpolation" begin
         test_time_interpolation()
     end
 
     filepath_sine = "one_dimensional_sine.jld2"
-    @testset "Test interpolation using `InMemory` backends with $output_writer" begin
+    @testset "Test interpolation using `InMemory` backend" begin
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
     rm(filepath_sine)
