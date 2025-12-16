@@ -484,10 +484,18 @@ end
             f = field((Center, Center, Center), array_data, grid)
             @test @allowscalar all(interior(f) .== 1)
 
+            # With an OffsetArray or a Field, we point to the same data
             offset_data = Oceananigans.Grids.new_data(FT, grid, (Center(), Center(), Center()))
             fill!(offset_data, 1)
             f = field((Center, Center, Center), offset_data, grid)
             @test @allowscalar all(f.data .== 1)
+            @test f.data === offset_data
+
+            field_data = CenterField(grid)
+            set!(field_data, 1)
+            f = field((Center, Center, Center), field_data, grid)
+            @test @allowscalar all(interior(f) .== 1)
+            @test f === field_data
 
             number_data = FT(1)
             f = field((Center, Center, Center), number_data, grid)
