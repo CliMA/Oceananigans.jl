@@ -628,14 +628,14 @@ end
             end
         end
 
-        # @testset "Test chunked abstraction with $output_writer" begin
-        #     @info "  Testing Chunked abstraction..."
-        #     test_chunked_abstraction(filepath3d, "T")
-        # end
+        @testset "Test chunked abstraction with $output_writer" begin
+            @info "  Testing Chunked abstraction..."
+            test_chunked_abstraction(filepath3d, "T")
+        end
 
-        # @testset "Time Interpolation with $output_writer" begin
-        #     test_time_interpolation()
-        # end
+        @testset "Time Interpolation with $output_writer" begin
+            test_time_interpolation()
+        end
 
         # for Backend in [InMemory, OnDisk]
         #     @testset "FieldDataset{$Backend} indexing with $output_writer" begin
@@ -658,15 +658,14 @@ end
         #     end
         # end
 
-        filepath_sine = "one_dimensional_sine.jld2"
-
-        @testset "Test interpolation using `InMemory` backends with $output_writer" begin
-            test_interpolation_with_in_memory_backends(filepath_sine)
-        end
-
         rm(filepath1d)
         rm(filepath2d, force=true) # This file doesn't exist if we use NetCDFWriter
         rm(filepath3d)
-        rm(filepath_sine)
     end
+
+    filepath_sine = "one_dimensional_sine.jld2"
+    @testset "Test interpolation using `InMemory` backends with $output_writer" begin
+        test_interpolation_with_in_memory_backends(filepath_sine)
+    end
+    rm(filepath_sine)
 end
