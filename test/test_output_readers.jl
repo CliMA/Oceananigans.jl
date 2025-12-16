@@ -633,16 +633,12 @@ end
             test_chunked_abstraction(filepath3d, "T")
         end
 
-        @testset "Time Interpolation with $output_writer" begin
-            test_time_interpolation()
+        for Backend in [InMemory, OnDisk]
+            @testset "FieldDataset{$Backend} indexing with $output_writer" begin
+                @info "  Testing FieldDataset{$Backend} indexing..."
+                test_field_dataset_indexing(Backend, filepath3d)
+            end
         end
-
-        # for Backend in [InMemory, OnDisk]
-        #     @testset "FieldDataset{$Backend} indexing with $output_writer" begin
-        #         @info "  Testing FieldDataset{$Backend} indexing..."
-        #         test_field_dataset_indexing(Backend, filepath3d)
-        #     end
-        # end
 
         # for Backend in [InMemory, OnDisk]
         #     @testset "FieldTimeSeries{$Backend} parallel reading with $output_writer" begin
@@ -661,6 +657,10 @@ end
         rm(filepath1d)
         rm(filepath2d, force=true) # This file doesn't exist if we use NetCDFWriter
         rm(filepath3d)
+    end
+
+    @testset "Time Interpolation with $output_writer" begin
+        test_time_interpolation()
     end
 
     filepath_sine = "one_dimensional_sine.jld2"
