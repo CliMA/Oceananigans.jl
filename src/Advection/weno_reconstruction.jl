@@ -23,7 +23,7 @@ end
     WENO([FT=Float64, FT2=Float32;]
          order = 5,
          bounds = nothing,
-         minimum_buffer_upwind_order = 1)
+         minimum_buffer_upwind_order = 3)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -77,8 +77,7 @@ WENO{5, Float64, Float32}(order=9)
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
-              bounds = nothing,
-              minimum_buffer_upwind_order = 1)
+              bounds = nothing)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
