@@ -8,6 +8,8 @@ export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
 export interpolate
 
+using OffsetArrays: OffsetArray
+
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
@@ -53,6 +55,7 @@ Build a field from array `a` at `loc` and on `grid`.
     return f
 end
 
+@inline field(loc, a::OffsetArray, grid) = field(loc, parent(a), grid)
 @inline field(loc, a::Function, grid) = FunctionField(loc, a, grid)
 @inline field(loc, a::Number, grid) = ConstantField(a)
 @inline field(loc, a::ZeroField, grid) = a
