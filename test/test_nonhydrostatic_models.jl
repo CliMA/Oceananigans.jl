@@ -117,13 +117,13 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
             grid = RectilinearGrid(arch, size=(4, 4), extent=(1, 1),
                                            topology=(Flat, Bounded, Periodic))
             model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-            @test isnothing(model.hydrostatic_pressure_anomaly)
+            @test isnothing(model.pressures.pHY′)
 
             model = NonhydrostaticModel(; grid, buoyancy=nothing)
-            @test isnothing(model.hydrostatic_pressure_anomaly)
+            @test isnothing(model.pressures.pHY′)
 
             model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
-            @test isnothing(model.hydrostatic_pressure_anomaly)
+            @test isnothing(model.pressures.pHY′)
         end
     end
 
