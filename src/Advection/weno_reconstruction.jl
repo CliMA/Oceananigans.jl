@@ -101,7 +101,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
     if !isnothing(bounds)
-        !(bounds isa NTuple{2}) && throw(ArgumentError("bounds must be nothing or a tuple of two values"))
+        bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
         bounds = (convert(FT, bounds[1]), convert(FT, bounds[2]))
     end
 
