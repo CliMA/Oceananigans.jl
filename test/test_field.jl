@@ -482,7 +482,7 @@ end
 
             array_data = ones(FT, Nx, Nx, Nx)
             f = field((Center, Center, Center), array_data, grid)
-            @test @allowscalar all(interior(f) .== 1)
+            @test @allowscalar all(isone, interior(f))
 
             # With an OffsetArray or a Field, we point to the same data
             offset_data = Oceananigans.Grids.new_data(FT, grid, (Center(), Center(), Center()))
