@@ -53,7 +53,7 @@ Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata
 end
 
 
-function FD.safe_interior(::MetalGPU, r::FD.AbstractField)
+function FD.maybe_copy_interior(::MetalGPU, r::FD.AbstractField)
     interior_r = interior(r)
 
     if parent(interior_r) !== interior_r

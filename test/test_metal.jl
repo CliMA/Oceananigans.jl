@@ -125,7 +125,6 @@ end
 
 @testset "MetalGPU: TimeStepWizard" begin
     arch = GPU(Metal.MetalBackend())
-    FT = Oceananigans.defaults.FloatType
 
     grid = RectilinearGrid(arch; size=(64, 64, 16), x=(0, 5000), y=(0, 5000), z=(-20, 0))
     @test eltype(grid) == Float32
@@ -134,9 +133,9 @@ end
         free_surface=SplitExplicitFreeSurface(grid; substeps=30))
     sim = Simulation(model, Δt=5, stop_iteration=20)
 
-    wizard = TimeStepWizard(cfl=FT(0.7), min_Δt=FT(1), max_Δt=FT(15))
-    sim.callbacks[:wizard] = Callback(wizard, IterationInterval(5)) #TODO does not work with MetalGPU
+    wizard = TimeStepWizard(cfl=0.7, min_Δt=1, max_Δt=15)
+    sim.callbacks[:wizard] = Callback(wizard, IterationInterval(5))
 
     run!(sim)
-    @test true
+    @test time(sim) > 100seconds 
 end

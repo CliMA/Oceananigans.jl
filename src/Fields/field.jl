@@ -700,7 +700,7 @@ get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
-# TODO make this Float32 friendly.
+# TODO(completed): make this Float32 friendly. Masks are converted in appropriated functions
 get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
@@ -736,16 +736,16 @@ end
 # Allocating and in-place reductions
 
 """
-    safe_interior(r::AbstractField)
+    maybe_copy_interior(r::AbstractField)
 
 Return the interior view of `r`, materialized if necessary to be GPU-native on MetalGPU.
 MetalGPU does not support ReshapedArray in kernels,
 so copying ensures the reduction operates on a GPU-native array.
 """
-safe_interior(r::AbstractField) = safe_interior(architecture(r), r)
+maybe_copy_interior(r::AbstractField) = maybe_copy_interior(architecture(r), r)
 
 # Extended in the OceananigansMetalExt for compatibility with Metal
-safe_interior(arch, r) = interior(r)
+maybe_copy_interior(arch, r) = interior(r)
 
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
@@ -764,7 +764,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
-                                      safe_interior(r),
+                                      maybe_copy_interior(r),
                                       operand;
                                       kwargs...)
         end
@@ -778,7 +778,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             
             mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
-                                      safe_interior(r),
+                                      maybe_copy_interior(r),
                                       condition_operand(a, condition, mask);
                                       kwargs...)
         end
@@ -796,7 +796,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, safe_interior(r), conditioned_c, init=false) 
+            Base.$(reduction!)(identity, maybe_copy_interior(r), conditioned_c, init=false) 
 
             if dims isa Colon
                 return @allowscalar first(r)
