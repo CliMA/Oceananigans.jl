@@ -1,5 +1,5 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
-import Oceananigans.TimeSteppers: rk_substep!, cache_previous_fields!
+import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
 rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)

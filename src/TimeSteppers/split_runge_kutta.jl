@@ -85,7 +85,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         update_state!(model, callbacks)
     end
 
-    cache_previous_fields!(model)
+    cache_current_fields!(model)
     grid = model.grid
 
     ####
@@ -116,4 +116,4 @@ end
 #####
 
 rk_substep!(model::AbstractModel, Δt, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
-cache_previous_fields!(model::AbstractModel) = error("cache_previous_fields! not implemented for $(typeof(model))")
+cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not implemented for $(typeof(model))")
