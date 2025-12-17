@@ -46,12 +46,12 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
                             preconditioner = nothing,
                             enforce_gauge_condition! = no_gauge_enforcement!)
 
-Returns a `ConjugateGradientSolver` that solves the linear equation
-``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
+Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
+using a iterative conjugate gradient method with optional preconditioning.
 
 The solver is used by calling
 
-```
+```julia
 solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
 ```
 
