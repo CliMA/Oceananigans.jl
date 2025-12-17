@@ -488,7 +488,7 @@ end
             offset_data = Oceananigans.Grids.new_data(FT, grid, (Center(), Center(), Center()))
             fill!(offset_data, 1)
             f = field((Center, Center, Center), offset_data, grid)
-            @test @allowscalar all(f.data .== 1)
+            @test @allowscalar all(isone, f.data)
             @test f.data === offset_data
 
             field_data = CenterField(grid)
