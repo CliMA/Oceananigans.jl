@@ -494,7 +494,7 @@ end
             field_data = CenterField(grid)
             set!(field_data, 1)
             f = field((Center, Center, Center), field_data, grid)
-            @test @allowscalar all(interior(f) .== 1)
+            @test @allowscalar all(isone, interior(f))
             @test f === field_data
 
             number_data = FT(1)
