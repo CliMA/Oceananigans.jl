@@ -84,10 +84,10 @@ WENO{5, Float64, Float32}(order=9)
 
 ```jldoctest weno
 julia> WENO(order=9, bounds=(0, 1))
-WENO{5, Float64, Float32}(order=9, bounds=(0, 1))
-├── buffer_scheme: WENO{4, Float64, Float32}(order=7, bounds=(0, 1))
-│   └── buffer_scheme: WENO{3, Float64, Float32}(order=5, bounds=(0, 1))
-│       └── buffer_scheme: WENO{2, Float64, Float32}(order=3, bounds=(0, 1))
+WENO{5, Float64, Float32}(order=9, bounds=(0.0, 1.0))
+├── buffer_scheme: WENO{4, Float64, Float32}(order=7, bounds=(0.0, 1.0))
+│   └── buffer_scheme: WENO{3, Float64, Float32}(order=5, bounds=(0.0, 1.0))
+│       └── buffer_scheme: WENO{2, Float64, Float32}(order=3, bounds=(0.0, 1.0))
 │           └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
@@ -101,7 +101,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
     if !isnothing(bounds)
-        bounds isa Tuple && throw(ArgumentError("bounds must be nothing or a tuple of two values"))
+        !(bounds isa Tuple{<:Number, <:Number}) && throw(ArgumentError("bounds must be nothing or a tuple of two values"))
         bounds = (convert(FT, bounds[1]), convert(FT, bounds[2]))
     end
 
@@ -110,7 +110,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
         return UpwindBiased(FT; order=1)
     else
         advecting_velocity_scheme = Centered(FT; order=order-1)
-        
+
         if buffer_scheme isa DecreasingOrderAdvectionScheme
             if order ≤ minimum_buffer_upwind_order
                 # At minimum order, switch to Centered scheme
