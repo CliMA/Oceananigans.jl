@@ -50,7 +50,7 @@ Build a field from array `a` at `loc` and on `grid`.
     try
         set!(f, a)
     catch
-        parent(f) .= parent(a)
+        copyto!(parent(f), parent(a))
     end
     return f
 end
