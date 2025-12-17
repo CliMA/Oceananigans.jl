@@ -70,7 +70,7 @@ end
     @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
 
-function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
+function cache_current_fields!(model::HydrostaticFreeSurfaceModel)
 
     previous_fields = model.timestepper.Ψ⁻
     model_fields = prognostic_fields(model)
