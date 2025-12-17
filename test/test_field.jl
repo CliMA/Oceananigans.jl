@@ -503,7 +503,7 @@ end
             
             function_data = (x, y, z) -> 1
             f = field((Center, Center, Center), function_data, grid)
-            @test @allowscalar all(interior(f) .== 1)
+            @test @allowscalar all(isone, interior(f))
 
             @info "  Testing Field constructors..."
 
