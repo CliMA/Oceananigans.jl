@@ -101,7 +101,7 @@ function ConjugateGradientSolver(linear_operation;
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
-            residual = similar(template_field) # rᵢ
+    residual = similar(template_field) # rᵢ
 
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)
