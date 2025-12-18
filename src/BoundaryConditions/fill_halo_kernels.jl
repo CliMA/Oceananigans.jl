@@ -37,8 +37,6 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
                                    data::OffsetArray,
                                    grid::AbstractGrid,
                                    loc, indices)
-
-    arch = architecture(grid)
     sides, ordered_bcs = permute_boundary_conditions(bcs)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)

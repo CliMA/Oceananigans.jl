@@ -1,6 +1,5 @@
 using Oceananigans.BoundaryConditions
-using Oceananigans.BoundaryConditions: permute_boundary_conditions, select_bc, fill_halo_size, fill_halo_offset,
-    fill_halo_kernel!, fill_halo_event!
+using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset, fill_halo_kernel!, fill_halo_event!
 using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.MultiRegion: number_of_regions
 
@@ -101,18 +100,12 @@ end
 end
 
 @inline function fill_cubed_sphere_field_vertical_halo_event!(grid, field)
-    sides, ordered_bcs = permute_boundary_conditions(field.boundary_conditions)
-    reduced_dims = reduced_dimensions(field)
+    loc = instantiated_location(field)
+    kernels!, bcs = get_boundary_kernels(field.boundary_conditions, field.data, grid, loc, field.indices)
+    kernel! = kernels!.bottom_and_top
+    bc = bcs.bottom_and_top
 
-    idx = findfirst(x -> x isa BottomAndTop, sides)
-    side = sides[idx]
-    bc = select_bc(ordered_bcs[idx])
-
-    sz = (grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy)
-    of = (-grid.Hx, -grid.Hy)
-    kernel! = fill_halo_kernel!(side, bc, grid, sz, of, field.data, reduced_dims)
-
-    fill_halo_event!(field.data, kernel!, ordered_bcs[idx], instantiated_location(field), grid)
+    fill_halo_event!(field.data, kernel!, bc, loc, grid)
 end
 
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; kwargs...)
@@ -362,18 +355,12 @@ end
 
 @inline function fill_cubed_sphere_field_vertical_halo_event!(grid, field_1, field_2)
     for field in (field_1, field_2)
-        sides, ordered_bcs = permute_boundary_conditions(field.boundary_conditions)
-        reduced_dims = reduced_dimensions(field)
+        loc = instantiated_location(field)
+        kernels!, bcs = get_boundary_kernels(field.boundary_conditions, field.data, grid, loc, field.indices)
+        kernel! = kernels!.bottom_and_top
+        bc = bcs.bottom_and_top
 
-        idx = findfirst(x -> x isa BottomAndTop, sides)
-        side = sides[idx]
-        bc = select_bc(ordered_bcs[idx])
-
-        sz = (grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy)
-        of = (-grid.Hx, -grid.Hy)
-        kernel! = fill_halo_kernel!(side, bc, grid, sz, of, field.data, reduced_dims)
-
-        fill_halo_event!(field.data, kernel!, ordered_bcs[idx], instantiated_location(field), grid)
+        fill_halo_event!(field.data, kernel!, bc, loc, grid)
     end
 end
 
