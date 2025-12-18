@@ -2,6 +2,7 @@ using Oceananigans
 using SeawaterPolynomials: TEOS10EquationOfState
 using NVTX
 using CUDA
+using ClimaOcean
 
 function many_steps!(model, Nt; Δt=1e-3)
     for _ in 1:Nt
@@ -53,17 +54,24 @@ end
 
 Return a tripolar grid with Gaussian islands over the two north poles.
 """
-function tripolar_grid(arch, Nx, Ny, Nz; halo=(7, 7, 7), kw...)
-    H = - z[2]
-    dφ, dλ = 4, 8
-    λ₀, φ₀ = 70, 55
-    h = 100
-    
-    isle(λ, φ) = exp(-(λ - λ₀)^2 / 2dλ^2 - (φ - φ₀)^2 / 2dφ^2)
-    gaussian_isles(λ, φ) = - H + (H + h) * (isle(λ, φ) + isle(λ - 180, φ))
-    
+function tripolar_grid(arch, Nx, Ny, Nz; bathy=false, halo=(7, 7, 7), kw...)
     underlying_grid = TripolarGrid(arch; size=(Nx, Ny, Nz), halo, z)
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(gaussian_isles))
+    bathymetry = Nothing
+
+    if bathy
+        bathymetry = ClimaOcean.regrid_bathymetry(underlying_grid)
+    else
+        H = - z[2]
+        dφ, dλ = 4, 8
+        λ₀, φ₀ = 70, 55
+        h = 100
+        
+        isle(λ, φ) = exp(-(λ - λ₀)^2 / 2dλ^2 - (φ - φ₀)^2 / 2dφ^2)
+        gaussian_isles(λ, φ) = - H + (H + h) * (isle(λ, φ) + isle(λ - 180, φ))
+	bathymetry = gaussian_isles
+    end
+    
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
     return grid
 end
@@ -91,7 +99,7 @@ model_kw = (;
 )
 
 if config == :tripolar
-    grid = tripolar_grid(arch, Nx, Ny, Nz; tripolar_kw...)
+    grid = tripolar_grid(arch, Nx, Ny, Nz; bathy=true, tripolar_kw...)
     model = hi_res_hydrostatic_model(grid; model_kw...)
 
 elseif config == :channel
