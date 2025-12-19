@@ -751,7 +751,7 @@ import Oceananigans.Operators: δxᶠᵃᵃ, δyᵃᶠᵃ
               ifelse((i == 1) & (j > grid.Ny),         c[1, j, k]           - c[grid.Ny-j+1, grid.Ny, k],
                                                        c[i, j, k]           - c[i-1, j, k]))))
 
-@inline δyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+@inline δyTᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i < 1) & (j == 1),               c[i, 1, k]           - c[1, i, k],
               ifelse((i > grid.Nx) & (j == 1),         c[i, 1, k]           - c[grid.Nx, grid.Ny+1-i, k],
               ifelse((i > grid.Nx) & (j == grid.Ny+1), c[grid.Nx, i, k]     - c[i, grid.Ny, k],
