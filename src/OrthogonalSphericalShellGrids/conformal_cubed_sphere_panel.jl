@@ -742,7 +742,7 @@ end
 ##### Support for simulations on conformal cubed sphere panel grids
 #####
 
-import Oceananigans.Operators: δxᶠᵃᵃ, δyᵃᶠᵃ
+import Oceananigans.Operators: δxTᶠᵃᵃ, δyTᵃᶠᵃ
 
 @inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
