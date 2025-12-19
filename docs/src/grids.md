@@ -4,7 +4,7 @@
 DocTestSetup = quote
     using Oceananigans
     using CairoMakie
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
     set_theme!(Theme(fontsize=20))
 end
 ```
@@ -76,7 +76,7 @@ In the stretched cell interfaces specified by `z_interfaces`, the number of
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
 
-A bit later in this tutorial, we'll give examples that illustrate how to build a grid thats [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
+A bit later in this tutorial, we'll give examples that illustrate how to build a grid that's [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
 ## Grid types: squares, shells, and mountains
 
@@ -191,7 +191,7 @@ using Oceananigans
 using Oceananigans.Units
 
 using CairoMakie
-CairoMakie.activate!(type = "svg")
+CairoMakie.activate!(type = "png")
 set_theme!(Theme(fontsize=20))
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
@@ -369,7 +369,7 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(Lines = (linewidth = 3,)))
-CairoMakie.activate!(type="svg")
+CairoMakie.activate!(type="png")
 set_theme!(Theme(fontsize=20))
 
 Nx, Ny, Nz = 64, 64, 32

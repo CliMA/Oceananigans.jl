@@ -4,16 +4,13 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
                                        RightBoundary
-
-using Oceananigans.ImmersedBoundaries
-
-import Oceananigans.BoundaryConditions: default_auxiliary_bc, regularize_field_boundary_conditions
-import Oceananigans.Grids: x_domain, y_domain
+using Oceananigans.Grids: Grids, Center, Face
+using Oceananigans.BoundaryConditions: BoundaryConditions
 
 # A tripolar grid is always between 0 and 360 in longitude
 # and always caps at the north pole (90°N)
-x_domain(grid::TripolarGridOfSomeKind) = 0, 360
-y_domain(grid::TripolarGridOfSomeKind) = minimum(parent(grid.φᶠᶠᵃ)), 90
+Grids.x_domain(grid::TripolarGridOfSomeKind) = 0, 360
+Grids.y_domain(grid::TripolarGridOfSomeKind) = minimum(parent(grid.φᶠᶠᵃ)), 90
 
 # Fields living on edges are signed vectors while fields living on nodes and centers are scalars
 sign(LX, LY) = 1
@@ -24,10 +21,10 @@ sign(::Type{Center}, ::Type{Center}) = 1
 
 # a `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              grid::TripolarGridOfSomeKind,
-                                              field_name::Symbol,
-                                              prognostic_names=nothing)
+function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                                                 grid::TripolarGridOfSomeKind,
+                                                                 field_name::Symbol,
+                                                                 prognostic_names=nothing)
 
     loc = assumed_field_location(field_name)
 
@@ -47,4 +44,4 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = ZipperBoundaryCondition(1)
+BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = ZipperBoundaryCondition(1)

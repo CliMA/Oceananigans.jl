@@ -1,5 +1,5 @@
-using Oceananigans.Grids: prettysummary, architecture
-import Oceananigans.Diagnostics: cell_diffusion_timescale
+using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: prettysummary
 import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
@@ -69,7 +69,7 @@ function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
                         min_change = 0.5,
                         max_Δt = Inf,
                         min_Δt = 0.0,
-                        cell_advection_timescale = cell_advection_timescale,
+                        cell_advection_timescale = Advection.cell_advection_timescale,
                         cell_diffusion_timescale = infinite_diffusion_timescale)
 
     # check if user gave max_change or min_change values that are invalid
@@ -89,7 +89,6 @@ function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
                                     cell_advection_timescale, cell_diffusion_timescale)
 end
 
-using Oceananigans.Grids: topology
 using Oceananigans.DistributedComputations: all_reduce
 
 """

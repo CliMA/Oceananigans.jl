@@ -1,12 +1,10 @@
-using Oceananigans.Architectures
-using Oceananigans.BoundaryConditions
-
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_conditions!
+using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
+using Oceananigans.Fields: compute!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 
@@ -44,7 +42,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     @apply_regionally compute_auxiliaries!(model)
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
@@ -61,9 +59,9 @@ function mask_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
-    foreach(fields_to_mask) do field
-        if field !== η
-            mask_immersed_field!(field)
+    foreach(keys(fields_to_mask)) do key
+        if key != :η
+            @inbounds mask_immersed_field!(fields_to_mask[key])
         end
     end
     mask_immersed_field_xy!(η, k=size(grid, 3)+1)
@@ -78,7 +76,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     grid        = model.grid
     closure     = model.closure
     tracers     = model.tracers
-    diffusivity = model.diffusivity_fields
+    diffusivity = model.closure_fields
     buoyancy    = model.buoyancy
 
     P    = model.pressure.pHY′

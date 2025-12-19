@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.Utils: get_cartesian_nodes_and_vertices
+using Oceananigans.Grids: get_cartesian_nodes_and_vertices
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.BoundaryConditions: Zipper
 

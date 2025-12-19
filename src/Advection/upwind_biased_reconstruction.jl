@@ -12,7 +12,8 @@ end
 
 function UpwindBiased(FT::DataType = Float64; 
                       order = 3,
-                      buffer_scheme = DecreasingOrderAdvectionScheme())
+                      buffer_scheme = DecreasingOrderAdvectionScheme(),
+                      minimum_buffer_upwind_order = 1)
 
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
@@ -26,7 +27,12 @@ function UpwindBiased(FT::DataType = Float64;
         # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
         advecting_velocity_scheme = Centered(FT; order = order - 1)
         if buffer_scheme isa DecreasingOrderAdvectionScheme
-            buffer_scheme  = UpwindBiased(FT; order = order - 2)
+            if order ≤ minimum_buffer_upwind_order
+                # At minimum order, switch to Centered scheme
+                buffer_scheme = Centered(FT; order=2)
+            else
+                buffer_scheme = UpwindBiased(FT; order = order - 2, minimum_buffer_upwind_order)
+            end
         end
     else
         advecting_velocity_scheme = Centered(FT; order = 2)
@@ -38,10 +44,32 @@ end
 
 Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
 
-Base.show(io::IO, a::UpwindBiased{N, FT}) where {N, FT} =
-    print(io, summary(a), " \n",
-              "├── buffer_scheme: ", summary(a.buffer_scheme), '\n',
-              "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
+# Helper function to recursively print buffer scheme tree
+function print_buffer_scheme_tree(io::IO, scheme, prefix::String, is_last::Bool)
+    connector = is_last ? "└── " : "├── "
+    print(io, prefix, connector, "buffer_scheme: ", summary(scheme))
+    
+    # Check if this scheme has a nested buffer_scheme to display
+    if hasproperty(scheme, :buffer_scheme) && !isnothing(scheme.buffer_scheme)
+        println(io)
+        new_prefix = prefix * (is_last ? "    " : "│   ")
+        print_buffer_scheme_tree(io, scheme.buffer_scheme, new_prefix, true)
+    end
+end
+
+function Base.show(io::IO, a::UpwindBiased{N, FT}) where {N, FT}
+    print(io, summary(a), '\n')
+
+    # Print buffer scheme tree recursively
+    if !isnothing(a.buffer_scheme)
+        print_buffer_scheme_tree(io, a.buffer_scheme, "", false)
+        println(io)
+    else
+        print(io, "├── buffer_scheme: ", summary(a.buffer_scheme), '\n')
+    end
+
+    print(io, "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
+end
 
 Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(Adapt.adapt(to, scheme.buffer_scheme),

@@ -1,7 +1,8 @@
-using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
-using Oceananigans.Grids: architecture, cpu_face_constructor_z
-
-import Oceananigans.Grids: with_halo, validate_dimension_specification
+using Oceananigans.BoundaryConditions: ZipperBoundaryCondition, NoFluxBoundaryCondition
+using Oceananigans.Fields: set!
+using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, RightConnected,
+    architecture, cpu_face_constructor_z, validate_dimension_specification
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
     struct Tripolar{N, F, S}
@@ -388,7 +389,7 @@ function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 2})
     return nothing
 end
 
-function with_halo(new_halo, old_grid::TripolarGrid)
+function Grids.with_halo(new_halo, old_grid::TripolarGrid)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
 
