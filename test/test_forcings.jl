@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 """ Take one time step with three forcing arrays on u, v, w. """
 function time_step_with_forcing_array(arch)
@@ -252,6 +253,90 @@ function seven_forcings(arch)
     return true
 end
 
+function test_settling_tracer_comparison(arch; open_bottom=true)
+    """
+    Test that compares settling tracer simulations on regular vs immersed boundary grids.
+    Both should conserve tracer mass and have similar maximum values.
+    """
+
+    Nz = 16
+    Lz = 1
+
+    regular_grid = RectilinearGrid(arch, topology = (Flat, Flat, Bounded), size = Nz, z = (-Lz, 0))
+    immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(-3Lz/4))
+
+    function build_settling_model(grid, w_settle)
+        # Create settling velocity as a field with appropriate boundary conditions
+        bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w_settle) : OpenBoundaryCondition(nothing)
+        boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
+        w_settle_field = ZFaceField(grid; boundary_conditions)
+
+        # Set the velocity and apply boundary conditions to domain boundaries
+        set!(w_settle_field, w_settle)
+        fill_halo_regions!(w_settle_field)
+
+        # Apply boundary condition to immersed boundaries
+        if open_bottom
+            mask_immersed_field!(w_settle_field, w_settle)
+        else
+            mask_immersed_field!(w_settle_field, 0)
+        end
+
+        # Create settling forcing with the velocity field
+        settling_forcing = AdvectiveForcing(w = w_settle_field)
+        model = NonhydrostaticModel(; grid, advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
+
+        # Initial condition: patch of tracer c=1 in the upper part
+        z_center = -Lz/4  # Upper quarter of domain
+        z_width = Lz/8    # Width of initial patch
+        c_initial(z) = abs(z - z_center) <= z_width ? 1.0 : 0.0
+        set!(model, c = c_initial)
+        return model
+    end
+
+    # Create models
+    w_settle = -0.01
+    regular_model = build_settling_model(regular_grid, w_settle)
+    immersed_model = build_settling_model(immersed_grid, w_settle)
+
+    ∫c_regular = Integral(regular_model.tracers.c) |> Field
+    ∫c_immersed = Integral(immersed_model.tracers.c) |> Field
+
+    regular_initial_integral = ∫c_regular |> deepcopy
+    immersed_initial_integral = ∫c_immersed |> deepcopy
+    @test regular_initial_integral[] == immersed_initial_integral[]
+
+    # Create simulations
+    Δt = abs(w_settle) / minimum_zspacing(regular_grid)
+    stop_time = 250
+    regular_simulation = Simulation(regular_model, Δt=Δt, stop_time=stop_time)
+    immersed_simulation = Simulation(immersed_model, Δt=Δt, stop_time=stop_time)
+
+    # Run simulations
+    run!(regular_simulation)
+    run!(immersed_simulation)
+
+    # Compute diagnostics
+    regular_integral = ∫c_regular |> compute!
+    immersed_integral = ∫c_immersed |> compute!
+
+    regular_max = maximum(abs, regular_model.tracers.c)
+    immersed_max = maximum(abs, immersed_model.tracers.c)
+
+    # Test that mass is approximately conserved and max values are similar
+    @test regular_initial_integral[] == immersed_initial_integral[]
+    if open_bottom
+        @test (regular_integral[] / regular_initial_integral[]) < 1e-3
+        @test (immersed_integral[] / immersed_initial_integral[]) < 1e-3
+    else
+        # Mass is approximately conserved, with some numerical diffusion
+        @test isapprox(regular_integral[], regular_initial_integral[], rtol=1e-3)
+        @test isapprox(immersed_integral[], immersed_initial_integral[], rtol=1e-3)
+    end
+
+    return true
+end
+
 @testset "Forcings" begin
     @info "Testing forcings..."
 
@@ -306,6 +391,12 @@ end
             @testset "FieldTimeSeries forcing on [$A]" begin
                 @info "      Testing FieldTimeSeries forcing [$A]..."
                 @test time_step_with_field_time_series_forcing(arch)
+            end
+
+            @testset "Settling tracer comparison [$A]" begin
+                @info "      Testing settling tracer on regular vs immersed grids [$A]..."
+                @test test_settling_tracer_comparison(arch, open_bottom=true)
+                @test test_settling_tracer_comparison(arch, open_bottom=false)
             end
         end
     end
