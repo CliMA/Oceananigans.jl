@@ -3,7 +3,7 @@ using Oceananigans: fields
 using Oceananigans.Utils: time_difference_seconds
 
 """
-    FastRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
+    FastRungeKutta3TimeStepper{FT, TG, TP, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a fast, third-order Runge-Kutta
 time-stepping scheme described by [Aithal and Ferrante (2020)](@cite AithalFerrante2020).
@@ -11,8 +11,6 @@ time-stepping scheme described by [Aithal and Ferrante (2020)](@cite AithalFerra
 The key advantage of this scheme is that it solves the Poisson equation for pressure
 only once per time step (at the final stage), instead of three times as in standard RK3,
 while maintaining third-order accuracy in time for velocity.
-
-This results in a speedup of approximately 4-7× compared to standard RK3 methods.
 
 References
 ==========
@@ -44,8 +42,11 @@ end
 """
     FastRungeKutta3TimeStepper(grid, prognostic_fields;
                                implicit_solver = nothing,
+                               G⁰ = map(similar, prognostic_fields),
+                               G⁻ = map(similar, prognostic_fields),
                                Gⁿ = map(similar, prognostic_fields),
-                               G⁻ = map(similar, prognostic_fields))
+                               pⁿ = CenterField(grid),
+                               pⁿ⁻¹ = CenterField(grid))
 
 Return a fast 3rd-order Runge-Kutta timestepper (`FastRungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`.
@@ -53,12 +54,9 @@ and with `prognostic_fields`.
 The scheme is described by [Aithal and Ferrante (2020)](@cite AithalFerrante2020).
 The key innovation is that the Poisson equation for pressure is solved only once per
 timestep at the final RK3 stage, using linear extrapolation of the pressure gradient
-from previous time steps at intermediate stages. This reduces computational cost by
-approximately 30-60% compared to standard RK3 for the pressure solve, and overall
-speedup of 4-7× for the entire flow solver.
+from previous time steps at intermediate stages.
 
-The algorithm follows the Sanderse & Koren (2012) RK3 coefficients:
-- γ¹ = 1/3, γ² = 2, γ³ = 3/4
+The algorithm follows the Sanderse & Koren (2012) RK3 coefficients.
 
 **Stage 1:**
 ```
@@ -67,8 +65,8 @@ U*¹ = Uⁿ + Δt * γ¹ * F(Uⁿ)
 
 **Stage 2:** (using extrapolated pressure gradient)
 ```
-∇φ₁ = (1 + c₂) * ∇pⁿ - c₂ * ∇pⁿ⁻¹,  where c₂ = 1/3
-U*² = Uⁿ + Δt * γ² * F(U*¹ - c₂*Δt*∇φ₁)
+∇φ₁ = (1 + c₁) * ∇pⁿ - c₁ * ∇pⁿ⁻¹,  where c₁ = 1/3
+U*² = Uⁿ + Δt * γ² * F(U*¹ - c₁*Δt*∇φ₁)
 ```
 
 **Stage 3:** (using extrapolated pressure gradient)
@@ -143,9 +141,6 @@ The fast RK3 method takes three intermediate substep stages to achieve a single 
 but applies a pressure correction step **only at the final stage**, using linear
 extrapolation of the pressure gradient from previous time steps at intermediate stages.
 
-This method achieves a 30-60× speedup for the Poisson solve and 4-7× overall speedup
-compared to standard RK3, while maintaining third-order accuracy in time.
-
 References
 ==========
 Aithal, A. B. and Ferrante, A. (2020). A fast pressure-correction method for
@@ -182,9 +177,9 @@ function time_step!(model::AbstractModel{<:FastRungeKutta3TimeStepper}, Δt; cal
 
         # Compute the next time step a priori to reduce floating point error
         tⁿ⁺¹ = next_time(model.clock, Δt)
-        first_stage_Δt  = stage_Δt(Δt, c₁, nothing)      # =  b₁ * Δt
-        second_stage_Δt = stage_Δt(Δt, c₂ - c₁, nothing)      # = (b₂ + a₂₁) * Δt
-        third_stage_Δt  = stage_Δt(Δt, c₃ - c₂ - c₁, nothing)      # = (b₃ + a₃₁ + a₃₂) * Δt
+        first_stage_Δt  = stage_Δt(Δt, c₁, nothing)      # = c₁ * Δt
+        second_stage_Δt = stage_Δt(Δt, c₂ - c₁, nothing)      # = (c₂ - c₁) * Δt
+        third_stage_Δt  = stage_Δt(Δt, c₃ - c₂ - c₁, nothing)      # = (c₃ - c₂ - c₁) * Δt
 
         #
         # Stage 1:
