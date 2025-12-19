@@ -50,7 +50,7 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
         bc   = select_bc(ordered_bcs[task])
 
         size    = fill_halo_size(data, side, indices, bc, loc, grid)
-        offset  = fill_halo_offset(size, side, indices)
+        offset  = fill_halo_offset(size, side, grid, indices)
         kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
 
         push!(kernels!, kernel!)
