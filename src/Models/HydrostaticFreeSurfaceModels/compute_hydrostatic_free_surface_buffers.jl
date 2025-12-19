@@ -1,8 +1,8 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
-using Oceananigans.Grids: halo_size
+using Oceananigans.Grids: get_active_cells_map, halo_size
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
+using Oceananigans.ImmersedBoundaries: CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
                                                 buffer_p_kernel_parameters,
                                                 buffer_κ_kernel_parameters,
@@ -70,4 +70,3 @@ function buffer_w_kernel_parameters(grid, arch)
 
     return buffer_parameters(params, grid, arch)
 end
-

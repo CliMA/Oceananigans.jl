@@ -1,11 +1,9 @@
 using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
 using Oceananigans.Fields: Center, Face
-using Oceananigans.AbstractOperations: GridMetricOperation, Ax, Ay, Az
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdvection
+using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
+using Oceananigans.BoundaryConditions: BoundaryCondition, Open
 
-import Adapt: adapt_structure
-import Base: summary, show
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
 struct BoundaryAdjacentMean{FF, BV}
@@ -63,9 +61,9 @@ Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[])
 @inline boundary_reduced_field(::Union{Val{:south}, Val{:north}}, grid) = Field{Nothing, Center, Nothing}(grid)
 @inline boundary_reduced_field(::Union{Val{:bottom}, Val{:top}}, grid)  = Field{Nothing, Nothing, Center}(grid)
 
-@inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = GridMetricOperation((Face, Center, Center), Ax, grid)
-@inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = GridMetricOperation((Center, Face, Center), Ay, grid)
-@inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = GridMetricOperation((Center, Center, Face), Az, grid)
+@inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = grid_metric_operation((Face, Center, Center), Ax, grid)
+@inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = grid_metric_operation((Center, Face, Center), Ay, grid)
+@inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = grid_metric_operation((Center, Center, Face), Az, grid)
 
 @inline boundary_adjacent_indices(::Val{:east}, grid, loc) = size(grid, 1), 1, 1
 @inline boundary_adjacent_indices(val_side::Val{:west}, grid, loc) = first_interior_index(val_side, loc), 1, 1

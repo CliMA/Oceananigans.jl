@@ -3,13 +3,13 @@ module Utils
 export configure_kernel, launch!, KernelParameters
 export prettytime, pretty_filesize
 export tupleit, parenttuple, datatuple, datatuples
-export validate_intervals, time_to_run
 export ordered_dict_show
 export instantiate
 export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
-export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
-export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
+export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
+export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div
 
@@ -35,10 +35,10 @@ include("output_writer_diagnostic_utils.jl")
 include("ordered_dict_show.jl")
 include("with_tracers.jl")
 include("versioninfo.jl")
+include("times_and_datetimes.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
-include("coordinate_transformations.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
 

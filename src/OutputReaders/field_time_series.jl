@@ -14,10 +14,10 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range, AbstractGrid
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
-using Oceananigans.Fields: interior_view_indices, index_binary_search,
+using Oceananigans.Fields: interior_view_indices,
                            indices_summary, boundary_conditions, instantiate
 
 using Oceananigans.Units: Time
@@ -209,8 +209,23 @@ function time_indices(backend::PartlyInMemory, time_indexing, Nt)
 end
 
 time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
-
 Base.length(backend::PartlyInMemory) = backend.length
+
+function try_convert_to_range(times::AbstractArray)
+    if length(times) > 1
+        first_time = first(times)
+        last_time = last(times)
+        len = length(times)
+        try
+            candidate = range(first_time, last_time; length=len)
+            if all(candidate .== times)
+                return candidate
+            end
+        catch
+        end
+    end
+    return times
+end
 
 #####
 ##### FieldTimeSeries
@@ -247,12 +262,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            # Try to convert to a lighter-weight range for efficiency
-            time_range = range(first(times), last(times), length=length(times))
-            if isapprox(time_range, times)
-                times = time_range
-            end
-
+            times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end
 
@@ -278,7 +288,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
                                 on_architecture(to, fts.grid),
                                 on_architecture(to, fts.backend),
-                                on_architecture(to, fts.bcs),
+                                on_architecture(to, fts.boundary_conditions),
                                 on_architecture(to, fts.indices),
                                 on_architecture(to, fts.times),
                                 on_architecture(to, fts.path),
@@ -436,6 +446,14 @@ function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) wh
     return FieldTimeSeries(loc, grid, times; kwargs...)
 end
 
+# Function to naturally sort strings containing numbers, code credit:
+# https://discourse.julialang.org/t/sorting-strings-containing-numbers-so-that-a2-a10/5372/28
+function naturalsort(x::Vector{String})
+    f = text -> all(isnumeric, text) ? Char(parse(Int, text)) : text
+    sorter = key -> join(f(m.match) for m in eachmatch(r"[0-9]+|[^0-9]+", key))
+    return sort(x, by=sorter)
+end
+
 struct UnspecifiedBoundaryConditions end
 
 """
@@ -489,6 +507,7 @@ function FieldTimeSeries(path::String, name::String;
         # Look for part1, etc
         lookfor = string(start, "_part*.jld2")
         part_paths = glob(lookfor)
+        part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
         path = first(part_paths) # part1 is first?
     else

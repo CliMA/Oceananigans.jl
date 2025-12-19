@@ -1,12 +1,12 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements, grid_name
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 
-import Oceananigans.Grids: architecture, size, new_data, halo_size
-import Oceananigans.Grids: with_halo, on_architecture
-import Oceananigans.Grids: destantiate
-import Oceananigans.Grids: minimum_xspacing, minimum_yspacing, minimum_zspacing
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
+import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.DistributedComputations: reconstruct_global_grid
+import Oceananigans.Grids: architecture, size, new_data, halo_size,
+                           with_halo, on_architecture,
+                           minimum_xspacing, minimum_yspacing, minimum_zspacing
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 
 struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
@@ -57,8 +57,11 @@ minimum_zspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 @inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
 
 # the default free surface solver; see Models.HydrostaticFreeSurfaceModels
-default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=g_Earth) =
+default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(; substeps=50, gravitational_acceleration)
+
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
+    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 """
     MultiRegionGrid(global_grid; partition = XPartition(2))

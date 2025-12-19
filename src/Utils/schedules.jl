@@ -1,3 +1,5 @@
+using Dates: AbstractTime
+
 import Oceananigans: initialize!
 
 """
@@ -27,9 +29,9 @@ end
 ##### TimeInterval
 #####
 
-mutable struct TimeInterval{FT} <: AbstractSchedule
-    interval :: FT
-    first_actuation_time :: FT
+mutable struct TimeInterval{IT, TT} <: AbstractSchedule
+    interval :: IT
+    first_actuation_time :: TT
     actuations :: Int
 end
 
@@ -40,24 +42,34 @@ Return a callable `TimeInterval` that schedules periodic output or diagnostic ev
 on a `interval` of simulation time, as kept by `model.clock`.
 """
 function TimeInterval(interval)
-    FT = Oceananigans.defaults.FloatType
-    interval = convert(FT, interval)
-    return TimeInterval(interval, zero(FT), 0)
+    IT = period_type(interval)
+    interval = convert(IT, interval)
+    TT = time_type(interval)
+    first_actuation_time = zero(TT)
+    return TimeInterval{IT, TT}(interval, first_actuation_time, 0)
 end
 
-function initialize!(schedule::TimeInterval, first_actuation_time::Number)
+initialize!(schedule::TimeInterval, model) = initialize_actuations!(schedule, model.clock.time)
+
+function initialize_actuations!(schedule::TimeInterval, first_actuation_time)
+
+    if schedule.first_actuation_time isa Number && first_actuation_time isa Dates.AbstractDateTime
+        T = typeof(schedule.first_actuation_time)
+        msg = "Cannot use $T TimeInterval times with DateTime clock. Use a Dates.Period instead."
+        throw(ArgumentError(msg))
+    end
+
     schedule.first_actuation_time = first_actuation_time
     schedule.actuations = 0
+
     return true
 end
-
-initialize!(schedule::TimeInterval, model) = initialize!(schedule, model.clock.time)
 
 function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.first_actuation_time
     N = schedule.actuations
     T = schedule.interval
-    return t₀ + (N + 1) * T
+    return add_time_interval(t₀, T, N + 1)
 end
 
 function (schedule::TimeInterval)(model)
@@ -79,7 +91,8 @@ end
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
     t = clock.time
-    return min(Δt, t★ - t)
+    δt = time_difference_seconds(t★, t)
+    return min(Δt, δt)
 end
 
 #####
@@ -166,12 +179,25 @@ whenever the model's clock equals the specified values in `times`. For example,
     The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
-function SpecifiedTimes(times::Vararg{T}) where T<:Number
-    FT = Oceananigans.defaults.FloatType
-    return SpecifiedTimes(sort([convert(FT, t) for t in times]), 0)
+function SpecifiedTimes(times...)
+    length(times) == 0 && return SpecifiedTimes(Float64[], 0)
+
+    first_time = times[1]
+
+    if all(t -> t isa Number, times)
+        FT = Oceananigans.defaults.FloatType
+        return SpecifiedTimes{FT}(sort([convert(FT, t) for t in times]), 0)
+    elseif all(t -> t isa AbstractTime, times)
+        TT = typeof(first_time)
+        return SpecifiedTimes{TT}(sort(collect(times)), 0)
+    else
+        throw(ArgumentError("SpecifiedTimes expects all times to be numbers or all to be Date/DateTime."))
+    end
 end
 
-SpecifiedTimes(times) = SpecifiedTimes(times...)
+function SpecifiedTimes(times::AbstractVector)
+    return SpecifiedTimes(Tuple(times)...)
+end
 
 function next_actuation_time(st::SpecifiedTimes)
     if st.previous_actuation >= length(st.times)
@@ -183,8 +209,13 @@ end
 
 function (st::SpecifiedTimes)(model)
     current_time = model.clock.time
+    next_time = next_actuation_time(st)
 
-    if current_time >= next_actuation_time(st)
+    if next_time === Inf
+        return false
+    end
+
+    if current_time >= next_time
         st.previous_actuation += 1
         return true
     end
@@ -195,7 +226,8 @@ end
 initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
-    δt = next_actuation_time(schedule) - clock.time
+    t★ = next_actuation_time(schedule)
+    δt = t★ == Inf ? Δt : time_difference_seconds(t★, clock.time)
     return min(Δt, δt)
 end
 
@@ -290,7 +322,13 @@ schedule_aligned_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, 
 ##### Show methods
 #####
 
-Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
+function Base.summary(schedule::IterationInterval)
+    summary = string("IterationInterval(", schedule.interval, ")")
+    if schedule.offset != 0
+        summary *= " with offset $(schedule.offset)"
+    end
+    return summary
+end
 Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
 Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",

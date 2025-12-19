@@ -9,17 +9,18 @@ Distributed.addprocs(2)
 
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
+
+    using NCDatasets
+    using XESMF
 
     using Oceananigans
-    using NCDatasets
+    using Oceananigans.AbstractOperations
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
-    using Oceananigans.TurbulenceClosures
     using Oceananigans.TimeSteppers
-    using Oceananigans.AbstractOperations
-
+    using Oceananigans.TurbulenceClosures
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
@@ -50,6 +51,25 @@ Distributed.addprocs(2)
     ]
 end
 
+# We'll append the following postamble to the literate examples, to include
+# information about the computing environment used to run them.
+example_postamble = """
+
+# ---
+
+# ### Julia version and environment information
+#
+# This example was executed with the following version of Julia:
+
+using InteractiveUtils: versioninfo
+versioninfo()
+
+# These were the top-level packages installed in the environment:
+
+import Pkg
+Pkg.status()
+"""
+
 @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
@@ -58,6 +78,7 @@ Distributed.pmap(1:length(example_scripts)) do n
     withenv("JULIA_DEBUG" => "Literate") do
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
+                          preprocess = content -> content * example_postamble,
                           flavor = Literate.DocumenterFlavor(), execute = true)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
@@ -85,18 +106,23 @@ example_pages = [
     "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
 ]
 
-model_setup_pages = [
-    "Overview" => "model_setup/overview.md",
-    "Coriolis (rotation)" => "model_setup/coriolis.md",
-    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
-    "Boundary conditions" => "model_setup/boundary_conditions.md",
-    "Forcing functions" => "model_setup/forcing_functions.md",
-    "Background fields" => "model_setup/background_fields.md",
-    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
-    "Lagrangian particles" => "model_setup/lagrangian_particles.md",
-    "Callbacks" => "model_setup/callbacks.md",
-    "Output writers" => "model_setup/output_writers.md",
-    "Checkpointing" => "model_setup/checkpointing.md",
+model_pages = [
+    "Overview" => "models/models_overview.md",
+    "Coriolis forces" => "models/coriolis.md",
+    "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
+    "Turbulence closures" => "models/turbulence_closures.md",
+    "Boundary conditions" => "models/boundary_conditions.md",
+    "Forcings" => "models/forcing_functions.md",
+    "Lagrangian particles" => "models/lagrangian_particles.md",
+    "Background fields" => "models/background_fields.md",
+]
+
+simulation_pages = [
+    "Overview" => "simulations/simulations_overview.md",
+    # "Callbacks" => "simulations/callbacks.md",
+    "Schedules" => "simulations/schedules.md",
+    "Output writers" => "simulations/output_writers.md",
+    "Checkpointing" => "simulations/checkpointing.md",
 ]
 
 physics_pages = [
@@ -146,12 +172,12 @@ pages = [
     "Fields" => "fields.md",
     "Operations" => "operations.md",
     # TODO:
-    #   - Develop the following three tutorials on reductions, simulations, and post-processing
+    #   - Develop the following tutorials on reductions and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
     # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
-    # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Models" => model_setup_pages,
+    "Models" => model_pages,
+    "Simulations" => simulation_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Simulation tips" => "simulation_tips.md",
@@ -173,18 +199,20 @@ format = Documenter.HTML(collapselevel = 1,
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
-OceananigansNCDatasetsExt = if isdefined(Base, :get_extension)
-    Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt)
-else
-    Oceananigans.OceananigansNCDatasetsExt
+modules = Module[]
+OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+OceananigansXESMFExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansXESMFExt) : Oceananigans.OceananigansXESMFExt
+
+for m in [Oceananigans, XESMF, OceananigansNCDatasetsExt, OceananigansXESMFExt]
+    if !isnothing(m)
+        push!(modules, m)
+    end
 end
 
-makedocs(sitename = "Oceananigans.jl",
+makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
-         format = format,
-         pages = pages,
+         format, pages, modules,
          plugins = [bib],
-         modules = [Oceananigans, OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up

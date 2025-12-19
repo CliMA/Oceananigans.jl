@@ -1,7 +1,8 @@
-using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
-using Oceananigans.Grids: architecture, cpu_face_constructor_z
-
-import Oceananigans.Grids: with_halo, validate_dimension_specification
+using Oceananigans.BoundaryConditions: ZipperBoundaryCondition, NoFluxBoundaryCondition
+using Oceananigans.Fields: set!
+using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, RightConnected,
+    architecture, cpu_face_constructor_z, validate_dimension_specification
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
     struct Tripolar{N, F, S}
@@ -27,7 +28,7 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
                  size,
                  southernmost_latitude = -80,
                  halo = (4, 4, 4),
-                 radius = R_Earth,
+                 radius = Oceananigans.defaults.planet_radius,
                  z = (0, 1),
                  north_poles_latitude = 55,
                  first_pole_longitude = 70)
@@ -50,7 +51,7 @@ Keyword Arguments
 - `size`: The number of cells in the (longitude, latitude, vertical) dimensions.
 - `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
 - `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
-- `radius`: The radius of the spherical shell. Default: `R_Earth`.
+- `radius`: The radius of the spherical shell. Default: `Oceananigans.defaults.planet_radius`.
 - `z`: The vertical ``z``-coordinate range of the grid. Could either be:
        (i) 2-tuple that specifies the end points of the coordinate,
        (ii) an array with the ``z`` interfaces, or
@@ -80,7 +81,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                       size,
                       southernmost_latitude = -80,
                       halo = (4, 4, 4),
-                      radius = R_Earth,
+                      radius = Oceananigans.defaults.planet_radius,
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70)  # second pole is at longitude `first_pole_longitude + 180ᵒ`
@@ -388,7 +389,7 @@ function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 2})
     return nothing
 end
 
-function with_halo(new_halo, old_grid::TripolarGrid)
+function Grids.with_halo(new_halo, old_grid::TripolarGrid)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
 

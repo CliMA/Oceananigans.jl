@@ -1,3 +1,7 @@
+import Dates
+
+using Dates: AbstractTime
+
 using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
 using Oceananigans.Architectures: architecture
@@ -6,6 +10,16 @@ using GPUArraysCore: @allowscalar
 using Adapt
 
 import Oceananigans.Fields: interpolate
+
+using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
+
+@inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
+
+@inline function interp_time(t₁::AbstractTime, t₂::AbstractTime, θ)
+    Δ = period_to_seconds(t₂ - t₁)
+    offset = seconds_to_nanosecond(θ * Δ)
+    return t₁ + offset
+end
 
 struct TimeInterpolator{T, N1, N2, N3}
     fractional_index :: T
@@ -88,7 +102,9 @@ end
         t₂ = times[n₂]
     end
 
-    ñ = (t - t₁) / (t₂ - t₁)
+    δt_t1 = time_difference_seconds(t, t₁)
+    δt_12 = time_difference_seconds(t₂, t₁)
+    ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
@@ -96,18 +112,18 @@ end
 
 @inline function find_time_index(times, t)
     Nt = length(times)
-
-    # n₁ and n₂ are the index to interpolate inbetween and
-    # n is a fractional index where 0 ≤ n ≤ 1
-    n₁, n₂ = index_binary_search(times, t, Nt)
+    n₂ = searchsortedfirst(times, t)
+    n₂ = clamp(n₂, 1, Nt)
+    n₁ = max(1, n₂ - 1)
 
     @inbounds begin
         t₁ = times[n₁]
         t₂ = times[n₂]
     end
 
-    # "Fractional index" ñ ∈ (0, 1)
-    ñ = (n₂ - n₁) / (t₂ - t₁) * (t - t₁)
+    δt_t1 = time_difference_seconds(t, t₁)
+    δt_12 = time_difference_seconds(t₂, t₁)
+    ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
@@ -133,11 +149,15 @@ function getindex(fts::OnDiskFTS, n::Int)
 
     status = @allowscalar FixedTime(fts.times[n])
 
-    return Field(loc, fts.grid;
-                 indices = fts.indices,
-                 boundary_conditions = fts.boundary_conditions,
-                 status,
-                 data = field_data)
+    field = Field(loc, fts.grid;
+                  indices = fts.indices,
+                  boundary_conditions = fts.boundary_conditions,
+                  status,
+                  data = field_data)
+
+    fill_halo_regions!(field)
+
+    return field
 end
 
 @propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
@@ -197,7 +217,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
 
     t₂ = @allowscalar fts.times[n₂]
     t₁ = @allowscalar fts.times[n₁]
-    t = t₂ * ñ + t₁ * (1 - ñ)
+    t = interp_time(t₁, t₂, ñ)
     status = FixedTime(t)
 
     ψ₂ = fts[n₂]
