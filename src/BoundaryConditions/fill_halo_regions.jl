@@ -136,8 +136,8 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 @inline function fill_halo_offset(::Tuple, ::WEB, grid, idx) 
     Hx, Hy, Hz = halo_size(grid)
 
-    Oy = idx[2] == Colon ? - Hy : first(idx[2])-1
-    Oz = idx[3] == Colon ? - Hz : first(idx[3])-1
+    Oy = idx[2] == Colon() ? - Hy : first(idx[2])-1
+    Oz = idx[3] == Colon() ? - Hz : first(idx[3])-1
 
     return (Oy, Oz)
 end
@@ -145,8 +145,8 @@ end
 @inline function fill_halo_offset(::Tuple, ::SNB, grid, idx) 
     Hx, Hy, Hz = halo_size(grid)
 
-    Ox = idx[1] == Colon ? - Hx : first(idx[1])-1
-    Oz = idx[3] == Colon ? - Hz : first(idx[3])-1
+    Ox = idx[1] == Colon() ? - Hx : first(idx[1])-1
+    Oz = idx[3] == Colon() ? - Hz : first(idx[3])-1
 
     return (Ox, Oz)
 end
@@ -154,8 +154,8 @@ end
 @inline function fill_halo_offset(::Tuple, ::TBB, grid, idx) 
     Hx, Hy, Hz = halo_size(grid)
 
-    Ox = idx[1] == Colon ? - Hx : first(idx[1])-1
-    Oy = idx[2] == Colon ? - Hy : first(idx[2])-1
+    Ox = idx[1] == Colon() ? - Hx : first(idx[1])-1
+    Oy = idx[2] == Colon() ? - Hy : first(idx[2])-1
 
     return (Ox, Oy)
 end
