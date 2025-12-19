@@ -1,6 +1,5 @@
-using Oceananigans.BoundaryConditions: permute_boundary_conditions, side_name, select_bc, fill_halo_size,
-    fill_halo_offset, fill_halo_kernel!
-using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes
+using Oceananigans.BoundaryConditions: permute_boundary_conditions, side_name, select_bc
+using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, halo_size
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
@@ -777,34 +776,17 @@ import Oceananigans.Operators: δxᶠᵃᵃ, δyᵃᶠᵃ
 
 import Oceananigans.BoundaryConditions: fill_halo_kernels
 
-@inline function fill_halo_kernels(bcs::FieldBoundaryConditions,
-                                   data::OffsetArray,
-                                   grid::ConformalCubedSpherePanelGridOfSomeKind,
-                                   loc, indices)
-    sides, ordered_bcs = permute_boundary_conditions(bcs)
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
+    
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
-    names = Tuple(side_name(side) for side in sides)
-    kernels! = []
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    size   = (Nx+2Hx, Ny+2Hy)
+    offset = (-Hx, -Hy)
+    kernel! = fill_halo_kernel!(side, bcs.top, grid, size, offset, data, reduced_dimensions)
 
-    for task in 1:length(sides)
-        side = sides[task]
-        bc   = select_bc(ordered_bcs[task])
-
-        size = side == Oceananigans.BoundaryConditions.BottomAndTop() ? (grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy) :
-            fill_halo_size(data, side, indices, bc, loc, grid)
-
-        offset = side == Oceananigans.BoundaryConditions.BottomAndTop() ? (-grid.Hx, -grid.Hy) :
-            fill_halo_offset(size, side, indices)
-
-        kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
-
-        push!(kernels!, kernel!)
-    end
-
-    kernels! = tuple(kernels!...)
-
-    return NamedTuple{names}(kernels!), NamedTuple{names}(ordered_bcs)
+    return (; bottom_and_top = kernel!)
 end
 
 #####
