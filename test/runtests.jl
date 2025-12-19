@@ -2,6 +2,7 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
+# TEST_GROUP=hydrostatic_regression julia --project -e 'using Pkg; Pkg.test()'
 group = get(ENV, "TEST_GROUP", "all") |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
