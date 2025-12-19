@@ -33,6 +33,7 @@ CUDA.allowscalar() do
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
+            include("test_quality_assurance.jl")
             include("test_grids.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
@@ -94,8 +95,8 @@ CUDA.allowscalar() do
             include("test_diagnostics.jl")
             include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
+            include("test_set_field_time_series.jl")
         end
     end
 
@@ -137,6 +138,8 @@ CUDA.allowscalar() do
     if group == :turbulence_closures || group == :all
         @testset "Turbulence closures tests" begin
             include("test_turbulence_closures.jl")
+            include("test_triad_isopycnal_diffusivity.jl")
+            include("test_gm_infinite_slope.jl")
         end
     end
 
@@ -182,12 +185,19 @@ CUDA.allowscalar() do
         include("test_distributed_poisson_solvers.jl")
     end
 
-    if group == :distributed_hydrostatic_model || group == :all
+    if group == :distributed_hydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = test_architectures()
         include("test_hydrostatic_regression.jl")
+    end
+
+    if group == :distributed_hydrostatic_model || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
         include("test_distributed_hydrostatic_model.jl")
     end
 
@@ -231,7 +241,6 @@ CUDA.allowscalar() do
             include("test_mpi_tripolar.jl")
         end
     end
-
 
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
@@ -286,6 +295,13 @@ CUDA.allowscalar() do
     if group == :oneapi || group == :all
         @testset "oneAPI extension tests" begin
             include("test_oneapi.jl")
+        end
+    end
+
+    # Tests for Makie extension
+    if group == :makie || group == :all
+        @testset "Makie extension tests" begin
+            include("test_makie_ext.jl")
         end
     end
 

@@ -111,6 +111,22 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         end
     end
 
+    @testset "Hydrostatic pressure anomaly with periodic vertical topology" begin
+        @info "  Testing hydrostatic pressure anomaly with periodic vertical topology..."
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(4, 4), extent=(1, 1),
+                                           topology=(Flat, Bounded, Periodic))
+            model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+            @test isnothing(model.pressures.pHY′)
+
+            model = NonhydrostaticModel(; grid, buoyancy=nothing)
+            @test isnothing(model.pressures.pHY′)
+
+            model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
+            @test isnothing(model.pressures.pHY′)
+        end
+    end
+
     @testset "Setting model fields" begin
         @info "  Testing setting model fields..."
         for arch in archs, FT in float_types

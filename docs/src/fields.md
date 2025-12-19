@@ -76,7 +76,7 @@ of the primary mesh. The nodes of the primary mesh are
 znodes(grid, Center(), with_halos=true)
 
 # output
-6-element OffsetArray(::Vector{Float64}, 0:5) with eltype Float64 with indices 0:5:
+6-element view(OffsetArray(::Vector{Float64}, 0:5), :) with eltype Float64 with indices 0:5:
  -0.05
   0.05
   0.2
@@ -191,7 +191,7 @@ Let's visualize the situation:
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(fontsize=20))
-CairoMakie.activate!(type="svg")
+CairoMakie.activate!(type="png")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                        size = (4, 4, 4),

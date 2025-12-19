@@ -1,4 +1,6 @@
+using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Operators
+using Adapt: Adapt, adapt
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
@@ -16,6 +18,11 @@ struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivit
         return new{TD, PK, PN, PB}(Cν, Cκ, Cb)
     end
 end
+
+Adapt.adapt_structure(to, closure::AnisotropicMinimumDissipation{TD}) where TD =
+    AnisotropicMinimumDissipation{TD}(adapt(to, closure.Cν),
+                                      adapt(to, closure.Cκ),
+                                      adapt(to, closure.Cb))
 
 const AMD = AnisotropicMinimumDissipation
 
@@ -141,7 +148,7 @@ end
 
 AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
+function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{TD}(closure.Cν, Cκ, closure.Cb)
 end
@@ -196,17 +203,17 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
+function compute_diffusivities!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+            closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
-    for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
+    for (tracer_index, κₑ) in enumerate(closure_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
         launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
@@ -351,10 +358,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### build_diffusivity_fields
+##### build_closure_fields
 #####
 
-function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
+function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)

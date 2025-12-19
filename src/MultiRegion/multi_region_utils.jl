@@ -62,7 +62,7 @@ end
 maybe_enable_peer_access!(arch, devices) = nothing
 
 # # Enable peer access by copying fake CuArrays between all devices
-function maybe_enable_peer_access!(arch::AbstractArchitecture, devices::NTuple{N, D}) where {N, D}
+function maybe_enable_peer_access!(arch::AbstractArchitecture, devices::NTuple)
 
     fake_arrays = []
     for dev in devices

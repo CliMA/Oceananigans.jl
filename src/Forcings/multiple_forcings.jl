@@ -23,13 +23,13 @@ end
 
 MultipleForcings(args...) = MultipleForcings(tuple(args...))
 
-function regularize_forcing(forcing_tuple::Tuple, field, field_name, model_field_names)
-    forcings = Tuple(regularize_forcing(f, field, field_name, model_field_names)
+function materialize_forcing(forcing_tuple::Tuple, field, field_name, model_field_names)
+    forcings = Tuple(materialize_forcing(f, field, field_name, model_field_names)
                      for f in forcing_tuple)
     return MultipleForcings(forcings)
 end
 
-regularize_forcing(mf::MultipleForcings, args...) = regularize_forcing(mf.forcings, args...)
+materialize_forcing(mf::MultipleForcings, args...) = materialize_forcing(mf.forcings, args...)
 
 @inline (mf::MultipleForcings{1})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields)
 
@@ -63,12 +63,12 @@ function Base.show(io::IO, mf::MultipleForcings)
 
     Nf = length(mf.forcings)
     if Nf > 1
-        body = [string("├ ", prettysummary(f), "\n") for f in mf.forcings[1:end-1]]
+        body = [string("├── ", prettysummary(f), "\n") for f in mf.forcings[1:end-1]]
     else
         body = []
     end
 
-    push!(body, string("└ ", prettysummary(mf.forcings[end])))
+    push!(body, string("└── ", prettysummary(mf.forcings[end])))
 
     print(io, start, "\n", body...)
 
