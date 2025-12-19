@@ -58,10 +58,10 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
-iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Nsubsteps) = 
-    @apply_regionally iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Nsubsteps)
+iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, transport_weights, Nsubsteps) = 
+    @apply_regionally iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, transport_weights, Nsubsteps)
 
-function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, weights, transport_weights, Nsubsteps)
+function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
     η           = free_surface.η
