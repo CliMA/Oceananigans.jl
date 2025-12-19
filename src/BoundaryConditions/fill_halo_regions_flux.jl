@@ -44,13 +44,13 @@ end
 end
 
 @inline function _fill_bottom_halo!(i, j, grid, c, ::FBC, args...) 
-    for i in 1:grid.Hz
+    for k in 1:grid.Hz
         _fill_flux_bottom_halo!(i, j, k, grid, c)
     end
 end
 
 @inline function _fill_top_halo!(i, j, grid, c, ::FBC, args...)    
-    for i in 1:grid.Hz
+    for k in 1:grid.Hz
         _fill_flux_top_halo!(i, j, k, grid, c)
     end
 end
