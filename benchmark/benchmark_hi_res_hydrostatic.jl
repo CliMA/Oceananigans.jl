@@ -68,7 +68,7 @@ function tripolar_grid(arch, Nx, Ny, Nz; bathy=false, halo=(7, 7, 7), kw...)
         
         isle(λ, φ) = exp(-(λ - λ₀)^2 / 2dλ^2 - (φ - φ₀)^2 / 2dφ^2)
         gaussian_isles(λ, φ) = - H + (H + h) * (isle(λ, φ) + isle(λ - 180, φ))
-	bathymetry = gaussian_isles
+	    bathymetry = gaussian_isles
     end
     
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
