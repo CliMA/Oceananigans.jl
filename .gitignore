@@ -15,6 +15,7 @@ deps/deps.jl
 docs/build
 docs/site
 docs/src/literated
+docs/src/developer_docs/AGENTS.md
 docs/Manifest.toml
 
 # Model output
