@@ -25,7 +25,7 @@ end
                                                      side, _fill_halo_kernel!)
 
     sz = fill_halo_size(field.data, side, field.indices, FullyConnected, location(field), grid)
-    of = fill_halo_offset(sz, side, field.indices)
+    of = fill_halo_offset(sz, side, grid, field.indices)
     kernel_parameters = KernelParameters(sz, of)
     reduced_dims = reduced_dimensions(field)
 
@@ -235,7 +235,7 @@ end
                                                            side, _fill_halo_kernel!)
 
     sz = fill_halo_size(field_1.data, side, field_1.indices, FullyConnected, location(field_1), grid)
-    of = fill_halo_offset(sz, side, field_1.indices)
+    of = fill_halo_offset(sz, side, grid, field_1.indices)
     kernel_parameters = KernelParameters(sz, of)
     reduced_dims = reduced_dimensions(field_1)
 
