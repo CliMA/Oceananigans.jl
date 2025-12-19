@@ -744,7 +744,7 @@ end
 
 import Oceananigans.Operators: δxᶠᵃᵃ, δyᵃᶠᵃ
 
-@inline δxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+@inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
               ifelse((i == grid.Nx+1) & (j < 1),       c[grid.Nx-j+1, 1, k] - c[grid.Nx, j, k],
               ifelse((i == grid.Nx+1) & (j > grid.Ny), c[j, grid.Ny, k]     - c[grid.Nx, j, k],
