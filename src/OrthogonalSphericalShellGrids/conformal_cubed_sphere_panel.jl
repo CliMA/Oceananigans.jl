@@ -1,5 +1,4 @@
-using Oceananigans.BoundaryConditions: permute_boundary_conditions, side_name, select_bc
-using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, halo_size
+using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, size, halo_size
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
