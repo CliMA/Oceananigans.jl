@@ -1,4 +1,6 @@
-using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, size, halo_size
+using Oceananigans.BoundaryConditions
+using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel!
+using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
@@ -776,16 +778,18 @@ import Oceananigans.Operators: δxTᶠᵃᵃ, δyTᵃᶠᵃ
 import Oceananigans.BoundaryConditions: fill_halo_kernels
 
 @inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
-    
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    size   = (Nx+2Hx, Ny+2Hy)
-    offset = (-Hx, -Hy)
-    kernel! = fill_halo_kernel!(side, bcs.top, grid, size, offset, data, reduced_dimensions)
+    Nx, Ny  = grid.Nx, grid.Ny
+    Hx, Hy  = grid.Hx, grid.Hy
+    size    = (Nx+2Hx, Ny+2Hy)
+    offset  = (-Hx, -Hy)
+    side    = BottomAndTop()
+    bcs     = (bcs.bottom, bcs.top)
+    bc      = select_bc(bcs)
+    kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
 
-    return (; bottom_and_top = kernel!)
+    return (; bottom_and_top = kernel!), (; bottom_and_top = bcs)
 end
 
 #####
