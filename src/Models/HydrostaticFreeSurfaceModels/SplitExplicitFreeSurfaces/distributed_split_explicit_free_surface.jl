@@ -3,7 +3,7 @@ using Oceananigans.DistributedComputations: AsynchronousDistributed, synchronize
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 
-const DistributedSplitExplicit = SplitExplicitFreeSurface{<:DistributedField}
+const DistributedSplitExplicit = SplitExplicitFreeSurface{<:Any, <:DistributedField}
 
 wait_free_surface_communication!(free_surface, model, arch) = nothing
 
