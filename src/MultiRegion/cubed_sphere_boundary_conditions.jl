@@ -398,6 +398,9 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     return nothing
 end
 
+@inline vertical_offset(::Tuple{<:Any, <:Any, <:Colon}) = 0
+@inline vertical_offset(indices) = first(indices[3]) - 1
+
 @inline function fill_cubed_sphere_field_pairs_corner_halo_event!(grid, field_1, field_2, plmn, _fill_halo_kernel!)
     Nz = size(field_1, 3)
     of = vertical_offset(field_1.indices)
@@ -529,8 +532,7 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
 end
 
 @kernel function _fill_cubed_sphere_face_center_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k_NTuple = @index(Global, NTuple)
-    k = k_NTuple[1]
+    k = @index(Global, Linear)
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -562,8 +564,7 @@ end
 end
 
 @kernel function _fill_cubed_sphere_center_face_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k_NTuple = @index(Global, NTuple)
-    k = k_NTuple[1]
+    k = @index(Global, Linear)
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.

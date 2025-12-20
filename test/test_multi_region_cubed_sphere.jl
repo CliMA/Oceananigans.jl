@@ -1,12 +1,10 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans: prognostic_fields
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Grids: φnode, λnode, halo_size, R_Earth
+using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.MultiRegion: number_of_regions
+using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
 
 function get_range_of_indices(operation, index, Nx, Ny)
     if operation == :endpoint && index == :first
@@ -819,24 +817,33 @@ end
                 @test iteration(simulation) == 10
                 @test time(simulation) == 10minutes
 
-                    u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u")
-                    v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v")
-                    b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b")
-                    η_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "η";
-                                                   grid = on_architecture(CPU(),
-                                                                          simulation.model.free_surface.η.grid))
-
-                    if grid == underlying_grid
-                        @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                    else
-                        @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch))]..."
-                    end
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
 
                 if grid == underlying_grid
                     @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
                 else
                     @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
                 end
+
+                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
+
+                run!(simulation, pickup = true)
+
+                @test iteration(simulation) == 20
+                @test time(simulation) == 20minutes
+
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
             end
         end
     end
