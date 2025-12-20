@@ -58,8 +58,8 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
-iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Nsubsteps) =
-    @apply_regionally iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Nsubsteps)
+iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps =
+    iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
 
 function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
@@ -190,14 +190,16 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Wait for setup step to finish.
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
 
-    # Reset the filtered fields and the barotropic timestepper to zero. 
-    @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
-        
-    # Solve for the free surface at tⁿ⁺¹.
-    iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
+    @apply_regionally begin
+        # Reset the filtered fields and the barotropic timestepper to zero.
+        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
-    # Update eta and velocities for the next timestep, the halos are updated in the `update_state!` function.
-    @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
+        # Solve for the free surface at tⁿ⁺¹.
+        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
+
+        # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
+        launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
+    end
 
     # Fill all the barotropic state.
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
