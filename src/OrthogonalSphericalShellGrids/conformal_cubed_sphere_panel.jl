@@ -275,7 +275,6 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        non_uniform_conformal_mapping = false,
                                        spacing = GeometricSpacing(),
                                        provided_conformal_mapping = nothing)
-
     radius = FT(radius)
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
@@ -805,17 +804,17 @@ end
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
-    Γᶠᶠᶜ(i, j, k, grid, u, v)
+    Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
 
-The vertical circulation associated with horizontal velocities ``u`` and ``v``.
+The vertical circulation associated with horizontal velocities ``u`` and ``v`` on a conformal cubed sphere grid
 """
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, u, v) where FT
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
-               Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
+               convert(FT, 4/3) * (Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u)),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
-                      - Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u),
+                      convert(FT, 4/3) * (- Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u)),
                       δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
                      )
               )
