@@ -98,7 +98,7 @@ end
 
         @test Hx == halo_size(grid, 1)
         @test Hy != halo_size(grid, 2)
-        @test Hy == length(free_surface.substepping.averaging_weights) + 1
+        @test Hy == length(free_surface.substepping.averaging_weights) + 2
 
         @test begin
             time_step!(model, 1.0)
