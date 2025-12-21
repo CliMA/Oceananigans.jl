@@ -1,8 +1,10 @@
+using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel!
 using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
 using JLD2: jldopen
+using OffsetArrays: OffsetArray
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
@@ -273,7 +275,6 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        non_uniform_conformal_mapping = false,
                                        spacing = GeometricSpacing(),
                                        provided_conformal_mapping = nothing)
-
     radius = FT(radius)
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
@@ -772,6 +773,23 @@ import Oceananigans.Operators: δxTᶠᵃᵃ, δyTᵃᶠᵃ
               ifelse((i < 1) & (j == grid.Ny+1),       f(1, grid.Ny-i+1, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i, j-1, k, grid, args...)))))
 
+import Oceananigans.BoundaryConditions: fill_halo_kernels
+
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
+    reduced_dimensions = findall(x -> x isa Nothing, loc)
+    reduced_dimensions = tuple(reduced_dimensions...)
+    Nx, Ny  = grid.Nx, grid.Ny
+    Hx, Hy  = grid.Hx, grid.Hy
+    size    = (Nx+2Hx, Ny+2Hy)
+    offset  = (-Hx, -Hy)
+    side    = Oceananigans.BoundaryConditions.BottomAndTop()
+    bcs     = (bcs.bottom, bcs.top)
+    bc      = select_bc(bcs)
+    kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
+
+    return (; bottom_and_top = kernel!), (; bottom_and_top = bcs)
+end
+
 #####
 ##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.
 ##### See: https://github.com/CliMA/Oceananigans.jl/issues/1584
@@ -786,17 +804,17 @@ import Oceananigans.Operators: δxTᶠᵃᵃ, δyTᵃᶠᵃ
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
-    Γᶠᶠᶜ(i, j, k, grid, u, v)
+    Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
 
-The vertical circulation associated with horizontal velocities ``u`` and ``v``.
+The vertical circulation associated with horizontal velocities ``u`` and ``v`` on a conformal cubed sphere grid
 """
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, u, v) where FT
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
-               Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
+               convert(FT, 4/3) * (Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u)),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
-                      - Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u),
+                      convert(FT, 4/3) * (- Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u)),
                       δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
                      )
               )
