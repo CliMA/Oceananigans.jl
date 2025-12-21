@@ -2,8 +2,10 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
-# TEST_GROUP=hydrostatic_regression julia --project -e 'using Pkg; Pkg.test()'
+# TEST_GROUP=unit julia --project -e 'using Pkg; Pkg.test()'
 group = get(ENV, "TEST_GROUP", "all") |> Symbol
+
+# TEST_FILE=test_coriolis.jl julia --project -e 'using Pkg; Pkg.test()'
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none

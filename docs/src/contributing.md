@@ -126,11 +126,18 @@ Oceananigans or by requesting something you think is missing.
 
 * You can test to make sure Oceananigans works by typing in `] test`. (This is equivalent to
   `using Pkg; Pkg.test()`.) Doing so will run all the tests (and this can take a while).
-  Alternatively, you can run only one test script file by providing its name as an environment
+  Alternatively, we can run only one test script file by providing its name as an environment
   variable. For example, to run the tests only from the `test_coriolis.jl` file we call:
 
   ```
   $ TEST_FILE=test_coriolis.jl julia --project -e"using Pkg; Pkg.test()"
+  ```
+
+  We can also run all the tests within a certain test group, as they are defined in [`test/runtest.jl`](https://github.com/CliMA/Oceananigans.jl/blob/main/test/runtests.jl).
+  For example, to run all unit tests we call:
+
+  ```
+  $ TEST_GROUP=unit julia --project -e"using Pkg; Pkg.test()"
   ```
 
 
