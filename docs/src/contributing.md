@@ -129,14 +129,14 @@ Oceananigans or by requesting something you think is missing.
   Alternatively, we can run only one test script file by providing its name as an environment
   variable. For example, to run the tests only from the `test_coriolis.jl` file we call:
 
-  ```
+  ```bash
   $ TEST_FILE=test_coriolis.jl julia --project -e"using Pkg; Pkg.test()"
   ```
 
   We can also run all the tests within a certain test group, as they are defined in [`test/runtest.jl`](https://github.com/CliMA/Oceananigans.jl/blob/main/test/runtests.jl).
   For example, to run all unit tests we call:
 
-  ```
+  ```bash
   $ TEST_GROUP=unit julia --project -e"using Pkg; Pkg.test()"
   ```
 
