@@ -1,6 +1,6 @@
 abstract type AbstractConstantSchmidtStabilityFunctions end
 
-const ConstantSchmidtStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:AbstractConstantSchmidtStabilityFunctions}
+const ConstantSchmidtStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:Any, <:Any, <:AbstractConstantSchmidtStabilityFunctions}
 
 @inline function tke_stability_functionᶜᶜᶠ(i, j, k, grid, closure::ConstantSchmidtStabilityTDVD, args...)
     Cσe = closure.stability_functions.Cσe
@@ -32,7 +32,7 @@ summarize_stability_functions(s::ConstantStabilityFunctions{FT}, prefix="", sep=
            "    ├── Cu₀: ", prettysummary(s.Cu₀), '\n',
            "    └── Cc₀: ", prettysummary(s.Cc₀))
 
-const ConstantStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:ConstantStabilityFunctions}
+const ConstantStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:Any, <:Any, <:ConstantStabilityFunctions}
 
 @inline momentum_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cu₀
 @inline   tracer_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cc₀
@@ -207,7 +207,7 @@ See Umlauf and Burchard (2005) equation 44.
     return num / den
 end
 
-const VariableStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:VariableStabilityFunctions}
+const VariableStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:Any, <:Any, <:VariableStabilityFunctions}
 
 @inline function momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure::VariableStabilityTDVD, velocities, tracers, buoyancy)
     αᴺ = stratification_numberᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)

@@ -7,7 +7,13 @@ struct TKETopBoundaryConditionParameters{C, U}
     top_velocity_boundary_conditions :: U
 end
 
-const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionParameters}
+struct TKEBottomBoundaryConditionParameters{C, U}
+    bottom_tracer_boundary_conditions :: C
+    bottom_velocity_boundary_conditions :: U
+end
+
+const TKEBoundaryFunction = DiscreteBoundaryFunction{<:Union{TKETopBoundaryConditionParameters,
+                                                             TKEBottomBoundaryConditionParameters}}
 
 @inline Adapt.adapt_structure(to, p::TKETopBoundaryConditionParameters) =
     TKETopBoundaryConditionParameters(adapt(to, p.top_tracer_boundary_conditions),
@@ -16,6 +22,14 @@ const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionPa
 @inline Architectures.on_architecture(to, p::TKETopBoundaryConditionParameters) =
     TKETopBoundaryConditionParameters(on_architecture(to, p.top_tracer_boundary_conditions),
                                       on_architecture(to, p.top_velocity_boundary_conditions))
+
+@inline Adapt.adapt_structure(to, p::TKEBottomBoundaryConditionParameters) =
+    TKEBottomBoundaryConditionParameters(adapt(to, p.bottom_tracer_boundary_conditions),
+                                         adapt(to, p.bottom_velocity_boundary_conditions))
+
+@inline Architectures.on_architecture(to, p::TKEBottomBoundaryConditionParameters) =
+    TKEBottomBoundaryConditionParameters(on_architecture(to, p.bottom_tracer_boundary_conditions),
+                                         on_architecture(to, p.bottom_velocity_boundary_conditions))
 
 @inline BoundaryConditions.getbc(condition::TKEBoundaryFunction, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
     condition.func(i, j, grid, clock, fields, condition.parameters, clo, buoyancy)
@@ -60,6 +74,28 @@ function top_velocity_boundary_conditions(grid, user_bcs)
     v_top_bc = :v ∈ user_bc_names ? user_bcs.v.top : default_top_bc
 
     return (u=u_top_bc, v=v_top_bc)
+end
+
+#####
+##### Bottom boundary conditions (for solid surfaces)
+#####
+
+""" Infer tracer boundary conditions from user_bcs and tracer_names for bottom boundary. """
+function bottom_tracer_boundary_conditions(grid, tracer_names, user_bcs)
+    default_tracer_bcs = NamedTuple(c => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for c in tracer_names)
+    bcs = merge(default_tracer_bcs, user_bcs)
+    return NamedTuple(c => bcs[c].bottom for c in tracer_names)
+end
+
+""" Infer velocity boundary conditions from `user_bcs` for bottom boundary. """
+function bottom_velocity_boundary_conditions(grid, user_bcs)
+    default_bottom_bc = default_prognostic_bc(topology(grid, 3)(), Center(), DefaultBoundaryCondition())
+
+    user_bc_names = keys(user_bcs)
+    u_bottom_bc = :u ∈ user_bc_names ? user_bcs.u.bottom : default_bottom_bc
+    v_bottom_bc = :v ∈ user_bc_names ? user_bcs.v.bottom : default_bottom_bc
+
+    return (u=u_bottom_bc, v=v_bottom_bc)
 end
 
 """ Computes the friction velocity u★ based on fluxes of u and v. """

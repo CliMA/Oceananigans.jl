@@ -1,4 +1,6 @@
-struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
+struct TKEDissipationVerticalDiffusivity{TD, TBC, BBC, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
+    top_boundary_condition :: TBC
+    bottom_boundary_condition :: BBC
     tke_dissipation_equations :: KE
     stability_functions :: ST
     minimum_length_scale :: LMIN
@@ -12,7 +14,9 @@ struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractSc
     tke_dissipation_time_step :: DT
 end
 
-function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
+function TKEDissipationVerticalDiffusivity{TD}(top_boundary_condition::TBC,
+                                               bottom_boundary_condition::BBC,
+                                               tke_dissipation_equations::KE,
                                                stability_functions::ST,
                                                minimum_length_scale :: LMIN,
                                                maximum_tracer_diffusivity::FT,
@@ -22,19 +26,22 @@ function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                minimum_tke::FT,
                                                minimum_stratification_number_safety_factor::FT,
                                                negative_tke_damping_time_scale::FT,
-                                               tke_dissipation_time_step::DT) where {TD, KE, ST, LMIN, FT, DT}
+                                               tke_dissipation_time_step::DT) where {TD, TBC, BBC, KE, ST, LMIN, FT, DT}
 
-    return TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT}(tke_dissipation_equations,
-                                                                       stability_functions,
-                                                                       minimum_length_scale,
-                                                                       maximum_tracer_diffusivity,
-                                                                       maximum_tke_diffusivity,
-                                                                       maximum_dissipation_diffusivity,
-                                                                       maximum_viscosity,
-                                                                       minimum_tke,
-                                                                       minimum_stratification_number_safety_factor,
-                                                                       negative_tke_damping_time_scale,
-                                                                       tke_dissipation_time_step)
+    return TKEDissipationVerticalDiffusivity{TD, TBC, BBC, KE, ST, LMIN, FT, DT}(
+        top_boundary_condition,
+        bottom_boundary_condition,
+        tke_dissipation_equations,
+        stability_functions,
+        minimum_length_scale,
+        maximum_tracer_diffusivity,
+        maximum_tke_diffusivity,
+        maximum_dissipation_diffusivity,
+        maximum_viscosity,
+        minimum_tke,
+        minimum_stratification_number_safety_factor,
+        negative_tke_damping_time_scale,
+        tke_dissipation_time_step)
 end
 
 TKEDissipationVerticalDiffusivity(FT::DataType; kw...) =
@@ -42,7 +49,7 @@ TKEDissipationVerticalDiffusivity(FT::DataType; kw...) =
 
 const TDVD{TD} = TKEDissipationVerticalDiffusivity{TD} where TD
 const TDVDArray{TD} = AbstractArray{<:TDVD{TD}} where TD
-const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
+const FlavorOfTD{TD, TBC, BBC} = Union{TDVD{TD, TBC, BBC}, TDVDArray{TD, TBC, BBC}} where {TD, TBC, BBC}
 
 @inline Base.eltype(::TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:Any, <:Any, FT}) where FT = FT
 
@@ -50,6 +57,8 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
     TKEDissipationVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                       FT = Oceananigans.defaults.FloatType;]
                                       tke_dissipation_equations = TKEDissipationEquations(),
+                                      top_boundary_condition = TKEDissipationBoundaryCondition(),
+                                      bottom_boundary_condition = nothing,
                                       stability_functions = VariableStabilityFunctions(),
                                       minimum_length_scale = StratifiedDisplacementScale(),
                                       maximum_tracer_diffusivity = Inf,
@@ -117,6 +126,8 @@ Umlauf, L., and Burchard, H. (2005). Second-order turbulence closure models for 
 function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                            FT = Oceananigans.defaults.FloatType;
                                            tke_dissipation_equations = TKEDissipationEquations{FT}(),
+                                           top_boundary_condition = TKEDissipationBoundaryCondition(FT),
+                                           bottom_boundary_condition = nothing,
                                            stability_functions = VariableStabilityFunctions(FT),
                                            minimum_length_scale = StratifiedDisplacementScale{FT}(),
                                            maximum_tracer_diffusivity = Inf,
@@ -133,7 +144,9 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
     # tke_dissipation_equations = convert_eltype(FT, tke_dissipation_equations)
     # minimum_length_scale = convert_eltype(FT, minimum_length_scale)
 
-    return TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations,
+    return TKEDissipationVerticalDiffusivity{TD}(top_boundary_condition,
+                                                 bottom_boundary_condition,
+                                                 tke_dissipation_equations,
                                                  stability_functions,
                                                  minimum_length_scale,
                                                  convert(FT, maximum_tracer_diffusivity),
@@ -393,12 +406,12 @@ function Base.show(io::IO, clo::TDVD)
               "├── minimum_tke: ", prettysummary(clo.minimum_tke), '\n',
               "├── negative_tke_damping_time_scale: ", prettysummary(clo.negative_tke_damping_time_scale), '\n',
               "├── tke_dissipation_time_step: ", prettysummary(clo.tke_dissipation_time_step), '\n',
+              "├── top_boundary_condition: ", prettysummary(clo.top_boundary_condition), '\n',
+              "├── bottom_boundary_condition: ", prettysummary(clo.bottom_boundary_condition), '\n',
               "├── tke_dissipation_equations: ", prettysummary(clo.tke_dissipation_equations), '\n',
               "│   ├── Cᵋϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵋϵ),  '\n',
               "│   ├── Cᴾϵ: ", prettysummary(clo.tke_dissipation_equations.Cᴾϵ),  '\n',
               "│   ├── Cᵇϵ⁺: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁺),  '\n',
-              "│   ├── Cᵇϵ⁻: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁻),  '\n',
-              "│   ├── Cᵂu★: ", prettysummary(clo.tke_dissipation_equations.Cᵂu★), '\n',
-              "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
+              "│   └── Cᵇϵ⁻: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁻),  '\n')
     print(io, "└── stability_functions: ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
