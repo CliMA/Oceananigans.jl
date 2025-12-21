@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel!
-using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes
+using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
@@ -743,7 +743,21 @@ end
 ##### Support for simulations on conformal cubed sphere panel grids
 #####
 
-import Oceananigans.Operators: δxTᶠᵃᵃ, δyTᵃᶠᵃ
+import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyTᵃᶠᵃ
+
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, c) where FT =
+    @inbounds ifelse((i == 1) & (j < 1),               FT(0.5) * (c[1, j, k] + c[j, 1, k]) ,
+              ifelse((i == grid.Nx+1) & (j < 1),       FT(0.5) * (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k]) ,
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), FT(0.5) * (c[j, grid.Ny, k] + c[grid.Nx, j, k]) ,
+              ifelse((i == 1) & (j > grid.Ny),         FT(0.5) * (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k]) ,
+                                                       FT(0.5) * (c[i, j, k] + c[i-1, j, k])))))
+
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, c) where FT =
+    @inbounds ifelse((i < 1) & (j == 1),               FT(0.5) * (c[i, 1, k] + c[1, i, k]) ,
+              ifelse((i > grid.Nx) & (j == 1),         FT(0.5) * (c[i, 1, k] + c[grid.Nx, grid.Ny+1-i, k]) ,
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), FT(0.5) * (c[grid.Nx, i, k] + c[i, grid.Ny, k]) ,
+              ifelse((i < 1) & (j == grid.Ny+1),       FT(0.5) * (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k]) ,
+                                                       FT(0.5) * (c[i, j, k] + c[i, j-1, k])))))
 
 @inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
@@ -772,6 +786,22 @@ import Oceananigans.Operators: δxTᶠᵃᵃ, δyTᵃᶠᵃ
               ifelse((i > grid.Nx) & (j == grid.Ny+1), f(grid.Nx, i, k, grid, args...)     - f(i, grid.Ny, k, grid, args...),
               ifelse((i < 1) & (j == grid.Ny+1),       f(1, grid.Ny-i+1, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i, j-1, k, grid, args...)))))
+
+import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ
+
+@inline static_column_depthᶠᶜᵃ(i, j, grid::ConformalCubedSpherePanelGridOfSomeKind) =
+    @inbounds ifelse((i == 1) & (j < 1),               min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(j, 1, grid)),
+              ifelse((i == grid.Nx+1) & (j < 1),       min(static_column_depthᶜᶜᵃ(grid.Nx-j+1, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), min(static_column_depthᶜᶜᵃ(j, grid.Ny, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
+              ifelse((i == 1) & (j > grid.Ny),         min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(grid.Nx-j+1, grid.Ny, grid)),
+                                                       min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i-1, j, grid))))))
+
+@inline static_column_depthᶜᶠᵃ(i, j, grid::ConformalCubedSpherePanelGridOfSomeKind) =
+    @inbounds ifelse((i < 1) & (j == 1),               min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(1, i, grid)),
+              ifelse((i > grid.Nx) & (j == 1),         min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, grid.Ny+1-i, grid)),
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), min(static_column_depthᶜᶜᵃ(grid.Nx, i, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
+              ifelse((i < 1) & (j == grid.Ny+1),       min(static_column_depthᶜᶜᵃ(1, grid.Ny-i+1, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
+                                                       min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
 
 import Oceananigans.BoundaryConditions: fill_halo_kernels
 
