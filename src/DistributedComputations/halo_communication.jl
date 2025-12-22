@@ -84,7 +84,14 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        args...;
                        kwargs...)
 
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray,
+                            boundary_conditions,
+                            indices,
+                            loc,
+                            grid::DistributedGrid,
+                            buffers::CommunicationBuffers,
+                            args...;
+                            kwargs...)
 
     arch = architecture(grid)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
@@ -96,7 +103,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
         fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
 
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
