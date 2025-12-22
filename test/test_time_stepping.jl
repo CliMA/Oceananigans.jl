@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using TimesDates: TimeDate
-using Oceananigans.Grids: topological_tuple_length, total_size
+using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity

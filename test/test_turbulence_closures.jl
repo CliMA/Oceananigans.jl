@@ -8,9 +8,7 @@ using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
                                        cell_diffusion_timescale, formulation, min_Δxyz
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
-                                       viscous_flux_vx, viscous_flux_vy, viscous_flux_vz,
-                                       viscous_flux_wx, viscous_flux_wy, viscous_flux_wz
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
 
 using Oceananigans.TurbulenceClosures: ScalarDiffusivity,
                                        ScalarBiharmonicDiffusivity,
