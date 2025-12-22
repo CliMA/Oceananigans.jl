@@ -21,7 +21,6 @@ using MPI
 
 MPI.Initialized() || MPI.Init()
 
-using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
