@@ -1,4 +1,4 @@
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F

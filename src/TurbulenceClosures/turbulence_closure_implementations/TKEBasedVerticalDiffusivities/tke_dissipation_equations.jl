@@ -1,10 +1,6 @@
 using Oceananigans: fields
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
-using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: get_active_cells_map
-using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
-using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
+using Oceananigans.Fields: znode
+using Oceananigans.TimeSteppers: implicit_step!
 
 Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
@@ -44,7 +40,8 @@ function time_step_tke_dissipation_equations!(model)
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt
+    FT = eltype(model.tracers.e)
+    Δt = convert(FT, model.clock.last_Δt)
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
@@ -54,8 +51,6 @@ function time_step_tke_dissipation_equations!(model)
         M = ceil(Int, Δt / Δτ) # number of substeps
         Δτ = Δt / M
     end
-
-    FT = eltype(grid)
 
     for m = 1:M # substep
         if m == 1 && M != 1
@@ -82,13 +77,13 @@ function time_step_tke_dissipation_equations!(model)
 
         implicit_step!(e, implicit_solver, closure,
                        model.closure_fields, Val(e_index),
-                       model.clock, 
+                       model.clock,
                        fields(model),
                        Δτ)
 
         implicit_step!(ϵ, implicit_solver, closure,
                        model.closure_fields, Val(ϵ_index),
-                       model.clock, 
+                       model.clock,
                        fields(model),
                        Δτ)
     end
@@ -129,7 +124,7 @@ end
 
     # Different destruction time-scales for TKE vs dissipation for numerical reasons
     ω★  = ϵ★ / e★ # target / physical dissipation time scale
-    ωe⁻ = closure_ij.negative_tke_damping_time_scale
+    ωe⁻ = 1 / closure_ij.negative_tke_damping_time_scale  # frequency = 1/timescale
     ωe  = ifelse(eⁱʲᵏ < 0, ωe⁻, ω★)
     ωϵ  = ϵⁱʲᵏ / e★
 
@@ -176,8 +171,9 @@ end
     end
 
     # Advance TKE and store tendency
-    FT = eltype(χ)
+    FT = eltype(e)
     Δτ = convert(FT, Δτ)
+    χ = convert(FT, χ)
 
     # See below.
     α = convert(FT, 1.5) + χ
@@ -276,9 +272,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
     parameters = TKETopBoundaryConditionParameters(top_tracer_bcs, top_velocity_bcs)
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
-
     top_dissipation_bc = FluxBoundaryCondition(top_dissipation_flux, discrete_form=true, parameters=parameters)
-
 
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
@@ -299,11 +293,11 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
         dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                                   top = top_dissipation_bc,
-                                                  bottom = e_bcs.bottom,
-                                                  north = e_bcs.north,
-                                                  south = e_bcs.south,
-                                                  east = e_bcs.east,
-                                                  west = e_bcs.west)
+                                                  bottom = ϵ_bcs.bottom,
+                                                  north = ϵ_bcs.north,
+                                                  south = ϵ_bcs.south,
+                                                  east = ϵ_bcs.east,
+                                                  west = ϵ_bcs.west)
     else
         dissipation_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_dissipation_bc)
     end
@@ -312,4 +306,3 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     return new_boundary_conditions
 end
-

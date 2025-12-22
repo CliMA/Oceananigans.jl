@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: interior_parent_indices, prettysummary
+using Oceananigans.Utils: prettysummary
 using LinearAlgebra: norm, dot
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index
@@ -39,19 +39,19 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 
 """
     ConjugateGradientSolver(linear_operation;
-                                          template_field,
-                                          maxiter = size(template_field.grid),
-                                          reltol = sqrt(eps(template_field.grid)),
-                                          abstol = 0,
-                                          preconditioner = nothing,
-                                          enforce_gauge_condition! = no_gauge_enforcement!)
+                            template_field,
+                            maxiter = size(template_field.grid),
+                            reltol = sqrt(eps(template_field.grid)),
+                            abstol = 0,
+                            preconditioner = nothing,
+                            enforce_gauge_condition! = no_gauge_enforcement!)
 
-Returns a `ConjugateGradientSolver` that solves the linear equation
-``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
+Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
+using a iterative conjugate gradient method with optional preconditioning.
 
 The solver is used by calling
 
-```
+```julia
 solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
 ```
 
@@ -101,7 +101,7 @@ function ConjugateGradientSolver(linear_operation;
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
-            residual = similar(template_field) # rᵢ
+    residual = similar(template_field) # rᵢ
 
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)

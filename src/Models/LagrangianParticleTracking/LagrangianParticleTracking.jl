@@ -10,20 +10,17 @@ using StructArrays
 using Oceananigans.Grids
 using Oceananigans.ImmersedBoundaries
 
-using Oceananigans.Grids: prettysummary, xnode, ynode, znode
-using Oceananigans.Grids: AbstractUnderlyingGrid, AbstractGrid, hack_cosd
+using Oceananigans.Grids: AbstractGrid, hack_cosd
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, prettysummary
 
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.OutputWriters: serializeproperty!, fetch_output
-
-import Base: size, length, show
 
 abstract type AbstractParticle end
 
@@ -101,8 +98,8 @@ function LagrangianParticles(particles::StructArray;
     return LagrangianParticles(particles, restitution, tracked_fields, dynamics, parameters)
 end
 
-size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
-length(lagrangian_particles::LagrangianParticles) = length(lagrangian_particles.properties)
+Base.size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
+Base.length(lagrangian_particles::LagrangianParticles) = length(lagrangian_particles.properties)
 
 Base.summary(particles::LagrangianParticles) =
     string(length(particles), " LagrangianParticles with eltype ", nameof(eltype(particles.properties)),

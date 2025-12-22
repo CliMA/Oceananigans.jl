@@ -1,5 +1,3 @@
-using Oceananigans.Grids: total_length, topology
-
 using OffsetArrays: OffsetArray
 
 

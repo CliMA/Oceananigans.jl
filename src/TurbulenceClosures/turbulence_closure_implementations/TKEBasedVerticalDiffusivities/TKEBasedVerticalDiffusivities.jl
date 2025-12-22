@@ -3,24 +3,22 @@ module TKEBasedVerticalDiffusivities
 export CATKEVerticalDiffusivity,
        TKEDissipationVerticalDiffusivity
 
-using Adapt, GPUArraysCore
+using Adapt: Adapt, adapt
+using GPUArraysCore: @allowscalar
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Utils
-using Oceananigans.Units
-using Oceananigans.Fields
-using Oceananigans.Operators
-
-using Oceananigans.Grids: prettysummary, peripheral_node, inactive_node, inactive_cell
-using Oceananigans.Fields: ZeroField
+using Oceananigans: Oceananigans
+using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
+using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
+    ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Utils: Utils, launch!, prettysummary
 
 using Oceananigans.BoundaryConditions:
+    BoundaryConditions,
     default_prognostic_bc,
+    fill_halo_regions!,
     DefaultBoundaryCondition,
-    BoundaryCondition,
     FieldBoundaryConditions,
     DiscreteBoundaryFunction,
     FluxBoundaryCondition
@@ -41,12 +39,9 @@ using Oceananigans.TurbulenceClosures:
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
 
-import Oceananigans.BoundaryConditions: getbc, fill_halo_regions!
-import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
     validate_closure,
     shear_production,
-    buoyancy_flux,
     dissipation,
     buoyancy_force,
     buoyancy_tracers,
@@ -58,10 +53,7 @@ import Oceananigans.TurbulenceClosures:
     viscosity,
     diffusivity,
     viscosity_location,
-    diffusivity_location,
-    diffusive_flux_x,
-    diffusive_flux_y,
-    diffusive_flux_z
+    diffusivity_location
 
 const c = Center()
 const f = Face()
