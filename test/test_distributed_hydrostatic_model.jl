@@ -36,20 +36,11 @@ end
 function rotation_with_shear_test(grid, closure=nothing)
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = 1)
-    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+    coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1)
+    tracers = (:c, :b)
 
-    tracers = if closure isa CATKEVerticalDiffusivity
-        (:c, :b, :e)
-    else
-        (:c, :b)
-    end
-
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis, tracers, free_surface,
                                         momentum_advection = WENOVectorInvariant(order=3),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        closure,
-                                        tracers,
                                         tracer_advection = WENO(order=3),
                                         buoyancy = BuoyancyTracer())
 
