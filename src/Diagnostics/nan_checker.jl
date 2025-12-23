@@ -1,5 +1,6 @@
 using CUDA: @allowscalar
 using Oceananigans.Utils: prettykeys
+using Oceananigans.Solvers: iteration
 
 mutable struct NaNChecker{F, H}
     fields :: F

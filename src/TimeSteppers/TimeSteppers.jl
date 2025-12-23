@@ -7,10 +7,8 @@ export
     time_step!,
     Clock
 
-using KernelAbstractions
+using KernelAbstractions: @kernel, @index
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
-using Oceananigans.Architectures: device
-using Oceananigans.Utils: work_layout
 
 """
     abstract type AbstractTimeStepper

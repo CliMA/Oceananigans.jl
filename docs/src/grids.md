@@ -4,7 +4,7 @@
 DocTestSetup = quote
     using Oceananigans
     using CairoMakie
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
     set_theme!(Theme(fontsize=20))
 end
 ```
@@ -191,7 +191,7 @@ using Oceananigans
 using Oceananigans.Units
 
 using CairoMakie
-CairoMakie.activate!(type = "svg")
+CairoMakie.activate!(type = "png")
 set_theme!(Theme(fontsize=20))
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
@@ -369,7 +369,7 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(Lines = (linewidth = 3,)))
-CairoMakie.activate!(type="svg")
+CairoMakie.activate!(type="png")
 set_theme!(Theme(fontsize=20))
 
 Nx, Ny, Nz = 64, 64, 32

@@ -1,12 +1,8 @@
 using Oceananigans: fields
 using Oceananigans.Operators: σⁿ, σ⁻
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
-using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: get_active_cells_map, bottommost_active_node
-using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
-using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
+using Oceananigans.Grids: bottommost_active_node
+using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 

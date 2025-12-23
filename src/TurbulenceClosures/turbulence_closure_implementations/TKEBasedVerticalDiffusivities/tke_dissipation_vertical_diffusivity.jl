@@ -48,7 +48,7 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
 
 """
     TKEDissipationVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
-                                      FT = Float64;]
+                                      FT = Oceananigans.defaults.FloatType;]
                                       tke_dissipation_equations = TKEDissipationEquations(),
                                       stability_functions = VariableStabilityFunctions(),
                                       minimum_length_scale = StratifiedDisplacementScale(),
@@ -116,9 +116,9 @@ Umlauf, L., and Burchard, H. (2005). Second-order turbulence closure models for 
 """
 function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                            FT = Oceananigans.defaults.FloatType;
-                                           tke_dissipation_equations = TKEDissipationEquations(),
-                                           stability_functions = VariableStabilityFunctions(),
-                                           minimum_length_scale = StratifiedDisplacementScale(),
+                                           tke_dissipation_equations = TKEDissipationEquations{FT}(),
+                                           stability_functions = VariableStabilityFunctions(FT),
+                                           minimum_length_scale = StratifiedDisplacementScale{FT}(),
                                            maximum_tracer_diffusivity = Inf,
                                            maximum_tke_diffusivity = Inf,
                                            maximum_dissipation_diffusivity = Inf,
@@ -129,6 +129,9 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
                                            tke_dissipation_time_step = nothing) where TD
 
     stability_functions = convert_eltype(FT, stability_functions)
+    # TODO: make this work
+    # tke_dissipation_equations = convert_eltype(FT, tke_dissipation_equations)
+    # minimum_length_scale = convert_eltype(FT, minimum_length_scale)
 
     return TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations,
                                                  stability_functions,
@@ -143,7 +146,7 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
                                                  tke_dissipation_time_step)
 end
 
-function with_tracers(tracer_names, closure::FlavorOfTD)
+function Utils.with_tracers(tracer_names, closure::FlavorOfTD)
     :e ∈ tracer_names && :ϵ ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e and :ϵ to represent turbulent kinetic energy " *
                             "for `TKEDissipationVerticalDiffusivity`."))
@@ -187,7 +190,7 @@ Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusiv
                                     adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
                                     adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
+function BoundaryConditions.fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_closure_fields.κu,
                                  tke_dissipation_closure_fields.κc,
                                  tke_dissipation_closure_fields.κe,
@@ -397,5 +400,5 @@ function Base.show(io::IO, clo::TDVD)
               "│   ├── Cᵇϵ⁻: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁻),  '\n',
               "│   ├── Cᵂu★: ", prettysummary(clo.tke_dissipation_equations.Cᵂu★), '\n',
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
-    print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")
+    print(io, "└── stability_functions: ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
