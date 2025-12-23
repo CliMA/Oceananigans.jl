@@ -278,6 +278,7 @@ Base.summary(::NegativeZDirection) = "NegativeZDirection()"
 
 Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
+size_summary(grid::AbstractGrid) = size_summary(size(grid))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
@@ -290,7 +291,7 @@ function domain_summary(topo, name, (left, right))
 
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
-                  topo isa FullyConnected ? "FullyConnected " :
+                  topo isa FullyConnected ? "Connected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   topo isa RightConnected ? "RightConnected  " :
                   error("Unexpected topology $topo together with the domain end points ($left, $right)")

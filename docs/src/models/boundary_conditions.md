@@ -40,7 +40,7 @@ directions decay to `0` at the boundary, leading to a viscous loss of momentum.
 julia> no_slip_field_bcs = FieldBoundaryConditions(no_slip_bc);
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=no_slip_field_bcs, v=no_slip_field_bcs, w=no_slip_field_bcs))
-NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
@@ -402,7 +402,7 @@ julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01));
 
 julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
-NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
@@ -507,7 +507,7 @@ model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=veloc
 │
 │ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
 └ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55
-NonhydrostaticModel{CPU, ImmersedBoundaryGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU(), ImmersedBoundaryGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 32×32×16 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)

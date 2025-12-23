@@ -316,13 +316,11 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology_strs(grid)
-    metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+    TX, TY, TZ = topology(grid)
 
-    return string(size_summary(size(grid)),
+    return string(size_summary(grid),
                   " LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
-                  " with ", size_summary(halo_size(grid)), " halo",
-                  " and ", metric_computation)
+                  " with ", size_summary(halo_size(grid)), " halo")
 end
 
 function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
