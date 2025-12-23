@@ -282,7 +282,8 @@ function test_grid_fitted_boundary_with_array(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size = (7, 1, 4), extent = (1, 1, 1))
 
     # Chose some bottom depths to illustrate different cases
-    bottom = [-1.1, -1.0, -0.5, -0.2, -0.0, +0.0, +0.1]
+    bottom = zeros(FT, 7) .+ [-1.1, -1.0, -0.5, -0.2, -0.0, +0.0, +0.1]
+    bottom = on_architecture(arch, bottom)
     grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
     # A cell is immersed iff z(top face) ≤ bottom:
