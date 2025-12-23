@@ -1,8 +1,6 @@
-using CubedSphere.SphericalGeometry
-using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded, validate_lat_lon_grid_args
-using Oceananigans.Utils: KernelParameters
-using StaticArrays
-using LinearAlgebra
+using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
+using Oceananigans.Utils: KernelParameters, launch!
+using StaticArrays: @SMatrix, SVector
 
 struct LatitudeLongitudeRotation{FT}
     north_pole :: FT

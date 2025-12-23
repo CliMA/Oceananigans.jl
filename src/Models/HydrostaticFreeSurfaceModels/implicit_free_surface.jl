@@ -1,11 +1,10 @@
-using Oceananigans.Grids: AbstractGrid, prettysummary
+using Oceananigans.Grids: AbstractGrid, XYRegularRG
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
-using Oceananigans.Fields
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: prettytime, prettysummary
 
-using Adapt
+using Adapt: Adapt
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
     η :: E

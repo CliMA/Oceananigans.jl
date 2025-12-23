@@ -1,5 +1,9 @@
-using Oceananigans.Grids: with_halo
-import Oceananigans.Grids: on_architecture
+using Oceananigans: Oceananigans
+using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
+    halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
+using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
+using Oceananigans.Utils: prettytime
+using Adapt: Adapt
 
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
@@ -339,8 +343,8 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
 
-    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+1, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+1, old_halos[2]) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
@@ -377,13 +381,13 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
                              Adapt.adapt(to, free_surface.substepping),
                              Adapt.adapt(to, free_surface.timestepper))
 
-for Type in (:SplitExplicitFreeSurface,
-             :AdamsBashforth3Scheme,
-             :FixedTimeStepSize,
-             :FixedSubstepNumber)
+for Type in (SplitExplicitFreeSurface,
+             AdamsBashforth3Scheme,
+             FixedTimeStepSize,
+             FixedSubstepNumber)
 
     @eval begin
-        function on_architecture(to, fs::$Type)
+        function Grids.on_architecture(to, fs::$Type)
             args = Tuple(on_architecture(to, prop) for prop in propertynames(fs))
             return $Type(args...)
         end

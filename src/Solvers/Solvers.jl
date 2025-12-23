@@ -13,15 +13,15 @@ using GPUArraysCore
 using SparseArrays
 using KernelAbstractions
 
-using Oceananigans.Architectures: device, CPU, GPU, array_type, on_architecture
+using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 
-using Oceananigans.Grids: unpack_grid, inactive_cell
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
+using Oceananigans.Grids: inactive_cell
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, RectilinearGrid, RegularVerticalCoordinate
 
 """
     ω(M, k)
@@ -48,8 +48,30 @@ include("krylov_solver.jl")
 const GridWithFFTSolver = Union{XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG}
 const GridWithFourierTridiagonalSolver = Union{XYRegularRG, XZRegularRG, YZRegularRG}
 
-fft_poisson_solver(grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
-fft_poisson_solver(grid::GridWithFourierTridiagonalSolver) =
+# Type alias for non-distributed architectures to avoid ambiguity with DistributedComputations methods
+const SingleArchitecture = Union{CPU, GPU}
+
+# Constrain to non-distributed grids by requiring the architecture parameter to be CPU or GPU
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Number, <:Any, <:Any, <:SingleArchitecture}) =
+    FFTBasedPoissonSolver(grid)
+
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Any, <:Any, <:Any, <:SingleArchitecture}) =
     FourierTridiagonalPoissonSolver(grid)
+
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Any, <:Number, <:Any, <:Any, <:SingleArchitecture}) =
+    FourierTridiagonalPoissonSolver(grid)
+
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any, <:Any, <:SingleArchitecture}) =
+    FourierTridiagonalPoissonSolver(grid)
+
+const FFTW_NUM_THREADS = Ref{Int}(1)
+
+function __init__()
+
+    # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
+    # but don't affect global FFTW configuration for other packages using FFTW
+    # FFTW.set_num_threads(4threads)
+    FFTW_NUM_THREADS[] = 4 * Threads.nthreads()
+end
 
 end # module

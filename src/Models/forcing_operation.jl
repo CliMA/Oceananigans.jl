@@ -1,6 +1,6 @@
 using Adapt
 
-using Oceananigans.Grids: Grids
+using Oceananigans.Utils: Utils
 
 struct ForcingKernelFunction{F}
     forcing :: F
@@ -9,7 +9,7 @@ end
 Adapt.adapt_structure(to, fkf::ForcingKernelFunction) =
     ForcingKernelFunction(adapt(to, fkf.forcing))
 
-Grids.prettysummary(kf::ForcingKernelFunction) = "ForcingKernelFunction"
+Utils.prettysummary(kf::ForcingKernelFunction) = "ForcingKernelFunction"
 
 @inline function (kf::ForcingKernelFunction)(i, j, k, grid, args...)
     return kf.forcing(i, j, k, grid, args...)

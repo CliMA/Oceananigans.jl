@@ -1,6 +1,4 @@
 using CubedSphere.SphericalGeometry: lat_lon_to_x, lat_lon_to_y, lat_lon_to_z
-using Oceananigans.Grids: total_length, Bounded, Center, Face,
-    LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, topology, λnode, φnode
 using GPUArraysCore: @allowscalar
 
 longitude_in_same_window(λ₁, λ₂) = mod(λ₁ - λ₂ + 180, 360) + λ₂ - 180
@@ -11,7 +9,7 @@ flip_location(::Face) = Center()
 """
     get_longitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
-Return the longitudes that correspond to the four vertices of cell `i, j, k` at location `(ℓx, ℓy, ℓz)`. The first 
+Return the longitudes that correspond to the four vertices of cell `i, j, k` at location `(ℓx, ℓy, ℓz)`. The first
 vertex is the cell's Southern-Western one and the rest follow in counter-clockwise order.
 """
 function get_longitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)

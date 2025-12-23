@@ -1,4 +1,4 @@
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 
 const DFBC = DefaultBoundaryCondition
 const IBC = BoundaryCondition{Open, Nothing} # ImpenetrableBoundaryCondition

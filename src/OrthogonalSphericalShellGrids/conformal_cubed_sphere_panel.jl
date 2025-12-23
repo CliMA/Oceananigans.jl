@@ -1,6 +1,10 @@
-using CubedSphere
-using CubedSphere.SphericalGeometry
-using JLD2
+using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel!
+using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes
+using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
+using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
+using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
+using JLD2: jldopen
+using OffsetArrays: OffsetArray
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
@@ -146,7 +150,7 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     conformal_mapping)
 end
 
-function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
+function Grids.with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
@@ -272,7 +276,6 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        non_uniform_conformal_mapping = false,
                                        spacing = GeometricSpacing(),
                                        provided_conformal_mapping = nothing)
-
     radius = FT(radius)
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
@@ -741,45 +744,52 @@ end
 ##### Support for simulations on conformal cubed sphere panel grids
 #####
 
-import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ
+import Oceananigans.Operators: δxTᶠᵃᵃ, δyTᵃᶠᵃ
 
-@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+@inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
               ifelse((i == grid.Nx+1) & (j < 1),       c[grid.Nx-j+1, 1, k] - c[grid.Nx, j, k],
               ifelse((i == grid.Nx+1) & (j > grid.Ny), c[j, grid.Ny, k]     - c[grid.Nx, j, k],
               ifelse((i == 1) & (j > grid.Ny),         c[1, j, k]           - c[grid.Ny-j+1, grid.Ny, k],
                                                        c[i, j, k]           - c[i-1, j, k]))))
 
-@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) = δxᶠᶜᶜ(i, j, k, grid, c)
-
-@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+@inline δyTᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i < 1) & (j == 1),               c[i, 1, k]           - c[1, i, k],
               ifelse((i > grid.Nx) & (j == 1),         c[i, 1, k]           - c[grid.Nx, grid.Ny+1-i, k],
               ifelse((i > grid.Nx) & (j == grid.Ny+1), c[grid.Nx, i, k]     - c[i, grid.Ny, k],
               ifelse((i < 1) & (j == grid.Ny+1),       c[1, grid.Ny-i+1, k] - c[i, grid.Ny, k],
                                                        c[i, j, k]           - c[i, j-1, k]))))
 
-@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) = δyᶜᶠᶜ(i, j, k, grid, c)
-
-@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
+@inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i == 1) & (j < 1),               f(1, j, k, grid, args...)           - f(j, 1, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j < 1),       f(grid.Nx-j+1, 1, k, grid, args...) - f(grid.Nx, j, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j > grid.Ny), f(j, grid.Ny, k, grid, args...)     - f(grid.Nx, j, k, grid, args...),
               ifelse((i == 1) & (j > grid.Ny),         f(1, j, k, grid, args...)           - f(grid.Nx-j+1, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i-1, j, k, grid, args...)))))
 
-@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
-    δxᶠᶜᶜ(i, j, k, grid, f, args...)
-
-@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
+@inline δyTᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i < 1) & (j == 1),               f(i, 1, k, grid, args...)           - f(1, i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == 1),         f(i, 1, k, grid, args...)           - f(grid.Nx, grid.Ny+1-i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == grid.Ny+1), f(grid.Nx, i, k, grid, args...)     - f(i, grid.Ny, k, grid, args...),
               ifelse((i < 1) & (j == grid.Ny+1),       f(1, grid.Ny-i+1, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i, j-1, k, grid, args...)))))
 
-@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
-    δyᶜᶠᶜ(i, j, k, grid, f, args...)
+import Oceananigans.BoundaryConditions: fill_halo_kernels
+
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
+    reduced_dimensions = findall(x -> x isa Nothing, loc)
+    reduced_dimensions = tuple(reduced_dimensions...)
+    Nx, Ny  = grid.Nx, grid.Ny
+    Hx, Hy  = grid.Hx, grid.Hy
+    size    = (Nx+2Hx, Ny+2Hy)
+    offset  = (-Hx, -Hy)
+    side    = Oceananigans.BoundaryConditions.BottomAndTop()
+    bcs     = (bcs.bottom, bcs.top)
+    bc      = select_bc(bcs)
+    kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
+
+    return (; bottom_and_top = kernel!), (; bottom_and_top = bcs)
+end
 
 #####
 ##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.
@@ -795,17 +805,17 @@ import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜ�
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
-    Γᶠᶠᶜ(i, j, k, grid, u, v)
+    Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
 
-The vertical circulation associated with horizontal velocities ``u`` and ``v``.
+The vertical circulation associated with horizontal velocities ``u`` and ``v`` on a conformal cubed sphere grid
 """
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, u, v) where FT
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
-               Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
+               convert(FT, 4/3) * (Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u)),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
-                      - Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u),
+                      convert(FT, 4/3) * (- Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u)),
                       δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
                      )
               )

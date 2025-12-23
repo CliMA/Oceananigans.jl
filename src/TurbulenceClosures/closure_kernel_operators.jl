@@ -1,5 +1,3 @@
-using Oceananigans.Operators: Δy_qᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶠᶜᶜ
-
 # Interface for "conditional fluxes" (see ImmersedBoundaries module)
 @inline _viscous_flux_ux(args...) = viscous_flux_ux(args...)
 @inline _viscous_flux_uy(args...) = viscous_flux_uy(args...)

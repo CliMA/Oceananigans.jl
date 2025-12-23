@@ -1,12 +1,8 @@
-using Oceananigans.Grids
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Grids: x_domain, y_domain
-using Oceananigans.Solvers
-using Oceananigans.Operators
-using Oceananigans.Architectures
-using Statistics
+using Oceananigans.Grids: XYZRegularRG, x_domain, y_domain
+using Oceananigans.Operators: Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
 
-import Oceananigans.Solvers: solve!
+using Oceananigans.Solvers: Solvers, FFTBasedPoissonSolver, solve!
 
 struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
     fft_poisson_solver :: S
@@ -76,7 +72,7 @@ build_implicit_step_solver(::Val{:FastFourierTransform}, grid, settings, gravita
 ##### Solve...
 #####
 
-function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, rhs, g, Δt)
+function Solvers.solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, rhs, g, Δt)
     solver = implicit_free_surface_solver.fft_poisson_solver
     grid = implicit_free_surface_solver.three_dimensional_grid
     Lz = grid.Lz
