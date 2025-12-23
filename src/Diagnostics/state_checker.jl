@@ -1,5 +1,6 @@
 using Printf: @sprintf
 using Statistics: mean
+using Oceananigans: fields
 
 struct StateChecker{T, F} <: AbstractDiagnostic
     schedule :: T
