@@ -145,8 +145,8 @@ julia> using Oceananigans
 julia> using Oceananigans.MultiRegion: ConformalCubedSphereGrid
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
-ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU():
-├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU:
+├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo
 ├── partition: CubedSpherePartition with (1 region in each panel)
 └── connectivity: CubedSphereConnectivity
 ```
@@ -454,8 +454,8 @@ function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshap
 end
 
 function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT}) where FT
-    TX, TY, TZ = Oceananigans.Grids.topology_strs(grid)
-    return string(size_summary(size(grid)),
+    TX, TY, TZ = topology(grid)
+    return string(size_summary(grid),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
