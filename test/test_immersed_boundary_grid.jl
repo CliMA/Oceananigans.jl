@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition
 
 #####
 ##### Basic immersed boundary grid construction tests
@@ -286,11 +286,10 @@ function test_grid_fitted_boundary_with_array(FT, arch)
     grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
     # A cell is immersed iff z(top face) ≤ bottom:
-    Nx, Ny, Nz = size(grid)
     z = rnodes(grid, Center(), Center(), Face())
     @allowscalar begin
-        for i in 1:Nx, j in 1:Ny, k in 1:Nz
-            @test immersed_cell(i, j, k, grid) == (z[k + 1] ≤ bottom[i])
+        for i in 1:7, k in 1:4
+            @test immersed_cell(i, 1, k, grid) == (z[k + 1] ≤ bottom[i])
         end
     end
 
