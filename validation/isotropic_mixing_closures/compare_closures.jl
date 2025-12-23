@@ -81,8 +81,8 @@ advection = Centered(order=2)
 closure = AnisotropicMinimumDissipation()
 simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
-νₑ = simulation.model.diffusivity_fields.νₑ
-κₑ = simulation.model.diffusivity_fields.κₑ.b
+νₑ = simulation.model.closure_fields.νₑ
+κₑ = simulation.model.closure_fields.κₑ.b
 outputs = merge(outputs, (; νₑ, κₑ))
 output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
 simulation.output_writers[:jld2] = output_writer
@@ -94,7 +94,7 @@ advection = Centered(order=2)
 closure = SmagorinskyLilly()
 simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
-νₑ = simulation.model.diffusivity_fields.νₑ
+νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; νₑ))
 output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
 simulation.output_writers[:jld2] = output_writer
@@ -106,7 +106,7 @@ advection = Centered(order=2)
 closure = Smagorinsky(coefficient=0.16)
 simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
-νₑ = simulation.model.diffusivity_fields.νₑ
+νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; νₑ))
 output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
 simulation.output_writers[:jld2] = output_writer
@@ -118,9 +118,9 @@ advection = Centered(order=2)
 closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=(1, 2)))
 simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
-𝒥ᴸᴹ = simulation.model.diffusivity_fields.𝒥ᴸᴹ
-𝒥ᴹᴹ = simulation.model.diffusivity_fields.𝒥ᴹᴹ
-νₑ = simulation.model.diffusivity_fields.νₑ
+𝒥ᴸᴹ = simulation.model.closure_fields.𝒥ᴸᴹ
+𝒥ᴹᴹ = simulation.model.closure_fields.𝒥ᴹᴹ
+νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; 𝒥ᴸᴹ, 𝒥ᴹᴹ, νₑ))
 output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
 simulation.output_writers[:jld2] = output_writer
@@ -132,11 +132,11 @@ advection = Centered(order=2)
 closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
 simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
-𝒥ᴸᴹ = simulation.model.diffusivity_fields.𝒥ᴸᴹ
-𝒥ᴹᴹ = simulation.model.diffusivity_fields.𝒥ᴹᴹ
-𝒥ᴸᴹ⁻ = simulation.model.diffusivity_fields.𝒥ᴸᴹ⁻
-𝒥ᴹᴹ⁻ = simulation.model.diffusivity_fields.𝒥ᴹᴹ⁻
-νₑ = simulation.model.diffusivity_fields.νₑ
+𝒥ᴸᴹ = simulation.model.closure_fields.𝒥ᴸᴹ
+𝒥ᴹᴹ = simulation.model.closure_fields.𝒥ᴹᴹ
+𝒥ᴸᴹ⁻ = simulation.model.closure_fields.𝒥ᴸᴹ⁻
+𝒥ᴹᴹ⁻ = simulation.model.closure_fields.𝒥ᴹᴹ⁻
+νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, νₑ))
 output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
 simulation.output_writers[:jld2] = output_writer

@@ -1,10 +1,10 @@
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Operators: index_and_interp_dependencies
-using Oceananigans.Utils: tupleit, user_function_arguments
+using Oceananigans.Utils: Utils, tupleit, user_function_arguments, prettysummary
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid, YZFlatGrid, XZFlatGrid, XYFlatGrid
 using Oceananigans.Grids: ξnode, ηnode, rnode
 
 import Oceananigans: location
-import Oceananigans.Utils: prettysummary
 
 struct LeftBoundary end
 struct RightBoundary end
@@ -45,6 +45,8 @@ end
 
 location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
+destantiate(t::T) where T = T
+
 #####
 ##### "Regularization" for NonhydrostaticModel setup
 #####
@@ -71,13 +73,11 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
 4. Determining the `interps` functions that interpolate field_dependencies to the location
    of the boundary.
 """
-function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       grid, loc, dim, Side, field_names) where C
-
-    boundary_func = bc.condition
+function regularize_boundary_condition(boundary_func::ContinuousBoundaryFunction,
+                                       grid, loc, dim, Side, field_names)
 
     # Set boundary-normal location to Nothing:
-    LX, LY, LZ = Tuple(i == dim ? Nothing : loc[i] for i = 1:3)
+    LX, LY, LZ = Tuple(i == dim ? Nothing : destantiate(loc[i]) for i = 1:3)
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
@@ -88,7 +88,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
                                                                              boundary_func.field_dependencies,
                                                                              indices, interps)
 
-    return BoundaryCondition(bc.classification, regularized_boundary_func)
+    return regularized_boundary_func
 end
 
 @inline domain_boundary_indices(::LeftBoundary, N) = 1, 1
@@ -203,7 +203,7 @@ function Base.summary(bf::ContinuousBoundaryFunction)
     return string("ContinuousBoundaryFunction ", prettysummary(bf.func, false), " at ", loc)
 end
 
-prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
+Utils.prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
 
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
     ContinuousBoundaryFunction{LX, LY, LZ, S}(Adapt.adapt(to, bf.func),
@@ -212,7 +212,7 @@ Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {
                                               Adapt.adapt(to, bf.field_dependencies_indices),
                                               Adapt.adapt(to, bf.field_dependencies_interp))
 
-on_architecture(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
+Architectures.on_architecture(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
     ContinuousBoundaryFunction{LX, LY, LZ, S}(on_architecture(to, bf.func),
                                               on_architecture(to, bf.parameters),
                                               on_architecture(to, bf.field_dependencies),

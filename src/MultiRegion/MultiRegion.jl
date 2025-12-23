@@ -2,51 +2,40 @@ module MultiRegion
 
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
-export AbstractRegionSide, East, West, North, South
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
 using Oceananigans
-using Oceananigans.Grids
-using Oceananigans.Fields
-using Oceananigans.Models
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
+using Oceananigans.Grids
+using Oceananigans.Models
 using Oceananigans.Utils
+
+using Oceananigans.Grids: AbstractUnderlyingGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Utils: Reference, Iterate
 
 using Adapt
 using DocStringExtensions
 using OffsetArrays
 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: Reference, Iterate, getnamewrapper
-using Oceananigans.Grids: AbstractUnderlyingGrid
-
 import KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 
-import Base: show, length, size
+import Base: length, size
 
 import Oceananigans.Utils:
-                getdevice,
-                switch_device!,
-                devices,
                 isregional,
                 getregion,
                 _getregion,
-                sync_all_devices!
+                regions
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
 
 abstract type AbstractConnectivity end
-
-abstract type AbstractRegionSide end
-
-struct West <: AbstractRegionSide end
-struct East <: AbstractRegionSide end
-struct North <: AbstractRegionSide end
-struct South <: AbstractRegionSide end
 
 struct XPartition{N} <: AbstractPartition
     div :: N
@@ -86,7 +75,6 @@ include("multi_region_field.jl")
 include("multi_region_abstract_operations.jl")
 include("multi_region_boundary_conditions.jl")
 include("multi_region_reductions.jl")
-include("unified_implicit_free_surface_solver.jl")
 include("multi_region_split_explicit_free_surface.jl")
 include("multi_region_models.jl")
 include("multi_region_output_writers.jl")

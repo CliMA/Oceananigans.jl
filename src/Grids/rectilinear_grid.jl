@@ -1,3 +1,5 @@
+using OrderedCollections: OrderedDict
+
 struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
@@ -48,13 +50,13 @@ const XZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVertic
 const YZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Any, <:Number}
 const XYZRegularRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Number}
 
-regular_dimensions(::XRegularRG)  = tuple(1)
-regular_dimensions(::YRegularRG)  = tuple(2)
-regular_dimensions(::ZRegularRG)  = tuple(3)
-regular_dimensions(::XYRegularRG) = (1, 2)
-regular_dimensions(::XZRegularRG) = (1, 3)
-regular_dimensions(::YZRegularRG) = (2, 3)
-regular_dimensions(::XYZRegularRG)   = (1, 2, 3)
+regular_dimensions(::XRegularRG)   = tuple(1)
+regular_dimensions(::YRegularRG)   = tuple(2)
+regular_dimensions(::ZRegularRG)   = tuple(3)
+regular_dimensions(::XYRegularRG)  = (1, 2)
+regular_dimensions(::XZRegularRG)  = (1, 3)
+regular_dimensions(::YZRegularRG)  = (2, 3)
+regular_dimensions(::XYZRegularRG) = (1, 2, 3)
 
 stretched_dimensions(::YZRegularRG) = tuple(1)
 stretched_dimensions(::XZRegularRG) = tuple(2)
@@ -101,7 +103,8 @@ Keyword arguments
 
 - `x`, `y`, and `z`: Each of `x, y, z` are either (i) 2-tuples that specify the end points of the domain
                      in their respect directions (in which case scalar values may be used in `Flat`
-                     directions), or (ii) arrays or functions of the corresponding indices `i`, `j`, or `k`
+                     directions), (ii) arrays that specify the locations of cell faces in the `x`-, `y`-,
+                     or `z`-direction, or (iii) functions of the corresponding indices `i`, `j`, or `k`
                      that specify the locations of cell faces in the `x`-, `y`-, or `z`-direction, respectively.
                      For example, to prescribe the cell faces in `z` we need to provide a function that takes
                      `k` as argument and returns the location of the faces for indices `k = 1` through `k = Nz + 1`,
@@ -313,9 +316,9 @@ RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
 function Base.summary(grid::RectilinearGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
-
-    return string(size_summary(size(grid)),
-                  " RectilinearGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+    nTX, nTY, nTZ = map(T -> nameof(T), topology(grid))
+    return string(size_summary(grid),
+                  " RectilinearGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
@@ -386,7 +389,9 @@ cpu_face_constructor_y(grid::YRegularRG) = y_domain(grid)
 function constructor_arguments(grid::RectilinearGrid)
     arch = architecture(grid)
     FT = eltype(grid)
-    args = Dict(:architecture => arch, :number_type => eltype(grid))
+
+    # We use OrderedDict to preserve order of keys. Important for positional arguments since we wanna be able to splat them.
+    args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
     topo = topology(grid)
@@ -478,10 +483,10 @@ rname(::RG) = :z
 @inline xnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
 @inline ynode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
 
-function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false, indices=(Colon(), Colon(), Colon()))
+    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1])
+    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[2])
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[3])
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
@@ -506,14 +511,23 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     return (x, y, z)
 end
 
-@inline xnodes(grid::RG, ℓx::F; with_halos=false) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
-@inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline xnodes(grid::RG, ℓx::F; with_halos=false, indices=Colon()) = view(_property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline xnodes(grid::RG, ℓx::C; with_halos=false, indices=Colon()) = view(_property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline ynodes(grid::RG, ℓy::F; with_halos=false, indices=Colon()) = view(_property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline ynodes(grid::RG, ℓy::C; with_halos=false, indices=Colon()) = view(_property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
 
 # convenience
-@inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
-@inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
+@inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = xnodes(grid, ℓx; with_halos, indices)
+@inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = ynodes(grid, ℓy; with_halos, indices)
+
+# Flat topologies
+XFlatRG = RectilinearGrid{<:Any, Flat}
+YFlatRG = RectilinearGrid{<:Any, <:Any, Flat}
+ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, Flat}
+@inline xnodes(grid::XFlatRG, ℓx::F; with_halos=false, indices=Colon()) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline xnodes(grid::XFlatRG, ℓx::C; with_halos=false, indices=Colon()) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline ynodes(grid::YFlatRG, ℓy::F; with_halos=false, indices=Colon()) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline ynodes(grid::YFlatRG, ℓy::C; with_halos=false, indices=Colon()) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)

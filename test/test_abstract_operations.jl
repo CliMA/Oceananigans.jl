@@ -82,14 +82,15 @@ function times_x_derivative(a, b, location, i, j, k, answer)
 end
 
 for arch in archs
-    @testset "Abstract operations [$(typeof(arch))]" begin
-        @info "Testing abstract operations [$(typeof(arch))]..."
+    A = typeof(arch)
+    @testset "Abstract operations [$A]" begin
+        @info "Testing abstract operations [$A]..."
 
         grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
         u, v, w = VelocityFields(grid)
         c = Field{Center, Center, Center}(grid)
 
-        @testset "Unary operations and derivatives [$(typeof(arch))]" begin
+        @testset "Unary operations and derivatives [$A]" begin
             for ψ in (u, v, w, c)
                 for op in (sqrt, sin, cos, exp, tanh)
                     @test @allowscalar typeof(op(ψ)[2, 2, 2]) <: Number
@@ -102,7 +103,7 @@ for arch in archs
             end
         end
 
-        @testset "Binary operations [$(typeof(arch))]" begin
+        @testset "Binary operations [$A]" begin
             generic_function(x, y, z) = x + y + z
             for (ψ, ϕ) in ((u, v), (u, w), (v, w), (u, c), (generic_function, c), (u, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.binary_operators
@@ -144,7 +145,7 @@ for arch in archs
             @test ConstantField(1) / 2 == ConstantField(1/2)
         end
 
-        @testset "Multiary operations [$(typeof(arch))]" begin
+        @testset "Multiary operations [$A]" begin
             generic_function(x, y, z) = x + y + z
             for (ψ, ϕ, σ) in ((u, v, w), (u, v, c), (u, v, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.multiary_operators
@@ -154,7 +155,7 @@ for arch in archs
             end
         end
 
-        @testset "KernelFunctionOperations [$(typeof(arch))]" begin
+        @testset "KernelFunctionOperations [$A]" begin
             trivial_kernel_function(i, j, k, grid) = 1
             op = KernelFunctionOperation{Center, Center, Center}(trivial_kernel_function, grid)
             @test op isa KernelFunctionOperation
@@ -244,8 +245,8 @@ for arch in archs
 
         model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
 
-        @testset "Construction of abstract operations [$(typeof(arch))]" begin
-            @info "    Testing construction of abstract operations [$(typeof(arch))]..."
+        @testset "Construction of abstract operations [$A]" begin
+            @info "    Testing construction of abstract operations [$A]..."
 
             u, v, w, T, S = fields(model)
 
@@ -290,14 +291,15 @@ for arch in archs
             @test u / 2 isa BinaryOperation
         end
 
-        @testset "BinaryOperations with GridMetricOperation [$(typeof(arch))]" begin
+        @testset "BinaryOperations with grid metric operations [$A]" begin
+            @info "  Testing BinaryOperations with grid metric operations [$A]"
             lat_lon_grid = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 1), latitude=(0, 1), z=(0, 1))
             rectilinear_grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2, 3, 4))
 
             for LX in (Center, Face)
                 for LY in (Center, Face)
                     for LZ in (Center, Face)
-                        loc = (LX, LY, LZ)
+                        loc = (LX(), LY(), LZ())
                         f = Field(loc, rectilinear_grid)
                         f .= 1
 
@@ -326,9 +328,30 @@ for arch in archs
                     end
                 end
             end
+
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(4, 4, 4))
+            c = CenterField(grid)
+            w = ZFaceField(grid)
+            set!(c, 1)
+            set!(w, 1)
+
+            c_z = Field(c * Operators.z)
+            @test c_z.operand isa BinaryOperation
+            @test c_z.operand.a isa Field
+            @test c_z.operand.b isa KernelFunctionOperation
+
+            w_z = Field(w * Operators.z)
+            @test w_z.operand isa BinaryOperation
+            @test w_z.operand.a isa Field
+            @test w_z.operand.b isa KernelFunctionOperation
+
+            @allowscalar begin
+                @test c_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Center())
+                @test w_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Face())
+            end
         end
 
-        @testset "Indexing of AbstractOperations [$(typeof(arch))]" begin
+        @testset "Indexing of AbstractOperations [$A]" begin
 
             grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
@@ -354,7 +377,7 @@ for arch in archs
             b = XFaceField(grid,  indices = test_indices[2])
             c = YFaceField(grid,  indices = test_indices[3])
 
-            d = Field((Face, Face, Center), grid, indices = (:, 2:3, 1:2))
+            d = Field{Face, Face, Center}(grid, indices = (:, 2:3, 1:2))
 
             @test indices(a * b * c) == (2:3, 2:3, 2:3)
             @test indices(b * a * c) == (3:3, 2:3, 2:3)
@@ -366,4 +389,3 @@ for arch in archs
         end
     end
 end
-

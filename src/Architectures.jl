@@ -4,8 +4,7 @@ export AbstractArchitecture, AbstractSerialArchitecture
 export CPU, GPU, ReactantState
 export device, device!, ndevices, synchronize, architecture, unified_array, device_copy_to!
 export array_type, on_architecture
-export constructors, unpack_constructors, copy_unpack_constructors
-export arch_sparse_matrix, child_architecture
+export child_architecture
 
 using Adapt
 using OffsetArrays
@@ -59,9 +58,8 @@ struct ReactantState <: AbstractSerialArchitecture end
 
 device(a::CPU) = KA.CPU()
 device(a::GPU) = a.device
-device!(::CPU, i) = KA.device!(CPU(), i+1)
+device!(::CPU, i) = nothing
 device!(::CPU) = nothing
-device!(a::GPU, i) = KA.device!(a.device, i+1)
 ndevices(a::CPU) = KA.ndevices(KA.CPU())
 ndevices(a::AbstractArchitecture) = KA.ndevices(a.device)
 synchronize(a::CPU) = KA.synchronize(KA.CPU())
@@ -75,6 +73,12 @@ architecture(a::OffsetArray) = architecture(parent(a))
 architecture(::SparseMatrixCSC) = CPU()
 architecture(::Type{T}) where {T<:AbstractArray} = architecture(Base.typename(T).wrapper)
 architecture(::Type{Array}) = CPU()
+
+# Utils for sparse matrix manipulation
+@inline sparse_matrix_constructors(::CPU, A::SparseMatrixCSC) = (A.m, A.n, A.colptr, A.rowval, A.nzval)
+@inline sparse_matrix_constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
+@inline sparse_matrix_constructors(::GPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
+@inline sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 
 """
     child_architecture(arch)
@@ -98,6 +102,7 @@ on_architecture(::CPU, a::Array) = a
 on_architecture(::CPU, a::BitArray) = a
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 on_architecture(::CPU, a::StepRangeLen) = a
+on_architecture(::CPU, A::SparseMatrixCSC) = A
 
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
     OffsetArray(on_architecture(arch, a.parent), a.offsets...)
@@ -105,6 +110,10 @@ on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
 cpu_architecture(::ReactantState) = CPU()
+
+Base.summary(::CPU) = "CPU"
+Base.summary(gpu::GPU) = "GPU{$(typeof(gpu.device))}"
+Base.summary(::ReactantState) = "ReactantState"
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
@@ -116,19 +125,5 @@ unified_array(::GPU, a) = a
 # Convert arguments to GPU-compatible types
 @inline convert_to_device(arch, args)  = args
 @inline convert_to_device(::CPU, args) = args
-
-# Utils for sparse matrix manipulation
-@inline constructors(::CPU, A::SparseMatrixCSC) = (A.m, A.n, A.colptr, A.rowval, A.nzval)
-@inline constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
-@inline constructors(::GPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
-
-@inline unpack_constructors(::CPU, constr::Tuple) = (constr[3], constr[4], constr[5])
-@inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
-
-@inline copy_unpack_constructors(::CPU, constr::Tuple) = deepcopy((constr[3], constr[4], constr[5]))
-@inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
-
-@inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC) = A
 
 end # module

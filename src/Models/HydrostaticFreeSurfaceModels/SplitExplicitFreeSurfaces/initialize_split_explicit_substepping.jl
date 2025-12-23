@@ -1,4 +1,4 @@
-using Oceananigans.ImmersedBoundaries: get_active_column_map, peripheral_node
+using Oceananigans.ImmersedBoundaries: peripheral_node
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 using Oceananigans.Operators: Δz
 
@@ -27,22 +27,21 @@ end
 
 # `initialize_free_surface_state!` is called at the beginning of the substepping to
 # reset the filtered state to zero and reinitialize the state from the filtered state.
-function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper, stage)
+function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper)
 
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
 
     initialize_free_surface_timestepper!(timestepper, η, U, V)
 
-    fill!(free_surface.filtered_state.η, 0)
-    fill!(free_surface.filtered_state.U, 0)
-    fill!(free_surface.filtered_state.V, 0)
-
+    for field in free_surface.filtered_state
+        fill!(field, 0)
+    end
     return nothing
 end
 
 # At the last stage we reset the velocities and perform the complete substepping from n to n+1
-function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts, ::Val{3})
+function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts)
 
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
@@ -58,9 +57,8 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
 
     initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
 
-    fill!(free_surface.filtered_state.η, 0)
-    fill!(free_surface.filtered_state.U, 0)
-    fill!(free_surface.filtered_state.V, 0)
-
+    for field in free_surface.filtered_state
+        fill!(field, 0)
+    end
     return nothing
 end

@@ -76,7 +76,7 @@ of the primary mesh. The nodes of the primary mesh are
 znodes(grid, Center(), with_halos=true)
 
 # output
-6-element OffsetArray(::Vector{Float64}, 0:5) with eltype Float64 with indices 0:5:
+6-element view(OffsetArray(::Vector{Float64}, 0:5), :) with eltype Float64 with indices 0:5:
  -0.05
   0.05
   0.2
@@ -119,7 +119,7 @@ c = Field{Center, Center, Center}(grid)
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -143,7 +143,7 @@ u = Field{Face, Center, Center}(grid)
 4×5×4 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -191,7 +191,7 @@ Let's visualize the situation:
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(fontsize=20))
-CairoMakie.activate!(type="svg")
+CairoMakie.activate!(type="png")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                        size = (4, 4, 4),
@@ -245,7 +245,7 @@ set!(c, 42)
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=42.0, min=42.0, mean=42.0
 ```
@@ -303,11 +303,10 @@ fun_stuff(x, y, z) = 2x
 set!(c, fun_stuff)
 
 # output
-
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=1.75, min=0.25, mean=1.0
 ```
@@ -342,7 +341,7 @@ set!(one_d_c, still_pretty_fun)
 7×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 7×1×1 RectilinearGrid{Float64, Periodic, Flat, Flat} on CPU with 3×0×0 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
 └── data: 13×1×1 OffsetArray(::Array{Float64, 3}, -2:10, 1:1, 1:1) with eltype Float64 with indices -2:10×1:1×1:1
     └── max=19.5, min=1.5, mean=10.5
 ```
@@ -464,7 +463,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── north: PeriodicBoundaryCondition
 ├── bottom: FluxBoundaryCondition: Nothing
 ├── top: FluxBoundaryCondition: Nothing
-└── immersed: FluxBoundaryCondition: Nothing
+└── immersed: Nothing
 ```
 
 Specifically for `c` above, `x` and `y` are `Periodic` while `z` has been assigned

@@ -1,6 +1,6 @@
 using GPUArraysCore
 using Oceananigans.Grids: stretched_dimensions
-using Oceananigans.Grids: XDirection, YDirection
+using Oceananigans.Grids: XDirection, YDirection, ZDirection
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
@@ -13,6 +13,8 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             XTridiagonalSolver,
                             compute_main_diagonal!,
                             compute_lower_diagonal!
+
+import Oceananigans.Solvers: compute_preconditioner_rhs!
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P
@@ -203,7 +205,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     main_diagonal = zeros(grid, size(grid)...)
 
     Nd = size(grid, tridiagonal_dim) - 1
-    lower_diagonal = zeros(grid, Nd) 
+    lower_diagonal = zeros(grid, Nd)
     upper_diagonal = lower_diagonal
 
     compute_main_diagonal!(main_diagonal, tridiagonal_formulation, grid, λ1, λ2)
@@ -351,4 +353,43 @@ function solve!(x, solver::XStretchedDistributedSolver)
             _copy_real_component!, x, parent(storage.zfield))
 
     return x
+end
+
+#####
+##### Preconditioning support for ConjugateGradientPoissonSolver
+#####
+
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
+
+@kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
+@kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
+@kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
+function compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
+    grid = solver.local_grid
+    arch = architecture(grid)
+    tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
+
+    if tridiagonal_dir isa XDirection
+        launch!(arch, grid, :xyz, distributed_fourier_tridiagonal_preconditioner_rhs!,
+                solver.storage.xfield, tridiagonal_dir, grid, rhs)
+    elseif tridiagonal_dir isa YDirection
+        launch!(arch, grid, :xyz, distributed_fourier_tridiagonal_preconditioner_rhs!,
+                solver.storage.yfield, tridiagonal_dir, grid, rhs)
+    elseif tridiagonal_dir isa ZDirection
+        launch!(arch, grid, :xyz, distributed_fourier_tridiagonal_preconditioner_rhs!,
+                solver.storage.zfield, tridiagonal_dir, grid, rhs)
+    end
+    return nothing
 end
