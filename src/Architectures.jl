@@ -112,7 +112,7 @@ cpu_architecture(::GPU) = CPU()
 cpu_architecture(::ReactantState) = CPU()
 
 Base.summary(::CPU) = "CPU"
-Base.summary(::GPU) = "GPU"
+Base.summary(gpu::GPU) = "GPU{$(typeof(gpu.device))}"
 Base.summary(::ReactantState) = "ReactantState"
 
 unified_array(::CPU, a) = a
