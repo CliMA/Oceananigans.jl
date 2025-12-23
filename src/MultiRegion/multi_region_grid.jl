@@ -60,7 +60,7 @@ minimum_zspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(; substeps=50, gravitational_acceleration)
 
-FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc::Tuple, indices=(:, :, :); kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 """
