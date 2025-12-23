@@ -1,9 +1,10 @@
 agents:
   queue: central
   slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues
-  modules: climacommon/2024_10_10
+  modules: climacommon/2025_07_30
 
 env:
+  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_PATH}/.buildkite/distributed"
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default:"
   OPENBLAS_NUM_THREADS: 1
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -20,6 +21,8 @@ steps:
       TEST_ARCHITECTURE: "GPU"
       MPI_TEST: "false" # initialization is not an MPI test
     command:
+      - "echo $$JULIA_LOAD_PATH"
+      - "echo $$JULIA_DEPOT_PATH"
       - echo "--- Initialize distributed tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
