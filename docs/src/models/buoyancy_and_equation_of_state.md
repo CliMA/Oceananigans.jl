@@ -26,7 +26,7 @@ end
 julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(; grid, buoyancy=nothing)
-NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
@@ -41,7 +41,7 @@ The option `buoyancy = nothing` is the default for [`NonhydrostaticModel`](@ref)
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid)
-NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
@@ -55,7 +55,7 @@ The same is true for `HydrostaticFreeSurfaceModel`,
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid)
-HydrostaticFreeSurfaceModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: ()
@@ -76,7 +76,7 @@ a buoyancy tracer by including `:b` in `tracers` and specifying  `buoyancy = Buo
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
-NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
@@ -90,7 +90,7 @@ Similarly for a `HydrostaticFreeSurfaceModel` with buoyancy as a tracer:
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
-HydrostaticFreeSurfaceModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
@@ -118,7 +118,7 @@ S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tra
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
@@ -132,7 +132,7 @@ and the same is true for `HydrostaticFreeSurfaceModel`,
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-HydrostaticFreeSurfaceModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
@@ -158,7 +158,7 @@ SeawaterBuoyancy{Float64}:
 └── equation_of_state: LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078)
 
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=(:T, :S))
-NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
@@ -240,7 +240,7 @@ BuoyancyForce:
 └── gravity_unit_vector: (0.0, 0.707107, 0.707107)
 
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
-NonhydrostaticModel{CPU(), RectilinearGrid}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered(order=2)
