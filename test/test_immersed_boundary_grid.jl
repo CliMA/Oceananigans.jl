@@ -278,6 +278,22 @@ function test_grid_fitted_boundary_with_array(FT, arch)
         @test _immersed_cell(3, 3, 3, ibg.underlying_grid, ibg.immersed_boundary) == false
     end
 
+    # Test expected immersed cells (issue #5061)
+    underlying_grid = RectilinearGrid(arch, FT, size=(7, 1, 4), z = (-1, 0))
+
+    # Chose some bottom depths to illustrate different cases
+    bottom = [-1.1, -1.0, -0.5, -0.2, -0.0, +0.0, +0.1]
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
+
+    # A cell is immersed iff z(top face) ≤ bottom:
+    Nx, Ny, Nz = size(grid)
+    z = rnodes(grid, Center(), Center(), Face())
+    @allowscalar begin
+        for i in 1:Nx, j in 1:Ny, k in 1:Nz
+            @test immersed_cell(i, j, k, grid) == (z[k + 1] ≤ bottom[i])
+        end
+    end
+
     return nothing
 end
 
