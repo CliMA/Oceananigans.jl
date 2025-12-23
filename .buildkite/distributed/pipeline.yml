@@ -24,7 +24,7 @@ steps:
       - "echo $$JULIA_LOAD_PATH"
       - "echo $$JULIA_DEPOT_PATH"
       - echo "--- Initialize distributed tests"
-      - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
+      - "julia -O0 --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 1
@@ -38,7 +38,7 @@ steps:
       TEST_GROUP: "distributed"
       TEST_ARCHITECTURE: "CPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
@@ -53,7 +53,7 @@ steps:
       TEST_GROUP: "distributed"
       TEST_ARCHITECTURE: "GPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
@@ -68,7 +68,7 @@ steps:
     env:
       TEST_GROUP: "distributed_solvers"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
@@ -83,7 +83,7 @@ steps:
       TEST_GROUP: "distributed_solvers"
       TEST_ARCHITECTURE: "GPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
@@ -99,7 +99,7 @@ steps:
       TEST_GROUP: "distributed_hydrostatic_regression"
       TEST_ARCHITECTURE: "CPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     timeout_in_minutes: 1440
     agents:
       slurm_mem: 50G
@@ -115,7 +115,7 @@ steps:
       TEST_GROUP: "distributed_hydrostatic_regression"
       TEST_ARCHITECTURE: "GPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     timeout_in_minutes: 1440
     agents:
       slurm_mem: 100G # Apparently the GPU tests require more memory
@@ -132,7 +132,7 @@ steps:
       TEST_GROUP: "distributed_hydrostatic_model"
       TEST_ARCHITECTURE: "CPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     timeout_in_minutes: 1440
     agents:
       slurm_mem: 50G
@@ -148,7 +148,7 @@ steps:
       TEST_GROUP: "distributed_hydrostatic_model"
       TEST_ARCHITECTURE: "GPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     timeout_in_minutes: 1440
     agents:
       slurm_mem: 150G # Apparently the GPU tests require more memory?
@@ -165,7 +165,7 @@ steps:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
       TEST_ARCHITECTURE: "CPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
@@ -180,7 +180,7 @@ steps:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
       TEST_ARCHITECTURE: "GPU"
     commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia -O0 --color=yes --project=.buildkite/distributed -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
