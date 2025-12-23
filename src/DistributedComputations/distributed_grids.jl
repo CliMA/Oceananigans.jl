@@ -1,7 +1,7 @@
 using MPI
 using OffsetArrays
 using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
+using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements, size_summary
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
@@ -382,4 +382,24 @@ function with_number_type(FT, local_grid::DistributedRectilinearGrid)
     arch = args_local[:architecture]
     kwargs = kwargs_global
     return RectilinearGrid(arch, FT; kwargs...)
+end
+
+#####
+##### Show
+#####
+
+function size_summary(grid::DistributedGrid)
+    local_summary = size_summary(size(grid))
+    arch = architecture(grid)
+
+    Rx, Ry, Rz = arch.ranks
+    Nr = prod(arch.ranks)
+
+    distributed_info = if Nr == 1
+        "(distributed on 1 rank)"
+    else
+        "(distributed across $Rx×$Ry×$Rz ranks)"
+    end
+
+    return string(local_summary, " ", distributed_info)
 end
