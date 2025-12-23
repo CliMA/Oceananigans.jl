@@ -5,7 +5,6 @@ version = "0.102.5"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 CubedSphere = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -37,6 +36,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
