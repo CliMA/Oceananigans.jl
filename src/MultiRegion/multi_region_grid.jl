@@ -229,8 +229,8 @@ Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
 function Base.show(io::IO, mrg::MultiRegionGrids{FT}) where FT
-    TX, TY, TZ = Oceananigans.Grids.topology_strs(mrg)
-    return print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
+    TX, TY, TZ = topology(mrg)
+    return print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(summary(architecture(mrg))): \n",
                      "├── region_grids: $(summary(mrg.region_grids[1])) \n",
                      "├── partition: $(summary(mrg.partition)) \n",
                      "└── connectivity: $(summary(mrg.connectivity))")

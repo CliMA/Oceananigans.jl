@@ -454,8 +454,8 @@ function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshap
 end
 
 function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT}) where FT
-    TX, TY, TZ = Oceananigans.Grids.topology_strs(grid)
-    return string(size_summary(size(grid)),
+    TX, TY, TZ = topology(grid)
+    return string(size_summary(grid),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
