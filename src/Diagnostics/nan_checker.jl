@@ -1,4 +1,5 @@
 using GPUArraysCore: @allowscalar
+using Oceananigans.Fields: Field
 using Oceananigans.Utils: prettykeys
 using Oceananigans.Solvers: iteration
 
