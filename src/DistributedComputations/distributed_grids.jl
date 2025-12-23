@@ -1,15 +1,17 @@
 using MPI
 using OffsetArrays
-using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
-using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
-using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
-using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: metrics_precomputed, constructor_arguments
 
 using Oceananigans.Fields
+using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements,
+                          validate_rectilinear_grid_args, validate_lat_lon_grid_args,
+                          generate_coordinate, with_precomputed_metrics,
+                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                          metrics_precomputed, constructor_arguments
+using Oceananigans.Utils: getnamewrapper
 
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo, with_number_type
+
+import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
+                           with_halo, with_number_type, size_summary
 
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
@@ -382,4 +384,24 @@ function with_number_type(FT, local_grid::DistributedRectilinearGrid)
     arch = args_local[:architecture]
     kwargs = kwargs_global
     return RectilinearGrid(arch, FT; kwargs...)
+end
+
+#####
+##### Show
+#####
+
+function size_summary(grid::DistributedGrid)
+    local_summary = size_summary(size(grid))
+    arch = architecture(grid)
+
+    Rx, Ry, Rz = arch.ranks
+    Nr = prod(arch.ranks)
+
+    distributed_info = if Nr == 1
+        "(distributed on 1 rank)"
+    else
+        "(distributed across $Rx×$Ry×$Rz ranks)"
+    end
+
+    return string(local_summary, " ", distributed_info)
 end

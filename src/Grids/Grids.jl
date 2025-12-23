@@ -1,8 +1,8 @@
 module Grids
 
 export Center, Face
-export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
-
+export AbstractTopology, topology
+export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -101,11 +101,6 @@ struct LeftConnected <: AbstractTopology end
 Grid topology for dimensions that are connected to other models or domains only on the right (the other direction is bounded)
 """
 struct RightConnected <: AbstractTopology end
-
-topology_str(T) = string(T)
-topology_str(::Type{RightConnected}) = "RightConnected"
-topology_str(::Type{LeftConnected}) = "LeftConnected"
-topology_str(::Type{FullyConnected}) = "FullyConnected"
 
 #####
 ##### Directions (for tilted domains)
