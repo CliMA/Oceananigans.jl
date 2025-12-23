@@ -1,6 +1,7 @@
 using Printf: @sprintf
 using Statistics: mean
-using Oceananigans: fields
+
+import Oceananigans
 
 struct StateChecker{T, F} <: AbstractDiagnostic
     schedule :: T
@@ -13,7 +14,7 @@ end
 Returns a `StateChecker` that logs field information (minimum, maximum, mean)
 for each field in a named tuple of `fields` when `schedule` actuates.
 """
-StateChecker(model; schedule, fields=fields(model)) = StateChecker(schedule, fields)
+StateChecker(model; schedule, fields=Oceananigans.fields(model)) = StateChecker(schedule, fields)
 
 function run_diagnostic!(sc::StateChecker, model)
     pad = keys(sc.fields) .|> string .|> length |> maximum
