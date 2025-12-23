@@ -81,6 +81,11 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
+    if !isnothing(bounds)
+        bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
+        bounds = (convert(FT, bounds[1]), convert(FT, bounds[2]))
+    end
+
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
         return UpwindBiased(FT; order=1)
@@ -95,7 +100,8 @@ end
 weno_order(::WENO{N}) where N = 2N-1
 Base.eltype(::WENO{N, FT}) where {N, FT} = FT
 eltype2(::WENO{N, FT, FT2}) where {N, FT, FT2} = FT2
-Base.summary(a::WENO{N, FT, FT2}) where {N, FT, FT2} = string("WENO{$N, $FT, $FT2}(order=", 2N-1, ")")
+Base.summary(a::WENO{N, FT, FT2, Nothing}) where {N, FT, FT2} = string("WENO{$N, $FT, $FT2}(order=", 2N-1, ")")
+Base.summary(a::WENO{N, FT, FT2, PP}) where {N, FT, FT2, PP} = string("WENO{$N, $FT, $FT2}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')
