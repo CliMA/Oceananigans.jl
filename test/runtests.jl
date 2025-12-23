@@ -272,6 +272,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for ConservativeRegridding extension
+    if group == :conservative_regridding || group == :all
+        @testset "ConservativeRegridding extension tests" begin
+            include("test_conservative_regridding.jl")
+        end
+    end
+
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
             # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
