@@ -279,7 +279,7 @@ function test_grid_fitted_boundary_with_array(FT, arch)
     end
 
     # Test expected immersed cells (issue #5061)
-    underlying_grid = RectilinearGrid(arch, FT, size=(7, 1, 4), z = (-1, 0))
+    underlying_grid = RectilinearGrid(arch, FT, size = (7, 1, 4), extent = (1, 1, 1))
 
     # Chose some bottom depths to illustrate different cases
     bottom = [-1.1, -1.0, -0.5, -0.2, -0.0, +0.0, +0.1]
