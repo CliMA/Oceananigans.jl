@@ -17,8 +17,7 @@ using Oceananigans.Advection:
 
 using Oceananigans.BuoyancyFormulations:
     validate_buoyancy,
-    materialize_buoyancy,
-    SeawaterBuoyancy
+    materialize_buoyancy
 
 using Oceananigans.Biogeochemistry:
     validate_biogeochemistry,
@@ -29,11 +28,9 @@ using Oceananigans.Fields:
     Field,
     CenterField,
     tracernames,
-    VelocityFields,
     TracerFields
 
 using Oceananigans.Grids:
-    AbstractCurvilinearGrid,
     AbstractHorizontallyCurvilinearGrid,
     architecture,
     halo_size,
