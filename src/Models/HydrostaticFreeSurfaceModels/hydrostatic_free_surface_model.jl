@@ -113,7 +113,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 function estimate_maximum_Δt(grid; maximum_speed = 3)
     Δx  = minimum_xspacing(grid)
     Δy  = minimum_yspacing(grid)
-    Δs  = sqrt(2 / (Δx^2 + Δy^2))^(-1)
+    Δs  = sqrt((Δx^2 + Δy^2) / 2)
     return Δs * 0.3 / maximum_speed
 end
 
