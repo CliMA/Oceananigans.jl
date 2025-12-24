@@ -109,9 +109,8 @@ inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
-    TX, TY, TZ = Grids.topology_strs(grid)
-
-    return string(size_summary(size(grid)),
+    TX, TY, TZ = topology(grid)
+    return string(size_summary(grid),
                   " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
