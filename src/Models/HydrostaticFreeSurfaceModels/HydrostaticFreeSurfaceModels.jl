@@ -2,32 +2,70 @@ module HydrostaticFreeSurfaceModels
 
 export
     HydrostaticFreeSurfaceModel,
-    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
-    PrescribedVelocityFields, ZStar, ZCoordinate
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
+using Adapt: Adapt
 
-using Oceananigans.Utils
-using Oceananigans.Utils: launch!
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Utils: launch!, @apply_regionally
+using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans.Fields: ZFaceField
+using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 
-using DocStringExtensions
+using DocStringExtensions: TYPEDFIELDS
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
-import Oceananigans.Architectures: on_architecture
+import Oceananigans.Models: materialize_free_surface
+using Oceananigans.Architectures: Architectures, architecture
 
-using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
-struct ZStar end
+
+struct ZStarCoordinate{CC}
+    storage :: CC # Storage space used in different ways by different timestepping schemes.
+end
+
+ZStarCoordinate(grid::AbstractGrid) = ZStarCoordinate(Field{Center, Center, Nothing}(grid))
+
+Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
+Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
+
+Adapt.adapt_structure(to, coord::ZStarCoordinate) = ZStarCoordinate(Adapt.adapt(to, coord.storage))
+Architectures.on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
+
+#####
+##### Utilities to compute the vertically integrated ``barotropic'' velocities
+#####
+
+# If U and V are prognostic (for example in `SplitExplicitFreeSurface`), we use them
+@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]
+@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, k]
+
+# If either U or V are not available, we compute them
+@inline function barotropic_U(i, j, k, grid, ::Nothing, u)
+    U = zero(grid)
+    for k in 1:size(grid, 3)
+        @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
+    end
+    return U
+end
+
+@inline function barotropic_V(i, j, k, grid, ::Nothing, v)
+    V = zero(grid)
+    for k in 1:size(grid, 3)
+        @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
+    end
+    return V
+end
 
 #####
 ##### HydrostaticFreeSurfaceModel definition
@@ -48,23 +86,19 @@ include("nothing_free_surface.jl")
 include("explicit_free_surface.jl")
 
 # Implicit free-surface solver functionality
-include("implicit_free_surface_utils.jl")
-include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
-include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-
 using .SplitExplicitFreeSurfaces
 
-# ZStar implementation
+# ZStarCoordinate implementation
 include("z_star_vertical_spacing.jl")
 
 # Hydrostatic model implementation
-include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
@@ -81,10 +115,19 @@ cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_ti
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) = 
+@inline fields(model::HydrostaticFreeSurfaceModel) =
     merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
           model.auxiliary_fields,
           biogeochemical_auxiliary_fields(model.biogeochemistry))
+
+velocity_names(user_velocities) = (:u, :v, :w)
+
+constructor_field_names(user_velocities, user_tracers, user_free_surface, auxiliary_fields, biogeochemistry, grid) =
+    tuple(velocity_names(user_velocities)...,
+          tracernames(user_tracers)...,
+          free_surface_names(user_free_surface, user_velocities, grid)...,
+          keys(auxiliary_fields)...,
+          keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)
@@ -94,55 +137,43 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 @inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
     hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
 
-@inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
-                                                                                  v = velocities.v,
-                                                                                  η = free_surface.η),
-                                                                                  tracers)
+@inline horizontal_velocities(velocities) = (u=velocities.u, v=velocities.v)
 
-@inline hydrostatic_prognostic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
-                                                                                                            v = velocities.v,
-                                                                                                            η = free_surface.η,
-                                                                                                            U = free_surface.barotropic_velocities.U,
-                                                                                                            V = free_surface.barotropic_velocities.V),
-                                                                                                            tracers)
+# Note: we do not distinguish between prognostic and auxiliary free surface fields
+# even though arguably the "filtered state" is an auxiliary part of the free surface state.
+@inline free_surface_names(free_surface, velocities, grid) = tuple(:η)
+@inline free_surface_names(free_surface::SplitExplicitFreeSurface, velocities, grid) = (:η, :U, :V)
 
-@inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
-                                                                               v = velocities.v),
-                                                                               tracers)
-                                               
-@inline hydrostatic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
-                                                                       v = velocities.v,
-                                                                       w = velocities.w),
-                                                                       tracers,
-                                                                       (; η = free_surface.η))
+@inline free_surface_fields(free_surface) = (; η=free_surface.η)
+@inline free_surface_fields(::Nothing) = NamedTuple()
+@inline free_surface_fields(free_surface::SplitExplicitFreeSurface) = (η = free_surface.η,
+                                                                       U = free_surface.barotropic_velocities.U,
+                                                                       V = free_surface.barotropic_velocities.V)
 
-@inline hydrostatic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
-                                                                                                 v = velocities.v,
-                                                                                                 w = velocities.w,
-                                                                                                 η = free_surface.η,
-                                                                                                 U = free_surface.barotropic_velocities.U,
-                                                                                                 V = free_surface.barotropic_velocities.V),
-                                                                                                 tracers)
+@inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) =
+    merge(horizontal_velocities(velocities), tracers, free_surface_fields(free_surface))
 
-@inline hydrostatic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
-                                                                    v = velocities.v,
-                                                                    w = velocities.w),
-                                                                    tracers)
+# Include vertical velocity
+@inline hydrostatic_fields(velocities, free_surface, tracers) =
+    merge((u=velocities.u, v=velocities.v, w=velocities.w),
+          tracers,
+          free_surface_fields(free_surface))
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
+include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk3_step.jl")
-include("store_hydrostatic_free_surface_tendencies.jl")
+include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")
 include("slice_ensemble_model_mode.jl")
@@ -151,6 +182,6 @@ include("slice_ensemble_model_mode.jl")
 ##### Some diagnostics
 #####
 
-include("vertical_vorticity_field.jl")
+include("vertical_vorticity.jl")
 
 end # module

@@ -16,7 +16,7 @@ using Oceananigans.Advection: EnergyConservingScheme
 using Oceananigans.OutputReaders: FieldTimeSeries
 
 using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
 
@@ -29,11 +29,11 @@ include("../bickley_jet/bickley_utils.jl")
 Run the Bickley jet validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
-function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
+function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64,
                            momentum_advection = VectorInvariant())
 
     grid = bickley_grid(arch=arch, Nh=Nh, halo=(4, 4, 4))
-    
+
     @inline toplft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
     @inline botlft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
     @inline toprgt(x, y) = (((x < -π/2) & (x > -3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
@@ -50,7 +50,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     @show prettytime(timescale)
 
     @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / timescale
-    biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
+    biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                         tracer_advection = WENO(),
@@ -65,7 +65,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     #
     # u, v: Large-scale jet + vortical perturbations
     #    c: Sinusoid
-    
+
     set_bickley_jet!(model)
 
     wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
@@ -99,10 +99,10 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     @show experiment_name = "bickley_jet_Nh_$(Nh)_Upwind"
 
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs,
-                         schedule = TimeInterval(output_time_interval),
-                         filename = experiment_name,
-                         overwrite_existing = true)
+        JLD2Writer(model, outputs,
+                   schedule = TimeInterval(output_time_interval),
+                   filename = experiment_name,
+                   overwrite_existing = true)
 
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
@@ -111,9 +111,9 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     run!(simulation)
 
-    return experiment_name 
+    return experiment_name
 end
-    
+
 """
     visualize_bickley_jet(experiment_name)
 

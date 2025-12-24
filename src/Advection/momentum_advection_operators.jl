@@ -5,17 +5,17 @@ using Oceananigans.Fields: ZeroField
 #####
 
 # Alternate names for advective fluxes
-@inline _advective_momentum_flux_Uu(args...) = advective_momentum_flux_Uu(args...)
-@inline _advective_momentum_flux_Vu(args...) = advective_momentum_flux_Vu(args...)
-@inline _advective_momentum_flux_Wu(args...) = advective_momentum_flux_Wu(args...)
+@inline _advective_momentum_flux_Uu(i, j, k, grid, scheme, U, u) = advective_momentum_flux_Uu(i, j, k, grid, scheme, U, u)
+@inline _advective_momentum_flux_Vu(i, j, k, grid, scheme, V, u) = advective_momentum_flux_Vu(i, j, k, grid, scheme, V, u)
+@inline _advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u) = advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u)
 
-@inline _advective_momentum_flux_Uv(args...) = advective_momentum_flux_Uv(args...)
-@inline _advective_momentum_flux_Vv(args...) = advective_momentum_flux_Vv(args...)
-@inline _advective_momentum_flux_Wv(args...) = advective_momentum_flux_Wv(args...)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, scheme, U, v) = advective_momentum_flux_Uv(i, j, k, grid, scheme, U, v)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, scheme, V, v) = advective_momentum_flux_Vv(i, j, k, grid, scheme, V, v)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v) = advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v)
 
-@inline _advective_momentum_flux_Uw(args...) = advective_momentum_flux_Uw(args...)
-@inline _advective_momentum_flux_Vw(args...) = advective_momentum_flux_Vw(args...)
-@inline _advective_momentum_flux_Ww(args...) = advective_momentum_flux_Ww(args...)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, scheme, U, w) = advective_momentum_flux_Uw(i, j, k, grid, scheme, U, w)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, scheme, V, w) = advective_momentum_flux_Vw(i, j, k, grid, scheme, V, w)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, scheme, W, w) = advective_momentum_flux_Ww(i, j, k, grid, scheme, W, w)
 
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
@@ -44,7 +44,7 @@ Calculate the advection of momentum in the ``x``-direction using the conservativ
 which ends up at the location `fcc`.
 """
 @inline function div_𝐯u(i, j, k, grid, advection, U, u)
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u) +
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection, U[3], u))
 end
@@ -61,7 +61,7 @@ Calculate the advection of momentum in the ``y``-direction using the conservativ
 which ends up at the location `cfc`.
 """
 @inline function div_𝐯v(i, j, k, grid, advection, U, v)
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
                                     δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v)    +
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection, U[3], v))
 end
@@ -77,7 +77,7 @@ Calculate the advection of momentum in the ``z``-direction using the conservativ
 which ends up at the location `ccf`.
 """
 @inline function div_𝐯w(i, j, k, grid, advection, U, w)
-    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
+    return V⁻¹ᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
                                     δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w))
 end

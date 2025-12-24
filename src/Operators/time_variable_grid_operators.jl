@@ -19,7 +19,7 @@ const AMG = AbstractMutableGrid
 @inline σ⁻(i, j, k, grid::AMG, ::C, ::C, ℓz) = @inbounds grid.z.σᶜᶜ⁻[i, j, 1]
 
 @inline ∂t_σ(i, j, k, grid)      = zero(grid)
-@inline ∂t_σ(i, j, k, grid::AMG) = @inbounds grid.z.∂t_σ[i, j, 1] 
+@inline ∂t_σ(i, j, k, grid::AMG) = @inbounds grid.z.∂t_σ[i, j, 1]
 
 ####
 #### Vertical spacing functions

@@ -185,7 +185,7 @@ for Ri in Ris
     Nx, Ny, Nz = field_files[Ri]["grid/Nx"], field_files[Ri]["grid/Ny"], field_files[Ri]["grid/Nz"]
     Hx, Hy, Hz = field_files[Ri]["grid/Hx"], field_files[Ri]["grid/Hy"], field_files[Ri]["grid/Hz"]
     zC = field_files[Ri]["grid/zC"]
-    
+
     νSGS = field_files[Ri]["timeseries/nu/"     * i][1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1+Hz:Nz+Hz]
     κSGS = field_files[Ri]["timeseries/kappaT/" * i][1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1+Hz:Nz+Hz]
 
@@ -234,7 +234,7 @@ for (idx, Ri) in enumerate(Ris)
     Hx, Hy, Hz = field_files[Ri]["grid/Hx"], field_files[Ri]["grid/Hy"], field_files[Ri]["grid/Hz"]
 
     xC, xF, yC, zC = field_files[Ri]["grid/xC"], field_files[Ri]["grid/xF"], field_files[Ri]["grid/yC"], field_files[Ri]["grid/zC"]
-    
+
     u = field_files[Ri]["timeseries/u/" * i][1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1+Hz:Nz+Hz]
     θ = field_files[Ri]["timeseries/T/" * i][1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1+Hz:Nz+Hz]
 
@@ -245,10 +245,10 @@ for (idx, Ri) in enumerate(Ris)
     im2 = axes[idx, 2].pcolormesh(xC ./ π, yC ./ π, θ[:, :, k]' ./ Θw, cmap="inferno")
 
     fig.colorbar(im1, ax=axes[idx, 1])
-    fig.colorbar(im2, ax=axes[idx, 2])  
- 
-    axes[idx, 1].set_xlim([0, 2]) 
-    axes[idx, 2].set_xlim([0, 2]) 
+    fig.colorbar(im2, ax=axes[idx, 2])
+
+    axes[idx, 1].set_xlim([0, 2])
+    axes[idx, 2].set_xlim([0, 2])
     axes[idx, 1].set_xlim([0, 4])
     axes[idx, 2].set_xlim([0, 4])
 

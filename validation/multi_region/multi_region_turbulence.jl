@@ -22,8 +22,8 @@ mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = 2)
 
 ϵ(x, y, z)  =  2rand() - 1
 
-u_init = Array(interior(set!(Field((Face, Center, Center), grid), ϵ)))
-v_init = Array(interior(set!(Field((Center, Face, Center), grid), ϵ)))
+u_init = Array(interior(set!(Field{Face, Center, Center}(grid), ϵ)))
+v_init = Array(interior(set!(Field{Center, Face, Center}(grid), ϵ)))
 
 u_init_mrg = multi_region_object_from_array(u_init, mrg)
 v_init_mrg = multi_region_object_from_array(v_init, mrg)
@@ -31,7 +31,7 @@ v_init_mrg = multi_region_object_from_array(v_init, mrg)
 momentum_advection = WENO(vector_invariant=VelocityStencil())
 
 free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
-# free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
+# free_surface = ExplicitFreeSurface(gravitational_acceleration=1)
 
 progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 
@@ -54,7 +54,7 @@ run!(simulation)
 simulation.stop_iteration += 1000
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-                                                       
+
 start_time = time_ns()
 run!(simulation)
 elapsed_time = 1e-9 * (time_ns() - start_time)

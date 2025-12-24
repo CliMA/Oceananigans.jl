@@ -10,8 +10,13 @@
                ℑ[2](i, j, k, grid, model_fields[idx[2]]),
                ℑ[3](i, j, k, grid, model_fields[idx[3]]))
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{N}) where N =
-    @inbounds ntuple(n -> ℑ[n](i, j, k, grid, model_fields[idx[n]]), Val(N))
+@inline function field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{N}) where N
+    f = ntuple(Val(N)) do n
+        Base.@_inline_meta
+        @inbounds ℑ[n](i, j, k, grid, model_fields[idx[n]])
+    end
+    return f
+end
 
 """ Returns field arguments in user-defined functions for forcing and boundary conditions."""
 @inline function user_function_arguments(i, j, k, grid, model_fields, ::Nothing, user_func)

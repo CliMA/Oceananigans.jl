@@ -66,7 +66,7 @@ model = HydrostaticFreeSurfaceModel(; grid, closure,
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     coriolis = FPlane(f=1e-4),
-                                    tracers = (:b, :e),
+                                    tracers = (:b,),
                                     boundary_conditions = (; b=b_bcs, u=u_bcs),
                                     buoyancy = BuoyancyTracer())
 
@@ -77,26 +77,26 @@ set!(model, b=bᵢ, e=1e-9)
 simulation = Simulation(model, Δt=5minute, stop_time=10days)
 
 κᶜ = if model.closure isa Tuple
-    model.diffusivity_fields[1].κᶜ
+    model.closure_fields[1].κᶜ
 else
-    model.diffusivity_fields.κᶜ
+    model.closure_fields.κᶜ
 end
 
 b = model.tracers.b
 N² = ∂z(b)
 outputs = (; model.velocities..., model.tracers..., κᶜ=κᶜ, N²=N²)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
-                                                      filename,
-                                                      schedule = TimeInterval(1hour),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                filename,
+                                                schedule = TimeInterval(1hour),
+                                                overwrite_existing = true)
 
 function progress(sim)
     u, v, w = sim.model.velocities
     e = sim.model.tracers.e
 
 
-    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹", 
+    msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹",
                    iteration(sim), prettytime(sim),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w))
 
@@ -104,7 +104,7 @@ function progress(sim)
     msg *= @sprintf(", max(κᶜ): %6.2e m² s⁻¹", maximum(κᶜ))
 
     @info msg
-    
+
     return nothing
 end
 
@@ -249,4 +249,3 @@ record(fig, filename[1:end-5] * ".mp4", 1:Nt, framerate=24) do nn
     n[] = nn
 end
 =#
-

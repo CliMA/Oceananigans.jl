@@ -88,10 +88,10 @@ function run_simulation(closure, grid)
     add_callback!(simulation, progress, IterationInterval(144))
     suffix = closure isa SkewAdvectionISSD ? "advective" : "diffusive"
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                          schedule = TimeInterval(save_fields_interval),
-                                                          filename = filename * "_fields_" * suffix,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                    schedule = TimeInterval(save_fields_interval),
+                                                    filename = filename * "_fields_" * suffix,
+                                                    overwrite_existing = true)
 
     @info "Running the simulation..."
 

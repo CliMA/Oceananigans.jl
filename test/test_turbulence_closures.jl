@@ -8,9 +8,7 @@ using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
                                        cell_diffusion_timescale, formulation, min_Δxyz
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
-                                       viscous_flux_vx, viscous_flux_vy, viscous_flux_vz,
-                                       viscous_flux_wx, viscous_flux_wy, viscous_flux_wz
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
 
 using Oceananigans.TurbulenceClosures: ScalarDiffusivity,
                                        ScalarBiharmonicDiffusivity,
@@ -159,6 +157,28 @@ function time_step_with_variable_discrete_diffusivity(arch)
     return true
 end
 
+function time_step_with_variable_AMD_coefficient(arch; use_field_coefficient=false)
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 2, 3))
+
+    Cν_func(x, y, z) = exp(z) * cos(x) * cos(y)
+    Cκ_func(x, y, z) = exp(z) * cos(x) * cos(y)
+
+    if use_field_coefficient
+        Cν = CenterField(grid)
+        Cκ = CenterField(grid)
+        set!(Cν, Cν_func)
+        set!(Cκ, Cκ_func)
+    else
+        Cν = Cν_func
+        Cκ = Cκ_func
+    end
+
+    closure = AnisotropicMinimumDissipation(; Cν, Cκ)
+    model = NonhydrostaticModel(; grid, closure)
+    time_step!(model, 1)
+    return true
+end
+
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
 
@@ -175,7 +195,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer_advection = nothing,
-                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
+                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b))
 
     # set random velocities
     Random.seed!(1234)
@@ -205,18 +225,20 @@ function run_catke_tke_substepping_tests(arch, closure)
     return model
 end
 
-function run_time_step_with_catke_tests(arch, closure)
+function run_time_step_with_catke_tests(arch, closure, timestepper)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
 
-    # These shouldn't work (need :e in tracers)
-    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=:b)
-    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=(:b, :E))
+    @test HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=:b) isa HydrostaticFreeSurfaceModel
+    @test HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=(:b, :E)) isa HydrostaticFreeSurfaceModel
 
     # CATKE isn't supported with NonhydrostaticModel (we don't diffuse vertical velocity)
     @test_throws ErrorException NonhydrostaticModel(; grid, closure, buoyancy, tracers=(:b, :c, :e))
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :c, :e))
+    # Supplying closure tracers explicitly should error
+    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :c, :e))
+
+    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :c))
 
     # Default boundary condition is Flux, Nothing... with CATKE this has to change.
     @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
@@ -233,24 +255,29 @@ function run_time_step_with_catke_tests(arch, closure)
     return model
 end
 
-function compute_closure_specific_diffusive_cfl(closure)
-    grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
+function compute_closure_specific_diffusive_cfl(arch, closure)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
-    args = (model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy)
+    args = (model.closure, model.closure_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
-    @test diffusive_flux_x(1, 1, 1, grid, args...) == 0
-    @test diffusive_flux_y(1, 1, 1, grid, args...) == 0
-    @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
+
+    @allowscalar begin
+        @test diffusive_flux_x(1, 1, 1, grid, args...) == 0
+        @test diffusive_flux_y(1, 1, 1, grid, args...) == 0
+        @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
+    end
 
     tracerless_model = NonhydrostaticModel(; grid, closure, buoyancy=nothing, tracers=nothing)
-    args = (model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy)
+    args = (model.closure, model.closure_fields, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
-    @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
-    @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
-    @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
+    @allowscalar begin
+        @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
+        @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
+        @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
+    end
 
     return nothing
 end
@@ -305,20 +332,20 @@ end
 
             for arch in archs
                 @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
-                if arch isa GPU && closurename == :LagrangianAveragedDynamicSmagorinsky
-                    @info "Skipping GPU test of $closurename."
-                else
-                    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
-                    model = NonhydrostaticModel(; grid, closure, tracers=:c)
-                    c = model.tracers.c
-                    u = model.velocities.u
-                    κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c))
-                    κ_dx_c = κ * ∂x(c)
-                    ν = viscosity(model.closure, model.diffusivity_fields)
-                    ν_dx_u = ν * ∂x(u)
-                    @test ν_dx_u[1, 1, 1] == 0
-                    @test κ_dx_c[1, 1, 1] == 0
-                end
+                grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
+                model = NonhydrostaticModel(; grid, closure, tracers=:c)
+                c = model.tracers.c
+                u = model.velocities.u
+
+                κ = diffusivity(model.closure, model.closure_fields, Val(:c))
+                @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.closure_fields, Val(:c))
+                κ_dx_c = κ * ∂x(c)
+
+                ν = viscosity(model.closure, model.closure_fields)
+                @test viscosity(model) == viscosity(model.closure, model.closure_fields)
+                ν_dx_u = ν * ∂x(u)
+                @test ν_dx_u[1, 1, 1] == 0
+                @test κ_dx_c[1, 1, 1] == 0
             end
         end
 
@@ -362,7 +389,7 @@ end
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
 
-        @info "   Testing cell_diffusion_timescale for ScalarDiffusivity with FunctionDiffusion"
+        @info "  Testing cell_diffusion_timescale for ScalarDiffusivity with FunctionDiffusion"
         @test test_function_scalar_diffusivity()
         @test test_discrete_function_scalar_diffusivity()
 
@@ -378,12 +405,20 @@ end
     end
 
     @testset "Time-stepping with variable diffusivities" begin
-        @info "  Testing time-stepping with presribed variable diffusivities..."
+        @info "  Testing time-stepping with prescribed variable diffusivities..."
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_field_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
             @test time_step_with_variable_discrete_diffusivity(arch)
+        end
+    end
+
+    @testset "AnisotropicMinimumDissipation with variable coefficients" begin
+        @info "  Testing AnisotropicMinimumDissipation time stepping with variable coefficients..."
+        for arch in archs
+            @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=false)
+            @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=true)
         end
     end
 
@@ -394,36 +429,36 @@ end
 
             closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=1))
             model = NonhydrostaticModel(; grid, closure)
-            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, grid.Ny, grid.Nz)
-            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, grid.Ny, grid.Nz)
-            @test size(model.diffusivity_fields.LM)  == size(grid)
-            @test size(model.diffusivity_fields.MM)  == size(grid)
-            @test size(model.diffusivity_fields.Σ)   == size(grid)
-            @test size(model.diffusivity_fields.Σ̄)   == size(grid)
+            @test size(model.closure_fields.𝒥ᴸᴹ) == (1, grid.Ny, grid.Nz)
+            @test size(model.closure_fields.𝒥ᴹᴹ) == (1, grid.Ny, grid.Nz)
+            @test size(model.closure_fields.LM)  == size(grid)
+            @test size(model.closure_fields.MM)  == size(grid)
+            @test size(model.closure_fields.Σ)   == size(grid)
+            @test size(model.closure_fields.Σ̄)   == size(grid)
 
             closure = DynamicSmagorinsky(averaging=(1, 2))
             model = NonhydrostaticModel(; grid, closure)
-            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, grid.Nz)
-            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, grid.Nz)
+            @test size(model.closure_fields.𝒥ᴸᴹ) == (1, 1, grid.Nz)
+            @test size(model.closure_fields.𝒥ᴹᴹ) == (1, 1, grid.Nz)
 
             closure = DynamicSmagorinsky(averaging=(2, 3))
             model = NonhydrostaticModel(; grid, closure)
-            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (grid.Nx, 1, 1)
-            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (grid.Nx, 1, 1)
+            @test size(model.closure_fields.𝒥ᴸᴹ) == (grid.Nx, 1, 1)
+            @test size(model.closure_fields.𝒥ᴹᴹ) == (grid.Nx, 1, 1)
 
             closure = DynamicSmagorinsky(averaging=Colon())
             model = NonhydrostaticModel(; grid, closure)
-            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, 1)
-            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, 1)
+            @test size(model.closure_fields.𝒥ᴸᴹ) == (1, 1, 1)
+            @test size(model.closure_fields.𝒥ᴹᴹ) == (1, 1, 1)
 
             closure = DynamicSmagorinsky(averaging=LagrangianAveraging())
             model = NonhydrostaticModel(; grid, closure)
-            @test size(model.diffusivity_fields.𝒥ᴸᴹ)  == size(grid)
-            @test size(model.diffusivity_fields.𝒥ᴹᴹ)  == size(grid)
-            @test size(model.diffusivity_fields.𝒥ᴸᴹ⁻) == size(grid)
-            @test size(model.diffusivity_fields.𝒥ᴹᴹ⁻) == size(grid)
-            @test size(model.diffusivity_fields.Σ)    == size(grid)
-            @test size(model.diffusivity_fields.Σ̄)    == size(grid)
+            @test size(model.closure_fields.𝒥ᴸᴹ)  == size(grid)
+            @test size(model.closure_fields.𝒥ᴹᴹ)  == size(grid)
+            @test size(model.closure_fields.𝒥ᴸᴹ⁻) == size(grid)
+            @test size(model.closure_fields.𝒥ᴹᴹ⁻) == size(grid)
+            @test size(model.closure_fields.Σ)    == size(grid)
+            @test size(model.closure_fields.Σ̄)    == size(grid)
         end
     end
 
@@ -433,12 +468,16 @@ end
             @info "    Testing time-stepping CATKE by itself..."
             catke = CATKEVerticalDiffusivity()
             explicit_catke = CATKEVerticalDiffusivity(ExplicitTimeDiscretization())
-            run_time_step_with_catke_tests(arch, catke)
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                run_time_step_with_catke_tests(arch, catke, timestepper)
+            end
+
             run_catke_tke_substepping_tests(arch, explicit_catke)
 
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (catke, HorizontalScalarDiffusivity())
-            model = run_time_step_with_catke_tests(arch, closure)
+            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
             @test first(model.closure) === closure[1]
             closure = (explicit_catke, HorizontalScalarDiffusivity())
             run_catke_tke_substepping_tests(arch, closure)
@@ -447,7 +486,7 @@ end
             # Test that closure tuples with CATKE are correctly reordered
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (HorizontalScalarDiffusivity(), catke)
-            model = run_time_step_with_catke_tests(arch, closure)
+            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
             @test first(model.closure) === closure[2]
             closure = (HorizontalScalarDiffusivity(), explicit_catke)
             run_catke_tke_substepping_tests(arch, closure)
@@ -455,7 +494,7 @@ end
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
             closure = (HorizontalScalarDiffusivity(), catke, VerticalScalarDiffusivity())
-            model = run_time_step_with_catke_tests(arch, closure)
+            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
             @test first(model.closure) === closure[2]
             closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
             run_catke_tke_substepping_tests(arch, closure)
@@ -472,16 +511,20 @@ end
     end
 
     @testset "Diagnostics" begin
-        @info "  Testing turbulence closure diagnostics..."
-        for closurename in closures
-            closure = @eval $closurename()
-            compute_closure_specific_diffusive_cfl(closure)
-        end
+        for arch in archs
+            @info "  Testing turbulence closure diagnostics..."
+            for closurename in closures
+                @info "    Testing turbulence closure diagnostics for $closurename on $arch"
+                closure = @eval $closurename()
+                compute_closure_specific_diffusive_cfl(arch, closure)
+            end
 
-        # now test also a case for a tuple of closures
-        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(),
-                                                ScalarBiharmonicDiffusivity(),
-                                                SmagorinskyLilly(),
-                                                AnisotropicMinimumDissipation()))
+            # now test also a case for a tuple of closures
+            @info "    Testing turbulence closure diagnostics for a Tuple closure on $arch"
+            compute_closure_specific_diffusive_cfl(arch, (ScalarDiffusivity(),
+                                                          ScalarBiharmonicDiffusivity(),
+                                                          SmagorinskyLilly(),
+                                                          AnisotropicMinimumDissipation()))
+        end
     end
 end

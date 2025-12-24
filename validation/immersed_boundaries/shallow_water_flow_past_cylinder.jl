@@ -2,14 +2,14 @@ using Printf
 using Plots
 
 using Oceananigans
-using Oceananigans.OutputReaders: FieldTimeSeries 
+using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Models
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 experiment_name = "shallow_water_flow_past_cylinder"
 
 underlying_grid = RectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
-                              
+
 cylinder(x, y, z)  = (x^2 + y^2) < 1
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(cylinder))
 
@@ -56,12 +56,11 @@ uh, vh, h = model.solution
 
 outputs = merge(model.solution, (ζ=ζ,))
 
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, outputs,
-                     schedule = TimeInterval(0.1),
-                     filename = experiment_name,
-                     field_slicer = nothing,
-                     overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                schedule = TimeInterval(0.1),
+                                                filename = experiment_name,
+                                                field_slicer = nothing,
+                                                overwrite_existing = true)
 
 run!(simulation)
 

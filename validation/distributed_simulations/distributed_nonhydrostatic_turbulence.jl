@@ -10,7 +10,7 @@
 #
 # See MPI.jl documentation for more information on how to setup the MPI environment.
 # If you have a local installation of MPI, you can use it by setting
-# 
+#
 # julia> MPIPreferences.use_system_binaries()
 #
 # before running the script.
@@ -68,11 +68,11 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 outputs = merge(model.velocities, (; e, ζ))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(0.1),
-                                                      with_halos = true,
-                                                      filename = "two_dimensional_turbulence_rank$rank",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                schedule = TimeInterval(0.1),
+                                                with_halos = true,
+                                                filename = "two_dimensional_turbulence_rank$rank",
+                                                overwrite_existing = true)
 
 run!(simulation)
 

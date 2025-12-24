@@ -5,14 +5,14 @@ using Oceananigans.Grids: topology
 
 Adapts the advection operator `advection` based on the grid `grid` by adjusting the order of advection in each direction.
 For example, if the grid has only one point in the x-direction, the advection operator in the x-direction is set to first order
-upwind or 2nd order centered scheme, depending on the original user-specified advection scheme. A high order advection sheme 
+upwind or 2nd order centered scheme, depending on the original user-specified advection scheme. A high order advection sheme
 is reduced to a lower order advection scheme if the grid has fewer points in that direction.
 
 # Arguments
 - `advection`: The original advection scheme.
 - `grid::AbstractGrid`: The grid on which the advection scheme is applied.
 
-If the order of advection is changed in at least one direction, the adapted advection scheme with adjusted advection order returned 
+If the order of advection is changed in at least one direction, the adapted advection scheme with adjusted advection order returned
 by this function is a `FluxFormAdvection`.
 """
 function adapt_advection_order(advection, grid::AbstractGrid)
@@ -87,24 +87,10 @@ function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::Abstrac
         return UpwindBiased(; order=2N-1)
     end
 end
-
-"""
-    new_weno_scheme(grid, order, bounds, XT, YT, ZT)
-
-Constructs a new WENO scheme based on the given parameters.
-`XT`, `YT`, and `ZT` is the type of the precomputed weno coefficients in the 
-x-direction, y-direction and z-direction.
-A _non-stretched_ WENO scheme has `T` equal to `Nothing` everywhere.
-In case of a non-stretched WENO scheme, 
-we rebuild the advection without passing the grid information, otherwise we use the grid to account for stretched directions.
-"""
-new_weno_scheme(::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
-new_weno_scheme(::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
-
-function adapt_advection_order(advection::WENO{B, FT, XT, YT, ZT}, N::Int, grid::AbstractGrid) where {B, FT, XT, YT, ZT}
+function adapt_advection_order(advection::WENO{B}, N::Int, grid::AbstractGrid) where B
     if N >= B
         return advection
     else
-        return new_weno_scheme(advection, grid, 2N-1, advection.bounds, XT, YT, ZT)
+        return WENO(order=2N-1)
     end
 end

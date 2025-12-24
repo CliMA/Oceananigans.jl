@@ -1,5 +1,3 @@
-using Oceananigans.Grids: total_length, topology
-
 using OffsetArrays: OffsetArray
 
 
@@ -26,22 +24,25 @@ Return a range of indices for a field along a 'reduced' dimension.
 offset_indices(::Nothing, topo, N, H=0) = 1:1
 
 offset_indices(ℓ,         topo, N, H, ::Colon) = offset_indices(ℓ, topo, N, H)
-offset_indices(ℓ,         topo, N, H, r::UnitRange) = r
-offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
+offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
+offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
 instantiate(T::Type) = T()
 instantiate(t) = t
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
-    loc = map(instantiate, loc)
-    topo = map(instantiate, topo)
-    ii = map(offset_indices, loc, topo, N, H, indices)
+
+    ii = ntuple(Val(length(N))) do i
+        Base.@_inline_meta
+        @inbounds offset_indices(instantiate(loc[i]), instantiate(topo[i]), N[i], H[i], indices[i])
+    end
+
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
     # Use the "`ntuple` trick" so the compiler can infer the type of `extra_ii`
     extra_ii = ntuple(Val(ndims(underlying_data)-length(ii))) do i
         Base.@_inline_meta
-        axes(underlying_data, i+length(ii))
+        @inbounds axes(underlying_data, i+length(ii))
     end
 
     return OffsetArray(underlying_data, ii..., extra_ii...)

@@ -176,7 +176,7 @@ function unpack_errors(results)
     uyz_L₁ = map(r -> r.uyz.L₁, results)
     vxz_L₁ = map(r -> r.vxz.L₁, results)
     wxy_L₁ = map(r -> r.wxy.L₁, results)
-    
+
     cxy_L∞ = map(r -> r.cxy.L∞, results)
     cyz_L∞ = map(r -> r.cyz.L∞, results)
     cxz_L∞ = map(r -> r.cxz.L∞, results)

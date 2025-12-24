@@ -1,5 +1,3 @@
-using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
@@ -7,35 +5,38 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 #
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
-
-@kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
-    i, j = @index(Global, NTuple)
-    k_top = grid.Nz+1
-    
-    store_previous_free_surface!(timestepper, i, j, k_top, η)
-    @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
-end
-
-@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
-                                                      η, U, V, 
-                                                      η̅, U̅, V̅, 
-                                                      Gᵁ, Gⱽ, g, 
-                                                      timestepper)
+@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    store_previous_velocities!(timestepper, i, j, 1, U)
-    store_previous_velocities!(timestepper, i, j, 1, V)
+    cache_previous_velocities!(timestepper, i, j, 1, U, V)
 
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
     
+    # ∂τ(U) = - ∇η + G
     @inbounds begin
-        # ∂τ(U) = - ∇η + G
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-                          
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+        
+        # averaging the transport
+        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
+        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
+    end
+end
+
+@kernel function _split_explicit_free_surface!(averaging_weight, grid, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz+1
+
+    cache_previous_free_surface!(timestepper, i, j, k_top, η)
+
+    δh_U = (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid) 
+
+    @inbounds begin
+        η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
+
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
         U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
@@ -54,11 +55,10 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_substeps(substepping::FNS, Δt=nothing) = length(substepping.averaging_weights)
 @inline calculate_substeps(substepping::FTS, Δt) = max(MINIMUM_SUBSTEPS, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
-@inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
-@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
-                                                                                        substeps, substepping.averaging_kernel)
+@inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
+@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
-function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps
+function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
     η           = free_surface.η
@@ -70,17 +70,14 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
 
     # unpack state quantities, parameters and forcing terms
     U, V    = free_surface.barotropic_velocities
-    η̅, U̅, V̅ = state.η, state.U, state.V
+    η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
+    Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    η_args = (grid, Δτᴮ, η, U, V, 
-              timestepper)
-
-    U_args = (grid, Δτᴮ, η, U, V, 
-              η̅, U̅, V̅, GUⁿ, GVⁿ, g, 
-              timestepper)
+    U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve η_args U_args begin
 
@@ -91,30 +88,31 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         converted_η_args = convert_to_device(arch, η_args)
         converted_U_args = convert_to_device(arch, U_args)
 
-        @unroll for substep in 1:Nsubsteps
-            Base.@_inline_meta
-            averaging_weight = weights[substep]
-            free_surface_kernel!(converted_η_args...)
-            barotropic_velocity_kernel!(averaging_weight, converted_U_args...)
+        for substep in 1:Nsubsteps
+            @inbounds averaging_weight = weights[substep]
+            @inbounds transport_weight = transport_weights[substep]
+            
+            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+            free_surface_kernel!(averaging_weight, converted_η_args...)
         end
     end
 
     return nothing
 end
 
-@kernel function _update_split_explicit_state!(η, U, V, grid, η̅, U̅, V̅)
+@kernel function _update_split_explicit_state!(η, U, V, grid, state)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
     @inbounds begin
-        η[i, j, k_top] = η̅[i, j, k_top]
-        U[i, j, 1]     = U̅[i, j, 1]
-        V[i, j, 1]     = V̅[i, j, 1]
+        η[i, j, k_top] = state.η̅[i, j, k_top]
+        U[i, j, 1]     = state.U̅[i, j, 1]
+        V[i, j, 1]     = state.V̅[i, j, 1]
     end
 end
 
 #####
-##### SplitExplicitFreeSurface barotropic subcylicing
+##### SplitExplicitFreeSurface barotropic subcycling
 #####
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
@@ -124,16 +122,16 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     free_surface_grid = free_surface.η.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
-    
+
     barotropic_velocities = free_surface.barotropic_velocities
 
-    # Wait for setup step to finish
-    wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
+    barotropic_timestepper = free_surface.timestepper
+    baroclinic_timestepper = model.timestepper
 
-    # Calculate the substepping parameterers
+    # Calculate the substepping parameters
     # barotropic time step as fraction of baroclinic step and averaging weights
     Nsubsteps = calculate_substeps(substepping, Δt)
-    fractional_Δt, weights = calculate_adaptive_settings(substepping, Nsubsteps)
+    fractional_Δt, weights, transport_weights = calculate_adaptive_settings(substepping, Nsubsteps)
     Nsubsteps = length(weights)
 
     # barotropic time step in seconds
@@ -147,30 +145,28 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     η = free_surface.η
     U = barotropic_velocities.U
     V = barotropic_velocities.V
-    η̅ = filtered_state.η
-    U̅ = filtered_state.U
-    V̅ = filtered_state.V
+    F = model.forcing.η
 
-    # reset free surface averages
+    # Wait for setup step to finish
+    wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
+    
     @apply_regionally begin
-        # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
+        # Reset the filtered fields and the barotropic timestepper to zero. 
+        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
         
+        # Solve for the free surface at tⁿ⁺¹
+        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
+
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
-        launch!(architecture(free_surface_grid), free_surface_grid, :xy, 
-                _update_split_explicit_state!, η, U, V, free_surface_grid, η̅, U̅, V̅)
-
-        # Preparing velocities for the barotropic correction
-        mask_immersed_field!(model.velocities.u)
-        mask_immersed_field!(model.velocities.v)
+        launch!(architecture(free_surface_grid), free_surface_grid, :xy,
+                _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
     end
 
-    # Needed for Mutable to compute the barotropic correction.
-    # TODO: Would it be possible to remove it in some way?
-    if model.grid isa MutableGridOfSomeKind
-        fill_halo_regions!(η)
-    end
+    # Fill all the barotropic state
+    fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
+    fill_halo_regions!((U, V); async=true)
+    fill_halo_regions!(η;  async=true)
 
     return nothing
 end

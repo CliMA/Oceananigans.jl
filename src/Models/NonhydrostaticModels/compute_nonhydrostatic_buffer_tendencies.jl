@@ -24,7 +24,7 @@ function compute_buffer_tendencies!(model::NonhydrostaticModel)
     return nothing
 end
 
-# tendencies need computing in the range 1 : H and N - H + 1 : N 
+# tendencies need computing in the range 1 : H and N - H + 1 : N
 function buffer_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
@@ -67,8 +67,8 @@ function buffer_κ_kernel_parameters(grid, closure, arch)
     return buffer_parameters(params, grid, arch)
 end
 
-# Recompute only on communicating sides 
-function buffer_parameters(parameters, grid, arch) 
+# Recompute only on communicating sides
+function buffer_parameters(parameters, grid, arch)
     Rx, Ry, _ = arch.ranks
     Tx, Ty, _ = topology(grid)
 

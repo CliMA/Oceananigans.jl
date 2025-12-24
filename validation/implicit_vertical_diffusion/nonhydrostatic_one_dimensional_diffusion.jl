@@ -13,7 +13,7 @@ model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing)
 implicit_model = NonhydrostaticModel(; closure=ivd_closure, model_kwargs...)
 explicit_model = NonhydrostaticModel(; closure=evd_closure, model_kwargs...)
 models = (implicit_model, explicit_model)
-                                    
+
 initial_temperature(x, y, z) = exp(-z^2 / 0.02)
 
 [set!(model, c=initial_temperature) for model in models]
@@ -24,7 +24,7 @@ c_implicit = view(interior(implicit_model.tracers.c), 1, 1, :)
 c_explicit = view(interior(explicit_model.tracers.c), 1, 1, :)
 
 c_plot = plot(c_implicit, z, linewidth = 2, label = "t = 0", xlabel = "Tracer concentration", ylabel = "z")
-              
+
 diffusion_time_scale = implicit_model.grid.Δzᵃᵃᶜ^2 / implicit_model.closure.κ.c
 stop_time = 100diffusion_time_scale
 

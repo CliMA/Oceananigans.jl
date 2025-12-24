@@ -9,6 +9,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   SplitExplicitFreeSurface,
                                                                                   iterate_split_explicit!
 
+@inline noforcing(args...) = 0
+
+clock = Clock(time=0)
+
 @testset "Split-Explicit Dynamics" begin
 
     for FT in float_types
@@ -17,7 +21,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
             Nx, Ny, Nz = 128, 64, 1
             Lx = Ly = 2π
-            Lz = 1 / Oceananigans.BuoyancyFormulations.g_Earth
+            Lz = 1 / Oceananigans.defaults.gravitational_acceleration
 
             grid = RectilinearGrid(arch, FT;
                                    topology, size = (Nx, Ny, Nz),
@@ -36,7 +40,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @testset " One timestep test " begin
                 state = sefs.filtered_state
                 U, V  = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
 
                 η = sefs.η
                 Δτ = 1.0
@@ -45,9 +49,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 set!(η, η₀)
 
                 Nsubsteps = calculate_substeps(sefs.substepping, 1)
-                fractional_Δt, weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+                fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
 
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1)) 
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(1))
 
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
                 U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
@@ -58,7 +62,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @testset "Multi-timestep test " begin
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
                 η = sefs.η
 
                 T  = 2π
@@ -84,9 +88,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 weights = sefs.substepping.averaging_weights
 
                 for _ in 1:Nt
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1)) 
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
                 end
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ_end, weights, Val(1)) 
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
 
                 U_computed = Array(deepcopy(interior(U)))
                 η_computed = Array(deepcopy(interior(η)))
@@ -107,7 +111,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @testset "Averaging / Do Nothing test " begin
                 state = sefs.filtered_state
                 U, V  = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
                 η = sefs.η
                 g = sefs.gravitational_acceleration
 
@@ -129,10 +133,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
 
                 Nsubsteps  = calculate_substeps(sefs.substepping, 1)
-                fractional_Δt, weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
-                
+                fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+
                 for step in 1:Nsubsteps
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(1))
                 end
 
                 U_computed = Array(deepcopy(interior(U)))
@@ -171,7 +175,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
-                η̅, U̅, V̅ = state.η, state.U, state.V
+                η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
                 η = sefs.η
                 g = sefs.gravitational_acceleration
 
@@ -193,9 +197,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
                 weights = sefs.substepping.averaging_weights
                 for i in 1:Nt
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
                 end
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ_end, weights, Val(1))
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
 
                 η_mean_after = mean(Array(interior(η)))
 

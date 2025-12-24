@@ -41,17 +41,17 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     S² = KernelFunctionOperation{Center, Center, Center}(Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ, model.grid, u, v, w)
 
     if closure.coefficient isa DirectionallyAveragedCoefficient
-        c²ₛ = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
+        c²ₛ = model.closure_fields.LM_avg / model.closure_fields.MM_avg
         outputs = (; S², c²ₛ)
     else
         outputs = (; S²)
     end
 
     filename = "3d_turbulence_" * string(nameof(typeof(closure.coefficient)))
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          schedule = TimeInterval(0.6),
-                                                          filename = filename * ".jld2",
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                    schedule = TimeInterval(0.6),
+                                                    filename = filename * ".jld2",
+                                                    overwrite_existing = true)
     run!(simulation)
 end
 
@@ -93,7 +93,7 @@ for (i, closure) in enumerate(closures)
     end
 end
 
-title = @lift "t = " * string(round(times[$n], digits=2)) * ", cₛ = " * string(round(cₛ[$n], digits=4)) 
+title = @lift "t = " * string(round(times[$n], digits=2)) * ", cₛ = " * string(round(cₛ[$n], digits=4))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 frames = 1:length(times)
 @info "Making a neat animation of vorticity and speed..."

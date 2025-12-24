@@ -61,7 +61,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 
 # ## A Gaussian wavepacket
 #
-# Next, we set up an initial condition that excites an internal wave that propates
+# Next, we set up an initial condition that excites an internal wave that propagates
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math
@@ -69,7 +69,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # ```
 #
 # where ``m`` is the vertical wavenumber, ``k`` is the horizontal wavenumber,
-# ``ω`` is the wave frequncy, and ``a(x, z)`` is a Gaussian envelope.
+# ``ω`` is the wave frequency, and ``a(x, z)`` is a Gaussian envelope.
 # The internal wave dispersion relation links the wave numbers ``k`` and ``m``,
 # the Coriolis parameter ``f``, and the buoyancy frequency ``N``:
 
@@ -121,9 +121,9 @@ simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 # and add an output writer that saves the vertical velocity field every two iterations:
 
 filename = "internal_wave.jld2"
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities; filename,
-                                                          schedule = IterationInterval(1),
-                                                          overwrite_existing = true)
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities; filename,
+                                                    schedule = IterationInterval(1),
+                                                    overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
@@ -135,7 +135,7 @@ run!(simulation)
 # and make a Figure and an Axis for the animation,
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24))
+set_theme!(Theme(fontsize = 20))
 
 fig = Figure(size = (600, 600))
 
@@ -147,7 +147,7 @@ nothing #hide
 # Next, we load `w` data with `FieldTimeSeries` of `w` and make contour
 # plots of vertical velocity. We use Makie's `Observable` to animate the data.
 # To dive into how `Observable`s work, refer to
-# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 

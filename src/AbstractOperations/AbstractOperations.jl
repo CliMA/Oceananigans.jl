@@ -5,24 +5,16 @@ export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
-
-using CUDA
 using Base: @propagate_inbounds
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.Utils
-
-using Oceananigans: location, AbstractModel
+using Oceananigans: location
+using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: interpolation_operator
-using Oceananigans.Architectures: device
 
-import Adapt
+using Adapt: Adapt, adapt
 
-import Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 
@@ -34,10 +26,12 @@ abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
+const Location = Union{Face, Center, Nothing}
+
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
-architecture(a::AbstractOperation) = architecture(a.grid)
+Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()

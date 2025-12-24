@@ -37,7 +37,7 @@ When `parameters` _is_ specified, `func` must be callable with the signature.
 ```
 func(i, j, k, grid, clock, model_fields, parameters)
 ```
-    
+
 Above, `parameters` is, in principle, arbitrary. Note, however, that GPU compilation
 can place constraints on `typeof(parameters)`.
 """

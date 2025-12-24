@@ -1,6 +1,6 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, LinearTarget, AdvectiveForcing
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, LinearTarget, AdvectiveForcing
 
 using Oceananigans.Fields
 using Oceananigans.OutputReaders: FlavorOfFTS
