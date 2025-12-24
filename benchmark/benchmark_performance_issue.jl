@@ -29,7 +29,7 @@ function ocean_benchmark(grid, closure)
                                           coriolis,
                                           closure,
                                           free_surface,
-                                          tracers = (:T, :S, :e))
+                                          tracers = (:T, :S))
 
     @info "Model is built"
     return model

@@ -1,6 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Operators: hack_cosd
 using Oceananigans.Grids: get_active_column_map, get_active_cells_map
 using Oceananigans.ImmersedBoundaries: immersed_cell
 
