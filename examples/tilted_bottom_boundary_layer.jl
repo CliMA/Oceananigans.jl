@@ -1,11 +1,9 @@
-# # Tilted bottom boundary layer example
-#
 # This example simulates a two-dimensional oceanic bottom boundary layer
 # in a domain that's tilted with respect to gravity. We simulate the perturbation
 # away from a constant along-slope (y-direction) velocity constant density stratification.
 # This perturbation develops into a turbulent bottom boundary layer due to momentum
 # loss at the bottom boundary modeled with a quadratic drag law.
-# 
+#
 # This example illustrates
 #
 #   * changing the direction of gravitational acceleration in the buoyancy model;
@@ -35,7 +33,7 @@ Nz = 64
 ## Creates a grid with near-constant spacing `refinement * Lz / Nz`
 ## near the bottom:
 refinement = 1.8 # controls spacing near surface (higher means finer spaced)
-stretching = 10  # controls rate of stretching at bottom 
+stretching = 10  # controls rate of stretching at bottom
 
 ## "Warped" height coordinate
 h(k) = (Nz + 1 - k) / Nz
@@ -43,7 +41,7 @@ h(k) = (Nz + 1 - k) / Nz
 ## Linear near-surface generator
 ζ(k) = 1 + (h(k) - 1) / refinement
 
-## Bottom-intensified stretching function 
+## Bottom-intensified stretching function
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
 ## Generating function
@@ -58,11 +56,9 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-lines(zspacings(grid, Center()), znodes(grid, Center()),
-      axis = (ylabel = "Depth (m)",
-              xlabel = "Vertical spacing (m)"))
-
-scatter!(zspacings(grid, Center()), znodes(grid, Center()))
+scatterlines(zspacings(grid, Center()),
+             axis = (ylabel = "Depth (m)",
+                     xlabel = "Vertical spacing (m)"))
 
 current_figure() #hide
 
@@ -75,20 +71,20 @@ current_figure() #hide
 # so that ``x`` is the along-slope direction, ``z`` is the across-slope direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
-ĝ = [sind(θ), 0, cosd(θ)]
+ẑ = (sind(θ), 0, cosd(θ))
 
 # Changing the vertical direction impacts both the `gravity_unit_vector`
-# for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
+# for `BuoyancyForce` as well as the `rotation_axis` for Coriolis forces,
 
-buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
-coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
+buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector = .-ẑ)
+coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ẑ)
 
 # where above we used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
 
-@inline constant_stratification(x, z, t, p) = p.N² * (x * p.ĝ[1] + z * p.ĝ[3])
+@inline constant_stratification(x, z, t, p) = p.N² * (x * p.ẑ[1] + z * p.ẑ[3])
 
 # is _not_ periodic in ``x``. Thus we cannot explicitly model a constant stratification
 # on an ``x``-periodic grid such as the one used here. Instead, we simulate periodic
@@ -96,7 +92,7 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 # a constant stratification as a `BackgroundField`,
 
 N² = 1e-5 # s⁻² # background vertical buoyancy gradient
-B∞_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²))
+B∞_field = BackgroundField(constant_stratification, parameters=(; ẑ, N² = N²))
 
 # We choose to impose a bottom boundary condition of zero *total* diffusive buoyancy
 # flux across the seafloor,
@@ -106,24 +102,22 @@ B∞_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N
 # This shows that to impose a no-flux boundary condition on the total buoyancy field ``B``, we must apply a boundary condition to the perturbation buoyancy ``b``,
 # ```math
 # ∂_z b = - N^{2} \cos{\theta}.
-#```
+# ```
 
 ∂z_b_bottom = - N² * cosd(θ)
 negative_background_diffusive_flux = GradientBoundaryCondition(∂z_b_bottom)
 b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
-# ## Bottom drag
+# ## Bottom drag and along-slope interior velocity
 #
-# We impose bottom drag that follows Monin--Obukhov theory.
-# We include the background flow in the drag calculation,
-# which is the only effect the background flow enters the problem,
+# We impose bottom drag that follows Monin--Obukhov theory:
 
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
-κ = 0.4  # von Karman constant
+ϰ = 0.4  # von Karman constant
 
 z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
-cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
+cᴰ = (ϰ / log(z₁ / z₀))^2 # Drag coefficient
 
 @inline drag_u(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
 @inline drag_v(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
@@ -134,23 +128,26 @@ drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameter
 u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
 v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
+# Note that, similar to the buoyancy boundary conditions, we had to
+# include the background flow in the drag calculation.
+#
+# Let us also create `BackgroundField` for the along-slope interior velocity:
+
+V∞_field = BackgroundField(V∞)
+
 # ## Create the `NonhydrostaticModel`
 #
-# We are now ready to create the model. We create a `NonhydrostaticModel` with an
-# `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity. Here we use a smallish value
-# of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
+# We are now ready to create the model. We create a `NonhydrostaticModel` with a
+# fifth-order `UpwindBiased` advection scheme and a constant viscosity and diffusivity.
+# Here we use a smallish value of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
-ν = 1e-4
-κ = 1e-4
-closure = ScalarDiffusivity(ν=ν, κ=κ)
+closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
-                            timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
-                            background_fields = (; b=B∞_field))
+                            background_fields = (; b=B∞_field, v=V∞_field))
 
 # Let's introduce a bit of random noise at the bottom of the domain to speed up the onset of
 # turbulence:
@@ -164,7 +161,8 @@ set!(model, u=noise, w=noise)
 # conservatively, based on the smallest grid size of our domain and either an advective
 # or diffusive time scaling, depending on which is shorter.
 
-Δt₀ = 0.5 * minimum([minimum_zspacing(grid) / V∞, minimum_zspacing(grid)^2/κ])
+Δt₀ = 0.5 * minimum([Oceananigans.Advection.cell_advection_timescale(model),
+                     Oceananigans.Diagnostics.cell_diffusion_timescale(model)])
 simulation = Simulation(model, Δt = Δt₀, stop_time = 1day)
 
 # We use a `TimeStepWizard` to adapt our time-step,
@@ -188,7 +186,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(2
 
 # ## Add outputs to the simulation
 #
-# We add outputs to our model using the `NetCDFOutputWriter`,
+# We add outputs to our model using the `NetCDFWriter`, which needs `NCDatasets` to be loaded:
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -200,10 +198,12 @@ V = v + V∞
 
 outputs = (; u, V, w, B, ωy)
 
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
-                                                        filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
-                                                        schedule = TimeInterval(20minutes),
-                                                        overwrite_existing = true)
+using NCDatasets
+
+simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
+                                                  filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
+                                                  schedule = TimeInterval(20minutes),
+                                                  overwrite_existing = true)
 
 # Now we just run it!
 
@@ -214,7 +214,7 @@ run!(simulation)
 # First we load the required package to load NetCDF output files and define the coordinates for
 # plotting using existing objects:
 
-using NCDatasets, CairoMakie
+using CairoMakie
 
 xb, yb, zb = nodes(B)
 xω, yω, zω = nodes(ωy)
@@ -229,26 +229,26 @@ fig = Figure(size = (800, 600))
 
 axis_kwargs = (xlabel = "Across-slope distance (m)",
                ylabel = "Slope-normal\ndistance (m)",
-               limits = ((0, Lx), (0, Lz)),
-               )
+               limits = ((0, Lx), (0, Lz)))
 
 ax_ω = Axis(fig[2, 1]; title = "Along-slope vorticity", axis_kwargs...)
 ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
-ωy = @lift ds["ωy"][:, 1, :, $n]
-B = @lift ds["B"][:, 1, :, $n]
-hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
+ωy = @lift ds["ωy"][:, :, $n]
+B = @lift ds["B"][:, :, $n]
+ωlim = 0.015
+hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-ωlim, +ωlim), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
-ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
+ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
-V = @lift ds["V"][:, 1, :, $n]
-V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
+V = @lift ds["V"][:, :, $n]
+V_max = @lift maximum(abs, ds["V"][:, :, $n])
 
 hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
-ct_b = contour!(ax_v, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
+ct_b = contour!(ax_v, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))

@@ -1,14 +1,12 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.TurbulenceClosures: viscosity, ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, mask_immersed_field!
-using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
-using Oceananigans.Fields: ZeroField, ConstantField
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 import Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 
 function relative_error(u_num, u, time)
-    u_ans = Field(location(u_num), u_num.grid)
+    u_ans = Field(instantiated_location(u_num), u_num.grid)
     u_set(x...) = u(x..., time)
     set!(u_ans, u_set)
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
@@ -52,18 +50,19 @@ function test_ScalarDiffusivity_budget(fieldname, model)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
     ν = viscosity(model.closure, nothing)
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
+    return test_diffusion_budget(fieldname, field, model, ν, model.grid.z.Δᵃᵃᶜ)
 end
 
 function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
-    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δzᵃᵃᶜ, 4)
+    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
 end
 
-function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c) 
-    model = NonhydrostaticModel(; grid, closure, tracers, buoyancy=nothing)
+function test_diffusion_cosine(fieldname, Model, timestepper, grid, closure, ξ, tracers=:c; kwargs...)
+
+    model = Model(; grid, closure, timestepper, tracers, buoyancy=nothing, kwargs...)
     field = fields(model)[fieldname]
 
     m = 2 # cosine wavenumber
@@ -79,7 +78,7 @@ function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c)
     end
 
     diffusing_cosine(ξ, t, κ, m) = exp(-κ * m^2 * t) * cos(m * ξ)
-    analytical_solution = Field(location(field), grid)
+    analytical_solution = Field(instantiated_location(field), grid)
     analytical_solution .= diffusing_cosine.(ξ, model.clock.time, κ, m)
 
     return isapprox(field, analytical_solution, atol=1e-6, rtol=1e-6)
@@ -88,9 +87,9 @@ end
 function test_immersed_diffusion(Nz, z, time_discretization)
     closure         = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0); active_cells_map = true)
 
-    Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
+    Δz_min = minimum(underlying_grid.z.Δᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
@@ -120,7 +119,7 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
     # Bathymetry
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
-    bathymetry = [b b b b b b b b b 
+    bathymetry = [b b b b b b b b b
                   b l l l l l l l b
                   b l m m m m m l b
                   b l m u u u m l b
@@ -131,9 +130,9 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
                   b b b b b b b b b]
 
     underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
-    
-    Δz_min = minimum(grid.underlying_grid.Δzᵃᵃᶜ)
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry); active_cells_map = true)
+
+    Δz_min = minimum(grid.underlying_grid.z.Δᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
@@ -225,12 +224,9 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     @inline u(x, y, z, t) = -sin(2π * y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π * x) * exp(-4π^2 * ν * t)
 
-    model = NonhydrostaticModel(
-         timestepper = timestepper,
-                grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-             closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1),
-             tracers = nothing,
-            buoyancy = nothing)
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1)
+    model = NonhydrostaticModel(; timestepper, grid, closure)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
@@ -267,7 +263,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = [0, sind(θ), cosd(θ)]
-    buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=-g̃)
+    buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=-g̃)
 
     y_bc = GradientBoundaryCondition(N² * g̃[2])
     z_bc = GradientBoundaryCondition(N² * g̃[3])
@@ -299,7 +295,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     @test N² * g̃[2] ≈ mean(∂y_b)
     @test N² * g̃[3] ≈ mean(∂z_b)
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test all(N² * g̃[2] .≈ interior(∂y_b))
         @test all(N² * g̃[3] .≈ interior(∂z_b))
     end
@@ -312,10 +308,10 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=g̃)
+    buoyancy = BuoyancyForce(SeawaterBuoyancy(), gravity_unit_vector=g̃)
 
-    α  = buoyancy.model.equation_of_state.thermal_expansion
-    g₀ = buoyancy.model.gravitational_acceleration
+    α  = buoyancy.formulation.equation_of_state.thermal_expansion
+    g₀ = buoyancy.formulation.gravitational_acceleration
     ∂T∂z = N² / (g₀ * α)
 
     y_bc = GradientBoundaryCondition(∂T∂z * g̃[2])
@@ -329,12 +325,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
 
     T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, T=T₀)
-
     simulation = Simulation(model, Δt=10minute, stop_time=1hour)
     run!(simulation)
 
-    @compute ∂y_T = Field(∂y(model.tracers.T))
-    @compute ∂z_T = Field(∂z(model.tracers.T))
+    ∂y_T = Field(∂y(model.tracers.T))
+    ∂z_T = Field(∂z(model.tracers.T))
 
     mean_∂y_T = mean(∂y_T)
     mean_∂z_T = mean(∂z_T)
@@ -348,7 +343,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     @test ∂T∂z * g̃[2] ≈ mean(∂y_T)
     @test ∂T∂z * g̃[3] ≈ mean(∂z_T)
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test all(∂T∂z * g̃[2] .≈ interior(∂y_T))
         @test all(∂T∂z * g̃[3] .≈ interior(∂z_T))
     end
@@ -419,7 +414,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Periodic, Periodic, Bounded),
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
-                
+
                 # Can't use implicit time-stepping in vertically-periodic domains right now
                 if topology !== (Periodic, Periodic, Periodic)
                     time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
@@ -432,9 +427,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         # VerticallyImplicitTimeDiscretization is not supported for HorizontalScalarDiffusivity
                         (closurename == HorizontalScalarDiffusivity && time_discretization == VerticallyImplicitTimeDiscretization()) && continue
-                        
+
                         closure = closurename(time_discretization, ν=1, κ=1)
-                    
+
                         fieldnames = [:c]
                         topology[1] === Periodic && push!(fieldnames, :u)
                         topology[2] === Periodic && push!(fieldnames, :v)
@@ -512,11 +507,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             closures = []
             fieldnames = []
 
-            scalar_diffusivity = ScalarDiffusivity(ν=1, κ=1) 
-            implicit_scalar_diffusivity = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1) 
+            scalar_diffusivity = ScalarDiffusivity(ν=1, κ=1)
+            implicit_scalar_diffusivity = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)
             vertical_scalar_diffusivity = VerticalScalarDiffusivity(ν=1, κ=1)
             implicit_vertical_scalar_diffusivity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)
-            
+
             # Cases on Non-Flat grids with `ScalarDiffusivity`
             append!(coords, [x, y, z])
             append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
@@ -550,7 +545,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             push!(fieldnames, fieldnames[end])
             push!(closures, closure_tuple)
             push!(grids, grids[end])
-                               
+
             # Immersed grid cases
             immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(arch,
                                                                           size = (2, 2, 2N),
@@ -598,12 +593,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 for fieldname in fieldnames[case]
                     @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
-                    @test test_diffusion_cosine(fieldname, grid, closure, coord)
+                    @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :RungeKutta3, grid, closure, coord)
+                    @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :QuasiAdamsBashforth2, grid, closure, coord)
+
+                    if fieldname != :w && topology(grid)[3] == Bounded                        
+                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta3, grid, closure, coord; free_surface=nothing)
+                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :QuasiAdamsBashforth2, grid, closure, coord; free_surface = nothing)
+                    end
                 end
             end
         end
     end
-    #=
+
     @testset "Gaussian immersed diffusion" begin
         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
 
@@ -658,18 +659,28 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                       y_periodic_regularly_spaced_vertically_stretched_grid,
                       y_flat_regularly_spaced_vertically_stretched_grid)
 
+        free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g), 
+                                                                     SplitExplicitFreeSurface(grid, ; gravitational_acceleration=g, cfl=0.5))
+
+        free_surface_types(::Val{:SplitRungeKutta3}, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), ) 
+
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for grid in test_grids
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
+                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                    grid_name = typeof(grid).name.wrapper
+                    topo = topology(grid)
 
-                # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
-                gravitational_acceleration = (10σ)^2 / Lx
-                free_surface = ImplicitFreeSurface(; gravitational_acceleration)
-                model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+                    # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
+                    gravitational_acceleration = (10σ)^2 / Lx
 
-                @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
+                    for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
+                        model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+
+                        free_surface_type = typeof(free_surface).name.wrapper
+                        @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo, $timestepper, $free_surface_type]..."
+                        internal_wave_dynamics_test(model, solution, Δt)
+                    end
+                end
             end
         end
 
@@ -700,14 +711,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             @info "  Testing dynamics with background fields [$timestepper]..."
             @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
-                        
+
             Nx = Nz = 128
             Lx = Lz = 2π
 
             # Regular grid with no flat dimension
             y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
                                                       size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
-                        
+
             solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
 
             model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields, kwargs...)
@@ -725,7 +736,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    # This test alone runs for 2 hours on the GPU!!!!! 
+    # This test alone runs for 2 hours on the GPU!!!!!
     @testset "Background rotation about arbitrary axis" begin
         for arch in archs
             if arch == CPU() # This test is removed on the GPU (see Issue #2647)
@@ -734,5 +745,4 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
     end
-    =#
 end

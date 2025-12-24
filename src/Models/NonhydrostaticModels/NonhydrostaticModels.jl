@@ -1,6 +1,6 @@
 module NonhydrostaticModels
 
-export NonhydrostaticModel
+export NonhydrostaticModel, BackgroundField, BackgroundFields
 
 using DocStringExtensions
 
@@ -10,36 +10,72 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Solvers
 
-using Oceananigans.DistributedComputations: Distributed, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
+using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
+using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
+using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
-function PressureSolver(arch::Distributed, local_grid::XYZRegularRG)
+function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-PressureSolver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
-PressureSolver(arch, grid::XYRegularRG)  = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(arch, grid::XZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(arch, grid::YZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
+function nonhydrostatic_pressure_solver(::Distributed, local_grid::GridWithFourierTridiagonalSolver, ::Nothing)
+    global_grid = reconstruct_global_grid(local_grid)
+    return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
+end
 
-# *Evil grin*
-PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
+nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG, ::Nothing) = FFTBasedPoissonSolver(grid)
 
-# fall back
-PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel \
-                                   currently support more than one stretched direction.")
+function nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver, ::Nothing)
+    return FourierTridiagonalPoissonSolver(grid)
+end
+
+function nonhydrostatic_pressure_solver(arch, grid::Union{GridWithFourierTridiagonalSolver, XYZRegularRG}, free_surface)
+    tridiagonal_formulation = InhomogeneousFormulation(ZDirection())
+    return FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation)
+end
+
+# fallback
+nonhydrostatic_pressure_solver(arch, grid, ::Nothing) = ConjugateGradientPoissonSolver(grid)
+
+const IBGWithFFT = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
+nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, ::Nothing) = naive_solver_with_warning(arch, ibg, nothing)
+nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, fs) = naive_solver_with_warning(arch, ibg, fs)
+    
+function naive_solver_with_warning(arch, ibg, free_surface)
+    msg = """The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
+          is approximate and will probably produce velocity fields that are divergent
+          adjacent to the immersed boundary. An experimental but improved pressure_solver
+          is available which may be used by writing
+
+              using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+              pressure_solver = ConjugateGradientPoissonSolver(grid)
+
+          Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
+          """
+    @warn msg
+
+    return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid, free_surface)
+end
+
+
+nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_solver(architecture(grid), grid, free_surface)
 
 #####
 ##### NonhydrostaticModel definition
 #####
 
+include("background_fields.jl")
+include("boundary_mass_fluxes.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
@@ -82,6 +118,7 @@ include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("compute_nonhydrostatic_tendencies.jl")
-include("compute_nonhydrostatic_boundary_tendencies.jl")
+include("compute_nonhydrostatic_buffer_tendencies.jl")
 
 end # module
+

@@ -40,7 +40,7 @@ Private = false
 ## Buoyancy models
 
 ```@autodocs
-Modules = [Oceananigans.BuoyancyModels]
+Modules = [Oceananigans.BuoyancyFormulations]
 Private = false
 ```
 
@@ -71,6 +71,10 @@ Private = false
 Modules = [Oceananigans.Fields]
 Private = false
 ```
+```@docs
+XESMF.Regridder
+OceananigansXESMFExt.regrid!
+```
 
 ## Forcings
 
@@ -83,6 +87,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Grids]
+Private = false
+```
+
+## OrthogonalSphericalShellGrids
+
+```@autodocs
+Modules = [Oceananigans.OrthogonalSphericalShellGrids]
 Private = false
 ```
 
@@ -122,6 +133,13 @@ Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels]
 Private = false
 ```
 
+### Split-explicit free-surface
+
+```@autodocs
+Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces]
+Private = false
+```
+
 ### Shallow-water models
 
 ```@autodocs
@@ -133,6 +151,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Models.LagrangianParticleTracking]
+Private = false
+```
+
+### VarianceDissipationComputations
+
+```@autodocs
+Modules = [Oceananigans.Models.VarianceDissipationComputations]
 Private = false
 ```
 
@@ -162,6 +187,9 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.OutputWriters]
 Private = false
+```
+```@docs
+NetCDFWriter
 ```
 
 ## Simulations
@@ -196,6 +224,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.TurbulenceClosures]
+Private = false
+```
+
+### TKEBasedVerticalDiffusivities
+
+```@autodocs
+Modules = [Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities]
 Private = false
 ```
 

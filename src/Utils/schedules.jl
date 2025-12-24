@@ -1,3 +1,5 @@
+using Dates: AbstractTime
+
 import Oceananigans: initialize!
 
 """
@@ -18,8 +20,8 @@ schedule_aligned_time_step(schedule, clock, Δt) = Δt
 function initialize!(schedule::AbstractSchedule, model)
     schedule(model)
 
-    # `return true` indicates that the schedule
-    # "actuates" at initial call.
+    # the default behavior `return true` dictates that by default,
+    # schedules actuate at the initial call.
     return true
 end
 
@@ -27,15 +29,9 @@ end
 ##### TimeInterval
 #####
 
-"""
-    struct TimeInterval <: AbstractSchedule
-
-Callable `TimeInterval` schedule for periodic output or diagnostic evaluation
-according to `model.clock.time`.
-"""
-mutable struct TimeInterval <: AbstractSchedule
-    interval :: Float64
-    first_actuation_time :: Float64
+mutable struct TimeInterval{IT, TT} <: AbstractSchedule
+    interval :: IT
+    first_actuation_time :: TT
     actuations :: Int
 end
 
@@ -45,11 +41,27 @@ end
 Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
 """
-TimeInterval(interval) = TimeInterval(convert(Float64, interval), 0.0, 0)
+function TimeInterval(interval)
+    IT = period_type(interval)
+    interval = convert(IT, interval)
+    TT = time_type(interval)
+    first_actuation_time = zero(TT)
+    return TimeInterval{IT, TT}(interval, first_actuation_time, 0)
+end
 
-function initialize!(schedule::TimeInterval, model)
-    schedule.first_actuation_time = model.clock.time
-    schedule(model)
+initialize!(schedule::TimeInterval, model) = initialize_actuations!(schedule, model.clock.time)
+
+function initialize_actuations!(schedule::TimeInterval, first_actuation_time)
+
+    if schedule.first_actuation_time isa Number && first_actuation_time isa Dates.AbstractDateTime
+        T = typeof(schedule.first_actuation_time)
+        msg = "Cannot use $T TimeInterval times with DateTime clock. Use a Dates.Period instead."
+        throw(ArgumentError(msg))
+    end
+
+    schedule.first_actuation_time = first_actuation_time
+    schedule.actuations = 0
+
     return true
 end
 
@@ -57,7 +69,7 @@ function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.first_actuation_time
     N = schedule.actuations
     T = schedule.interval
-    return t₀ + N * T
+    return add_time_interval(t₀, T, N + 1)
 end
 
 function (schedule::TimeInterval)(model)
@@ -67,9 +79,8 @@ function (schedule::TimeInterval)(model)
     if t >= t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
-        else
-            schedule.first_actuation_time = t★
-            schedule.actuations = 1
+        else # re-initialize the schedule to t★
+            initialize!(schedule, t★)
         end
         return true
     else
@@ -80,7 +91,8 @@ end
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
     t = clock.time
-    return min(Δt, t★ - t)
+    δt = time_difference_seconds(t★, t)
+    return min(Δt, δt)
 end
 
 #####
@@ -95,25 +107,26 @@ end
 """
     IterationInterval(interval; offset=0)
 
-Return a callable `IterationInterval` that "actuates" (schedules output or callback execution)
+Return a callable `IterationInterval` that "actuates" (i.e., schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
 
-For example, 
+For example,
 
 * `IterationInterval(100)` actuates at iterations `[100, 200, 300, ...]`.
 * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
 """
-IterationInterval(interval; offset=0) = IterationInterval(interval, offset)
-
+IterationInterval(interval::Int; offset=0) = IterationInterval(interval, offset)
 (schedule::IterationInterval)(model) = (model.clock.iteration - schedule.offset) % schedule.interval == 0
+
+next_actuation_time(schedule::IterationInterval) = Inf
 
 #####
 ##### WallTimeInterval
 #####
 
-mutable struct WallTimeInterval <: AbstractSchedule
-    interval :: Float64
-    previous_actuation_time :: Float64
+mutable struct WallTimeInterval{FT} <: AbstractSchedule
+    interval :: FT
+    previous_actuation_time :: FT
 end
 
 """
@@ -128,7 +141,10 @@ or hypothetical clock hanging on your wall.
 The keyword argument `start_time` can be used to specify a starting wall time
 other than the moment `WallTimeInterval` is constructed.
 """
-WallTimeInterval(interval; start_time = time_ns() * 1e-9) = WallTimeInterval(Float64(interval), Float64(start_time))
+function WallTimeInterval(interval; start_time = time_ns() * 1e-9)
+    FT = Oceananigans.defaults.FloatType
+    return WallTimeInterval(convert(FT, interval), convert(FT, interval))
+end
 
 function (schedule::WallTimeInterval)(model)
     wall_time = time_ns() * 1e-9
@@ -146,16 +162,16 @@ end
 ##### SpecifiedTimes
 #####
 
-mutable struct SpecifiedTimes <: AbstractSchedule
-    times :: Vector{Float64}
+mutable struct SpecifiedTimes{FT} <: AbstractSchedule
+    times :: Vector{FT}
     previous_actuation :: Int
 end
 
 """
     SpecifiedTimes(times)
 
-Return a callable `TimeInterval` that "actuates" (schedules output or callback execution)
-whenever the model's clock equals the specified values in `times`. For example, 
+Return a `schedule::SpecifiedTimes` that "actuates" (i.e., schedules output or callback execution)
+whenever the model's clock equals the specified values in `times`. For example,
 
 * `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
 
@@ -163,8 +179,25 @@ whenever the model's clock equals the specified values in `times`. For example,
     The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
-SpecifiedTimes(times::Vararg{T}) where T<:Number = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
-SpecifiedTimes(times) = SpecifiedTimes(times...)
+function SpecifiedTimes(times...)
+    length(times) == 0 && return SpecifiedTimes(Float64[], 0)
+
+    first_time = times[1]
+
+    if all(t -> t isa Number, times)
+        FT = Oceananigans.defaults.FloatType
+        return SpecifiedTimes{FT}(sort([convert(FT, t) for t in times]), 0)
+    elseif all(t -> t isa AbstractTime, times)
+        TT = typeof(first_time)
+        return SpecifiedTimes{TT}(sort(collect(times)), 0)
+    else
+        throw(ArgumentError("SpecifiedTimes expects all times to be numbers or all to be Date/DateTime."))
+    end
+end
+
+function SpecifiedTimes(times::AbstractVector)
+    return SpecifiedTimes(Tuple(times)...)
+end
 
 function next_actuation_time(st::SpecifiedTimes)
     if st.previous_actuation >= length(st.times)
@@ -176,8 +209,13 @@ end
 
 function (st::SpecifiedTimes)(model)
     current_time = model.clock.time
+    next_time = next_actuation_time(st)
 
-    if current_time >= next_actuation_time(st)
+    if next_time === Inf
+        return false
+    end
+
+    if current_time >= next_time
         st.previous_actuation += 1
         return true
     end
@@ -187,7 +225,11 @@ end
 
 initialize!(st::SpecifiedTimes, model) = st(model)
 
-align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_actuation_time(schedule) - clock.time)
+function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
+    t★ = next_actuation_time(schedule)
+    δt = t★ == Inf ? Δt : time_difference_seconds(t★, clock.time)
+    return min(Δt, δt)
+end
 
 function specified_times_str(st)
     str_elems = ["$(prettytime(t)), " for t in st.times]
@@ -272,16 +314,30 @@ function (as::OrSchedule)(model)
     return any(actuations)
 end
 
-align_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, clock, Δt) =
-    minimum(align_time_step(clock, Δt, schedule) for schedule in any_or_all_schedule.schedules)
+schedule_aligned_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, clock, Δt) =
+    minimum(schedule_aligned_time_step(schedule, clock, Δt)
+            for schedule in any_or_all_schedule.schedules)
 
 #####
 ##### Show methods
 #####
 
-Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
+function Base.summary(schedule::IterationInterval)
+    summary = string("IterationInterval(", schedule.interval, ")")
+    if schedule.offset != 0
+        summary *= " with offset $(schedule.offset)"
+    end
+    return summary
+end
 Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
 Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")
+
+const StatefulSchedules = Union{TimeInterval, SpecifiedTimes, ConsecutiveIterations}
+
+materialize_schedule(s) = s
+materialize_schedule(ss::StatefulSchedules) = deepcopy(ss) # required to reuse a pre-defined schedule with a state
+materialize_schedule(or::OrSchedule) = OrSchedule(Tuple(materialize_schedule(s) for s in or.schedules))
+materialize_schedule(and::AndSchedule) = AndSchedule(Tuple(materialize_schedule(s) for s in and.schedules))

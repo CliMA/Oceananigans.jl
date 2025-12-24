@@ -26,4 +26,16 @@ include("dependencies_for_runtests.jl")
         @test prettytime(1.234hour) == "1.234 hours"
         @test prettytime(40.5days) == "40.500 days"
     end
+
+    @testset "prettysummary" begin
+        f4905(x::Integer) = 0
+        f4905(x::String) = ""
+        f4905(x::AbstractFloat) = 0.0
+
+        @test prettysummary(f4905, false) == "f4905"
+        @test prettysummary(f4905, true) == "f4905 (generic function with 3 methods)"
+        @test prettysummary(prettysummary, false) == "prettysummary"
+        @test contains(prettysummary(prettysummary, true), r"^prettysummary \(generic function with \d+ methods\)$")
+        @test contains(prettysummary(x -> x, true), r"^#\d+ \(generic function with 1 method\)$")
+    end
 end

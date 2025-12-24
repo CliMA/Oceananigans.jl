@@ -1,12 +1,12 @@
 # Contributors Guide
 
-Thank you for considering contributing to Oceananigans! 
+Thank you for considering contributing to Oceananigans!
 
 Feel free to ask us questions and chat with us at any time about any topic at all
-by 
+by
 
 * [Opening a GitHub issue](https://github.com/CliMA/Oceananigans.jl/issues/new/choose)
- 
+
 * [Creating a GitHub discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new)
 
 * Sending a message to the [#oceananigans channel](https://julialang.slack.com/archives/C01D24C0CAH) on [Julia Slack](https://julialang.org/slack/).
@@ -20,7 +20,7 @@ The simplest way to contribute to Oceananigans is to create or comment on issues
 
 The most useful bug reports:
 
-* Provide an explicit code snippet --- not just a link --- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
+* Provide an explicit code snippet -- not just a link -- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
 
 * Paste the _entire_ error received when running the code snippet, even if it's unbelievably long.
 

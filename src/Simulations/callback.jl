@@ -1,25 +1,47 @@
-using Oceananigans.Utils: prettysummary
-using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
+using Oceananigans.Utils: prettysummary
+using Dates
 
 import Oceananigans: initialize!
 
 struct Callback{P, F, S, CS}
     func :: F
     schedule :: S
-    parameters :: P
     callsite :: CS
+    parameters :: P
 end
 
 @inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
 
-# Fallback initialization: initialize the schedule.
-# Then, if the schedule calls for it, execute the callback.
-function initialize!(callback::Callback, sim)
-    initialize!(callback.schedule, sim.model) && callback(sim)
-    return nothing
-end
+"""
+    initialize!(callback::Callback, sim)
+
+Initialize `callback` at the beginning of `run!(sim)`.
+By default, this calls `initialize!` on `callback.func`,
+which in turn does nothing by default.
+
+`initialize!` can be specialized on `callback.parameters`,
+or specialized for `callback.func`.
+`
+"""
+initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
+
+"""
+    finalize!(callback::Callback, sim)
+
+Finalize `callback` at the end of `run!(sim)`.
+By default, this calls `finalize!` on `callback.func`,
+which in turn does nothing by default.
+
+`finalize!` can be specialized on `callback.parameters`,
+or specialized for `callback.func`.
+"""
+finalize!(callback::Callback, sim) = finalize!(callback.func, sim)
+
+initialize!(func, sim) = nothing
+finalize!(func, sim) = nothing
 
 """
     Callback(func, schedule=IterationInterval(1);
@@ -32,8 +54,8 @@ at the `callsite` with optional `parameters`. By default,
 If `isnothing(parameters)`, `func(sim::Simulation)` is called.
 Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
 
-The `callsite` determines where `Callback` is executed. The possible values for 
-`callsite` are
+The `callsite` determines where `Callback` is executed. The possible values for
+`callsite` are:
 
 * `TimeStepCallsite()`: after a time-step.
 
@@ -48,7 +70,7 @@ function Callback(func, schedule=IterationInterval(1);
                   parameters = nothing,
                   callsite = TimeStepCallsite())
 
-    return Callback(func, schedule, parameters, callsite)
+    return Callback(func, schedule, callsite, parameters)
 end
 
 Base.summary(cb::Callback{Nothing}) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule))
@@ -67,20 +89,14 @@ function Callback(wta::WindowedTimeAverage)
 end
 
 Callback(wta::WindowedTimeAverage, schedule; kw...) =
-    throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage. 
+    throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage.
                         Use Callback(windowed_time_average)"))
 
 struct GenericName end
 
-function unique_callback_name(name, existing_names)
-    if name ∈ existing_names
-        return Symbol(:another_, name)
-    else
-        return name
-    end
-end
+generic_callback_name(name, existing_names) = name
 
-function unique_callback_name(::GenericName, existing_names)
+function generic_callback_name(::GenericName, existing_names)
     prefix = :callback # yeah, that's generic
 
     # Find a unique one
@@ -94,7 +110,6 @@ end
 
 """
     add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
-
     add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
@@ -109,7 +124,7 @@ already exists.
 The `callback` (which contains a schedule) can also be supplied directly.
 """
 function add_callback!(simulation, callback::Callback; name = GenericName())
-    name = unique_callback_name(name, keys(simulation.callbacks))
+    name = generic_callback_name(name, keys(simulation.callbacks))
     simulation.callbacks[name] = callback
     return nothing
 end
@@ -120,3 +135,5 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
     callback = Callback(func, schedule; callback_kw...)
     return add_callback!(simulation, callback; name)
 end
+
+validate_schedule(func, schedule) = schedule

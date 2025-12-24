@@ -75,13 +75,12 @@ strain rate.
 The eddy viscosity is given by
 ```math
     \begin{align}
-    \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \varsigma(N^2 / \Sigma^2) + \nu \, ,
+    \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \varsigma(N^2 / \Sigma^2) \, ,
     \label{eq:smagorinsky-viscosity}
     \end{align}
 ```
-where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing,
-``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``, and
-``\nu`` is a constant isotropic background viscosity.
+where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing and
+``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``.
 The factor ``\varsigma(N^2 / \Sigma^2)`` reduces ``\nu_e`` in regions of
 strong stratification via
 ```math
@@ -103,9 +102,8 @@ The effect of subgrid turbulence on tracer mixing is also modeled diffusively vi
 ```
 where the eddy diffusivity ``\kappa_e`` is
 ```math
-\kappa_e = \frac{\nu_e - \nu}{Pr} + \kappa \, ,
+\kappa_e = \frac{\nu_e}{Pr} + \kappa \, .
 ```
-where ``\kappa`` is a constant isotropic background diffusivity.
 Both ``Pr`` and ``\kappa`` may be set independently for each tracer.
 
 ## Anisotropic minimum dissipation (AMD) turbulence closure
@@ -121,7 +119,7 @@ such that
     \kappa_e = \max \left ( 0, \kappa_e^\dagger \right ) + \kappa \, ,
 ```
 to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``, where ``\nu`` and ``\kappa`` are the
-constant isotropic background viscosity and diffusivities for each tracer. The eddy viscosity 
+constant isotropic background viscosity and diffusivities for each tracer. The eddy viscosity
 predictor is
 ```math
     \begin{equation}

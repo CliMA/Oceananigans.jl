@@ -18,7 +18,7 @@ The simplest way to contribute to Oceananigans is to create or comment on issues
 
 The most useful bug reports:
 
-* Provide an explicit code snippet --- not just a link --- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
+* Provide an explicit code snippet -- not just a link -- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
 
 * Paste the _entire_ error received when running the code snippet, even if it's unbelievably long.
 
@@ -60,8 +60,8 @@ Discussions are recommended for asking questions about (for example) the user in
 
 * Implement a new feature if you need it to use Oceananigans.
 
-If you're interested in working on something, let us know by commenting on existing issues or 
-by opening a new issue. This is to make sure no one else is working on the same issue and so 
+If you're interested in working on something, let us know by commenting on existing issues or
+by opening a new issue. This is to make sure no one else is working on the same issue and so
 we can help and guide you in case there is anything you need to know beforehand.
 
 ## Ground Rules
@@ -126,11 +126,18 @@ Oceananigans or by requesting something you think is missing.
 
 * You can test to make sure Oceananigans works by typing in `] test`. (This is equivalent to
   `using Pkg; Pkg.test()`.) Doing so will run all the tests (and this can take a while).
-  Alternatively, you can run only one test script file by providing its name as an environment
+  Alternatively, we can run only one test script file by providing its name as an environment
   variable. For example, to run the tests only from the `test_coriolis.jl` file we call:
 
-  ```
+  ```bash
   $ TEST_FILE=test_coriolis.jl julia --project -e"using Pkg; Pkg.test()"
+  ```
+
+  We can also run all the tests within a certain test group, as they are defined in [`test/runtest.jl`](https://github.com/CliMA/Oceananigans.jl/blob/main/test/runtests.jl).
+  For example, to run all unit tests we call:
+
+  ```bash
+  $ TEST_GROUP=unit julia --project -e"using Pkg; Pkg.test()"
   ```
 
 
@@ -141,7 +148,7 @@ We ask that new contributors read that guide before submitting a pull request.
 
 Changes and contributions should be made via GitHub pull requests against the ``main`` branch.
 
-When you're done making changes, commit the changes you made. Chris Beams has written a 
+When you're done making changes, commit the changes you made. Chris Beams has written a
 [guide](https://chris.beams.io/posts/git-commit/) on how to write good commit messages.
 
 When you think your changes are ready to be merged into the main repository, push to your fork
@@ -158,7 +165,7 @@ properly. Didn't write new functions? That's fine, but be sure that the document
 the code you touched is still in great shape. It is not uncommon to find some strange wording
 or clarification that you can take care of while you are here.
 
-You can preview how the Documentation will look like after merging by building the documentation 
+You can preview how the Documentation will look like after merging by building the documentation
 locally. From the main directory of your local repository call
 
 ```
@@ -171,7 +178,7 @@ to instantiate the documentation environment and then
 JULIA_DEBUG=Documenter julia --project=docs/ docs/make.jl
 ```
 
-If the documentation built is successful, you can open `docs/build/index.html` in your favorite browser.Providing the environment variable 
+If the documentation built is successful, you can open `docs/build/index.html` in your favorite browser.Providing the environment variable
 `JULIA_DEBUG=Documenter` will provide with more information in the documentation build process and
 thus help figuring out a potential bug.
 

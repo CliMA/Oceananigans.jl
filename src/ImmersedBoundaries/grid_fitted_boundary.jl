@@ -1,5 +1,11 @@
-using OffsetArrays
+using Oceananigans.Fields: Field, set!
+using Oceananigans.Grids: Grids, constructor_arguments
 
+"""
+    GridFittedBoundary(mask)
+
+Return a immersed boundary with a three-dimensional `mask`.
+"""
 struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
     mask :: M
 end
@@ -18,21 +24,21 @@ function compute_mask(grid, ib)
     return mask_field
 end
 
-function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary; precompute_mask=true)
-    TX, TY, TZ = topology(grid)
-
-    # TODO: validate ib
-
-    if precompute_mask
-        mask_field = compute_mask(grid, ib)
-        new_ib = GridFittedBoundary(mask_field)
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
-    else
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
-    end
+function materialize_immersed_boundary(grid, ib::GridFittedBoundary)
+    mask_field = compute_mask(grid, ib)
+    return GridFittedBoundary(mask_field)
 end
 
-on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
-on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
+Architectures.on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
+Architectures.on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
 
 Adapt.adapt_structure(to, ib::AbstractGridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
+
+const AGFBoundIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
+function Grids.constructor_arguments(grid::AGFBoundIBG)
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
+    grid_fitted_boundary_args = Dict(:mask => grid.immersed_boundary.mask)
+    return underlying_grid_args, underlying_grid_kwargs, grid_fitted_boundary_args
+end
+
+Base.:(==)(gfb1::GridFittedBoundary, gfb2::GridFittedBoundary) = gfb1.mask == gfb2.mask

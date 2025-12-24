@@ -1,41 +1,51 @@
 using Adapt
-using Oceananigans.Operators
-using Oceananigans.Fields: default_indices
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
+using Oceananigans.Fields: AbstractField, default_indices, location
+using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
+using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
 
-abstract type AbstractGridMetric end
+import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
-struct XSpacingMetric <: AbstractGridMetric end 
-struct YSpacingMetric <: AbstractGridMetric end 
-struct ZSpacingMetric <: AbstractGridMetric end 
+const GridMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode,
+                         typeof(Δx),
+                         typeof(Δy),
+                         typeof(Δz),
+                         typeof(Δr),
+                         typeof(Δλ),
+                         typeof(Δφ),
+                         typeof(Ax),
+                         typeof(Ay),
+                         typeof(Az),
+                         typeof(volume)} # Do we want it to be `volume` or just `V` like in the Operators module?
 
-metric_function_prefix(::XSpacingMetric) = :Δx
-metric_function_prefix(::YSpacingMetric) = :Δy
-metric_function_prefix(::ZSpacingMetric) = :Δz
-
-struct XAreaMetric <: AbstractGridMetric end 
-struct YAreaMetric <: AbstractGridMetric end 
-struct ZAreaMetric <: AbstractGridMetric end 
-
-metric_function_prefix(::XAreaMetric) = :Ax
-metric_function_prefix(::YAreaMetric) = :Ay
-metric_function_prefix(::ZAreaMetric) = :Az
-
-struct VolumeMetric <: AbstractGridMetric end 
-
-metric_function_prefix(::VolumeMetric) = :V
-
-# Convenient instances for users
-const Δx = XSpacingMetric()
-const Δy = YSpacingMetric()
+metric_function(loc, ::XNode) = xnode
+metric_function(loc, ::YNode) = ynode
+metric_function(loc, ::ZNode) = znode
+metric_function(loc, ::ΛNode) = λnode
+metric_function(loc, ::ΦNode) = φnode
+metric_function(loc, ::RNode) = rnode
 
 """
-    Δz = ZSpacingMetric()
+    metric_function(loc, metric::GridMetric)
 
-Instance of `ZSpacingMetric` that generates `BinaryOperation`s
-between `AbstractField`s and the vertical grid spacing evaluated
-at the same location as the `AbstractField`. 
+Return the function associated with `metric::GridMetric` at `loc`ation.
+"""
+function metric_function(loc, metric)
+    code = Tuple(interpolation_code(ℓ) for ℓ in loc)
+    if metric isa typeof(volume)
+        metric_function_symbol = Symbol(:V, code...)
+    else
+        metric_function_symbol = Symbol(metric, code...)
+    end
+    return getglobal(Operators, metric_function_symbol)
+end
 
-`Δx` and `Δy` play a similar role for horizontal grid spacings.
+"""
+    grid_metric_operation(loc, metric, grid)
+
+Return a `KernelFunctionOperation` of `metric` that participates
+in a `BinaryOperation` at `loc`ation of the `grid`.
 
 Example
 =======
@@ -43,101 +53,221 @@ Example
 ```jldoctest
 julia> using Oceananigans
 
-julia> using Oceananigans.AbstractOperations: Δz
+julia> using Oceananigans.AbstractOperations: Ax, grid_metric_operation
+
+julia> Axᶠᶜᶜ = grid_metric_operation((Face, Center, Center), Ax, RectilinearGrid(size=(2, 2, 3), extent=(1, 2, 3)))
+KernelFunctionOperation at (Face, Center, Center)
+├── grid: 2×2×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×2×3 halo
+├── kernel_function: Axᶠᶜᶜ (generic function with 2 methods)
+└── arguments: ()
+```
+
+```jldoctest
+julia> using Oceananigans
 
 julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)));
 
-julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
-BinaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-└── tree:
-    * at (Center, Center, Center)
-    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── Δzᶜᶜᶜ at (Center, Center, Center)
+julia> using Oceananigans.Operators: Δz
 
-julia> c .= 1;
+julia> c_dz = c * Δz; # returns BinaryOperation between Field and GridMetric
+
+julia> set!(c, 1);
 
 julia> c_dz[1, 1, 1]
 3.0
 ```
 """
-const Δz = ZSpacingMetric()
+grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric, grid) where {LX<:Location, LY<:Location, LZ<:Location} =
+    KernelFunctionOperation{LX, LY, LZ}(metric_function(loc, metric), grid)
 
-const Ax = XAreaMetric()
-const Ay = YAreaMetric()
-const Az = ZAreaMetric()
+# Instantiated location if location types are passed as values
+grid_metric_operation(Loc::Tuple, metric, grid) = grid_metric_operation((Loc[1](), Loc[2](), Loc[3]()), metric, grid)
+
+const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
+
+function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX<:Location, LY<:Location, LZ<:Location} 
+    ℓx, ℓy, ℓz = loc
+    ξnode = metric_function(loc, metric)
+    return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
+end
+
+#####
+##### Spacings
+#####
 
 """
-    volume = VolumeMetric()
+    xspacings(grid, ℓx, ℓy, ℓz)
 
-Instance of `VolumeMetric` that generates `BinaryOperation`s
-between `AbstractField`s and their cell volumes. Summing
-this `BinaryOperation` yields an integral of `AbstractField`
-over the domain.
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``x`` direction at location `ℓx, ℓy, ℓz`.
 
-Example
-=======
-
+Examples
+========
 ```jldoctest
 julia> using Oceananigans
 
-julia> using Oceananigans.AbstractOperations: volume
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 
-julia> c = CenterField(RectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)));
-
-julia> c .= 1;
-
-julia> c_dV = c * volume
-BinaryOperation at (Center, Center, Center)
-├── grid: 2×2×2 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×2×2 halo
-└── tree:
-    * at (Center, Center, Center)
-    ├── 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── Vᶜᶜᶜ at (Center, Center, Center)
-
-julia> c_dV[1, 1, 1]
-0.75
-
-julia> sum(c_dV)
-6.0
+julia> xspacings(grid, Center(), Center(), Center())
+KernelFunctionOperation at (Center, Center, Center)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δx (generic function with 20 methods)
+└── arguments: ("Center", "Center", "Center")
 ```
 """
-const volume = VolumeMetric()
-
-"""
-    metric_function(loc, metric::AbstractGridMetric)
-
-Return the function associated with `metric::AbstractGridMetric`
-at `loc`ation.
-"""
-function metric_function(loc, metric::AbstractGridMetric)
-    code = Tuple(interpolation_code(ℓ) for ℓ in loc)
-    prefix = metric_function_prefix(metric)
-    metric_function_symbol = Symbol(prefix, code...)
-    return getglobal(@__MODULE__, metric_function_symbol)
+function xspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δx_op = KernelFunctionOperation{LX, LY, LZ}(Δx, grid, ℓx, ℓy, ℓz)
+    return Δx_op
 end
 
-struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ, G, T}
-          metric :: M
-            grid :: G
-    function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G) where {LX, LY, LZ, M, G}
-        T = eltype(grid)
-        return new{LX, LY, LZ, G, T, M}(metric, grid)
-    end
+"""
+    yspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``y`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> yspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δy (generic function with 20 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
+function yspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δy_op = KernelFunctionOperation{LX, LY, LZ}(Δy, grid, ℓx, ℓy, ℓz)
+    return Δy_op
 end
 
-Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-         GridMetricOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric),
-                                         Adapt.adapt(to, gm.grid))
+"""
+    zspacings(grid, ℓx, ℓy, ℓz)
 
-on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-    GridMetricOperation{LX, LY, LZ}(on_architecture(to, gm.metric),
-                                    on_architecture(to, gm.grid))
-                                
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
 
-@inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
+Examples
+========
+```jldoctest
+julia> using Oceananigans
 
-indices(::GridMetricOperation) = default_indices(3)
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 
-# Special constructor for BinaryOperation
-GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
+julia> zspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δz (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+function zspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δz, grid, ℓx, ℓy, ℓz)
+    return Δz_op
+end
+
+"""
+    rspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``r`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> rspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δr (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+function rspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δr_op = KernelFunctionOperation{LX, LY, LZ}(Δr, grid, ℓx, ℓy, ℓz)
+    return Δr_op
+end
+
+"""
+    λspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``λ`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
+                                    longitude = (-180, 180),
+                                    latitude = (-85, 85),
+                                    z = (-1000, 0));
+
+julia> λspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+├── kernel_function: Δλ (generic function with 20 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
+function λspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δλ_op = KernelFunctionOperation{LX, LY, LZ}(Δλ, grid, ℓx, ℓy, ℓz)
+    return Δλ_op
+end
+
+"""
+    φspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``φ`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
+                                    longitude = (-180, 180),
+                                    latitude = (-85, 85),
+                                    z = (-1000, 0));
+
+julia> φspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+├── kernel_function: Δφ (generic function with 20 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
+function φspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
+    Δφ_op = KernelFunctionOperation{LX, LY, LZ}(Δφ, grid, ℓx, ℓy, ℓz)
+    return Δφ_op
+end
+
+@inline xspacings(field::AbstractField) = xspacings(field.grid, location(field)...)
+@inline yspacings(field::AbstractField) = yspacings(field.grid, location(field)...)
+@inline zspacings(field::AbstractField) = zspacings(field.grid, location(field)...)
+@inline λspacings(field::AbstractField) = λspacings(field.grid, location(field)...)
+@inline φspacings(field::AbstractField) = φspacings(field.grid, location(field)...)
+@inline rspacings(field::AbstractField) = rspacings(field.grid, location(field)...)
+
+# Some defaults for e.g. easy CFL computations.
+@inline xspacings(grid::AbstractGrid) = xspacings(grid, Center(), Center(), Center())
+@inline yspacings(grid::AbstractGrid) = yspacings(grid, Center(), Center(), Center())
+@inline zspacings(grid::AbstractGrid) = zspacings(grid, Center(), Center(), Center())
+@inline λspacings(grid::AbstractGrid) = λspacings(grid, Center(), Center(), Center())
+@inline φspacings(grid::AbstractGrid) = φspacings(grid, Center(), Center(), Center())
+@inline rspacings(grid::AbstractGrid) = rspacings(grid, Center(), Center(), Center())

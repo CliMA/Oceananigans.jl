@@ -10,31 +10,31 @@ Surface waves are modeled in the [`NonhydrostaticModel`](@ref) by the Craik-Leib
 which governs interior motions under a surface gravity wave field that have been time- or
 phase-averaged over the rapid oscillations of the surface waves.
 The oscillatory vertical and horizontal motions associated with surface waves themselves,
-therefore, are not present in the resolved velocity field ``\boldsymbol{v}``, and only the 
-steady, averaged effect of surface waves that manifests over several or more wave oscillations 
+therefore, are not present in the resolved velocity field ``\boldsymbol{v}``, and only the
+steady, averaged effect of surface waves that manifests over several or more wave oscillations
 are modeled.
 
-When surface waves are included, the resolved velocity field ``\boldsymbol{v}`` is the 
-Lagrangian-mean velocity field. The Lagrangian-mean velocity field at a particular location 
-``(x, y, z)`` is average velocity of a fluid particle whose average position is ``(x, y, z)`` 
-at time ``t``. The average position of a fluid particle ``\boldsymbol{\xi}(t) = (\xi, \eta, \zeta)`` 
+When surface waves are included, the resolved velocity field ``\boldsymbol{v}`` is the
+Lagrangian-mean velocity field. The Lagrangian-mean velocity field at a particular location
+``(x, y, z)`` is average velocity of a fluid particle whose average position is ``(x, y, z)``
+at time ``t``. The average position of a fluid particle ``\boldsymbol{\xi}(t) = (\xi, \eta, \zeta)``
 is thus governed by
 ```math
     \partial_t \boldsymbol{\xi} + \boldsymbol{v}(\boldsymbol{\xi}, t) \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{\xi} = \boldsymbol{v}(\boldsymbol{\xi}, t) \, ,
 ```
-which is the same relationship that holds when surface waves are not present and ``\boldsymbol{v}`` 
-ceases to be an averaged velocity field. The simplicity of the governing equations for Lagrangian-mean 
-momentum is the main reason we use a Lagrangian-mean formulation in Oceananigans.jl, rather 
-than an Eulerian-mean formulation: for example, the tracer conservation equation is unchanged 
-by the inclusion of surface wave effects. Moreover, because the effect of surface waves manifests 
-either as a bulk forcing of Lagrangian-mean momentum or as a modification to the effective background 
-rotation rate of the interior fluid similar to any bulk forcing or Coriolis force, we do not 
-explicitly include the effects of surface waves in turbulence closures that model the effects 
-of subgrid turbulence. More specifically, the effect of steady surface waves does not effect 
+which is the same relationship that holds when surface waves are not present and ``\boldsymbol{v}``
+ceases to be an averaged velocity field. The simplicity of the governing equations for Lagrangian-mean
+momentum is the main reason we use a Lagrangian-mean formulation in Oceananigans.jl, rather
+than an Eulerian-mean formulation: for example, the tracer conservation equation is unchanged
+by the inclusion of surface wave effects. Moreover, because the effect of surface waves manifests
+either as a bulk forcing of Lagrangian-mean momentum or as a modification to the effective background
+rotation rate of the interior fluid similar to any bulk forcing or Coriolis force, we do not
+explicitly include the effects of surface waves in turbulence closures that model the effects
+of subgrid turbulence. More specifically, the effect of steady surface waves does not effect
 the conservation of Lagrangian-mean turbulent kinetic energy.
 
-The Lagrangian-mean velocity field ``\boldsymbol{v}`` contrasts with the Eulerian-mean velocity 
-field ``\boldsymbol{v}^E``, which is the fluid velocity averaged at the fixed Eulerian position 
+The Lagrangian-mean velocity field ``\boldsymbol{v}`` contrasts with the Eulerian-mean velocity
+field ``\boldsymbol{v}^E``, which is the fluid velocity averaged at the fixed Eulerian position
 ``(x, y, z)``. The surface wave Stokes drift field supplied by the user is, in fact, defined
 by the difference between the Eulerian- and Lagrangian-mean velocity:
 ```math

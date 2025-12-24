@@ -8,16 +8,19 @@ Distributed.addprocs(2)
     using Printf
 
     using CairoMakie # to avoid capturing precompilation output by Literate
-    CairoMakie.activate!(type = "svg")
+    set_theme!(Theme(fontsize=20))
+    CairoMakie.activate!(type = "png")
+
+    using NCDatasets
+    using XESMF
 
     using Oceananigans
+    using Oceananigans.AbstractOperations
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
-    using Oceananigans.TurbulenceClosures
     using Oceananigans.TimeSteppers
-    using Oceananigans.AbstractOperations
-
+    using Oceananigans.TurbulenceClosures
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
@@ -30,25 +33,44 @@ Distributed.addprocs(2)
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
-    # The examples that take longer to run should be first. This ensures thats
-    # docs built using extra workers is as efficient as possible.
+    # The examples that take longer to run should be first. This ensures that the
+    # docs built which extra workers is as efficient as possible.
     example_scripts = [
         "internal_tide.jl",
+        "langmuir_turbulence.jl",
         "shallow_water_Bickley_jet.jl",
+        "ocean_wind_mixing_and_convection.jl",
         "kelvin_helmholtz_instability.jl",
         "horizontal_convection.jl",
-        "langmuir_turbulence.jl",
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
-        "ocean_wind_mixing_and_convection.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
-
-    @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 end
+
+# We'll append the following postamble to the literate examples, to include
+# information about the computing environment used to run them.
+example_postamble = """
+
+# ---
+
+# ### Julia version and environment information
+#
+# This example was executed with the following version of Julia:
+
+using InteractiveUtils: versioninfo
+versioninfo()
+
+# These were the top-level packages installed in the environment:
+
+import Pkg
+Pkg.status()
+"""
+
+@info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
@@ -56,6 +78,7 @@ Distributed.pmap(1:length(example_scripts)) do n
     withenv("JULIA_DEBUG" => "Literate") do
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
+                          preprocess = content -> content * example_postamble,
                           flavor = Literate.DocumenterFlavor(), execute = true)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
@@ -83,25 +106,23 @@ example_pages = [
     "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
 ]
 
-model_setup_pages = [
-    "Overview" => "model_setup/overview.md",
-    "Architecture" => "model_setup/architecture.md",
-    "Number type" => "model_setup/number_type.md",
-    "Grid" => "model_setup/grids.md",
-    "Clock" => "model_setup/clock.md",
-    "Coriolis (rotation)" => "model_setup/coriolis.md",
-    "Tracers" => "model_setup/tracers.md",
-    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
-    "Boundary conditions" => "model_setup/boundary_conditions.md",
-    "Forcing functions" => "model_setup/forcing_functions.md",
-    "Background fields" => "model_setup/background_fields.md",
-    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
-    "Lagrangian particles" => "model_setup/lagrangian_particles.md",
-    "Diagnostics" => "model_setup/diagnostics.md",
-    "Callbacks" => "model_setup/callbacks.md",
-    "Output writers" => "model_setup/output_writers.md",
-    "Checkpointing" => "model_setup/checkpointing.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
+model_pages = [
+    "Overview" => "models/models_overview.md",
+    "Coriolis forces" => "models/coriolis.md",
+    "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
+    "Turbulence closures" => "models/turbulence_closures.md",
+    "Boundary conditions" => "models/boundary_conditions.md",
+    "Forcings" => "models/forcing_functions.md",
+    "Lagrangian particles" => "models/lagrangian_particles.md",
+    "Background fields" => "models/background_fields.md",
+]
+
+simulation_pages = [
+    "Overview" => "simulations/simulations_overview.md",
+    # "Callbacks" => "simulations/callbacks.md",
+    "Schedules" => "simulations/schedules.md",
+    "Output writers" => "simulations/output_writers.md",
+    "Checkpointing" => "simulations/checkpointing.md",
 ]
 
 physics_pages = [
@@ -111,7 +132,7 @@ physics_pages = [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
         ],
     "`HydrostaticFreeSurfaceModel`" => [
-        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
+        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md",
         ],
     "`ShallowWaterModel`" => [
         "Shallow water model" => "physics/shallow_water_model.md"
@@ -126,6 +147,7 @@ physics_pages = [
 numerical_pages = [
     "Finite volume method" => "numerical_implementation/finite_volume.md",
     "Spatial operators" => "numerical_implementation/spatial_operators.md",
+    "Generalized vertical coordinates" => "numerical_implementation/generalized_vertical_coordinates.md",
     "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
     "Time stepping" => "numerical_implementation/time_stepping.md",
     "Boundary conditions" => "numerical_implementation/boundary_conditions.md",
@@ -146,9 +168,18 @@ pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
     "Examples" => example_pages,
+    "Grids" => "grids.md",
+    "Fields" => "fields.md",
+    "Operations" => "operations.md",
+    # TODO:
+    #   - Develop the following tutorials on reductions and post-processing
+    #   - Refactor the model setup pages and make them more tutorial-like.
+    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
+    # "FieldTimeSeries and post-processing" => field_time_series.md,
+    "Models" => model_pages,
+    "Simulations" => simulation_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
-    "Model setup" => model_setup_pages,
     "Simulation tips" => "simulation_tips.md",
     "Contributor's guide" => "contributing.md",
     "Gallery" => "gallery.md",
@@ -161,7 +192,6 @@ pages = [
 #####
 
 format = Documenter.HTML(collapselevel = 1,
-                         prettyurls = get(ENV, "CI", nothing) == "true",
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
                          size_threshold = 2^20,
@@ -169,40 +199,54 @@ format = Documenter.HTML(collapselevel = 1,
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
-makedocs(sitename = "Oceananigans.jl",
+modules = Module[]
+OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+OceananigansXESMFExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansXESMFExt) : Oceananigans.OceananigansXESMFExt
+
+for m in [Oceananigans, XESMF, OceananigansNCDatasetsExt, OceananigansXESMFExt]
+    if !isnothing(m)
+        push!(modules, m)
+    end
+end
+
+makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
-         format = format,
-         pages = pages,
+         format, pages, modules,
          plugins = [bib],
-         modules = [Oceananigans],
          warnonly = [:cross_references],
-         doctest = true, # set to false to speed things up
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         doctestfilters = [
+             r"┌ Warning:.*",  # remove standard warning lines
+             r"└ @ .*",        # remove the source location of warnings
+         ],
          clean = true,
          checkdocs = :exports) # set to :none to speed things up
-
-@info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
 """
     recursive_find(directory, pattern)
 
 Return list of filepaths within `directory` that contains the `pattern::Regex`.
 """
-recursive_find(directory, pattern) =
-    mapreduce(vcat, walkdir(directory)) do (root, dirs, files)
-        joinpath.(root, filter(contains(pattern), files))
+function recursive_find(directory, pattern)
+    mapreduce(vcat, walkdir(directory)) do (root, dirs, filenames)
+        matched_filenames = filter(contains(pattern), filenames)
+        map(filename -> joinpath(root, filename), matched_filenames)
     end
-
-files = []
-for pattern in [r"\.jld2", r"\.nc"]
-    global files = vcat(files, recursive_find(@__DIR__, pattern))
 end
 
-for file in files
-    rm(file)
+@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
+
+for pattern in [r"\.jld2", r"\.nc"]
+    filenames = recursive_find(@__DIR__, pattern)
+
+    for filename in filenames
+        rm(filename)
+    end
 end
 
 deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
            forcepush = true,
-           push_preview = false,
+           push_preview = true,
            devbranch = "main")

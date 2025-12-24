@@ -14,7 +14,7 @@ function set!(model::ShallowWaterModel; kwargs...)
         set!(ϕ, value)
     end
 
-    update_state!(model)
-    
+    update_state!(model; compute_tendencies = false)
+
     return nothing
 end

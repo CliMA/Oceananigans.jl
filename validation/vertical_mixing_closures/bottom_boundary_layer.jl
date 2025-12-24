@@ -37,24 +37,24 @@ u_bcs = FieldBoundaryConditions(bottom = u_bottom_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_bottom_bc)
 
 model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                    tracers = (:b, :e),
+                                    tracers = (:b,),
                                     buoyancy = BuoyancyTracer(),
                                     boundary_conditions = (; u=u_bcs, v=v_bcs))
-                                    
+
 bᵢ(z) = N² * z
 set!(model, b=bᵢ, u=u₀, e=1e-6)
 
 simulation = Simulation(model; Δt=2minutes, stop_time)
 
-diffusivities = (κᵘ = model.diffusivity_fields.κᵘ,
-                 κᶜ = model.diffusivity_fields.κᶜ)
+diffusivities = (κᵘ = model.closure_fields.κᵘ,
+                 κᶜ = model.closure_fields.κᶜ)
 
 outputs = merge(model.velocities, model.tracers, diffusivities)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(20minutes),
-                                                      filename = "bottom_boundary_layer.jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                schedule = TimeInterval(20minutes),
+                                                filename = "bottom_boundary_layer.jld2",
+                                                overwrite_existing = true)
 
 function progress(sim)
     msg = @sprintf("Iter: %d, time: %s, max(u): %.2f",
@@ -112,5 +112,4 @@ display(fig)
 record(fig, "bottom_boundary_layer.mp4", 1:Nt, framerate=12) do nn
     n[] = nn
 end
-
 

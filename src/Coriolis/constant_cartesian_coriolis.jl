@@ -15,8 +15,9 @@ end
 
 """
     ConstantCartesianCoriolis([FT=Float64;] fx=nothing, fy=nothing, fz=nothing,
-                                            f=nothing, rotation_axis=ZDirection(), 
-                                            rotation_rate=Ω_Earth, latitude=nothing)
+                              f=nothing, rotation_axis=ZDirection(),
+                              rotation_rate=Oceananigans.defaults.planet_rotation_rate,
+                              latitude=nothing)
 
 Return a parameter object for a constant rotation decomposed into the `x`, `y`, and `z` directions.
 In oceanography the components `x`, `y`, `z` correspond to the directions east, north, and up. This
@@ -28,9 +29,11 @@ constant rotation can be specified in three different ways:
 - Specifying `latitude` (in degrees) and (optionally) a `rotation_rate` in radians per second
   (which defaults to Earth's rotation rate).
 """
-function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
-                                               f=nothing, rotation_axis=ZDirection(), 
-                                               rotation_rate=Ω_Earth, latitude=nothing)
+function ConstantCartesianCoriolis(FT=Oceananigans.defaults.FloatType;
+                                   fx=nothing, fy=nothing, fz=nothing,
+                                   f=nothing, rotation_axis=ZDirection(),
+                                   latitude=nothing,
+                                   rotation_rate=Oceananigans.defaults.planet_rotation_rate)
     if !isnothing(latitude)
         all(isnothing.((fx, fy, fz, f))) || throw(ArgumentError("Only `rotation_rate` can be specified when using `latitude`."))
 
@@ -61,7 +64,6 @@ function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothin
 
     return ConstantCartesianCoriolis{FT}(fx, fy, fz)
 end
-
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 # Similarly with fᶻu_minus_fˣw to y_f_cross_U, etc.

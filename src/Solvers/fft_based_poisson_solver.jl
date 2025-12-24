@@ -21,14 +21,16 @@ function transform_list_str(transform_list)
     return list
 end
 
+Base.summary(solver::FFTBasedPoissonSolver) = "FFTBasedPoissonSolver"
+
 Base.show(io::IO, solver::FFTBasedPoissonSolver) =
-print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
-          "├── grid: $(summary(solver.grid))\n",
-          "├── storage: $(typeof(solver.storage))\n",
-          "├── buffer: $(typeof(solver.buffer))\n",
-          "└── transforms:\n",
-          "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
-          "    └── backward: ", transform_list_str(solver.transforms.backward))
+    print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
+              "├── grid: $(summary(solver.grid))\n",
+              "├── storage: $(typeof(solver.storage))\n",
+              "├── buffer: $(typeof(solver.buffer))\n",
+              "└── transforms:\n",
+              "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
+              "    └── backward: ", transform_list_str(solver.transforms.backward))
 
 """
     FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
@@ -90,7 +92,7 @@ elements (typically the same type as `solver.storage`).
     Equation ``(∇² + m) ϕ = b`` is sometimes referred to as the "screened Poisson" equation
     when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
-function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     arch = architecture(solver)
     topo = TX, TY, TZ = topology(solver.grid)
     Nx, Ny, Nz = size(solver.grid)
@@ -100,7 +102,9 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     ϕc = solver.storage
 
     # Transform b *in-place* to eigenfunction space
-    [transform!(b, solver.buffer) for transform! in solver.transforms.forward]
+    for transform! in solver.transforms.forward
+        transform!(b, solver.buffer)
+    end
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
     @. ϕc = - b / (λx + λy + λz - m)
@@ -108,13 +112,15 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
     # we set this to zero by default. Another slant on this "problem" is that
     # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0, which yields ϕ[1, 1, 1] = Inf or NaN.
-    m === 0 && CUDA.@allowscalar ϕc[1, 1, 1] = 0
+    m === 0 && @allowscalar ϕc[1, 1, 1] = 0
 
     # Apply backward transforms in order
-    [transform!(ϕc, solver.buffer) for transform! in solver.transforms.backward]
+    for transform! in solver.transforms.backward
+        transform!(ϕc, solver.buffer)
+    end
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
-    
+
     return ϕ
 end
 

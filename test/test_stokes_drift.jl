@@ -46,5 +46,15 @@ end
     @testset "Stokes drift" begin
         @test instantiate_uniform_stokes_drift()
         @test instantiate_stokes_drift()
+
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
+            stokes_drift = UniformStokesDrift(grid)
+            @test location(stokes_drift.∂z_uˢ) === (Nothing, Nothing, Face)
+            @test location(stokes_drift.∂z_vˢ) === (Nothing, Nothing, Face)
+            @test location(stokes_drift.∂t_uˢ) === (Nothing, Nothing, Center)
+            @test location(stokes_drift.∂t_vˢ) === (Nothing, Nothing, Center)
+        end
     end
 end
+

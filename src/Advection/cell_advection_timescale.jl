@@ -16,12 +16,19 @@ function cell_advection_timescale(grid, velocities)
     return minimum(τ)
 end
 
-@inline function cell_advection_timescaleᶜᶜᶜ(i, j, k, grid, u, v, w)
-    Δx = Δxᶠᶜᶜ(i, j, k, grid)
-    Δy = Δyᶜᶠᶜ(i, j, k, grid)
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
+@inline _inverse_timescale(i, j, k, Δ⁻¹, U, topo) = @inbounds abs(U[i, j, k]) * Δ⁻¹
+@inline _inverse_timescale(i, j, k, Δ⁻¹, U, topo::Flat) = 0
 
-    inverse_timescale = @inbounds abs(u[i, j, k]) / Δx + abs(v[i, j, k]) / Δy + abs(w[i, j, k]) / Δz
-     
+@inline function cell_advection_timescaleᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT, TX, TY, TZ}, u, v, w) where {FT, TX, TY, TZ}
+    Δx⁻¹ = Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    Δy⁻¹ = Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
+
+    inverse_timescale_x = _inverse_timescale(i, j, k, Δx⁻¹, u, TX())
+    inverse_timescale_y = _inverse_timescale(i, j, k, Δy⁻¹, v, TY())
+    inverse_timescale_z = _inverse_timescale(i, j, k, Δz⁻¹, w, TZ())
+
+    inverse_timescale = inverse_timescale_x + inverse_timescale_y + inverse_timescale_z
+
     return 1 / inverse_timescale
 end

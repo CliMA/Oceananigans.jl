@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.BuoyancyModels: ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
 struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
@@ -59,7 +59,7 @@ julia> cavd = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1)
 ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.0 convective_κz=1 background_νz=0.0 convective_νz=0.0)
 ```
 """
-function ConvectiveAdjustmentVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT = Float64;
+function ConvectiveAdjustmentVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
                                                  background_κz = zero(FT),
@@ -81,8 +81,8 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 const CAVDArray = AbstractArray{<:CAVD}
 const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
-with_tracers(tracers, closure::FlavorOfCAVD) = closure
-DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = ZFaceField(grid), κᵘ = ZFaceField(grid))
+Utils.with_tracers(tracers, closure::FlavorOfCAVD) = closure
+build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = ZFaceField(grid), κᵘ = ZFaceField(grid))
 @inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.κᵘ
@@ -92,8 +92,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; par
 
     arch = model.architecture
     grid = model.grid
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,
             ## If we can figure out how to only precompute the "stability" of a cell:
@@ -133,4 +133,3 @@ function Base.summary(closure::ConvectiveAdjustmentVerticalDiffusivity{TD}) wher
 end
 
 Base.show(io::IO, closure::ConvectiveAdjustmentVerticalDiffusivity) = print(io, summary(closure))
-

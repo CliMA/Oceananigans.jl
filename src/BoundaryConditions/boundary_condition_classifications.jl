@@ -50,6 +50,14 @@ boundary condition.
 struct Value <: AbstractBoundaryConditionClassification end
 
 """
+    struct Mixed <: AbstractBoundaryConditionClassification
+
+A classification specifying a boundary condition that represents a linear combination of
+the field's gradient and value. Also called a Robin boundary condition.
+"""
+struct Mixed <: AbstractBoundaryConditionClassification end
+
+"""
     struct Open <: AbstractBoundaryConditionClassification
 
 A classification that specifies the halo regions of a field directly.
@@ -59,7 +67,15 @@ For fields located at `Faces`, `Open` also specifies field value _on_ the bounda
 Open boundary conditions are used to specify the component of a velocity field normal to a boundary
 and can also be used to describe nested or linked simulation domains.
 """
-struct Open <: AbstractBoundaryConditionClassification end
+struct Open{MS} <: AbstractBoundaryConditionClassification
+    scheme::MS
+end
+
+Open() = Open(nothing)
+
+(open::Open)() = open
+
+Adapt.adapt_structure(to, open::Open) = Open(adapt(to, open.scheme))
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification
@@ -71,6 +87,14 @@ struct MultiRegionCommunication <: AbstractBoundaryConditionClassification end
 """
     struct DistributedCommunication <: AbstractBoundaryConditionClassification
 
-A classification specifying a distributed memory communicating boundary condition 
+A classification specifying a distributed memory communicating boundary condition
 """
 struct DistributedCommunication <: AbstractBoundaryConditionClassification end
+
+"""
+    struct Zipper <: AbstractBoundaryConditionClassification
+
+A classification specifying a Zipper boundary condition where one boundary is folded onto itself.
+Used only for a tripolar grid.
+"""
+struct Zipper <: AbstractBoundaryConditionClassification end

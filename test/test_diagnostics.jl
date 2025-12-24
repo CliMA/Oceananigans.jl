@@ -67,7 +67,7 @@ function advective_timescale_cfl_on_regular_grid(arch, FT)
 
     Δx = model.grid.Δxᶜᵃᵃ
     Δy = model.grid.Δyᵃᶜᵃ
-    Δz = model.grid.Δzᵃᵃᶜ
+    Δz = model.grid.z.Δᵃᵃᶜ
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -92,7 +92,7 @@ function advective_timescale_cfl_on_stretched_grid(arch, FT)
     Δy = model.grid.Δyᵃᶜᵃ
 
     # At k = 1, w = 0 so the CFL constraint happens at the second face (k = 2).
-    Δz_min = CUDA.@allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
+    Δz_min = @allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -116,12 +116,12 @@ function advective_timescale_cfl_on_lat_lon_grid(arch, FT)
     Nx, Ny, Nz = size(grid)
 
     # Will be the smallest at higher latitudes.
-    Δx_min = CUDA.@allowscalar Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
+    Δx_min = @allowscalar Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
 
     # Will be the same at every grid point.
-    Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
+    Δy_min = @allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
 
-    Δz = model.grid.Δzᵃᵃᶠ
+    Δz = model.grid.z.Δᵃᵃᶠ
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -137,6 +137,20 @@ function advective_timescale_cfl_on_lat_lon_grid(arch, FT)
     cfl = CFL(FT(Δt), Oceananigans.Advection.cell_advection_timescale)
 
     return cfl(model) ≈ CFL_by_hand
+end
+
+function advective_timescale_cfl_on_flat_2d_grid(arch, FT)
+    Δx = 0.5
+    topo = (Periodic, Flat, Bounded)
+    grid = RectilinearGrid(arch, FT, topology=topo, size=(3, 3), x=(0, 3Δx), z=(0, 3Δx))
+
+    model = NonhydrostaticModel(; grid)
+    set!(model, v=1)
+
+    Δt = FT(1.7)
+    cfl = CFL(FT(Δt), Oceananigans.Advection.cell_advection_timescale)
+
+    return cfl(model) == 0
 end
 
 get_iteration(model) = model.clock.iteration
@@ -177,6 +191,7 @@ end
                 @test advective_timescale_cfl_on_regular_grid(arch, FT)
                 @test advective_timescale_cfl_on_stretched_grid(arch, FT)
                 @test advective_timescale_cfl_on_lat_lon_grid(arch, FT)
+                @test advective_timescale_cfl_on_flat_2d_grid(arch, FT)
             end
         end
     end

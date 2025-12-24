@@ -26,8 +26,7 @@ using Oceananigans
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
 model = NonhydrostaticModel(; grid,
-                            timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 
 # ## Random initial conditions
@@ -107,10 +106,10 @@ s = sqrt(u^2 + v^2)
 # We pass these operations to an output writer below to calculate and output them during the simulation.
 filename = "two_dimensional_turbulence"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(0.6),
-                                                      filename = filename * ".jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; ω, s),
+                                                schedule = TimeInterval(0.6),
+                                                filename = filename * ".jld2",
+                                                overwrite_existing = true)
 
 # ## Running the simulation
 #
@@ -126,17 +125,12 @@ run!(simulation)
 s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
 
 times = ω_timeseries.times
-
-# Construct the ``x, y, z`` grid for plotting purposes,
-
-xω, yω, zω = nodes(ω_timeseries)
-xs, ys, zs = nodes(s_timeseries)
 nothing #hide
 
 # and animate the vorticity and fluid speed.
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24))
+set_theme!(Theme(fontsize = 20))
 
 fig = Figure(size = (800, 500))
 
@@ -150,17 +144,17 @@ ax_s = Axis(fig[2, 2]; title = "Speed", axis_kwargs...)
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
-# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# refer to [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 
 # Now let's plot the vorticity and speed.
 
-ω = @lift interior(ω_timeseries[$n], :, :, 1)
-s = @lift interior(s_timeseries[$n], :, :, 1)
+ω = @lift ω_timeseries[$n]
+s = @lift s_timeseries[$n]
 
-heatmap!(ax_ω, xω, yω, ω; colormap = :balance, colorrange = (-2, 2))
-heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
+heatmap!(ax_ω, ω; colormap = :balance, colorrange = (-2, 2))
+heatmap!(ax_s, s; colormap = :speed, colorrange = (0, 0.2))
 
 title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)

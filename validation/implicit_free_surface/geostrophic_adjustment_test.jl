@@ -1,45 +1,25 @@
 using Revise
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface, ZStarCoordinate
 using Oceananigans.MultiRegion
 using Statistics
 using Printf
 using LinearAlgebra, SparseArrays
-using Oceananigans.Solvers: constructors, unpack_constructors
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+using Oceananigans.Grids
+using GLMakie
+using JLD2
 
-function geostrophic_adjustment_simulation(free_surface, topology, multi_region; arch = Oceananigans.CPU())
+function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:QuasiAdamsBashforth2)
 
-    Lh = 100kilometers
-    Lz = 400meters
-
-    grid = RectilinearGrid(arch,
-        size = (80, 3, 1),
-        x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
-        topology = topology)
-
-    bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters
-
-    # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-
-    if multi_region
-        if arch isa GPU
-            devices = (0, 1)
-        else
-            devices = nothing
-        end
-        mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = devices)
-    else
-        mrg = grid
-    end
-
-    @show mrg
-
-    coriolis = FPlane(f = 1e-4)
-
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
-                                        coriolis = coriolis,
-                                        free_surface = free_surface)
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                          momentum_advection = nothing,
+                                          coriolis=FPlane(f = 1e-4),
+                                          tracers = :c,
+                                          buoyancy = nothing,
+                                          timestepper,
+                                          free_surface)
 
     gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -47,174 +27,154 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
     L = grid.Lx / 40 # gaussian width
     x₀ = grid.Lx / 4 # gaussian center
 
-    vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+    vᴳ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+    Vᴳ(x, y) = grid.Lz * vᴳ(x, y, 1) 
 
-    g = model.free_surface.gravitational_acceleration
-    η = model.free_surface.η
+    g  = model.free_surface.gravitational_acceleration
+    η₀ = model.coriolis.f * U * L / g # geostrophic free surface amplitude
 
-    η₀ = coriolis.f * U * L / g # geostrophic free surface amplitude
+    ηᴳ(x, y, z) = 2 * η₀ * gaussian(x - x₀, L)
 
-    ηᵍ(x) = η₀ * gaussian(x - x₀, L)
+    set!(model, v=vᴳ, η=ηᴳ, c=1)
 
-    ηⁱ(x, y, z) = 2 * ηᵍ(x)
+    if free_surface isa SplitExplicitFreeSurface
+        set!(model.free_surface.barotropic_velocities.V, Vᴳ)
+    end
 
-    set!(model, v = vᵍ)
-    set!(model.free_surface.η, ηⁱ)
+    if grid isa MutableGridOfSomeKind
+        # Initialize the vertical grid scaling
+        z = model.grid.z
+        Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.η)
+        parent(z.ηⁿ)   .=  parent(model.free_surface.η)
+        for i in 0:grid.Nx+1, j in 0:grid.Ny+1
+            Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, j, grid, z.ηⁿ)
+        end
+    end
+        
+    stop_iteration=1000
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model, Δt = 0.2wave_propagation_time_scale, stop_iteration = 1000)
+    simulation = Simulation(model; Δt = 0.2 * wave_propagation_time_scale, stop_iteration)
 
-    return simulation
-end
+    ηarr = Vector{Field}(undef, stop_iteration+1)
+    varr = Vector{Field}(undef, stop_iteration+1)
+    uarr = Vector{Field}(undef, stop_iteration+1)
+    carr = Vector{Field}(undef, stop_iteration+1)
+    warr = [zeros(grid.Nx) for _ in 1:stop_iteration+1]
+    garr = [zeros(grid.Nx) for _ in 1:stop_iteration+1]
 
-using Oceananigans.MultiRegion: reconstruct_global_field
-
-function run_and_analyze(simulation)
-    η       = simulation.model.free_surface.η
-    u, v, w = simulation.model.velocities
-    Δt      = simulation.Δt
-
-    f = simulation.model.free_surface
-
-    if f isa SplitExplicitFreeSurface
-        solver_method = "SplitExplicitFreeSurfaceSolver"
-    elseif f isa ExplicitFreeSurface
-        solver_method = "ExplicitFreeSurfaceSolver"
-    else
-        solver_method = string(simulation.model.free_surface.solver_method)
-    end
+    save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.η)
+    save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
+    save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
+    save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
+    save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 2, 2]
     
-    ηarr = Vector{Field}(undef, Int(simulation.stop_iteration))
-    varr = Vector{Field}(undef, Int(simulation.stop_iteration))
-    uarr = Vector{Field}(undef, Int(simulation.stop_iteration))
+    if grid isa MutableGridOfSomeKind
+        save_g(sim) = garr[sim.model.clock.iteration+1] .= sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1]
+        simulation.callbacks[:save_g] = Callback(save_g, IterationInterval(1))
+    end
 
-    save_η(sim) = sim.model.clock.iteration > 0 ? ηarr[sim.model.clock.iteration] = deepcopy(reconstruct_global_field(sim.model.free_surface.η)) : nothing
-    save_v(sim) = sim.model.clock.iteration > 0 ? varr[sim.model.clock.iteration] = deepcopy(reconstruct_global_field(sim.model.velocities.v))   : nothing
-    save_u(sim) = sim.model.clock.iteration > 0 ? uarr[sim.model.clock.iteration] = deepcopy(reconstruct_global_field(sim.model.velocities.u))   : nothing
+    function progress_message(sim) 
+        H = sum(sim.model.free_surface.η)
+        msg = @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e, sim(η): %e",
+                        100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
+                        sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
 
-    progress_message(sim) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
-        100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
-        sim.model.clock.time, maximum(abs, sim.model.velocities.u))
+        if grid isa MutableGridOfSomeKind
+                msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1] .- interior(sim.model.free_surface.η)))
+                msg  = msg * msg2
+        end
+        
+        @info msg
+    end
 
     simulation.callbacks[:save_η]   = Callback(save_η, IterationInterval(1))
     simulation.callbacks[:save_v]   = Callback(save_v, IterationInterval(1))
     simulation.callbacks[:save_u]   = Callback(save_u, IterationInterval(1))
+    simulation.callbacks[:save_c]   = Callback(save_c, IterationInterval(1))
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
     run!(simulation)
 
-    return (ηarr, varr, uarr)
+    return (η=ηarr, v=varr, u=uarr, c=carr, w=warr, g=garr), model
 end
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function,
-                                                        ForwardBackwardScheme,
-                                                        AdamsBashforth3Scheme
-
-# @inline new_function(t) = averaging_shape_function(t; r = 0.15766, p = 2, q = 2)
-@inline new_function(t) =  t ≥ 1/2 && t ≤ 3/2 ? 1.0 : 0.0
-
-topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
-topology_types = [topology_types[2]]
-
-archs = [Oceananigans.CPU()] #, Oceananigans.GPU()]
-archs = [archs[1]]
-
-simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, multi_region, arch = arch) 
-              for (free_surface, multi_region) in zip(free_surfaces, (true, false, false)), 
-              topology_type in topology_types, 
-              arch in archs]
-
-data = [run_and_analyze(sim) for sim in simulations]
-
-using GLMakie
-using JLD2
-
-topology = topology_types[1]
-arch = CPU()
 Lh = 100kilometers
 Lz = 400meters
 
-grid = RectilinearGrid(arch,
-        size = (80, 3, 1),
-        x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
-        topology = topology)
+grid = RectilinearGrid(size = (80, 3, 1),
+                       halo = (2, 2, 2),
+                       x = (0, Lh), y = (0, Lh), 
+                       z = (-Lz, 0), #MutableVerticalDiscretization((-Lz, 0)),
+                       topology = (Periodic, Periodic, Bounded))
 
 explicit_free_surface = ExplicitFreeSurface()
-fft_based_free_surface = ImplicitFreeSurface(solver_method = :FastFourierTransform)
-pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
-matrix_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver)
-splitexplicit_free_surface = SplitExplicitFreeSurface(grid,
-                                                      substeps = 10, 
-                                                      averaging_kernel = averaging_shape_function,
-                                                      timestepper = AdamsBashforth3Scheme())
+implicit_free_surface = ImplicitFreeSurface()
+splitexplicit_free_surface = SplitExplicitFreeSurface(deepcopy(grid), substeps=120)
 
-free_surfaces = [splitexplicit_free_surface, matrix_free_surface, explicit_free_surface]
+seab2, sim2 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid))
+serk3, sim3 = geostrophic_adjustment_simulation(splitexplicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+efab2, sim4 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid))
+efrk3, sim5 = geostrophic_adjustment_simulation(explicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
+imab2, sim6 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid))
+imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface, deepcopy(grid), :SplitRungeKutta3)
 
-x  = grid.xᶜᵃᵃ[1:grid.Nx]
-xf = grid.xᶠᵃᵃ[1:grid.Nx+1]
-y  = grid.yᵃᶜᵃ[1:grid.Ny]
+import Oceananigans.Fields: interior
+interior(a::Array, idx...) = a
 
-iter = Observable(1) # Node or Observable depending on Makie version
-mid = Int(floor(grid.Ny / 2))
+function plot_variable(sims, var; 
+                       filename="test.mp4",
+                       labels=nothing,
+                       Nt=length(sims[1][var]))
+    fig = Figure()
+    ax  = Axis(fig[1, 1])
 
-η0 = interior(data[1][1][1], :, mid, 1)
-η1 = @lift(interior(data[1][1][$iter], :, mid, 1))
-η2 = @lift(interior(data[2][1][$iter], :, mid, 1))
-η3 = @lift(interior(data[3][1][$iter], :, mid, 1))
 
-v01 = interior(data[1][2][1], :, mid, 1)
-v02 = interior(data[2][2][1], :, mid, 1)
-v1 = @lift(interior(data[1][2][$iter], :, mid, 1))
-v2 = @lift(interior(data[2][2][$iter], :, mid, 1))
-v3 = @lift(interior(data[3][2][$iter], :, mid, 1))
+    iter = Observable(1)
+    for (is, sim) in enumerate(sims)
+        vi = @lift(interior(sim[var][$iter], :, 1, 1))
+        if labels === nothing
+            label = "sim $is"
+        else
+            label = labels[is]
+        end
+        lines!(ax, vi; label)
+    end
 
-u01 = interior(data[1][3][1], :, mid, 1)
-u02 = interior(data[2][3][1], :, mid, 1)
-u1 = @lift(interior(data[1][3][$iter], :, mid, 1))
-u2 = @lift(interior(data[2][3][$iter], :, mid, 1))
-u3 = @lift(interior(data[3][3][$iter], :, mid, 1))
+    axislegend(ax; position=:rt)
 
-fig = Figure(size=(1400, 1000))
-options = (; ylabelsize = 22,
-    xlabelsize = 22, xgridstyle = :dash, ygridstyle = :dash, xtickalign = 1,
-    xticksize = 10, ytickalign = 1, yticksize = 10, xlabel = "y [m]")
-ax1 = Axis(fig[1, 1]; options..., ylabel = "η [m]")
+    record(fig, filename, 1:Nt, framerate=15) do i
+        @info "Frame $i of $Nt"
+        iter[] = i
+    end
+end
 
-ηlines0 = scatter!(ax1, x, η0, color = :black)
-ηlines1 = lines!(ax1, x, η1, color = :red)
-ηlines2 = lines!(ax1, x, η2, color = :blue)
-ηlines3 = lines!(ax1, x, η3, color = :orange)
-axislegend(ax1,
-    [ηlines0, ηlines1, ηlines2, ηlines3],
-    ["Initial Condition", "Split-Explicit", "Matrix", "Explicit"])
-ylims!(ax1, (-5e-4, 5e-3))
-xlims!(ax1, extrema(x))
+function plot_variable2(sims, var1, var2; 
+                        filename="test.mp4",
+                        labels=nothing,
+                        Nt = length(sims[1][var1]))
 
-ax2 = Axis(fig[1, 2]; options..., ylabel = "u [m/s]")
-vlines01 = scatter!(ax2, x, v01, color = :black)
-vlines02 = scatter!(ax2, x, v02, color = :grey)
-vlines1 = lines!(ax2, x, v1, color = :red)
-vlines2 = lines!(ax2, x, v2, color = :blue)
-vlines3 = lines!(ax2, x, v3, color = :orange)
-axislegend(ax2,
-    [vlines01, vlines02, vlines1, vlines2, vlines3],
-    ["Initial Condition 1", "Initial Condition 2", "Split-Explicit", "Matrix", "Explicit"])
-ylims!(ax2, (-1e-1, 1e-1))
+    fig = Figure()
+    ax  = Axis(fig[1, 1])
 
-ax2 = Axis(fig[1, 3]; options..., ylabel = "u [m/s]")
-xf  = length(u01) == length(xf) ? xf : x
-ulines01 = scatter!(ax2, xf, u01, color = :black)
-ulines02 = scatter!(ax2, xf, u02, color = :grey)
-ulines1 = lines!(ax2, xf, u1, color = :red)
-ulines2 = lines!(ax2, xf, u2, color = :blue)
-ulines3 = lines!(ax2, xf, u3, color = :blue)
-axislegend(ax2,
-    [ulines01, ulines02, ulines1, ulines2, ulines3],
-    ["Initial Condition 1", "Initial Condition 2", "Split-Explicit", "Matrix", "Explicit"])
-ylims!(ax2, (-2e-4, 2e-4))
+    iter = Observable(1)
+    for (is, sim) in enumerate(sims)
+        vi = @lift(interior(sim[var1][$iter], :, 1, 1))
+        v2 = @lift(interior(sim[var2][$iter], :, 1, 1))
+        if labels === nothing
+            label = "sim $is"
+        else
+            label = labels[is]
+        end
+        lines!(ax, vi; label)
+        lines!(ax, v2; label, linestyle = :dash)
+    end
 
-GLMakie.record(fig, "free_surface_bounded.mp4", 1:1000, framerate = 12) do i
-    @info "Plotting iteration $i of 600..."
-    iter[] = i
+    axislegend(ax; position=:rt)
+
+    record(fig, filename, 1:Nt, framerate=15) do i
+        @info "Frame $i of $Nt"
+        iter[] = i
+    end
 end

@@ -1,23 +1,27 @@
-using Oceananigans.Models: AbstractModel
 using Oceananigans.Advection: WENO, VectorInvariant
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
-using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.BuoyancyFormulations: NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
-using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Advection: VelocityUpwinding, OnlySelfUpwinding, CrossAndSelfUpwinding
+using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
-using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
+using Oceananigans.Solvers: ConjugateGradientSolver
 
-import Oceananigans.Advection: WENO, cell_advection_timescale
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
+import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
+import Oceananigans.BuoyancyFormulations: BuoyancyForce
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
 
+function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids)
+    @apply_regionally new_advection = adapt_advection_order(advection, grid)
+    return new_advection
+end
+
 # Utility to generate the inputs to complex `getregion`s
-function getregionalproperties(T, inner=true)
-    type = getglobal(@__MODULE__, T)
+function getregionalproperties(type, inner=true)
     names = fieldnames(type)
     args  = Vector(undef, length(names))
     for (n, name) in enumerate(names)
@@ -26,21 +30,18 @@ function getregionalproperties(T, inner=true)
     return args
 end
 
-Types = (:HydrostaticFreeSurfaceModel,
-         :ImplicitFreeSurface,
-         :ExplicitFreeSurface,
-         :QuasiAdamsBashforth2TimeStepper,
-         :SplitExplicitAuxiliaryFields,
-         :SplitExplicitState,
-         :SplitExplicitFreeSurface,
-         :PrescribedVelocityFields,
-         :PreconditionedConjugateGradientSolver,
-         :CrossAndSelfUpwinding,
-         :OnlySelfUpwinding,
-         :VelocityUpwinding,
-         :GridFittedBoundary,
-         :GridFittedBottom,
-         :PartialCellBottom)
+Types = (HydrostaticFreeSurfaceModel,
+         ImplicitFreeSurface,
+         ExplicitFreeSurface,
+         QuasiAdamsBashforth2TimeStepper,
+         SplitExplicitFreeSurface,
+         PrescribedVelocityFields,
+         ConjugateGradientSolver,
+         CrossAndSelfUpwinding,
+         OnlySelfUpwinding,
+         GridFittedBoundary,
+         GridFittedBottom,
+         PartialCellBottom)
 
 for T in Types
     @eval begin
@@ -51,35 +52,43 @@ for T in Types
     end
 end
 
+# TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
+function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation; 
+                       gravity_unit_vector=NegativeZDirection(), 
+                       materialize_gradients=false) 
+
+    gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
+    return BuoyancyForce(formulation, gravity_unit_vector, nothing)
+end
+
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
-@inline devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
+@inline regions(pv::PrescribedVelocityFields)    = regions(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
-@inline isregional(mrm::MultiRegionModel)   = true
-@inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
-@inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
+@inline isregional(mrm::MultiRegionModel) = true
+@inline regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
-@inline  getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} = 
-                VectorInvariant{N, FT, M}(_getregion(t.vorticity_scheme, r),
-                                          _getregion(t.vorticity_stencil, r),
-                                          _getregion(t.vertical_scheme, r),
-                                          _getregion(t.kinetic_energy_gradient_scheme, r),
-                                          _getregion(t.divergence_scheme, r),
-                                          _getregion(t.upwinding, r))
+@inline getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} =
+    VectorInvariant{N, FT, M}(_getregion(t.vorticity_scheme, r),
+                              _getregion(t.vorticity_stencil, r),
+                              _getregion(t.vertical_advection_scheme, r),
+                              _getregion(t.kinetic_energy_gradient_scheme, r),
+                              _getregion(t.divergence_scheme, r),
+                              _getregion(t.upwinding, r))
 
-@inline _getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} = 
-                VectorInvariant{N, FT, M}(getregion(t.vorticity_scheme, r),
-                                          getregion(t.vorticity_stencil, r),
-                                          getregion(t.vertical_scheme, r),
-                                          getregion(t.kinetic_energy_gradient_scheme, r),
-                                          getregion(t.divergence_scheme, r),
-                                          getregion(t.upwinding, r))
+@inline _getregion(t::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}, r) where {N, FT, Z, ZS, V, K, D, U, M} =
+    VectorInvariant{N, FT, M}(getregion(t.vorticity_scheme, r),
+                              getregion(t.vorticity_stencil, r),
+                              getregion(t.vertical_advection_scheme, r),
+                              getregion(t.kinetic_energy_gradient_scheme, r),
+                              getregion(t.divergence_scheme, r),
+                              getregion(t.upwinding, r))
 
 function cell_advection_timescale(grid::MultiRegionGrids, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)

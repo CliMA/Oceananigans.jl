@@ -1,11 +1,8 @@
 using ..TurbulenceClosures:
-    wall_vertical_distanceᶜᶜᶠ,
-    wall_vertical_distanceᶜᶜᶜ,
     depthᶜᶜᶠ,
     height_above_bottomᶜᶜᶠ,
     depthᶜᶜᶜ,
-    height_above_bottomᶜᶜᶜ,
-    total_depthᶜᶜᵃ
+    height_above_bottomᶜᶜᶜ
 
 """
     struct CATKEMixingLength{FT}
@@ -14,15 +11,15 @@ Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
-    Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
+    Cᵇ   :: FT = 0.28   # Bottom distance coefficient for shear length scale
     Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
-    CRiᵟ :: FT = 0.102  # Stability function width 
+    CRiᵟ :: FT = 1.02   # Stability function width
     CRi⁰ :: FT = 0.254  # Stability function lower Ri
     Cʰⁱu :: FT = 0.242  # Shear mixing length coefficient for momentum at high Ri
     Cˡᵒu :: FT = 0.361  # Shear mixing length coefficient for momentum at low Ri
     Cᵘⁿu :: FT = 0.370  # Shear mixing length coefficient for momentum at negative Ri
-    Cᶜu  :: FT = 3.705  # Convective mixing length coefficient for tracers
-    Cᵉu  :: FT = 0.0    # Convective penetration mixing length coefficient for tracers
+    Cᶜu  :: FT = 3.705  # Convective mixing length coefficient for momentum
+    Cᵉu  :: FT = 0.0    # Convective penetration mixing length coefficient for momentum
     Cʰⁱc :: FT = 0.098  # Shear mixing length coefficient for tracers at high Ri
     Cˡᵒc :: FT = 0.369  # Shear mixing length coefficient for tracers at low Ri
     Cᵘⁿc :: FT = 0.572  # Shear mixing length coefficient for tracers at negative Ri
@@ -131,7 +128,7 @@ end
     ϵˢᵖ = 1 - Cˢᵖ * Riᶠ                    # ϵ = Sheared convection factor
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
     =#
-    
+
     # Figure out which mixing length applies
     convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
     entraining = (Jᵇ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
@@ -232,7 +229,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓu = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓu)
 end
 
@@ -252,7 +249,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓc = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓc)
 end
 
@@ -272,31 +269,31 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓe = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓe)
 end
 
 Base.summary(::CATKEMixingLength) = "TKEBasedVerticalDiffusivities.CATKEMixingLength"
 
 Base.show(io::IO, ml::CATKEMixingLength) =
-    print(io, "TKEBasedVerticalDiffusivities.CATKEMixingLength parameters:", '\n',
-              " ├── Cˢ:   ", ml.Cˢ,   '\n',
-              " ├── Cᵇ:   ", ml.Cᵇ,   '\n',
-              " ├── Cʰⁱu: ", ml.Cʰⁱu, '\n',
-              " ├── Cʰⁱc: ", ml.Cʰⁱc, '\n',
-              " ├── Cʰⁱe: ", ml.Cʰⁱe, '\n',
-              " ├── Cˡᵒu: ", ml.Cˡᵒu, '\n',
-              " ├── Cˡᵒc: ", ml.Cˡᵒc, '\n',
-              " ├── Cˡᵒe: ", ml.Cˡᵒe, '\n',
-              " ├── Cᵘⁿu: ", ml.Cᵘⁿu, '\n',
-              " ├── Cᵘⁿc: ", ml.Cᵘⁿc, '\n',
-              " ├── Cᵘⁿe: ", ml.Cᵘⁿe, '\n',
-              " ├── Cᶜu:  ", ml.Cᶜu,  '\n',
-              " ├── Cᶜc:  ", ml.Cᶜc,  '\n',
-              " ├── Cᶜe:  ", ml.Cᶜe,  '\n',
-              " ├── Cᵉc:  ", ml.Cᵉc,  '\n',
-              " ├── Cᵉe:  ", ml.Cᵉe,  '\n',
-              " ├── Cˢᵖ:  ", ml.Cˢᵖ, '\n',
-              " ├── CRiᵟ: ", ml.CRiᵟ, '\n',
-              " └── CRi⁰: ", ml.CRi⁰)
-
+    print(io, "TKEBasedVerticalDiffusivities.CATKEMixingLength parameters:\n",
+              " ├── Surface distance coefficient for shear length scale:           Cˢ   = $(ml.Cˢ)\n",
+              " ├── Bottom distance coefficient for shear length scale:            Cᵇ   = $(ml.Cᵇ)\n",
+              " ├── Shear mixing length coefficient for momentum at high Ri:       Cʰⁱu = $(ml.Cʰⁱu)\n",
+              " ├── Shear mixing length coefficient for tracers at high Ri:        Cʰⁱc = $(ml.Cʰⁱc)\n",
+              " ├── Shear mixing length coefficient for TKE at high Ri:            Cʰⁱe = $(ml.Cʰⁱe)\n",
+              " ├── Shear mixing length coefficient for momentum at low Ri:        Cˡᵒu = $(ml.Cˡᵒu)\n",
+              " ├── Shear mixing length coefficient for tracers at low Ri:         Cˡᵒc = $(ml.Cˡᵒc)\n",
+              " ├── Shear mixing length coefficient for TKE at low Ri:             Cˡᵒe = $(ml.Cˡᵒe)\n",
+              " ├── Shear mixing length coefficient for momentum at negative Ri:   Cᵘⁿu = $(ml.Cᵘⁿu)\n",
+              " ├── Shear mixing length coefficient for tracers at negative Ri:    Cᵘⁿc = $(ml.Cᵘⁿc)\n",
+              " ├── Shear mixing length coefficient for TKE at negative Ri:        Cᵘⁿe = $(ml.Cᵘⁿe)\n",
+              " ├── Convective mixing length coefficient for momentum:             Cᶜu  = $(ml.Cᶜu)\n",
+              " ├── Convective mixing length coefficient for tracers:              Cᶜc  = $(ml.Cᶜc)\n",
+              " ├── Convective mixing length coefficient for TKE:                  Cᶜe  = $(ml.Cᶜe)\n",
+              " ├── Convective penetration mixing length coefficient for momentum: Cᵉu  = $(ml.Cᵉu)\n",
+              " ├── Convective penetration mixing length coefficient for tracers:  Cᵉc  = $(ml.Cᵉc)\n",
+              " ├── Convective penetration mixing length coefficient for TKE:      Cᵉe  = $(ml.Cᵉe)\n",
+              " ├── Sheared convective plume coefficient:                          Cˢᵖ  = $(ml.Cˢᵖ)\n",
+              " ├── Stability function width:                                      CRiᵟ = $(ml.CRiᵟ)\n",
+              " └── Stability function lower Ri:                                   CRi⁰ = $(ml.CRi⁰)")

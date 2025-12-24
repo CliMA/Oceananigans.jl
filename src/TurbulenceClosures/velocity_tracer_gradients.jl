@@ -9,10 +9,10 @@
 
 # Off-diagonal
 @inline ∂x_v(i, j, k, grid, v) = ∂xᶠᶠᶜ(i, j, k, grid, v)
-@inline ∂x_w(i, j, k, grid, w) = ∂xᶠᶜᶜ(i, j, k, grid, w)
+@inline ∂x_w(i, j, k, grid, w) = ∂xᶠᶜᶠ(i, j, k, grid, w)
 
 @inline ∂y_u(i, j, k, grid, u) = ∂yᶠᶠᶜ(i, j, k, grid, u)
-@inline ∂y_w(i, j, k, grid, w) = ∂yᶜᶠᶜ(i, j, k, grid, w)
+@inline ∂y_w(i, j, k, grid, w) = ∂yᶜᶠᶠ(i, j, k, grid, w)
 
 @inline ∂z_u(i, j, k, grid, u) = ∂zᶠᶜᶠ(i, j, k, grid, u)
 @inline ∂z_v(i, j, k, grid, v) = ∂zᶜᶠᶠ(i, j, k, grid, v)

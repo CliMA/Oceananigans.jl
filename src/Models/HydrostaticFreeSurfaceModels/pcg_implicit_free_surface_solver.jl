@@ -1,11 +1,9 @@
-using Oceananigans.Solvers
-using Oceananigans.Operators
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.Architectures
-using Oceananigans.Grids: with_halo, isrectilinear, halo_size
-using Oceananigans.Architectures: device
+using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ,
+    δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, ∂xᶠᶜᶠ, ∂yᶜᶠᶠ
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Grids: isrectilinear, halo_size
 
-import Oceananigans.Solvers: solve!, precondition!
+using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
 import Oceananigans.Architectures: architecture
 
 """
@@ -16,23 +14,24 @@ The preconditioned conjugate gradient iterative implicit free-surface solver.
 $(TYPEDFIELDS)
 """
 struct PCGImplicitFreeSurfaceSolver{V, S, R}
-    "The vertically-integrated lateral areas"
     vertically_integrated_lateral_areas :: V
-    "The preconditioned conjugate gradient solver"
     preconditioned_conjugate_gradient_solver :: S
-    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
 end
 
 architecture(solver::PCGImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
+# The assumption is that the horizontal spacings do not depend on the z-direction
+@inline integrated_x_area(i, j, k, grid) = column_depthᶠᶜᵃ(i, j, grid) * Δyᶠᶜᵃ(i, j, 1, grid)
+@inline integrated_y_area(i, j, k, grid) = column_depthᶜᶠᵃ(i, j, grid) * Δxᶜᶠᵃ(i, j, 1, grid)
+
 """
     PCGImplicitFreeSurfaceSolver(grid, settings)
 
 Return a solver based on a preconditioned conjugate gradient method for
 the elliptic equation
-    
+
 ```math
 [∇ ⋅ H ∇ - 1 / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g Δt)
 ```
@@ -42,15 +41,12 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
-    
+
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
+    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_x_area, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(integrated_y_area, grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-
-    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
@@ -65,9 +61,9 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
     right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
 
-    solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!;
-                                                   template_field = right_hand_side,
-                                                   settings...)
+    solver = ConjugateGradientSolver(implicit_free_surface_linear_operation!;
+                                     template_field = right_hand_side,
+                                     settings...)
 
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
@@ -79,7 +75,7 @@ build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settin
 ##### Solve...
 #####
 
-function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)
+function Solvers.solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)
     # Take explicit step first? We haven't found improvement from this yet, but perhaps it will
     # help eventually.
     #explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
@@ -94,31 +90,29 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver,
-                                                        g, Δt, ∫ᶻQ, η)
+                                                        g, Δt, U, η)
 
     solver = implicit_solver.preconditioned_conjugate_gradient_solver
     arch = architecture(solver)
     grid = solver.grid
 
-    @apply_regionally compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η)
+    @apply_regionally compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η)
 
     return nothing
 end
 
-compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η) =
+compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η) =
     launch!(arch, grid, :xy,
             implicit_free_surface_right_hand_side!,
-            rhs, grid, g, Δt, ∫ᶻQ, η)
+            rhs, grid, g, Δt, U, η)
 
-""" Compute the divergence of fluxes Qu and Qv. """
-@inline flux_div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
-
-@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
+@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, U, η)
     i, j = @index(Global, NTuple)
-    k_top = grid.Nz + 1
-    Az = Azᶜᶜᶠ(i, j, k_top, grid)
-    δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    @inbounds rhs[i, j, k_top] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Δt)
+    kᴺ   = grid.Nz
+    Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    @inbounds rhs[i, j, kᴺ+1] = (δx_U + δy_V - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
 end
 
 """
@@ -134,14 +128,17 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
 
-    # Note: because of `fill_halo_regions!` below, we cannot use `PCGImplicitFreeSurface` on a
-    # multi-region grid; `fill_halo_regions!` cannot be used within `@apply_regionally`
-    fill_halo_regions!(ηⁿ⁺¹)
-
     launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
             L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
+end
+
+ImplicitFreeSurfaceOperation = typeof(implicit_free_surface_linear_operation!)
+
+@inline function Solvers.perform_linear_operation!(linear_operation!::ImplicitFreeSurfaceOperation, q, p, args...)
+    fill_halo_regions!(p)
+    @apply_regionally linear_operation!(q, p, args...)
 end
 
 # Kernels that act on vertically integrated / surface quantities
@@ -163,11 +160,11 @@ which is derived from the discretely summed barotropic mass conservation equatio
 and arranged in a symmetric form by multiplying by horizontal areas Az:
 
 ```
-δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - Az ηⁿ⁺¹ / (g Δt²) = 1 / (g Δt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - Az ηⁿ / (g Δt²) 
+δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - Az ηⁿ⁺¹ / (g Δt²) = 1 / (g Δt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - Az ηⁿ / (g Δt²)
 ```
 
 where  ̂ indicates a vertical integral, and
-       ̅ indicates a vertical average                         
+       ̅ indicates a vertical average
 """
 @kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
@@ -176,6 +173,14 @@ where  ̂ indicates a vertical integral, and
     @inbounds L_ηⁿ⁺¹[i, j, k_top] = Az_∇h²ᶜᶜᶜ(i, j, k_top, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_top] / (g * Δt^2)
 end
 
+"""
+Compute the horizontal divergence of vertically-uniform quantity using
+vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
+"""
+@inline Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η) =
+    (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
+     δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
+
 #####
 ##### Preconditioners
 #####
@@ -183,7 +188,7 @@ end
 """
 Add  `- H⁻¹ ∇H ⋅ ∇ηⁿ` to the right-hand-side.
 """
-@inline function precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+@inline function Solvers.precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     poisson_solver = preconditioner.fft_poisson_solver
     arch = architecture(poisson_solver)
     grid = preconditioner.three_dimensional_grid
@@ -192,12 +197,12 @@ Add  `- H⁻¹ ∇H ⋅ ∇ηⁿ` to the right-hand-side.
 
     launch!(arch, grid, :xy,
             fft_preconditioner_right_hand_side!,
-            poisson_solver.storage, r, η, grid, Az, Lz)
+            poisson_solver.storage, r, grid, Az, Lz)
 
     return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
 end
 
-@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, η, grid, Az, Lz)
+@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az, Lz)
     i, j = @index(Global, NTuple)
     @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az)
 end
@@ -233,11 +238,11 @@ end
 
 struct DiagonallyDominantInversePreconditioner end
 
-@inline precondition!(P_r, ::DiagonallyDominantInversePreconditioner, r, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
-    diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+@inline Solvers.precondition!(P_r, ::DiagonallyDominantInversePreconditioner, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
+    diagonally_dominant_inverse_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
 """
-    _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    _diagonally_dominant_inverse_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
 Return the diagonally dominant inverse preconditioner applied to the residuals consistently
 with `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹` where `I` is the identity matrix, `A` is the linear
@@ -256,37 +261,37 @@ P_rᵢⱼ = rᵢⱼ / Acᵢⱼ - 1 / Acᵢⱼ ( Ax⁻ / Acᵢ₋₁ rᵢ₋₁�
 where `Ac`, `Ax⁻`, `Ax⁺`, `Ay⁻` and `Ay⁺` are the coefficients of `ηᵢⱼ`, `ηᵢ₋₁ⱼ`, `ηᵢ₊₁ⱼ`, `ηᵢⱼ₋₁`,
 and `ηᵢⱼ₊₁` in `_implicit_free_surface_linear_operation!`
 """
-function diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+function diagonally_dominant_inverse_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     grid = ∫ᶻ_Axᶠᶜᶜ.grid
     arch = architecture(P_r)
 
     fill_halo_regions!(r)
 
-    launch!(arch, grid, :xy, _diagonally_dominant_precondition!,
+    launch!(arch, grid, :xy, _diagonally_dominant_inverse_precondition!,
             P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)
-@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)
-@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᶠ(i+1, j, grid.Nz+1, grid)
-@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᶠ(i, j+1, grid.Nz+1, grid)
+@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] * Δx⁻¹ᶠᶜᶠ(i, j, grid.Nz+1, grid)
+@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] * Δy⁻¹ᶜᶠᶠ(i, j, grid.Nz+1, grid)
+@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] * Δx⁻¹ᶠᶜᶠ(i+1, j, grid.Nz+1, grid)
+@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] * Δy⁻¹ᶜᶠᶠ(i, j+1, grid.Nz+1, grid)
 
 @inline Ac(i, j, grid, g, Δt, ax, ay) = - Ax⁻(i, j, grid, ax) -
                                           Ax⁺(i, j, grid, ax) -
                                           Ay⁻(i, j, grid, ay) -
-                                          Ay⁺(i, j, grid, ay) - 
+                                          Ay⁺(i, j, grid, ay) -
                                           Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2)
 
 @inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) =
     @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - 2 * Ax⁻(i, j, grid, ax) / (Ac(i-1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i-1, j, grid.Nz+1] -
-                                                                2 * Ax⁺(i, j, grid, ax) / (Ac(i+1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i+1, j, grid.Nz+1] - 
-                                                                2 * Ay⁻(i, j, grid, ay) / (Ac(i, j-1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j-1, grid.Nz+1] - 
+                                                                2 * Ax⁺(i, j, grid, ax) / (Ac(i+1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i+1, j, grid.Nz+1] -
+                                                                2 * Ay⁻(i, j, grid, ay) / (Ac(i, j-1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j-1, grid.Nz+1] -
                                                                 2 * Ay⁺(i, j, grid, ay) / (Ac(i, j+1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j+1, grid.Nz+1])
 
-@kernel function _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+@kernel function _diagonally_dominant_inverse_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
     @inbounds P_r[i, j, grid.Nz+1] = heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
 end

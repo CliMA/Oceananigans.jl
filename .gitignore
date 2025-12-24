@@ -4,6 +4,8 @@
 *.jl.mem
 *.mem
 deps/deps.jl
+/Manifest.toml
+/LocalPreferences.toml
 
 # Swap files.
 *.swp
@@ -14,6 +16,7 @@ docs/build
 docs/site
 docs/src/literated
 docs/Manifest.toml
+docs/src/developer_docs/AGENTS.md
 
 # Model output
 *.dat

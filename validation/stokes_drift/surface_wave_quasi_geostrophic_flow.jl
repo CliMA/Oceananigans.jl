@@ -90,9 +90,9 @@ u, v, w = model.velocities
 e = @at (Center, Center, Center) (u^2 + v^2 + w^2) / 2
 outputs = merge(outputs, (; e))
 
-simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs; filename,
-                                                    schedule = IterationInterval(3),
-                                                    overwrite_existing = true)
+simulation.output_writers[:jld2] = JLD2Writer(model, outputs; filename,
+                                              schedule = IterationInterval(3),
+                                              overwrite_existing = true)
 
 run!(simulation)
 
@@ -158,7 +158,6 @@ heatmap!(axw, xw, yw, wn, colormap=:balance, colorrange=(-wlim, wlim))
 contour!(axw, xc, yc, An, color=:gray, levels=5)
 
 record(fig, "surface_wave_quasi_geostrophic_induced_flow.mp4", 1:Nt, framerate=8) do nn
-record(fig, "surface_wave_non_rotating_induced_flow.mp4", 1:Nt, framerate=8) do nn
     n[] = nn
 end
 

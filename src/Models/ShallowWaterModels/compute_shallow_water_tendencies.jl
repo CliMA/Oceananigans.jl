@@ -1,12 +1,11 @@
 import Oceananigans.TimeSteppers: compute_tendencies!
+import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 
-using Oceananigans.Utils: work_layout
-using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.Utils: launch!
+using Oceananigans: fields, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: device
-
-using Oceananigans.BoundaryConditions 
+using Oceananigans.BoundaryConditions
 
 
 """
@@ -38,19 +37,10 @@ function compute_tendencies!(model::ShallowWaterModel, callbacks)
                                              model.bathymetry,
                                              model.solution,
                                              model.tracers,
-                                             model.diffusivity_fields,
+                                             model.closure_fields,
                                              model.forcing,
                                              model.clock,
                                              model.formulation)
-
-    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
-    # boundaries of the domain
-    compute_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                             model.architecture,
-                                             model.solution,
-                                             model.tracers,
-                                             model.clock,
-                                             fields(model))
 
     [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
@@ -65,7 +55,7 @@ function compute_interior_tendency_contributions!(tendencies,
                                                   advection,
                                                   velocities,
                                                   coriolis,
-                                                  closure, 
+                                                  closure,
                                                   bathymetry,
                                                   solution,
                                                   tracers,
@@ -74,30 +64,23 @@ function compute_interior_tendency_contributions!(tendencies,
                                                   clock,
                                                   formulation)
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    transport_args = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure,
+                      bathymetry, solution, tracers, diffusivities, clock, formulation)
 
-    compute_Guh_kernel! = compute_Guh!(device(arch), workgroup, worksize)
-    compute_Gvh_kernel! = compute_Gvh!(device(arch), workgroup, worksize)
-    compute_Gh_kernel!  =  compute_Gh!(device(arch), workgroup, worksize)
-    compute_Gc_kernel!  =  compute_Gc!(device(arch), workgroup, worksize)
+    h_args = (grid, gravitational_acceleration, advection.mass, coriolis, closure,
+              solution, tracers, diffusivities, clock, formulation)
 
-    args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
-                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
-    args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
-                      solution, tracers, diffusivities, forcings, clock, formulation)
-
-    compute_Guh_kernel!(tendencies[1], args_vel...)
-    compute_Gvh_kernel!(tendencies[2], args_vel...)
-     compute_Gh_kernel!(tendencies[3], args_h...)
+    launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args..., forcings[1]; exclude_periphery=true)
+    launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args..., forcings[2]; exclude_periphery=true)
+    launch!(arch, grid, :xyz,  compute_Gh!, tendencies[3], h_args..., forcings.h)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        @inbounds c_tendency = tendencies[tracer_index+3]
+        @inbounds Gc = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_advection = advection[tracer_name]
 
-        compute_Gc_kernel!(c_tendency, grid, Val(tracer_index), c_advection, closure, solution,
-                           tracers, diffusivities, forcing, clock, formulation)
-
+        launch!(arch, grid, :xyz, compute_Gc!, Gc, grid, Val(tracer_index),
+                c_advection, closure, solution, tracers, diffusivities, clock, formulation, forcing)
     end
 
     return nothing
@@ -114,18 +97,18 @@ end
                               advection,
                               velocities,
                               coriolis,
-                              closure, 
+                              closure,
                               bathymetry,
                               solution,
                               tracers,
                               diffusivities,
                               forcings,
-                              clock, 
+                              clock,
                               formulation)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
+    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure,
                                                     bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
@@ -142,12 +125,12 @@ end
                               tracers,
                               diffusivities,
                               forcings,
-                              clock, 
+                              clock,
                               formulation)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
+    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure,
                                                     bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
@@ -162,7 +145,7 @@ end
                              tracers,
                              diffusivities,
                              forcings,
-                             clock, 
+                             clock,
                              formulation)
 
     i, j, k = @index(Global, NTuple)
@@ -199,13 +182,19 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function compute_boundary_tendency_contributions!(Gⁿ, arch, solution, tracers, clock, model_fields)
-    prognostic_fields = merge(solution, tracers)
+function compute_flux_bc_tendencies!(model::ShallowWaterModel)
+    
+    Gⁿ    = model.timestepper.Gⁿ
+    arch  = model.architecture
+    clock = model.clock
+
+    model_fields = fields(model)
+    prognostic_fields = merge(model.solution, model.tracers)
 
     # Solution fields and tracer fields
     for i in 1:length(Gⁿ)
-        apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
-        apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
+        compute_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
+        compute_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
     end
 
     return nothing

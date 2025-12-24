@@ -1,8 +1,34 @@
-using CUDA
-using Printf
 using Base.Ryu: writeshortest
-using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
+using Oceananigans.Utils: Utils, prettysummary
+
+"""
+    _property(ξ, ℓ, T, N, H, with_halos)
+
+Return the grid property `ξ`, either `with_halos` or without,
+for (instantiated) location `ℓ`, topology `T`, dimension length `N` and halo size `H`.
+"""
+@inline function _property(ξ, ℓ, T, N, H, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_parent_indices(ℓ, T(), N, H)
+        return view(parent(ξ), i)
+    end
+end
+
+@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_parent_indices(ℓx, Tx(), Nx, Hx)
+        j = interior_parent_indices(ℓy, Ty(), Ny, Hy)
+        return view(parent(ξ), i, j)
+    end
+end
+
+@inline _property(ξ::Number, args...) = ξ
+@inline _property(::Nothing, args...) = nothing
 
 # Define default indices in a type-stable way
 @inline default_indices(N::Int) = default_indices(Val(N))
@@ -15,42 +41,6 @@ using OffsetArrays: IdOffsetRange
 end
 
 const BoundedTopology = Union{Bounded, LeftConnected}
-
-"""
-    topology(grid)
-
-Return a tuple with the topology of the `grid` for each dimension.
-"""
-@inline topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
-
-"""
-    topology(grid, dim)
-
-Return the topology of the `grid` for the `dim`-th dimension.
-"""
-@inline topology(grid, dim) = topology(grid)[dim]
-
-"""
-    architecture(grid::AbstractGrid)
-
-Return the architecture (CPU or GPU) that the `grid` lives on.
-"""
-@inline architecture(grid::AbstractGrid) = grid.architecture
-
-Base.eltype(::AbstractGrid{FT}) where FT = FT
-
-function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
-    #check if grids are of the same type
-    !isa(grid2, typeof(grid1).name.wrapper) && return false
-
-    topology(grid1) !== topology(grid2) && return false
-
-    x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
-    x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
-
-    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
-end
-
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
@@ -63,41 +53,7 @@ Base.length(::Center,  ::Flat,            N) = N
 
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
-Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
-
-"""
-    size(grid)
-
-Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
-Center cells have the location (Center, Center, Center).
-"""
-@inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
-
-"""
-    halo_size(grid)
-
-Return a 3-tuple with the number of halo cells on either side of the
-domain in (x, y, z).
-"""
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
-halo_size(grid, d) = halo_size(grid)[d]
-
-@inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
-
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
-        Base.@_inline_meta
-        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
-    end
-end
-
-Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
+Base.length(loc, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -117,7 +73,22 @@ total_length(::Center,  ::Flat,            N, H=0) = N
 
 # "Indices-aware" total length
 total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
-total_length(loc, topo, N, H, ind::UnitRange) = min(total_length(loc, topo, N, H), length(ind))
+total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
+
+@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
+    size(loc, topology(grid), size(grid), indices)
+
+@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
+    D = length(loc)
+
+    # (it's type stable?)
+    return ntuple(Val(D)) do d
+        Base.@_inline_meta
+        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+    end
+end
+
+Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 total_size(a) = size(a) # fallback
 
@@ -129,7 +100,11 @@ corresponding to the number of grid points along `x, y, z`.
 """
 function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
-    return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
+    N = ntuple(Val(D)) do d
+        Base.@_inline_meta
+        @inbounds total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d])
+    end
+    return N
 end
 
 total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
@@ -146,12 +121,13 @@ constant grid spacing `Δ`, and interior extent `L`.
 @inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
-@inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(topo, N, ξ) = @allowscalar ξ[1], ξ[N+1]
+@inline domain(::Flat, N, ξ::AbstractArray) = ξ[1]
+@inline domain(::Flat, N, ξ::Number) = ξ
+@inline domain(::Flat, N, ::Nothing) = nothing
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
-@inline z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 regular_dimensions(grid) = ()
 
@@ -224,34 +200,34 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(view_indices::UnitRange, ::Nothing, ::Flat, halo) = view_indices
-parent_index_range(view_indices::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
-parent_index_range(view_indices::UnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
+parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
 
-function parent_index_range(parent_indices::UnitRange, view_indices, args...)
+parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
+    parent_index_range(parent_indices, parent_indices, args...)
+
+function parent_index_range(parent_indices::AbstractUnitRange, view_indices, args...)
     start = first(view_indices) - first(parent_indices) + 1
     stop = start + length(view_indices) - 1
     return UnitRange(start, stop)
 end
 
 # intersect_index_range(::Colon, ::Colon) = Colon()
-index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
-index_range_contains(::Colon, subset::UnitRange) = true
-index_range_contains(::Colon, ::Colon)           = true
-
-# Note: this choice means subset indices are defined on the whole grid.
-# Thus any UnitRange does not contain `:`.
-index_range_contains(range::UnitRange, subset::Colon) = false 
+index_range_contains(range, subset::AbstractUnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
+index_range_contains(::Colon, ::AbstractUnitRange)     = true
+index_range_contains(::Colon, ::Colon)                 = true
+index_range_contains(::AbstractUnitRange, ::Colon)     = true
 
 # Return the index range of "full" parent arrays that span an entire dimension
-parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
-parent_windowed_indices(indices::UnitRange, loc, topo, halo) = UnitRange(1, length(indices))
+parent_windowed_indices(::Colon, loc, topo, halo)             = Colon()
+parent_windowed_indices(indices::AbstractUnitRange, loc, topo, halo) = UnitRange(1, length(indices))
 
-index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
-index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
+index_range_offset(index::AbstractUnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
+index_range_offset(::Colon, loc, topo, halo)           = - interior_parent_offset(loc, topo, halo)
 
 const c = Center()
 const f = Face()
@@ -259,7 +235,6 @@ const f = Face()
 # What's going on here?
 @inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, f, c, c; with_halos=true), 1)[1:size(grid, 1)+1])
 @inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, c, f, c; with_halos=true), 2)[1:size(grid, 2)+1])
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
 
 #####
 ##### Convenience functions
@@ -303,11 +278,14 @@ Base.summary(::NegativeZDirection) = "NegativeZDirection()"
 
 Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
+size_summary(grid::AbstractGrid) = size_summary(size(grid))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
-prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
-dimension_summary(topo::Flat, name, args...) = "Flat $name"
+Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
-function domain_summary(topo, name, left, right)
+domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
+domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
+
+function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
 
@@ -315,98 +293,42 @@ function domain_summary(topo, name, left, right)
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
-                  "RightConnected "
+                  topo isa RightConnected ? "RightConnected  " :
+                  error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",
                   prettysummary(left), ", ",
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
-    prefix = domain_summary(topo, name, left, right)
-    padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(spacing, name))
+function dimension_summary(topo, name, dom, spacing, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
+    padding = " "^(pad_domain+1)
+    return string(prefix, padding, coordinate_summary(topo, spacing, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+coordinate_summary(::Flat, Δ::Number, name) = ""
+coordinate_summary(topo, Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
 
-coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
+coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))
 
 #####
-##### Spherical geometry
+##### Static and Dynamic column depths
 #####
 
-"""
-    spherical_area_triangle(a::Number, b::Number, c::Number)
+@inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶜᶠᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
 
-Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, and `c`.
-
-The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
-are the triangle's inner angles.
-
-It has been known since the time of Euler and Lagrange that
-``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
-``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
-
-References
-==========
-* Euler, L. (1778) De mensura angulorum solidorum, Opera omnia, 26, 204-233 (Orig. in Acta adac. sc. Petrop. 1778)
-* Lagrange,  J.-L. (1798) Solutions de quilquies problèmes relatifs au triangles sphéruques, Oeuvres, 7, 331-359.
-"""
-function spherical_area_triangle(a::Number, b::Number, c::Number)
-    cosa = cos(a)
-    cosb = cos(b)
-    cosc = cos(c)
-
-    tan½E = sqrt(1 - cosa^2 - cosb^2 - cosc^2 + 2cosa * cosb * cosc)
-    tan½E /= 1 + cosa + cosb + cosc
-
-    return 2atan(tan½E)
-end
-
-"""
-    spherical_area_triangle(a::AbstractVector, b::AbstractVector, c::AbstractVector)
-
-Return the area of a spherical triangle on the unit sphere with vertices given by the 3-vectors
-`a`, `b`, and `c` whose origin is the the center of the sphere. The formula was first given by
-Eriksson (1990).
-
-If we denote with ``A``, ``B``, and ``C`` the inner angles of the spherical triangle and with
-``a``, ``b``, and ``c`` the side of the triangle then, it has been known since Euler and Lagrange
-that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the
-triangle's excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
-On the unit sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed
-that ``P`` above is the same as the volume defined by the vectors `a`, `b`, and `c`, that is
-``P = |𝐚 \\cdot (𝐛 \\times 𝐜)|``.
-
-References
-==========
-* Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
-"""
-function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)
-    (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
-
-    tan½E = abs(dot(a₁, cross(a₂, a₃)))
-    tan½E /= 1 + dot(a₁, a₂) + dot(a₂, a₃) + dot(a₁, a₃)
-
-    return 2atan(tan½E)
-end
-
-"""
-    spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
-
-Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
-`a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
-non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
-overlapping, we compute the area of the quadrilateral as the half the sum of the areas of all four potential
-triangles formed by `a₁`, `a₂`, `a₃`, and `a₄`.
-"""
-spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVector, d::AbstractVector) =
-    1/2 * (spherical_area_triangle(a, b, c) + spherical_area_triangle(a, b, d) +
-           spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
+# Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid)
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid)
 
 """
     add_halos(data, loc, topo, sz, halo_sz; warnings=true)
@@ -475,13 +397,9 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
 ```
 """
 function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
-
     Nx, Ny, Nz = size(data)
-
     arch = architecture(data)
-
-    # bring to CPU
-    map(a -> on_architecture(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data) # bring to CPU
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -505,7 +423,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
     offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
 
-    # return to data's original architecture 
+    # return to data's original architecture
     map(a -> on_architecture(arch, a), offset_array)
 
     return offset_array
@@ -516,5 +434,16 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
 
-grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
+#####
+##### Extensions for kernel launching
+#####
 
+function Utils.periphery_offset(loc, grid::AbstractGrid, side::Int)
+    T = topology(grid, side)
+    N = size(grid, side)
+
+    return Utils.periphery_offset(loc, T(), N)
+end
+
+# Other cases are already covered by the fallback in Oceananigans.Utils
+Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)

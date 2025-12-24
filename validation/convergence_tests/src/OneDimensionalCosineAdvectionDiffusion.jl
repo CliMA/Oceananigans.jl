@@ -14,7 +14,7 @@ using ConvergenceTests: compute_error
 c(x, y, z, t, U, κ) = exp(-κ * t) * cos(x - U * t)
 
 function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
-                  architecture = CPU(), topo = (Periodic, Periodic, Periodic), advection = CenteredSecondOrder())
+                  architecture = CPU(), topo = (Periodic, Periodic, Periodic), advection = Centered())
 
     #####
     ##### Test advection-diffusion in the x-direction

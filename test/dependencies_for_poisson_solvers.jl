@@ -4,6 +4,7 @@ using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 function poisson_solver_instantiates(grid, planner_flag)
     solver = FFTBasedPoissonSolver(grid, planner_flag)
@@ -17,15 +18,15 @@ function random_divergent_source_term(grid)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
-    Ru = CenterField(grid, boundary_conditions=u_bcs)
-    Rv = CenterField(grid, boundary_conditions=v_bcs)
-    Rw = CenterField(grid, boundary_conditions=w_bcs)
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, rand(Nx, Ny, Nz))
+
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
 
     fill_halo_regions!(Ru)
     fill_halo_regions!(Rv)
@@ -35,7 +36,38 @@ function random_divergent_source_term(grid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
-    
+
+    return R, U
+end
+
+function random_divergent_source_term(grid::ImmersedBoundaryGrid)
+    arch = architecture(grid)
+    default_bcs = FieldBoundaryConditions()
+    u_bcs = regularize_field_boundary_conditions(default_bcs, grid, :u)
+    v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
+    w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
+
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
+    U = (u=Ru, v=Rv, w=Rw)
+
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
+
+    mask_immersed_field!(Ru)
+    mask_immersed_field!(Rv)
+    mask_immersed_field!(Rw)
+
+    fill_halo_regions!(Ru)
+    fill_halo_regions!(Rv)
+    fill_halo_regions!(Rw)
+
+    # Compute the right hand side R = ∇⋅U
+    ArrayType = array_type(arch)
+    R = CenterField(grid)
+    launch!(arch, grid, :xyz, divergence!, grid, U.u, U.v, U.w, R)
+
     return R, U
 end
 
@@ -46,18 +78,20 @@ function random_divergence_free_source_term(grid)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
     # Random right hand side
-    Ru = CenterField(grid, boundary_conditions=u_bcs)
-    Rv = CenterField(grid, boundary_conditions=v_bcs)
-    Rw = CenterField(grid, boundary_conditions=w_bcs)
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, zeros(Nx, Ny, Nz))
+
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
+
+    fill_halo_regions!(Ru)
+    fill_halo_regions!(Rv)
 
     arch = architecture(grid)
-    fill_halo_regions!((Ru, Rv, Rw))
 
     compute_w_from_continuity!(U, arch, grid)
     fill_halo_regions!(Rw)
@@ -66,7 +100,7 @@ function random_divergence_free_source_term(grid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R)
-    
+
     return R
 end
 
@@ -82,16 +116,16 @@ function divergence_free_poisson_solution(grid, planner_flag=FFTW.MEASURE)
     solver = FFTBasedPoissonSolver(grid, planner_flag)
     R, U = random_divergent_source_term(grid)
 
-    p_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    p_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     ϕ   = CenterField(grid, boundary_conditions=p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
-    solve_for_pressure!(ϕ.data, solver, 1, U)
+    solve_for_pressure!(ϕ.data, solver, nothing, U, 1)
 
     compute_∇²!(∇²ϕ, ϕ, arch, grid)
 
-    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
+    return @allowscalar interior(∇²ϕ) ≈ R
 end
 
 #####
@@ -168,7 +202,7 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
     stretched_grid = RectilinearGrid(arch, FT; topology=topo, size=sz, z=faces, intervals...)
     solver = FourierTridiagonalPoissonSolver(stretched_grid)
 
-    p_bcs = FieldBoundaryConditions(stretched_grid, (Center, Center, Center))
+    p_bcs = FieldBoundaryConditions(stretched_grid, (Center(), Center(), Center()))
     ϕ   = CenterField(stretched_grid, boundary_conditions=p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(stretched_grid, boundary_conditions=p_bcs)
 
@@ -179,7 +213,7 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
     solve!(ϕc, solver)
 
     # interior(ϕ) = solution(solver) or solution!(interior(ϕ), solver)
-    CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
+    @allowscalar interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, stretched_grid)
 
     return Array(interior(∇²ϕ)) ≈ Array(R)

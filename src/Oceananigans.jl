@@ -6,54 +6,53 @@ module Oceananigans
 
 export
     # Architectures
-    CPU, GPU, 
-
-    # Logging
-    OceananigansLogger,
+    CPU, GPU,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat, 
-    FullyConnected, LeftConnected, RightConnected,
-    RectilinearGrid, 
-    LatitudeLongitudeGrid,
-    OrthogonalSphericalShellGrid,
-    xnodes, ynodes, znodes, nodes,
-    xspacings, yspacings, zspacings,
+    Periodic, Bounded, Flat,
+    RightConnected, LeftConnected, FullyConnected,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
+    nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
+    xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
+    # Pointwise spacing, area, and volume operators
+    xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
+
     # Immersed boundaries
-    ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
+    ImmersedBoundaryGrid,
+    GridFittedBoundary, GridFittedBottom, PartialCellBottom,
+    ImmersedBoundaryCondition,
 
     # Distributed
     Distributed, Partition,
 
     # Advection schemes
-    Centered, CenteredSecondOrder, CenteredFourthOrder, 
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
-    WENO, WENOThirdOrder, WENOFifthOrder,
-    VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
+    Centered, UpwindBiased, WENO,
+    VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
 
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    PerturbationAdvection,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!, location,
+    interior, set!, compute!, regrid!,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
 
     # Coriolis forces
-    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
 
-    # BuoyancyModels and equations of state
-    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, TEOS10,
-    BuoyancyField,
+    # BuoyancyFormulations and equations of state
+    BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
+    LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
@@ -66,44 +65,40 @@ export
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
+    DynamicSmagorinsky,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
-    IsopycnalSkewSymmetricDiffusivity,
-    FluxTapering,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles,
+    LagrangianParticles, DroguedParticleDynamics,
 
     # Models
-    NonhydrostaticModel,
-    HydrostaticFreeSurfaceModel,
-    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
-    PressureField,
-    fields,
+    NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
+    ConservativeFormulation, VectorInvariantFormulation,
+    PressureField, fields, ZCoordinate, ZStarCoordinate,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, 
-    PrescribedVelocityFields,
+    SphericalCoriolis, PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, iteration, stopwatch,
-    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
-    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
+    Simulation, run!, Callback, add_callback!, iteration,
 
     # Diagnostics
-    StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
+    CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
-    FileSizeLimit, AndSchedule, OrSchedule, written_names,
+    NetCDFWriter, JLD2Writer, Checkpointer,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
+    SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
@@ -117,33 +112,54 @@ export
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
-    # Units
-    Time
-    
-using Printf
-using Logging
-using Statistics
-using LinearAlgebra
-using CUDA
-using Adapt
-using DocStringExtensions
-using OffsetArrays
-using FFTW
-using JLD2
+function __init__()
+    if VERSION >= v"1.13.0"
+        @warn """You are using Julia v1.13 or later!"
+                 Oceananigans is currently tested on Julia v1.12."
+                 If you find issues with Julia v1.13 or later,"
+                 please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
 
-using Base: @propagate_inbounds
-using Statistics: mean
+    end
 
-import Base:
-    +, -, *, /,
-    size, length, eltype,
-    iterate, similar, show,
-    getindex, lastindex, setindex!,
-    push!
+    Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
+end
 
-    
+# List of fully-supported floating point types where applicable.
+# Currently used only in the Advection module to specialize
+# reconstruction schemes (WENO, UpwindBiased, and Centered).
+const fully_supported_float_types = (Float32, Float64)
+
+#####
+##### Default settings for constructors
+#####
+
+mutable struct Defaults
+    FloatType :: DataType
+    gravitational_acceleration :: Float64
+    planet_radius :: Float64
+    planet_rotation_rate :: Float64
+end
+
+function Defaults(;
+    # Floating-point precision type (usually Float64 or Float32).
+    FloatType = Float64,
+    # [m s⁻²] conventional standard value for Earth's gravity; see https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
+    gravitational_acceleration = 9.80665,
+    # [m] Earth's radius; see https://en.wikipedia.org/wiki/Earth%27s_radius
+    planet_radius = 6.371e6,
+    # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+    planet_rotation_rate = 7.292115e-5)
+
+    return Defaults(FloatType,
+                    gravitational_acceleration,
+                    planet_radius,
+                    planet_rotation_rate)
+end
+
+const defaults = Defaults()
+
 #####
 ##### Abstract types
 #####
@@ -153,7 +169,7 @@ import Base:
 
 Abstract supertype for models.
 """
-abstract type AbstractModel{TS} end
+abstract type AbstractModel{TS, A} end
 
 """
     AbstractDiagnostic
@@ -188,6 +204,7 @@ function tupleit end
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
+function boundary_conditions end
 
 #####
 ##### Include all the submodules
@@ -196,42 +213,47 @@ function tracer_tendency_kernel_function end
 # Basics
 include("Architectures.jl")
 include("Units.jl")
-include("Grids/Grids.jl")
 include("Utils/Utils.jl")
+include("Grids/Grids.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
+include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+
+# Simulations and output handling
+include("Diagnostics/Diagnostics.jl")
+include("OutputReaders/OutputReaders.jl")
+include("OutputWriters/OutputWriters.jl")
+include("Simulations/Simulations.jl")
+
+# TODO:
+# include("Diagnostics/Diagnostics.jl") # or just delete
+# include("OutputWriters/OutputWriters.jl")
 
 # TODO: move here
-#include("ImmersedBoundaries/ImmersedBoundaries.jl")
-#include("Distributed/Distributed.jl")
 #include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
+# TODO: move here
+# include("Advection/Advection.jl")
+# include("TimeSteppers/TimeSteppers.jl")
+# include("Solvers/Solvers.jl")
 include("Coriolis/Coriolis.jl")
-include("BuoyancyModels/BuoyancyModels.jl")
+include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above
-include("ImmersedBoundaries/ImmersedBoundaries.jl")
-# include("DistributedComputations/DistributedComputations.jl")
-
 include("Models/Models.jl")
-
-# Output and Physics, time-stepping, and models
-include("Diagnostics/Diagnostics.jl")
-include("OutputWriters/OutputWriters.jl")
-include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
@@ -245,10 +267,11 @@ using .Architectures
 using .Utils
 using .Advection
 using .Grids
+using .OrthogonalSphericalShellGrids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .BuoyancyModels
+using .BuoyancyFormulations
 using .StokesDrifts
 using .TurbulenceClosures
 using .Solvers
@@ -256,6 +279,7 @@ using .OutputReaders
 using .Forcings
 using .ImmersedBoundaries
 using .DistributedComputations
+using .OrthogonalSphericalShellGrids
 using .Models
 using .TimeSteppers
 using .Diagnostics
@@ -263,24 +287,6 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
-
-function __init__()
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
-    end
-
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
-    end
-end
+using .Operators
 
 end # module

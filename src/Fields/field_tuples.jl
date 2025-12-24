@@ -1,3 +1,4 @@
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
 #####
@@ -36,63 +37,35 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
 """
-    fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
+    fill_halo_regions!(fields::NamedTuple, args...; kwargs...)
 
 Fill halo regions for all `fields`. The algorithm:
 
   1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
      duplicate entries to avoid "repeated" halo filling.
-    
+
   2. Filters fields into three categories:
      i. ReducedFields with non-trivial boundary conditions;
      ii. Fields with non-trivial indices and boundary conditions;
      iii. Fields spanning the whole grid with non-trivial boundary conditions.
-    
+
   3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-    
+
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
-    flattened = flattened_unique_values(maybe_nested_tuple)
+function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
 
-    # Sort fields into ReducedField and Field with non-nothing boundary conditions
-    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
-    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
-    
-    for field in reduced_fields
+    for field in fields
         fill_halo_regions!(field, args...; kwargs...)
-    end
-
-    # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
-    windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
-    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
-
-    # Fill halo regions for reduced and windowed fields
-    for field in windowed_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
-
-    # Fill the rest
-    if !isempty(ordinary_fields)
-        grid = first(ordinary_fields).grid
-        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
-
-    # We cannot group windowed fields together, the indices must be (:, :, :)!
-    indices = default_indices(3)        
-
-    return fill_halo_regions!(map(data, fields),
-                              map(boundary_conditions, fields),
-                              indices,
-                              map(instantiated_location, fields),
-                              grid, args...; kwargs...)
-end
+# This is a convenience function that allows `fill_halo_regions!` to be dispatched on the grid type.
+fill_halo_regions!(fields::NamedTuple, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
+fill_halo_regions!(fields::Tuple,      grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
 
 #####
 ##### Tracer names
@@ -163,7 +136,7 @@ function VelocityFields(grid::AbstractGrid, user_bcs = NamedTuple())
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     w = ZFaceField(grid, boundary_conditions=bcs.w)
-
+    
     return (u=u, v=v, w=w)
 end
 
@@ -179,7 +152,7 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function TracerFields(tracer_names, grid, user_bcs)
-    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center, Center, Center)) for name in tracer_names)
+    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for name in tracer_names)
     bcs = merge(default_bcs, user_bcs) # provided bcs overwrite defaults
     return NamedTuple(c => CenterField(grid, boundary_conditions=bcs[c]) for c in tracer_names)
 end
@@ -188,11 +161,8 @@ end
     TracerFields(tracer_names, grid; kwargs...)
 
 Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
-`CenterField`s on `grid`. Fields may be passed via optional
-keyword arguments `kwargs` for each field.
-
-This function is used by `OutputWriters.Checkpointer` and `TendencyFields`.
-```
+`CenterField`s on `grid`. Fields may be passed via optional keyword arguments `kwargs`
+for each field.
 """
 TracerFields(tracer_names, grid; kwargs...) =
     NamedTuple(c => c ∈ keys(kwargs) ? kwargs[c] : CenterField(grid) for c in tracer_names)
@@ -202,30 +172,6 @@ TracerFields(::Union{Tuple{}, Nothing}, grid, bcs) = NamedTuple()
 
 "Shortcut constructor for empty tracer fields."
 TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
-
-"""
-    TendencyFields(grid, tracer_names;
-                   u = XFaceField(grid),
-                   v = YFaceField(grid),
-                   w = ZFaceField(grid),
-                   kwargs...)
-
-Return a `NamedTuple` with tendencies for all solution fields (velocity fields and
-tracer fields), initialized on `grid`. Optional `kwargs`
-can be specified to assign data arrays to each tendency field.
-"""
-function TendencyFields(grid, tracer_names;
-                        u = XFaceField(grid),
-                        v = YFaceField(grid),
-                        w = ZFaceField(grid),
-                        kwargs...)
-
-    velocities = (u=u, v=v, w=w)
-
-    tracers = TracerFields(tracer_names, grid; kwargs...)
-
-    return merge(velocities, tracers)
-end
 
 #####
 ##### Helper functions for NonhydrostaticModel constructor

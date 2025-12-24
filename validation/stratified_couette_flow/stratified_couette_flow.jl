@@ -11,7 +11,7 @@ using Oceananigans.Advection: cell_advection_timescale
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall, n)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δᵃᵃᶜ
     ν = model.closure[n].ν
 
     compute!(Uavg)
@@ -30,7 +30,7 @@ end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model, Tavg, Θ_wall, n)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δᵃᵃᶜ
     # TODO: interface function for extracting diffusivity?
     κ = model.closure[n].κ.T
 
@@ -117,7 +117,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
     ##### Non-dimensional model setup
     #####
-    
+
     equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     model = NonhydrostaticModel(; grid, buoyancy,
@@ -186,13 +186,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
         :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivity_fields[n_amd].κₑ.T.data.parent),
-       :nu => model -> Array(model.diffusivity_fields[n_amd].νₑ.data.parent))
+   :kappaT => model -> Array(model.closure_fields[n_amd].κₑ.T.data.parent),
+       :nu => model -> Array(model.closure_fields[n_amd].νₑ.data.parent))
 
-    field_writer =
-        JLD2OutputWriter(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
-                         init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
-                         overwrite_existing=true, verbose=true)
+    field_writer = JLD2Writer(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
+                              init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
+                              overwrite_existing=true, verbose=true)
 
     #####
     ##### Set up profile output writer
@@ -202,8 +201,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     Vavg = Field(Average(model.velocities.v,               dims=(1, 2)))
     Wavg = Field(Average(model.velocities.w,               dims=(1, 2)))
     Tavg = Field(Average(model.tracers.T,                  dims=(1, 2)))
-    νavg = Field(Average(model.diffusivity_fields[n_amd].νₑ,   dims=(1, 2)))
-    κavg = Field(Average(model.diffusivity_fields[n_amd].κₑ.T, dims=(1, 2)))
+    νavg = Field(Average(model.closure_fields[n_amd].νₑ,   dims=(1, 2)))
+    κavg = Field(Average(model.closure_fields[n_amd].κₑ.T, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,
@@ -213,10 +212,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :nu => νavg,
     :kappaT => κavg)
 
-    profile_writer =
-        JLD2OutputWriter(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
-                         init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
-                         overwrite_existing=true, verbose=true)
+    profile_writer = JLD2Writer(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
+                                init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
+                                overwrite_existing=true, verbose=true)
 
     #####
     ##### Set up statistic output writer
@@ -231,10 +229,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :Re_tau => model -> Reτ(model),
         :Nu     => model -> Nu(model))
 
-    statistics_writer =
-        JLD2OutputWriter(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
-                         init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
-                         overwrite_existing=true, verbose=true)
+    statistics_writer = JLD2Writer(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
+                                   init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
+                                   overwrite_existing=true, verbose=true)
 
     #####
     ##### Time stepping
@@ -261,9 +258,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         wmax = maximum(abs, model.velocities.w.data.parent)
         CFL = simulation.Δt / cell_advection_timescale(model)
 
-        Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.Δzᵃᵃᶜ)
-        νmax = maximum(model.diffusivity_fields[n_amd].νₑ.data.parent)
-        κmax = maximum(model.diffusivity_fields[n_amd].κₑ.T.data.parent)
+        Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.z.Δᵃᵃᶜ)
+        νmax = maximum(model.closure_fields[n_amd].νₑ.data.parent)
+        κmax = maximum(model.closure_fields[n_amd].κₑ.T.data.parent)
         νCFL = simulation.Δt / (Δ^2 / νmax)
         κCFL = simulation.Δt / (Δ^2 / κmax)
 

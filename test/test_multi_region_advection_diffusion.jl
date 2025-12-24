@@ -1,11 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.MultiRegion
-using Oceananigans.MultiRegion: reconstruct_global_field
-using Oceananigans.Operators: hack_cosd
-
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
-
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid)
@@ -15,12 +10,6 @@ function Δ_min(grid)
 end
 
 function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
-
-    if architecture(grid) isa GPU
-        devices = (0, 0)
-    else
-        devices = nothing
-    end
 
     if grid isa RectilinearGrid
         L = 0.1
@@ -32,7 +21,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     cᵢ(x, y, z) = Gaussian(x, 0, L)
     eᵢ(x, y, z) = Gaussian(x, y, L)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions))
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         tracers = (:c, :e),
@@ -59,12 +48,6 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 end
 
 function solid_body_rotation_test(grid; P = XPartition, regions = 1)
-
-    if architecture(grid) isa GPU
-        devices = (0, 0)
-    else
-        devices = nothing
-    end
 
     mrg = MultiRegionGrid(grid, partition = P(regions))
 
@@ -100,13 +83,8 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 end
 
 function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field_name = :c)
-    if architecture(grid) isa GPU
-        devices = (0, 0)
-    else
-        devices = nothing
-    end
 
-    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions))
 
     # For MultiRegionGrids with regions > 1, the SplitExplicitFreeSurface extends the
     # halo region in the horizontal. Because the extented halo region size cannot exceed

@@ -1,5 +1,4 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
-using Oceananigans.BoundaryConditions: MCBC, PBC
 
 const EqualXPartition = XPartition{<:Number}
 
@@ -11,7 +10,7 @@ Base.summary(p::XPartition)      = "XPartition with [$(["$(p.div[i]) " for i in 
 
 function partition_size(p::EqualXPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @assert mod(Nx, p.div) == 0 
+    @assert mod(Nx, p.div) == 0
     return Tuple((Nx ÷ p.div, Ny, Nz) for i in 1:length(p))
 end
 
@@ -32,7 +31,7 @@ end
 
 function partition_topology(p::XPartition, grid)
     TX, TY, TZ = topology(grid)
-    
+
     return Tuple(((TX == Periodic ? FullyConnected : i == 1 ?
                                     RightConnected : i == length(p) ?
                                     LeftConnected :
@@ -54,15 +53,15 @@ divide_direction(x::Tuple, p::XPartition) =
 divide_direction(x::AbstractArray, p::XPartition) =
     Tuple(x[1+sum(p.div[1:i-1]):1+sum(p.div[1:i])] for i in 1:length(p))
 
-partition_global_array(a::Function, args...) = a
-partition_global_array(a::Field, p::EqualXPartition, args...) = partition_global_array(a.data, p, args...)
+partition(a::Function, args...) = a
+partition(a::Field, p::EqualXPartition, args...) = partition(a.data, p, args...)
 
-function partition_global_array(a::AbstractArray, ::EqualXPartition, local_size, region, arch)
+function partition(a::AbstractArray, ::EqualXPartition, local_size, region, arch)
     idxs = default_indices(length(size(a)))
     return on_architecture(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
 end
 
-function partition_global_array(a::OffsetArray, ::EqualXPartition, local_size, region, arch) 
+function partition(a::OffsetArray, ::EqualXPartition, local_size, region, arch)
     idxs    = default_indices(length(size(a)))
     offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
     return on_architecture(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
@@ -80,7 +79,6 @@ function reconstruct_size(mrg, p::XPartition)
 end
 
 function reconstruct_extent(mrg, p::XPartition)
-    switch_device!(mrg.devices[1])
     y = cpu_face_constructor_y(mrg.region_grids.regional_objects[1])
     z = cpu_face_constructor_z(mrg.region_grids.regional_objects[1])
 
@@ -90,7 +88,6 @@ function reconstruct_extent(mrg, p::XPartition)
     else
         x = [cpu_face_constructor_x(mrg.region_grids.regional_objects[1])...]
         for (idx, grid) in enumerate(mrg.region_grids.regional_objects[2:end])
-            switch_device!(mrg.devices[idx])
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end

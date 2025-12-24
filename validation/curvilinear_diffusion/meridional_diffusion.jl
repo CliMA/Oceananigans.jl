@@ -60,15 +60,15 @@ simulation = Simulation(model,
                         stop_time = 100cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
-                                                         
+
 output_fields = merge(model.velocities, model.tracers)
 
 output_prefix = "meridional_diffusion_Ny$(grid.Ny)"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(cell_diffusion_time_scale),
-                                                      filename = output_prefix,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                schedule = TimeInterval(cell_diffusion_time_scale),
+                                                filename = output_prefix,
+                                                overwrite_existing = true)
 
 run!(simulation)
 
