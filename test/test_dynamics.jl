@@ -1,9 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.TurbulenceClosures: viscosity, ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, mask_immersed_field!
-using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
-using Oceananigans.Fields: ZeroField, ConstantField
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 import Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 
@@ -62,8 +60,9 @@ function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
     return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
 end
 
-function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c)
-    model = NonhydrostaticModel(; grid, closure, tracers, buoyancy=nothing)
+function test_diffusion_cosine(fieldname, Model, timestepper, grid, closure, ξ, tracers=:c; kwargs...)
+
+    model = Model(; grid, closure, timestepper, tracers, buoyancy=nothing, kwargs...)
     field = fields(model)[fieldname]
 
     m = 2 # cosine wavenumber
@@ -326,12 +325,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
 
     T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, T=T₀)
-
     simulation = Simulation(model, Δt=10minute, stop_time=1hour)
     run!(simulation)
 
-    @compute ∂y_T = Field(∂y(model.tracers.T))
-    @compute ∂z_T = Field(∂z(model.tracers.T))
+    ∂y_T = Field(∂y(model.tracers.T))
+    ∂z_T = Field(∂z(model.tracers.T))
 
     mean_∂y_T = mean(∂y_T)
     mean_∂z_T = mean(∂z_T)
@@ -595,7 +593,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 for fieldname in fieldnames[case]
                     @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
-                    @test test_diffusion_cosine(fieldname, grid, closure, coord)
+                    @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :RungeKutta3, grid, closure, coord)
+                    @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :QuasiAdamsBashforth2, grid, closure, coord)
+
+                    if fieldname != :w && topology(grid)[3] == Bounded                        
+                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta3, grid, closure, coord; free_surface=nothing)
+                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :QuasiAdamsBashforth2, grid, closure, coord; free_surface = nothing)
+                    end
                 end
             end
         end
@@ -655,18 +659,28 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                       y_periodic_regularly_spaced_vertically_stretched_grid,
                       y_flat_regularly_spaced_vertically_stretched_grid)
 
+        free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g), 
+                                                                     SplitExplicitFreeSurface(grid, ; gravitational_acceleration=g, cfl=0.5))
+
+        free_surface_types(::Val{:SplitRungeKutta3}, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), ) 
+
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for grid in test_grids
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
+                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                    grid_name = typeof(grid).name.wrapper
+                    topo = topology(grid)
 
-                # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
-                gravitational_acceleration = (10σ)^2 / Lx
-                free_surface = ImplicitFreeSurface(; gravitational_acceleration)
-                model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+                    # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
+                    gravitational_acceleration = (10σ)^2 / Lx
 
-                @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
+                    for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
+                        model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+
+                        free_surface_type = typeof(free_surface).name.wrapper
+                        @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo, $timestepper, $free_surface_type]..."
+                        internal_wave_dynamics_test(model, solution, Δt)
+                    end
+                end
             end
         end
 

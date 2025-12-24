@@ -1,12 +1,12 @@
 using Base.Ryu: writeshortest
-using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
+using Oceananigans.Utils: Utils, prettysummary
 
 """
-    _property(ξ, T, ℓ, N, with_halos)
+    _property(ξ, ℓ, T, N, H, with_halos)
 
 Return the grid property `ξ`, either `with_halos` or without,
-for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
+for (instantiated) location `ℓ`, topology `T`, dimension length `N` and halo size `H`.
 """
 @inline function _property(ξ, ℓ, T, N, H, with_halos)
     if with_halos
@@ -278,8 +278,9 @@ Base.summary(::NegativeZDirection) = "NegativeZDirection()"
 
 Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
+size_summary(grid::AbstractGrid) = size_summary(size(grid))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
-prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
 domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
 domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
@@ -328,81 +329,6 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
 @inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
 @inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
 @inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid)
-
-#####
-##### Spherical geometry
-#####
-
-"""
-    spherical_area_triangle(a::Number, b::Number, c::Number)
-
-Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, and `c`.
-
-The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
-are the triangle's inner angles.
-
-It has been known since the time of Euler and Lagrange that
-``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
-``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
-
-References
-==========
-
-* Euler, L. (1778) De mensura angulorum solidorum, Opera omnia, 26, 204-233 (Orig. in Acta adac. sc. Petrop. 1778)
-* Lagrange,  J.-L. (1798) Solutions de quilquies problèmes relatifs au triangles sphéruques, Oeuvres, 7, 331-359.
-"""
-function spherical_area_triangle(a::Number, b::Number, c::Number)
-    cosa = cos(a)
-    cosb = cos(b)
-    cosc = cos(c)
-
-    tan½E = sqrt(1 - cosa^2 - cosb^2 - cosc^2 + 2cosa * cosb * cosc)
-    tan½E /= 1 + cosa + cosb + cosc
-
-    return 2atan(tan½E)
-end
-
-"""
-    spherical_area_triangle(a::AbstractVector, b::AbstractVector, c::AbstractVector)
-
-Return the area of a spherical triangle on the unit sphere with vertices given by the 3-vectors
-`a`, `b`, and `c` whose origin is the the center of the sphere. The formula was first given by
-Eriksson (1990).
-
-If we denote with ``A``, ``B``, and ``C`` the inner angles of the spherical triangle and with
-``a``, ``b``, and ``c`` the side of the triangle then, it has been known since Euler and Lagrange
-that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the
-triangle's excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
-On the unit sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed
-that ``P`` above is the same as the volume defined by the vectors `a`, `b`, and `c`, that is
-``P = |𝐚 \\cdot (𝐛 \\times 𝐜)|``.
-
-References
-==========
-
-* Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
-"""
-function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)
-    (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
-
-    tan½E = abs(dot(a₁, cross(a₂, a₃)))
-    tan½E /= 1 + dot(a₁, a₂) + dot(a₂, a₃) + dot(a₁, a₃)
-
-    return 2atan(tan½E)
-end
-
-"""
-    spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
-
-Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
-`a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
-non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
-overlapping, we compute the area of the quadrilateral as the half the sum of the areas of all four potential
-triangles formed by `a₁`, `a₂`, `a₃`, and `a₄`.
-"""
-spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVector, d::AbstractVector) =
-    1/2 * (spherical_area_triangle(a, b, c) + spherical_area_triangle(a, b, d) +
-           spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
 
 """
     add_halos(data, loc, topo, sz, halo_sz; warnings=true)
@@ -507,3 +433,17 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
+
+#####
+##### Extensions for kernel launching
+#####
+
+function Utils.periphery_offset(loc, grid::AbstractGrid, side::Int)
+    T = topology(grid, side)
+    N = size(grid, side)
+
+    return Utils.periphery_offset(loc, T(), N)
+end
+
+# Other cases are already covered by the fallback in Oceananigans.Utils
+Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)

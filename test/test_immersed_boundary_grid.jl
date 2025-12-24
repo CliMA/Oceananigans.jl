@@ -383,6 +383,76 @@ function test_immersed_boundary_grid_nodes_and_spacings(FT, arch, boundary_type)
 end
 
 #####
+##### Immersed boundary equality tests
+#####
+
+function test_immersed_boundary_equality(FT, arch)
+    # Test GridFittedBottom equality
+    ib1 = GridFittedBottom(1)
+    ib2 = GridFittedBottom(1)
+    ib3 = GridFittedBottom(2)
+
+    @test ib1 == ib1
+    @test ib1 == ib2
+    @test ib1 != ib3
+
+    bottom_function1(x, y) = 0.2 * sin(2π * x) * cos(2π * y)
+    ib1 = GridFittedBottom(bottom_function1)
+    ib2 = GridFittedBottom(bottom_function1)
+    ib3 = GridFittedBottom(bottom_function1, InterfaceImmersedCondition())
+
+    @test ib1 == ib2
+    @test ib1 != ib3
+
+    # Test PartialCellBottom equality
+    ib4 = PartialCellBottom(1; minimum_fractional_cell_height=0.2)
+    ib5 = PartialCellBottom(1; minimum_fractional_cell_height=0.2)
+    ib6 = PartialCellBottom(2; minimum_fractional_cell_height=0.2)
+    ib7 = PartialCellBottom(2; minimum_fractional_cell_height=0.1)
+
+    @test ib4 == ib5
+    @test ib4 != ib6
+    @test ib4 != ib7
+    @test ib6 != ib7
+    @test ib4 != ib1
+
+    # Test GridFittedBoundary equality
+    mask_function1(x, y, z) = x^2 + y^2 + z^2 ≤ 0.25
+    mask_function3(x, y, z) = x^2 + y^2 + z^2 ≤ 0.5
+
+    ib8 = GridFittedBoundary(mask_function1)
+    ib9 = GridFittedBoundary(mask_function1)
+    ib10 = GridFittedBoundary(mask_function3)
+
+    @test ib8 == ib9
+    @test ib8 != ib10
+    @test ib8 != ib1
+
+    # Test with arrays
+    underlying_grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+    Nx, Ny, Nz = size(underlying_grid)
+
+    mask_array1 = zeros(Bool, Nx, Ny, Nz)
+    mask_array1[2, 2, 2] = true
+
+    mask_array2 = zeros(Bool, Nx, Ny, Nz)
+    mask_array2[2, 2, 2] = true
+
+    mask_array3 = zeros(Bool, Nx, Ny, Nz)
+    mask_array3[1, 1, 1] = true
+
+    ib11 = GridFittedBoundary(mask_array1)
+    ib12 = GridFittedBoundary(mask_array2)
+    ib13 = GridFittedBoundary(mask_array3)
+
+    @test ib11 == ib12
+    @test ib11 != ib13
+    @test ib11 != ib8
+
+    return nothing
+end
+
+#####
 ##### Main test sets
 #####
 
@@ -469,6 +539,15 @@ end
                 @testset "Flat [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_flat_topologies(FT, arch, boundary_type)
                 end
+            end
+        end
+    end
+
+    @testset "Immersed boundary equality" begin
+        for arch in archs, FT in float_types
+            @info "  Testing immersed boundary equality [$FT, $(typeof(arch))]..."
+            @testset "Equality [$FT, $(typeof(arch))]" begin
+                test_immersed_boundary_equality(FT, arch)
             end
         end
     end

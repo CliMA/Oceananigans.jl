@@ -1,6 +1,7 @@
 using Test
 using Oceananigans
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize, SliceEnsembleSize
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
+using Oceananigans.Grids: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 using Oceananigans.OutputReaders: Cyclical
 

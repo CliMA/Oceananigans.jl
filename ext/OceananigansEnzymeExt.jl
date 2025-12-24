@@ -19,7 +19,7 @@ EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.AbstractOperations.m
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.prettytime), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
-EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.parent_size_and_offset), x...) = nothing
+EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_size_and_offset), x...) = nothing
 @inline EnzymeCore.EnzymeRules.inactive_type(v::Type{Oceananigans.Utils.KernelParameters}) = true
 
 @inline batch(::Val{1}, ::Type{T}) where T = T
@@ -342,7 +342,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  model,
                                                  clock)
 
-    time = (typeof(clock) <: Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+    time = (typeof(clock) <: Const) ? Const(Oceananigans.Units.Time(clock.val.time)) : Duplicated(Oceananigans.Units.Time(clock.val.time), Oceananigans.Units.Time(clock.dval.time))
 
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 
@@ -390,7 +390,7 @@ function EnzymeCore.EnzymeRules.reverse(config,
                                         model,
                                         clock)
 
-    time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+    time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Units.Time(clock.val.time)) : Duplicated(Oceananigans.Units.Time(clock.val.time), Oceananigans.Units.Time(clock.dval.time))
 
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 

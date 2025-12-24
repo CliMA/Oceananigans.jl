@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.Utils: get_cartesian_nodes_and_vertices
+using Oceananigans.Grids: get_cartesian_nodes_and_vertices
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.BoundaryConditions: Zipper
 
@@ -98,7 +98,7 @@ end
 
         @test Hx == halo_size(grid, 1)
         @test Hy != halo_size(grid, 2)
-        @test Hy == length(free_surface.substepping.averaging_weights) + 1
+        @test Hy == length(free_surface.substepping.averaging_weights) + 2
 
         @test begin
             time_step!(model, 1.0)

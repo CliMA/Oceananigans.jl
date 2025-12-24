@@ -35,13 +35,12 @@ const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 
 coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
-struct MutableVerticalDiscretization{C, D, E, F, H, U, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: D
     Δᵃᵃᶠ :: E
     Δᵃᵃᶜ :: F
       ηⁿ :: H
-      Gⁿ :: U # Storage space used in different ways by different timestepping schemes.
     σᶜᶜⁿ :: CC
     σᶠᶜⁿ :: FC
     σᶜᶠⁿ :: CF
@@ -64,12 +63,15 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 """
     MutableVerticalDiscretization(r_faces)
 
-Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`, a function of an index `k`,
-or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coordinate that might evolve in time
-following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates,
-or sigma coordinates.
+Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
+a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
+defines a vertical coordinate that can evolve in time following certain rules.
+Examples of `MutableVerticalDiscretization`s are the free-surface following coordinates
+(also known as "zee-star") or the terrain following coordinates (also known as "sigma"
+coordinates).
 """
-MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:10)...)
+MutableVerticalDiscretization(r_faces) =
+    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -121,7 +123,6 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
     σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
-    Gⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...) 
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # Fill all the scalings with one for now (i.e. z == r)
@@ -129,7 +130,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
         fill!(σ, 1)
     end
 
-    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, Gⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end
 
 
@@ -155,7 +156,6 @@ Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
                                   Adapt.adapt(to, coord.Δᵃᵃᶠ),
                                   Adapt.adapt(to, coord.Δᵃᵃᶜ),
                                   Adapt.adapt(to, coord.ηⁿ),
-                                  Adapt.adapt(to, coord.Gⁿ),
                                   Adapt.adapt(to, coord.σᶜᶜⁿ),
                                   Adapt.adapt(to, coord.σᶠᶜⁿ),
                                   Adapt.adapt(to, coord.σᶜᶠⁿ),
@@ -169,7 +169,6 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
                                   on_architecture(arch, coord.Δᵃᵃᶠ),
                                   on_architecture(arch, coord.Δᵃᵃᶜ),
                                   on_architecture(arch, coord.ηⁿ),
-                                  on_architecture(arch, coord.Gⁿ),
                                   on_architecture(arch, coord.σᶜᶜⁿ),
                                   on_architecture(arch, coord.σᶠᶜⁿ),
                                   on_architecture(arch, coord.σᶜᶠⁿ),
@@ -198,14 +197,45 @@ end
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline rnodes(grid::AUG, ℓz::F; with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓz::C; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
+@inline rnodes(grid::AUG, ℓz::F; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓz::C; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = rnodes(grid, ℓz; with_halos, indices)
 
-rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
-znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+
+ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
+@inline rnodes(grid::ZFlatAUG, ℓz::F; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
+@inline rnodes(grid::ZFlatAUG, ℓz::C; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
 
 # TODO: extend in the Operators module
+"""
+    znodes(grid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest znodes
+julia> using Oceananigans
+
+julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
+                                            topology=(Periodic, Periodic, Bounded));
+
+julia> z = znodes(horz_periodic_grid, Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
+5-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), :) with eltype Float64 with indices 0:4:
+ -1.1666666666666667
+ -0.8333333333333334
+ -0.5
+ -0.16666666666666666
+  0.16666666666666666
+```
+"""
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 @inline znodes(grid::AUG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
 

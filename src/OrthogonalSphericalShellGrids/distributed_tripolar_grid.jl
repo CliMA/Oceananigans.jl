@@ -1,11 +1,11 @@
-using MPI
 using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition
 using Oceananigans.Fields: validate_indices, validate_field_data
-using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations:
+    DistributedComputations,
+    Distributed,
     local_size,
-    barrier!,
     all_reduce,
+    child_architecture,
     ranks,
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
@@ -13,7 +13,6 @@ using Oceananigans.DistributedComputations:
 
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
-import Oceananigans.DistributedComputations: reconstruct_global_grid
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
@@ -27,9 +26,18 @@ const DistributedTripolarGridOfSomeKind = Union{
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)
 
-Construct a tripolar grid on a distributed architecture.
-A distributed tripolar grid is supported only on a Y-partitioning configuration,
-therefore, only splitting the j-direction is supported for the moment.
+Construct a tripolar grid on a distributed `arch`itecture.
+
+!!! compat "Supported partitionings"
+
+    Allowed partitionings include:
+    - Only partition in `y`, e.g., `Distributed(CPU(), partition=Partition(1, 4))`.
+    - Partition both in `x` and `y` with `x` partition even. For example:
+      - `Distributed(CPU(), partition=Partition(2, 4))` is supported
+      - `Distributed(CPU(), partition=Partition(3, 4))` is _not_ supported
+
+    Note that partitioning only in `x`, e.g., `Distributed(CPU(), partition=Partition(4))`
+    or `Distributed(CPU(), partition=Partition(4, 1))` is _not_ supported.
 """
 function TripolarGrid(arch::Distributed, FT::DataType=Float64;
                       halo=(4, 4, 4),
@@ -42,16 +50,16 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     # Check that partitioning in x is correct:
     try
         if isodd(px) && (px != 1)
-            throw(ArgumentError("Only even partitioning in x is supported with the TripolarGrid"))
+            throw(ArgumentError("Only even partitioning in x is supported with TripolarGrid."))
         end
     catch
-        throw(ArgumentError("The x partition $(px) is not supported. The partition in x must be an even number. "))
+        throw(ArgumentError("The x partition $(px) is not supported. The partition in x must be an even number."))
     end
 
     # a slab decomposition in x is not supported
     if px != 1 && py == 1
-        throw(ArgumentError("A x-only partitioning is not supported with the TripolarGrid. \n
-                            Please, use a y partitioning configuration or a x-y pencil partitioning."))
+        throw(ArgumentError("An x-only partitioning is not supported for TripolarGrid. \n
+                             Please, use a y partitioning configuration or an x-y pencil partitioning."))
     end
 
     Hx, Hy, Hz = halo
@@ -318,7 +326,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSome
 end
 
 # Reconstruction the global tripolar grid for visualization purposes
-function reconstruct_global_grid(grid::DistributedTripolarGrid)
+function DistributedComputations.reconstruct_global_grid(grid::DistributedTripolarGrid)
 
     arch = grid.architecture
 
@@ -345,7 +353,7 @@ function reconstruct_global_grid(grid::DistributedTripolarGrid)
                         z)
 end
 
-function with_halo(new_halo, old_grid::DistributedTripolarGrid)
+function Grids.with_halo(new_halo, old_grid::DistributedTripolarGrid)
 
     arch = old_grid.architecture
 

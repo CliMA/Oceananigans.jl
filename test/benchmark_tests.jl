@@ -18,8 +18,8 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
                                     topology)
 
     grid = if immersed
-        Random.seed!(1234)
-        bottom = Oceananigans.Architectures.on_architecture(arch, - 5000 .* rand(Nx, Ny) .- 1000)
+        # A sloped bathymetry in x
+        bottom(x, y) = - 5000 * (x + 1000kilometers) / 2000kilometers - 1000
         ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map=true)
     else
         grid
@@ -37,17 +37,22 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
                                           buoyancy,
                                           closure,
                                           free_surface,
-                                          tracers = (:T, :S, :e))
+                                          tracers = (:T, :S))
 
     @info "Model is built"
-
+    Random.seed!(1234)
     R = rand(size(model.grid))
+    z = zeros(size(model.grid))
+
+    for k in 1:size(grid, 3)
+        CUDA.@allowscalar z[:, :, k] .= grid.z.cᵃᵃᶜ[k]
+    end
 
     # initialize variables with randomish values
-    Tᵢ = 1e-4 .* R .+ 20
+    Tᵢ = 1e-4 .* R .+ 20 * (1 .+ z ./ grid.Lz) # stratified fluid
     Sᵢ = 1e-4 .* R .+ 35
-    uᵢ = 1e-6 .* R
-    vᵢ = 1e-6 .* R
+    uᵢ = 1e-3 .* R
+    vᵢ = 1e-3 .* R
     
     set!(model, T=Tᵢ, S=Sᵢ, e=1e-6, u=uᵢ, v=vᵢ)
 

@@ -1,7 +1,6 @@
+using Oceananigans.Fields: Field, fill_halo_regions!, set!
+using Oceananigans.Grids: Grids, bottommost_active_node, AbstractStaticGrid, constructor_arguments
 using Oceananigans.Utils: prettysummary
-using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Grids: bottommost_active_node, AbstractStaticGrid
-using Printf
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
                                Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
@@ -102,7 +101,7 @@ end
     @inbounds bottom_field[i, j, 1] = adjusted_zb
 end
 
-function on_architecture(arch, ib::PartialCellBottom{<:Field})
+function Architectures.on_architecture(arch, ib::PartialCellBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
     arch_grid = on_architecture(arch, ib.bottom_height.grid)
     new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
@@ -113,8 +112,8 @@ end
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
                                                                      ib.minimum_fractional_cell_height)
 
-on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
-                                                               on_architecture(to, ib.minimum_fractional_cell_height))
+Architectures.on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
+                                                                             on_architecture(to, ib.minimum_fractional_cell_height))
 
 """
     immersed     underlying
@@ -207,3 +206,14 @@ VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶜᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
 @inline Δzᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
+
+function Grids.constructor_arguments(grid::PCBIBG)
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
+    partial_cell_bottom_args = Dict(:bottom_height => grid.immersed_boundary.bottom_height,
+                                    :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height)
+    return underlying_grid_args, underlying_grid_kwargs, partial_cell_bottom_args
+end
+
+function Base.:(==)(pcb1::PartialCellBottom, pcb2::PartialCellBottom)
+    return pcb1.bottom_height == pcb2.bottom_height && pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
+end
