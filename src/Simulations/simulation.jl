@@ -1,32 +1,40 @@
-using Oceananigans: prognostic_fields
-using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
-using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans: AbstractModel
+import Dates
 
-import Oceananigans.Models: iteration
+using Dates: AbstractTime
+using Oceananigans.Diagnostics: default_nan_checker
+using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
+using Oceananigans.Utils: period_to_seconds
+
+import Oceananigans.Diagnostics: CFL
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
+import Oceananigans.OutputWriters: write_output!
+import Oceananigans.Solvers: iteration
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB}
+mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
     model :: ML
     Δt :: DT
-    stop_iteration :: Float64
+    stop_iteration :: FT
     stop_time :: ST
-    wall_time_limit :: Float64
+    wall_time_limit :: FT
     diagnostics :: DI
     output_writers :: OW
     callbacks :: CB
-    run_wall_time :: Float64
-    align_time_step :: Bool
-    running :: Bool
-    initialized :: Bool
-    verbose :: Bool
-    minimum_relative_step :: Float64
+    run_wall_time :: FT
+    align_time_step :: BL
+    running :: BL
+    initialized :: BL
+    verbose :: BL
+    minimum_relative_step :: FT
 end
 
 """
-    Simulation(model; Δt,
+    Simulation(model;
+               Δt,
                verbose = true,
                stop_iteration = Inf,
                stop_time = Inf,
@@ -41,12 +49,21 @@ Keyword arguments
 - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
         for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
 
-- `stop_iteration`: Stop the simulation after this many iterations.
+- `stop_iteration`: Stop the simulation after this many iterations. Default: `Inf`.
 
-- `stop_time`: Stop the simulation once this much model clock time has passed.
+- `stop_time`: Stop the simulation once this much model clock time has passed. Default: `Inf`.
 
 - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
-                     seconds of wall clock time.
+                     seconds of wall clock time. Default: `Inf`.
+
+- `align_time_step`: When `true` it implies that the simulation will automatically adjust the
+                     time-step to meet a constraint imposed by various schedules like `ScheduledTimes`,
+                     `TimeInterval`, `AveragedTimeInterval`, as well as a `stop_time` criterion.
+                     If `false`, i.e., no time-step alignment, then the simulation might blithely step passed
+                     the specified time. Default: `true`.
+                     By `align_time_step = false` we ensure that the time-step does _not_ change within
+                     `time_step!(simulation)`
+
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
                            Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
@@ -82,6 +99,9 @@ function Simulation(model; Δt,
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
    TT = eltype(model)
+   if Δt isa Dates.Period
+       Δt = convert(TT, period_to_seconds(Δt))
+   end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
@@ -103,17 +123,22 @@ end
 
 function Base.show(io::IO, s::Simulation)
     modelstr = summary(s.model)
-    return print(io, "Simulation of ", modelstr, "\n",
-                     "├── Next time step: $(prettytime(s.Δt))", "\n",
-                     "├── Elapsed wall time: $(prettytime(s.run_wall_time))", "\n",
-                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", "\n",
-                     "├── Stop time: $(prettytime(s.stop_time))", "\n",
-                     "├── Stop iteration: $(s.stop_iteration)", "\n",
-                     "├── Wall time limit: $(s.wall_time_limit)", "\n",
-                     "├── Minimum relative step: ", prettysummary(s.minimum_relative_step), "\n",
-                     "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
-                     "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
-                     "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    print(io, "Simulation of ", modelstr, '\n',
+              "├── Next time step: $(prettytime(s.Δt))", '\n',
+              "├── run_wall_time: $(prettytime(s.run_wall_time))", '\n',
+              "├── run_wall_time / iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
+              "├── stop_time: $(prettytime(s.stop_time))", '\n',
+              "├── stop_iteration: $(s.stop_iteration)", '\n',
+              "├── wall_time_limit: $(s.wall_time_limit)", '\n',
+              "├── minimum_relative_step: ", prettysummary(s.minimum_relative_step), '\n',
+              "├── callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n')
+
+    if length(s.diagnostics) == 0
+        print(io, "└── output_writers: $(ordered_dict_show(s.output_writers, "│"))")
+    else
+        print(io, "├── output_writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
+                  "└── diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    end
 end
 
 #####
@@ -170,12 +195,16 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
 function reset!(sim::Simulation)
-    sim.model.clock.time = 0
-    sim.model.clock.last_Δt = Inf
-    sim.model.clock.iteration = 0
-    sim.model.clock.stage = 1
+    reset_clock!(sim.model)
     sim.stop_iteration = Inf
-    sim.stop_time = Inf
+
+    if sim.stop_time isa Number
+        sim.stop_time = Inf
+    elseif sim.stop_time isa AbstractTime
+        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+        sim.stop_time = max_datetime
+    end
+
     sim.wall_time_limit = Inf
     sim.run_wall_time = 0.0
     sim.initialized = false
@@ -183,6 +212,14 @@ function reset!(sim::Simulation)
     reset!(timestepper(sim.model))
     return nothing
 end
+
+# Fallback. Models without clocks should extend this function.
+"""
+    reset_clock!(model::AbstractModel)
+
+Reset `model.clock` to its initial state.
+"""
+reset_clock!(model::AbstractModel) = reset!(model.clock)
 
 #####
 ##### Default stop criteria callback functions
@@ -194,11 +231,11 @@ function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
         if sim.verbose
             msg = string("Model iteration ", iteration(sim), " equals or exceeds stop iteration ", Int(sim.stop_iteration), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -208,11 +245,11 @@ function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
         if sim.verbose
             msg = string("Simulation time ", prettytime(sim), " equals or exceeds stop time ", prettytime(sim.stop_time), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -226,9 +263,23 @@ function wall_time_limit_exceeded(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
 end
 
+#####
+##### Writing output and checkpointing
+#####
+
+# Fallback, to be elaborated on
+write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::Checkpointer, sim::Simulation) = write_output!(writer, sim.model)
+
+#####
+##### Diagnostics
+#####
+
+(c::CFL)(sim::Simulation) = c(sim.model)

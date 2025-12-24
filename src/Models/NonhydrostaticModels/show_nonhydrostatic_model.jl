@@ -1,8 +1,8 @@
-using Oceananigans.Utils: prettytime, ordered_dict_show, prettykeys
+using Oceananigans.Utils: prettytime, prettykeys
 using Oceananigans.TurbulenceClosures: closure_summary
 
 function Base.summary(model::NonhydrostaticModel)
-    A = nameof(typeof(architecture(model.grid)))
+    A = Base.summary(architecture(model.grid))
     G = nameof(typeof(model.grid))
     return string("NonhydrostaticModel{$A, $G}",
                   "(time = ", prettytime(model.clock.time), ", iteration = ", model.clock.iteration, ")")

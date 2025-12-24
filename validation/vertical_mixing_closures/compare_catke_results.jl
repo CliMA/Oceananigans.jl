@@ -69,7 +69,7 @@ v3n  = @lift interior(v_ts[3][$n], 1, 1, :)
 e3n  = @lift interior(e_ts[3][$n], 1, 1, :)
 κᶜ3n = @lift interior(κᶜ_ts[3][$n], 1, 1, :)
 κᵘ3n = @lift interior(κᵘ_ts[3][$n], 1, 1, :)
- 
+
 btitle = @lift begin
     tstr = prettytime(times[$n])
     # mse = mean(($b1n .- $b2n).^2)

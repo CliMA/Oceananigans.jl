@@ -131,30 +131,34 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 end
 
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
-    ξ = FT.(ξ)
+    # Convert to CPU array if needed to avoid scalar indexing errors on GPU arrays
+    ξ_cpu = ξ isa Array ? ξ : Array(ξ)
+    ξ = FT.(ξ_cpu)
 
     ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should have increasing values."))
 
-    # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
+    # Validate the length of ξ: error is ξ is too short, error if ξ is too long.
     Nξ = length(ξ)
     N⁺¹ = N + 1
     if Nξ < N⁺¹
         throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $(N)!"))
     elseif Nξ > N⁺¹
-        msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
-              "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
-        @warn msg
+        throw(ArgumentError("length($dir) = $Nξ has too many interfaces for the dimension size $(N)!"))
     end
 
     return ξ
 end
 
-function validate_dimension_specification(T, ξ::Function, dir, N, FT)
+function validate_dimension_specification(T, ξ::Union{Function, CallableDiscretization}, dir, N, FT)
     ξ(N) ≥ ξ(1) || throw(ArgumentError("$dir should have increasing values."))
     return ξ
 end
 
-validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT) = (FT(ξ[1]), FT(ξ[1]))
+function validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT)
+    # Convert to CPU array if needed to avoid scalar indexing errors on GPU arrays
+    ξ_cpu = ξ isa Array ? ξ : Array(ξ)
+    return (FT(ξ_cpu[1]), FT(ξ_cpu[1]))
+end
 validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) = (FT(ξ(1)), FT(ξ(1)))
 validate_dimension_specification(::Type{Flat}, ξ::Tuple,  dir, N, FT) = map(FT, ξ)
 validate_dimension_specification(::Type{Flat}, ::Nothing, dir, N, FT) = nothing
@@ -193,9 +197,9 @@ function validate_index(idx, loc, topo, N, H)
 end
 
 validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
+validate_index(idx::AbstractRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
 
-function validate_index(idx::UnitRange, loc, topo, N, H)
+function validate_index(idx::AbstractRange, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
     (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx
@@ -209,3 +213,14 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 validate_indices(indices, loc, topo, sz, halo_sz) =
     map(validate_index, indices, map(instantiate, loc), map(instantiate, topo), sz, halo_sz)
 
+# Heuristic for a 3-tuple of indices
+function validate_indices(indices::Tuple{<:Any, <:Any, <:Any}, loc, Topo, sz, halo_sz)
+
+    @inbounds begin
+        i = validate_index(indices[1], instantiate(loc[1]), instantiate(Topo[1]), sz[1], halo_sz[1])
+        j = validate_index(indices[2], instantiate(loc[2]), instantiate(Topo[2]), sz[2], halo_sz[2])
+        k = validate_index(indices[3], instantiate(loc[3]), instantiate(Topo[3]), sz[3], halo_sz[3])
+    end
+
+    return (i, j, k)
+end

@@ -7,7 +7,7 @@ const ConstantSchmidtStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:
     𝕊u = momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure, args...)
     return 𝕊u / Cσe
 end
-        
+
 @inline function dissipation_stability_functionᶜᶜᶠ(i, j, k, grid, closure::ConstantSchmidtStabilityTDVD, args...)
     Cσϵ = closure.stability_functions.Cσϵ
     𝕊u = momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure, args...)
@@ -55,7 +55,9 @@ struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctio
     𝕊u₀ :: FT
 end
 
-function VariableStabilityFunctions(FT=Oceananigans.defaults.FloatType; 
+VariableStabilityFunctions{FT}(; kw...) where FT = VariableStabilityFunctions(FT; kw...)
+
+function VariableStabilityFunctions(FT=Oceananigans.defaults.FloatType;
                                     Cσe = 1.0,
                                     Cσϵ = 1.2,
                                     Cu₀ = 0.1067,
@@ -75,14 +77,14 @@ function VariableStabilityFunctions(FT=Oceananigans.defaults.FloatType;
     if isnothing(𝕊u₀)
         # Compute 𝕊u₀ for the logarithmic boundary layer where production
         # balances dissipation. For more information see the discussion
-        # surrounding equation (13) in Umlauf and Burchard (2003).
+        # surrounding equation (13) by Umlauf and Burchard (2003).
         a = Cd₅ - Cu₂
         b = Cd₂ - Cu₀
         c = Cd₀
         𝕊u₀ = (2a / (-b - sqrt(b^2 - 4a * c)))^(1/4)
     end
 
-    return VariableStabilityFunctions(convert(FT, Cσe),   
+    return VariableStabilityFunctions(convert(FT, Cσe),
                                       convert(FT, Cσϵ),
                                       convert(FT, Cu₀),
                                       convert(FT, Cu₁),

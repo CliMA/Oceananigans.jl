@@ -2,10 +2,9 @@ using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
-using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
+using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
-using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: AbstractSchedule
 using Oceananigans.OutputReaders: auto_extension
 
@@ -15,7 +14,7 @@ using Oceananigans.OutputReaders: auto_extension
 
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
-Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 initialize!(::NoFileSplitting, model) = nothing
 
@@ -48,10 +47,10 @@ Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
 # Update schedule based on user input
 update_file_splitting_schedule!(schedule, filepath) = nothing
 
-function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
+function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     schedule.path = filepath
     return nothing
-end 
+end
 
 """
     ext(ow)
@@ -76,15 +75,18 @@ saveproperty!(file, address, obj) = _saveproperty!(file, address, obj)
 # Generic implementation: recursively unwrap an object.
 _saveproperty!(file, address, obj) = [saveproperty!(file, address * "/$prop", getproperty(obj, prop)) for prop in propertynames(obj)]
 
+const ConstantFields = Union{ConstantField, ZeroField, OneField}
+
 # Some specific things
 saveproperty!(file, address, p::Union{Number, Array}) = file[address] = p
+saveproperty!(file, address, p::ConstantFields)       = file[address] = p
 saveproperty!(file, address, p::AbstractRange)        = file[address] = collect(p)
 saveproperty!(file, address, p::AbstractArray)        = file[address] = Array(parent(p))
 saveproperty!(file, address, p::Function)             = nothing
 saveproperty!(file, address, p::Tuple)                = [saveproperty!(file, address * "/$i", p[i]) for i in 1:length(p)]
 saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, address, on_architecture(CPU(), grid))
 
-function saveproperty!(file, address, grid::DistributedGrid) 
+function saveproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = Partition(arch.ranks...))
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
@@ -93,13 +95,15 @@ end
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
-        bc = getproperty(bcs, endpoint)
-        file[address * "/$endpoint/type"] = bc_str(bc)
+        if !(boundary == :kernels || boundary == :ordered_bcs) # Skip kernels and ordered_bcs.
+            bc = getproperty(bcs, boundary)
+            file[address * "/$boundary/type"] = bc_str(bc)
 
-        if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
-            file[address * "/$boundary/condition"] = missing
-        else
-            file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
+                file[address * "/$boundary/condition"] = missing
+            else
+                file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            end
         end
     end
 end
@@ -125,20 +129,27 @@ serializeproperty!(file, address, p::CantSerializeThis) = nothing
 # TODO: use on_architecture for more stuff?
 serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_architecture(CPU(), grid)
 
-function serializeproperty!(file, address, grid::DistributedGrid) 
+function serializeproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
+function remove_function_bcs(fbcs::FieldBoundaryConditions)
+    west     = has_reference(Function, fbcs.west)     ? missing : fbcs.west
+    east     = has_reference(Function, fbcs.east)     ? missing : fbcs.east
+    south    = has_reference(Function, fbcs.south)    ? missing : fbcs.south
+    north    = has_reference(Function, fbcs.north)    ? missing : fbcs.north
+    bottom   = has_reference(Function, fbcs.bottom)   ? missing : fbcs.bottom
+    top      = has_reference(Function, fbcs.top)      ? missing : fbcs.top
+    immersed = has_reference(Function, fbcs.immersed) ? missing : fbcs.immersed
+    new_fbcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    return new_fbcs
+end
+
 function serializeproperty!(file, address, fbcs::FieldBoundaryConditions)
-    # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
-    # rather than punting with `missing` instead.
-    if has_reference(Function, fbcs)
-        file[address] = missing
-    else
-        file[address] = on_architecture(CPU(), fbcs)
-    end
+    new_fbcs = remove_function_bcs(fbcs)
+    file[address] = on_architecture(CPU(), new_fbcs)
 end
 
 function serializeproperty!(file, address, f::Field)
@@ -166,7 +177,6 @@ end
 
 serializeproperty!(file, address, p::NamedTuple) = [serializeproperty!(file, address * "/$subp", getproperty(p, subp)) for subp in keys(p)]
 serializeproperty!(file, address, s::StructArray) = (file[address] = replace_storage(Array, s))
-serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
 
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
@@ -181,6 +191,13 @@ has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 # Short circuit on fields.
 has_reference(T::Type{Function}, f::Field) =
     has_reference(T, f.data) || has_reference(T, f.boundary_conditions)
+
+# Short circuit on boundary conditions.
+has_reference(T::Type{Function}, bcs::FieldBoundaryConditions) =
+    has_reference(T, bcs.west) || has_reference(T, bcs.east) ||
+    has_reference(T, bcs.south) || has_reference(T, bcs.north) ||
+    has_reference(T, bcs.bottom) || has_reference(T, bcs.top) ||
+    has_reference(T, bcs.immersed)
 
 """
     has_reference(has_type, obj)

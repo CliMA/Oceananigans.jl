@@ -11,7 +11,7 @@ using Oceananigans.Architectures: on_architecture
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.Grids: boundary_node, inactive_node, peripheral_node
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary 
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using CUDA: @allowscalar, device!
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -89,7 +89,7 @@ end
 
 bat = file_bathymetry["bathymetry"]
 boundary = Int.(bat .> 0)
-bat[ bat .> 0 ] .= 0 
+bat[ bat .> 0 ] .= 0
 bat = -bat
 
 # A spherical domain
@@ -182,7 +182,7 @@ model = ShallowWaterModel(grid = grid,
 ##### Initial condition:
 #####
 
-h_init = deepcopy(1e1 .+ maximum(bat) .- bat) 
+h_init = deepcopy(1e1 .+ maximum(bat) .- bat)
 set!(model, h=h_init)
 fill_halo_regions!(model.solution.h)
 
@@ -192,7 +192,7 @@ fill_halo_regions!(model.solution.h)
 ##### Simulation setup
 #####
 
-Δt = 20seconds 
+Δt = 20seconds
 
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
@@ -224,10 +224,10 @@ compute!(ζ)
 
 save_interval = 1days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
-                                                            schedule = TimeInterval(save_interval),
-                                                            filename = output_prefix * "_surface",
-                                                            overwrite_existing = true)
+simulation.output_writers[:surface_fields] = JLD2Writer(model, (; u, v, h, ζ),
+                                                        schedule = TimeInterval(save_interval),
+                                                        filename = output_prefix * "_surface",
+                                                        overwrite_existing = true)
 
 # Let's go!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

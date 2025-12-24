@@ -1,7 +1,7 @@
-using Printf
+using Printf: @sprintf
 using Dates: AbstractTime
 
-using Oceananigans.Units
+using Oceananigans.Units: day, hour, minute
 
 maybe_int(t) = isinteger(t) ? Int(t) : t
 
@@ -19,9 +19,9 @@ minutes, and hours.
 """
 function prettytime(t, longform=true)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
-    
+
     # Some shortcuts
-    s = longform ? "seconds" : "s" 
+    s = longform ? "seconds" : "s"
     iszero(t) && return "0 $s"
     t < 1e-9 && return @sprintf("%.3e %s", t, s) # yah that's small
 

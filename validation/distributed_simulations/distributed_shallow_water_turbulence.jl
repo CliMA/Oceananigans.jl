@@ -34,7 +34,7 @@ simulation = Simulation(model, Δt=1e-3, stop_time=100)
 uh, vh, h = model.solution
 outputs = (; ζ=Field(∂x(vh/h) - ∂y(uh/h)))
 filepath = "mpi_shallow_water_turbulence_rank$(local_rank).nc"
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1), mode="c")
+simulation.output_writers[:fields] = NetCDFWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1), mode="c")
 
 # ?
 MPI.Barrier(arch.communicator)
@@ -50,20 +50,20 @@ if local_rank == 0
     frame = Node(1)
     plot_title = @lift @sprintf("Oceananigans.jl + MPI: 2D turbulence t = %.2f", ds[1]["time"][$frame])
     ζ = [@lift ds[r]["ζ"][:, :, 1, $frame] for r in 1:Nranks]
-    
+
     fig = Figure(size=(1600, 1200))
-    
+
     for rx in 1:ranks[1], ry in 1:ranks[2]
         ax = fig[rx, ry] = Axis(fig)
         r = (ry-1)*ranks[2] + rx
         hm = CairoMakie.heatmap!(ax, ds[r]["xF"], ds[r]["yF"], ζ[r], colormap=:balance, colorrange=(-2, 2))
     end
-    
+
     record(fig, "mpi_shallow_water_turbulence.mp4", 1:length(ds[1]["time"])-1, framerate=30) do n
         @info "Animating MPI turbulence frame $n/$(length(ds[1]["time"]))..."
         frame[] = n
     end
-    
+
     [close(d) for d in ds]
 end
 

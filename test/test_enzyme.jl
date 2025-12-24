@@ -40,7 +40,7 @@ function stable_diffusion!(model, amplitude, diffusivity)
     reset!(model.clock)
     set_diffusivity!(model, diffusivity)
     set_initial_condition!(model, amplitude)
-    
+
     # Do time-stepping
     Nx, Ny, Nz = size(model.grid)
     κ_max = maximum_diffusivity
@@ -107,7 +107,7 @@ function set_initial_condition_via_launch!(model_tracer, amplitude)
 end
 
 function momentum_equation!(model)
-        
+
     # Do time-stepping
     Nx, Ny, Nz = size(model.grid)
     Δz = 1 / Nz
@@ -344,7 +344,7 @@ end
 
     u_truth = deepcopy(model.velocities.u)
     v_truth = deepcopy(model.velocities.v)
-    
+
     # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
     Δν = 1e-6
     ν0 = ν₀

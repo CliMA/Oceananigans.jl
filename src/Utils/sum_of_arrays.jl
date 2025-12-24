@@ -22,10 +22,10 @@ end
 @propagate_inbounds getindex(s::SumOfArrays{1}, i...) = getindex(s.arrays[1], i...)
 @propagate_inbounds getindex(s::SumOfArrays{2}, i...) = getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...)
 
-@propagate_inbounds getindex(s::SumOfArrays{3}, i...) = 
+@propagate_inbounds getindex(s::SumOfArrays{3}, i...) =
     getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...) + getindex(s.arrays[3], i...)
-    
-@propagate_inbounds getindex(s::SumOfArrays{4}, i...) = 
+
+@propagate_inbounds getindex(s::SumOfArrays{4}, i...) =
     getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...) + getindex(s.arrays[3], i...) + getindex(s.arrays[4], i...)
 
 adapt_structure(to, sum::SumOfArrays{N}) where N = SumOfArrays{N}((adapt_structure(to, array) for array in sum.arrays)...)
@@ -40,7 +40,7 @@ const NT = NamedTuple
                                              v = SumOfArrays{2}(U1.v, U2.v),
                                              w = SumOfArrays{2}(U1.w, U2.w))
 
-# 2 - tuple Combinations with `nothing`
+# 2 - tuple Mixeds with `nothing`
 @inline sum_of_velocities(U1::NT, ::Nothing) = U1
 @inline sum_of_velocities(::Nothing, U2::NT) = U2
 
@@ -49,7 +49,7 @@ const NT = NamedTuple
                                                      v = SumOfArrays{3}(U1.v, U2.v, U3.v),
                                                      w = SumOfArrays{3}(U1.w, U2.w, U3.w))
 
-# 3 - tuple Combinations with `nothing`
+# 3 - tuple Mixeds with `nothing`
 @inline sum_of_velocities(U1::NT, U2::NT, ::Nothing) = sum_of_velocities(U1, U2)
 @inline sum_of_velocities(U1::NT, ::Nothing, U3::NT) = sum_of_velocities(U1, U3)
 @inline sum_of_velocities(::Nothing, U2::NT, U3::NT) = sum_of_velocities(U2, U3)

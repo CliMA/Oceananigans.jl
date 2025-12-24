@@ -9,7 +9,7 @@ N = 256
 xy_grid = RegularRectilinearGrid(size = (N, N, 1), halo = (3, 3, 3), extent = (2π, 2π, 2π), topology = (Periodic, Periodic, Bounded))
 xz_grid = RegularRectilinearGrid(size = (N, 1, N), halo = (3, 3, 3), extent = (2π, 2π, 2π), topology = (Periodic, Periodic, Bounded))
 yz_grid = RegularRectilinearGrid(size = (1, N, N), halo = (3, 3, 3), extent = (2π, 2π, 2π), topology = (Periodic, Periodic, Bounded))
-                              
+
 function ten_steps!(model)
     for _ = 1:10
         time_step!(model, 1e-6)
@@ -29,7 +29,7 @@ for arch in (CPU(), GPU())
                                     closure = nothing,
                                     buoyancy = nothing,
                                     tracers = nothing)
-        
+
         time_step!(model, 1e-6) # warmup
 
         @info "Benchmarking $arch model with $(summary(grid))..."

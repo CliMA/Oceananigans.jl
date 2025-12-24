@@ -23,9 +23,9 @@ r2(x, y, xᵥ, yᵥ) = (x - xᵥ)^2 + (y - yᵥ)^2
 function run_test(; Nx, Δt, stop_iteration, U = 0, order,
                   architecture = CPU(), topo = (Periodic, Periodic, Flat))
 
-    β  = 1.0         
+    β  = 1.0
     xᵥ = 5.0
-    yᵥ = 0.0         
+    yᵥ = 0.0
 
     #####
     ##### Test advection of an isoentropic vortex with a VectorInvariantFormulation and a VorticityStencil
@@ -86,7 +86,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
                      mass_advection = WENO(order = order),
                            coriolis = nothing,
                             closure = nothing)
-    
+
     set!(model, uh = (x, y, z) -> (U + δu(x, y, 0, U, β, xᵥ, yᵥ)) * δh(x, y, 0, U, β, xᵥ, yᵥ),
                 vh = (x, y, z) -> δv(x, y, 0, U, β, xᵥ, yᵥ) * δh(x, y, 0, U, β, xᵥ, yᵥ),
                 h  = (x, y, z) -> δh(x, y, 0, U, β, xᵥ, yᵥ))
@@ -154,8 +154,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
             hcf = (simulation = hcf_simulation,
                    analytical = h_analytical,
                            L₁ = hcf_errors.L₁,
-                           L∞ = hcf_errors.L∞),                               
-                           
+                           L∞ = hcf_errors.L∞),
+
                 grid = grid
             )
 end
@@ -180,7 +180,7 @@ function unpack_errors(results)
     ucf_L₁ = map(r -> r.ucf.L₁, results)
     vcf_L₁ = map(r -> r.vcf.L₁, results)
     hcf_L₁ = map(r -> r.hcf.L₁, results)
-    
+
     uvi_L∞ = map(r -> r.uvi.L∞, results)
     vvi_L∞ = map(r -> r.vvi.L∞, results)
     hvi_L∞ = map(r -> r.hvi.L∞, results)
@@ -201,15 +201,15 @@ function unpack_errors(results)
         uvv_L₁,
         vvv_L₁,
         hvv_L₁,
-        
+
         ucf_L₁,
         vcf_L₁,
         hcf_L₁,
-        
+
         uvi_L∞,
         vvi_L∞,
         hvi_L∞,
-        
+
         uvv_L∞,
         vvv_L∞,
         hvv_L∞,

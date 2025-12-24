@@ -104,11 +104,11 @@ function hilly_simulation(; Nx = 64,
     KE = Average(ke, dims=(1, 2, 3))
 
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U, KE));
-                         schedule = TimeInterval(save_interval),
-                         with_halos = true,
-                         filename,
-                         overwrite_existing = true)
+        JLD2Writer(model, merge(model.velocities, model.tracers, (; ξ, U, KE));
+                   schedule = TimeInterval(save_interval),
+                   with_halos = true,
+                   filename,
+                   overwrite_existing = true)
 
     @info "Made a simulation of"
     @show model

@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: znode
 using Oceananigans.TurbulenceClosures: DirectionallyAveragedCoefficient
+using NCDatasets
 using Printf: @printf
 simname = "wall_flow"
 
@@ -56,18 +57,18 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
     ϕ = @show @at (Nothing, Nothing, Center) κ * z / u★ * ∂z(Field(U))
 
     if closure.coefficient isa DirectionallyAveragedCoefficient
-        cₛ² = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
+        cₛ² = model.closure_fields.LM_avg / model.closure_fields.MM_avg
     else
         cₛ² = Field{Nothing, Nothing, Center}(grid)
         cₛ² .= model.closure.coefficient^2
     end
     outputs = (; u, w, U, ϕ, cₛ²)
 
-    simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
-                                                            filename = joinpath(@__DIR__, simname *"_"* closure_name *".nc"),
-                                                            schedule = TimeInterval(1),
-                                                            global_attributes = (; u★, z₀, H, L),
-                                                            overwrite_existing = true)
+    simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
+                                                      filename = joinpath(@__DIR__, simname *"_"* closure_name *".nc"),
+                                                      schedule = TimeInterval(1),
+                                                      global_attributes = (; u★, z₀, H, L),
+                                                      overwrite_existing = true)
     run!(simulation)
 
 end

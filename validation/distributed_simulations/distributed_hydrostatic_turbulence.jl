@@ -4,19 +4,19 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Printf
 using Statistics
 using Oceananigans.BoundaryConditions
-using Oceananigans.DistributedComputations    
+using Oceananigans.DistributedComputations
 using Random
 using JLD2
 
-# Run with 
+# Run with
 #
-# ```julia 
+# ```julia
 #   mpiexec -n 4 julia --project distributed_hydrostatic_turbulence.jl
 # ```
 
 function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     grid = RectilinearGrid(arch; topology, size = (Nx, Ny, 10), extent=(4π, 4π, 0.5), halo=(8, 8, 8))
-    
+
     bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
 
@@ -33,7 +33,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     Random.seed!(1234 * (local_rank + 1))
 
     set!(model, u = (x, y, z) -> 1-2rand(), v = (x, y, z) -> 1-2rand())
-    
+
     mask(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
     c = model.tracers.c
 
@@ -54,8 +54,8 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
 
     filepath = "mpi_hydrostatic_turbulence_rank$(local_rank)"
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
-                         overwrite_existing=true)
+        JLD2Writer(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
+                   overwrite_existing=true)
 
     run!(simulation)
 
@@ -65,14 +65,14 @@ end
 Nx = 32
 Ny = 32
 
-arch = Distributed(CPU(), partition = Partition(2, 2)) 
+arch = Distributed(CPU(), partition = Partition(2, 2))
 
 # Run the simulation
 run_simulation(Nx, Ny, arch)
 
 # Visualize the plane
 # Produce a video for variable `var`
-try 
+try
     using GLMakie
 
     function visualize_simulation(var)
@@ -99,8 +99,8 @@ try
         end
 
         GLMakie.record(fig, "hydrostatic_test_" * var * ".mp4", 1:length(v[1].times), framerate = 11) do i
-            @info "step $i"; 
-            iter[] = i; 
+            @info "step $i";
+            iter[] = i;
         end
     end
 

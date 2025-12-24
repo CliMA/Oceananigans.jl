@@ -76,9 +76,9 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 filename = "surface_wave_induced_flow.jld2"
 outputs = model.velocities
-simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs; filename,
-                                                    schedule = IterationInterval(10),
-                                                    overwrite_existing = true)
+simulation.output_writers[:jld2] = JLD2Writer(model, outputs; filename,
+                                              schedule = IterationInterval(10),
+                                              overwrite_existing = true)
 
 run!(simulation)
 

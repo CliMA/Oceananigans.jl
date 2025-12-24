@@ -7,7 +7,7 @@ isotropic turbulence and diapycnal mixing.
 Base.@kwdef struct CATKEEquation{FT}
     CʰⁱD  :: FT = 0.579 # Dissipation length scale shear coefficient for high Ri
     CˡᵒD  :: FT = 1.604 # Dissipation length scale shear coefficient for low Ri
-    CᵘⁿD  :: FT = 0.923 # Dissipation length scale shear coefficient for high Ri
+    CᵘⁿD  :: FT = 0.923 # Dissipation length scale shear coefficient for negative Ri
     CᶜD   :: FT = 3.254 # Dissipation length scale convecting layer coefficient
     CᵉD   :: FT = 0.0   # Dissipation length scale penetration layer coefficient
     Cᵂu★  :: FT = 3.179 # Surface shear-driven TKE flux coefficient
@@ -69,7 +69,7 @@ end
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
-    
+
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
     #
@@ -137,8 +137,8 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
 
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
-        
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,
                                           north = e_bcs.north,
@@ -146,7 +146,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
                                           east = e_bcs.east,
                                           west = e_bcs.west)
     else
-        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
+        tke_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_tke_bc)
     end
 
     new_boundary_conditions = merge(user_bcs, (; e = tke_bcs))
@@ -156,12 +156,12 @@ end
 
 Base.summary(::CATKEEquation) = "TKEBasedVerticalDiffusivities.CATKEEquation"
 Base.show(io::IO, tke::CATKEEquation) =
-    print(io, "TKEBasedVerticalDiffusivities.CATKEEquation parameters:", '\n',
-              "├── CʰⁱD: ", tke.CʰⁱD, '\n',
-              "├── CˡᵒD: ", tke.CˡᵒD, '\n',
-              "├── CᵘⁿD: ", tke.CᵘⁿD, '\n',
-              "├── CᶜD:  ", tke.CᶜD,  '\n',
-              "├── CᵉD:  ", tke.CᵉD,  '\n',
-              "├── Cᵂu★: ", tke.Cᵂu★, '\n',
-              "└── CᵂwΔ: ", tke.CᵂwΔ)
-
+    print(io, "TKEBasedVerticalDiffusivities.CATKEEquation parameters:\n",
+              "├── Dissipation length scale shear coefficient for high Ri:     CʰⁱD = $(tke.CʰⁱD)\n",
+              "├── Dissipation length scale shear coefficient for low Ri:      CˡᵒD = $(tke.CˡᵒD)\n",
+              "├── Dissipation length scale shear coefficient for negative Ri: CᵘⁿD = $(tke.CᵘⁿD)\n",
+              "├── Dissipation length scale convecting layer coefficient:      CᶜD  = $(tke.CᶜD)\n",
+              "├── Dissipation length scale penetration layer coefficient:     CᵉD  = $(tke.CᵉD)\n",
+              "├── Surface shear-driven TKE flux coefficient:                  Cᵂu★ = $(tke.Cᵂu★)\n",
+              "├── Surface convective TKE flux coefficient:                    CᵂwΔ = $(tke.CᵂwΔ)\n",
+              "└── Dissipative near-bottom TKE flux coefficient:               Cᵂϵ  = $(tke.Cᵂϵ)")

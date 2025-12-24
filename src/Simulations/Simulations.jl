@@ -7,18 +7,17 @@ export Callback, add_callback!
 export iteration
 
 using Oceananigans
-using Oceananigans.Models
-using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
 using Oceananigans.Utils
 
-using Oceananigans.Advection: cell_advection_timescale
-using Oceananigans: AbstractDiagnostic, AbstractOutputWriter, fields
+using Oceananigans.Advection: Advection
+using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
 
 using OrderedCollections: OrderedDict
 
-import Base: show
+# To be extended in the `Models` module
+timestepper(model) = nothing
 
 include("callback.jl")
 include("simulation.jl")

@@ -5,7 +5,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSo
 using Printf
 
 grid = RectilinearGrid(CPU(),
-                       topology = (Periodic, Bounded, Bounded), 
+                       topology = (Periodic, Bounded, Bounded),
                        size = (128, 128, 16),
                        x = (-500kilometers, 500kilometers),
                        y = (-500kilometers, 500kilometers),
@@ -105,17 +105,17 @@ u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
 
 
-simulation.output_writers[:surface] = JLD2OutputWriter(model, (; ζ, b, c),
-                                                       schedule = TimeInterval(1hour),
-                                                       indices = (:, :, grid.Nz),
-                                                       filename =name * "_slices",
-                                                       overwrite_existing = true)
+simulation.output_writers[:surface] = JLD2Writer(model, (; ζ, b, c),
+                                                 schedule = TimeInterval(1hour),
+                                                 indices = (:, :, grid.Nz),
+                                                 filename =name * "_slices",
+                                                 overwrite_existing = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                      schedule = TimeInterval(10days),
-                                                      with_halos = false,
-                                                      filename = name * "_fields",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                schedule = TimeInterval(10days),
+                                                with_halos = false,
+                                                filename = name * "_fields",
+                                                overwrite_existing = true)
 
 run!(simulation)
 
@@ -144,7 +144,7 @@ n = slider.value
 xζ, yζ, zζ = 1e-3 .* nodes((Face, Face, Center), grid)
 xc, yc, zc = 1e-3 .* nodes((Center, Center, Center), grid)
 
-ζⁿ = @lift interior(ζt[$n], :, :, 1)  
+ζⁿ = @lift interior(ζt[$n], :, :, 1)
 bⁿ = @lift interior(bt[$n], :, :, 1)
 cⁿ = @lift interior(ct[$n], :, :, 1)
 
