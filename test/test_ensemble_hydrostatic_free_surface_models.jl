@@ -20,7 +20,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
     Δt = 0.01
 
-    model_kwargs = (tracers=:c, momentum_advection=nothing, tracer_advection=nothing; closure, coriolis)
+    model_kwargs = (; tracers=:c, momentum_advection=nothing, tracer_advection=nothing, closure, coriolis)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
     sic_model = HydrostaticFreeSurfaceModel(; grid=single_column_grid, model_kwargs...)
