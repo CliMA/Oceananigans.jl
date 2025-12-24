@@ -8,9 +8,7 @@ using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
                                        cell_diffusion_timescale, formulation, min_Δxyz
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
-                                       viscous_flux_vx, viscous_flux_vy, viscous_flux_vz,
-                                       viscous_flux_wx, viscous_flux_wy, viscous_flux_wz
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
 
 using Oceananigans.TurbulenceClosures: ScalarDiffusivity,
                                        ScalarBiharmonicDiffusivity,
@@ -197,7 +195,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer_advection = nothing,
-                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
+                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b))
 
     # set random velocities
     Random.seed!(1234)
@@ -231,14 +229,16 @@ function run_time_step_with_catke_tests(arch, closure, timestepper)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
 
-    # These shouldn't work (need :e in tracers)
-    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=:b)
-    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=(:b, :E))
+    @test HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=:b) isa HydrostaticFreeSurfaceModel
+    @test HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=(:b, :E)) isa HydrostaticFreeSurfaceModel
 
     # CATKE isn't supported with NonhydrostaticModel (we don't diffuse vertical velocity)
     @test_throws ErrorException NonhydrostaticModel(; grid, closure, buoyancy, tracers=(:b, :c, :e))
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, timestepper, tracers = (:b, :c, :e))
+    # Supplying closure tracers explicitly should error
+    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :c, :e))
+
+    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :c))
 
     # Default boundary condition is Flux, Nothing... with CATKE this has to change.
     @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})

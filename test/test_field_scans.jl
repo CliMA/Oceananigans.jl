@@ -3,9 +3,8 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
+using Oceananigans.Fields: CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Grids: halo_size
 
 trilinear(x, y, z) = x + y + z
 interior_array(a, i, j, k) = Array(interior(a, i, j, k))
