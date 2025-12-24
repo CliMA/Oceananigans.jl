@@ -103,7 +103,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     vertical_coordinate :: Z    # Rulesets that define the time-evolution of the grid
 end
 
-default_free_surface(grid; gravitational_acceleration=g_Earth, args...) =
+default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acceleration, args...) =
     SplitExplicitFreeSurface(grid; cfl=0.7, gravitational_acceleration)
 
 # A heuristic computation of a possible maximum Δt for a HydrostaticFreeSurfaceModel, 
