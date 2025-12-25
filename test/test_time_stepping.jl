@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using TimesDates: TimeDate
-using Oceananigans.Grids: topological_tuple_length, total_size
+using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
@@ -59,14 +59,10 @@ function time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, F
 end
 
 function time_stepping_works_with_closure(arch, FT, Closure; Model=NonhydrostaticModel, buoyancy=BuoyancyForce(SeawaterBuoyancy(FT)))
-    # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
-    tracers = [:T, :S]
-    Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
-
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     closure = Closure === IsopycnalSkewSymmetricDiffusivity ? Closure(FT, κ_skew=1, κ_symmetric=1) : Closure(FT)
-    model = Model(; grid, closure, tracers, buoyancy)
+    model = Model(; grid, closure, tracers=(:T, :S), buoyancy)
     time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -359,7 +355,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     C = nameof(typeof(closure))
                     @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
 
-                    tracers = (:b, :c, :e, :ϵ)
+                    tracers = (:b, :c)
                     clock = Clock(; time=DateTime(2020, 1, 1))
                     grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
                     @test eltype(grid) == FT

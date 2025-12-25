@@ -324,7 +324,7 @@ grid = RectilinearGrid(size=(32, 32, 32), x=(-10, 10), y=(-10, 10), z=(-4, 4),
                        topology=(Periodic, Periodic, Bounded))
 
 no_penetration = ImpenetrableBoundaryCondition()
-slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
+slip_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()),
                                    top=no_penetration, bottom=no_penetration)
 
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)

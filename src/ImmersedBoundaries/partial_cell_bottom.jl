@@ -95,14 +95,13 @@ end
         z⁻ = rnode(i, j, k,   grid, c, c, f)
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
-        bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
-        capped_zb   = min(z⁺ - ϵ * Δz, zb)
+        bottom_cell = z⁻ ≤ adjusted_zb < z⁺
+        capped_zb   = min(z⁺ - ϵ * Δz, adjusted_zb)
 
         # If the size of the bottom cell is less than ϵ Δz,
         # we enforce a minimum size of ϵ Δz.
-        adjusted_zb = ifelse(bottom_cell, capped_zb, zb)
+        adjusted_zb = ifelse(bottom_cell, capped_zb, adjusted_zb)
     end
-
     @inbounds bottom_field[i, j, 1] = adjusted_zb
 end
 
