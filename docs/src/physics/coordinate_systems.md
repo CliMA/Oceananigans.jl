@@ -29,16 +29,15 @@ We use ``\boldsymbol{u} = u \boldsymbol{\hat x} + v \boldsymbol{\hat y}`` to den
 
 ## Geographic coordinates
 
-Geographic (or spherical) coordinates ``(\lambda, \phi, z)`` represent longitude, latitude, and
+Geographic (or spherical) coordinates ``(λ, φ, z)`` represent longitude, latitude, and
 the vertical coordinate and are used by [`LatitudeLongitudeGrid`](@ref) and [`OrthogonalSphericalShellGrid`](@ref).
-The corresponding unit vectors are ``\boldsymbol{\hat \lambda}`` (eastward),
-``\boldsymbol{\hat \phi}`` (northward), and ``\boldsymbol{\hat z}`` (upward, radially outward
-from the center of the sphere).
+The corresponding unit vectors are ``\boldsymbol{\hat λ}`` (eastward), ``\boldsymbol{\hat φ}`` (northward),
+and ``\boldsymbol{\hat z}`` (upward, radially outward from the center of the sphere).
 
 The velocity components in geographic coordinates are ``(u, v, w)``
 where ``u`` is the eastward velocity, ``v`` is the northward velocity, and ``w`` is the vertical velocity:
 ```math
-\boldsymbol{v} = u \boldsymbol{\hat \lambda} + v \boldsymbol{\hat \phi} + w \boldsymbol{\hat z} \, .
+\boldsymbol{v} = u \boldsymbol{\hat λ} + v \boldsymbol{\hat φ} + w \boldsymbol{\hat z} \, .
 ```
 
 ## Intrinsic coordinates on `OrthogonalSphericalShellGrid`
@@ -47,7 +46,7 @@ While [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@ref) have extrins
 that coincide, the [`OrthogonalSphericalShellGrid`](@ref) also possesses an _intrinsic_ coordinate system
 that is associated with the local grid directions.
 
-The intrinsic coordinate system on `OrthogonalSphericalShellGrid` is defined by the orientation of the grid
+The intrinsic coordinate system on an `OrthogonalSphericalShellGrid` is defined by the orientation of the grid
 lines at each point. This intrinsic system may be rotated relative to the extrinsic geographic
 coordinates (latitude and longitude). Vectors such as C-grid velocity components ``(u, v)``,
 momentum fluxes, and other vector quantities are represented in the intrinsic coordinate system,
@@ -61,4 +60,3 @@ convert vectors between these two coordinate systems:
 
 For example, to set velocities on an `OrthogonalSphericalShellGrid` from geographic velocity data,
 the velocities must first be rotated from geographic to intrinsic coordinates.
-
