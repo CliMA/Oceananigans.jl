@@ -132,7 +132,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                z,
                                topology = nothing,
                                radius = Oceananigans.defaults.planet_radius,
-                               halo = nothing)
+                               halo = (3, 3, 3))
 
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
