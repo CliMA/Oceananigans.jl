@@ -16,6 +16,7 @@ docs/build
 docs/site
 docs/src/literated
 docs/Manifest.toml
+docs/src/developer_docs/AGENTS.md
 
 # Model output
 *.dat
