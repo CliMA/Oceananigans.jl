@@ -284,7 +284,7 @@ julia> using Oceananigans
 julia> using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
 
 julia> IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
-IsopycnalSkewSymmetricDiffusivity: (κ_symmetric=1000.0, κ_skew=1000.0, (isopycnal_tensor=Oceananigans.TurbulenceClosures.SmallSlopeIsopycnalTensor{Float64}(0.0), slope_limiter=Oceananigans.TurbulenceClosures.FluxTapering{Float64}(0.01))
+IsopycnalSkewSymmetricDiffusivity: (κ_symmetric=1000.0, κ_skew=1000.0, (isopycnal_tensor=Oceananigans.TurbulenceClosures.SmallSlopeIsopycnalTensor{Float64}(0.0), slope_limiter=FluxTapering{Float64}(0.01))
 ```
 
 The `κ_skew` parameter controls the eddy-induced (bolus) transport, while `κ_symmetric`
