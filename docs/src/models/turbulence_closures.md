@@ -1,4 +1,4 @@
-# [Turbulence closures](@id turbulence_closures)
+# [Turbulence closures, viscosities, and diffusivities](@id turbulence_closures)
 
 When a turbulence closure is added to the constructor of either [`NonhydrostaticModel`](@ref) or
 [`HydrostaticFreeSurfaceModel`](@ref) via the keyword argument `closure`, it contributes a diffusive
