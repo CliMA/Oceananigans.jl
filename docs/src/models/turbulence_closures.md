@@ -104,7 +104,8 @@ for large eddy simulation (LES).
 ### `SmagorinskyLilly`
 
 [`SmagorinskyLilly`](@ref) computes an eddy viscosity from the resolved strain rate
-with a buoyancy-based stability correction:
+with a buoyancy-based stability correction, following the classic work of
+[Smagorinsky1958](@citet), [Smagorinsky63](@citet), [Lilly62](@citet), and [Lilly66](@citet):
 
 ```jldoctest
 julia> using Oceananigans
@@ -117,7 +118,8 @@ Smagorinsky closure with
 
 ### `DynamicSmagorinsky`
 
-[`DynamicSmagorinsky`](@ref) dynamically computes the Smagorinsky coefficient from the resolved flow.
+[`DynamicSmagorinsky`](@ref) dynamically computes the Smagorinsky coefficient from the resolved flow,
+using the scale-invariant procedure described by [BouZeid05](@citet).
 Two averaging methods are available:
 
 **Lagrangian averaging** (default): averages along fluid parcel trajectories:
@@ -149,15 +151,16 @@ DynamicSmagorinsky{Float64}:
 
 ### `AnisotropicMinimumDissipation`
 
-[`AnisotropicMinimumDissipation`](@ref) is an LES closure based on the minimum dissipation principle:
+[`AnisotropicMinimumDissipation`](@ref) is an LES closure based on the minimum dissipation principle,
+as developed by [Verstappen14](@citet), [Rozema15](@citet), [Abkar16](@citet), and [Verstappen18](@citet):
 
 ```jldoctest
 julia> using Oceananigans
 
 julia> AnisotropicMinimumDissipation()
 AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
-           Poincaré constant for momentum eddy viscosity Cν: 0.3333333333333333
-    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.3333333333333333
+           Poincaré constant for momentum eddy viscosity Cν: 0.3333333333333333
+    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.3333333333333333
                         Buoyancy modification multiplier Cb: nothing
 ```
 
@@ -181,7 +184,8 @@ ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(ba
 ### `CATKEVerticalDiffusivity`
 
 [`CATKEVerticalDiffusivity`](@ref) is a TKE-based closure for vertical mixing by small-scale
-ocean turbulence. It uses a prognostic equation for turbulent kinetic energy (the `:e` tracer).
+ocean turbulence, as described by [Wagner25catke](@citet).
+It uses a prognostic equation for turbulent kinetic energy (the `:e` tracer).
 
 !!! note "HydrostaticFreeSurfaceModel only"
     `CATKEVerticalDiffusivity` is currently only supported by `HydrostaticFreeSurfaceModel`.
@@ -233,6 +237,8 @@ CATKEVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 
 [`TKEDissipationVerticalDiffusivity`](@ref) is a two-equation closure (k-ε) for vertical mixing
 that uses prognostic equations for both turbulent kinetic energy (`:e`) and its dissipation rate (`:ϵ`).
+For more information about k-ε closures, see [burchard2001comparative](@citet),
+[umlauf2003generic](@citet), and [umlauf2005second](@citet).
 
 !!! note "HydrostaticFreeSurfaceModel only"
     `TKEDissipationVerticalDiffusivity` is currently only supported by `HydrostaticFreeSurfaceModel`.
@@ -270,13 +276,14 @@ TKEDissipationVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
     ├── Cd₂: 0.02872
     ├── Cd₃: 0.005154
     ├── Cd₄: 0.00693
-    └── Cd₅: -0.0003372
+    └── Cd₅: -0.0003372    
 ```
 
 ### `IsopycnalSkewSymmetricDiffusivity`
 
 [`IsopycnalSkewSymmetricDiffusivity`](@ref) parameterizes mesoscale eddies using the
-Gent-McWilliams/Redi scheme. This closure requires to be imported from `TurbulenceClosures`:
+Gent-McWilliams/Redi scheme, as developed by [GentMcWilliams90](@citet) and [Redi82](@citet).
+This closure requires to be imported from `TurbulenceClosures`:
 
 ```jldoctest
 julia> using Oceananigans

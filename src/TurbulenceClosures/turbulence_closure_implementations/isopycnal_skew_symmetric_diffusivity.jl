@@ -46,6 +46,9 @@ calculated isopycnal slope values. The skew fluxes can be computed using either 
 or the `DiffusiveFormulation`.
 
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
+
+This closure implements the mesoscale eddy parameterization developed by
+[Gent and McWilliams (1990)](@cite GentMcWilliams90) and [Redi (1982)](@cite Redi82).
 """
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = nothing,
