@@ -3,7 +3,7 @@ module OutputWriters
 export
     JLD2Writer, NetCDFWriter, written_names,
     Checkpointer, WindowedTimeAverage, FileSizeLimit,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -26,6 +26,7 @@ Base.close(ow::AbstractOutputWriter) = nothing
 
 include("output_writer_utils.jl")
 include("fetch_output.jl")
+include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
