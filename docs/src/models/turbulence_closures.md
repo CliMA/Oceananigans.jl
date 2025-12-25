@@ -69,7 +69,7 @@ This is useful for resolution-dependent coefficients.
 For example, to set ``\nu = A^2 / \lambda`` where ``A`` is the grid cell area and ``\lambda``
 is a damping timescale:
 
-```jldoctest closures; filter = r"typeof\(.*\)"
+```jldoctest closures
 julia> using Oceananigans, Oceananigans.Units
 
 julia> @inline νhb(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, λ) =
@@ -270,7 +270,7 @@ TKEDissipationVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
     ├── Cd₂: 0.02872
     ├── Cd₃: 0.005154
     ├── Cd₄: 0.00693
-    └── Cd₅: -0.0003372    
+    └── Cd₅: -0.0003372
 ```
 
 ### `IsopycnalSkewSymmetricDiffusivity`
