@@ -295,7 +295,7 @@ controls along-isopycnal diffusion.
 A typical hydrostatic simulation might combine resolution-dependent horizontal biharmonic
 viscosity with a TKE-based vertical mixing scheme:
 
-```jldoctest closures; filter = r"typeof\(.*\)"
+```jldoctest closures
 julia> horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=5days)
 ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=0.0)
 
