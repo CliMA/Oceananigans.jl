@@ -38,7 +38,8 @@ function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMappin
         adapt(to, conformal_mapping.ξᶠᵃᵃ),
         adapt(to, conformal_mapping.ηᵃᶠᵃ),
         adapt(to, conformal_mapping.ξᶜᵃᵃ),
-        adapt(to, conformal_mapping.ηᵃᶜᵃ))
+        adapt(to, conformal_mapping.ηᵃᶜᵃ)
+    )
 end
 
 const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =

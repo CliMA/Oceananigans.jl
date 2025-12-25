@@ -9,7 +9,11 @@ struct MultiRegionObject{R}
     regional_objects :: R
 end
 
-Base.eltype(mo::MultiRegionObject) = eltype(first(mo.regional_objects))
+function Base.summary(mo::MultiRegionObject)
+    obj = summary(first(mo.regional_objects))
+    N = length(mo.regional_objects)
+    return "MultiRegionObject with $N × $obj"
+end
 
 #####
 ##### Convenience structs
