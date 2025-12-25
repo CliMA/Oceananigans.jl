@@ -1,10 +1,10 @@
 # [Turbulence closures](@id turbulence_closures)
 
-When added to the constructor of [`NonhydrostaticModel`](@ref) or [`HydrostaticFreeSurfaceModel`](@ref)
-via the keyword argument `closure`, a turbulence closure contributes a diffusive flux divergence to the
-tendency of momentum and tracer equations, and typically represents the effects of turbulent processes
-that are not explicitly resolved. Turbulence closures can also represent molecular viscosity and
-diffusion of heat, salt, and other tracers.
+When a turbulence closure is added to the constructor of either [`NonhydrostaticModel`](@ref) or
+[`HydrostaticFreeSurfaceModel`](@ref) via the keyword argument `closure`, it contributes a diffusive
+flux divergence to the tendency of momentum and tracer equations, and typically represents the
+effects of turbulent processes that are not explicitly resolved. Turbulence closures can also
+represent molecular viscosity and diffusion of heat, salt, or other tracers.
 
 Below we detail available options for turbulence closures. A `tuple` of closures can be used to
 represent multiple closures added together.
@@ -46,9 +46,9 @@ julia> ScalarDiffusivity(ν=1e-6, κ=(S=1e-7, T=1e-10))
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=(S=1.0e-7, T=1.0e-10))
 ```
 
-This sets a viscosity of `1e-6`, and diffusivities for tracers `T` and `S` of `1e-7` and `1e-10`.
-This method is valid for all scalar diffusivity closures. This pattern of `NamedTuple` for
-tracer-specific values is used in other closures as well.
+The above sets a viscosity of `1e-6`, and diffusivities for tracers `T` and `S` of `1e-7`
+and `1e-10` respectively. This method is valid for all scalar diffusivity closures.
+This pattern of `NamedTuple` for tracer-specific values is used in other closures as well.
 
 ### Biharmonic diffusivity
 
@@ -66,7 +66,7 @@ ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=1.0e8, κ=1.0e8)
 
 Viscosity or diffusivity can be specified as a discrete function of grid indices and model state.
 This is useful for resolution-dependent coefficients.
-For example, to set ``\nu = A^2 / \lambda`` where ``A`` is the grid cell area and ``\lambda``
+For example, we can set ``\nu = A^2 / \lambda``, where ``A`` is the grid cell area and ``\lambda``
 is a damping timescale:
 
 ```jldoctest closures
@@ -276,7 +276,7 @@ TKEDissipationVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ### `IsopycnalSkewSymmetricDiffusivity`
 
 [`IsopycnalSkewSymmetricDiffusivity`](@ref) parameterizes mesoscale eddies using the
-Gent-McWilliams/Redi scheme. This closure requires import from `TurbulenceClosures`:
+Gent-McWilliams/Redi scheme. This closure requires to be imported from `TurbulenceClosures`:
 
 ```jldoctest
 julia> using Oceananigans
