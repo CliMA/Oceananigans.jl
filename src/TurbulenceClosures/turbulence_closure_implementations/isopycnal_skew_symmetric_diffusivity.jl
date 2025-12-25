@@ -349,12 +349,14 @@ end
 #####
 
 Base.summary(closure::ISSD) = string("IsopycnalSkewSymmetricDiffusivity",
-                                     "(κ_skew=",
-                                     prettysummary(closure.κ_skew),
+                                     "(κ_skew=", prettysummary(closure.κ_skew),
                                      ", κ_symmetric=", prettysummary(closure.κ_symmetric), ")")
 
-Base.show(io::IO, closure::ISSD) =
-    print(io, "IsopycnalSkewSymmetricDiffusivity: " *
-              "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
-              "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
+function Base.show(io::IO, closure::ISSD)
+    print(io, "IsopycnalSkewSymmetricDiffusivity:", '\n',
+              "├── κ_skew: ", prettysummary(closure.κ_skew), '\n',
+              "├── κ_symmetric: ", prettysummary(closure.κ_symmetric), '\n',
+              "├── isopycnal_tensor: ", summary(closure.isopycnal_tensor), '\n',
+              "└── slope_limiter: ", summary(closure.slope_limiter))
+end
 
