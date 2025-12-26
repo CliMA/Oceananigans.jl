@@ -274,5 +274,5 @@ prototyping -- never in production-ready scripts.
 You might also need to keep these differences in mind when using arrays
 to define initial conditions, boundary conditions or
 forcing functions on a GPU. To learn more about working with `CuArray`s, see the
-[array programming](https://cuda.juliagpu.org/dev/usage/array/) section
+[array programming](https://cuda.juliagpu.org/stable/usage/array/) section
 of the CUDA.jl documentation.
