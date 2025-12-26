@@ -148,12 +148,12 @@ the boundary adjacent center point becoming divergent so open boundaries are onl
 predictor velocity and stay the same after the pressure correction (so the boundary point is filled
 with the final corrected velocity at the predictor step).
 
-The restriction arrises as the boundary condition is specifying the wall normal velocity,
+The restriction arises as the boundary condition is specifying the wall normal velocity,
 ``\hat{\boldsymbol{n}}\cdot\boldsymbol{u}``, which leads to the pressure boundary condition
 ```math
     \begin{equation}
     \label{eq:pressure_boundary_condition}
-    \Delta t \, \hat{\boldsymbol{n}}\cdot\boldsymbol{\nabla}p^{n+1}\big |_{\partial\Omega} = \left[\Delta t \, \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^\star - \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^{n+1}\right],
+    \Delta t \, \hat{\boldsymbol{n}} \cdot \boldsymbol{\nabla} p^{n+1} \big |_{\partial\Omega} = \left[\Delta t \, \hat{\boldsymbol{n}} \cdot \boldsymbol{u}^\star - \hat{\boldsymbol{n}} \cdot \boldsymbol{u}^{n+1} \right],
     \end{equation}
 ```
 implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson
@@ -179,14 +179,14 @@ corrected field,
 ```math
     \begin{equation}
     \label{eq:quasi_predictor_velocity}
-    \tilde{\boldsymbol{u}}^\star:=\boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
+    \tilde{\boldsymbol{u}}^\star := \boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
     \end{equation}
 ```
-The modified pressure poisson equation becomes ``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\tilde{\boldsymbol{u}}^\star}{\Delta t}``
+The modified pressure Poisson equation becomes ``\nabla^2 p^{n+1} = \frac{\boldsymbol{\nabla} \cdot \tilde{\boldsymbol{u}}^\star}{\Delta t}``
 which can easily be solved.
 
 Perhaps a more intuitive way to consider this is to recall that the corrector step projects ``\boldsymbol{u}^\star``
-to the space of divergenece free velocity by applying
+to the space of divergence free velocity by applying
 ```math
     \begin{equation}
     \label{eq:pressure_correction_step}
@@ -201,7 +201,7 @@ For simple open boundary conditions such as no penetration or a straight forward
 a known velocity at ``t^{n+1}`` this is simple to implement as we just set the boundary condition
 on the predictor velocity and don't change it after the correction. But some open boundary methods
 calculate the boundary value based on the interior solution. As a simple example, if we wanted to
-set the wall normal veloicty gradient to zero at the west boundary then we would set the boundary
+set the wall normal velocity gradient to zero at the west boundary then we would set the boundary
 point to
 ```math
     \begin{equation}
@@ -213,58 +213,58 @@ but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` err
 ```math
     \begin{align}
     u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{jk4}) / 2 + \mathcal{O}(\Delta x^2),\\
-    &= u^\star_{1jk} - \Delta t \left(\boldsymbol{\nabla}p^{n+1}_{3jk} + (\boldsymbol{\nabla}p^{n+1}_{2jk} - \boldsymbol{\nabla}p^{n+1}_{4jk}) / 2\right) + \mathcal{O}(\Delta x^2),\\
+    &= u^\star_{1jk} - \Delta t \left(\boldsymbol{\nabla} p^{n+1}_{3jk} + (\boldsymbol{\nabla} p^{n+1}_{2jk} - \boldsymbol{\nabla} p^{n+1}_{4jk}) / 2 \right) + \mathcal{O}(\Delta x^2),\\
     &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
     \end{align}
 ```
-This is prefered to a divergent interior solution as open boundary conditions (except no penetration)
-are typlically already unphysical and only used in an attempt to allow information to enter or exit
+This is preferred to a divergent interior solution as open boundary conditions (except no penetration)
+are typically already unphysical and only used in an attempt to allow information to enter or exit
 the domain.
 
 Open boundary conditions are represented by the [`Open`](@ref) type.
 
 ## Open boundary condition "schemes"
 
-Except for trivial cases (i.e. no-penetration) the velocity on the boundary point has to be 
-approximated as it is outside the computed domain. There is insufficient information to step the 
+Except for trivial cases (i.e. no-penetration) the velocity on the boundary point has to be
+approximated as it is outside the computed domain. There is insufficient information to step the
 full equation of motion as gradients across the boundary can not be computed and simply prescribing
 a boundary normal velocity is unphysical and reflects energy leaving the domain [Orlanksi1976](@citep).
 
-### Perturbation advection 
+### Perturbation advection
 
-A common method for allowing information to exit is to perform a one-sided advection operation. 
-For example in the [Orlanksi1976](@citet) boundary condition fields are advected out of the domain by a 
-locally determined phase speed. We can show that this is the first order approximation of the full equations
-of motion in the predictor velocity step. Consider a right boundary normal to the `u` velocity 
+A common method for allowing information to exit is to perform a one-sided advection operation.
+For example, in the [Orlanksi1976](@citet) boundary condition fields are advected out of the domain by a
+locally determined phase speed. We can show that this is the first-order approximation of the full equations
+of motion in the predictor velocity step. Consider a right boundary normal to the `u` velocity
 component (the east boundary):
 ```math
-    \partial_tu + u\partial_xu + v\partial_yu + w\partial_zu = (\nabla\cdot\vec{\tau})_x + F,
+    \partial_t u + u \partial_x u + v \partial_y u + w \partial_z u = (\boldsymbol{\nabla} \cdot \boldsymbol{\tau})_x + F,
 ```
-let ``\vec{u} = \vec{U} + \vec{u}\prime`` with ``\vec{U} = U(x, y, z, t)\hat{x}`` where ``U`` is an externally
-determined ``background" wall-normal flow in the proximity of the boundary, and assume that the 
-stress tensor gradient is small,
+let ``\boldsymbol{u} = \boldsymbol{U} + \boldsymbol{u}\prime`` with ``\boldsymbol{U} = U(x, y, z, t) \hat{boldsymbol{x}}``
+where ``U`` is an externally determined ``background" wall-normal flow in the proximity of the boundary,
+and assume that the stress tensor gradient is small,
 ```math
-    \partial_tu = -(U + u\prime)\partial_x(U+u\prime) - v\partial_y(U+u\prime) - w\partial_z(U + u\prime) + F,
+    \partial_t u = -(U + u\prime) \partial_x(U + u\prime) - v \partial_y (U + u\prime) - w \partial_z (U + u\prime) + F,
 ```
 then, taking only first-order terms:
 ```math
-    \partial_tu = -U\partial_x u\prime - v\partial_yU - w\partial_zU + F.
+    \partial_t u = -U \partial_x u\prime - v\partial_y U - w \partial_z U + F.
 ```
-Now consider the dominant forcing to be relaxation to the background state (we will explain why later) so 
-that ``F = (U - u)/\tau``, and recall that when we compute the boundary normal point the interior domain is
+Now consider the dominant forcing to be relaxation to the background state (we will explain why later) so
+that ``F = (U - u) / \tau``, and recall that when we compute the boundary normal point the interior domain is
 already stepped, we can take an upwind backward Euler step:
 ```math
-    \frac{u^{n+1} - u^n}{\Delta t} = -\max(0, U)\frac{u^{n+1}_i - u^{n+1}_{i-1}}{\Delta x} - \min(0, U) \frac{u^{n+1}_{i+1} - u^{n+1}_{i}}{\Delta x} - v^{n+1}\partial_yU - w^{n+1}\partial_zU + \frac{U - u^{n+1}}{\tau},
+    \frac{u^{n+1} - u^n}{\Delta t} = -\max(0, U)\frac{u^{n+1}_i - u^{n+1}_{i-1}}{\Delta x} - \min(0, U) \frac{u^{n+1}_{i+1} - u^{n+1}_{i}}{\Delta x} - v^{n+1}\partial_y U - w^{n+1} \partial_z U + \frac{U - u^{n+1}}{\tau},
 ```
-where ``i`` is the boundary point and ``v`` and ``w`` are interpolated to the boundary point. Of course if ``U<0`` 
-(i.e. it is directed into the domain), then we need ``u_{i+1}`` which is outside of the domain, so this scheme 
-cannot be used. We therefore disregard this term, taking ``\bar{U} = \max(0, U)\Delta t/ \Delta x`` and 
-``\bar{\tau} = \Delta t/\tau``, and rearranging we recover:
+where ``i`` is the boundary point and ``v`` and ``w`` are interpolated to the boundary point. Of course if ``U<0``
+(i.e. it is directed into the domain), then we need ``u_{i+1}`` which is outside of the domain, so this scheme
+cannot be used. We therefore disregard this term, taking ``\bar{U} = \max(0, U)\Delta t / \Delta x`` and
+``\bar{\tau} = \Delta t / \tau``, and rearranging we recover:
 ```math
-    u^{n+1} = \frac{u^{n} + \bar{U}u^{n+1}_{i-1} + U\bar{\tau} - v^{n+1}\Delta t\partial_yU - w^{n+1}\Delta t\partial_z U}{1 + \bar{\tau} + \bar{U}}.
+    u^{n+1} = \frac{u^{n} + \bar{U} u^{n+1}_{i-1} + U\bar{\tau} - v^{n+1} \Delta t \partial_y U - w^{n+1} \Delta t \partial_z U}{1 + \bar{\tau} + \bar{U}}.
 ```
-For numerical stability, we also need to apply a CFL like constraint and set ``\bar{U} = \min(1, \max(0, U)\Delta t/ \Delta x)``.
+For numerical stability, we also need to apply a CFL-like constraint and set ``\bar{U} = \min(1, \max(0, U) \Delta t / \Delta x)``.
 
 Previously we considered the dominant forcing to be relaxation to ``U`` so that we can take the backward Euler
-step. And because it is useful to prescribe relaxation on the boundary both to damp numerical oscillations, 
+step. And because it is useful to prescribe relaxation on the boundary both to damp numerical oscillations,
 and to prevent inconsistency when ``U`` is directed into the domain.
