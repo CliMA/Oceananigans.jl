@@ -119,7 +119,7 @@ conjure_time_step_wizard!(simulation, cfl=0.5)
 # Wall clock represents the real world time as opposed to simulation time
 wall_clock = Ref(time_ns())
 
-# Define callback function to log simulation iterations and time every 2 mins in simulation time
+# Define callback function to show how the simulation is progressing alongside with some flow statistics.
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
     msg = @sprintf("Iter: %6d, time: %s, Δt: %s, wall: %s, max|w| = %6.3e m s⁻¹",
