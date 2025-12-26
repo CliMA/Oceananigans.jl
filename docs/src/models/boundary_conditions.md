@@ -365,7 +365,7 @@ As discussed in [the numerical description of open boundary conditions](@ref num
 on open boundaries to approximate the behaviour of the boundary nodes given the interior state
 and specified external conditions. For example if we want to specify an outflowing boundary
 with a mean velocity ``U=1`` and damp the exiting flow to this speed we can setup a
-[`PertubationAdvection`](@ref) open boundary:
+[`PerturbationAdvection`](@ref) open boundary:
 
 ```jldoctest
 julia> scheme = PerturbationAdvection(; outflow_timescale=10, inflow_timescale=1)
