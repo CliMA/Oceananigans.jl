@@ -110,8 +110,9 @@ set!(model, b=bᵢ)
 stop_time = 5hours
 simulation = Simulation(model; Δt, stop_time)
 
-# The TimeStepWizard helps ensure stable time-stepping with a Courant-Freidrichs-Lewy (CFL) number of 0.5.
-conjure_time_step_wizard!(simulation, cfl=0.5)
+# The TimeStepWizard helps ensure stable time-stepping with a Courant-Freidrichs-Lewy (CFL)
+# number of 0.35.
+conjure_time_step_wizard!(simulation, cfl=0.35)
 
 
 # ## Track Simulation Progress
@@ -133,7 +134,7 @@ function progress(sim)
     return nothing
 end
 
-add_callback!(simulation, progress, name = :progress, TimeInterval(20minutes))
+add_callback!(simulation, progress, name = :progress, TimeInterval(30minutes))
 
 
 # ## Add output writer
