@@ -98,7 +98,7 @@ bᵢ(x, z) = x > L/2 ? 0.01 : 0.06
 set!(model, b=bᵢ)
 
 
-# ## Defining Simulation Timestep
+# ## Construct a Simulation
 #
 # Fast wave speeds make the equations stiff, so the CFL condition restricts the timestep to
 # adequately small values to maintain numerical stability.
@@ -108,8 +108,9 @@ set!(model, b=bᵢ)
 stop_time = 5hours
 simulation = Simulation(model; Δt, stop_time)
 
-# The TimeStepWizard helps ensure stable time-stepping with a Courant-Freidrichs-Lewy (CFL)
-# number of 0.35.
+# The [`TimeStepWizard`](@ref) is incorporated in the simulation via the
+# [`conjure_time_step_wizard!`](@ref) helper function and it ensures stable
+# time-stepping with a Courant-Freidrichs-Lewy (CFL) number of 0.35.
 conjure_time_step_wizard!(simulation, cfl=0.35)
 
 
