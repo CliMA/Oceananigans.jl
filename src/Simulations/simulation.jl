@@ -179,11 +179,13 @@ Return the current simulation iteration.
 iteration(sim::Simulation) = iteration(sim.model)
 
 """
-    prettytime(sim::Simulation)
+    prettytime(sim::Simulation, longform=true)
 
 Return `sim.model.clock.time` as a prettily formatted string."
+
+For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
 """
-prettytime(sim::Simulation, longform=true) = prettytime(time(sim))
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim); longform)
 
 """
     run_wall_time(sim::Simulation)
