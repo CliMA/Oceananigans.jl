@@ -158,7 +158,7 @@ The restriction arises as the boundary condition is specifying the wall normal v
 ```
 implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson
 equation (``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\boldsymbol{u}^\star}{\Delta t}``)
-using the method described by [Schumann88](@citet) we have to move inhomogeneus boundary conditions
+using the method described by [Schumann88](@citet) we have to move inhomogeneous boundary conditions
 on the pressure to the right hand side. In order to do this we define a new field ``\phi`` where
 ```math
     \begin{equation}
