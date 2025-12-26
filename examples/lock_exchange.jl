@@ -29,7 +29,6 @@
 # see Barletta (2022), *The Boussinesq approximation for buoyant flows*,
 # *Mechanics Research Communications* 124, 103939.
 
-
 # ## Install dependencies
 #
 # First let's make sure we have all required packages installed.
@@ -38,7 +37,6 @@
 # using Pkg
 # pkg"add Oceananigans, CairoMakie"
 # ```
-
 
 # ## Import Required Packages
 
@@ -85,7 +83,7 @@ bottom(x) = h_left + slope * x
 grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 
-# ## Initialize the Model
+# ## Initialize the model
 #
 #  * Want to use a hydrostatic model since horizontal motion may be more significant than vertical motion
 #  * Tracers act as markers within the fluid to track movement and dispersion
@@ -102,7 +100,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     vertical_coordinate = ZStarCoordinate(grid),
                                     free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
-# ## Set Variable Density Initial Conditions
+# ## Set variable density initial conditions
 
 # Set initial conditions for lock exchange with different buoyancies.
 bᵢ(x, z) = x > 4kilometers ? 0.01 : 0.06
@@ -144,7 +142,7 @@ end
 add_callback!(simulation, progress, name = :progress, TimeInterval(20minutes))
 
 
-# ## Add Tracers and Diagnostics
+# ## Add output writer
 
 # Here, we construct a JLD2Writer to save some output every `save_interval`.
 
@@ -163,12 +161,13 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; b, e, u, w, N²);
 # ## Run Simulation
 
 run!(simulation)
+
 @info "Simulation finished. Output saved to $(filename)"
 
 # ## Load Saved TimeSeries Values
 
-ut  = FieldTimeSeries(filename, "u")
-wt  = FieldTimeSeries(filename, "w")
+ut = FieldTimeSeries(filename, "u")
+wt = FieldTimeSeries(filename, "w")
 N²t = FieldTimeSeries(filename, "N²")
 bt = FieldTimeSeries(filename, "b")
 et = FieldTimeSeries(filename, "e")
