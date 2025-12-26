@@ -175,7 +175,7 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %5.2f hours", times[$n] / hour)
 
-wₙ = @lift wt[$n]
+uₙ = @lift ut[$n]
 N²ₙ = @lift N²t[$n]
 bₙ = @lift bt[$n]
 eₙ = @lift et[$n]
