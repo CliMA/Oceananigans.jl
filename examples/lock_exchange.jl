@@ -102,11 +102,11 @@ set!(model, b=bᵢ)
 
 # ## Defining Simulation Timestep
 #
-# Fast wave speeds make the equations stiff, so the CFL condition forces a small timestep Δt
-# when using explicit time-stepping to maintain numerical stability.
+# Fast wave speeds make the equations stiff, so the CFL condition restricts the timestep to
+# adequately small values to maintain numerical stability.
 
 # Set the timesteps
-Δt = 1seconds
+Δt = 1second
 stop_time = 5hours
 simulation = Simulation(model; Δt, stop_time)
 
@@ -122,9 +122,10 @@ wall_clock = Ref(time_ns())
 # Define callback function to log simulation iterations and time every 2 mins in simulation time
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
-    msg = @sprintf("Iter: %7d, time: %s, wall: %s, max|w| = %6.3e m s⁻¹",
+    msg = @sprintf("Iter: %6d, time: %s, Δt: %s, wall: %s, max|w| = %6.3e m s⁻¹",
                    iteration(sim),
                    prettytime(sim),
+                   prettytime(sim.Δt),
                    prettytime(elapsed),
                    maximum(abs, sim.model.velocities.w))
     wall_clock[] = time_ns()
