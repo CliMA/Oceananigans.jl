@@ -126,7 +126,7 @@ simulation_pages = [
 ]
 
 physics_pages = [
-    "Coordinate system and notation" => "physics/notation.md",
+    "Coordinate systems" => "physics/coordinate_systems.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
