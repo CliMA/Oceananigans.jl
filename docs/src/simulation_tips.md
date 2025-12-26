@@ -226,7 +226,7 @@ launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more ab
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
 Oceananigans disables scalar indexing by default. See the
-[scalar indexing](https://cuda.juliagpu.org/dev/usage/workflow/#UsageWorkflowScalar)
+[scalar indexing](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
 For example, if can be difficult to just view a `CuArray` since Julia needs to access
