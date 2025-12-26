@@ -43,13 +43,14 @@
 using Oceananigans
 using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+using CUDA
 using Printf
 
 # Set up resolution and grid parameters. We use 4-degree resolution for
 # reasonable runtimes while still resolving the instability.
 
-arch = CPU()
-resolution = 4             # degrees
+arch = GPU()
+resolution = 1             # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
 Nz = 10                    # number of vertical levels
@@ -98,29 +99,27 @@ rotated_lat_lon_grid = RotatedLatitudeLongitudeGrid(arch; size, halo, latitude, 
 # - Realistic seawater buoyancy using the TEOS-10 equation of state
 # - Split-explicit free surface for fast external gravity wave dynamics
 
+# The model is initialized with a temperature front in the meridional direction:
+# - Warm water in the tropics, cold water at high latitudes
+# - The front is centered around ±45° latitude
+# - Random noise seeds the baroclinic instability
+
+Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
+
 function build_model(grid)
     momentum_advection = WENOVectorInvariant(order=9)
     tracer_advection = WENO(order=7)
     coriolis = HydrostaticSphericalCoriolis()
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
-    free_surface = SplitExplicitFreeSurface(grid; substeps=60)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=120)
     model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy, tracers = (:T, :S),
                                         momentum_advection, tracer_advection)
+    set!(model, T=Tᵢ, S=Sᵢ)
     return model
 end
 
-# ## Initial conditions
-#
-# We initialize with a temperature front in the meridional direction:
-# - Warm water in the tropics, cold water at high latitudes
-# - The front is centered around ±45° latitude
-# - Random noise seeds the baroclinic instability
-#
-# Salinity is initialized with a linear vertical profile plus random perturbations.
-
-Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
-Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
 
 # ## Run a simulation
 #
@@ -130,9 +129,7 @@ Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
 
 function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=12hours)
     model = build_model(grid)
-    set!(model, T=Tᵢ, S=Sᵢ)
-
-    simulation = Simulation(model; Δt=10minutes, stop_time)
+    simulation = Simulation(model; Δt=5minutes, stop_time)
 
     # Add progress callback
     function progress(sim)
@@ -156,11 +153,10 @@ function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=
     u, v, w = model.velocities
     T = model.tracers.T
     ζ = ∂x(v) - ∂y(u)
-    ∇T = sqrt(∂x(T)^2 + ∂y(T)^2)
 
     filename = "spherical_baroclinic_instability_" * name
     indices = (:, :, grid.Nz)
-    fields = (; ζ, T, ∇T)
+    fields = (; ζ, T)
 
     simulation.output_writers[:surface] = JLD2Writer(model, fields; indices,
                                                      filename = filename * ".jld2",
@@ -209,53 +205,6 @@ end
 
 times = T_ts["lat_lon"].times
 Nt = length(times)
-
-# ### 2D comparison of all three grids
-#
-# Create a comparison figure showing the final state for each grid
-
-fig = Figure(size = (1600, 600))
-
-for (i, (name, label)) in enumerate(zip(grid_names, grid_labels))
-    Tn = interior(T_ts[name][Nt], :, :, 1)
-    ζn = interior(ζ_ts[name][Nt], :, :, 1)
-
-    ax_T = Axis(fig[1, i]; title = "$label: Temperature", xlabel = "i", ylabel = "j")
-    ax_ζ = Axis(fig[2, i]; title = "$label: Vorticity", xlabel = "i", ylabel = "j")
-
-    heatmap!(ax_T, Tn; colormap = :thermal, colorrange = (5, 30))
-    heatmap!(ax_ζ, ζn; colormap = :balance, colorrange = (-5e-5, 5e-5))
-end
-
-save("spherical_baroclinic_instability_comparison.png", fig)
-nothing #hide
-
-# ![](spherical_baroclinic_instability_comparison.png)
-
-# ### 3D globe visualization
-#
-# The Oceananigans Makie extension automatically handles spherical grids when
-# using `surface!` on an `Axis3`. Simply pass the field directly and it will
-# be plotted on a 3D sphere.
-
-fig = Figure(size = (1000, 800))
-
-ax3d = Axis3(fig[1, 1];
-             aspect = :data,
-             title = "Surface Temperature on a 3D Globe",
-             xlabel = "x", ylabel = "y", zlabel = "z")
-
-# Get the final temperature field
-T_final = T_ts["lat_lon"][Nt]
-
-# Plot the temperature on the sphere - the Makie extension handles the
-# coordinate transformation automatically!
-surface!(ax3d, T_final; colormap = :thermal, colorrange = (5, 30))
-
-save("spherical_baroclinic_instability_globe.png", fig)
-nothing #hide
-
-# ![](spherical_baroclinic_instability_globe.png)
 
 # ### Animation of the instability evolution
 #
