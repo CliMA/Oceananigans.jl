@@ -179,7 +179,7 @@ corrected field,
 ```math
     \begin{equation}
     \label{eq:quasi_predictor_velocity}
-    \tilde{\boldsymbol{u}}^\star := \boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
+    \tilde{\boldsymbol{u}}^\star \equiv \boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
     \end{equation}
 ```
 The modified pressure Poisson equation becomes ``\nabla^2 p^{n+1} = \frac{\boldsymbol{\nabla} \cdot \tilde{\boldsymbol{u}}^\star}{\Delta t}``
@@ -213,7 +213,7 @@ but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` err
 ```math
     \begin{align}
     u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{jk4}) / 2 + \mathcal{O}(\Delta x^2),\\
-    &= u^\star_{1jk} - \Delta t \left(\boldsymbol{\nabla} p^{n+1}_{3jk} + (\boldsymbol{\nabla} p^{n+1}_{2jk} - \boldsymbol{\nabla} p^{n+1}_{4jk}) / 2 \right) + \mathcal{O}(\Delta x^2),\\
+    &= u^\star_{1jk} - \Delta t \left[ \boldsymbol{\nabla} p^{n+1}_{3jk} + (\boldsymbol{\nabla} p^{n+1}_{2jk} - \boldsymbol{\nabla} p^{n+1}_{4jk}) / 2 \right] + \mathcal{O}(\Delta x^2),\\
     &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
     \end{align}
 ```
