@@ -9,25 +9,18 @@
 #  * Creating an animation with CairoMakie
 #
 # ### The Lock Exchange Problem
+#
 # This use case is a basic example where there are fluids of two different densities (due to
 # temperature, salinity, etc.) that are separated by a ‘lock’ at time ``t=0``, and we
 # calculate the evolution of how these fluids interact as time progresses.
 # This lock exchange implementation can be a representation of scenarios where water of
 # different salinities or temperatures meet and form sharp density gradients.
 # For example, in estuaries or in the Denmark Strait overflow.
-# Solutions of this problem describe how the fluids interact with each other as time evolves and can be described by
-# hydrostatic Boussinesq equations:
-# ```math
-# \frac{\partial \rho}{\partial t} + \nabla \cdot (\rho \textbf{v}) = 0
-# ```
-# where `ρ` represents density. In the case of this model, we use boyancy as a tracer, which relates to the density:
-# ```math
-# b = -g \frac{\rho - \rho_{0}}{\rho_{0}}
-# ```
-#
-# For a detailed explanation of the Boussinesq formulation for buoyant flows,
-# see Barletta (2022), *The Boussinesq approximation for buoyant flows*,
-# *Mechanics Research Communications* 124, 103939.
+# Solutions of this problem describe how the fluids interact with each other as time evolves
+# and can be described by hydrostatic Boussinesq equations. In this example, we use buoyancy
+# as a tracer; see the [Boussinesq approximation section](@ref boussinesq_approximation) for
+# more details on the Boussinesq approximation. Also, for a detailed explanation of the
+# Boussinesq formulation for buoyant flows, see [Barletta2022Boussinesq](@citet).
 
 # ## Install dependencies
 #
