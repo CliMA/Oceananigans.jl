@@ -19,8 +19,7 @@
 # Solutions of this problem describe how the fluids interact with each other as time evolves
 # and can be described by hydrostatic Boussinesq equations. In this example, we use buoyancy
 # as a tracer; see the [Boussinesq approximation section](@ref boussinesq_approximation) for
-# more details on the Boussinesq approximation. Also, for a detailed explanation of the
-# Boussinesq formulation for buoyant flows, see [Barletta2022Boussinesq](@citet).
+# more details on the Boussinesq approximation.
 
 # ## Install dependencies
 #
