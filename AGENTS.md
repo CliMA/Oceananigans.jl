@@ -146,6 +146,28 @@ serve(dir="docs/build")
   is already exported by the user interface. Always rely on `using Oceananigans` for imports and keep
   imports clean. Explicit imports should only be used for source code.
 
+### Writing Doctests
+- Use `jldoctest` blocks for testable examples in docstrings
+- **Do NOT use boolean comparisons as the final line** (e.g., avoid `x ≈ 1.0` or `obj isa Type`)
+- Instead, make the final line invoke a `show` method that prints something useful
+- This serves two purposes:
+  1. Helps users understand what the code produces
+  2. Tests that our `show` methods are high quality and informative
+- Example of what NOT to do:
+  ```julia
+  plt = surface!(ax, T)
+  plt isa CairoMakie.Surface  # BAD: boolean comparison
+  # output
+  true
+  ```
+- Example of what TO do:
+  ```julia
+  x, y, z = spherical_coordinates(0.0, 0.0)
+  (x, y, z)  # GOOD: shows the actual output
+  # output
+  (1.0, 0.0, 0.0)
+  ```
+
 ### Writing examples
 - Explain at the top of the file what a simulation is doing
 - Let code "speak for itself" as much as possible, to keep an explanation concise.

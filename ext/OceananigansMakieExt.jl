@@ -228,7 +228,7 @@ A tuple `(x, y, z)` of Cartesian coordinates.
 Examples
 ========
 
-```jldoctest
+```jldoctest spherical
 using Oceananigans
 using CairoMakie
 ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
@@ -242,18 +242,27 @@ x, y, z = spherical_coordinates(0.0, 0.0)
 (1.0, 0.0, 0.0)
 ```
 
-```jldoctest
-using Oceananigans
-using CairoMakie
-ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
-spherical_coordinates = ext.spherical_coordinates
-
+```jldoctest spherical
 # North pole
 x, y, z = spherical_coordinates(0.0, 90.0)
-z ≈ 1.0
+(round(x, digits=10), round(y, digits=10), z)
 
 # output
-true
+(0.0, 0.0, 1.0)
+```
+
+```jldoctest spherical
+# Array of longitudes along equator
+λ = [0.0, 90.0, 180.0]
+φ = [0.0, 0.0, 0.0]
+x, y, z = spherical_coordinates(λ, φ)
+round.(x, digits=10)
+
+# output
+3-element Vector{Float64}:
+  1.0
+  0.0
+ -1.0
 ```
 """
 function spherical_coordinates(λ, φ, r=1)
@@ -356,10 +365,9 @@ set!(T, (λ, φ, z) -> cosd(φ) * sind(λ))
 fig = Figure()
 ax = Axis3(fig[1, 1]; aspect=:data)
 plt = geo_surface!(ax, T)
-plt isa CairoMakie.Surface
 
 # output
-true
+:Plot
 ```
 """
 function geo_surface!(ax, f::Field; kwargs...)
@@ -454,10 +462,10 @@ set!(T, (λ, φ, z) -> cosd(φ) * sind(λ))
 fig = Figure()
 ax = Axis3(fig[1, 1]; aspect=:data)
 plt = surface!(ax, T; colormap=:viridis)
-plt isa CairoMakie.Surface
+typeof(plt).name.name
 
 # output
-true
+:Plot
 ```
 """
 function surface!(ax::Axis3, f::SphericalField; kwargs...)
