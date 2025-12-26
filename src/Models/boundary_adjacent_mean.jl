@@ -1,109 +1,139 @@
 using Adapt, GPUArraysCore
 
 using Oceananigans: instantiated_location
-using Oceananigans.Fields: Center, Face, Field
-using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
+using Oceananigans.Fields: Center, Face, Field, CenterField, set!
+using Oceananigans.AbstractOperations: Ax, Ay, Az, grid_metric_operation
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open
 
-import Oceananigans.BoundaryConditions: update_boundary_condition!
+import Oceananigans.BoundaryConditions: update_boundary_condition!, getbc, regularize_boundary_condition
 
-struct BoundaryAdjacentMean{FF, BV}
-    flux_field :: FF
-         value :: BV
+"""
+    AverageBoundaryFlux
 
-    # Inner constructor for Adapt.adapt_structure (Nothing flux_field)
-    BoundaryAdjacentMean(::Nothing, value::BV) where BV = new{Nothing, BV}(nothing, value)
+Computes and stores the area-weighted average of a field on a boundary plane.
 
-    @doc """
-        BoundaryAdjacentMean(grid, side;
-                             flux_field::FF = boundary_reduced_field(Val(side), grid),
-                             value::BV = Ref(zero(grid)))
+The average is computed as `∫u dA / ∫dA` where the integral is over the 
+boundary-adjacent plane. The total area `∫dA` is pre-computed during 
+boundary condition regularization.
 
-    Store the boundary-adjacent mean `value` of a `Field`. Updated by calling
+# Constructor
 
-    ```jldoctest
-    julia> using Oceananigans
+    AverageBoundaryFlux(side::Symbol)
 
-    julia> using Oceananigans.Models: BoundaryAdjacentMean
+Create an `AverageBoundaryFlux` for the specified `side` of the domain.
+The object is fully initialized during model construction via `regularize_boundary_condition`.
 
-    julia> grid = RectilinearGrid(size = (16, 16, 16), extent = (3, 4, 5));
+# Arguments
+- `side`: One of `:west`, `:east`, `:south`, `:north`, `:bottom`, or `:top`.
 
-    julia> cf = CenterField(grid);
+# Example
 
-    julia> set!(cf, (x, y, z) -> sin(2π * y / 4))
-    16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-        └── max=0.980785, min=-0.980785, mean=-5.52808e-17
+```julia
+using Oceananigans
+using Oceananigans.Models: AverageBoundaryFlux
 
-    julia> bam = BoundaryAdjacentMean(grid, :east)
-    BoundaryAdjacentMean: (0.0)
+# Create boundary conditions with AverageBoundaryFlux
+u_bcs = FieldBoundaryConditions(east = OpenBoundaryCondition(AverageBoundaryFlux(:east)))
 
-    julia> bam(:east, cf)
-
-    julia> bam
-    BoundaryAdjacentMean: (-1.5612511283791264e-18)
-    ```
-    """
-    BoundaryAdjacentMean(grid, side::Symbol;
-                         flux_field::FF = boundary_reduced_field(Val(side), grid),
-                         value::BV = Ref(zero(grid))) where {FF, BV} =
-        new{FF, BV}(flux_field, value)
+# The AverageBoundaryFlux is fully initialized during model construction
+grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
+model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs,))
+```
+"""
+struct AverageBoundaryFlux{S, F, A}
+    side :: S   # Val{:east}, etc.
+    flux :: F   # Field{Nothing, Nothing, Nothing} for storing result (nothing before regularization)
+    area :: A   # Pre-computed total boundary area (nothing before regularization)
 end
 
-@inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
+# User-facing constructor: creates unregularized placeholder
+AverageBoundaryFlux(side::Symbol) = AverageBoundaryFlux(Val(side), nothing, nothing)
 
-Adapt.adapt_structure(to, bam::BoundaryAdjacentMean) =
-    BoundaryAdjacentMean(nothing, adapt(to, bam.value[]))
+# For Adapt (GPU transfer)
+Adapt.adapt_structure(to, abf::AverageBoundaryFlux) =
+    AverageBoundaryFlux(abf.side, adapt(to, abf.flux), abf.area)
 
-Base.show(io::IO, bam::BoundaryAdjacentMean) = print(io, summary(bam))
-Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[]))"
+Base.show(io::IO, abf::AverageBoundaryFlux) = print(io, summary(abf))
 
-@inline boundary_reduced_field(::Union{Val{:west}, Val{:east}}, grid)   = Field{Center, Nothing, Nothing}(grid)
-@inline boundary_reduced_field(::Union{Val{:south}, Val{:north}}, grid) = Field{Nothing, Center, Nothing}(grid)
-@inline boundary_reduced_field(::Union{Val{:bottom}, Val{:top}}, grid)  = Field{Nothing, Nothing, Center}(grid)
+function Base.summary(abf::AverageBoundaryFlux{Val{S}}) where S
+    if isnothing(abf.flux)
+        return "AverageBoundaryFlux(:$S) (unregularized)"
+    else
+        return "AverageBoundaryFlux(:$S): $(@allowscalar first(abf.flux))"
+    end
+end
 
-@inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = grid_metric_operation((Face, Center, Center), Ax, grid)
-@inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = grid_metric_operation((Center, Face, Center), Ay, grid)
-@inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = grid_metric_operation((Center, Center, Face), Az, grid)
+# For boundary condition value access
+@inline getbc(abf::AverageBoundaryFlux, args...) = @allowscalar first(abf.flux)
 
-@inline boundary_adjacent_indices(::Val{:east}, grid, loc) = size(grid, 1), 1, 1
-@inline boundary_adjacent_indices(val_side::Val{:west}, grid, loc) = first_interior_index(val_side, loc), 1, 1
+#####
+##### Regularization: build full object during model construction
+#####
 
-@inline boundary_adjacent_indices(::Val{:north}, grid, loc) = 1, size(grid, 2), 1
-@inline boundary_adjacent_indices(val_side::Val{:south}, grid, loc) = 1, first_interior_index(val_side, loc), 1
+is_regularized(abf::AverageBoundaryFlux) = !isnothing(abf.flux)
 
-@inline boundary_adjacent_indices(::Val{:top}, grid, loc) = 1, 1, size(grid, 3)
-@inline boundary_adjacent_indices(val_side::Val{:bottom}, grid, loc) = 1, 1, first_interior_index(val_side, loc)
+function regularize_boundary_condition(abf::AverageBoundaryFlux, 
+                                       grid, loc, dim, Side, field_names)
 
-@inline first_interior_index(::Union{Val{:west}, Val{:east}}, ::Tuple{Center, <:Any, <:Any}) = 1
-@inline first_interior_index(::Union{Val{:west}, Val{:east}}, ::Tuple{Face, <:Any, <:Any}) = 2
+    # If already regularized, return as-is
+    is_regularized(abf) && return abf
+    
+    flux = Field{Nothing, Nothing, Nothing}(grid)
+    
+    # Pre-compute total boundary area
+    i, j, k = boundary_view_indices(abf.side, grid)
+    
+    # Compute the boundary-normal area
+    An = boundary_area_metric(abf.side)
+    An_operation = grid_metric_operation(loc, An, grid)
+    An_field = Field(An_operation, indices=(i, j, k))
+    area = sum(An_field)
+    
+    return AverageBoundaryFlux(abf.side, flux, area)
+end
 
-@inline first_interior_index(::Union{Val{:south}, Val{:north}}, ::Tuple{<:Any, Center, <:Any}) = 1
-@inline first_interior_index(::Union{Val{:south}, Val{:north}}, ::Tuple{<:Any, Face, <:Any}) = 2
+#####
+##### Boundary view indices
+#####
 
-@inline first_interior_index(::Union{Val{:bottom}, Val{:top}}, ::Tuple{<:Any, <:Any, Center}) = 1
-@inline first_interior_index(::Union{Val{:bottom}, Val{:top}}, ::Tuple{<:Any, <:Any, Face}) = 2
+# Returns (i, j, k) indices for view() to extract the boundary-adjacent plane
+@inline boundary_view_indices(::Val{:west}, grid)   = (1:1, :, :)
+@inline boundary_view_indices(::Val{:east}, grid)   = (size(grid, 1):size(grid, 1), :, :)
+@inline boundary_view_indices(::Val{:south}, grid)  = (:, 1:1, :)
+@inline boundary_view_indices(::Val{:north}, grid)  = (:, size(grid, 2):size(grid, 2), :)
+@inline boundary_view_indices(::Val{:bottom}, grid) = (:, :, 1:1)
+@inline boundary_view_indices(::Val{:top}, grid)    = (:, :, size(grid, 3):size(grid, 3))
 
-(bam::BoundaryAdjacentMean)(side, u) = bam(Val(side), u)
+#####
+##### Boundary-normal area metric
+#####
 
-# Computes the boundary-adjacent mean and stores it.
-function (bam::BoundaryAdjacentMean)(val_side::Val, u)
+@inline boundary_area_metric(::Union{Val{:west}, Val{:east}})   = Ax
+@inline boundary_area_metric(::Union{Val{:south}, Val{:north}}) = Ay
+@inline boundary_area_metric(::Union{Val{:bottom}, Val{:top}})  = Az
+
+#####
+##### Compute the boundary average
+#####
+
+const OpenBC_ABF = BoundaryCondition{<:Open, <:AverageBoundaryFlux}
+
+@inline function update_boundary_condition!(bc::OpenBC_ABF, val_side, u, model)
+    abf = bc.condition
     grid = u.grid
 
-    loc = instantiated_location(u)
-    iB, jB, kB = boundary_adjacent_indices(val_side, grid, loc)
-    An = boundary_normal_area(val_side, grid)
-
-    # Total flux through the boundary-adjacent plane.
-    sum!(bam.flux_field, u * An)
-    bam.value[] = @allowscalar bam.flux_field[iB, jB, kB]
-
-    # Normalizing area of the boundary-adjacent plane.
-    sum!(bam.flux_field, An)
-    bam.value[] /= @allowscalar bam.flux_field[iB, jB, kB]
+    # Get the boundary slice of u
+    i, j, k = boundary_view_indices(abf.side, grid)
+    u_boundary = view(u, i, j, k)
+    
+    # Get the area metric
+    An = boundary_area_metric(abf.side)
+    
+    # Compute area-weighted sum: ∫u dA
+    sum!(abf.flux, u_boundary * An)
+    
+    # Divide by pre-computed area to get average
+    @allowscalar abf.flux[1, 1, 1] /= abf.area
 
     return nothing
 end
-
-const MOOBC = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
-@inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
