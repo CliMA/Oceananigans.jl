@@ -225,20 +225,35 @@ Returns
 =======
 A tuple `(x, y, z)` of Cartesian coordinates.
 
-Example
-=======
-```julia
-using Makie
+Examples
+========
 
-# Create a simple sphere
-λ = range(0, 360, length=100)
-φ = range(-90, 90, length=50)
+```jldoctest
+using Oceananigans
+using CairoMakie
+ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
+spherical_coordinates = ext.spherical_coordinates
 
-Λ = [λi for λi in λ, φi in φ]
-Φ = [φi for λi in λ, φi in φ]
+# Point on the equator at 0° longitude
+x, y, z = spherical_coordinates(0.0, 0.0)
+(x, y, z)
 
-x, y, z = spherical_coordinates(Λ, Φ)
-surface(x, y, z)
+# output
+(1.0, 0.0, 0.0)
+```
+
+```jldoctest
+using Oceananigans
+using CairoMakie
+ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
+spherical_coordinates = ext.spherical_coordinates
+
+# North pole
+x, y, z = spherical_coordinates(0.0, 90.0)
+z ≈ 1.0
+
+# output
+true
 ```
 """
 function spherical_coordinates(λ, φ, r=1)
@@ -322,11 +337,15 @@ All keyword arguments are passed to `surface!`.
 
 Example
 =======
-```julia
+
+```jldoctest
 using CairoMakie
 using Oceananigans
 
-grid = LatitudeLongitudeGrid(size=(360, 180, 1), 
+ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
+geo_surface! = ext.geo_surface!
+
+grid = LatitudeLongitudeGrid(size=(36, 18, 1), 
                              longitude=(0, 360), 
                              latitude=(-90, 90), 
                              z=(0, 1))
@@ -336,8 +355,11 @@ set!(T, (λ, φ, z) -> cosd(φ) * sind(λ))
 
 fig = Figure()
 ax = Axis3(fig[1, 1]; aspect=:data)
-geo_surface!(ax, T)
-fig
+plt = geo_surface!(ax, T)
+plt isa CairoMakie.Surface
+
+# output
+true
 ```
 """
 function geo_surface!(ax, f::Field; kwargs...)
@@ -406,7 +428,7 @@ const SphericalGrid = Union{LatitudeLongitudeGrid,
 const SphericalField = Field{<:Any, <:Any, <:Any, <:Any, <:SphericalGrid}
 
 """
-    surface!(ax::Makie.Axis3, f::SphericalField; kwargs...)
+    surface!(ax::Axis3, f::SphericalField; kwargs...)
 
 Plot a spherical field `f` on a 3D sphere in `Axis3`.
 
@@ -416,11 +438,12 @@ coordinates to Cartesian coordinates and renders the data on a unit sphere.
 
 Example
 =======
-```julia
+
+```jldoctest
 using CairoMakie
 using Oceananigans
 
-grid = LatitudeLongitudeGrid(size=(360, 180, 1),
+grid = LatitudeLongitudeGrid(size=(36, 18, 1),
                              longitude=(0, 360),
                              latitude=(-90, 90),
                              z=(0, 1))
@@ -430,8 +453,11 @@ set!(T, (λ, φ, z) -> cosd(φ) * sind(λ))
 
 fig = Figure()
 ax = Axis3(fig[1, 1]; aspect=:data)
-surface!(ax, T; colormap=:viridis)
-fig
+plt = surface!(ax, T; colormap=:viridis)
+plt isa CairoMakie.Surface
+
+# output
+true
 ```
 """
 function surface!(ax::Axis3, f::SphericalField; kwargs...)
