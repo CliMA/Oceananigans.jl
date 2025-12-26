@@ -183,7 +183,7 @@ nothing #hide
 
 # For visualization color ranges (use last snapshot)
 umax = maximum(abs, ut[end])
-N2max = maximum(abs, N²t[end])
+N²max = maximum(abs, N²t[end])
 bmax = maximum(abs, bt[end])
 emax = maximum(abs, et[end])
 nothing #hide
@@ -211,9 +211,9 @@ ax_u = Axis(fig[4, 1]; title = "u (horizontal velocity)", axis_kwargs...)
 hm_u = heatmap!(ax_u, uₙ; nan_color, colorrange = (-umax, umax), colormap = :balance)
 Colorbar(fig[4, 2], hm_u, label = "m s⁻¹")
 
-ax_N2 = Axis(fig[5, 1]; title = "N² (stratification)", axis_kwargs...)
-hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color, colorrange = (-0.25N2max, N2max), colormap = :haline)
-Colorbar(fig[5, 2], hm_N2, label = "s⁻²")
+ax_N² = Axis(fig[5, 1]; title = "N² (stratification)", axis_kwargs...)
+hm_N² = heatmap!(ax_N², N²ₙ; nan_color, colorrange = (-N²max/4, N²max), colormap = :haline)
+Colorbar(fig[5, 2], hm_N², label = "s⁻²")
 
 fig
 
