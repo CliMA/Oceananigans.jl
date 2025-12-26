@@ -68,7 +68,7 @@ underlying_grid = RectilinearGrid(; size=(Nx, Nz), x, z, halo=(5, 5),
 
 # Add a slope at the bottom of the grid
 h_left = -H
-h_right = -25meters
+h_right = -H/2
 slope = (h_right - h_left) / L
 bottom(x) = h_left + slope * x
 
@@ -187,7 +187,7 @@ bmax = maximum(abs, bt[end])
 emax = maximum(abs, et[end])
 nothing #hide
 
-# Use snapshots to create Makie visualization for ``b``,  ``e``, ``u``, and ``N²``.
+# Use snapshots to create Makie visualization for ``b``,  ``e``, ``u``, and ``N^2``.
 
 axis_kwargs = (xlabel = "x [m]", ylabel = "z [m]",
                limits = ((0, L), (-H, 0)), titlesize = 18)
