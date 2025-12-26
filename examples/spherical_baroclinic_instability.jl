@@ -43,13 +43,14 @@
 using Oceananigans
 using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+using CUDA
 using Printf
 
 # Set up resolution and grid parameters. We use 4-degree resolution for
 # reasonable runtimes while still resolving the instability.
 
-arch = CPU()
-resolution = 4             # degrees
+arch = GPU()
+resolution = 1             # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
 Nz = 10                    # number of vertical levels
@@ -104,7 +105,7 @@ function build_model(grid)
     coriolis = HydrostaticSphericalCoriolis()
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
-    free_surface = SplitExplicitFreeSurface(grid; substeps=60)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=120)
     model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy, tracers = (:T, :S),
                                         momentum_advection, tracer_advection)
     return model
@@ -132,7 +133,7 @@ function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=
     model = build_model(grid)
     set!(model, T=Tᵢ, S=Sᵢ)
 
-    simulation = Simulation(model; Δt=10minutes, stop_time)
+    simulation = Simulation(model; Δt=5minutes, stop_time)
 
     # Add progress callback
     function progress(sim)
