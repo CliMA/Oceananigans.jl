@@ -38,9 +38,9 @@ model_salinity(b::ConstantSalinitySB, model)       = b.constant_salinity
 Return a `KernelFunctionOperation` that computes the in-situ density of seawater
 with (gridded) `temperature`, `salinity`, and at `geopotential_height`. To compute the
 in-situ density, the 55-term polynomial approximation to the equation of state from
-[Roquet et al. (2015)](https://www.sciencedirect.com/science/article/pii/S1463500315000566?ref=pdf_download&fr=RR-2&rr=813416acba58557b) is used.
-By default, the `seawater_density` extracts the geopotential height from the `model` to compute
-the in-situ density. To compute a potential density at some user-chosen reference geopotential height,
+[Roquet et al. (2015)](@cite Roquet15TEOS) is used. By default, the `seawater_density`
+extracts the geopotential height from the `model` to compute the in-situ density.
+To compute a potential density at some user-chosen reference geopotential height,
 set `geopotential_height` to a constant for the density computation,
 
 ```julia
@@ -49,7 +49,7 @@ geopotential_height = 0 # sea-surface height
 ```
 
 **Note:** `seawater_density` must be passed a `BoussinesqEquationOfState` to compute the
-density. See the [relevant documentation](https://clima.github.io/OceananigansDocumentation/dev/model_setup/buoyancy_and_equation_of_state/#Idealized-nonlinear-equations-of-state)
+density. See the [relevant documentation](https://clima.github.io/OceananigansDocumentation/stable/models/buoyancy_and_equation_of_state/#Idealized-nonlinear-equations-of-state)
 for how to set `SeawaterBuoyancy` using a `BoussinesqEquationOfState`.
 
 Example
