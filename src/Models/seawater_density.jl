@@ -49,7 +49,7 @@ geopotential_height = 0 # sea-surface height
 ```
 
 **Note:** `seawater_density` must be passed a `BoussinesqEquationOfState` to compute the
-density. See the [relevant documentation](https://clima.github.io/OceananigansDocumentation/stable/models/buoyancy_and_equation_of_state/#Idealized-nonlinear-equations-of-state)
+density. See the [relevant documentation section](@ref idealized_nonlinear_eos)
 for how to set `SeawaterBuoyancy` using a `BoussinesqEquationOfState`.
 
 Example
