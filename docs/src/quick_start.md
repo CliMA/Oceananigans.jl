@@ -26,7 +26,7 @@ run!(simulation)
 
 runs 100 time steps of a two-dimensional turbulence simulation with `128²` [finite volume](https://en.wikipedia.org/wiki/Finite_volume_method) cells
 and a fifth-order upwinded [WENO advection scheme](https://en.wikipedia.org/wiki/WENO_methods).
-It's quite similar to the [two-dimensional turbulence example](@ref two_dim_turbulence_example).
+It's quite similar to the [two-dimensional turbulence example](@ref two_dimensional_turbulence).
 
 ## Visualization
 
