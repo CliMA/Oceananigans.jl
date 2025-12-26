@@ -9,7 +9,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-using Makie: Observable, AbstractPlot
+using Makie: Observable, AbstractPlot, Axis3, Figure, NoShading, @lift
 
 import Makie: convert_arguments, _create_plot, args_preferred_axis, surface!, surface
 
@@ -347,7 +347,7 @@ function geo_surface!(ax, f::Field; kwargs...)
     fi = make_plottable_array(f)
     x, y, z = spherical_coordinates(f)
 
-    plt = surface!(ax, x, y, z; color=fi, shading=Makie.NoShading, kwargs...)
+    plt = surface!(ax, x, y, z; color=fi, shading=NoShading, kwargs...)
 
     mask_immersed_field!(f)
 
@@ -375,7 +375,7 @@ function geo_surface!(ax, grid, data; ℓx=Center(), ℓy=Center(), kwargs...)
     data_cpu = on_architecture(CPU(), data)
     x, y, z = spherical_coordinates(grid, ℓx, ℓy)
 
-    return surface!(ax, x, y, z; color=data_cpu, shading=Makie.NoShading, kwargs...)
+    return surface!(ax, x, y, z; color=data_cpu, shading=NoShading, kwargs...)
 end
 
 """
@@ -388,8 +388,8 @@ Returns `(fig, ax, plt)` tuple.
 See also: [`geo_surface!`](@ref)
 """
 function geo_surface(f::Field; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
-    fig = Makie.Figure(; figure_kwargs...)
-    ax = Makie.Axis3(fig[1, 1]; aspect=:data, axis_kwargs...)
+    fig = Figure(; figure_kwargs...)
+    ax = Axis3(fig[1, 1]; aspect=:data, axis_kwargs...)
     plt = geo_surface!(ax, f; kwargs...)
     return fig, ax, plt
 end
@@ -434,8 +434,35 @@ surface!(ax, T; colormap=:viridis)
 fig
 ```
 """
-function surface!(ax::Makie.Axis3, f::SphericalField; kwargs...)
+function surface!(ax::Axis3, f::SphericalField; kwargs...)
     return geo_surface!(ax, f; kwargs...)
+end
+
+"""
+    surface!(ax::Axis3, f_obs::Observable{<:SphericalField}; kwargs...)
+
+Plot an observable spherical field on a 3D sphere in `Axis3`.
+
+This method handles animations where the field is wrapped in an Observable.
+The coordinates are computed from the initial field, and the color data
+is updated reactively when the observable changes.
+"""
+function surface!(ax::Axis3, f_obs::Observable{<:SphericalField}; kwargs...)
+    # Get initial field to compute coordinates (grid doesn't change)
+    f0 = f_obs[]
+    x, y, z = spherical_coordinates(f0)
+    
+    # Create an observable for the color data that updates when f_obs changes
+    color_obs = @lift begin
+        f = $f_obs
+        compute!(f)
+        mask_immersed_field!(f, NaN)
+        fi = make_plottable_array(f)
+        mask_immersed_field!(f)
+        fi
+    end
+    
+    return surface!(ax, x, y, z; color=color_obs, shading=NoShading, kwargs...)
 end
 
 end # module

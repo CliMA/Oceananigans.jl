@@ -24,15 +24,10 @@
 # using Pkg
 # pkg"add Oceananigans, CairoMakie, SeawaterPolynomials"
 # ```
-#
-# !!! note "GPU required"
-#     This example is designed to run on GPU for reasonable performance.
-#     It can be run on CPU by changing `arch = GPU()` to `arch = CPU()`,
-#     but will take significantly longer.
 
 # ## Grid configurations
 #
-# We set up three different spherical grids at 2-degree resolution. Each grid type has
+# We set up three different spherical grids at 4-degree resolution. Each grid type has
 # different advantages:
 #
 # - **LatitudeLongitudeGrid**: The most intuitive, but suffers from converging meridians at
@@ -48,11 +43,13 @@
 using Oceananigans
 using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+using Printf
 
-# Set up resolution and grid parameters. We use 2-degree resolution to allow
+# Set up resolution and grid parameters. We use 4-degree resolution for
 # reasonable runtimes while still resolving the instability.
 
-resolution = 2             # degrees
+arch = CPU()
+resolution = 4             # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
 Nz = 10                    # number of vertical levels
@@ -63,9 +60,7 @@ latitude = (-85, 85)       # latitude range (avoiding poles for lat-lon grid)
 longitude = (0, 360)       # longitude range
 z = (-H, 0)                # vertical extent
 
-# Build the three grids. Each uses GPU() architecture for fast computation.
-
-arch = GPU()
+# Build the three grids
 
 lat_lon_grid = LatitudeLongitudeGrid(arch; size, halo, latitude, longitude, z)
 
@@ -133,9 +128,7 @@ Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
 # We run for 30 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
-using Printf
-
-function run_spherical_baroclinic_instability(grid, name; stop_time=30days, save_interval=12hours)
+function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=12hours)
     model = build_model(grid)
     set!(model, T=Tᵢ, S=Sᵢ)
 
@@ -187,9 +180,9 @@ end
 # to demonstrate the code.
 
 simulations = Dict(
-    "lat_lon"         => run_spherical_baroclinic_instability(lat_lon_grid, "lat_lon"),
-    "tripolar"        => run_spherical_baroclinic_instability(tripolar_grid, "tripolar"),
-    "rotated_lat_lon" => run_spherical_baroclinic_instability(rotated_lat_lon_grid, "rotated_lat_lon")
+    "lat_lon" => run_baroclinic_instability(lat_lon_grid, "lat_lon"),
+    "tripolar" => run_baroclinic_instability(tripolar_grid, "tripolar"),
+    "rotated_lat_lon" => run_baroclinic_instability(rotated_lat_lon_grid, "rotated_lat_lon")
 )
 
 # ## Visualization
@@ -205,16 +198,16 @@ using CairoMakie
 grid_names = ["lat_lon", "tripolar", "rotated_lat_lon"]
 grid_labels = ["Latitude-Longitude", "Tripolar", "Rotated Lat-Lon"]
 
-T_timeseries = Dict()
-ζ_timeseries = Dict()
+T_ts = Dict()
+ζ_ts = Dict()
 
 for name in grid_names
     filename = "spherical_baroclinic_instability_" * name * ".jld2"
-    T_timeseries[name] = FieldTimeSeries(filename, "T")
-    ζ_timeseries[name] = FieldTimeSeries(filename, "ζ")
+    T_ts[name] = FieldTimeSeries(filename, "T")
+    ζ_ts[name] = FieldTimeSeries(filename, "ζ")
 end
 
-times = T_timeseries["lat_lon"].times
+times = T_ts["lat_lon"].times
 Nt = length(times)
 
 # ### 2D comparison of all three grids
@@ -224,8 +217,8 @@ Nt = length(times)
 fig = Figure(size = (1600, 600))
 
 for (i, (name, label)) in enumerate(zip(grid_names, grid_labels))
-    Tn = interior(T_timeseries[name][Nt], :, :, 1)
-    ζn = interior(ζ_timeseries[name][Nt], :, :, 1)
+    Tn = interior(T_ts[name][Nt], :, :, 1)
+    ζn = interior(ζ_ts[name][Nt], :, :, 1)
 
     ax_T = Axis(fig[1, i]; title = "$label: Temperature", xlabel = "i", ylabel = "j")
     ax_ζ = Axis(fig[2, i]; title = "$label: Vorticity", xlabel = "i", ylabel = "j")
@@ -241,41 +234,23 @@ nothing #hide
 
 # ### 3D globe visualization
 #
-# The Oceananigans Makie extension provides `geo_surface!` for plotting
-# fields on a 3D sphere. This is useful for visualizing global ocean data
-# in a more intuitive geographic context.
+# The Oceananigans Makie extension automatically handles spherical grids when
+# using `surface!` on an `Axis3`. Simply pass the field directly and it will
+# be plotted on a 3D sphere.
 
 fig = Figure(size = (1000, 800))
 
-# Plot temperature on the lat-lon grid as a 3D globe
 ax3d = Axis3(fig[1, 1];
              aspect = :data,
              title = "Surface Temperature on a 3D Globe",
              xlabel = "x", ylabel = "y", zlabel = "z")
 
 # Get the final temperature field
-T_final = T_timeseries["lat_lon"][Nt]
+T_final = T_ts["lat_lon"][Nt]
 
-# Extract coordinates and convert to Cartesian
-grid = T_final.grid
-λ = λnodes(grid, Center())
-φ = φnodes(grid, Center())
-
-# Create 2D meshgrid of coordinates
-Λ = [λi for λi in λ, φi in φ]
-Φ = [φi for λi in λ, φi in φ]
-
-# Convert to Cartesian coordinates on a unit sphere
-λ_rad = deg2rad.(Λ)
-φ_rad = deg2rad.(Φ)
-x = @. cos(φ_rad) * cos(λ_rad)
-y = @. cos(φ_rad) * sin(λ_rad)
-z = @. sin(φ_rad)
-
-# Plot the temperature on the sphere
-T_data = interior(T_final, :, :, 1)
-surface!(ax3d, x, y, z; color = T_data, colormap = :thermal,
-         colorrange = (5, 30), shading = NoShading)
+# Plot the temperature on the sphere - the Makie extension handles the
+# coordinate transformation automatically!
+surface!(ax3d, T_final; colormap = :thermal, colorrange = (5, 30))
 
 save("spherical_baroclinic_instability_globe.png", fig)
 nothing #hide
@@ -285,31 +260,45 @@ nothing #hide
 # ### Animation of the instability evolution
 #
 # Next we create a movie showing the evolution of the baroclinic instability
-# on the latitude-longitude grid.
+# on all three grids, visualized on 3D spheres. Each column shows a different
+# grid type, with temperature on top and vorticity on the bottom.
 
-fig = Figure(size = (1200, 600))
+fig = Figure(size = (1800, 1000))
 
 n = Observable(1)
 
-T_obs = @lift interior(T_timeseries["lat_lon"][$n], :, :, 1)
-ζ_obs = @lift interior(ζ_timeseries["lat_lon"][$n], :, :, 1)
-
 title = @lift "Baroclinic instability at t = " * prettytime(times[$n])
-Label(fig[0, 1:2], title, fontsize = 24)
+Label(fig[0, 1:3], title, fontsize = 28)
 
-ax_T = Axis(fig[1, 1]; xlabel = "Longitude", ylabel = "Latitude", title = "Surface Temperature [°C]")
-ax_ζ = Axis(fig[1, 2]; xlabel = "Longitude", ylabel = "Latitude", title = "Surface Vorticity [s⁻¹]")
+# Create axes for each grid type (columns) and field (rows)
+axes_T = Dict{String, Axis3}()
+axes_ζ = Dict{String, Axis3}()
 
-hm_T = heatmap!(ax_T, T_obs; colormap = :thermal, colorrange = (5, 30))
-Colorbar(fig[1, 3], hm_T)
+for (col, (name, label)) in enumerate(zip(grid_names, grid_labels))
+    axes_T[name] = Axis3(fig[1, col]; aspect = :data, title = "$label\nTemperature",
+                         xlabel = "", ylabel = "", zlabel = "")
+    axes_ζ[name] = Axis3(fig[2, col]; aspect = :data, title = "Vorticity",
+                         xlabel = "", ylabel = "", zlabel = "")
+end
 
-hm_ζ = heatmap!(ax_ζ, ζ_obs; colormap = :balance, colorrange = (-5e-5, 5e-5))
-Colorbar(fig[1, 4], hm_ζ)
+# Create the surface plots using Observable fields
+plots_T = Dict{String, Any}()
+plots_ζ = Dict{String, Any}()
+
+for name in grid_names
+    Tn = @lift T_ts[name][$n]
+    ζn = @lift ζ_ts[name][$n]
+    plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
+    plots_ζ[name] = surface!(axes_ζ[name], ζn; colormap = :balance, colorrange = (-5e-5, 5e-5))
+end
+
+# Add colorbars
+Colorbar(fig[1, 4], plots_T["lat_lon"]; label = "Temperature [°C]")
+Colorbar(fig[2, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]")
 
 frames = 1:Nt
-
-record(fig, "spherical_baroclinic_instability.mp4", frames; framerate = 8) do i
-    n[] = i
+record(fig, "spherical_baroclinic_instability.mp4", frames; framerate = 8) do nn
+    n[] = nn
 end
 nothing #hide
 
