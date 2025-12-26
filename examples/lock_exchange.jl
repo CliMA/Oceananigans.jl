@@ -175,10 +175,10 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %5.2f hours", times[$n] / hour)
 
-uₙ = @lift ut[$n]
-N²ₙ = @lift N²t[$n]
-bₙ = @lift bt[$n]
-eₙ = @lift et[$n]
+un = @lift ut[$n]
+N²n = @lift N²t[$n]
+bn = @lift bt[$n]
+en = @lift et[$n]
 nothing #hide
 
 # For visualization color ranges (use last snapshot)
@@ -200,19 +200,19 @@ fig[1, :] = Label(fig, title, fontsize = 24, tellwidth = false)
 nan_color = :grey
 
 ax_b = Axis(fig[2, 1]; title = "b (buoyancy)", axis_kwargs...)
-hm_b = heatmap!(ax_b, bₙ; nan_color, colorrange = (0, bmax), colormap = :thermal)
+hm_b = heatmap!(ax_b, bn; nan_color, colorrange = (0, bmax), colormap = :thermal)
 Colorbar(fig[2, 2], hm_b, label = "m s⁻²")
 
 ax_e = Axis(fig[3, 1]; title = "e (turbulent kinetic energy)", axis_kwargs...)
-hm_e = heatmap!(ax_e, eₙ; nan_color, colorrange = (0, emax), colormap = :magma)
+hm_e = heatmap!(ax_e, en; nan_color, colorrange = (0, emax), colormap = :magma)
 Colorbar(fig[3, 2], hm_e, label = "m² s⁻²")
 
 ax_u = Axis(fig[4, 1]; title = "u (horizontal velocity)", axis_kwargs...)
-hm_u = heatmap!(ax_u, uₙ; nan_color, colorrange = (-umax, umax), colormap = :balance)
+hm_u = heatmap!(ax_u, un; nan_color, colorrange = (-umax, umax), colormap = :balance)
 Colorbar(fig[4, 2], hm_u, label = "m s⁻¹")
 
 ax_N² = Axis(fig[5, 1]; title = "N² (stratification)", axis_kwargs...)
-hm_N² = heatmap!(ax_N², N²ₙ; nan_color, colorrange = (-N²max/4, N²max), colormap = :haline)
+hm_N² = heatmap!(ax_N², N²n; nan_color, colorrange = (-N²max/4, N²max), colormap = :haline)
 Colorbar(fig[5, 2], hm_N², label = "s⁻²")
 
 fig
