@@ -94,7 +94,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
 # ## Set variable density initial conditions
 
 # Set initial conditions for lock exchange with different buoyancies.
-bᵢ(x, z) = x > 4kilometers ? 0.01 : 0.06
+bᵢ(x, z) = x > L/2 ? 0.01 : 0.06
 set!(model, b=bᵢ)
 
 
