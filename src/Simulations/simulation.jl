@@ -39,6 +39,7 @@ end
                stop_iteration = Inf,
                stop_time = Inf,
                wall_time_limit = Inf,
+               align_time_step = true,
                minimum_relative_step = 0)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
@@ -69,7 +70,8 @@ Keyword arguments
                            This avoids extremely high values when writing the pressure to disk.
                            Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
 """
-function Simulation(model; Δt,
+function Simulation(model;
+                    Δt,
                     verbose = true,
                     stop_iteration = Inf,
                     stop_time = Inf,
