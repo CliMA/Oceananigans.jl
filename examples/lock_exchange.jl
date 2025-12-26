@@ -52,9 +52,10 @@ Nx, Nz = 128, 64
 L = 8kilometers   # horizontal length
 H = 50meters      # depth
 
-# Set domain
-# MutableVerticalDiscretization defines a time-evolving vertical coordinate,
-# for example free-surface–following or terrain-following (sigma) coordinates.
+# Set domain:
+# We wrap `z` into a MutableVerticalDiscretization. This allows the HydrostaticFreeSurface
+# model (which we construct further down) to use a time-evolving `ZStarCoordinate`
+# free-surface–following vertical coordinate.
 x = (0, L)
 z  = MutableVerticalDiscretization((-50, 0))
 
@@ -79,9 +80,8 @@ grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 #
 #  * Want to use a hydrostatic model since horizontal motion may be more significant than vertical motion
 #  * Tracers act as markers within the fluid to track movement and dispersion
-#  * Vertical closure CATKEVerticalDiffusivity handles small-scale vertical turbulence
+#  * Vertical closure [`CATKEVerticalDiffusivity`](@ref) handles small-scale vertical turbulence
 #  * Weighted Essentially Non-Oscillatory (WENO) methods are useful for capturing sharp changes in density
-#  * ZStarCoordinate method allows for the top of the grid to move with the free surface
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = :b,
@@ -89,7 +89,6 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     closure = CATKEVerticalDiffusivity(),
                                     momentum_advection = WENO(order=5),
                                     tracer_advection = WENO(order=7),
-                                    vertical_coordinate = ZStarCoordinate(grid),
                                     free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
 # ## Set variable density initial conditions
