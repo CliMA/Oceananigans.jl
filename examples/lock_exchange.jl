@@ -200,20 +200,22 @@ fig = Figure(size = (800, 900))
 
 fig[1, :] = Label(fig, title, fontsize = 24, tellwidth = false)
 
-ax_b = Axis(fig[2, 1]; title = "b (Buoyancy)", axis_kwargs...)
-hm_b = heatmap!(ax_b, bₙ; nan_color = :grey, colorrange = (0, bmax), colormap = :thermal)
+nan_color = :grey
+
+ax_b = Axis(fig[2, 1]; title = "b (buoyancy)", axis_kwargs...)
+hm_b = heatmap!(ax_b, bₙ; nan_color, colorrange = (0, bmax), colormap = :thermal)
 Colorbar(fig[2, 2], hm_b, label = "m s⁻²")
 
 ax_e = Axis(fig[3, 1]; title = "e (turbulent kinetic energy)", axis_kwargs...)
-hm_e = heatmap!(ax_e, eₙ; nan_color = :grey, colorrange = (0, emax), colormap = :magma)
+hm_e = heatmap!(ax_e, eₙ; nan_color, colorrange = (0, emax), colormap = :magma)
 Colorbar(fig[3, 2], hm_e, label = "m² s⁻²")
 
 ax_u = Axis(fig[4, 1]; title = "u (horizontal velocity)", axis_kwargs...)
-hm_u = heatmap!(ax_u, uₙ; nan_color = :grey, colorrange = (-umax, umax), colormap = :balance)
+hm_u = heatmap!(ax_u, uₙ; nan_color, colorrange = (-umax, umax), colormap = :balance)
 Colorbar(fig[4, 2], hm_u, label = "m s⁻¹")
 
 ax_N2 = Axis(fig[5, 1]; title = "N² (stratification)", axis_kwargs...)
-hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color = :grey, colorrange = (-0.25N2max, N2max), colormap = :haline)
+hm_N2 = heatmap!(ax_N2, N²ₙ; nan_color, colorrange = (-0.25N2max, N2max), colormap = :haline)
 Colorbar(fig[5, 2], hm_N2, label = "s⁻²")
 
 fig
