@@ -410,9 +410,9 @@ function test_field_time_series_reductions(filepath3d, Nt)
     return nothing
 end
 
-function test_chunked_abstraction(filepath)
-    fts = FieldTimeSeries(filepath, "c")
-    fts_chunked = FieldTimeSeries(filepath, "c"; backend=InMemory(2), time_indexing=Cyclical())
+function test_chunked_abstraction(filepath, name)
+    fts = FieldTimeSeries(filepath, name)
+    fts_chunked = FieldTimeSeries(filepath, name; backend=InMemory(2), time_indexing=Cyclical())
 
     for t in eachindex(fts.times)
         fts_chunked[t] == fts[t]
@@ -621,8 +621,7 @@ end
 
     @testset "Test chunked abstraction" begin
         @info "  Testing Chunked abstraction..."
-        filepath = "testfile.jld2"
-        test_chunked_abstraction(filepath)
+        test_chunked_abstraction(filepath3d, "T")
     end
 
     @testset "Time Interpolation" begin

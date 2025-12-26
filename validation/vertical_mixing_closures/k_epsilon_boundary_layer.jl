@@ -35,7 +35,7 @@ closure = TKEDissipationVerticalDiffusivity()
 #closure = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                    tracers = (:b, :e, :ϵ),
+                                    tracers = (:b,),
                                     buoyancy = BuoyancyTracer(),
                                     boundary_conditions=(u=u_bcs, b=b_bcs))
 
@@ -120,4 +120,3 @@ lines!(axs, 𝕊ᶜn, zf, label="𝕊ᶜ")
 axislegend(axs, position=:rb)
 
 fig
-

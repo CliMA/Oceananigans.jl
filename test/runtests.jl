@@ -2,7 +2,10 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
+# TEST_GROUP=unit julia --project -e 'using Pkg; Pkg.test()'
 group = get(ENV, "TEST_GROUP", "all") |> Symbol
+
+# TEST_FILE=test_coriolis.jl julia --project -e 'using Pkg; Pkg.test()'
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -266,6 +269,13 @@ CUDA.allowscalar() do
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
             include("test_xesmf.jl")
+        end
+    end
+
+    # Tests for ConservativeRegridding extension
+    if group == :conservative_regridding || group == :all
+        @testset "ConservativeRegridding extension tests" begin
+            include("test_conservative_regridding.jl")
         end
     end
 

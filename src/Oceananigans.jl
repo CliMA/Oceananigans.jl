@@ -11,6 +11,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
+    RightConnected, LeftConnected, FullyConnected,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
@@ -112,8 +113,6 @@ export
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
-
-using DocStringExtensions
 
 function __init__()
     if VERSION >= v"1.13.0"

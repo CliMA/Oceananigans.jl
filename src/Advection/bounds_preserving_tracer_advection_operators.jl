@@ -10,11 +10,12 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
 @inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, U, ::ZeroField) = zero(grid)
 
 # Is this immersed-boundary safe without having to extend it in ImmersedBoundaries.jl? I think so... (velocity on immmersed boundaries is masked to 0)
+# For bounds preserving advection, we need fluxes at both cell-faces to compute the flux on one face.
+# So we extend div_Uc in order to compute the fluxes at i and i+1 in one go and avoid recomputation.
 @inline function div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, U, c)
-
-    div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, U.u, c)
-    div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, U.v, c)
-    div_z = bounded_tracer_flux_divergence_z(i, j, k, grid, advection, U.w, c)
+    div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, 1, U.u, c)
+    div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, 1, U.v, c)
+    div_z = bounded_tracer_flux_divergence_z(i, j, k, grid, advection, 1, U.w, c)
 
     return 1/Vᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
 end
@@ -24,91 +25,104 @@ end
 @inline bounded_tracer_flux_divergence_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, advection::BoundsPreservingWENO, args...) where {FT, TX, TZ} = zero(FT)
 @inline bounded_tracer_flux_divergence_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, advection::BoundsPreservingWENO, args...) where {FT, TX, TY} = zero(FT)
 
-@inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundsPreservingWENO, u, c)
-
-
-    lower_limit = @inbounds advection.bounds[1]
-    upper_limit = @inbounds advection.bounds[2]
-
-    cᵢⱼ = @inbounds c[i, j, k]
+@inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundsPreservingWENO, ρ, u, c)
+    c_min = @inbounds advection.bounds[1]
+    c_max = @inbounds advection.bounds[2]
 
     c₊ᴸ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, LeftBias(),  c)
     c₊ᴿ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, RightBias(), c)
     c₋ᴸ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, LeftBias(),  c)
     c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, RightBias(), c)
 
-    FT = typeof(cᵢⱼ)
+    FT = eltype(c)
     ω̂₁ = convert(FT, _ω̂₁)
     ω̂ₙ = convert(FT, _ω̂ₙ)
     ε₂ = convert(FT, _ε₂)
 
+    cᵢⱼ = @inbounds c[i, j, k]
     p̃ = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M = max(p̃, c₊ᴸ, c₋ᴿ)
     m = min(p̃, c₊ᴸ, c₋ᴿ)
-    θ = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
+
+    θ_max = abs((c_max - cᵢⱼ) / (M - cᵢⱼ + ε₂))
+    θ_min = abs((c_min - cᵢⱼ) / (m - cᵢⱼ + ε₂))
+    θ = min(θ_max, θ_min, one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return @inbounds Axᶠᶜᶜ(i+1, j, k, grid) * upwind_biased_product(u[i+1, j, k], c₊ᴸ, c₊ᴿ) -
-                     Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u[i,   j, k], c₋ᴸ, c₋ᴿ)
+    u⁺ = @inbounds u[i+1, j, k]
+    u⁻ = @inbounds u[i,   j, k]
+    Ax_ρuc⁺ = ℑxᶠᵃᵃ(i+1, j, k, grid, ρ) * Axᶠᶜᶜ(i+1, j, k, grid) * upwind_biased_product(u⁺, c₊ᴸ, c₊ᴿ)
+    Ax_ρuc⁻ = ℑxᶠᵃᵃ(i,   j, k, grid, ρ) * Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u⁻, c₋ᴸ, c₋ᴿ)
+
+    return Ax_ρuc⁺ - Ax_ρuc⁻
 end
 
-@inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundsPreservingWENO, v, c)
-
-    lower_limit = @inbounds advection.bounds[1]
-    upper_limit = @inbounds advection.bounds[2]
-
-    cᵢⱼ = @inbounds c[i, j, k]
+@inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundsPreservingWENO, ρ, v, c)
+    c_min = @inbounds advection.bounds[1]
+    c_max = @inbounds advection.bounds[2]
 
     c₊ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, LeftBias(),  c)
     c₊ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, RightBias(), c)
     c₋ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, LeftBias(),  c)
     c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, RightBias(), c)
 
-    FT = typeof(cᵢⱼ)
+    FT = eltype(c)
     ω̂₁ = convert(FT, _ω̂₁)
     ω̂ₙ = convert(FT, _ω̂ₙ)
     ε₂ = convert(FT, _ε₂)
 
+    cᵢⱼ = @inbounds c[i, j, k]
     p̃ = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M = max(p̃, c₊ᴸ, c₋ᴿ)
     m = min(p̃, c₊ᴸ, c₋ᴿ)
-    θ = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
+
+    θ_max = abs((c_max - cᵢⱼ) / (M - cᵢⱼ + ε₂))
+    θ_min = abs((c_min - cᵢⱼ) / (m - cᵢⱼ + ε₂))
+    θ = min(θ_max, θ_min, one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return @inbounds Ayᶜᶠᶜ(i, j+1, k, grid) * upwind_biased_product(v[i, j+1, k], c₊ᴸ, c₊ᴿ) -
-                     Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v[i, j,   k], c₋ᴸ, c₋ᴿ)
+    v⁺ = @inbounds v[i, j+1, k]
+    v⁻ = @inbounds v[i, j,   k]
+    Ay_ρvc⁺ = ℑyᵃᶠᵃ(i, j+1, k, grid, ρ) * Ayᶜᶠᶜ(i, j+1, k, grid) * upwind_biased_product(v⁺, c₊ᴸ, c₊ᴿ)
+    Ay_ρvc⁻ = ℑyᵃᶠᵃ(i, j,   k, grid, ρ) * Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v⁻, c₋ᴸ, c₋ᴿ)
+
+    return Ay_ρvc⁺ - Ay_ρvc⁻
 end
 
-@inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundsPreservingWENO, w, c)
-
-    lower_limit = @inbounds advection.bounds[1]
-    upper_limit = @inbounds advection.bounds[2]
-
-    cᵢⱼ = @inbounds c[i, j, k]
+@inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
+    c_min = @inbounds advection.bounds[1]
+    c_max = @inbounds advection.bounds[2]
 
     c₊ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, LeftBias(),  c)
     c₊ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, RightBias(), c)
     c₋ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, LeftBias(),  c)
     c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, RightBias(), c)
 
-    FT = typeof(cᵢⱼ)
+    FT = eltype(c)
     ω̂₁ = convert(FT, _ω̂₁)
     ω̂ₙ = convert(FT, _ω̂ₙ)
     ε₂ = convert(FT, _ε₂)
 
+    cᵢⱼ = @inbounds c[i, j, k]
     p̃ = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M = max(p̃, c₊ᴸ, c₋ᴿ)
     m = min(p̃, c₊ᴸ, c₋ᴿ)
-    θ = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
+
+    θ_max = abs((c_max - cᵢⱼ) / (M - cᵢⱼ + ε₂))
+    θ_min = abs((c_min - cᵢⱼ) / (m - cᵢⱼ + ε₂))
+    θ = min(θ_max, θ_min, one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return @inbounds Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w[i, j, k+1], c₊ᴸ, c₊ᴿ) -
-                     Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w[i, j, k],   c₋ᴸ, c₋ᴿ)
-end
+    w⁺ = @inbounds w[i, j, k+1]
+    w⁻ = @inbounds w[i, j, k]
+    Az_ρwc⁺ = ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) * Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w⁺, c₊ᴸ, c₊ᴿ)
+    Az_ρwc⁻ = ℑzᵃᵃᶠ(i, j, k,   grid, ρ) * Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w⁻, c₋ᴸ, c₋ᴿ)
 
+    return Az_ρwc⁺ - Az_ρwc⁻
+end

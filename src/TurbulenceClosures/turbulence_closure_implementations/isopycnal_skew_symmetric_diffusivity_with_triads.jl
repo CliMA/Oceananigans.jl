@@ -1,9 +1,11 @@
+using Oceananigans.Operators: active_weighted_ℑxzᶜᶜᶜ, active_weighted_ℑyzᶜᶜᶜ
+
 struct TriadIsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L, N} <: AbstractTurbulenceClosure{TD, N}
     κ_skew :: K
     κ_symmetric :: S
     isopycnal_tensor :: M
     slope_limiter :: L
-    
+
     function TriadIsopycnalSkewSymmetricDiffusivity{TD, N}(κ_skew :: K,
                                                            κ_symmetric :: S,
                                                            isopycnal_tensor :: I,
@@ -29,7 +31,7 @@ Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew d
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
 for calculating the isopycnal slopes, and (optionally) applying a `slope_limiter` to the
 calculated isopycnal slope values.
-    
+
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 
 The formulation follows Griffies et al. (1998)
@@ -56,14 +58,14 @@ function TriadIsopycnalSkewSymmetricDiffusivity(time_disc=ExplicitTimeDiscretiza
                                                                           slope_limiter)
 end
 
-TriadIsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
+TriadIsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     TriadIsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-with_tracers(tracers, closure::TISSD{TD, N}) where {TD, N} = 
+Utils.with_tracers(tracers, closure::TISSD{TD, N}) where {TD, N} =
     TriadIsopycnalSkewSymmetricDiffusivity{TD, N}(closure.κ_skew, closure.κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 
 # For ensembles of closures
-function with_tracers(tracers, closure_vector::TISSDVector)
+function Utils.with_tracers(tracers, closure_vector::TISSDVector)
     arch = architecture(closure_vector)
 
     if arch isa Architectures.GPU
@@ -109,12 +111,12 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model
     return nothing
 end
 
-@kernel function triad_compute_tapered_R₃₃!(K, grid, closure, clock, b, C) 
+@kernel function triad_compute_tapered_R₃₃!(K, grid, closure, clock, b, C)
     i, j, k, = @index(Global, NTuple)
     closure = getclosure(i, j, closure)
     κ  = closure.κ_symmetric
     sl = closure.slope_limiter
-    @inbounds K.ϵκR₃₃[i, j, k] = ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) 
+    @inbounds K.ϵκR₃₃[i, j, k] = ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C)
 end
 
 #####
@@ -162,10 +164,10 @@ end
 @inline Sy⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   j, k, k,   grid, buoyancy, tracers)
 
 # We remove triads that live on a boundary (immersed or top / bottom / north / south / east / west)
-@inline triad_mask_x(ix, iz, j, kx, kz, grid) = 
-   !peripheral_node(ix, j, kx, grid, Face(), Center(), Center()) & !peripheral_node(iz, j, kz, grid, Center(), Center(), Face()) 
+@inline triad_mask_x(ix, iz, j, kx, kz, grid) =
+   !peripheral_node(ix, j, kx, grid, Face(), Center(), Center()) & !peripheral_node(iz, j, kz, grid, Center(), Center(), Face())
 
-@inline triad_mask_y(i, jy, jz, ky, kz, grid) = 
+@inline triad_mask_y(i, jy, jz, ky, kz, grid) =
    !peripheral_node(i, jy, ky, grid, Center(), Face(), Center()) & !peripheral_node(i, jz, kz, grid, Center(), Center(), Face())
 
 @inline ϵκx⁺⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock, C) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
@@ -204,18 +206,18 @@ end
     # Small slope approximation
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
 
-    #       i-1     i 
+    #       i-1     i
     # k+1  -------------
     #           |      |
     #       ┏┗  ∘  ┛┓  | k
     #           |      |
-    # k   ------|------|    
+    # k   ------|------|
 
     Fx = (ϵκ⁺⁺ * (∂x_c + Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c)) +
           ϵκ⁺⁻ * (∂x_c + Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c)) +
           ϵκ⁻⁺ * (∂x_c + Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c)) +
           ϵκ⁻⁻ * (∂x_c + Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c))) / 4
-    
+
     return - Fx
 end
 
@@ -234,7 +236,7 @@ end
     ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, loc, κ, clock, sl, b, C)
     ϵκ⁻⁺ = ϵκy⁻⁺(i, j,   k, grid, loc, κ, clock, sl, b, C)
     ϵκ⁻⁻ = ϵκy⁻⁻(i, j,   k, grid, loc, κ, clock, sl, b, C)
-    
+
     Fy = (ϵκ⁺⁺ * (∂y_c + Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
           ϵκ⁺⁻ * (∂y_c + Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
           ϵκ⁻⁺ * (∂y_c + Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c)) +
@@ -275,7 +277,7 @@ end
     # |     | ┛ ┗ | k-1 |
     # |     |     |     |
     # --------------------
-    
+
     κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
                  ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
                  ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
@@ -291,7 +293,7 @@ end
     return - κR₃₁_∂x_c - κR₃₂_∂y_c - κϵ_R₃₃_∂z_c
 end
 
-@inline function ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) 
+@inline function ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C)
     loc = (Center(), Center(), Center())
 
     ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
@@ -307,12 +309,12 @@ end
     ϵκR₃₃ = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C)^2 +
              ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C)^2 +
              ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C)^2 + ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C)^2 +
-             ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C)^2 + ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C)^2) / 4 
+             ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C)^2 + ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C)^2) / 4
 
     return ϵκR₃₃
 end
 
-@inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, clock, c, closure, b, C) 
+@inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, clock, c, closure, b, C)
     κ  = closure.κ_symmetric
     sl = closure.slope_limiter
     return ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)

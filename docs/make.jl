@@ -9,7 +9,7 @@ Distributed.addprocs(2)
 
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
 
     using NCDatasets
     using XESMF
@@ -52,6 +52,25 @@ Distributed.addprocs(2)
     ]
 end
 
+# We'll append the following postamble to the literate examples, to include
+# information about the computing environment used to run them.
+example_postamble = """
+
+# ---
+
+# ### Julia version and environment information
+#
+# This example was executed with the following version of Julia:
+
+using InteractiveUtils: versioninfo
+versioninfo()
+
+# These were the top-level packages installed in the environment:
+
+import Pkg
+Pkg.status()
+"""
+
 @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
@@ -60,6 +79,7 @@ Distributed.pmap(1:length(example_scripts)) do n
     withenv("JULIA_DEBUG" => "Literate") do
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
+                          preprocess = content -> content * example_postamble,
                           flavor = Literate.DocumenterFlavor(), execute = true)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))

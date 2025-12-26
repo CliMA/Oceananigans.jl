@@ -46,6 +46,9 @@ calculated isopycnal slope values. The skew fluxes can be computed using either 
 or the `DiffusiveFormulation`.
 
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
+
+This closure implements the mesoscale eddy parameterization developed by
+[Gent and McWilliams (1990)](@cite GentMcWilliams90) and [Redi (1982)](@cite Redi82).
 """
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = nothing,
@@ -73,20 +76,20 @@ end
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:DiffusiveFormulation, N}
+function Utils.with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:DiffusiveFormulation, N}
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:AdvectiveFormulation, N}
+function Utils.with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:AdvectiveFormulation, N}
     κ_skew = closure.κ_skew
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 # For ensembles of closures
-function with_tracers(tracers, closure_vector::ISSDVector)
+function Utils.with_tracers(tracers, closure_vector::ISSDVector)
     arch = architecture(closure_vector)
 
     if arch isa Architectures.GPU
@@ -346,12 +349,14 @@ end
 #####
 
 Base.summary(closure::ISSD) = string("IsopycnalSkewSymmetricDiffusivity",
-                                     "(κ_skew=",
-                                     prettysummary(closure.κ_skew),
+                                     "(κ_skew=", prettysummary(closure.κ_skew),
                                      ", κ_symmetric=", prettysummary(closure.κ_symmetric), ")")
 
-Base.show(io::IO, closure::ISSD) =
-    print(io, "IsopycnalSkewSymmetricDiffusivity: " *
-              "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
-              "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
+function Base.show(io::IO, closure::ISSD)
+    print(io, "IsopycnalSkewSymmetricDiffusivity:", '\n',
+              "├── κ_skew: ", prettysummary(closure.κ_skew), '\n',
+              "├── κ_symmetric: ", prettysummary(closure.κ_symmetric), '\n',
+              "├── isopycnal_tensor: ", summary(closure.isopycnal_tensor), '\n',
+              "└── slope_limiter: ", summary(closure.slope_limiter))
+end
 

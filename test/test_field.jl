@@ -478,6 +478,35 @@ end
             topo = (Bounded, Bounded, Bounded)
             grid = RectilinearGrid(arch, FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
 
+            @info "  Testing field construction with `field` function..."
+
+            array_data = ones(FT, Nx, Nx, Nx)
+            f = field((Center, Center, Center), array_data, grid)
+            @test @allowscalar all(isone, interior(f))
+
+            # With an OffsetArray or a Field, we point to the same data
+            offset_data = Oceananigans.Grids.new_data(FT, grid, (Center(), Center(), Center()))
+            fill!(offset_data, 1)
+            f = field((Center, Center, Center), offset_data, grid)
+            @test @allowscalar all(isone, f.data)
+            @test f.data === offset_data
+
+            field_data = CenterField(grid)
+            set!(field_data, 1)
+            f = field((Center, Center, Center), field_data, grid)
+            @test @allowscalar all(isone, interior(f))
+            @test f === field_data
+
+            number_data = FT(1)
+            f = field((Center, Center, Center), number_data, grid)
+            @test f.constant == 1
+            
+            function_data = (x, y, z) -> 1
+            f = field((Center, Center, Center), function_data, grid)
+            @test @allowscalar all(isone, interior(f))
+
+            @info "  Testing Field constructors..."
+
             u = XFaceField(grid)
             v = YFaceField(grid)
             w = ZFaceField(grid)
@@ -779,4 +808,3 @@ end
         end
     end
 end
-
