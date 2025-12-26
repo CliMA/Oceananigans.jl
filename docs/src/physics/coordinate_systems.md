@@ -6,8 +6,8 @@ The extrinsic coordinate system is either _Cartesian_ or _geographic_
 
 ## Cartesian coordinates
 
-Cartesian coordinates are used by [`RectilinearGrid`](@ref) and provide a local, flat representation
-of space with coordinates ``\boldsymbol{x} = (x, y, z)`` and unit vectors
+Cartesian coordinates are used by [`RectilinearGrid`](@ref) and provide a local, flat (Euclidean)
+representation of space with coordinates ``\boldsymbol{x} = (x, y, z)`` and unit vectors
 ``\boldsymbol{\hat x}``, ``\boldsymbol{\hat y}``, and ``\boldsymbol{\hat z}``.
 By convention, ``\boldsymbol{\hat x}`` points east, ``\boldsymbol{\hat y}`` points north,
 and ``\boldsymbol{\hat z}`` points "upward", opposite to the direction of gravitational acceleration.
@@ -31,11 +31,12 @@ We use ``\boldsymbol{u} = u \boldsymbol{\hat x} + v \boldsymbol{\hat y}`` to den
 
 Geographic (or spherical) coordinates ``(λ, φ, z)`` represent longitude, latitude, and
 the vertical coordinate and are used by [`LatitudeLongitudeGrid`](@ref) and [`OrthogonalSphericalShellGrid`](@ref).
-The corresponding unit vectors are ``\boldsymbol{\hat λ}`` (eastward), ``\boldsymbol{\hat φ}`` (northward),
-and ``\boldsymbol{\hat z}`` (upward, radially outward from the center of the sphere).
+The corresponding unit vectors are ``\boldsymbol{\hat λ}``, ``\boldsymbol{\hat φ}``,
+and ``\boldsymbol{\hat z}`` and at each grid location the point eastward, northward, and
+upward (radially outward from the center of the sphere) respectively.
 
-The velocity components in geographic coordinates are ``(u, v, w)``
-where ``u`` is the eastward velocity, ``v`` is the northward velocity, and ``w`` is the vertical velocity:
+The velocity components in geographic coordinates are ``(u, v, w)`` where ``u`` is the eastward
+velocity, ``v`` is the northward velocity, and ``w`` is the vertical velocity:
 ```math
 \boldsymbol{v} = u \boldsymbol{\hat λ} + v \boldsymbol{\hat φ} + w \boldsymbol{\hat z} \, .
 ```
