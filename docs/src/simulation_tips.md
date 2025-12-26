@@ -184,7 +184,7 @@ than 512 × 512 × 512. (The maximum grid size depends on some user-specified fa
 like the number of passive tracers or computed diagnostics.)
 For large simulations on the GPU, careful management of memory allocation may be required:
 
-- Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
+- Use the [`nvidia-smi`](https://developer.nvidia.com/system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
   on your GPU and how much of it you're using and you can run it from Julia via
 
@@ -204,7 +204,7 @@ For large simulations on the GPU, careful management of memory allocation may be
   the memory requirements. However, if you explicitly create a scratch space and pass that same
   scratch space for as many diagnostics as you can, you minimize the memory requirements of your
   calculations by reusing the same chunk of memory. Have a look at an
-  [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383) and how it can be
+  [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_constant_fluxes.jl#L380-L383) and how it can be
   [used in calculations](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
 
 
