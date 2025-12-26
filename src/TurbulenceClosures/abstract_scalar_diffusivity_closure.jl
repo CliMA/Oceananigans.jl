@@ -1,3 +1,4 @@
+using Oceananigans.Grids: node
 using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
 
 """
@@ -56,7 +57,7 @@ Returns the scalar viscosity associated with `closure`.
 function viscosity end
 
 """
-    diffusivity(closure, tracer_index, diffusivity_fields)
+    diffusivity(closure, tracer_index, closure_fields)
 
 Returns the scalar diffusivity associated with `closure` and `tracer_index`.
 """
@@ -72,8 +73,8 @@ const c = Center()
 viscosity(closure::Tuple, K) = Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure))
 diffusivity(closure::Tuple, K, id) = Tuple(diffusivity(closure[n], K[n], id) for n = 1:length(closure))
 
-viscosity(model) = viscosity(model.closure, model.diffusivity_fields)
-diffusivity(model, id) = diffusivity(model.closure, model.diffusivity_fields, id)
+viscosity(model) = viscosity(model.closure, model.closure_fields)
+diffusivity(model, id) = diffusivity(model.closure, model.closure_fields, id)
 
 @inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
 
@@ -312,6 +313,7 @@ end
 @inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
 @inline νᶠᶠᶜ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
 
+@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ

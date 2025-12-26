@@ -1,9 +1,9 @@
-using GPUArraysCore
+using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Grids: Flat, Bounded, ColumnEnsembleSize
-using Oceananigans.Fields: ZeroField
+using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
@@ -73,9 +73,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
-    compute_diffusivities!(model.diffusivity_fields, model.closure, model)
+    compute_diffusivities!(model.closure_fields, model.closure, model)
 
-    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
+    fill_halo_regions!(model.closure_fields, model.clock, fields(model))
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)

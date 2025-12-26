@@ -4,10 +4,7 @@ using OffsetArrays
 using Adapt
 using Distances
 
-using Adapt: adapt_structure
-
 using Oceananigans
-using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 using GPUArraysCore
 
 const AHCG = AbstractHorizontallyCurvilinearGrid
@@ -326,13 +323,10 @@ end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology_strs(grid)
-    metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
-
-    return string(size_summary(size(grid)),
+    TX, TY, TZ = topology(grid)
+    return string(size_summary(grid),
                   " OrthogonalSphericalShellGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
-                  " with ", size_summary(halo_size(grid)), " halo",
-                  " and ", metric_computation)
+                  " with ", size_summary(halo_size(grid)), " halo")
 end
 
 function new_metric(FT, arch, (LX, LY), topo, (Nx, Ny), (Hx, Hy))
@@ -347,12 +341,12 @@ end
 
 """
     OrthogonalSphericalShellGrid(arch = CPU(), FT = Oceananigans.defaults.FloatType;
-                                size,
-                                z,
-                                radius = Oceananigans.defaults.planet_radius,
-                                conformal_mapping = nothing,
-                                halo = (3, 3, 3),
-                                topology = (Bounded, Bounded, Bounded))
+                                 size,
+                                 z,
+                                 radius = Oceananigans.defaults.planet_radius,
+                                 conformal_mapping = nothing,
+                                 halo = (3, 3, 3),
+                                 topology = (Bounded, Bounded, Bounded))
 
 Return an OrthogonalSphericalShellGrid with empty horizontal metrics.
 """
@@ -519,10 +513,10 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-    λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false, indices=(Colon(), Colon(), Colon()))
+    λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1:2])
+    φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1:2])
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[3])
 
     if reshape
         # λ and φ are 2D arrays
@@ -535,40 +529,40 @@ function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     return (λ, φ, z)
 end
 
-@inline λnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false) =
-    _property(grid.λᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline λnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.λᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline λnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false) =
-    _property(grid.λᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline λnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.λᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline λnodes(grid::OSSG, ℓx::C, ℓy::F; with_halos=false) =
-    _property(grid.λᶜᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline λnodes(grid::OSSG, ℓx::C, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.λᶜᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline λnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false) =
-    _property(grid.λᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline λnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.λᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false) =
-    _property(grid.φᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline φnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.φᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false) =
-    _property(grid.φᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline φnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.φᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::C, ℓy::F, ; with_halos=false) =
-    _property(grid.φᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline φnodes(grid::OSSG, ℓx::C, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.φᶜᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false) =
-    _property(grid.φᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos)
+@inline φnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+    view(_property(grid.φᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false) =
-    grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos))
+@inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false, indices=(Colon(), Colon())) =
+    grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos, indices)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos, indices))
 
-@inline ynodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos))
+@inline ynodes(grid::OSSG, ℓx, ℓy; with_halos=false, indices=(Colon(), Colon())) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos, indices))
 
 # convenience
-@inline λnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx, ℓy; with_halos)
-@inline φnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓx, ℓy; with_halos)
-@inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
-@inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
+@inline λnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = λnodes(grid, ℓx, ℓy; with_halos, indices)
+@inline φnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = φnodes(grid, ℓx, ℓy; with_halos, indices)
+@inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = xnodes(grid, ℓx, ℓy; with_halos, indices)
+@inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = ynodes(grid, ℓx, ℓy; with_halos, indices)
 
 @inline λnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
 @inline λnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]

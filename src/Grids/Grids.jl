@@ -1,8 +1,8 @@
 module Grids
 
 export Center, Face
-export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
-
+export AbstractTopology, topology
+export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -16,7 +16,6 @@ export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes, rnodes
-export spacings
 export xspacings, yspacings, zspacings, λspacings, φspacings, rspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
@@ -32,7 +31,7 @@ using Printf
 using Oceananigans
 using Oceananigans.Architectures
 
-import Base: size, length, eltype, show, -
+import Base: size, length, eltype, -
 import Oceananigans.Architectures: architecture, on_architecture
 
 #####
@@ -103,11 +102,6 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
-topology_str(T) = string(T)
-topology_str(::Type{RightConnected}) = "RightConnected"
-topology_str(::Type{LeftConnected}) = "LeftConnected"
-topology_str(::Type{FullyConnected}) = "FullyConnected"
-
 #####
 ##### Directions (for tilted domains)
 #####
@@ -137,5 +131,6 @@ include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
+include("coordinate_transformations.jl")
 
 end # module
