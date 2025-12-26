@@ -240,15 +240,15 @@ component (the east boundary):
 ```math
     \partial_t u + u \partial_x u + v \partial_y u + w \partial_z u = (\boldsymbol{\nabla} \cdot \boldsymbol{\tau})_x + F,
 ```
-let ``\boldsymbol{u} = \boldsymbol{U} + \boldsymbol{u}\prime`` with ``\boldsymbol{U} = U(x, y, z, t) \hat{boldsymbol{x}}``
-where ``U`` is an externally determined ``background" wall-normal flow in the proximity of the boundary,
+let ``\boldsymbol{u} = \boldsymbol{U} + \boldsymbol{u}'`` with ``\boldsymbol{U} = U(x, y, z, t) \hat{\boldsymbol{x}}``
+where ``U`` is an externally determined "background" wall-normal flow in the proximity of the boundary,
 and assume that the stress tensor gradient is small,
 ```math
-    \partial_t u = -(U + u\prime) \partial_x(U + u\prime) - v \partial_y (U + u\prime) - w \partial_z (U + u\prime) + F,
+    \partial_t u = -(U + u') \partial_x(U + u') - v \partial_y (U + u') - w \partial_z (U + u') + F,
 ```
 then, taking only first-order terms:
 ```math
-    \partial_t u = -U \partial_x u\prime - v\partial_y U - w \partial_z U + F.
+    \partial_t u = - U \partial_x u' - v \partial_y U - w \partial_z U + F.
 ```
 Now consider the dominant forcing to be relaxation to the background state (we will explain why later) so
 that ``F = (U - u) / \tau``, and recall that when we compute the boundary normal point the interior domain is
