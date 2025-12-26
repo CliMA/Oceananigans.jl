@@ -241,12 +241,12 @@ component (the east boundary):
     \partial_tu + u\partial_xu + v\partial_yu + w\partial_zu = (\nabla\cdot\vec{\tau})_x + F,
 ```
 let ``\vec{u} = \vec{U} + \vec{u}\prime`` with ``\vec{U} = U(x, y, z, t)\hat{x}`` where ``U`` is an externally
-determined ``background" wall normal flow in the proximity of the boundary, and assume that the 
+determined ``background" wall-normal flow in the proximity of the boundary, and assume that the 
 stress tensor gradient is small,
 ```math
     \partial_tu = -(U + u\prime)\partial_x(U+u\prime) - v\partial_y(U+u\prime) - w\partial_z(U + u\prime) + F,
 ```
-then, taking only first order terms:
+then, taking only first-order terms:
 ```math
     \partial_tu = -U\partial_x u\prime - v\partial_yU - w\partial_zU + F.
 ```
