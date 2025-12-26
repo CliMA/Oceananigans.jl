@@ -147,7 +147,7 @@ N² = ∂z(b)
 
 filename = "lock_exchange.jld2"
 save_interval = 2minutes
-simulation.output_writers[:fields] = JLD2Writer(model, (; b, e, u, w, N²);
+simulation.output_writers[:fields] = JLD2Writer(model, (; b, e, u, N²);
                                                 filename = filename,
                                                 schedule = TimeInterval(save_interval),
                                                 overwrite_existing = true)
@@ -161,7 +161,6 @@ run!(simulation)
 # ## Load Saved TimeSeries Values
 
 ut = FieldTimeSeries(filename, "u")
-wt = FieldTimeSeries(filename, "w")
 N²t = FieldTimeSeries(filename, "N²")
 bt = FieldTimeSeries(filename, "b")
 et = FieldTimeSeries(filename, "e")
@@ -176,7 +175,6 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %5.2f hours", times[$n] / hour)
 
-uₙ = @lift ut[$n]
 wₙ = @lift wt[$n]
 N²ₙ = @lift N²t[$n]
 bₙ = @lift bt[$n]
@@ -185,7 +183,6 @@ nothing #hide
 
 # For visualization color ranges (use last snapshot)
 umax = maximum(abs, ut[end])
-wmax = maximum(abs, wt[end])
 N2max = maximum(abs, N²t[end])
 bmax = maximum(abs, bt[end])
 emax = maximum(abs, et[end])
