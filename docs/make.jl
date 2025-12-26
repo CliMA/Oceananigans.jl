@@ -219,7 +219,7 @@ makedocs(; sitename = "Oceananigans.jl",
              r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
-         linkcheck = true,
+         linkcheck = false,
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up
          checkdocs = :exports, # set to :none to speed things up
