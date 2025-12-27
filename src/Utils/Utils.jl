@@ -12,6 +12,7 @@ export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSch
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div
+export TabulatedFunction
 
 #####
 ##### Misc. small utils
@@ -41,5 +42,6 @@ include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
+include("tabulated_function.jl")
 
 end # module
