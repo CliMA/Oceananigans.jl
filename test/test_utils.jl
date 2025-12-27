@@ -43,31 +43,31 @@ include("dependencies_for_runtests.jl")
         @info "  Testing TabulatedFunction..."
 
         # Test basic construction and evaluation
-        f = TabulatedFunction(sin; x_range=(0, 2π), points=1000)
+        f = TabulatedFunction(sin; range=(0, 2π), points=1000)
         @test f isa TabulatedFunction
         @test abs(f(π/4) - sin(π/4)) < 0.001
         @test abs(f(π/2) - sin(π/2)) < 0.001
         @test abs(f(π) - sin(π)) < 0.001
 
         # Test tabulate alias
-        g = tabulate(x -> x^2; x_range=(-5, 5), points=500)
+        g = tabulate(x -> x^2; range=(-5, 5), points=500)
         @test g isa TabulatedFunction
         @test abs(g(2.0) - 4.0) < 0.01
         @test abs(g(-3.0) - 9.0) < 0.01
 
         # Test clamping at boundaries
-        h = TabulatedFunction(identity; x_range=(0, 1), points=100)
+        h = TabulatedFunction(identity; range=(0, 1), points=100)
         @test h(-0.5) ≈ 0.0  # Clamped to x_min
         @test h(1.5) ≈ 1.0   # Clamped to x_max
 
         # Test with Float32
-        f32 = TabulatedFunction(cos; x_range=(0, π), points=100, FT=Float32)
+        f32 = TabulatedFunction(cos, CPU(), Float32; range=(0, π), points=100)
         @test eltype(f32.table) == Float32
         @test abs(f32(π/2) - cos(Float32(π/2))) < 0.01
 
         # Test expensive function (what it's designed for)
         expensive_func(x) = log(1 + exp(x)) + sqrt(abs(x))
-        t = TabulatedFunction(expensive_func; x_range=(-10, 10), points=10000)
+        t = TabulatedFunction(expensive_func; range=(-10, 10), points=10000)
         @test abs(t(0.0) - expensive_func(0.0)) < 0.1  # sqrt has a singularity at 0
         @test abs(t(5.0) - expensive_func(5.0)) < 0.01
 

@@ -112,7 +112,8 @@ export
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+    TabulatedFunction, tabulate
 
 function __init__()
     if VERSION >= v"1.13.0"
