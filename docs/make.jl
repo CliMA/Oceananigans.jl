@@ -46,6 +46,7 @@ Distributed.addprocs(2)
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
+        "lock_exchange.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
@@ -102,6 +103,7 @@ example_pages = [
     "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
     "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
     "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
+    "Lock exchange"                    => "literated/lock_exchange.md",
     "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
     "Horizontal convection"            => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md",
@@ -216,14 +218,20 @@ makedocs(; sitename = "Oceananigans.jl",
          format, pages, modules,
          plugins = [bib],
          warnonly = [:cross_references],
-         draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
-         checkdocs = :exports) # set to :none to speed things up
+         linkcheck = true,
+         linkcheck_ignore = [
+            r"jstor\.org",
+            r"^https://github\.com/.*?/blob/",
+         ],
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         checkdocs = :exports, # set to :none to speed things up
+         )
 
 """
     recursive_find(directory, pattern)
