@@ -1,3 +1,14 @@
+# Distributed hydrostatic simulation for scaling tests
+#
+# Run with:
+#
+#   mpiexec -n 4 julia --project distributed_scaling/distributed_hydrostatic_simulation.jl
+#
+# Environment variables:
+#   RX, RY: number of ranks in x and y directions (default: 1)
+#   NX, NY, NZ: grid size (default: 72, 30, 10)
+#
+
 using MPI
 MPI.Init()
 
@@ -18,7 +29,6 @@ function double_drake_bathymetry(λ, φ)
         (λ >  0 && λ < 1)  && return 0.0
         (λ > 90 && λ < 91) && return 0.0
     end
-
     return -10000.0
 end
 
@@ -28,13 +38,14 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
                                      CFL = 0.35,
                                      barotropic_CFL = 0.75)
 
-    arch  = Distributed(GPU(), FT; partition = Partition(ranks...))
-    grid  = LatitudeLongitudeGrid(arch; size = grid_size, longitude = (-180, 180),
-                                  latitude = (-75, 75),
-                                  z = (-5500, 0),
-                                  halo = (7, 7, 7))
+    arch = Distributed(CPU(), FT; partition = Partition(ranks...))
+    grid = LatitudeLongitudeGrid(arch; size = grid_size,
+                                 longitude = (-180, 180),
+                                 latitude = (-75, 75),
+                                 z = (-5500, 0),
+                                 halo = (7, 7, 7))
 
-    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(double_drake_bathymetry))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(double_drake_bathymetry))
 
     momentum_advection = WENOVectorInvariant(FT)
     tracer_advection   = WENO(grid, order = 7)
@@ -48,29 +59,29 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
     free_surface = SplitExplicitFreeSurface(FT; grid, cfl = barotropic_CFL, fixed_Δt = max_Δt)
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                          momentum_advection,
-                                          tracer_advection,
-                                          coriolis,
-                                          closure,
-                                          free_surface,
-                                          tracers = (:T, :S),
-                                          buoyancy,
-                                          timestepper)
+                                        momentum_advection,
+                                        tracer_advection,
+                                        coriolis,
+                                        closure,
+                                        free_surface,
+                                        tracers = (:T, :S, :e),
+                                        buoyancy,
+                                        timestepper)
 
     wtime = Ref(time_ns())
 
     function progress(sim)
-        @info @sprintf("iteration: %d, Δt: %2e, wall time: %s (|u|, |v|, |w|): %.2e %.2e %.2e, b: %.2e \n",
-              sim.model.clock.iteration, sim.Δt, prettytime((time_ns() - wtime[])*1e-9),
-              maximum(abs, sim.model.velocities.u), maximum(abs, sim.model.velocities.v),
-              maximum(abs, sim.model.velocities.w), maximum(abs, sim.model.tracers.b))
-       wtime[] = time_ns()
+        @info @sprintf("iteration: %d, Δt: %.2e, wall time: %s, (|u|, |v|, |w|): %.2e %.2e %.2e, T: %.2e",
+                       sim.model.clock.iteration, sim.Δt, prettytime((time_ns() - wtime[]) * 1e-9),
+                       maximum(abs, sim.model.velocities.u), maximum(abs, sim.model.velocities.v),
+                       maximum(abs, sim.model.velocities.w), maximum(abs, sim.model.tracers.T))
+        wtime[] = time_ns()
     end
 
-    simulation = Simulation(model; Δt=max_Δt, stop_time = 20days, stop_iteration = 100)
+    simulation = Simulation(model; Δt = max_Δt, stop_time = 20days, stop_iteration = 100)
 
     # Adaptive time-stepping
-    wizard = TimeStepWizard(cfl=CFL; max_change=1.1, min_Δt=10, max_Δt)
+    wizard = TimeStepWizard(cfl = CFL; max_change = 1.1, min_Δt = 10, max_Δt)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
@@ -85,6 +96,8 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
 
     run!(simulation)
 
+    @info "Simulation completed on rank $rank"
+
     return nothing
 end
 
@@ -93,9 +106,10 @@ ry = parse(Int, get(ENV, "RY", "1"))
 
 ranks = (rx, ry, 1)
 
-Nx = parse(Int, get(ENV, "NX", "1440"))
-Ny = parse(Int, get(ENV, "NY", "600"))
-Nz = parse(Int, get(ENV, "NZ", "100"))
+# Reduced resolution for testing
+Nx = parse(Int, get(ENV, "NX", "72"))
+Ny = parse(Int, get(ENV, "NY", "30"))
+Nz = parse(Int, get(ENV, "NZ", "10"))
 
 grid_size = (Nx, Ny, Nz)
 
