@@ -27,7 +27,7 @@ The `path` field semantically represents "where to find the data" - for distribu
 output, the data lives across multiple rank files.
 """
 struct DistributedPaths{R}
-    ranks :: R  # Vector of RankData, one per MPI rank
+    ranks :: R  # Vector of RankOutputData, one per MPI rank
 end
 
 Base.show(io::IO, dp::DistributedPaths) = print(io, "DistributedPaths(", length(dp.ranks), " ranks)")
@@ -55,7 +55,7 @@ function find_rank_files(path)
 end
 
 """
-    RankData{G, I}
+    RankOutputData{G, I}
 
 Data about a single MPI rank's output file, used for combining distributed output.
 
@@ -65,7 +65,7 @@ Fields:
 - `partition`: Total number of ranks in each dimension, e.g., `(2, 2, 1)`
 - `path`: Path to this rank's JLD2 output file
 """
-struct RankData{G, I}
+struct RankOutputData{G, I}
     local_grid :: G
     local_index :: I
     partition :: NTuple{3, Int}
@@ -80,7 +80,7 @@ function load_rank_data(path; reader_kw=NamedTuple())
     
     arch = try architecture(local_grid) catch; return nothing end
     hasproperty(arch, :local_index) && hasproperty(arch, :ranks) || return nothing
-    return RankData(local_grid, arch.local_index, arch.ranks, path)
+    return RankOutputData(local_grid, arch.local_index, arch.ranks, path)
 end
 
 #####
