@@ -343,7 +343,7 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, TI, <:OnDisk, I, D, G, E
                   boundary_conditions = fts.boundary_conditions)
     
     # Load and combine data from all rank files
-    load_combined_field_data!(field, rank_infos, fts.name, iter; reader_kw=fts.reader_kw)
+    load_combined_field_data!(field, all_ranks, fts.name, iter; reader_kw=fts.reader_kw)
     
     # Set the field time status
     status = @allowscalar FixedTime(fts.times[n])
