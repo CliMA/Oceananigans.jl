@@ -18,7 +18,7 @@ using Oceananigans.DistributedComputations: reconstruct_global_topology
 #####
 
 """
-    DistributedFilePaths(ranks)
+    DistributedPaths(ranks)
 
 A wrapper for the `path` field that stores information about each rank's output file.
 This enables dispatching for combining distributed output with both InMemory and OnDisk backends.
@@ -26,14 +26,14 @@ This enables dispatching for combining distributed output with both InMemory and
 The `path` field semantically represents "where to find the data" - for distributed
 output, the data lives across multiple rank files.
 """
-struct DistributedFilePaths{R}
+struct DistributedPaths{R}
     ranks :: R  # Vector of RankData, one per MPI rank
 end
 
-Base.show(io::IO, dp::DistributedFilePaths) = print(io, "DistributedFilePaths(", length(dp.ranks), " ranks)")
+Base.show(io::IO, dp::DistributedPaths) = print(io, "DistributedPaths(", length(dp.ranks), " ranks)")
 
 # Convenience accessor for the first rank's path (used for metadata)
-first_path(dp::DistributedFilePaths) = first(dp.ranks).path
+first_path(dp::DistributedPaths) = first(dp.ranks).path
 first_path(path::String) = path
 
 #####
@@ -268,8 +268,8 @@ function combined_field_time_series(path, name;
     isnothing(times) && (times = [file["timeseries/t/$i"] for i in iterations])
     close(file)
     
-    # Use DistributedFilePaths to store rank data - enables dispatch for both backends
-    distributed_path = DistributedFilePaths(all_ranks)
+    # Use DistributedPaths to store rank data - enables dispatch for both backends
+    distributed_path = DistributedPaths(all_ranks)
     
     # Create FieldTimeSeries
     Nt = time_indices_length(backend, times)
@@ -285,11 +285,11 @@ function combined_field_time_series(path, name;
 end
 
 #####
-##### InMemory support - set! dispatches on DistributedFilePaths
+##### InMemory support - set! dispatches on DistributedPaths
 #####
 
 """Set FieldTimeSeries data by loading and combining from distributed rank files."""
-function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:DistributedFilePaths}
+function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:DistributedPaths}
              ) where {LX, LY, LZ, TI, K <: AbstractInMemoryBackend, I, D, G, ET, B, χ}
     
     all_ranks = fts.path.ranks
@@ -317,16 +317,16 @@ function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:Dist
 end
 
 #####
-##### OnDisk support - getindex dispatches on DistributedFilePaths
+##### OnDisk support - getindex dispatches on DistributedPaths
 #####
 
 """
     getindex(fts, n::Int)
 
 Load and combine field data from distributed rank files at time index `n`.
-This method dispatches when `fts.path isa DistributedFilePaths` and `fts.backend isa OnDisk`.
+This method dispatches when `fts.path isa DistributedPaths` and `fts.backend isa OnDisk`.
 """
-function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, TI, <:OnDisk, I, D, G, ET, B, χ, <:DistributedFilePaths},
+function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, TI, <:OnDisk, I, D, G, ET, B, χ, <:DistributedPaths},
                        n::Int) where {LX, LY, LZ, TI, I, D, G, ET, B, χ}
     all_ranks = fts.path.ranks
     metadata_path = first_path(fts.path)
