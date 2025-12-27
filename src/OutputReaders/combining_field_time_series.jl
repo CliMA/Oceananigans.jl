@@ -240,13 +240,13 @@ function combined_field_time_series(path, name;
     rank_paths = find_rank_files(path)
     isnothing(rank_paths) && error("No rank files found for path: $path")
     
-    rank_infos = filter(!isnothing, [load_rank_file_info(p; reader_kw) for p in rank_paths])
-    isempty(rank_infos) && error("Could not load distributed grid info from rank files.")
+    all_ranks = filter(!isnothing, [load_rank_data(p; reader_kw) for p in rank_paths])
+    isempty(all_ranks) && error("Could not load distributed grid info from rank files.")
     
-    sort!(rank_infos, by = i -> (i.local_index[3], i.local_index[2], i.local_index[1]))
+    sort!(all_ranks, by = rd -> (rd.local_index[3], rd.local_index[2], rd.local_index[1]))
     
     architecture = something(architecture, isnothing(grid) ? CPU() : Architectures.architecture(grid))
-    isnothing(grid) && (grid = reconstruct_global_grid_from_ranks(rank_infos, architecture))
+    isnothing(grid) && (grid = reconstruct_global_grid(all_ranks, architecture))
     
     # Read metadata from first rank file
     metadata_path = first(rank_paths)
@@ -268,8 +268,8 @@ function combined_field_time_series(path, name;
     isnothing(times) && (times = [file["timeseries/t/$i"] for i in iterations])
     close(file)
     
-    # Use DistributedPath to store rank_infos - this enables dispatch for both backends
-    distributed_path = DistributedPath(rank_infos)
+    # Use DistributedFilePaths to store rank data - enables dispatch for both backends
+    distributed_path = DistributedFilePaths(all_ranks)
     
     # Create FieldTimeSeries
     Nt = time_indices_length(backend, times)
@@ -285,14 +285,14 @@ function combined_field_time_series(path, name;
 end
 
 #####
-##### InMemory support - set! dispatches on DistributedPath
+##### InMemory support - set! dispatches on DistributedFilePaths
 #####
 
 """Set FieldTimeSeries data by loading and combining from distributed rank files."""
-function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:DistributedPath}
+function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:DistributedFilePaths}
              ) where {LX, LY, LZ, TI, K <: AbstractInMemoryBackend, I, D, G, ET, B, χ}
     
-    rank_infos = fts.path.rank_infos
+    all_ranks = fts.path.ranks
     metadata_path = first_path(fts.path)
     
     file = jldopen(metadata_path; fts.reader_kw...)
@@ -308,7 +308,7 @@ function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:Dist
         if isnothing(file_index)
             @warn "No data found for time $(cpu_times[n]) and time index $n"
         else
-            load_combined_field_data!(fts[n], rank_infos, fts.name, file_iterations[file_index];
+            load_combined_field_data!(fts[n], all_ranks, fts.name, file_iterations[file_index];
                                        reader_kw=fts.reader_kw)
         end
     end
@@ -317,18 +317,18 @@ function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:Dist
 end
 
 #####
-##### OnDisk support - getindex dispatches on DistributedPath
+##### OnDisk support - getindex dispatches on DistributedFilePaths
 #####
 
 """
     getindex(fts, n::Int)
 
 Load and combine field data from distributed rank files at time index `n`.
-This method dispatches when `fts.path isa DistributedPath` and `fts.backend isa OnDisk`.
+This method dispatches when `fts.path isa DistributedFilePaths` and `fts.backend isa OnDisk`.
 """
-function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, TI, <:OnDisk, I, D, G, ET, B, χ, <:DistributedPath},
+function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, TI, <:OnDisk, I, D, G, ET, B, χ, <:DistributedFilePaths},
                        n::Int) where {LX, LY, LZ, TI, I, D, G, ET, B, χ}
-    rank_infos = fts.path.rank_infos
+    all_ranks = fts.path.ranks
     metadata_path = first_path(fts.path)
     
     # Get iteration key from first rank file
