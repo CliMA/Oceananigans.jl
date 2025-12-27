@@ -31,7 +31,7 @@ include("reactant_test_utils.jl")
 
         η = simulation.model.free_surface.η
         η_grid = η.grid
-        @test isnothing(η_grid.interior_active_cells)
+        @test isnothing(η_grid.active_cells)
         @test isnothing(η_grid.active_z_columns)
     end
 
@@ -63,7 +63,7 @@ include("reactant_test_utils.jl")
                                                  immersed_boundary_grid=true)
     η = simulation.model.free_surface.η
     η_grid = η.grid
-    @test isnothing(η_grid.interior_active_cells)
+    @test isnothing(η_grid.active_cells)
     @test isnothing(η_grid.active_z_columns)
 
     @info "Testing LatitudeLongitudeGrid + 'complicated HydrostaticFreeSurfaceModel' Reactant correctness"

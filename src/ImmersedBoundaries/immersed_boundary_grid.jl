@@ -11,7 +11,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I
-    interior_active_cells :: M
+    active_cells :: M
     active_z_columns :: S
 end
 
@@ -39,7 +39,7 @@ has_active_z_columns(::NoActiveZColumnsIBG) = false
                          active_cells_map=false, active_z_columns=active_cells_map)
 
 Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or `active_z_columns` are `true`,
-the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the
+the grid will populate `active_cells` and `active_z_columns` fields -- a list of active indices in the
 interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
@@ -50,9 +50,9 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
 
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map
-        @apply_regionally interior_active_cells = build_active_cells_map(grid, materialized_ib)
+        @apply_regionally active_cells = build_active_cells_map(grid, materialized_ib)
     else
-        interior_active_cells = nothing
+        active_cells = nothing
     end
 
      if active_z_columns
@@ -64,7 +64,7 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid,
                                             materialized_ib,
-                                            interior_active_cells,
+                                            active_cells,
                                             active_z_columns)
 end
 
@@ -82,9 +82,9 @@ const IBG = ImmersedBoundaryGrid
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
 @inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getproperty(getfield(ibg, :underlying_grid), property)
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})      = getfield(ibg, :immersed_boundary)
-@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})        = getfield(ibg, :underlying_grid)
-@inline get_ibg_property(ibg::IBG, ::Val{:interior_active_cells})  = getfield(ibg, :interior_active_cells)
-@inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})       = getfield(ibg, :active_z_columns)
+@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})  = getfield(ibg, :underlying_grid)
+@inline get_ibg_property(ibg::IBG, ::Val{:active_cells})     = getfield(ibg, :active_cells)
+@inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns}) = getfield(ibg, :active_z_columns)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 

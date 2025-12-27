@@ -11,19 +11,18 @@ const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 
 # An IBG with an interior active cells map subdivided in 5 different sub-maps.
 # Only used (for the moment) in the case of distributed architectures where the boundary adjacent region
-# has to be computed separately, these maps hold the active region in the "halo-independent" part of the domain
-# (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
+# has to be computed separately. The NamedTuple has fields (; interior, west, east, south, north)
+# where `interior` is the halo-independent region and the others are the halo-dependent boundary regions.
 const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
 @inline Grids.active_column_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
-@inline Grids.active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
-@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
-@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
-@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
-@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
-@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
-@inline Grids.active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
+@inline Grids.active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.active_cells
+@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.active_cells.interior
+@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.active_cells.west
+@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.active_cells.east
+@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.active_cells.south
+@inline Grids.active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.active_cells.north
 
 """
     linear_index_to_tuple(idx, map, grid)
@@ -153,7 +152,7 @@ end
 @inline add_3rd_index(ij::Tuple, k) = (ij[1], ij[2], k)
 
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
-# domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in
+# domain. Therefore, the `active_cells` field contains the indices of all the active cells in
 # the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
 build_active_cells_map(grid, ib) = serially_build_active_cells_map(grid, ib; parameters = :xyz)
 
