@@ -8,7 +8,8 @@ export
     PrescribedVelocityFields, PressureField,
     LagrangianParticles, DroguedParticleDynamics,
     BoundaryConditionOperation, ForcingOperation,
-    seawater_density
+    seawater_density,
+    BulkDrag, drag_boundary_conditions, drag_immersed_boundary_conditions
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
@@ -113,6 +114,10 @@ using .HydrostaticFreeSurfaceModels:
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
+
+# BulkDrag for quadratic drag boundary conditions
+include("BulkDrag.jl")
+using .BulkDragModule: BulkDrag, drag_boundary_conditions, drag_immersed_boundary_conditions
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
