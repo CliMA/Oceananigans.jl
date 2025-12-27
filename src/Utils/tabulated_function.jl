@@ -19,7 +19,7 @@ sqrt, atan, etc.) during time-critical operations like GPU kernel execution.
 # Example
 
 ```jldoctest tabulatedfunc
-using Oceananigans
+using Oceananigans.Utils: TabulatedFunction
 
 # Tabulate a simple function for fast evaluation
 f = TabulatedFunction(sin; range=(0, 2π))
@@ -64,7 +64,7 @@ over `range` for fast linear interpolation.
 # Example
 
 ```jldoctest
-using Oceananigans
+using Oceananigans.Utils: TabulatedFunction
 
 # Tabulate a trigonometric function
 f = TabulatedFunction(sin; range=(0, 2π), points=1000)
@@ -112,7 +112,7 @@ of `func` for fast evaluation via linear interpolation.
 # Example
 
 ```jldoctest
-using Oceananigans
+using Oceananigans.Utils: tabulate
 
 # Tabulate an expensive computation
 f = tabulate(x -> x^2 + exp(-x^2); range=(-5, 5), points=500)

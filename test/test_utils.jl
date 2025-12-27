@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Utils: TabulatedFunction, tabulate
+
 @testset "Utils" begin
     @info "Testing utils..."
 
