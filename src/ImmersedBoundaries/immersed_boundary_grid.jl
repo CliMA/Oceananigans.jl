@@ -43,7 +43,7 @@ the grid will populate `interior_active_cells` and `active_z_columns` fields -- 
 interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
-                              active_cells_map::Bool=false,
+                              active_cells_map::Bool=true,
                               active_z_columns::Bool=active_cells_map)
 
     materialized_ib = materialize_immersed_boundary(grid, ib)
