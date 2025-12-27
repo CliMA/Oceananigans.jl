@@ -39,6 +39,8 @@ using Oceananigans.TurbulenceClosures:
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 import Oceananigans.TurbulenceClosures:
     validate_closure,
     shear_production,
