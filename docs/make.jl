@@ -36,6 +36,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
     example_scripts = [
+        "spherical_baroclinic_instability.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
         "shallow_water_Bickley_jet.jl",
@@ -105,7 +106,8 @@ example_pages = [
     "Lock exchange"                    => "literated/lock_exchange.md",
     "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
     "Horizontal convection"            => "literated/horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
+    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md",
+    "Spherical baroclinic instability" => "literated/spherical_baroclinic_instability.md"
 ]
 
 model_pages = [
