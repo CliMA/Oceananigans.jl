@@ -9,7 +9,7 @@ import Oceananigans.Fields: set!
 
 Set velocity and tracer fields of `model`. The keyword arguments `kwargs...`
 take the form `name = data`, where `name` refers to one of the fields of either:
-(i) `model.velocities`, (ii) `model.tracers`, or (iii) `model.free_surface.η`,
+(i) `model.velocities`, (ii) `model.tracers`, or (iii) `model.free_surface.displacement`,
 and the `data` may be an array, a function with arguments `(x, y, z)`, or any data type
 for which a `set!(ϕ::AbstractField, data)` function exists.
 

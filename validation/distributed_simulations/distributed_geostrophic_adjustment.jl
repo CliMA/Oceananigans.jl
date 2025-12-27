@@ -57,7 +57,7 @@ x₀ = Lh / 4 # gaussian center
 vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
 
 g = model.free_surface.gravitational_acceleration
-η = model.free_surface.η
+η = model.free_surface.displacement
 η₀ = coriolis.f * U * L / g # geostrophic free surface amplitude
 
 ηᵍ(x) = η₀ * gaussian(x - x₀, L)
@@ -76,7 +76,7 @@ vt = []
 
 save_u(sim) = push!(ut, deepcopy(sim.model.velocities.u))
 save_v(sim) = push!(vt, deepcopy(sim.model.velocities.v))
-save_η(sim) = push!(ηt, deepcopy(sim.model.free_surface.η))
+save_η(sim) = push!(ηt, deepcopy(sim.model.free_surface.displacement))
 
 function progress_message(sim)
     @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",

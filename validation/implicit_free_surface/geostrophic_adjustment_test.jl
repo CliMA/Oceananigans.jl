@@ -44,8 +44,8 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     if grid isa MutableGridOfSomeKind
         # Initialize the vertical grid scaling
         z = model.grid.z
-        Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.η)
-        parent(z.ηⁿ)   .=  parent(model.free_surface.η)
+        Oceananigans.BoundaryConditions.fill_halo_regions!(model.free_surface.displacement)
+        parent(z.ηⁿ)   .=  parent(model.free_surface.displacement)
         for i in 0:grid.Nx+1, j in 0:grid.Ny+1
             Oceananigans.Models.HydrostaticFreeSurfaceModels.update_grid_scaling!(z.σᶜᶜⁿ, z.σᶠᶜⁿ, z.σᶜᶠⁿ, z.σᶠᶠⁿ, z.σᶜᶜ⁻, i, j, grid, z.ηⁿ)
         end
@@ -64,7 +64,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     warr = [zeros(grid.Nx) for _ in 1:stop_iteration+1]
     garr = [zeros(grid.Nx) for _ in 1:stop_iteration+1]
 
-    save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.η)
+    save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.displacement)
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
     save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
     save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
@@ -76,13 +76,13 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     end
 
     function progress_message(sim) 
-        H = sum(sim.model.free_surface.η)
+        H = sum(sim.model.free_surface.displacement)
         msg = @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e, sim(η): %e",
                         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
                         sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
 
         if grid isa MutableGridOfSomeKind
-                msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1] .- interior(sim.model.free_surface.η)))
+                msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1] .- interior(sim.model.free_surface.displacement)))
                 msg  = msg * msg2
         end
         

@@ -473,7 +473,7 @@ for arch in archs
         model = HydrostaticFreeSurfaceModel(; grid, free_surface)
         simulation = Simulation(model, Δt=1, stop_iteration=2)
         filename = "test_free_surface_output.jld2"
-        ow = JLD2Writer(model, (; η=model.free_surface.η); filename,
+        ow = JLD2Writer(model, (; η=model.free_surface.displacement); filename,
                         schedule = IterationInterval(1),
                         with_halos = false,
                         overwrite_existing = true)

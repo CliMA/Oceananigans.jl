@@ -185,7 +185,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             set!(model, u=u₀, η=η₀)
 
             u, v, w = model.velocities
-            η = model.free_surface.η
+            η = model.free_surface.displacement
 
             @test all(Array(interior(u)) .≈ u_answer)
             @test all(Array(interior(η)) .≈ η_answer)
