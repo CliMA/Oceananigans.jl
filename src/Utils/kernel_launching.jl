@@ -240,10 +240,12 @@ end
 
 Resolve the appropriate active cells map based on the workspec and region.
 
-When `region=nothing`, returns `nothing` (full grid iteration).
-When `region=:interior`:
+The default `region=:interior` automatically uses active cells maps for immersed boundary grids:
   - With `:xy` workspec, returns the active column map (2D)
   - With other workspecs (`:xyz`, `:xz`, `:yz`), returns the 3D active cells map
+  - For non-immersed grids, returns `nothing` (falls back to full grid iteration)
+
+When `region=nothing`, returns `nothing` (explicit full grid iteration).
 When `region` is `:west`, `:east`, `:south`, or `:north`, returns the corresponding
 halo-dependent cells map (for distributed computing).
 """
@@ -365,9 +367,11 @@ Kernels run on the default stream.
 Keyword Arguments
 =================
 
-- `region`: Specifies the region of active cells to compute. Default is `nothing` (full grid).
-  - `:interior`: Use the active cells map (3D for `:xyz`, 2D columns for `:xy`)
+- `region`: Specifies the region of active cells to compute. Default is `:interior`.
+  - `:interior`: Use the active cells map if available (3D for `:xyz`, 2D columns for `:xy`).
+                 For non-immersed grids, falls back to full grid iteration.
   - `:west`, `:east`, `:south`, `:north`: Use halo-dependent cells (distributed computing)
+  - `nothing`: Explicitly disable active cells map (full grid iteration)
 - `exclude_periphery`: Whether to exclude peripheral nodes. Default is `false`.
 - `reduced_dimensions`: Dimensions to reduce in work distribution. Default is `()`.
 
@@ -399,7 +403,7 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          region = nothing)
+                          region = :interior)
 
     location = Oceananigans.location(first_kernel_arg)
 
