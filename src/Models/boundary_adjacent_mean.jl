@@ -1,7 +1,6 @@
 using Adapt, GPUArraysCore
 
-using Oceananigans: instantiated_location
-using Oceananigans.Fields: Center, Face, Field, CenterField, set!
+using Oceananigans.Fields: Center, Face, Field, set!
 using Oceananigans.AbstractOperations: Ax, Ay, Az, grid_metric_operation
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open
 
@@ -12,8 +11,8 @@ import Oceananigans.BoundaryConditions: update_boundary_condition!, getbc, regul
 
 Computes and stores the area-weighted average of a field on a boundary plane.
 
-The average is computed as `∫u dA / ∫dA` where the integral is over the 
-boundary-adjacent plane. The total area `∫dA` is pre-computed during 
+The average is computed as `∫u dA / ∫dA` where the integral is over the
+boundary-adjacent plane. The total area `∫dA` is pre-computed during
 boundary condition regularization.
 
 # Constructor
@@ -72,23 +71,23 @@ end
 
 is_regularized(abf::AverageBoundaryFlux) = !isnothing(abf.flux)
 
-function regularize_boundary_condition(abf::AverageBoundaryFlux, 
+function regularize_boundary_condition(abf::AverageBoundaryFlux,
                                        grid, loc, dim, Side, field_names)
 
     # If already regularized, return as-is
     is_regularized(abf) && return abf
-    
+
     flux = Field{Nothing, Nothing, Nothing}(grid)
-    
+
     # Pre-compute total boundary area
     i, j, k = boundary_view_indices(abf.side, grid)
-    
+
     # Compute the boundary-normal area
     An = boundary_area_metric(abf.side)
     An_operation = grid_metric_operation(loc, An, grid)
     An_field = Field(An_operation, indices=(i, j, k))
     area = sum(An_field)
-    
+
     return AverageBoundaryFlux(abf.side, flux, area)
 end
 
@@ -125,13 +124,13 @@ const OpenBC_ABF = BoundaryCondition{<:Open, <:AverageBoundaryFlux}
     # Get the boundary slice of u
     i, j, k = boundary_view_indices(abf.side, grid)
     u_boundary = view(u, i, j, k)
-    
+
     # Get the area metric
     An = boundary_area_metric(abf.side)
-    
+
     # Compute area-weighted sum: ∫u dA
     sum!(abf.flux, u_boundary * An)
-    
+
     # Divide by pre-computed area to get average
     @allowscalar abf.flux[1, 1, 1] /= abf.area
 
