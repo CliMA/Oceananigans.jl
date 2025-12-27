@@ -1,4 +1,6 @@
 using Adapt
+using Oceananigans.Architectures: CPU
+import Oceananigans.Architectures: on_architecture
 
 """
     TabulatedFunction{F, T, FT}
@@ -163,8 +165,6 @@ end
 #####
 ##### GPU/architecture support
 #####
-
-import Oceananigans.Architectures: on_architecture
 
 on_architecture(arch, f::TabulatedFunction) =
     TabulatedFunction(f.func,
