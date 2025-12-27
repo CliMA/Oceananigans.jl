@@ -194,20 +194,20 @@ end
 #####
 
 """Load and combine field data from rank files into a field."""
-function load_combined_field_data!(field, rank_infos, name, iter; reader_kw=NamedTuple())
-    ranks = first(rank_infos).ranks
-    local_sizes = Dict(info.local_index => size(info.grid) for info in rank_infos)
-    x_offsets = rank_offsets(local_sizes, ranks, 1)
-    y_offsets = rank_offsets(local_sizes, ranks, 2)
+function load_combined_field_data!(field, all_ranks, name, iter; reader_kw=NamedTuple())
+    partition = first(all_ranks).partition
+    local_sizes = Dict(rd.local_index => size(rd.local_grid) for rd in all_ranks)
+    x_offsets = partition_offsets(local_sizes, partition, 1)
+    y_offsets = partition_offsets(local_sizes, partition, 2)
     
     field_data = interior(field)
     
-    for info in rank_infos
-        ri, rj, _ = info.local_index
-        nx, ny, nz = size(info.grid)
-        Hx, Hy, Hz = halo_size(info.grid)
+    for rank in all_ranks
+        ri, rj, _ = rank.local_index
+        nx, ny, nz = size(rank.local_grid)
+        Hx, Hy, Hz = halo_size(rank.local_grid)
         
-        raw_data = jldopen(info.path; reader_kw...) do file
+        raw_data = jldopen(rank.path; reader_kw...) do file
             file["timeseries/$name/$iter"]
         end
         
