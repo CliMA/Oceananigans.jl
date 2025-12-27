@@ -131,7 +131,7 @@ function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=
     model = build_model(grid)
     simulation = Simulation(model; Δt=5minutes, stop_time)
 
-    # Add progress callback
+    ## Add progress callback
     function progress(sim)
         T = sim.model.tracers.T
         u, v, w = sim.model.velocities
@@ -149,7 +149,7 @@ function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=
 
     add_callback!(simulation, progress, IterationInterval(1000))
 
-    # Set up output: save vorticity and temperature at the surface
+    ## Set up output: save vorticity and temperature at the surface
     u, v, w = model.velocities
     T = model.tracers.T
     ζ = ∂x(v) - ∂y(u)
