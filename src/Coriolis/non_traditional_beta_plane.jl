@@ -6,7 +6,7 @@ using Oceananigans.Grids: ynode, znode
 A Coriolis implementation that accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector.
 The "traditional" approximation in ocean models accounts for only the locally
-vertical component of the rotation vector (see [`BetaPlane`](@reface)).
+vertical component of the rotation vector (see [`BetaPlane`](@ref)).
 
 This implementation is based off of section 5 of paper by [Dellar (2011)](@cite Dellar2011)
 and it conserves energy, angular momentum, and potential vorticity.
