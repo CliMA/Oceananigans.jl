@@ -1,6 +1,7 @@
 using JLD2
 using Glob
 using Statistics: mean
+using GPUArraysCore: @allowscalar
 
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
@@ -8,8 +9,33 @@ using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
                           with_precomputed_metrics, metrics_precomputed,
                           Periodic, Bounded, FullyConnected
 
-using Oceananigans.Fields: interior
+using Oceananigans.Fields: interior, Field, instantiated_location, FixedTime
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.DistributedComputations: reconstruct_global_topology
+
+#####
+##### DistributedPath - wrapper for path that includes rank file info
+#####
+
+"""
+    DistributedPath(rank_infos)
+
+A wrapper for the `path` field that stores rank file information for combining 
+distributed output. This allows dispatching on the path type to enable combining
+for both InMemory and OnDisk backends.
+
+The `path` field semantically represents "where to find the data" - for distributed
+output, the data lives in multiple rank files.
+"""
+struct DistributedPath{R}
+    rank_infos :: R
+end
+
+Base.show(io::IO, dp::DistributedPath) = print(io, "DistributedPath(", length(dp.rank_infos), " ranks)")
+
+# Convenience accessor for the first rank's path (used for metadata)
+first_path(dp::DistributedPath) = first(dp.rank_infos).path
+first_path(path::String) = path
 
 #####
 ##### Finding and loading rank files
@@ -213,42 +239,53 @@ function combined_field_time_series(path, name;
     isnothing(grid) && (grid = reconstruct_global_grid_from_ranks(rank_infos, architecture))
     
     # Read metadata from first rank file
-    first_path = first(rank_paths)
-    file = jldopen(first_path; reader_kw...)
+    metadata_path = first(rank_paths)
+    file = jldopen(metadata_path; reader_kw...)
     
     indices = try file["timeseries/$name/serialized/indices"] catch; (:, :, :) end
     isnothing(location) && (location = file["timeseries/$name/serialized/location"])
     LX, LY, LZ = location
     loc = (LX(), LY(), LZ())
     
+    # Note: We intentionally do NOT load boundary conditions from distributed files.
+    # The distributed files contain DistributedCommunicationBoundaryCondition which are 
+    # not valid for the reconstructed global grid. Default BCs will be used instead.
     if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = try
-            on_architecture(architecture, file["timeseries/$name/serialized/boundary_conditions"])
-        catch
-            nothing
-        end
+        boundary_conditions = nothing
     end
     
     isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))
     isnothing(times) && (times = [file["timeseries/t/$i"] for i in iterations])
     close(file)
     
-    # Create FieldTimeSeries and load data
+    # Use DistributedPath to store rank_infos - this enables dispatch for both backends
+    distributed_path = DistributedPath(rank_infos)
+    
+    # Create FieldTimeSeries
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
     
     fts = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
-                                       times, first_path, name, time_indexing, reader_kw)
+                                       times, distributed_path, name, time_indexing, reader_kw)
     
-    backend isa AbstractInMemoryBackend && set_combined!(fts, rank_infos, name)
+    # For InMemory, load data now
+    backend isa AbstractInMemoryBackend && set!(fts)
     
     return fts
 end
 
-"""Set FieldTimeSeries data by loading and combining from rank files."""
-function set_combined!(fts::InMemoryFTS, rank_infos, name)
-    first_path = first(rank_infos).path
-    file = jldopen(first_path; fts.reader_kw...)
+#####
+##### InMemory support - set! dispatches on DistributedPath
+#####
+
+"""Set FieldTimeSeries data by loading and combining from distributed rank files."""
+function set!(fts::FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, <:DistributedPath}
+             ) where {LX, LY, LZ, TI, K <: AbstractInMemoryBackend, I, D, G, ET, B, χ}
+    
+    rank_infos = fts.path.rank_infos
+    metadata_path = first_path(fts.path)
+    
+    file = jldopen(metadata_path; fts.reader_kw...)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
@@ -261,10 +298,52 @@ function set_combined!(fts::InMemoryFTS, rank_infos, name)
         if isnothing(file_index)
             @warn "No data found for time $(cpu_times[n]) and time index $n"
         else
-            load_combined_field_data!(fts[n], rank_infos, name, file_iterations[file_index];
+            load_combined_field_data!(fts[n], rank_infos, fts.name, file_iterations[file_index];
                                        reader_kw=fts.reader_kw)
         end
     end
     
     return nothing
+end
+
+#####
+##### OnDisk support - getindex dispatches on DistributedPath
+#####
+
+"""
+    getindex(fts, n::Int)
+
+Load and combine field data from distributed rank files at time index `n`.
+This method dispatches when `fts.path isa DistributedPath` and `fts.backend isa OnDisk`.
+"""
+function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, TI, <:OnDisk, I, D, G, ET, B, χ, <:DistributedPath},
+                       n::Int) where {LX, LY, LZ, TI, I, D, G, ET, B, χ}
+    rank_infos = fts.path.rank_infos
+    metadata_path = first_path(fts.path)
+    
+    # Get iteration key from first rank file
+    file = jldopen(metadata_path; fts.reader_kw...)
+    iter = keys(file["timeseries/t"])[n]
+    close(file)
+    
+    # Create an empty field on the global grid
+    loc = instantiated_location(fts)
+    field = Field(loc, fts.grid;
+                  indices = fts.indices,
+                  boundary_conditions = fts.boundary_conditions)
+    
+    # Load and combine data from all rank files
+    load_combined_field_data!(field, rank_infos, fts.name, iter; reader_kw=fts.reader_kw)
+    
+    # Set the field time status
+    status = @allowscalar FixedTime(fts.times[n])
+    field_with_time = Field(loc, fts.grid;
+                            indices = fts.indices,
+                            boundary_conditions = fts.boundary_conditions,
+                            status,
+                            data = field.data)
+    
+    fill_halo_regions!(field_with_time)
+    
+    return field_with_time
 end

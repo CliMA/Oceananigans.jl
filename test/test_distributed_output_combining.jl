@@ -233,7 +233,58 @@ end
     
     @info "  combine=false test passed! ✓"
     
+    # Don't clean up yet - use for OnDisk test
+end
+
+@testset "Distributed output combining - OnDisk backend" begin
+    @info "Testing OnDisk backend with combined output..."
+    
+    # Rank files should exist from the previous test
+    # Load combined distributed output with OnDisk backend
+    c_ondisk = FieldTimeSeries("distributed_output_test.jld2", "c"; backend=OnDisk())
+    
+    # Check grid size is global (8x8x4)
+    @test size(c_ondisk.grid) == (8, 8, 4)
+    
+    # Check we can index and get correct data
+    @test length(c_ondisk.times) == 3  # iterations 0, 5, 10
+    
+    # Load serial output for comparison
+    Nx, Ny, Nz = 8, 8, 4
+    Lx, Ly, Lz = 1.0, 1.0, 0.5
+    
+    serial_grid = RectilinearGrid(CPU();
+                                   topology = (Periodic, Periodic, Bounded),
+                                   size = (Nx, Ny, Nz),
+                                   extent = (Lx, Ly, Lz))
+    
+    serial_model = NonhydrostaticModel(; grid=serial_grid, tracers=:c)
+    cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
+    uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
+    set!(serial_model, c=cᵢ, u=uᵢ)
+    
+    simulation = Simulation(serial_model; Δt=1.0, stop_iteration=10)
+    
+    simulation.output_writers[:jld2] = JLD2Writer(serial_model, 
+                                                   merge(serial_model.velocities, serial_model.tracers);
+                                                   filename = "ondisk_serial_test.jld2",
+                                                   schedule = IterationInterval(5),
+                                                   overwrite_existing = true,
+                                                   with_halos = true)
+    run!(simulation)
+    
+    # Load serial with OnDisk for fair comparison
+    c_serial_ondisk = FieldTimeSeries("ondisk_serial_test.jld2", "c"; backend=OnDisk())
+    
+    # Compare each time step
+    for n in 1:length(c_ondisk.times)
+        @test interior(c_ondisk[n]) ≈ interior(c_serial_ondisk[n])
+    end
+    
+    @info "  OnDisk backend test passed! ✓"
+    
     # Clean up
+    rm("ondisk_serial_test.jld2", force=true)
     for r in 0:3
         rm("distributed_output_test_rank$r.jld2", force=true)
     end
