@@ -3,7 +3,7 @@
 #####
 
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Grids: get_active_cells_map, get_active_column_map
+using Oceananigans.Grids: active_cells_map, active_column_map
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
@@ -254,19 +254,19 @@ halo-dependent cells map (for distributed computing).
 @inline function resolve_active_cells_map(grid, workspec::Symbol, region::Symbol)
     if region === :interior
         if workspec === :xy
-            return get_active_column_map(grid)  # 2D columns
+            return active_column_map(grid)  # 2D columns
         else
-            return get_active_cells_map(grid, Val(:interior))  # 3D cells
+            return active_cells_map(grid, Val(:interior))  # 3D cells
         end
     else
         # :west, :east, :south, :north for distributed buffer computation
-        return get_active_cells_map(grid, Val(region))
+        return active_cells_map(grid, Val(region))
     end
 end
 
 # Fallback for non-symbol workspecs (e.g., KernelParameters, tuples)
 @inline resolve_active_cells_map(grid, workspec, region::Symbol) =
-    get_active_cells_map(grid, Val(region))
+    active_cells_map(grid, Val(region))
 
 """
     configure_kernel(arch, grid, workspec, kernel!;
