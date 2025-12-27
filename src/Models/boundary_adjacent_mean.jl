@@ -9,9 +9,9 @@ import Oceananigans.BoundaryConditions: update_boundary_condition!, getbc, regul
 """
     AverageBoundaryFlux
 
-Computes and stores the area-weighted average of a field on a boundary plane.
+Computes and stores the area-weighted average of a field `f` on a boundary plane.
 
-The average is computed as `∫u dA / ∫dA` where the integral is over the
+The average is computed as `∫f dA / ∫dA` where the integral is over the
 boundary-adjacent plane. The total area `∫dA` is pre-computed during
 boundary condition regularization.
 
