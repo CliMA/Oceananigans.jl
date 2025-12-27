@@ -63,10 +63,13 @@ model.velocities.u
         end
 
         @apply_regionally set!(ϕ, value)
+
+        if fldname ∈ propertynames(model.free_surface) 
+            fill_halo_regions!(ϕ, model.grid, model.clock, fields(model))
+        end
     end
 
-    # initialize!(model)
-    initialization_update_state!(model; compute_tendencies=false)
+    initialization_update_state!(model)
 
     return nothing
 end

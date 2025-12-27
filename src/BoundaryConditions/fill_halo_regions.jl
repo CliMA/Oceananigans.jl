@@ -39,6 +39,8 @@ const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 
 @inline fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...) = kernel!(c, bcs..., loc, grid, Tuple(args))
 @inline fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid, args...; kwargs...) = nothing
+@inline fill_halo_event!(c, ::Nothing, bcs, loc, grid, args...; kwargs...) = nothing
+@inline fill_halo_event!(c, kernel!, ::NoBCs, loc, grid, args...; kwargs...) = nothing
 
 #####
 ##### Nothing BCs
@@ -218,4 +220,3 @@ end
 @inline fill_halo_offset(::Tuple, ::WEB, idx) = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::SNB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::TBB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
-
