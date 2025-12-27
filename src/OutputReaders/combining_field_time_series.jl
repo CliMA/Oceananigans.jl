@@ -87,36 +87,92 @@ end
 ##### Offline grid reconstruction from rank files
 #####
 #
-# This mirrors the logic in DistributedComputations.reconstruct_global_grid,
-# but works offline from JLD2 files rather than using MPI communication.
-# The grid building pattern is intentionally similar to maintain consistency.
+# Reconstructs a global grid from distributed JLD2 output files.
+# This is the offline equivalent of DistributedComputations.reconstruct_global_grid.
 #
 
-# Compute cumulative offsets for indexing into the global array
-function partition_offsets(local_sizes, partition, dim)
-    R = partition[dim]
-    sizes = [local_sizes[ntuple(d -> d == dim ? r : 1, 3)][dim] for r in 1:R-1]
-    return cumsum([0; sizes])
+"""
+    get_rank(all_ranks, i, j, k=1)
+
+Find the RankOutputData with local_index == (i, j, k).
+"""
+function get_rank(all_ranks, i, j, k=1)
+    for rank in all_ranks
+        rank.local_index == (i, j, k) && return rank
+    end
+    error("No rank found with local_index = ($i, $j, $k)")
 end
 
-# Collect and concatenate coordinate data from all ranks along a dimension
+"""
+    compute_global_size(all_ranks)
+
+Compute the global grid size by summing local sizes along each partitioned dimension.
+"""
+function compute_global_size(all_ranks)
+    Rx, Ry, Rz = first(all_ranks).partition
+    
+    # Sum local sizes along x (first column of ranks)
+    Nx = sum(size(get_rank(all_ranks, i, 1, 1).local_grid, 1) for i in 1:Rx)
+    
+    # Sum local sizes along y (first row of ranks)  
+    Ny = sum(size(get_rank(all_ranks, 1, j, 1).local_grid, 2) for j in 1:Ry)
+    
+    # z is not partitioned
+    Nz = size(get_rank(all_ranks, 1, 1, 1).local_grid, 3)
+    
+    return (Nx, Ny, Nz)
+end
+
+"""
+    compute_partition_offsets(all_ranks)
+
+Compute cumulative offsets for placing each rank's data in the global array.
+Returns (x_offsets, y_offsets) where offset[i] gives the starting index for rank i.
+"""
+function compute_partition_offsets(all_ranks)
+    Rx, Ry, _ = first(all_ranks).partition
+    
+    # Compute x offsets: cumulative sum of local Nx values
+    x_sizes = [size(get_rank(all_ranks, i, 1, 1).local_grid, 1) for i in 1:Rx]
+    x_offsets = cumsum([0; x_sizes[1:end-1]])
+    
+    # Compute y offsets: cumulative sum of local Ny values
+    y_sizes = [size(get_rank(all_ranks, 1, j, 1).local_grid, 2) for j in 1:Ry]
+    y_offsets = cumsum([0; y_sizes[1:end-1]])
+    
+    return x_offsets, y_offsets
+end
+
+"""
+    collect_global_coordinates(all_ranks, dim, coord_func)
+
+Concatenate coordinate data from all ranks along dimension `dim`.
+`coord_func` extracts coordinates from a grid (e.g., `cpu_face_constructor_x`).
+"""
 function collect_global_coordinates(all_ranks, dim, coord_func)
-    R = first(all_ranks).partition[dim]
+    Rx, Ry, _ = first(all_ranks).partition
+    R = dim == 1 ? Rx : Ry
+    
     coords = map(1:R) do r
-        selector = ntuple(d -> d == dim ? r : 1, 3)
-        rank = first(filter(rd -> rd.local_index == selector, all_ranks))
+        # Get the rank along this dimension (others fixed at 1)
+        rank = dim == 1 ? get_rank(all_ranks, r, 1, 1) : get_rank(all_ranks, 1, r, 1)
         c = coord_func(rank.local_grid)
-        (c isa AbstractVector && r < R) ? c[1:end-1] : c  # Avoid overlap
+        # Drop last point to avoid overlap (except for last rank)
+        (c isa AbstractVector && r < R) ? c[1:end-1] : c
     end
     
-    all(c isa Tuple for c in coords) && return (first(coords[1]), last(coords[end]))
+    # If all coordinates are tuples (start, end), return (first_start, last_end)
+    if all(c isa Tuple for c in coords)
+        return (first(coords[1]), last(coords[end]))
+    end
+    
     return vcat(coords...)
 end
 
 """
     reconstruct_global_grid(all_ranks, arch)
 
-Reconstruct a global grid from distributed rank file information.
+Reconstruct a global grid from distributed rank output data.
 This is the offline (file-based) equivalent of `DistributedComputations.reconstruct_global_grid`.
 """
 function reconstruct_global_grid(all_ranks, arch)
@@ -126,22 +182,20 @@ function reconstruct_global_grid(all_ranks, arch)
     
     length(all_ranks) == Nr || error("Expected $Nr rank files but found $(length(all_ranks))")
     
-    grid0 = first(filter(rd -> rd.local_index == (1, 1, 1), all_ranks)).local_grid
-    local_sizes = Dict(rd.local_index => size(rd.local_grid) for rd in all_ranks)
+    # Get reference grid from rank (1,1,1)
+    grid0 = get_rank(all_ranks, 1, 1, 1).local_grid
     
-    # Compute global size (cf. DistributedComputations.global_size)
-    Nx = sum(local_sizes[(ri, 1, 1)][1] for ri in 1:Rx)
-    Ny = sum(local_sizes[(1, rj, 1)][2] for rj in 1:Ry)
-    Nz = local_sizes[(1, 1, 1)][3]
+    # Compute global size
+    Nx, Ny, Nz = compute_global_size(all_ranks)
     
     H = halo_size(grid0)
     FT = eltype(grid0)
     
-    # Reconstruct topology using the offline utility from DistributedComputations
+    # Reconstruct global topology
     all_topos = [[topology(rd.local_grid)[d] for rd in all_ranks] for d in 1:3]
     topo = Tuple(reconstruct_global_topology(all_topos[d], partition[d]) for d in 1:3)
     
-    # Collect global coordinates (cf. DistributedComputations.assemble_coordinate)
+    # Collect global coordinates
     xG = collect_global_coordinates(all_ranks, 1, cpu_face_constructor_x)
     yG = collect_global_coordinates(all_ranks, 2, cpu_face_constructor_y)
     zG = cpu_face_constructor_z(grid0)
@@ -195,11 +249,7 @@ end
 
 """Load and combine field data from rank files into a field."""
 function load_combined_field_data!(field, all_ranks, name, iter; reader_kw=NamedTuple())
-    partition = first(all_ranks).partition
-    local_sizes = Dict(rd.local_index => size(rd.local_grid) for rd in all_ranks)
-    x_offsets = partition_offsets(local_sizes, partition, 1)
-    y_offsets = partition_offsets(local_sizes, partition, 2)
-    
+    x_offsets, y_offsets = compute_partition_offsets(all_ranks)
     field_data = interior(field)
     
     for rank in all_ranks
