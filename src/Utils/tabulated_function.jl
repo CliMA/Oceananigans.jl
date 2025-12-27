@@ -35,8 +35,6 @@ f(π/2)
 # output
 0.9996224305511583
 ```
-
-See also [`tabulate`](@ref).
 """
 struct TabulatedFunction{F, T, FT}
     func :: F
@@ -102,29 +100,6 @@ function TabulatedFunction(func, arch=CPU(), FT=Oceananigans.defaults.FloatType;
                              convert(FT, x_max),
                              convert(FT, inverse_Δx))
 end
-
-"""
-    tabulate(func, [arch], [FT]; range, points=100)
-
-Alias for [`TabulatedFunction`](@ref). Creates a tabulated version
-of `func` for fast evaluation via linear interpolation.
-
-# Example
-
-```jldoctest
-using Oceananigans.Utils: tabulate
-
-# Tabulate an expensive computation
-f = tabulate(x -> x^2 + exp(-x^2); range=(-5, 5), points=500)
-f(2.0)
-
-# output
-4.01841070688188
-```
-
-See also [`TabulatedFunction`](@ref).
-"""
-tabulate(func, args...; kwargs...) = TabulatedFunction(func, args...; kwargs...)
 
 #####
 ##### Evaluation via linear interpolation

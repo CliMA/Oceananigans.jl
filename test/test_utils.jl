@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Utils: TabulatedFunction, tabulate
+using Oceananigans.Utils: TabulatedFunction
 
 @testset "Utils" begin
     @info "Testing utils..."
@@ -51,8 +51,8 @@ using Oceananigans.Utils: TabulatedFunction, tabulate
         @test abs(f(π/2) - sin(π/2)) < 0.001
         @test abs(f(π) - sin(π)) < 0.001
 
-        # Test tabulate alias
-        g = tabulate(x -> x^2; range=(-5, 5), points=500)
+        # Test with anonymous function
+        g = TabulatedFunction(x -> x^2; range=(-5, 5), points=500)
         @test g isa TabulatedFunction
         @test abs(g(2.0) - 4.0) < 0.01
         @test abs(g(-3.0) - 9.0) < 0.01

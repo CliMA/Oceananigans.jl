@@ -12,7 +12,7 @@ export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSch
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div
-export TabulatedFunction, tabulate
+export TabulatedFunction
 
 #####
 ##### Misc. small utils
