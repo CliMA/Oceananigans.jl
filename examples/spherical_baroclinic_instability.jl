@@ -50,7 +50,7 @@ using Printf
 # reasonable runtimes while still resolving the instability.
 
 arch = GPU()
-resolution = 2             # degrees
+resolution = 1             # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
 Nz = 10                    # number of vertical levels
@@ -108,8 +108,8 @@ Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
 Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
 
 function build_model(grid)
-    momentum_advection = WENOVectorInvariant(order=9)
-    tracer_advection = WENO(order=7)
+    momentum_advection = WENOVectorInvariant(order=5)
+    tracer_advection = WENO(order=5)
     coriolis = HydrostaticSphericalCoriolis()
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
@@ -120,14 +120,13 @@ function build_model(grid)
     return model
 end
 
-
 # ## Run a simulation
 #
 # We define a function that sets up and runs a simulation on a given grid.
 # We run for 30 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
-function run_baroclinic_instability(grid, name; stop_time=20days, save_interval=12hours)
+function run_baroclinic_instability(grid, name; stop_time=60days, save_interval=24hours)
     model = build_model(grid)
     simulation = Simulation(model; Δt=10minutes, stop_time)
 
@@ -229,17 +228,22 @@ end
 plots_T = Dict{String, Any}()
 plots_ζ = Dict{String, Any}()
 
-for name in keys(results)Tn = @lift T_ts[name][$n]
+for name in keys(results)
+    Tn = @lift T_ts[name][$n]
     ζn = @lift ζ_ts[name][$n]
     plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
     plots_ζ[name] = surface!(axes_ζ[name], ζn; colormap = :balance, colorrange = (-5e-5, 5e-5))
+    hidedecorations!(axes_T[name])
+    hidedecorations!(axes_ζ[name])
+    hidespines!(axes_T[name])
+    hidespines!(axes_ζ[name])
 end
 
 # Add colorbars
 Colorbar(fig[1, 4], plots_T["lat_lon"]; label = "Temperature [°C]")
 Colorbar(fig[2, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]")
 
-record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 8) do nn
+CairoMakie.record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 8) do nn
     n[] = nn
 end
 nothing #hide
