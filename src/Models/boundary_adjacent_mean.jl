@@ -1,6 +1,7 @@
 using Adapt, GPUArraysCore
+
 using Oceananigans: instantiated_location
-using Oceananigans.Fields: Center, Face
+using Oceananigans.Fields: Center, Face, Field
 using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open
 
@@ -10,12 +11,15 @@ struct BoundaryAdjacentMean{FF, BV}
     flux_field :: FF
          value :: BV
 
+    # Inner constructor for Adapt.adapt_structure (Nothing flux_field)
+    BoundaryAdjacentMean(::Nothing, value::BV) where BV = new{Nothing, BV}(nothing, value)
+
     @doc """
         BoundaryAdjacentMean(grid, side;
                              flux_field::FF = boundary_reduced_field(Val(side), grid),
                              value::BV = Ref(zero(grid)))
 
-    Store the boundary mean `value` of a `Field`. Updated by calling
+    Store the boundary-adjacent mean `value` of a `Field`. Updated by calling
 
     ```jldoctest
     julia> using Oceananigans
@@ -28,9 +32,6 @@ struct BoundaryAdjacentMean{FF, BV}
 
     julia> set!(cf, (x, y, z) -> sin(2π * y / 4))
     16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-    ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-    ├── boundary conditions: FieldBoundaryConditions
-    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
     └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
         └── max=0.980785, min=-0.980785, mean=-5.52808e-17
 
@@ -43,7 +44,7 @@ struct BoundaryAdjacentMean{FF, BV}
     BoundaryAdjacentMean: (-1.5612511283791264e-18)
     ```
     """
-    BoundaryAdjacentMean(grid, side;
+    BoundaryAdjacentMean(grid, side::Symbol;
                          flux_field::FF = boundary_reduced_field(Val(side), grid),
                          value::BV = Ref(zero(grid))) where {FF, BV} =
         new{FF, BV}(flux_field, value)
@@ -51,8 +52,8 @@ end
 
 @inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
 
-Adapt.adapt_structure(to, mo::BoundaryAdjacentMean) =
-    BoundaryAdjacentMean(; flux_fields = nothing, value = adapt(to, mo.value[]))
+Adapt.adapt_structure(to, bam::BoundaryAdjacentMean) =
+    BoundaryAdjacentMean(nothing, adapt(to, bam.value[]))
 
 Base.show(io::IO, bam::BoundaryAdjacentMean) = print(io, summary(bam))
 Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[]))"
@@ -85,7 +86,7 @@ Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[])
 
 (bam::BoundaryAdjacentMean)(side, u) = bam(Val(side), u)
 
-# Computes the boundary mean and stores it.
+# Computes the boundary-adjacent mean and stores it.
 function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     grid = u.grid
 
@@ -93,14 +94,12 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     iB, jB, kB = boundary_adjacent_indices(val_side, grid, loc)
     An = boundary_normal_area(val_side, grid)
 
-    # get the total flux
+    # Total flux through the boundary-adjacent plane.
     sum!(bam.flux_field, u * An)
-
     bam.value[] = @allowscalar bam.flux_field[iB, jB, kB]
 
-    # get the normalizing area
+    # Normalizing area of the boundary-adjacent plane.
     sum!(bam.flux_field, An)
-
     bam.value[] /= @allowscalar bam.flux_field[iB, jB, kB]
 
     return nothing
