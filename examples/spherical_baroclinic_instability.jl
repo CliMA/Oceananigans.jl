@@ -50,7 +50,7 @@ using Printf
 # reasonable runtimes while still resolving the instability.
 
 arch = GPU()
-resolution = 1             # degrees
+resolution = 2             # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
 Nz = 10                    # number of vertical levels
@@ -113,7 +113,7 @@ function build_model(grid)
     coriolis = HydrostaticSphericalCoriolis()
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
-    free_surface = SplitExplicitFreeSurface(grid; substeps=120)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=60)
     model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy, tracers = (:T, :S),
                                         momentum_advection, tracer_advection)
     set!(model, T=Tᵢ, S=Sᵢ)
@@ -127,23 +127,22 @@ end
 # We run for 30 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
-function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=12hours)
+function run_baroclinic_instability(grid, name; stop_time=20days, save_interval=12hours)
     model = build_model(grid)
-    simulation = Simulation(model; Δt=5minutes, stop_time)
+    simulation = Simulation(model; Δt=10minutes, stop_time)
 
     ## Add progress callback
     function progress(sim)
         T = sim.model.tracers.T
         u, v, w = sim.model.velocities
 
-        msg = @sprintf("%s, iteration %d: %s, max|u|: (%.2e, %.2e, %.2e)",
+        msg = @sprintf("%s grid, iter % 5d: % 10s, max|u|: (%.2e, %.2e, %.2e)",
                        name, iteration(sim), prettytime(sim),
                        maximum(abs, u), maximum(abs, v), maximum(abs, w))
 
         msg *= @sprintf(", T ∈ (%.2f, %.2f)", minimum(T), maximum(T))
 
         @info msg
-
         return nothing
     end
 
@@ -154,12 +153,11 @@ function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=
     T = model.tracers.T
     ζ = ∂x(v) - ∂y(u)
 
-    filename = "spherical_baroclinic_instability_" * name
+    filename = "spherical_baroclinic_instability_" * name * ".jld2"
     indices = (:, :, grid.Nz)
     fields = (; ζ, T)
 
-    simulation.output_writers[:surface] = JLD2Writer(model, fields; indices,
-                                                     filename = filename * ".jld2",
+    simulation.output_writers[:surface] = JLD2Writer(model, fields; indices, filename,
                                                      schedule = TimeInterval(save_interval),
                                                      overwrite_existing = true)
     @info "Running $name simulation..."
@@ -167,7 +165,7 @@ function run_baroclinic_instability(grid, name; stop_time=30days, save_interval=
 
     @info "$name simulation completed in $(prettytime(simulation.run_wall_time))."
 
-    return simulation
+    return filename
 end
 
 # ## Run the simulations
@@ -175,7 +173,7 @@ end
 # Now we run simulations on all three grids. We use a shorter runtime
 # to demonstrate the code.
 
-simulations = Dict(
+results = Dict(
     "lat_lon" => run_baroclinic_instability(lat_lon_grid, "lat_lon"),
     "tripolar" => run_baroclinic_instability(tripolar_grid, "tripolar"),
     "rotated_lat_lon" => run_baroclinic_instability(rotated_lat_lon_grid, "rotated_lat_lon")
@@ -191,14 +189,10 @@ using CairoMakie
 
 # Load the output from each simulation
 
-grid_names = ["lat_lon", "tripolar", "rotated_lat_lon"]
-grid_labels = ["Latitude-Longitude", "Tripolar", "Rotated Lat-Lon"]
-
 T_ts = Dict()
 ζ_ts = Dict()
 
-for name in grid_names
-    filename = "spherical_baroclinic_instability_" * name * ".jld2"
+for (name, filename) in results
     T_ts[name] = FieldTimeSeries(filename, "T")
     ζ_ts[name] = FieldTimeSeries(filename, "ζ")
 end
@@ -213,9 +207,7 @@ Nt = length(times)
 # grid type, with temperature on top and vorticity on the bottom.
 
 fig = Figure(size = (1800, 1000))
-
 n = Observable(1)
-
 title = @lift "Baroclinic instability at t = " * prettytime(times[$n])
 Label(fig[0, 1:3], title, fontsize = 28)
 
@@ -223,19 +215,21 @@ Label(fig[0, 1:3], title, fontsize = 28)
 axes_T = Dict{String, Axis3}()
 axes_ζ = Dict{String, Axis3}()
 
-for (col, (name, label)) in enumerate(zip(grid_names, grid_labels))
-    axes_T[name] = Axis3(fig[1, col]; aspect = :data, title = "$label\nTemperature",
-                         xlabel = "", ylabel = "", zlabel = "")
-    axes_ζ[name] = Axis3(fig[2, col]; aspect = :data, title = "Vorticity",
-                         xlabel = "", ylabel = "", zlabel = "")
+labels = Dict("lat_lon" => "Latitude-Longitude",
+              "tripolar" => "Tripolar",
+              "rotated_lat_lon" => "Rotated Lat-Lon")
+
+for (col, name) in enumerate(keys(results))
+    label = labels[name]
+    axes_T[name] = Axis3(fig[1, col]; aspect=:data, title="$label\nTemperature")
+    axes_ζ[name] = Axis3(fig[2, col]; aspect=:data, title="Vorticity")
 end
 
 # Create the surface plots using Observable fields
 plots_T = Dict{String, Any}()
 plots_ζ = Dict{String, Any}()
 
-for name in grid_names
-    Tn = @lift T_ts[name][$n]
+for name in keys(results)Tn = @lift T_ts[name][$n]
     ζn = @lift ζ_ts[name][$n]
     plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
     plots_ζ[name] = surface!(axes_ζ[name], ζn; colormap = :balance, colorrange = (-5e-5, 5e-5))
@@ -245,8 +239,7 @@ end
 Colorbar(fig[1, 4], plots_T["lat_lon"]; label = "Temperature [°C]")
 Colorbar(fig[2, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]")
 
-frames = 1:Nt
-record(fig, "spherical_baroclinic_instability.mp4", frames; framerate = 8) do nn
+record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 8) do nn
     n[] = nn
 end
 nothing #hide
