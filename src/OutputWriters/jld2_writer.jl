@@ -224,13 +224,21 @@ This function is called automatically when a `Simulation` containing the writer 
 (typically during the first call to `run!`). The initialization is skipped if the writer
 has already been initialized, preventing files from being overwritten when `run!` is called
 multiple times.
+
+When resuming a simulation (i.e., `model.clock.iteration > 0`, such as when picking up from
+a checkpoint), existing files are preserved regardless of the `overwrite_existing` setting.
 """
 function initialize!(writer::JLD2Writer, model)
     # Skip if already initialized (e.g., when run! is called multiple times)
     writer.initialized && return nothing
 
-    # Remove existing file if overwrite_existing is true
-    writer.overwrite_existing && isfile(writer.filepath) && rm(writer.filepath, force=true)
+    # Remove existing file if overwrite_existing is true,
+    # but only if we're starting fresh (iteration == 0).
+    # When resuming (iteration > 0), we preserve existing files.
+    starting_fresh = model.clock.iteration == 0
+    if writer.overwrite_existing && starting_fresh
+        isfile(writer.filepath) && rm(writer.filepath, force=true)
+    end
 
     # Initialize the JLD2 file with metadata
     initialize_jld2_file!(writer, model)
