@@ -192,7 +192,7 @@ further illustrations of boundary condition specification.
 Boundary conditions may be specified with constants, functions, or arrays.
 In this section we illustrate usage of the different [`BoundaryCondition`](@ref) constructors.
 
-### 1. Constant `Value` (Dirchlet) boundary condition
+### 1. Constant `Value` (Dirichlet) boundary condition
 
 ```jldoctest bcs
 julia> constant_T_bc = ValueBoundaryCondition(20)
@@ -358,6 +358,25 @@ FluxBoundaryCondition: 16×16 Matrix{Float64}
 ```
 
 When running on the GPU, `Q` must be converted to a `CuArray`.
+
+### 10. Open boundary condition with matching scheme
+
+As discussed in [the numerical description of open boundary conditions](@ref numerical_bcs) it is often neccessary to specify a matching scheme
+on open boundaries to approximate the behaviour of the boundary nodes given the interior state
+and specified external conditions. For example if we want to specify an outflowing boundary
+with a mean velocity ``U=1`` and damp the exiting flow to this speed we can setup a
+[`PerturbationAdvection`](@ref) open boundary:
+
+```jldoctest
+julia> scheme = PerturbationAdvection(; outflow_timescale=10, inflow_timescale=1)
+PerturbationAdvection{Float64}(1.0, 10.0)
+
+julia> open_boundary = OpenBoundaryCondition(1; scheme)
+OpenBoundaryCondition{PerturbationAdvection{Float64}}: 1
+```
+
+The boundary value and timescales need to be carefully chosen to allow information to enter/
+exit the domain in each specific problem.
 
 ## Building boundary conditions on a field
 
