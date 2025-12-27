@@ -18,23 +18,22 @@ using Oceananigans.DistributedComputations: reconstruct_global_topology
 #####
 
 """
-    DistributedPath(rank_infos)
+    DistributedFilePaths(ranks)
 
-A wrapper for the `path` field that stores rank file information for combining 
-distributed output. This allows dispatching on the path type to enable combining
-for both InMemory and OnDisk backends.
+A wrapper for the `path` field that stores information about each rank's output file.
+This enables dispatching for combining distributed output with both InMemory and OnDisk backends.
 
 The `path` field semantically represents "where to find the data" - for distributed
-output, the data lives in multiple rank files.
+output, the data lives across multiple rank files.
 """
-struct DistributedPath{R}
-    rank_infos :: R
+struct DistributedFilePaths{R}
+    ranks :: R  # Vector of RankData, one per MPI rank
 end
 
-Base.show(io::IO, dp::DistributedPath) = print(io, "DistributedPath(", length(dp.rank_infos), " ranks)")
+Base.show(io::IO, dp::DistributedFilePaths) = print(io, "DistributedFilePaths(", length(dp.ranks), " ranks)")
 
 # Convenience accessor for the first rank's path (used for metadata)
-first_path(dp::DistributedPath) = first(dp.rank_infos).path
+first_path(dp::DistributedFilePaths) = first(dp.ranks).path
 first_path(path::String) = path
 
 #####
@@ -55,22 +54,33 @@ function find_rank_files(path)
     return naturalsort(rank_paths)
 end
 
-struct RankFileInfo{G, I}
-    grid :: G
+"""
+    RankData{G, I}
+
+Data about a single MPI rank's output file, used for combining distributed output.
+
+Fields:
+- `local_grid`: The local grid for this rank (used for sizes, halos, coordinates)
+- `local_index`: The rank's position in the decomposition, e.g., `(2, 1, 1)` 
+- `partition`: Total number of ranks in each dimension, e.g., `(2, 2, 1)`
+- `path`: Path to this rank's JLD2 output file
+"""
+struct RankData{G, I}
+    local_grid :: G
     local_index :: I
-    ranks :: NTuple{3, Int}
+    partition :: NTuple{3, Int}
     path :: String
 end
 
 """Load grid and rank information from a distributed output file."""
-function load_rank_file_info(path; reader_kw=NamedTuple())
-    grid = jldopen(path; reader_kw...) do file
+function load_rank_data(path; reader_kw=NamedTuple())
+    local_grid = jldopen(path; reader_kw...) do file
         file["serialized/grid"]
     end
     
-    arch = try architecture(grid) catch; return nothing end
+    arch = try architecture(local_grid) catch; return nothing end
     hasproperty(arch, :local_index) && hasproperty(arch, :ranks) || return nothing
-    return RankFileInfo(grid, arch.local_index, arch.ranks, path)
+    return RankData(local_grid, arch.local_index, arch.ranks, path)
 end
 
 #####
@@ -83,19 +93,19 @@ end
 #
 
 # Compute cumulative offsets for indexing into the global array
-function rank_offsets(local_sizes, ranks, dim)
-    R = ranks[dim]
+function partition_offsets(local_sizes, partition, dim)
+    R = partition[dim]
     sizes = [local_sizes[ntuple(d -> d == dim ? r : 1, 3)][dim] for r in 1:R-1]
     return cumsum([0; sizes])
 end
 
 # Collect and concatenate coordinate data from all ranks along a dimension
-function collect_global_coordinates(rank_infos, dim, coord_func)
-    R = first(rank_infos).ranks[dim]
+function collect_global_coordinates(all_ranks, dim, coord_func)
+    R = first(all_ranks).partition[dim]
     coords = map(1:R) do r
         selector = ntuple(d -> d == dim ? r : 1, 3)
-        info = first(filter(i -> i.local_index == selector, rank_infos))
-        c = coord_func(info.grid)
+        rank = first(filter(rd -> rd.local_index == selector, all_ranks))
+        c = coord_func(rank.local_grid)
         (c isa AbstractVector && r < R) ? c[1:end-1] : c  # Avoid overlap
     end
     
@@ -104,20 +114,20 @@ function collect_global_coordinates(rank_infos, dim, coord_func)
 end
 
 """
-    reconstruct_global_grid_from_ranks(rank_infos, arch)
+    reconstruct_global_grid(all_ranks, arch)
 
 Reconstruct a global grid from distributed rank file information.
 This is the offline (file-based) equivalent of `DistributedComputations.reconstruct_global_grid`.
 """
-function reconstruct_global_grid_from_ranks(rank_infos, arch)
-    ranks = first(rank_infos).ranks
-    Rx, Ry, Rz = ranks
-    Nr = prod(ranks)
+function reconstruct_global_grid(all_ranks, arch)
+    partition = first(all_ranks).partition
+    Rx, Ry, Rz = partition
+    Nr = prod(partition)
     
-    length(rank_infos) == Nr || error("Expected $Nr rank files but found $(length(rank_infos))")
+    length(all_ranks) == Nr || error("Expected $Nr rank files but found $(length(all_ranks))")
     
-    grid0 = first(filter(i -> i.local_index == (1, 1, 1), rank_infos)).grid
-    local_sizes = Dict(info.local_index => size(info.grid) for info in rank_infos)
+    grid0 = first(filter(rd -> rd.local_index == (1, 1, 1), all_ranks)).local_grid
+    local_sizes = Dict(rd.local_index => size(rd.local_grid) for rd in all_ranks)
     
     # Compute global size (cf. DistributedComputations.global_size)
     Nx = sum(local_sizes[(ri, 1, 1)][1] for ri in 1:Rx)
@@ -128,12 +138,12 @@ function reconstruct_global_grid_from_ranks(rank_infos, arch)
     FT = eltype(grid0)
     
     # Reconstruct topology using the offline utility from DistributedComputations
-    all_topos = [[topology(info.grid)[d] for info in rank_infos] for d in 1:3]
-    topo = Tuple(reconstruct_global_topology(all_topos[d], ranks[d]) for d in 1:3)
+    all_topos = [[topology(rd.local_grid)[d] for rd in all_ranks] for d in 1:3]
+    topo = Tuple(reconstruct_global_topology(all_topos[d], partition[d]) for d in 1:3)
     
     # Collect global coordinates (cf. DistributedComputations.assemble_coordinate)
-    xG = collect_global_coordinates(rank_infos, 1, cpu_face_constructor_x)
-    yG = collect_global_coordinates(rank_infos, 2, cpu_face_constructor_y)
+    xG = collect_global_coordinates(all_ranks, 1, cpu_face_constructor_x)
+    yG = collect_global_coordinates(all_ranks, 2, cpu_face_constructor_y)
     zG = cpu_face_constructor_z(grid0)
     
     return build_global_grid(grid0, arch, FT, topo, (Nx, Ny, Nz), H, xG, yG, zG)
