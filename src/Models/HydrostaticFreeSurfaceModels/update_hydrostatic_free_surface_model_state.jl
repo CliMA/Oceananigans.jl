@@ -45,10 +45,11 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     @apply_regionally begin
         surface_params = surface_kernel_parameters(model.grid)
         volume_params = volume_kernel_parameters(model.grid)
+        κ_params = closure_field_kernel_parameters(model.grid)
         compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
         update_vertical_velocities!(model.velocities, model.grid, model, parameters=surface_params)    
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
-        compute_diffusivities!(model.closure_fields, model.closure, model, parameters=volume_params)
+        compute_diffusivities!(model.closure_fields, model.closure, model, parameters=κ_params)
     end
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
@@ -69,3 +70,15 @@ function mask_immersed_model_fields!(model)
 end
 
 mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities)
+
+""" Kernel parameters for computing three-dimensional variables including halos. """
+@inline function closure_field_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
+    jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
+    kk = ifelse(Tz == Flat, 1:Nz, 0:Nz+1)
+
+    return KernelParameters(ii, jj, kk)
+end
