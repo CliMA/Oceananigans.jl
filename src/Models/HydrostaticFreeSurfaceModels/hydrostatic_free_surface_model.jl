@@ -1,17 +1,60 @@
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKuttaTimeStepper
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions
-using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
+
+using Oceananigans.Advection:
+    AbstractAdvectionScheme,
+    Centered,
+    VectorInvariant,
+    adapt_advection_order
+
+using Oceananigans.BuoyancyFormulations:
+    validate_buoyancy,
+    materialize_buoyancy
+
+using Oceananigans.Biogeochemistry:
+    validate_biogeochemistry,
+    AbstractBiogeochemistry,
+    biogeochemical_auxiliary_fields
+
+using Oceananigans.BoundaryConditions: 
+    FieldBoundaryConditions, 
+    regularize_field_boundary_conditions
+    
+using Oceananigans.Fields:
+    Field,
+    CenterField,
+    tracernames,
+    TracerFields
+
+using Oceananigans.Grids:
+    AbstractHorizontallyCurvilinearGrid,
+    architecture,
+    halo_size,
+    MutableVerticalDiscretization
+
+using Oceananigans.Models:
+    AbstractModel,
+    validate_model_halo,
+    validate_tracer_advection,
+    extract_boundary_conditions
+
+using Oceananigans.TimeSteppers:
+    Clock,
+    TimeStepper,
+    update_state!,
+    AbstractLagrangianParticles
+
+using Oceananigans.TurbulenceClosures:
+    validate_closure,
+    with_tracers,
+    build_closure_fields,
+    add_closure_specific_boundary_conditions,
+    time_discretization,
+    implicit_diffusion_solver,
+    closure_required_tracers
+
 using Oceananigans.Utils: tupleit
 
 import Oceananigans.Models: initialization_update_state!
@@ -21,7 +64,6 @@ import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
-import Oceananigans
 const defaults = Oceananigans.defaults
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
