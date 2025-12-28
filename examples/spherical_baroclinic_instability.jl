@@ -187,13 +187,6 @@ results = Dict(
 # ## Visualization
 #
 # We visualize the results the sphere with CairoMakie.
-# First, we completely reset the CUDA device to avoid conflicts between CUDA and Cairo.
-# This is necessary because the CUDA and Cairo C libraries can have conflicting memory management.
-
-CUDA.synchronize()
-GC.gc(true)  # Full GC to release Julia references to GPU memory
-CUDA.reclaim()
-CUDA.device_reset!()  # Completely reset CUDA context
 
 using CairoMakie
 
