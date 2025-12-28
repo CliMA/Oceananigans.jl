@@ -1176,7 +1176,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
         end
     end
 
-    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(string(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
