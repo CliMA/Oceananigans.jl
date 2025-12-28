@@ -30,7 +30,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 
     κ_params = buffer_κ_kernel_parameters(grid, model.closure, arch)
 
-    compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters = volume_params)
+    compute_buoyancy_gradients!(model.buoyancy, grid, model.tracers, parameters = volume_params)
     update_vertical_velocities!(model.velocities, grid, model; parameters = surface_params)
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = surface_params)
     compute_diffusivities!(model.closure_fields, model.closure, model; parameters = κ_params)
@@ -139,14 +139,13 @@ function buffer_volume_kernel_parameters(grid, arch)
 
     xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(0, Nx+1)
     yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(0, Ny+1)
-    zside = isa(grid, ZFlatGrid) ? UnitRange(1, Nz) : UnitRange(0, Nz+1)
 
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    param_west   = (-Hx+2:1,    yside,     zside)
-    param_east   = (Nx:Nx+Hx-1, yside,     zside)
-    param_south  = (xside,     -Hy+2:1,    zside)
-    param_north  = (xside,     Ny:Ny+Hy-1, zside)
+    param_west   = (-Hx+2:1,    yside,     1:Nz)
+    param_east   = (Nx:Nx+Hx-1, yside,     1:Nz)
+    param_south  = (xside,     -Hy+2:1,    1:Nz)
+    param_north  = (xside,     Ny:Ny+Hy-1, 1:Nz)
 
     params = (param_west, param_east, param_south, param_north)
 

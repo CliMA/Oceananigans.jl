@@ -79,7 +79,7 @@ mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities
 
     ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
     jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
-    kk = ifelse(Tz == Flat, 1:Nz, 0:Nz+1)
+    kk = ifelse(Tz == Flat, 1:Nz, 1:Nz)
 
     return KernelParameters(ii, jj, kk)
 end
