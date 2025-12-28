@@ -110,7 +110,9 @@ b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
 # ## Bottom drag and along-slope interior velocity
 #
-# We impose bottom drag that follows Monin--Obukhov theory:
+# We impose bottom drag that follows Monin--Obukhov theory.
+# We use `BulkDrag` to create the drag boundary conditions, which computes a
+# quadratic drag proportional to the total velocity (including the background velocity):
 
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
@@ -119,14 +121,11 @@ z₀ = 0.1 # m (roughness length)
 z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
 cᴰ = (ϰ / log(z₁ / z₀))^2 # Drag coefficient
 
-@inline drag_u(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
-@inline drag_v(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
+drag_bc_u = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞))
+drag_bc_v = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞))
 
-drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=(; cᴰ, V∞))
-drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=(; cᴰ, V∞))
-
-u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
-v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
+u_bcs = FieldBoundaryConditions(bottom=drag_bc_u)
+v_bcs = FieldBoundaryConditions(bottom=drag_bc_v)
 
 # Note that, similar to the buoyancy boundary conditions, we had to
 # include the background flow in the drag calculation.

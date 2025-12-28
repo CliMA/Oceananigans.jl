@@ -3,8 +3,11 @@ using Oceananigans
 using Oceananigans.Units
 using Printf
 
+using Oceananigans.Grids: XDirection, YDirection
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
     CATKEVerticalDiffusivity, MixingLength
+
+using Oceananigans.Models: BulkDrag
 
 # Parameters
 Δz = 4          # Vertical resolution
@@ -25,13 +28,12 @@ closure= CATKEVerticalDiffusivity(; mixing_length)
 grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
 
-# Fluxes from similarity theory...
+# Drag coefficient from similarity theory: Cᴰ = (ϰ / log(d₀ / ℓ₀))²
+# where d₀ is the distance to the wall (half grid spacing)
 Cᴰ = (ϰ / log(Δz/2ℓ₀))^2
-@inline τˣ(t, u, v, Cᴰ) = - Cᴰ * u * sqrt(u^2 + v^2)
-@inline τʸ(t, u, v, Cᴰ) = - Cᴰ * v * sqrt(u^2 + v^2)
 
-u_bottom_bc = FluxBoundaryCondition(τˣ, field_dependencies=(:u, :v), parameters=Cᴰ)
-v_bottom_bc = FluxBoundaryCondition(τʸ, field_dependencies=(:u, :v), parameters=Cᴰ)
+u_bottom_bc = BulkDrag(direction=XDirection(), coefficient=Cᴰ)
+v_bottom_bc = BulkDrag(direction=YDirection(), coefficient=Cᴰ)
 
 u_bcs = FieldBoundaryConditions(bottom = u_bottom_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_bottom_bc)

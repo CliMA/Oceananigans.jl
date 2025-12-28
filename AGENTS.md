@@ -37,6 +37,8 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
    - Use DocStringExtensions.jl for consistent docstrings
    - Include `$(SIGNATURES)` for automatic signature documentation
    - Add examples in docstrings when helpful
+   - **CRITICAL: ALWAYS use `jldoctest` blocks, NEVER use plain `julia` blocks in docstrings**
+     (see "Docstring Examples" section below for details)
 
 5. **Memory efficiency**
    - Favor doing lots of computations inline versus allocating temporary memory
@@ -105,6 +107,52 @@ Pkg.test("Oceananigans")
 ### Quality Assurance
 - Ensure doctests pass
 - Use Aqua.jl for package quality checks
+
+### Docstring Examples (CRITICAL)
+
+**NEVER use plain `julia` code blocks in docstrings. ALWAYS use `jldoctest` blocks.**
+
+Plain code blocks (`` ```julia ``) are NOT tested and can become stale or incorrect.
+Doctests (`` ```jldoctest ``) are automatically tested and verified to work.
+
+✅ CORRECT - use `jldoctest`:
+```markdown
+\"\"\"
+    my_function(x)
+
+Example:
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+typeof(grid)
+
+# output
+RectilinearGrid{Float64, Periodic, Periodic, Bounded, Nothing, Nothing, Nothing, Nothing}
+```
+\"\"\"
+```
+
+❌ WRONG - never use plain `julia` blocks in docstrings:
+```markdown
+\"\"\"
+    my_function(x)
+
+Example:
+
+```julia
+# This code is NOT tested and may be wrong!
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+```
+\"\"\"
+```
+
+Key doctest requirements:
+- Always include expected output after `# output`
+- Use simple, verifiable output (e.g., `typeof(result)`, accessing a field that returns a simple value)
+- Doctests should exercise `Base.show` to verify objects display correctly
+- Keep doctests minimal but complete enough to verify the feature works
 
 ## Common Development Tasks
 
@@ -204,6 +252,7 @@ serve(dir="docs/build")
 1. **Type Instability**: Especially in kernel functions - ruins GPU performance
 2. **Overconstraining types**: Julia compiler can infer types. Type annotations should be used primarily for _multiple dispatch_, not for documentation.
 3. **Forgetting Explicit Imports**: Tests will fail - add to using statements
+4. **Using plain `julia` blocks in docstrings**: NEVER do this. ALWAYS use `jldoctest` blocks so examples are tested and verified to work. Plain `julia` blocks are not tested and will become stale.
 
 
 ## Git Workflow
