@@ -4,7 +4,7 @@ using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
 using Oceananigans.Fields: boundary_conditions, indices
 
-default_included_properties(model) = [:grid]
+default_included_properties(model) = []
 
 mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
@@ -33,7 +33,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                file_splitting = NoFileSplitting(),
                overwrite_existing = false,
                init = noinit,
-               including = [:grid, :coriolis, :buoyancy, :closure],
+               including = [:grid],
                verbose = false,
                part = 1,
                jld2_kw = Dict{Symbol, Any}())
