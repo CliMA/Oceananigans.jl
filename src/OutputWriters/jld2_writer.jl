@@ -33,7 +33,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                file_splitting = NoFileSplitting(),
                overwrite_existing = false,
                init = noinit,
-               including = [:grid],
+               including = [],
                verbose = false,
                part = 1,
                jld2_kw = Dict{Symbol, Any}())
@@ -161,9 +161,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
-                         for name in keys(outputs))
-
+    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))                        
     schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified

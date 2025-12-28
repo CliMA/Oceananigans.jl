@@ -17,7 +17,7 @@ function fetch_output(mrf::MultiRegionField, model)
     return parent(field)
 end
 
-function construct_output(mrf::MultiRegionField, grid, user_indices, with_halos)
+function construct_output(mrf::MultiRegionField, user_indices, with_halos)
     # TODO: support non-default indices I guess
     # for that we have to figure out how to partition indices, eg user_indices is "global"
     # indices = output_indices(user_output, grid, user_indices, with_halos)
@@ -59,11 +59,10 @@ function convert_output(mo::MultiRegionObject, writer)
 end
 
 function construct_output(csf::CubedSphereField{LX, LY, LZ},
-                          grid::ConformalCubedSphereGridOfSomeKind,
                           user_indices,
                           with_halos) where {LX, LY, LZ}
 
-    multi_region_indices = output_indices(csf, grid, user_indices, with_halos)
+    multi_region_indices = output_indices(csf, user_indices, with_halos)
     indices = getregion(multi_region_indices, 1)
 
     return Field(csf; indices, NamedTuple()...)
