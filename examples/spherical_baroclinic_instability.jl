@@ -220,9 +220,9 @@ axes_T = Dict()
 axes_ζ = Dict()
 
 for (col, name) in enumerate(keys(results))
-    label = labels[name]
-    axes_T[name] = Axis3(fig[2, col]; aspect=:data, title="$label\nTemperature")
-    axes_ζ[name] = Axis3(fig[3, col]; aspect=:data, title="Vorticity")
+    title = labels[name]
+    axes_T[name] = Axis3(fig[2, col]; aspect=:data, title)
+    axes_ζ[name] = Axis3(fig[3, col]; aspect=:data)
 end
 
 # We use `surface!`, which has a special extension for Oceananigans fields,
