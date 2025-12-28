@@ -136,7 +136,7 @@ end
 
 function run_baroclinic_instability(grid, name; stop_time=45days, save_interval=24hours)
     model = build_model(grid)
-    simulation = Simulation(model; Δt=10minutes, stop_time=1day) #stop_time)
+    simulation = Simulation(model; Δt=10minutes, stop_time)
 
     ## Add progress callback
     function progress(sim)
