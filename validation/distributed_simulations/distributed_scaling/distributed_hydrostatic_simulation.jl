@@ -5,7 +5,6 @@
 #   mpiexec -n 4 julia --project distributed_scaling/distributed_hydrostatic_simulation.jl
 #
 # Environment variables:
-#   RX, RY: number of ranks in x and y directions (default: 1)
 #   NX, NY, NZ: grid size (default: 72, 30, 10)
 #
 
@@ -18,8 +17,6 @@ using Printf
 using Oceananigans
 using Oceananigans.Utils: prettytime
 using Oceananigans.DistributedComputations
-using Oceananigans.Grids: node
-using Oceananigans.Advection: cell_advection_timescale
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
@@ -32,13 +29,13 @@ function double_drake_bathymetry(λ, φ)
     return -10000.0
 end
 
-function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
+function run_hydrostatic_simulation!(grid_size;
                                      output_name = nothing,
                                      timestepper = :QuasiAdamsBashforth2,
                                      CFL = 0.35,
                                      barotropic_CFL = 0.75)
 
-    arch = Distributed(CPU(), FT; partition = Partition(ranks...))
+    arch = Distributed(CPU())
     grid = LatitudeLongitudeGrid(arch; size = grid_size,
                                  longitude = (-180, 180),
                                  latitude = (-75, 75),
@@ -47,16 +44,16 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(double_drake_bathymetry))
 
-    momentum_advection = WENOVectorInvariant(FT)
-    tracer_advection   = WENO(grid, order = 7)
+    momentum_advection = WENOVectorInvariant()
+    tracer_advection   = WENO(order = 7)
 
-    buoyancy = SeawaterBuoyancy(FT; equation_of_state = TEOS10EquationOfState(FT))
-    coriolis = HydrostaticSphericalCoriolis(FT)
-    closure  = CATKEVerticalDiffusivity(FT)
+    buoyancy = SeawaterBuoyancy(equation_of_state = TEOS10EquationOfState())
+    coriolis = HydrostaticSphericalCoriolis()
+    closure  = CATKEVerticalDiffusivity()
 
     max_Δt = 45 * 48 / grid.Δλᶠᵃᵃ
 
-    free_surface = SplitExplicitFreeSurface(FT; grid, cfl = barotropic_CFL, fixed_Δt = max_Δt)
+    free_surface = SplitExplicitFreeSurface(grid; cfl = barotropic_CFL, fixed_Δt = max_Δt)
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection,
@@ -64,7 +61,7 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
                                         coriolis,
                                         closure,
                                         free_surface,
-                                        tracers = (:T, :S, :e),
+                                        tracers = (:T, :S),
                                         buoyancy,
                                         timestepper)
 
@@ -101,11 +98,6 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
     return nothing
 end
 
-rx = parse(Int, get(ENV, "RX", "1"))
-ry = parse(Int, get(ENV, "RY", "1"))
-
-ranks = (rx, ry, 1)
-
 # Reduced resolution for testing
 Nx = parse(Int, get(ENV, "NX", "72"))
 Ny = parse(Int, get(ENV, "NY", "30"))
@@ -113,5 +105,5 @@ Nz = parse(Int, get(ENV, "NZ", "10"))
 
 grid_size = (Nx, Ny, Nz)
 
-@info "Running HydrostaticFreeSurface model with ranks $ranks and grid size $grid_size"
-run_hydrostatic_simulation!(grid_size, ranks)
+@info "Running HydrostaticFreeSurface model with grid size $grid_size"
+run_hydrostatic_simulation!(grid_size)

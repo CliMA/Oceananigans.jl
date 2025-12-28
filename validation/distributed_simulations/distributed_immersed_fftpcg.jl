@@ -8,8 +8,9 @@
 using MPI
 using Oceananigans
 using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver
-using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
 using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, reconstruct_global_grid
+using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Printf
 
 function initial_conditions!(model)
@@ -108,7 +109,11 @@ arch = Distributed(CPU())
 grid = setup_grid(N, arch)
 
 @info "Creating pressure solver"
-preconditioner = nonhydrostatic_pressure_solver(grid.underlying_grid)
+# Create a preconditioner using the distributed FFT solver on the underlying grid
+local_underlying_grid = grid.underlying_grid
+global_underlying_grid = reconstruct_global_grid(local_underlying_grid)
+preconditioner = DistributedFFTBasedPoissonSolver(global_underlying_grid, local_underlying_grid)
+
 pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter = 10000, preconditioner = preconditioner)
 
 @info "Creating model"

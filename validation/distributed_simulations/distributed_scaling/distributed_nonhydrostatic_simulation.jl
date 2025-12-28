@@ -4,8 +4,8 @@
 #
 #   mpiexec -n 4 julia --project distributed_scaling/distributed_nonhydrostatic_simulation.jl
 #
-# Environment variables:
-#   RX, RY: number of ranks in x and y directions (default: 1)
+# Environment variables (optional - will auto-detect from MPI if not set):
+#   RX, RY: number of ranks in x and y directions
 #   NX, NY, NZ: grid size (default: 32, 32, 32)
 #
 
@@ -27,13 +27,13 @@ using Oceananigans.Units
     return p.N² * z + p.Δb * b
 end
 
-function run_nonhydrostatic_simulation!(grid_size, ranks;
+function run_nonhydrostatic_simulation!(grid_size;
                                         topology = (Periodic, Periodic, Bounded),
                                         output_name = nothing,
                                         timestepper = :QuasiAdamsBashforth2,
                                         CFL = 0.5)
 
-    arch = Distributed(CPU(); partition = Partition(ranks...))
+    arch = Distributed(CPU())
     grid = RectilinearGrid(arch; size = grid_size,
                            x = (0, 4096),
                            y = (-2048, 2048),
@@ -103,11 +103,6 @@ function run_nonhydrostatic_simulation!(grid_size, ranks;
     return nothing
 end
 
-rx = parse(Int, get(ENV, "RX", "1"))
-ry = parse(Int, get(ENV, "RY", "1"))
-
-ranks = (rx, ry, 1)
-
 # Reduced resolution for testing
 Nx = parse(Int, get(ENV, "NX", "32"))
 Ny = parse(Int, get(ENV, "NY", "32"))
@@ -115,5 +110,5 @@ Nz = parse(Int, get(ENV, "NZ", "32"))
 
 grid_size = (Nx, Ny, Nz)
 
-@info "Running Nonhydrostatic model with ranks $ranks and grid size $grid_size"
-run_nonhydrostatic_simulation!(grid_size, ranks)
+@info "Running Nonhydrostatic model with grid size $grid_size"
+run_nonhydrostatic_simulation!(grid_size)
