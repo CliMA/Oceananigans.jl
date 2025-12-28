@@ -10,7 +10,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
     implicit_free_surface_linear_operation!
 
-using Oceananigans.Grids: with_halo
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity

@@ -3,7 +3,6 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models
 
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.BuoyancyFormulations: Zᶜᶜᶜ
 using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height,
                            ConstantTemperatureSB, ConstantSalinitySB
 

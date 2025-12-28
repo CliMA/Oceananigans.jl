@@ -41,7 +41,7 @@ include("dependencies_for_runtests.jl")
 
         a2 = CenterField(three_point_grid)
 
-        b2_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=OpenBoundaryCondition(0), bottom=OpenBoundaryCondition(0))
+        b2_bcs = FieldBoundaryConditions(three_point_grid, (Center(), Center(), Face()), top=OpenBoundaryCondition(0), bottom=OpenBoundaryCondition(0))
         b2 = ZFaceField(three_point_grid, boundary_conditions=b2_bcs)
 
         b2 .= 1
