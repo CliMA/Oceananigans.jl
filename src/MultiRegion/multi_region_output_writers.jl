@@ -48,14 +48,10 @@ function convert_output(mo::MultiRegionObject, writer)
     return MultiRegionObject(converted)
 end
 
-function construct_output(mrf::MultiRegionField{LX, LY, LZ},
-                          user_indices,
-                          with_halos) where {LX, LY, LZ}
-
-    multi_region_indices = output_indices(csf, user_indices, with_halos)
+function construct_output(mrf::MultiRegionField{LX, LY, LZ}, user_indices, with_halos) where {LX, LY, LZ}
+    multi_region_indices = output_indices(mrf, user_indices, with_halos)
     indices = getregion(multi_region_indices, 1)
-
-    return Field(csf; indices, NamedTuple()...)
+    return Field(mrf; indices, NamedTuple()...)
 end
 
 function serializeproperty!(file, location, csf::CubedSphereField{LX, LY, LZ}) where {LX, LY, LZ}
