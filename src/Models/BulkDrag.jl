@@ -259,7 +259,7 @@ drag = BulkDrag(coefficient=1e-3)
 u_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
 v_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
 
-model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
+model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
 
 # Verify the immersed BC bottom facet has the correct direction
 model.velocities.u.boundary_conditions.immersed
