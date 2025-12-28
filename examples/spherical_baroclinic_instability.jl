@@ -30,8 +30,8 @@
 # We set up three different spherical grids at 1.5-degree resolution. Each grid type has
 # different advantages:
 #
-# - `LatitudeLongitudeGrid`: The most intuitive, but suffers from converging meridians at
-#   the poles, which requires filtering or limiting latitudinal extent.
+# - `LatitudeLongitudeGrid`: Straightforward, but suffers from converging meridians at
+#   the poles, and thus cannot cover a sphere without filtering.
 #
 # - `TripolarGrid`: Avoids the North Pole singularity by introducing two computational poles
 #   over land (typically over North America and Eurasia). This grid was first introduced by
