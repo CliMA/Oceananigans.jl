@@ -5,6 +5,7 @@ using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Utils: KernelParameters
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
