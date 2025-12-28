@@ -57,6 +57,7 @@ using Oceananigans.TurbulenceClosures:
 
 using Oceananigans.Utils: tupleit
 
+import Oceananigans
 import Oceananigans.Models: initialization_update_state!
 import Oceananigans: initialize!
 import Oceananigans.Models: total_velocities

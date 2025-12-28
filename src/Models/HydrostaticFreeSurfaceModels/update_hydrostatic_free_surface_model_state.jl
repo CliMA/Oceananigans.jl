@@ -5,8 +5,8 @@ using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, surface_kernel_parameters
+using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -44,14 +44,15 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally begin
         surface_params = surface_kernel_parameters(model.grid)
-        compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=:xyz)
+        volume_params = volume_kernel_parameters(model.grid)
+        compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
         update_vertical_velocities!(model.velocities, model.grid, model, parameters=surface_params)    
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
-        compute_diffusivities!(model.closure_fields, model.closure, model, parameters=:xyz)
+        compute_diffusivities!(model.closure_fields, model.closure, model, parameters=volume_params)
     end
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
-    fill_halo_regions!(model.pressure.pHY′;  only_local_halos=true)
+    fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 

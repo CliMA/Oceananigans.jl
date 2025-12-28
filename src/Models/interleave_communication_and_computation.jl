@@ -77,3 +77,16 @@ end
 
     return KernelParameters(ii, jj)
 end
+
+""" Kernel parameters for computing three-dimensional variables including halos. """
+@inline function volume_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    kk = ifelse(Tz == Flat, 1:Nz, -Hz+2:Nz+Hz-1)
+
+    return KernelParameters(ii, jj, kk)
+end

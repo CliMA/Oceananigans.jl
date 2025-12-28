@@ -22,7 +22,7 @@ using Oceananigans.Grids: MutableVerticalDiscretization, StaticVerticalDiscretiz
 
 MPI.Initialized() || MPI.Init()
 
-using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
+using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized, synchronize_communication!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function Δ_min(grid)
@@ -51,18 +51,12 @@ function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdams
     free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = g)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    tracers = if closure isa CATKEVerticalDiffusivity
-        (:c, :b, :e)
-    else
-        (:c, :b)
-    end
-
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = WENOVectorInvariant(order=3), 
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         closure,
-                                        tracers,
+                                        tracers = (:c, :b),
                                         timestepper,
                                         tracer_advection = WENO(order=3),
                                         buoyancy = BuoyancyTracer())
@@ -76,6 +70,10 @@ function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdams
         time_step!(model, Δt)
     end
 
+    for field in merge(model.velocities, model.tracers)
+        synchronize_communication!(field)
+    end
+
     return model
 end
 
@@ -83,7 +81,6 @@ Nx = 32
 Ny = 32
 
 for arch in archs
-
     # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N
     # which would lead to different advection schemes for partitioned and non-partitioned grids.
     # `Fractional` is, however, tested in regression tests where the horizontal dimensions are larger.
@@ -117,9 +114,13 @@ for arch in archs
                     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
                         @root @info "Testing solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) and a $(typeof(grid.z).name.wrapper) on $(timestepper)"
                         
+                        # We deepcopy the grid to ensure it is not modified in the case of a MutableVerticalDiscretization
+                        test_global_grid = deepcopy(global_grid)
+                        test_grid = deepcopy(grid)
+
                         # "s" for "serial" computation, "p" for parallel
-                        ms = rotation_with_shear_test(deepcopy(global_grid); timestepper)
-                        mp = rotation_with_shear_test(deepcopy(grid); timestepper)
+                        ms = rotation_with_shear_test(test_global_grid; timestepper)
+                        mp = rotation_with_shear_test(test_grid; timestepper)
 
                         us = interior(on_architecture(CPU(), ms.velocities.u))
                         vs = interior(on_architecture(CPU(), ms.velocities.v))
@@ -149,21 +150,32 @@ for arch in archs
                 end
 
                 # CATKE works only with synchronized communication at the moment
-                arch    = synchronized(arch)
+                synchronized_arch = synchronized(arch)
                 closure = CATKEVerticalDiffusivity()
 
+                catke_grid = LatitudeLongitudeGrid(synchronized_arch,
+                                                   size = (Nx, Ny, 3),
+                                                   halo = (4, 4, 3),
+                                                   latitude = (-80, 80),
+                                                   longitude = (-160, 160),
+                                                   z = z_faces,
+                                                   radius = 10,
+                                                   topology = (Bounded, Bounded, Bounded))
+    
+                catke_global_grid = reconstruct_global_grid(catke_grid)
+                
                 @root @info "  Testing CATKE with $(ranks(arch)) ranks"
 
                 # "s" for "serial" computation, "p" for parallel
-                ms = rotation_with_shear_test(deepcopy(global_underlying_grid), closure)
-                mp = rotation_with_shear_test(deepcopy(underlying_grid), closure)
+                ms = rotation_with_shear_test(catke_global_grid, closure)
+                mp = rotation_with_shear_test(catke_grid, closure)
 
                 us = interior(on_architecture(CPU(), ms.velocities.u))
                 vs = interior(on_architecture(CPU(), ms.velocities.v))
                 cs = interior(on_architecture(CPU(), ms.tracers.c))
                 ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
-                cpu_arch = cpu_architecture(arch)
+                cpu_arch = cpu_architecture(synchronized_arch)
 
                 up = interior(on_architecture(cpu_arch, mp.velocities.u))
                 vp = interior(on_architecture(cpu_arch, mp.velocities.v))
