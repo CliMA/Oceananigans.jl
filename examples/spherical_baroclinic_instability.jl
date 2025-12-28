@@ -134,7 +134,7 @@ end
 # We run for 30 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
-function run_baroclinic_instability(grid, name; stop_time=45days, save_interval=24hours)
+function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=24hours)
     model = build_model(grid)
     simulation = Simulation(model; Δt=10minutes, stop_time)
 
@@ -187,6 +187,13 @@ results = Dict(
 # ## Visualization
 #
 # We visualize the results the sphere with CairoMakie.
+# First, we completely reset the CUDA device to avoid conflicts between CUDA and Cairo.
+# This is necessary because the CUDA and Cairo C libraries can have conflicting memory management.
+
+CUDA.synchronize()
+GC.gc(true)  # Full GC to release Julia references to GPU memory
+CUDA.reclaim()
+CUDA.device_reset!()  # Completely reset CUDA context
 
 using CairoMakie
 
@@ -243,15 +250,13 @@ for name in keys(results)
     hidespines!(axes_ζ[name])
 end
 
-colgap!(fig.layout, 1, Relative(-0.2))
-colgap!(fig.layout, 2, Relative(-0.2))
+colgap!(fig.layout, 1, Relative(-0.5))
+colgap!(fig.layout, 2, Relative(-0.5))
 rowgap!(fig.layout, 2, Relative(-0.2))
 
 # Add colorbars
 Colorbar(fig[2, 4], plots_T["lat_lon"]; label = "Temperature [°C]")
 Colorbar(fig[3, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]")
-
-# save("spherical_baroclinic_instability.png", fig)
 
 # And then we are ready to record a movie!
 
