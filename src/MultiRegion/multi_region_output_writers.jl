@@ -17,16 +17,6 @@ function fetch_output(mrf::MultiRegionField, model)
     return parent(field)
 end
 
-function construct_output(mrf::MultiRegionField, user_indices, with_halos)
-    # TODO: support non-default indices I guess
-    # for that we have to figure out how to partition indices, eg user_indices is "global"
-    # indices = output_indices(user_output, grid, user_indices, with_halos)
-
-    indices = (:, :, user_indices[3]) # sorry user
-
-    return construct_output(mrf, indices)
-end
-
 saveproperty!(file, address, p::Union{MultiRegionObject, MultiRegionField}) = _saveproperty!(file, address, p)
 
 function serializeproperty!(file, location, mrf::MultiRegionField{LX, LY, LZ}) where {LX, LY, LZ}
@@ -58,7 +48,7 @@ function convert_output(mo::MultiRegionObject, writer)
     return MultiRegionObject(converted)
 end
 
-function construct_output(csf::CubedSphereField{LX, LY, LZ},
+function construct_output(mrf::MultiRegionField{LX, LY, LZ},
                           user_indices,
                           with_halos) where {LX, LY, LZ}
 
