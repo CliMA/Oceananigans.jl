@@ -3,7 +3,7 @@
 `AbstractOutputWriter`s save data to disk.
 `Oceananigans` provides three ways to write output:
 
-1. [`NetCDFWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl)
+1. [`NetCDFWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/JuliaGeo/NCDatasets.jl)
 2. [`JLD2Writer`](@ref) for arbitrary julia data structures that uses [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 3. [`Checkpointer`](@ref) that automatically saves as much model data as possible, using [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 
