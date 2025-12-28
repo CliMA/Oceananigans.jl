@@ -27,7 +27,7 @@
 
 # ## Grid configurations
 #
-# We set up three different spherical grids at 4-degree resolution. Each grid type has
+# We set up three different spherical grids at 1.5-degree resolution. Each grid type has
 # different advantages:
 #
 # - `LatitudeLongitudeGrid`: The most intuitive, but suffers from converging meridians at
@@ -45,12 +45,13 @@ using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 using CUDA
 using Printf
+using CairoMakie
 
 # Set up resolution and grid parameters. We use 1.5-degree resolution for
 # reasonable runtimes while still resolving the instability.
 
 arch = GPU()
-resolution = 3//2          # degrees
+resolution = 3 // 2        # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
 Nz = 10                    # number of vertical levels
@@ -186,14 +187,17 @@ results = Dict(
 
 # ## Visualization
 #
-# We visualize the results the sphere with CairoMakie.
-
-using CairoMakie
-
-# First we load the output from each simulation,
+# We make a three-dimensional visualization of our results on the sphere
+# with CairoMakie. First we load the output from each simulation,
 
 T_ts = Dict()
 ζ_ts = Dict()
+
+results = Dict(
+    "lat_lon" => "spherical_baroclinic_instability_lat_lon.jld2",
+    "tripolar" => "spherical_baroclinic_instability_tripolar.jld2",
+    "rotated_lat_lon" => "spherical_baroclinic_instability_rotated_lat_lon.jld2"
+)
 
 for (name, filename) in results
     T_ts[name] = FieldTimeSeries(filename, "T")
@@ -207,10 +211,10 @@ Nt = length(times)
 # on all three grids, visualized on 3D spheres. Each column shows a different
 # grid type, with temperature on top and vorticity on the bottom.
 
-fig = Figure(size = (1800, 1000))
+fig = Figure(size = (1200, 1000))
 n = Observable(1)
-title = @lift "Baroclinic instability at t = " * prettytime(times[$n])
-Label(fig[1, 1:3], title, fontsize = 28)
+title_str = @lift "Baroclinic instability at t = " * prettytime(times[$n])
+Label(fig[1, 1:3], title_str, fontsize = 28)
 
 labels = Dict("lat_lon" => "Latitude-Longitude",
               "tripolar" => "Tripolar",
@@ -220,9 +224,9 @@ axes_T = Dict()
 axes_ζ = Dict()
 
 for (col, name) in enumerate(keys(results))
-    title = labels[name]
-    axes_T[name] = Axis3(fig[2, col]; aspect=:data, title)
-    axes_ζ[name] = Axis3(fig[3, col]; aspect=:data)
+    Label(fig[2, col], labels[name], fontsize = 20)
+    axes_T[name] = Axis3(fig[3, col]; aspect=:data)
+    axes_ζ[name] = Axis3(fig[4, col]; aspect=:data)
 end
 
 # We use `surface!`, which has a special extension for Oceananigans fields,
@@ -236,24 +240,26 @@ for name in keys(results)
     Tn = @lift T_ts[name][$n]
     ζn = @lift ζ_ts[name][$n]
     plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
-    plots_ζ[name] = surface!(axes_ζ[name], ζn; colormap = :balance, colorrange = (-5e-5, 5e-5))
+    plots_ζ[name] = surface!(axes_ζ[name], ζn; colormap = :balance, colorrange = (-2e-5, 2e-5))
     hidedecorations!(axes_T[name])
     hidedecorations!(axes_ζ[name])
     hidespines!(axes_T[name])
     hidespines!(axes_ζ[name])
 end
 
-colgap!(fig.layout, 1, Relative(-0.5))
-colgap!(fig.layout, 2, Relative(-0.5))
+colgap!(fig.layout, 1, Relative(-0.2))
+colgap!(fig.layout, 2, Relative(-0.2))
+colgap!(fig.layout, 3, Relative(-0.2))
 rowgap!(fig.layout, 2, Relative(-0.2))
 
 # Add colorbars
-Colorbar(fig[2, 4], plots_T["lat_lon"]; label = "Temperature [°C]")
-Colorbar(fig[3, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]")
+Colorbar(fig[3, 4], plots_T["lat_lon"]; label = "Temperature [°C]", height=Relative(0.6))
+Colorbar(fig[4, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]", height=Relative(0.6))
 
 # And then we are ready to record a movie!
 
-CairoMakie.record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 8) do nn
+CairoMakie.record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 12) do nn
+    @info "frame $nn of $Nt"
     n[] = nn
 end
 nothing #hide
