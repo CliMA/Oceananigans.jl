@@ -70,7 +70,18 @@ end
 @inline function field(loc, f::Field, grid)
     loc = instantiate(loc)
     loc === instantiated_location(f) && grid === f.grid && return f
-    error("Cannot construct field at $loc and on $grid from $f")
+
+    msg = """
+    Cannot reconstruct field, originally located at ($(instantiated_location(f))), at $loc.
+
+    Destination grid:
+    $grid
+
+    Source grid:
+    $(f.grid)
+    """
+
+    return throw(ArgumentError(msg))
 end
 
 include("set!.jl")
