@@ -181,9 +181,9 @@ end
 
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
+    grid = RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 2, 3))
 
-    model = NonhydrostaticModel(closure=closure_tuple,
-                                grid=RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 2, 3)))
+    model = NonhydrostaticModel(grid; closure=closure_tuple)
 
     time_step!(model, 1)
     return true
