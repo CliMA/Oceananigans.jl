@@ -212,7 +212,7 @@ Nt = length(times)
 # grid type, with temperature on top and vorticity on the bottom.
 
 fig = Figure(size = (1200, 1000))
-n = Observable(1)
+n = Nt #Observable(1)
 title_str = @lift "Baroclinic instability at t = " * prettytime(times[$n])
 Label(fig[1, 1:3], title_str, fontsize = 28)
 
@@ -237,8 +237,10 @@ plots_T = Dict()
 plots_ζ = Dict()
 
 for name in keys(results)
-    Tn = @lift T_ts[name][$n]
-    ζn = @lift ζ_ts[name][$n]
+    # Tn = @lift T_ts[name][$n]
+    # ζn = @lift ζ_ts[name][$n]
+    Tn = T_ts[name][n]
+    ζn = ζ_ts[name][n]
     plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
     plots_ζ[name] = surface!(axes_ζ[name], ζn; colormap = :balance, colorrange = (-2e-5, 2e-5))
     hidedecorations!(axes_T[name])
@@ -257,12 +259,16 @@ Colorbar(fig[4, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]", height=Re
 
 # And then we are ready to record a movie!
 
-CairoMakie.record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 12) do nn
-    n[] = nn
-end
-nothing #hide
+save("spherical_baroclinic_instability.png", fig)
 
-# ![](spherical_baroclinic_instability.mp4)
+fig
+
+# CairoMakie.record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 12) do nn
+#     n[] = nn
+# end
+# nothing #hide
+
+## ![](spherical_baroclinic_instability.mp4)
 
 # ## References
 #
