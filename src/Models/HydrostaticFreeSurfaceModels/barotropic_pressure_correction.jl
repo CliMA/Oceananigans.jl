@@ -7,8 +7,9 @@ using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector!
 correct_barotropic_mode!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) =
     correct_barotropic_mode!(model, model.free_surface, Δt; kwargs...)
 
-# Fallback
-correct_barotropic_mode!(model, free_surface, Δt; kwargs...) = nothing
+# Fallback for ExplicitFreeSurface and Nothing free surfaces 
+correct_barotropic_mode!(model, ::Nothing, Δt; kwargs...) = nothing
+correct_barotropic_mode!(model, ::ExplicitFreeSurface, Δt; kwargs...) = nothing
 
 #####
 ##### Barotropic pressure correction for models with an Implicit free surface
