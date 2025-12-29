@@ -69,10 +69,10 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         end
 
         # Model ensures that halos are at least of size 2 with ScalarBiharmonicDiffusivity
-        model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=minimal_grid)
+        model = NonhydrostaticModel(minimal_grid; closure=ScalarBiharmonicDiffusivity())
         @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
 
-        model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
+        model = NonhydrostaticModel(funny_grid; closure=ScalarBiharmonicDiffusivity())
         @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
 
         @info "  Testing adjustment of advection schemes in NonhydrostaticModel constructor..."
