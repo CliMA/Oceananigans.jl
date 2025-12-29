@@ -258,7 +258,6 @@ Colorbar(fig[4, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]", height=Re
 # And then we are ready to record a movie!
 
 CairoMakie.record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 12) do nn
-    @info "frame $nn of $Nt"
     n[] = nn
 end
 nothing #hide
