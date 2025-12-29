@@ -247,7 +247,6 @@ for name in keys(results)
     hidespines!(axes_ζ[name])
 end
 
-colgap!(fig.layout, 1, Relative(-0.2))
 colgap!(fig.layout, 2, Relative(-0.2))
 colgap!(fig.layout, 3, Relative(-0.2))
 rowgap!(fig.layout, 2, Relative(-0.2))
