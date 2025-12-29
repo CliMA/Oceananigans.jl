@@ -92,7 +92,7 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     # size into consideration.
     free_surface = SplitExplicitFreeSurface(substeps = 8)
 
-    model = HydrostaticFreeSurfaceModel(; grid = mrg,
+    model = HydrostaticFreeSurfaceModel(mrg;
                                         free_surface,
                                         closure,
                                         tracers = :c,

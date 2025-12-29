@@ -20,7 +20,7 @@ function test_datetime_netcdf_output(arch)
 
     clock = Clock(time=DateTime(2021, 1, 1))
 
-    model = NonhydrostaticModel(; grid, clock,
+    model = NonhydrostaticModel(grid; clock,
                                   timestepper = :QuasiAdamsBashforth2,
                                   buoyancy = SeawaterBuoyancy(),
                                   tracers=(:T, :S))
@@ -61,7 +61,7 @@ function test_timedate_netcdf_output(arch)
 
     clock = Clock(time=TimeDate(2021, 1, 1))
 
-    model = NonhydrostaticModel(; grid, clock,
+    model = NonhydrostaticModel(grid; clock,
                                   timestepper = :QuasiAdamsBashforth2,
                                   buoyancy = SeawaterBuoyancy(),
                                   tracers = (:T, :S))
@@ -108,7 +108,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
                            halo = (Hx, Hy, Hz),
                            x = (0, 1), y = (0, 2), z = LinRange(0, 3, Nz + 1))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                   buoyancy = SeawaterBuoyancy(),
                                   tracers = (:T, :S))
@@ -365,7 +365,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
                                  latitude = (-10, 10),
                                  z = LinRange(-1000, 0, Nz + 1))
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                           momentum_advection = VectorInvariant(),
                                           buoyancy = SeawaterBuoyancy(),
                                           tracers = (:T, :S))
@@ -663,7 +663,7 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
 
     grid = ImmersedBoundaryGrid(underlying_grid, bottom_boundary_type(bottom))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                   buoyancy = SeawaterBuoyancy(),
                                   tracers = (:T, :S))
@@ -807,7 +807,7 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
 
     grid = ImmersedBoundaryGrid(underlying_grid, bottom_boundary_type(bottom))
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                           momentum_advection = VectorInvariant(),
                                           buoyancy = SeawaterBuoyancy(),
                                           tracers = (:T, :S))
@@ -944,7 +944,7 @@ function test_netcdf_rectilinear_flat_xy(arch)
                            halo = (Hx, Hy),
                            extent = (π, 7))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                   buoyancy = SeawaterBuoyancy(),
                                   tracers = (:T, :S))
@@ -1082,7 +1082,7 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
     end
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                   buoyancy = SeawaterBuoyancy(),
                                   tracers = (:T, :S))
@@ -1221,7 +1221,7 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
     end
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -1352,7 +1352,7 @@ function test_netcdf_rectilinear_column(arch)
         z = (-55, 0)
     )
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -1473,7 +1473,7 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
         extent = (Lx, Ly, Lz)
     )
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -1712,7 +1712,7 @@ function test_netcdf_size_file_splitting(arch)
         halo = (1, 1, 1)
     )
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
     )
@@ -1770,7 +1770,7 @@ function test_netcdf_time_file_splitting(arch)
         halo = (1, 1, 1)
     )
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         buoyancy = SeawaterBuoyancy(),
         tracers=(:T, :S)
     )
@@ -1828,7 +1828,7 @@ function test_netcdf_function_output(arch)
         extent = (L, 2L, 3L)
     )
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         timestepper = :QuasiAdamsBashforth2,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -2009,7 +2009,7 @@ function test_netcdf_spatial_average(arch)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         timestepper = :RungeKutta3,
         tracers = (:c,),
         coriolis = nothing,
@@ -2083,7 +2083,7 @@ function test_netcdf_time_averaging(arch)
             c1_forcing = Forcing(Fc1, field_dependencies=:c1)
             c2_forcing = Forcing(Fc2, field_dependencies=:c2)
 
-            model = NonhydrostaticModel(; grid,
+            model = NonhydrostaticModel(grid;
                 timestepper = :RungeKutta3,
                 tracers = (:c1, :c2),
                 forcing = (c1=c1_forcing, c2=c2_forcing)
@@ -2226,7 +2226,7 @@ end
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         timestepper = :QuasiAdamsBashforth2,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -2283,7 +2283,7 @@ function test_netcdf_output_just_particles(arch)
 
     particles = LagrangianParticles(x=xs, y=ys, z=zs)
 
-    model = NonhydrostaticModel(; grid, particles)
+    model = NonhydrostaticModel(grid; particles)
 
     set!(model, u=1, v=1)
 
@@ -2341,7 +2341,7 @@ function test_netcdf_output_particles_and_fields(arch)
 
     particles = LagrangianParticles(x=xs, y=ys, z=zs)
 
-    model = NonhydrostaticModel(; grid, particles)
+    model = NonhydrostaticModel(grid; particles)
 
     set!(model, u=1, v=1)
 
@@ -2408,7 +2408,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
         z = z_faces
     )
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
     )
@@ -2471,7 +2471,7 @@ function test_netcdf_overriding_attributes(arch)
         z = (-100, 0)
     )
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -2530,7 +2530,7 @@ function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, 
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -2602,7 +2602,7 @@ function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false,
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -2690,7 +2690,7 @@ function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=fals
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         free_surface = ImplicitFreeSurface(),
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
@@ -2757,7 +2757,7 @@ function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=fal
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         free_surface = ImplicitFreeSurface(),
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
@@ -2847,7 +2847,7 @@ function test_netcdf_buoyancy_force(arch)
                       RoquetEquationOfState(:SimplestRealistic))
 
     for eos in Boussinesq_eos
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                     buoyancy = SeawaterBuoyancy(equation_of_state=eos),
                                     tracers = (:T, :S))
@@ -3035,7 +3035,7 @@ end
 function test_netcdf_writer_different_grid(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 8), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid;)
 
     coarse_grid = RectilinearGrid(arch, size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
     coarse_u = Field{Face, Center, Center}(coarse_grid)
@@ -3090,7 +3090,7 @@ function test_singleton_dimension_behavior(arch)
                            x = (-Lx, Lx),
                            z = (-H, 0))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                   buoyancy = SeawaterBuoyancy(),
                                   tracers = (:T, :S))
@@ -3148,7 +3148,7 @@ end
 
 function test_netcdf_dimension_type(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid;)
 
     Nt = 3
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)

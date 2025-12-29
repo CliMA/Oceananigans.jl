@@ -50,7 +50,7 @@ v_bcs = FieldBoundaryConditions(bottom=v_drag_bc)
 
 boundary_conditions=(u=u_bcs, v=v_bcs)
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis, boundary_conditions,
+model = HydrostaticFreeSurfaceModel(grid; coriolis, boundary_conditions,
                                     buoyancy = BuoyancyTracer(),
                                     closure = mesoscale_closure,
                                     tracers = (:b, :K),

@@ -1067,7 +1067,7 @@ Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid;)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
@@ -1107,7 +1107,7 @@ using Oceananigans
 using Oceananigans.Fields: interpolate!
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid;)
 
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)

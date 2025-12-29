@@ -30,7 +30,7 @@ A minimal example illustrates how `Simulation` works:
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid;)
 simulation = Simulation(model; Δt=7, stop_iteration=6)
 run!(simulation)
 
@@ -43,7 +43,7 @@ A more complicated setup might invoke multiple callbacks:
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid;)
 simulation = Simulation(model; Δt=7, stop_time=14)
 
 print_progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
@@ -90,7 +90,7 @@ grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 
 c_source(x, y, z, t, c) = 0.1 * c
 c_forcing = Forcing(c_source, field_dependencies=:c)
-model = NonhydrostaticModel(; grid, tracers=:c, forcing=(; c=c_forcing))
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_forcing))
 simulation = Simulation(model; Δt=0.1, stop_time=10)
 
 # Add a callback that prints progress
@@ -249,7 +249,7 @@ into a robust workflow:
 ```@example simulation_overview
 using Oceananigans.Units: hours, minutes
 
-model = NonhydrostaticModel(; grid, tracers=:T)
+model = NonhydrostaticModel(grid; tracers=:T)
 simulation = Simulation(model, Δt=20, stop_time=2hours)
 
 progress(sim) = @info "t = $(prettytime(sim)), Δt = $(prettytime(sim.Δt))"

@@ -44,7 +44,7 @@ coriolis = BetaPlane(latitude = -45)
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
                                     momentum_advection = WENO(order=5),

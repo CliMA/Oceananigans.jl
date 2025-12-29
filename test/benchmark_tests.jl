@@ -31,7 +31,7 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
     free_surface = SplitExplicitFreeSurface(grid; substeps=70)
     closure = CATKEVerticalDiffusivity()
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                           momentum_advection,
                                           tracer_advection,
                                           buoyancy,

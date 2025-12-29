@@ -18,7 +18,7 @@ function time_step_hydrostatic_model_works(grid;
 
     buoyancy = BuoyancyTracer()
 
-    model = HydrostaticFreeSurfaceModel(; grid, coriolis, tracers, velocities, buoyancy,
+    model = HydrostaticFreeSurfaceModel(grid; coriolis, tracers, velocities, buoyancy,
                                         momentum_advection, tracer_advection, free_surface, closure)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
@@ -95,7 +95,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @info "  Testing $topo_1d model construction..."
         for arch in archs, FT in [Float64] #float_types
             grid = RectilinearGrid(arch, FT, topology=topo_1d, size=1, extent=1)
-            model = HydrostaticFreeSurfaceModel(; grid)
+            model = HydrostaticFreeSurfaceModel(grid;)
             @test model isa HydrostaticFreeSurfaceModel
 
             # SingleColumnGrid tests
@@ -109,7 +109,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
-                model = HydrostaticFreeSurfaceModel(; grid)
+                model = HydrostaticFreeSurfaceModel(grid;)
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
@@ -120,7 +120,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-                model = HydrostaticFreeSurfaceModel(; grid)
+                model = HydrostaticFreeSurfaceModel(grid;)
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
@@ -131,7 +131,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing $FreeSurface model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
-                model = HydrostaticFreeSurfaceModel(; grid, free_surface=FreeSurface())
+                model = HydrostaticFreeSurfaceModel(grid; free_surface=FreeSurface())
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end

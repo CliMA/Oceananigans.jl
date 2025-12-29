@@ -27,7 +27,7 @@ function wind_driven_turbulence_simulation(grid, advection, closure; stop_time=9
     @info "Running closure $closure"
     coriolis = FPlane(; f)
     u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(τx))
-    model = NonhydrostaticModel(; grid, closure, coriolis, advection,
+    model = NonhydrostaticModel(grid; closure, coriolis, advection,
                                 boundary_conditions = (; u=u_bcs),
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())

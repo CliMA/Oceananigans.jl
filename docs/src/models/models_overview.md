@@ -49,7 +49,7 @@ For our first example, we build  the default `NonhydrostaticModel` (which is qui
 ```@example
 using Oceananigans
 grid = RectilinearGrid(size=(8, 8, 8), extent=(8, 8, 8))
-nh = NonhydrostaticModel(; grid)
+nh = NonhydrostaticModel(grid;)
 ```
 
 The default `NonhydrostaticModel` has no tracers, no buoyancy force, no Coriolis force, and a second-order advection scheme.
@@ -74,7 +74,7 @@ u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(τx))
 @inline Jc(x, t, Lx) = cos(2π / Lx * x)
 c_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Jc, parameters=grid.Lx))
 
-model = NonhydrostaticModel(; grid, advection, buoyancy, coriolis,
+model = NonhydrostaticModel(grid; advection, buoyancy, coriolis,
                             tracers = (:b, :c),
                             boundary_conditions = (; u=u_bcs, c=c_bcs))
 ```
@@ -131,7 +131,7 @@ The HydrostaticFreeSurfaceModel has a similar interface as the NonhydrostaticMod
 ```@example
 using Oceananigans
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(; grid) # default free surface, no tracers
+model = HydrostaticFreeSurfaceModel(grid;) # default free surface, no tracers
 ```
 
 The full array of keyword arguments used to configure a HydrostaticFreeSurfaceModel are detailed
@@ -175,7 +175,7 @@ end
 
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(zonal_wind_stress))
 
-model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, coriolis, closure, buoyancy,
+model = HydrostaticFreeSurfaceModel(grid; momentum_advection, coriolis, closure, buoyancy,
                                     boundary_conditions = (; u=u_bcs), tracers=(:T, :S))
 ```
 

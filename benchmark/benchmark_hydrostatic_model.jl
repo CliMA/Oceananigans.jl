@@ -65,7 +65,7 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
 
     grid = grids[(Arch, grid_type)]
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                           momentum_advection = VectorInvariant(),
                                           free_surface = free_surfaces[free_surface_type])
 

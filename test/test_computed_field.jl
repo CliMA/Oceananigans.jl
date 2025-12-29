@@ -196,7 +196,7 @@ end
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid;)
 
     u, v, w = model.velocities
     parent(u) .= 1 + rand()
@@ -338,7 +338,7 @@ for arch in archs
 
         for grid in (underlying_grid, immersed_grid, immersed_active_grid)
             G = typeof(grid).name.wrapper
-            model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
+            model = NonhydrostaticModel(grid; buoyancy, tracers = (:T, :S))
 
             @testset "Instantiating and computing computed fields [$A, $G]" begin
                 @info "  Testing computed Field instantiation and computation [$A, $G]..."

@@ -176,7 +176,7 @@ coriolis = FPlane(f=0) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(grid; coriolis,
                             advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,

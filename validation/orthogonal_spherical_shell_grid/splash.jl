@@ -13,7 +13,7 @@ grid = ConformalCubedSpherePanelGrid(size = (Nx, Ny, Nz),
 
 closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     momentum_advection = VectorInvariant(),
                                     closure,
                                     buoyancy = nothing,

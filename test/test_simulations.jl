@@ -204,7 +204,7 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
-    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2)
+    model = NonhydrostaticModel(grid; clock, timestepper=:QuasiAdamsBashforth2)
     simulation = Simulation(model; Δt, stop_time)
 
     @test model.clock.time == start_time
@@ -266,7 +266,7 @@ end
 
         # Test initialization for simulations started with iteration ≠ 0
         grid = RectilinearGrid(arch, size=(), topology=(Flat, Flat, Flat))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(grid;)
         simulation = Simulation(model; Δt=1, stop_time=6)
 
         progress_message(sim) = @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim))
@@ -278,7 +278,7 @@ end
         @test progress_cb.schedule.actuations == 3
 
         # Test initialize! and finalize!
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(grid;)
         simulation = Simulation(model; Δt=1, stop_time=6)
         infi = InitializedFinalized(false, false)
         add_callback!(simulation, infi, IterationInterval(1))

@@ -55,7 +55,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
 
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=900)
 
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+    model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                         tracers = (),
                                         momentum_advection = advection_scheme,
                                         buoyancy = nothing,

@@ -42,7 +42,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
         for free_surface in free_surfaces
 
-            model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+            model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                                 buoyancy = nothing,
                                                 tracers = nothing,
                                                 closure = nothing)

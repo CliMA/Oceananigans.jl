@@ -83,7 +83,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 #  * Vertical closure [`CATKEVerticalDiffusivity`](@ref) handles small-scale vertical turbulence
 #  * Weighted Essentially Non-Oscillatory (WENO) methods are useful for capturing sharp changes in density
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     tracers = :b,
                                     buoyancy = BuoyancyTracer(),
                                     closure = CATKEVerticalDiffusivity(),

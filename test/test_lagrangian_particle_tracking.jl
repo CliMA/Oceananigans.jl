@@ -20,12 +20,12 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
     Arch = typeof(architecture(grid))
 
     if grid isa RectilinearGrid
-        model = NonhydrostaticModel(; grid, timestepper, velocities, particles)
+        model = NonhydrostaticModel(grid; timestepper, velocities, particles)
         set!(model, u=1, v=1)
     else
         set!(velocities.u, 1)
         set!(velocities.v, 1)
-        model = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(; velocities...), particles)
+        model = HydrostaticFreeSurfaceModel(grid; velocities=PrescribedVelocityFields(; velocities...), particles)
     end
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
@@ -95,7 +95,7 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
 
     velocities = PrescribedVelocityFields(; u, v, w)
 
-    model = HydrostaticFreeSurfaceModel(; grid, particles, velocities, buoyancy=nothing, tracers=())
+    model = HydrostaticFreeSurfaceModel(grid; particles, velocities, buoyancy=nothing, tracers=())
 
     time_step!(model, Δt)
 
@@ -132,7 +132,7 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
     @test lagrangian_particles isa LagrangianParticles
 
     if grid isa RectilinearGrid
-        model = NonhydrostaticModel(; grid, timestepper,
+        model = NonhydrostaticModel(grid; timestepper,
                                       velocities, particles=lagrangian_particles,
                                       background_fields=(v=background_v,))
 
@@ -355,7 +355,7 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
 
         grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
         particles = LagrangianParticles(x=xp, y=yp, z=zp)
-        model = NonhydrostaticModel(; grid, particles)
+        model = NonhydrostaticModel(grid; particles)
         time_step!(model, 1)
         @test model.particles isa LagrangianParticles
     end

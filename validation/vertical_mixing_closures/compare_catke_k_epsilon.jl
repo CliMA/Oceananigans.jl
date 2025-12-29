@@ -47,7 +47,7 @@ en = []
 for closure in (k_epsilon, catke) #, k_epsilon_const_stability)
     global model
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
+    model = HydrostaticFreeSurfaceModel(grid; closure, coriolis,
                                         tracers = (:b,),
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions=(u=u_bcs, b=b_bcs))

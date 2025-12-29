@@ -7,7 +7,7 @@ using Random
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
-    model = NonhydrostaticModel(; grid, tracers = (:T, :S), advection = nothing)
+    model = NonhydrostaticModel(grid; tracers = (:T, :S), advection = nothing)
     set!(model, T=30, S=35)
     simulation = Simulation(model; Δt, stop_iteration=100)
 
@@ -32,7 +32,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=3e-7)
     S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
-    model = NonhydrostaticModel(; grid, tracers = (:T, :S), buoyancy = SeawaterBuoyancy(),
+    model = NonhydrostaticModel(grid; tracers = (:T, :S), buoyancy = SeawaterBuoyancy(),
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     dTdz = 0.01
@@ -329,7 +329,7 @@ function test_field_time_series_array_boundary_conditions(arch)
     τy = Field{Center, Face, Nothing}(grid)
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
     v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
-    model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
+    model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs, v=v_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1)
 
     filename = arch isa GPU ? "test_cuarray_bc.jld2" : "test_array_bc.jld2"
@@ -360,7 +360,7 @@ function test_field_time_series_function_boundary_conditions(arch)
     u_west(x, y, t) = 0
     u_east(x, y, t) = 0
     u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(u_west), east = OpenBoundaryCondition(u_east, scheme=PerturbationAdvection()))
-    model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs))
+    model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1)
 
     filename = "test_function_bc.jld2"

@@ -108,7 +108,7 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid, closure=ScalarDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(ν=1e-6))
 
 u, v, w = model.velocities
 ν = model.closure.ν
@@ -236,7 +236,7 @@ its elements to do that. Consider the example below:
 using Oceananigans, CUDA
 
 grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid;)
 typeof(model.velocities.u.data)
 ```
 

@@ -11,7 +11,7 @@ grid = RectilinearGrid(size = (Nx, Ny),
                        topology = (Periodic, Periodic, Flat))
 
 clock = Clock{Float64}(time=0)
-model = NonhydrostaticModel(; grid, clock, advection=WENO(order=9))
+model = NonhydrostaticModel(grid; clock, advection=WENO(order=9))
 
 ui(x, y) = randn()
 set!(model, u=ui, v=ui)

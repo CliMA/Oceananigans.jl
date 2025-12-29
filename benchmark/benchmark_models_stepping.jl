@@ -39,7 +39,7 @@ end
 
 function benchmark_shallowwater_model(Arch, FT, N)
     grid = RectilinearGrid(Arch(), FT, size=(N, N), extent=(1, 1), topology = (Periodic, Periodic, Flat))
-    model = ShallowWaterModel(grid=grid, gravitational_acceleration=1.0)
+    model = ShallowWaterModel(grid; gravitational_acceleration=1.0)
 
     time_step!(model, 1) # warmup
 

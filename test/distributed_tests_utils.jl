@@ -131,7 +131,7 @@ end
 # Just a random simulation on a tripolar grid
 function run_distributed_simulation(grid)
 
-    model = HydrostaticFreeSurfaceModel(; grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                           free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                           tracers = :c,
                                           buoyancy = nothing,

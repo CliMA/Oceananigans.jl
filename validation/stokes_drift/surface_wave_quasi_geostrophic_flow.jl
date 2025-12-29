@@ -62,7 +62,7 @@ grid = RectilinearGrid(size = (128, 64, 16),
                        z = (-512, 0),
                        topology = (Periodic, Periodic, Bounded))
 
-model = NonhydrostaticModel(; grid, stokes_drift,
+model = NonhydrostaticModel(grid; stokes_drift,
                             tracers = :b,
                             coriolis = FPlane(f = 1e-4),
                             buoyancy = BuoyancyTracer(),

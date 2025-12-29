@@ -44,7 +44,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     Δt = 900
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         momentum_advection = nothing,
                                         free_surface)
 

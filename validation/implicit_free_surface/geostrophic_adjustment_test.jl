@@ -13,7 +13,7 @@ using JLD2
 
 function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:QuasiAdamsBashforth2)
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                           momentum_advection = nothing,
                                           coriolis=FPlane(f = 1e-4),
                                           tracers = :c,

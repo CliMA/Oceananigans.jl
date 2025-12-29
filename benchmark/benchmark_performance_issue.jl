@@ -22,7 +22,7 @@ function ocean_benchmark(grid, closure)
     coriolis = nothing # HydrostaticSphericalCoriolis()
     free_surface = nothing # SplitExplicitFreeSurface(grid; substeps=70)
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                           momentum_advection,
                                           tracer_advection,
                                           buoyancy,

@@ -54,7 +54,7 @@ grid = RectilinearGrid(size = (256, 64),
                        z = (-512, 0),
                        topology = (Periodic, Flat, Bounded))
 
-model = NonhydrostaticModel(; grid, stokes_drift,
+model = NonhydrostaticModel(grid; stokes_drift,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
                             timestepper = :RungeKutta3)

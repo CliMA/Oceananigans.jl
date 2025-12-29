@@ -11,9 +11,9 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
     for grid in grids
         @testset "$grid grid construction" begin
             @info "  Testing $grid grid construction..."
-                @test_throws TypeError NonhydrostaticModel(; grid, boundary_conditions=1)
-                @test_throws TypeError NonhydrostaticModel(; grid, forcing=2)
-                @test_throws TypeError NonhydrostaticModel(; grid, background_fields=3)
+                @test_throws TypeError NonhydrostaticModel(grid; boundary_conditions=1)
+                @test_throws TypeError NonhydrostaticModel(grid; forcing=2)
+                @test_throws TypeError NonhydrostaticModel(grid; background_fields=3)
 
         end
     end
@@ -30,7 +30,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                 arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
-                model = NonhydrostaticModel(; grid)
+                model = NonhydrostaticModel(grid;)
 
                 @test model isa NonhydrostaticModel
             end
@@ -102,10 +102,10 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
             for grid in grids
-                model = NonhydrostaticModel(; grid, tracers=:c, buoyancy=nothing)
+                model = NonhydrostaticModel(grid; tracers=:c, buoyancy=nothing)
                 @test model isa NonhydrostaticModel
 
-                model = NonhydrostaticModel(; grid, tracers=nothing, buoyancy=nothing)
+                model = NonhydrostaticModel(grid; tracers=nothing, buoyancy=nothing)
                 @test model isa NonhydrostaticModel
             end
         end
@@ -116,13 +116,13 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         for arch in archs
             grid = RectilinearGrid(arch, size=(4, 4), extent=(1, 1),
                                            topology=(Flat, Bounded, Periodic))
-            model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+            model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
             @test isnothing(model.pressures.pHY′)
 
-            model = NonhydrostaticModel(; grid, buoyancy=nothing)
+            model = NonhydrostaticModel(grid; buoyancy=nothing)
             @test isnothing(model.pressures.pHY′)
 
-            model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
+            model = NonhydrostaticModel(grid; buoyancy=BuoyancyTracer(), tracers=:b)
             @test isnothing(model.pressures.pHY′)
         end
     end
@@ -139,7 +139,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                                                 topology = (Periodic, Bounded, Bounded))
             
             for grid in (rectilinear_grid, latlon_grid)
-                model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
                 u, v, w = model.velocities
                 T, S = model.tracers
@@ -212,11 +212,11 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                 # Test setting the background_fields to a Field
                 U_field = XFaceField(grid)
                 U_field .= 1
-                model = NonhydrostaticModel(; grid, background_fields = (u=U_field,))
+                model = NonhydrostaticModel(grid; background_fields = (u=U_field,))
                 @test model.background_fields.velocities.u isa Field
 
                 U_field = CenterField(grid)
-                @test_throws ArgumentError NonhydrostaticModel(; grid, background_fields = (u=U_field,))
+                @test_throws ArgumentError NonhydrostaticModel(grid; background_fields = (u=U_field,))
             end
         end
     end

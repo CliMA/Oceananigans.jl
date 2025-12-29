@@ -72,7 +72,7 @@ function create_mass_conservation_simulation(;
         buoyancy = BuoyancyTracer()
         bᵢ(x, z) = stratification * z
     end
-    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper,
+    model = NonhydrostaticModel(grid; boundary_conditions, pressure_solver, timestepper,
                                   advection = WENO(order=5), tracers = :b, buoyancy)
     set!(model, u=uᵢ, b=bᵢ)
 

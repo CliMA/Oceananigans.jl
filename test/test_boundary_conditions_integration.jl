@@ -33,7 +33,7 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
     boundary_conditions = (; name => field_bcs)
 
-    model = NonhydrostaticModel(; grid, boundary_conditions, tracers=:c)
+    model = NonhydrostaticModel(grid; boundary_conditions, tracers=:c)
 
     is_velocity_field = name ∈ (:u, :v, :w)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
@@ -63,7 +63,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     κₑ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                 timestepper = :QuasiAdamsBashforth2,
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer(),
@@ -132,7 +132,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         obc = OpenBoundaryCondition(-1, scheme = PerturbationAdvection(inflow_timescale = 10.0))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
-        model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
+        model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2)
         u = normal_velocity(Val(orientation), model)
         fill!(u, -1)
 
@@ -146,7 +146,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                       boundary_conditions,
                                       timestepper = :QuasiAdamsBashforth2,
                                       forcing)
@@ -165,7 +165,7 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
 
-    model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :RungeKutta3)
+    model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :RungeKutta3)
     uᵢ(x, y, z) = 1 + 1e-2 * rand()
     set!(model, u = uᵢ)
 

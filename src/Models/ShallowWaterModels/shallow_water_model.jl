@@ -58,7 +58,7 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-    ShallowWaterModel(; grid,
+    ShallowWaterModel(grid; 
                         gravitational_acceleration,
                               clock = Clock{eltype(grid)}(time = 0),
                  momentum_advection = UpwindBiased(order=5),
@@ -76,12 +76,16 @@ struct VectorInvariantFormulation end
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
-Keyword arguments
-=================
+Arguments
+=========
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
             of the grid.
+
+Keyword arguments
+=================
+
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
@@ -108,8 +112,7 @@ Keyword arguments
     The `ConservativeFormulation()` requires `RectilinearGrid`.
     Use `VectorInvariantFormulation()` with `LatitudeLongitudeGrid`.
 """
-function ShallowWaterModel(;
-                           grid,
+function ShallowWaterModel(grid;
                            gravitational_acceleration,
                                clock = Clock(grid),
                   momentum_advection = UpwindBiased(order=5),

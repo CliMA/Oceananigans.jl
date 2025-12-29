@@ -109,7 +109,7 @@ u_forcing = Forcing(tidal_forcing, parameters=(; A₂, ω₂))
 
 # We built a `HydrostaticFreeSurfaceModel`:
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                       buoyancy = BuoyancyTracer(),
                                       tracers = :b,
                                       momentum_advection = WENO(),

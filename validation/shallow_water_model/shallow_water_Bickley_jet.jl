@@ -33,7 +33,7 @@ for form in [:conservative, :vorticitystencil, :velocitystencil]
         @info "starting with $form and order $order"
 
         adv = weno_advection(Val(form), order)
-        model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
+        model = ShallowWaterModel(grid; coriolis, gravitational_acceleration,
                                     mass_advection = WENO(; order),
                                     momentum_advection = adv,
                                     formulation = Formulation(Val(form)))

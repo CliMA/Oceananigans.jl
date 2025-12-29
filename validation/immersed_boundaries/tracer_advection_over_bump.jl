@@ -49,7 +49,7 @@ D = compute!(Field(∂y(v) + ∂z(w)))
 
 ## Set up Model
 velocities = PrescribedVelocityFields(; v, w)
-model = HydrostaticFreeSurfaceModel(; grid, velocities, tracer_advection,
+model = HydrostaticFreeSurfaceModel(grid; velocities, tracer_advection,
                                     tracers = :θ,
                                     buoyancy = nothing)
 
