@@ -111,7 +111,7 @@ Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
+model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)

@@ -185,7 +185,7 @@ function test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
                                            east = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)))
 
-    model = NonhydrostaticModel(grid = grid,
+    model = NonhydrostaticModel(grid;
                                 boundary_conditions = (u = u_boundaries,),
                                 pressure_solver = cg_solver,
                                 advection = WENO(order=5))

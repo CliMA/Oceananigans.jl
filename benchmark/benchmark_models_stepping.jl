@@ -10,7 +10,7 @@ pyplot()
 
 function benchmark_nonhydrostatic_model(Arch, FT, N)
     grid = RectilinearGrid(Arch(), FT, size=(N, N, N), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(grid)
 
     time_step!(model, 1) # warmup
 
@@ -23,7 +23,7 @@ end
 
 function benchmark_hydrostatic_model(Arch, FT, N)
     grid = RectilinearGrid(Arch(), FT, size=(N, N, 10), extent=(1, 1, 1))
-    model = HydrostaticFreeSurfaceModel(grid=grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         tracers = (),
                                         buoyancy = nothing,
                                         free_surface=ImplicitFreeSurface())

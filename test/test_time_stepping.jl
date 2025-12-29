@@ -18,7 +18,7 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
 end
 
 function euler_time_stepping_doesnt_propagate_NaNs(arch)
-    model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
+    model = HydrostaticFreeSurfaceModel(RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
                                         buoyancy = BuoyancyTracer(),
                                         tracers = :b)
 
@@ -141,7 +141,7 @@ end
     velocity field.
 """
 function incompressible_in_time(grid, Nt, timestepper)
-    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
+    model = NonhydrostaticModel(grid; timestepper=timestepper,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     grid = model.grid
     u, v, w = model.velocities
@@ -191,7 +191,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = NonhydrostaticModel(grid = grid,
+    model = NonhydrostaticModel(grid;
                                 closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh),
                                            VerticalScalarDiffusivity(ν=νz, κ=κz)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))

@@ -133,11 +133,11 @@ end
 
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
-        pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+        pcg_model = HydrostaticFreeSurfaceModel(rectilinear_grid;
                                                 momentum_advection = nothing,
                                                 free_surface = pcg_free_surface)
 
-        fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+        fft_model = HydrostaticFreeSurfaceModel(rectilinear_grid;
                                                 momentum_advection = nothing,
                                                 free_surface = fft_free_surface)
 

@@ -23,7 +23,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     mrg = MultiRegionGrid(grid, partition = P(regions))
 
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
+    model = HydrostaticFreeSurfaceModel(mrg;
                                         tracers = (:c, :e),
                                         velocities = prescribed_velocities(),
                                         free_surface = ExplicitFreeSurface(),
@@ -54,7 +54,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
+    model = HydrostaticFreeSurfaceModel(mrg;
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,

@@ -227,7 +227,7 @@ end
 function computations_with_buoyancy_field(arch, buoyancy)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(grid;
                                 tracers=tracers, buoyancy=buoyancy)
 
     b = buoyancy_field(model)

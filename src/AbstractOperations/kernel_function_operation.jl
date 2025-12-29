@@ -44,8 +44,8 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     ```jldoctest kfo
     using Oceananigans.Operators: ζ₃ᶠᶠᶜ # called with signature ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
-    model = HydrostaticFreeSurfaceModel(grid);
-    u, v, w = model.velocities;
+    model = HydrostaticFreeSurfaceModel(grid)
+    u, v, w = model.velocities
     ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
     # output

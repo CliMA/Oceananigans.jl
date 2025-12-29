@@ -237,7 +237,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                w=w_boundary_conditions,
                                T=T_boundary_conditions)
 
-        model = NonhydrostaticModel(grid = grid,
+        model = NonhydrostaticModel(grid;
                                     boundary_conditions = boundary_conditions,
                                     buoyancy = SeawaterBuoyancy(),
                                     tracers = (:T, :S))

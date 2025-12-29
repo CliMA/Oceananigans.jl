@@ -20,7 +20,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), di
     grid = RectilinearGrid(architecture, size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1),
                                 topology=(Periodic, Periodic, Bounded))
 
-    model = NonhydrostaticModel(grid = grid,
+    model = NonhydrostaticModel(grid;
                             coriolis = nothing,
                             buoyancy = nothing,
                              tracers = nothing,

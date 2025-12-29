@@ -63,7 +63,7 @@ to time-average its outputs before writing them to disk:
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 

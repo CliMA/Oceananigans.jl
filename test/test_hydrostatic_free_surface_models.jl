@@ -30,7 +30,7 @@ end
 
 function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2π, 2π, 2π))
-    model = HydrostaticFreeSurfaceModel(grid=grid, tracers=(:T, :S, :c, :d))
+    model = HydrostaticFreeSurfaceModel(grid; tracers=(:T, :S, :c, :d))
 
     @test model.tracers.T isa Field
     @test model.tracers.S isa Field
@@ -142,25 +142,25 @@ topos_3d = ((Periodic, Periodic, Bounded),
             grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
             hcabd_closure = ScalarBiharmonicDiffusivity()
 
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=Centered(order=4))
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiased(order=3))
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiased(order=5))
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiased(order=5))
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracer_advection=Centered(order=4))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracer_advection=UpwindBiased(order=3))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracer_advection=UpwindBiased(order=5))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; momentum_advection=UpwindBiased(order=5))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; closure=hcabd_closure)
 
             # Big enough
             bigger_grid = RectilinearGrid(topology=topo, size=(3, 3, 1), extent=(1, 2, 3), halo=(3, 3, 3))
 
-            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
+            model = HydrostaticFreeSurfaceModel(bigger_grid; closure=hcabd_closure)
             @test model isa HydrostaticFreeSurfaceModel
 
-            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, momentum_advection=UpwindBiased(order=5))
+            model = HydrostaticFreeSurfaceModel(bigger_grid; momentum_advection=UpwindBiased(order=5))
             @test model isa HydrostaticFreeSurfaceModel
 
-            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
+            model = HydrostaticFreeSurfaceModel(bigger_grid; closure=hcabd_closure)
             @test model isa HydrostaticFreeSurfaceModel
 
-            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, tracer_advection=UpwindBiased(order=5))
+            model = HydrostaticFreeSurfaceModel(bigger_grid; tracer_advection=UpwindBiased(order=5))
             @test model isa HydrostaticFreeSurfaceModel
         end
     end
@@ -172,7 +172,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             L = (2π, 3π, 5π)
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L)
-            model = HydrostaticFreeSurfaceModel(grid=grid)
+            model = HydrostaticFreeSurfaceModel(grid)
 
             x, y, z = nodes(model.grid, (Face(), Center(), Center()), reshape=true)
 

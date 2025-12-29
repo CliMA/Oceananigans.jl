@@ -325,7 +325,7 @@ for arch in archs
     topo =(Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
     background_u = BackgroundField((x, y, z, t) -> 0)
-    model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), background_fields=(u=background_u,))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), background_fields=(u=background_u,))
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."

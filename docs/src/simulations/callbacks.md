@@ -13,7 +13,7 @@ end
 ```@example checkpointing
 using Oceananigans
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
@@ -53,7 +53,7 @@ the `:u` field using parameters:
 using Oceananigans
 using Oceananigans: TendencyCallsite
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 

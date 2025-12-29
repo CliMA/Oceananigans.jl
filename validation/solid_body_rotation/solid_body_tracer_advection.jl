@@ -71,7 +71,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     uᵢ(λ, ϕ, z, t=0) = solid_body_rotation(λ, ϕ)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         tracers = (:c, :d, :e),
                                         velocities = PrescribedVelocityFields(u=uᵢ),
                                         coriolis = nothing,

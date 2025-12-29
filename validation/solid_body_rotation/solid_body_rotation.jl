@@ -75,7 +75,7 @@ function run_solid_body_rotation(; architecture = CPU(),
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
                                             scheme = coriolis_scheme)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         momentum_advection = advection_scheme,
                                         free_surface = free_surface,
                                         coriolis = coriolis,
