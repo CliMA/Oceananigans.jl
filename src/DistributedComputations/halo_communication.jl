@@ -94,7 +94,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
+        @inbounds distributed_fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
@@ -164,15 +164,16 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
-# fill_halo_regions! passes buffers to fill_halo_event, which we want to prune out in case of a non-disributed fill halo kernel
-fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, Tuple(args)) 
-fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid::DistributedGrid, buffers, args...; kwargs...) = nothing
+# Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
+# argument used only for distributed halo-filling boundary conditions
+distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) = 
+    fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, grid::DistributedGrid, buffers, args...;
-                          async = false, only_local_halos = false, kwargs...)
+function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, grid::DistributedGrid, buffers, args...;
+                                      async = false, only_local_halos = false, kwargs...)
 
     if only_local_halos # No need to do anything here
         return nothing
