@@ -39,20 +39,24 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     v = model.velocities.v
     tracers = model.tracers
 
-    # Fill the halos
+    # Fill the halos of the prognostic fields. Note that the halos of the 
+    # free-surface variables are filled after the barotropic step.
     fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
     fill_halo_regions!(tracers, model.clock, fields(model); async=true)
 
+    # Compute diagnostic quantities
     @apply_regionally begin
-        surface_params = surface_kernel_parameters(model.grid)
-        volume_params = volume_kernel_parameters(model.grid)
-        κ_params = closure_field_kernel_parameters(model.grid)
+        surface_params = surface_kernel_parameters(grid)
+        volume_params = volume_kernel_parameters(grid)
+        κ_params = diffusivity_kernel_parameters(grid)
         compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
-        update_vertical_velocities!(model.velocities, model.grid, model, parameters=surface_params)    
+        update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)    
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
         compute_diffusivities!(model.closure_fields, model.closure, model, parameters=κ_params)
     end
 
+    # Fill only local halos for diagnostic quantities since the parameters used
+    # above include regions inside the (horizontal) halos.
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
     fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
 
@@ -72,14 +76,15 @@ end
 
 mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities)
 
-""" Kernel parameters for computing three-dimensional variables including halos. """
-@inline function closure_field_kernel_parameters(grid)
+""" Kernel parameters for computing three-dimensional diffusivities including horizontal boundaries
+required for computing viscous fluxes of staggered variables such as velocity fields. """
+@inline function diffusivity_kernel_parameters(grid)
     Nx, Ny, Nz = size(grid)
     Tx, Ty, Tz = topology(grid)
 
     ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
     jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
-    kk = ifelse(Tz == Flat, 1:Nz, 1:Nz)
+    kk = 1:Nz
 
     return KernelParameters(ii, jj, kk)
 end

@@ -44,16 +44,16 @@ end
     update_grid_scaling!(grid.z, i, j, grid)
 end
 
-@inline function update_grid_scaling!(z, i, j, grid)
+@inline function update_grid_scaling!(z_coordinate, i, j, grid)
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, 1, grid, z.ηⁿ)
-    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, 1, grid, z.ηⁿ)
-    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, 1, grid, z.ηⁿ)
-    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, 1, grid, z.ηⁿ)
+    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
+    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
 
     σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
     σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
@@ -62,10 +62,10 @@ end
 
     @inbounds begin
         # update current scaling
-        z.σᶜᶜⁿ[i, j, 1] = σᶜᶜ
-        z.σᶠᶜⁿ[i, j, 1] = σᶠᶜ
-        z.σᶜᶠⁿ[i, j, 1] = σᶜᶠ
-        z.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
+        z_coordinate.σᶜᶜⁿ[i, j, 1] = σᶜᶜ
+        z_coordinate.σᶠᶜⁿ[i, j, 1] = σᶠᶜ
+        z_coordinate.σᶜᶠⁿ[i, j, 1] = σᶜᶠ
+        z_coordinate.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
     end
 end
 
@@ -85,7 +85,7 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
     ∂t_σ    = grid.z.∂t_σ
 
     # Update the time derivative of the vertical spacing,
-    # No need to fill the halo as the scaling is updated _IN_ the halos
+    # No need to fill the halo as the scaling is updated _IN_ the halos through the parameters
     launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
 
     return nothing

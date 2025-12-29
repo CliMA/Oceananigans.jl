@@ -23,7 +23,6 @@ using Oceananigans.BoundaryConditions:
     regularize_field_boundary_conditions
     
 using Oceananigans.Fields:
-    Field,
     CenterField,
     tracernames,
     TracerFields

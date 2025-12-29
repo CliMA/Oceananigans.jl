@@ -90,7 +90,7 @@ function rk_substep_velocities!(velocities, model, Δt)
         velocity_field = velocities[name]
 
         launch!(architecture(grid), grid, :xyz,
-                _euler_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻)
+                _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
@@ -131,7 +131,7 @@ function rk_substep_tracers!(tracers, model, Δt)
             closure = model.closure
 
             launch!(architecture(grid), grid, :xyz,
-                    _euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
+                    _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
 
             implicit_step!(c,
                            model.timestepper.implicit_solver,
@@ -152,14 +152,14 @@ end
 #####
 
 # Velocity evolution kernel
-@kernel function _euler_substep_field!(field, Δt, Gⁿ, Ψ⁻)
+@kernel function _rk_substep_field!(field, Δt, Gⁿ, Ψ⁻)
     i, j, k = @index(Global, NTuple)
     @inbounds field[i, j, k] = Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
 # σc is the evolved quantity, so tracer fields need to be evolved
 # accounting for the stretching factors from the new and the previous time step.
-@kernel function _euler_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻)
+@kernel function _rk_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
