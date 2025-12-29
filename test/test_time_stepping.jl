@@ -62,7 +62,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; Model=Nonhydrostati
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     closure = Closure === IsopycnalSkewSymmetricDiffusivity ? Closure(FT, κ_skew=1, κ_symmetric=1) : Closure(FT)
-    model = Model(; grid, closure, tracers=(:T, :S), buoyancy)
+    model = Model(grid; closure, tracers=(:T, :S), buoyancy)
     time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.

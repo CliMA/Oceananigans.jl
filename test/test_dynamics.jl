@@ -13,8 +13,8 @@ function relative_error(u_num, u, time)
 end
 
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
-    model = NonhydrostaticModel(; timestepper,
-                                  grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
+    grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; timestepper,
                                   closure = ScalarDiffusivity(time_discretization, ν=1, κ=1),
                                   tracers = :c)
 
@@ -62,7 +62,7 @@ end
 
 function test_diffusion_cosine(fieldname, Model, timestepper, grid, closure, ξ, tracers=:c; kwargs...)
 
-    model = Model(; grid, closure, timestepper, tracers, buoyancy=nothing, kwargs...)
+    model = Model(grid; closure, timestepper, tracers, buoyancy=nothing, kwargs...)
     field = fields(model)[fieldname]
 
     m = 2 # cosine wavenumber
@@ -226,7 +226,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
 
     grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1)
-    model = NonhydrostaticModel(; timestepper, grid, closure)
+    model = NonhydrostaticModel(grid; timestepper, closure)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
@@ -437,8 +437,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
-                        model = NonhydrostaticModel(; timestepper,
-                                                      grid,
+                        model = NonhydrostaticModel(grid; timestepper,
                                                       closure,
                                                       tracers = :c,
                                                       coriolis = nothing,
@@ -474,8 +473,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
                 for formulation in (ThreeDimensionalFormulation(), HorizontalFormulation(), VerticalFormulation())
-                    model = NonhydrostaticModel(; timestepper,
-                                                  grid,
+                    model = NonhydrostaticModel(grid; timestepper,
                                                   closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
                                                   coriolis = nothing,
                                                   tracers = :c,
@@ -674,7 +672,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     gravitational_acceleration = (10σ)^2 / Lx
 
                     for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
-                        model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+                        model = HydrostaticFreeSurfaceModel(grid; free_surface, kwargs...)
 
                         free_surface_type = typeof(free_surface).name.wrapper
                         @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo, $timestepper, $free_surface_type]..."

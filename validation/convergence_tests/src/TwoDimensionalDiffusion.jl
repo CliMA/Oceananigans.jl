@@ -32,7 +32,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
 
     grid = RectilinearGrid(architecture, size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
 
-    model = NonhydrostaticModel(        grid = grid,
+    model = NonhydrostaticModel(grid;
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,

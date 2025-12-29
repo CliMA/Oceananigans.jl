@@ -40,7 +40,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     grid = RectilinearGrid(architecture, size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, π),
                                 topology=(Periodic, Periodic, Bounded))
 
-    model = NonhydrostaticModel(        grid = grid,
+    model = NonhydrostaticModel(grid;
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = nothing,
@@ -79,7 +79,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, π), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
-    model = NonhydrostaticModel(    grid = grid,
+    model = NonhydrostaticModel(grid;
                                 coriolis = nothing,
                                 buoyancy = nothing,
                                  tracers = nothing,

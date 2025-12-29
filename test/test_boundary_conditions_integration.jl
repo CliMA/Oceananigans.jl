@@ -11,7 +11,7 @@ function test_boundary_condition(arch, FT, Model, topo, side, field_name, bounda
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = Model(; grid, boundary_conditions=bcs,
+    model = Model(grid; boundary_conditions=bcs,
                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try

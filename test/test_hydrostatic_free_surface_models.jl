@@ -64,8 +64,7 @@ function time_step_hydrostatic_model_with_catke_works(arch, FT)
         z = (-100, 0)
     )
 
-    model = HydrostaticFreeSurfaceModel(;
-        grid,
+    model = HydrostaticFreeSurfaceModel(grid;
         buoyancy = BuoyancyTracer(),
         tracers = (:b,),
         closure = CATKEVerticalDiffusivity(FT)
