@@ -35,11 +35,11 @@ closure = TKEDissipationVerticalDiffusivity()
 #closure = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(grid;
-                                     closure,
-                                     coriolis,
-                                     tracers = (:b,),
-                                     buoyancy = BuoyancyTracer(),
-                                     boundary_conditions = (u=u_bcs, b=b_bcs))
+                                    closure,
+                                    coriolis,
+                                    tracers = (:b,),
+                                    buoyancy = BuoyancyTracer(),
+                                    boundary_conditions = (u=u_bcs, b=b_bcs))
 
 bᵢ(z) = N² * z
 set!(model, b=bᵢ)

@@ -141,15 +141,15 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 @info "Building a model..."
 
 model = HydrostaticFreeSurfaceModel(grid;
-    free_surface = ImplicitFreeSurface(),
-    momentum_advection = WENO(grid = grid),
-    tracer_advection = WENO(grid = grid),
-    buoyancy = BuoyancyTracer(),
-    coriolis = coriolis,
-    closure = (horizontal_closure, vertical_closure, convective_adjustment),
-    tracers = :b,
-    boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
-    forcing = (; b = Fb)
+                                    free_surface = ImplicitFreeSurface(),
+                                    momentum_advection = WENO(grid = grid),
+                                    tracer_advection = WENO(grid = grid),
+                                    buoyancy = BuoyancyTracer(),
+                                    coriolis = coriolis,
+                                    closure = (horizontal_closure, vertical_closure, convective_adjustment),
+                                    tracers = :b,
+                                    boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
+                                    forcing = (; b = Fb)
 )
 
 @info "Built $model."

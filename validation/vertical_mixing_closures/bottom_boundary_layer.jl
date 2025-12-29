@@ -37,11 +37,11 @@ u_bcs = FieldBoundaryConditions(bottom = u_bottom_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_bottom_bc)
 
 model = HydrostaticFreeSurfaceModel(grid;
-                                     closure,
-                                     coriolis,
-                                     tracers = (:b,),
-                                     buoyancy = BuoyancyTracer(),
-                                     boundary_conditions = (; u=u_bcs, v=v_bcs))
+                                    closure,
+                                    coriolis,
+                                    tracers = (:b,),
+                                    buoyancy = BuoyancyTracer(),
+                                    boundary_conditions = (; u=u_bcs, v=v_bcs))
 
 bᵢ(z) = N² * z
 set!(model, b=bᵢ, u=u₀, e=1e-6)

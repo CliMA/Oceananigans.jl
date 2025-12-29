@@ -8,9 +8,9 @@ closure = (VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=
            CATKEVerticalDiffusivity())
 
 model = HydrostaticFreeSurfaceModel(grid;
-                                     closure,
-                                     tracers = (:b,),
-                                     buoyancy = BuoyancyTracer())
+                                    closure,
+                                    tracers = (:b,),
+                                    buoyancy = BuoyancyTracer())
 
 bᵢ(z) = 1e-5 * z
 set!(model, b = bᵢ)

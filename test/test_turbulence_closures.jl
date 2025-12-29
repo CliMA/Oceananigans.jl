@@ -195,11 +195,11 @@ function run_catke_tke_substepping_tests(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
     model = HydrostaticFreeSurfaceModel(grid;
-                                         momentum_advection = nothing,
-                                         tracer_advection = nothing,
-                                         closure,
-                                         buoyancy = BuoyancyTracer(),
-                                         tracers = (:b))
+                                        momentum_advection = nothing,
+                                        tracer_advection = nothing,
+                                        closure,
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = (:b))
 
     # set random velocities
     Random.seed!(1234)
@@ -234,13 +234,13 @@ function run_time_step_with_catke_tests(arch, closure, timestepper)
     buoyancy = BuoyancyTracer()
 
     @test HydrostaticFreeSurfaceModel(grid;
-                                       closure,
-                                       buoyancy,
-                                       tracers = :b) isa HydrostaticFreeSurfaceModel
+                                      closure,
+                                      buoyancy,
+                                      tracers = :b) isa HydrostaticFreeSurfaceModel
     @test HydrostaticFreeSurfaceModel(grid;
-                                       closure,
-                                       buoyancy,
-                                       tracers = (:b, :E)) isa HydrostaticFreeSurfaceModel
+                                      closure,
+                                      buoyancy,
+                                      tracers = (:b, :E)) isa HydrostaticFreeSurfaceModel
 
     # CATKE isn't supported with NonhydrostaticModel (we don't diffuse vertical velocity)
     @test_throws ErrorException NonhydrostaticModel(grid;
@@ -250,14 +250,14 @@ function run_time_step_with_catke_tests(arch, closure, timestepper)
 
     # Supplying closure tracers explicitly should error
     @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid;
-                                                            closure,
-                                                            buoyancy,
-                                                            tracers = (:b, :c, :e))
+                                                           closure,
+                                                           buoyancy,
+                                                           tracers = (:b, :c, :e))
 
     model = HydrostaticFreeSurfaceModel(grid;
-                                         closure,
-                                         buoyancy,
-                                         tracers = (:b, :c))
+                                        closure,
+                                        buoyancy,
+                                        tracers = (:b, :c))
 
     # Default boundary condition is Flux, Nothing... with CATKE this has to change.
     @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
@@ -365,8 +365,8 @@ end
                 @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
                 grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
                 model = NonhydrostaticModel(grid;
-                                            closure,
-                                            tracers = :c)
+                                             closure,
+                                             tracers = :c)
                 c = model.tracers.c
                 u = model.velocities.u
 

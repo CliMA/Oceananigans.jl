@@ -121,10 +121,10 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     model = NonhydrostaticModel(grid;
-                                 buoyancy,
-                                 tracers = (:T, :S),
-                                 closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=ν, κ=κ)),
-                                 boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
+                                buoyancy,
+                                tracers = (:T, :S),
+                                closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=ν, κ=κ)),
+                                boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
 
     #####
     ##### Set initial conditions

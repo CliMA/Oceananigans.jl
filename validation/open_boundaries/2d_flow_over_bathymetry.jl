@@ -73,12 +73,12 @@ function create_mass_conservation_simulation(;
         bᵢ(x, z) = stratification * z
     end
     model = NonhydrostaticModel(grid;
-                                 boundary_conditions,
-                                 pressure_solver,
-                                 timestepper,
-                                 advection = WENO(order=5),
-                                 tracers = :b,
-                                 buoyancy)
+                                boundary_conditions,
+                                pressure_solver,
+                                timestepper,
+                                advection = WENO(order=5),
+                                tracers = :b,
+                                buoyancy)
     set!(model, u=uᵢ, b=bᵢ)
 
     # Calculate time step

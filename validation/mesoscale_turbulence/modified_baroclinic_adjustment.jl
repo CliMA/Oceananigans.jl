@@ -53,10 +53,10 @@ closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
 @info "Building a model..."
 
 model = HydrostaticFreeSurfaceModel(grid;
-    coriolis=coriolis,
-    buoyancy=BuoyancyTracer(),
-    closure=closures,
-    tracers=(:b, :c),
+                                    coriolis = coriolis,
+                                    buoyancy = BuoyancyTracer(),
+                                    closure = closures,
+                                    tracers = (:b, :c),
     momentum_advection=WENO5(),
     tracer_advection=WENO5(),
     free_surface=ImplicitFreeSurface())

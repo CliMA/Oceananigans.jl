@@ -18,8 +18,8 @@ for Nh in [100, 200, 400, 800, 1600], stencil in [VorticityStencil, VelocitySten
     R = (g*H)^0.5 / f
 
     model = ShallowWaterModel(grid;
-                            gravitational_acceleration = g,
-                            coriolis = FPlane(f = f),
+                              gravitational_acceleration = g,
+                              coriolis = FPlane(f = f),
                             mass_advection = WENO(),
                             momentum_advection = WENO(vector_invariant = stencil()),
                             formulation = VectorInvariantFormulation())

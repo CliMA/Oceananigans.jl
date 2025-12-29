@@ -63,13 +63,13 @@ filename = "heterogeneous_cooling_with_hyperviscosity.jld2"
 #filename = "heterogeneous_cooling.jld2"
 
 model = HydrostaticFreeSurfaceModel(grid;
-                                     closure,
-                                     momentum_advection = WENO(),
-                                     tracer_advection = WENO(),
-                                     coriolis = FPlane(f=1e-4),
-                                     tracers = (:b,),
-                                     boundary_conditions = (; b=b_bcs, u=u_bcs),
-                                     buoyancy = BuoyancyTracer())
+                                    closure,
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
+                                    coriolis = FPlane(f=1e-4),
+                                    tracers = (:b,),
+                                    boundary_conditions = (; b=b_bcs, u=u_bcs),
+                                    buoyancy = BuoyancyTracer())
 
 N²ᵢ = 1e-5
 bᵢ(x, y, z) = N²ᵢ * z

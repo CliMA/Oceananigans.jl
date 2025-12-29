@@ -14,9 +14,9 @@ grid = RectilinearGrid(size = (128, 20),
                    topology = (Bounded, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(grid;
-                         momentum_advection = WENO(order=5),
-                           tracer_advection = WENO(order=7),
-                                   buoyancy = BuoyancyTracer(),
+                                    momentum_advection = WENO(order=5),
+                                    tracer_advection = WENO(order=7),
+                                    buoyancy = BuoyancyTracer(),
                                     closure = (VerticalScalarDiffusivity(ν=1e-4), HorizontalScalarDiffusivity(ν=1.0)),
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,

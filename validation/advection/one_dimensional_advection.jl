@@ -37,17 +37,17 @@ set!(c_real, c₀)
 advection = WENO(order=7)
 
 model1 = NonhydrostaticModel(grid;
-                              timestepper = :RungeKutta3,
-                              advection,
-                              tracers = :c)
+                             timestepper = :RungeKutta3,
+                             advection,
+                             tracers = :c)
 set!(model1, c=c₀, u=1)
 sim1 = Simulation(model1, Δt=Δt_max, stop_time=10)
 
 model2 = HydrostaticFreeSurfaceModel(grid;
-                                      velocities = PrescribedVelocityFields(u=1),
-                                      timestepper = :SplitRungeKutta3,
-                                      tracer_advection = advection,
-                                      tracers = :c)
+                                    velocities = PrescribedVelocityFields(u=1),
+                                    timestepper = :SplitRungeKutta3,
+                                    tracer_advection = advection,
+                                    tracers = :c)
 set!(model2, c=c₀)
 sim2 = Simulation(model2, Δt=Δt_max, stop_time=10)
 
