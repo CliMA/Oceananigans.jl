@@ -222,11 +222,12 @@ labels = Dict("lat_lon" => "Latitude-Longitude",
 
 axes_T = Dict()
 axes_ζ = Dict()
+kw = (elevation=deg2rad(50), azimuth=deg2rad(190), aspect=:equal)
 
 for (col, name) in enumerate(keys(results))
-    Label(fig[2, col], labels[name], fontsize = 20)
-    axes_T[name] = Axis3(fig[3, col]; aspect=:data)
-    axes_ζ[name] = Axis3(fig[4, col]; aspect=:data)
+    Label(fig[2, col], labels[name], fontsize = 20, tellwidth=false)
+    axes_T[name] = Axis3(fig[3, col]; kw...)
+    axes_ζ[name] = Axis3(fig[4, col]; kw...)
 end
 
 # We use `surface!`, which has a special extension for Oceananigans fields,
@@ -249,8 +250,8 @@ for name in keys(results)
     hidespines!(axes_ζ[name])
 end
 
+colgap!(fig.layout, 1, Relative(-0.2))
 colgap!(fig.layout, 2, Relative(-0.2))
-colgap!(fig.layout, 3, Relative(-0.2))
 rowgap!(fig.layout, 2, Relative(-0.2))
 
 # Add colorbars
