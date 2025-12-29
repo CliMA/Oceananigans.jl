@@ -19,9 +19,22 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 """
     update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
-Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
-hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
-they are called in the end. 
+Update the model state to be consistent with the current prognostic fields.
+
+This function performs the following steps:
+1. Mask immersed boundary regions (set field values to zero in solid regions)
+2. Update time-dependent field boundary conditions
+3. Fill halo regions for velocities and tracers
+4. Compute diagnostic quantities:
+   - Buoyancy gradients (for turbulence closures)
+   - Vertical velocity `w` from continuity equation
+   - Hydrostatic pressure `pHY′`
+   - Turbulent diffusivities
+5. Fill local halos for closure fields and pressure
+6. Execute any callbacks registered for `UpdateStateCallsite`
+7. Update biogeochemical state
+
+Note: Halo regions for free surface fields are filled separately after the barotropic step.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) =  update_state!(model, model.grid, callbacks)
 
@@ -67,17 +80,37 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     return nothing
 end
 
-# Mask immersed fields
+"""
+    mask_immersed_model_fields!(model)
+
+Set field values to zero in immersed (solid) regions of the grid.
+
+Masks both velocity fields and tracers to ensure physically meaningful values
+at immersed boundaries. This is called at the beginning of `update_state!`.
+"""
 function mask_immersed_model_fields!(model)
     mask_immersed_velocities!(model.velocities)
     foreach(mask_immersed_field!, model.tracers)
     return nothing
 end
 
+"""
+    mask_immersed_velocities!(velocities)
+
+Set velocity field values to zero in immersed (solid) regions of the grid.
+"""
 mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities)
 
-""" Kernel parameters for computing three-dimensional diffusivities including horizontal boundaries
-required for computing viscous fluxes of staggered variables such as velocity fields. """
+"""
+    diffusivity_kernel_parameters(grid)
+
+Return kernel parameters for computing turbulent diffusivities including one extra cell
+in horizontal directions.
+
+The extra cells (indices `0:Nx+1` and `0:Ny+1`) are needed because diffusivities at
+cell faces require data from neighboring cells. This ensures that viscous fluxes
+can be computed correctly at domain boundaries without requiring (possibly costly) halo exchanges.
+"""
 @inline function diffusivity_kernel_parameters(grid)
     Nx, Ny, Nz = size(grid)
     Tx, Ty, Tz = topology(grid)

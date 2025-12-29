@@ -10,7 +10,14 @@ import Oceananigans.TimeSteppers: cache_previous_tendencies!
     @inbounds G⁻[i, j, k] = G⁰[i, j, k]
 end
 
-""" Store previous source terms before updating them. """
+"""
+    cache_previous_tendencies!(model::NonhydrostaticModel)
+
+Store the current tendencies `Gⁿ` into `G⁻` for all prognostic fields (velocities and tracers).
+
+This function is called after advancing the model state but before computing new tendencies,
+preserving the tendencies needed for multi-step time-stepping schemes (:QuasiAdamsBashorth2 and :RungeKutta3)
+"""
 function cache_previous_tendencies!(model::NonhydrostaticModel)
     model_fields = prognostic_fields(model)
 

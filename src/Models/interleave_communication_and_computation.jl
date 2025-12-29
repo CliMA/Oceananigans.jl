@@ -66,7 +66,15 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     return KernelParameters(sizes, offsets)
 end
 
-""" Kernel parameters for computing surface variables including halos. """
+"""
+    surface_kernel_parameters(grid)
+
+Return kernel parameters for computing 2D (surface) variables including halo regions.
+
+The returned `KernelParameters` cover the total date ming one halo cell on each side
+(indices `-Hx+2:Nx+Hx-1` and `-Hy+2:Ny+Hy-1`), which is sufficient for computing
+quantities that require neighbor data (like derivatives and interpolations).
+"""
 @inline function surface_kernel_parameters(grid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
@@ -78,7 +86,12 @@ end
     return KernelParameters(ii, jj)
 end
 
-""" Kernel parameters for computing three-dimensional variables including halos. """
+"""
+    volume_kernel_parameters(grid)
+
+Return kernel parameters for computing 3D (volume) variables including halo regions.
+Similar to `surface_kernel_parameters` but for three-dimensional fields.
+"""
 @inline function volume_kernel_parameters(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)

@@ -55,21 +55,25 @@ reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, callbacks=[])
 
-Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
-pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
-The tendencies are calculated by the `update_step!` at the end of the `time_step!` function.
+Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method.
+Setting `euler=true` will take a forward Euler time step.
 
 The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
 
-1. If this the first time step (`model.clock.iteration == 0`), then call `update_state!` and calculate the tendencies.
-2. Advance tracers in time and compute predictor velocities (including implicit vertical diffusion).
-3. Solve the elliptic equation for pressure (three dimensional for the non-hydrostatic model, two-dimensional for the hydrostatic model).
-4. Correct the velocities based on the results of step 3.
-5. Store the old tendencies.
-6. Update the model state.
-7. Compute tendencies for the next time step
+1. If this is the first time step (`model.clock.iteration == 0`), call `update_state!`.
+2. Call `ab2_step!(model, Δt, callbacks)` which:
+   - Computes tendencies for all prognostic fields
+   - Advances fields using AB2: `U += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`
+   - Applies model-specific corrections (e.g., pressure correction for incompressibility)
+3. Store the current tendencies in `G⁻` for use in the next time step.
+4. Update the model state (fill halos, compute diagnostics).
+5. Advance the clock and step Lagrangian particles.
+
+The specific implementation of `ab2_step!` varies by model type (e.g., `NonhydrostaticModel`
+includes a pressure correction step, while `HydrostaticFreeSurfaceModel` handles the
+free surface and barotropic mode).
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
                     callbacks=[], euler=false)
@@ -137,5 +141,30 @@ end
 ##### These functions need to be implemented by every model independently
 #####
 
+"""
+    ab2_step!(model::AbstractModel, Δt, callbacks)
+
+Advance the model state by one Adams-Bashforth 2nd-order (AB2) time step of size `Δt`.
+
+This is an abstract interface that must be implemented by each model type
+(e.g., `NonhydrostaticModel`, `HydrostaticFreeSurfaceModel`).
+
+The implementation should:
+1. Compute tendencies for velocities and tracers
+2. Advance prognostic fields using AB2: `U += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`
+3. Apply any necessary corrections (e.g., pressure correction for incompressibility)
+
+The AB2 parameter `χ` is stored in `model.timestepper.χ`. When `χ = -0.5`, the scheme
+reduces to forward Euler (used for the first time step).
+"""
 ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
+
+"""
+    cache_previous_tendencies!(model::AbstractModel)
+
+Store the current tendencies `Gⁿ` into `G⁻` for use in the next AB2 time step.
+
+This is an abstract interface that must be implemented by each model type.
+Called after advancing the model state but before updating tendencies for the next step.
+"""
 cache_previous_tendencies!(model::AbstractModel) = error("cache_previous_tendencies! not implemented for $(typeof(model))")

@@ -16,7 +16,14 @@ end
     @inbounds G⁻[i, j, k] = G⁰[i, j, k]
 end
 
-""" Store previous source terms before updating them. """
+"""
+    cache_previous_tendencies!(model::ShallowWaterModel)
+
+Store the current tendencies `Gⁿ` into `G⁻` for solution fields (`uh`, `vh`, `h`) and tracers.
+
+This function is called after advancing the model state but before computing new tendencies,
+preserving the tendencies needed for a :RungeKutta3 timestepper.
+"""
 function cache_previous_tendencies!(model::ShallowWaterModel)
     _cache_solution!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_solution_tendencies!)
     _cache_tracer!, _ = configure_kernel(model.architecture, model.grid, :xyz, _cache_field_tendencies!)

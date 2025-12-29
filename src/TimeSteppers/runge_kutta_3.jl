@@ -24,17 +24,18 @@ end
 
 """
     RungeKutta3TimeStepper(grid, prognostic_fields;
-                                             implicit_solver = nothing,
-                                             Gⁿ = map(similar, prognostic_fields),
-                                             G⁻ = map(similar, prognostic_fields))
+                           implicit_solver = nothing,
+                           Gⁿ = map(similar, prognostic_fields),
+                           G⁻ = map(similar, prognostic_fields))
 
 Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
-to the `prognostic_fields` can be modified via the optional `kwargs`.
+to the `prognostic_fields`, can be modified via the optional `kwargs`.
 
 The scheme is described by [Le and Moin (1991)](@cite LeMoin1991). In a nutshell,
 the 3rd-order Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via
-3 substeps. A pressure correction step is applied after at each substep.
+3 substeps. Model-specific corrections (e.g., pressure correction for incompressibility)
+are applied within each substep by the model's `rk3_substep!` implementation.
 
 The state `U` after each substep `m` is
 
@@ -49,7 +50,7 @@ and `ζ³ = -5/12`.
 
 The state at the first substep is taken to be the one that corresponds to
 the ``n``-th timestep, `U¹ = Uⁿ`, and the state after the third substep is
-then the state at the `Uⁿ⁺¹ = U⁴`.
+then the state at `Uⁿ⁺¹ = U⁴`.
 
 References
 ==========
@@ -78,12 +79,25 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
+    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
-The 3rd-order Runge-Kutta method takes three intermediate substep stages to
-achieve a single timestep. A pressure correction step is applied at each intermediate
-stage.
+
+The RK3 method takes three intermediate substep stages to achieve a single timestep.
+Each stage performs the following:
+
+1. Call `rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)` which:
+   - Computes tendencies for all prognostic fields
+   - Advances fields: `U += Δt * (γⁿ * Gⁿ + ζⁿ * G⁻)`
+   - Applies model-specific corrections (e.g., pressure correction for `NonhydrostaticModel`)
+2. Cache the current tendencies in `G⁻`.
+3. Update the model state (fill halos, compute diagnostics).
+4. Step Lagrangian particles.
+
+The RK3 coefficients are `γ¹ = 8/15`, `γ² = 5/12`, `γ³ = 3/4`, `ζ² = -17/60`, `ζ³ = -5/12`.
+The effective substep sizes are `γ¹ * Δt`, `(γ² + ζ²) * Δt`, and `(γ³ + ζ³) * Δt`.
+
+The specific implementation of `rk3_substep!` varies by model type.
 """
 function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
@@ -177,5 +191,22 @@ end
     @inbounds U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
 end
 
-# Needs to be implemented by every model independently
+"""
+    rk3_substep!(model::AbstractModel, Δt, γⁿ, ζⁿ, callbacks)
+
+Perform a single substep of the 3rd-order Runge-Kutta scheme.
+
+This is an abstract interface that must be implemented by each model type
+(e.g., `NonhydrostaticModel`, `HydrostaticFreeSurfaceModel`, `ShallowWaterModel`).
+
+Arguments
+=========
+- `model`: The model to advance.
+- `Δt`: The full time step size (not the substep size).
+- `γⁿ`: Coefficient for the current tendency `Gⁿ`.
+- `ζⁿ`: Coefficient for the previous tendency `G⁻` (or `nothing` for the first substep).
+- `callbacks`: Array of callbacks to execute.
+
+The state is advanced as: `U += Δt * (γⁿ * Gⁿ + ζⁿ * G⁻)`.
+"""
 rk3_substep!(model::AbstractModel, Δt, γ, ζ, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")

@@ -11,7 +11,14 @@
     end
 end
 
-# Note: this function is also used during initialization
+"""
+    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+
+Compute the depth-integrated (barotropic) velocities from baroclinic velocity fields.
+
+The barotropic transport is computed as: `U̅ = ∫ u dz` and `V̅ = ∫ v dz`.
+This function is used both during split-explicit correction and initialization.
+"""
 function compute_barotropic_mode!(U̅, V̅, grid, u, v)
     active_cells_map = get_active_column_map(grid) # may be nothing
 
@@ -22,7 +29,18 @@ function compute_barotropic_mode!(U̅, V̅, grid, u, v)
     return nothing
 end
 
-# Correcting `u` and `v` with the barotropic mode computed in `free_surface`
+"""
+    barotropic_split_explicit_corrector!(u, v, free_surface, grid)
+
+Correct baroclinic velocities to be consistent with the barotropic mode from split-explicit substepping.
+
+The correction ensures that the depth-integrated baroclinic velocity matches the
+filtered barotropic velocity from the split-explicit scheme:
+`u_corrected = u + (U_filtered - U_baroclinic) / H`
+
+where `U_filtered` is the filtered barotropic transport from substepping and
+`U_baroclinic` is the depth-integral of the baroclinic velocity.
+"""
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
     η     = free_surface.η
@@ -78,6 +96,21 @@ end
     end
 end
 
+"""
+    compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+
+Compute transport velocities used for tracer advection with split-explicit free surface.
+
+Transport velocities differ from prognostic velocities by including the barotropic correction:
+`ũ = u + (Ũ_filtered - U_baroclinic) / H`
+
+where `Ũ_filtered` is the time-filtered barotropic transport from split-explicit substepping.
+This ensures that tracers are advected with a velocity field consistent with the filtered
+free surface evolution.
+
+After computing horizontal transport velocities, vertical transport velocity `w̃` is computed
+from continuity and halo regions are filled.
+"""
 function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
     grid = model.grid
     u, v, _ = model.velocities

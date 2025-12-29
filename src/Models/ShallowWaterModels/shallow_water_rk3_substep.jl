@@ -4,6 +4,16 @@ using Oceananigans.TimeSteppers: rk3_substep_field!
 
 import Oceananigans.TimeSteppers: rk3_substep!
 
+"""
+    rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
+
+Perform a single RK3 substep for `ShallowWaterModel`.
+
+Advances the solution fields (`uh`, `vh`, `h`) and any tracers using the RK3 scheme:
+`U += Δt * (γⁿ * Gⁿ + ζⁿ * G⁻)`
+
+where `Gⁿ` and `G⁻` are the current and previous tendencies.
+"""
 function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
 
     compute_tendencies!(model, callbacks)

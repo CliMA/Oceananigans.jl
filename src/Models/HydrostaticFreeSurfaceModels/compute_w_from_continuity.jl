@@ -3,23 +3,48 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Az⁻¹ᶜᶜᶜ, Δrᶜᶜ�
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Models: surface_kernel_parameters
 
+"""
+    update_vertical_velocities!(velocities, grid, model; parameters=surface_kernel_parameters(grid))
+
+Update the vertical velocity field `w` and grid vertical velocity (for z-star coordinates).
+
+This function:
+1. Updates the grid vertical velocity `∂t_σ` for mutable grids (z-star coordinates)
+2. Computes `w` from the continuity equation by vertical integration
+
+For static grids, only step 2 is performed. The `velocities` argument can be either
+`model.velocities` (for momentum) or `model.transport_velocities` (for tracer advection).
+"""
 function update_vertical_velocities!(velocities, grid, model; parameters = surface_kernel_parameters(grid))
     update_grid_vertical_velocity!(velocities, model, grid, model.vertical_coordinate; parameters)
     compute_w_from_continuity!(velocities, grid; parameters)
     return nothing
 end
 
-# A Fallback to be extended for specific ztypes and grid types
+"""
+    update_grid_vertical_velocity!(velocities, model, grid, vertical_coordinate; kw...)
+
+Update the time derivative of the grid stretching factor `∂t_σ` for mutable vertical coordinates.
+
+Fallback method that does nothing (for static grids). Extended for `ZStarCoordinate` to compute
+`∂t_σ = - ∇·U / H` where `U` is either the barotropic velocities or the barotropic transport.
+"""
 update_grid_vertical_velocity!(velocities, model, grid, ztype; kw...) = nothing
 
 """
-    compute_w_from_continuity!(model)
+    compute_w_from_continuity!(model; kwargs...)
+    compute_w_from_continuity!(velocities, grid; parameters=surface_kernel_parameters(grid))
 
-Compute the vertical velocity ``w`` by integrating the continuity equation from the bottom upwards:
+Compute the vertical velocity `w` by integrating the continuity equation from the bottom upwards:
 
+```math
+w^{n+1} = -\\int [\\partial u / \\partial x + \\partial v / \\partial y + \\partial_t \\sigma] dz
 ```
-w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
-```
+
+where `∂t_σ` is the time derivative of the grid stretching factor (zero for static grids).
+
+The first method dispatches on `model.velocities` and `model.grid`. The second method
+allows computing `w` for arbitrary velocity fields (e.g., `model.transport_velocities`).
 """
 compute_w_from_continuity!(model; kwargs...) =
     compute_w_from_continuity!(model.velocities, model.grid; kwargs...)

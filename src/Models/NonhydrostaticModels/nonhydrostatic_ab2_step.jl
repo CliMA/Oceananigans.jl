@@ -1,12 +1,28 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 import Oceananigans.TimeSteppers: ab2_step!
 
+"""
+    ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
+
+Advance `NonhydrostaticModel` by one Adams-Bashforth 2nd-order time step with pressure correction.
+Dispatches to `pressure_correction_ab2_step!` which implements a predictor-corrector scheme
+"""
 ab2_step!(model::NonhydrostaticModel, args...) = 
     pressure_correction_ab2_step!(model, args...)
 
-# AB2 step for NonhydrostaticModel. This is a predictor-corrector scheme where the
-# predictor step for velocities is an AB2 step. The velocities are then corrected
-# using the pressure correction obtained by solving a Poisson equation for the pressure. 
+"""
+    pressure_correction_ab2_step!(model, Δt, callbacks)
+
+Implement the AB2 time step with pressure correction for `NonhydrostaticModel`.
+
+This predictor-corrector scheme:
+1. Computes tendencies `Gⁿ` for all prognostic fields
+2. Advances velocities: `u* = uⁿ + Δt * AB2(Gᵤ)` (predictor step)
+3. Advances tracers: `cⁿ⁺¹ = cⁿ + Δt * AB2(Gᶜ)`
+4. Applies implicit vertical diffusion (if configured)
+5. Solves `∇²p = ∇·u* / Δt` for pressure correction
+6. Corrects velocities: `uⁿ⁺¹ = u* - Δt * ∇p` to satisfy `∇·uⁿ⁺¹ = 0`
+"""
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
 

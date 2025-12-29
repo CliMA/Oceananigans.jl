@@ -17,6 +17,13 @@ end
 
 cache_free_surface_tendency!(free_surface, model) = nothing
 
+"""
+    cache_free_surface_tendency!(::ExplicitFreeSurface, model)
+
+Store the current free surface tendency `Gⁿ.η` into `G⁻.η` for AB2 time stepping.
+Only applicable to `ExplicitFreeSurface` where `η` is a prognostic variable
+advanced with the AB2 scheme.
+"""
 function cache_free_surface_tendency!(::ExplicitFreeSurface, model)
     launch!(model.architecture, model.grid, :xy,
             _cache_free_surface_tendency!,
@@ -30,7 +37,17 @@ end
     @inbounds G⁻[i, j, k] = G⁰[i, j, k]
 end
 
-""" Store previous source terms before updating them. """
+"""
+    cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
+
+Store the current tendencies `Gⁿ` into `G⁻` for all prognostic fields.
+
+This function is called after advancing the model state but before computing new tendencies,
+preserving the tendencies needed for the AB2 time-stepping scheme.
+
+If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are skipped.
+For `ExplicitFreeSurface`, the free surface tendency is also cached.
+"""
 function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
     prognostic_field_names = keys(prognostic_fields(model))
     three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
@@ -70,6 +87,18 @@ end
     @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
 
+"""
+    cache_current_fields!(model::HydrostaticFreeSurfaceModel)
+
+Cache the current prognostic fields at the beginning of a split Runge-Kutta time step.
+
+The cached fields are stored in `model.timestepper.Ψ⁻` and serve as the base state `U⁰`
+for all substeps within a single time step. Each substep computes `U = U⁰ + Δτ * G`.
+
+For tracers, the cached quantity is `σ * c` (tracer times grid stretching factor) to
+properly handle mutable vertical coordinates (z-star). Velocities and free surface
+are cached directly without modification.
+"""
 function cache_current_fields!(model::HydrostaticFreeSurfaceModel)
 
     previous_fields = model.timestepper.Ψ⁻

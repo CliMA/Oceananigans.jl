@@ -7,11 +7,20 @@ const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
                                                           <:DistributedGrid, I, <:CellMaps, S,
                                                           <:Distributed} where {FT, TX, TY, TZ, I, S}
 
-# Fallback
+# Fallback for non-distributed grids
 complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
 complete_communication_and_compute_momentum_buffer!(model, grid, arch) = nothing
 
-# We assume here that top/bottom BC are always synchronized (no partitioning in z)
+"""
+    complete_communication_and_compute_momentum_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
+
+Complete halo communication and compute momentum tendencies in buffer regions for distributed grids.
+
+This function is called after interior momentum tendencies are computed. It:
+1. Synchronizes halo communication for tracers and velocities
+2. Computes diagnostic fields (buoyancy gradients, vertical velocity, pressure, diffusivities) in buffer regions
+3. Computes momentum tendencies in cells that depend on halo data
+"""
 function complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
     grid = model.grid
     arch = architecture(grid)
@@ -42,6 +51,15 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     return nothing
 end
 
+"""
+    compute_momentum_buffer_contributions!(grid, arch, model)
+
+Compute momentum tendencies in buffer regions adjacent to processor boundaries.
+
+For regular distributed grids, uses `buffer_tendency_kernel_parameters` to determine
+the buffer region indices. For immersed boundary grids with active cell maps,
+iterates over halo-dependent cell maps for each direction.
+"""
 function compute_momentum_buffer_contributions!(grid, arch, model)
     kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters)
@@ -69,7 +87,16 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
     return nothing
 end
 
-# We assume here that top/bottom BC are always synchronized (no partitioning in z)
+"""
+    complete_communication_and_compute_tracer_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
+
+Complete halo communication and compute tracer tendencies in buffer regions for distributed grids.
+
+This function is called after interior tracer tendencies are computed. It:
+1. Synchronizes halo communication for transport velocities and free surface
+2. Updates vertical transport velocities in buffer regions
+3. Computes tracer tendencies in cells that depend on halo data
+"""
 function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
     grid = model.grid
     arch = architecture(grid)
@@ -86,6 +113,11 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     return nothing
 end
 
+"""
+    compute_tracer_buffer_contributions!(grid, arch, model)
+
+Compute tracer tendencies in buffer regions adjacent to processor boundaries.
+"""
 function compute_tracer_buffer_contributions!(grid, arch, model)
     kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
@@ -113,7 +145,14 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
     return nothing
 end
 
-# w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
+"""
+    buffer_surface_kernel_parameters(grid, arch)
+
+Return kernel parameters for computing 2D (surface) variables in buffer regions.
+
+The buffer regions are strips along processor boundaries where computations depend on halo data. 
+Returns parameters for west, east, south, and north buffer regions.
+"""
 function buffer_surface_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
@@ -133,6 +172,14 @@ function buffer_surface_kernel_parameters(grid, arch)
     return buffer_parameters(params, grid, arch)
 end
 
+"""
+    buffer_volume_kernel_parameters(grid, arch)
+
+Return kernel parameters for computing 3D (volume) variables in buffer regions.
+
+Similar to `buffer_surface_kernel_parameters` but for three-dimensional fields.
+The buffer regions span the full vertical extent of the grid.
+"""
 function buffer_volume_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)

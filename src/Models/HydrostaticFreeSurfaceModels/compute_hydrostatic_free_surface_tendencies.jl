@@ -9,6 +9,19 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 
 using Oceananigans.Grids: get_active_cells_map
 
+"""
+    compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+
+Compute tendencies for horizontal velocity fields `u` and `v`.
+
+This function:
+1. Computes interior momentum tendencies (advection, Coriolis, pressure gradient, diffusion, forcing)
+2. Completes halo communication and computes buffer tendencies for distributed grids
+3. Computes flux boundary condition contributions
+4. Executes any callbacks with `TendencyCallsite`
+
+Momentum tendencies are stored in `model.timestepper.Gⁿ.u` and `model.timestepper.Gⁿ.v`.
+"""
 function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     grid = model.grid
@@ -28,6 +41,23 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     return nothing
 end
 
+"""
+    compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
+
+Compute tendencies for all tracer fields.
+
+This function:
+1. Computes interior tracer tendencies (advection, diffusion, forcing, biogeochemistry sources)
+2. Completes halo communication and computes buffer tendencies for distributed grids
+3. Computes flux boundary condition contributions
+4. Scales tendencies by the grid stretching factor for z-star coordinates
+5. Updates biogeochemistry tendencies
+
+Tracers are advected using `model.transport_velocities` which may differ from `model.velocities`
+when using split-explicit free surfaces (transport velocities include barotropic correction).
+
+Tracer tendencies are stored in `model.timestepper.Gⁿ[tracer_name]`.
+"""
 function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     grid = model.grid
@@ -58,7 +88,14 @@ compute_free_surface_tendency!(grid, model, free_surface) = nothing
     return NamedTuple{tuple(names...)}(tuple(values...))
 end
 
-""" Store previous value of the source term and compute current source term. """
+"""
+    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
+
+Compute tracer tendencies in the grid interior (or on specified active cells).
+
+Launches the tracer tendency kernel for each tracer, computing advection, diffusion,
+and forcing contributions. Uses `model.transport_velocities` for advection.
+"""
 function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
 
     arch = model.architecture
@@ -97,7 +134,11 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     return nothing
 end
 
-""" Calculate momentum tendencies if momentum is not prescribed."""
+"""
+    compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
+
+Compute momentum tendencies for `u` and `v` in the grid interior (or on specified active cells).
+"""
 function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
     grid = model.grid

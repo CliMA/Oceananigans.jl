@@ -1,16 +1,33 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
+"""
+    rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks)
+
+Perform a single split Runge-Kutta substep for `HydrostaticFreeSurfaceModel`.
+
+Dispatches to the appropriate method based on the free surface type (explicit or implicit).
+The substep advances the state from the cached initial fields `Ψ⁻` using: `U = Ψ⁻ + Δτ * Gⁿ`.
+"""
 rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
 
-# RK3 substep for hydrostatic free surface models, it differs in the order of operations
-# depending on the type of free surface (implicit or explicit)
-#
-# For explicit free surfaces (`ExplicitFreeSurface` and `SplitExplicitFreeSurface`), we first
-# compute the free surface using the integrated momentum baroclinic tendencies,
-# then we advance grid, momentum and tracers. The last step is to reconcile the baroclinic and
-# the barotropic modes by applying a pressure correction to momentum.
+"""
+    rk_substep!(model, free_surface, grid, Δτ, callbacks)
+
+Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with explicit free surfaces
+(`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
+
+The order of operations for explicit free surfaces is:
+1. Compute momentum tendencies (baroclinic)
+2. Advance the free surface (barotropic step)
+3. Compute transport velocities for tracer advection
+4. Compute tracer tendencies
+5. Advance grid scaling (for z-star coordinates)
+6. Advance velocities
+7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
+8. Advance tracers
+"""
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     # Compute barotropic and baroclinic tendencies
     @apply_regionally compute_momentum_tendencies!(model, callbacks)
@@ -40,10 +57,19 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     return nothing
 end
 
-# For implicit free surfaces (`ImplicitFreeSurface`), we first advance grid and tracers,
-# we then use a predictor-corrector approach to advance momentum, in which we first
-# advance momentum neglecting the free surface contribution, then, after the computation of
-# the new free surface, we correct momentum to account for the updated free surface.
+"""
+    rk_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
+
+Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
+
+For implicit free surfaces, a predictor-corrector approach is used:
+1. Compute momentum and tracer tendencies
+2. Advance grid scaling (for z-star coordinates)
+3. Advance velocities (predictor step, ignoring free surface)
+4. Solve implicit free surface equation
+5. Correct velocities for the updated barotropic pressure gradient
+6. Advance tracers
+"""
 @inline function rk_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     @apply_regionally begin
@@ -72,13 +98,30 @@ end
 ##### Step grid
 #####
 
-# A Fallback to be extended for specific ztypes and grid types
-rk_substep_grid!(grid, model, ztype, Δt) = nothing
+"""
+    rk_substep_grid!(grid, model, ::ZCoordinate, Δτ)
+
+Update grid scaling factors during a split Runge-Kutta substep.
+
+Fallback method that does nothing. Extended for `ZStarCoordinate` to update
+the vertical grid spacing based on the new free surface height.
+"""
+rk_substep_grid!(grid, model, ::ZCoordinate, Δt) = nothing
 
 #####
 ##### Step Velocities
 #####
 
+"""
+    rk_substep_velocities!(velocities, model, Δτ)
+
+Advance horizontal velocities `u` and `v` during a split Runge-Kutta substep.
+
+Velocities are updated as: `uⁿ⁺¹ = u⁰ + Δτ * Gᵤ` where `u⁰` is the cached initial state
+stored in `model.timestepper.Ψ⁻` and `Gᵤ` is the current tendency in `model.timestepper.Gⁿ`.
+
+If an implicit solver is configured, implicit vertical diffusion is applied after the explicit step.
+"""
 function rk_substep_velocities!(velocities, model, Δt)
 
     grid = model.grid
@@ -111,6 +154,18 @@ end
 
 rk_substep_tracers!(::EmptyNamedTuple, model, Δt) = nothing
 
+"""
+    rk_substep_tracers!(tracers, model, Δτ)
+
+Advance tracer fields during a split Runge-Kutta substep.
+
+For mutable vertical coordinates (z-star), tracers are evolved accounting for the
+grid stretching factor `σ`: the cached quantity is `σ⁰ * c⁰` and the update is
+`c = (σ⁰ * c⁰ + Δτ * Gᶜ) / σⁿ` where `σⁿ` is the current stretching factor.
+
+If CATKE closure is active, the TKE tracer `e` is skipped (handled separately).
+Implicit vertical diffusion is applied after the explicit step if configured.
+"""
 function rk_substep_tracers!(tracers, model, Δt)
 
     closure = model.closure

@@ -8,9 +8,32 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
+"""
+    ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
+
+Advance `HydrostaticFreeSurfaceModel` by one Adams-Bashforth 2nd-order time step.
+
+Dispatches to the appropriate method based on the free surface type (explicit or implicit).
+"""
 ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
     ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
+"""
+    ab2_step!(model, free_surface, grid, Δt, callbacks)
+
+AB2 time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
+(`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
+
+The order of operations for explicit free surfaces is:
+1. Compute momentum tendencies
+2. Advance the free surface (barotropic step)
+3. Compute transport velocities for tracer advection
+4. Compute tracer tendencies
+5. Advance grid scaling (for z-star coordinates)
+6. Advance velocities using AB2
+7. Correct barotropic mode
+8. Advance tracers using AB2
+"""
 function ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
@@ -45,6 +68,19 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
     return nothing
 end
 
+"""
+    ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
+
+AB2 time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
+
+For implicit free surfaces, a predictor-corrector approach is used:
+1. Compute momentum and tracer tendencies
+2. Advance grid scaling (for z-star coordinates)
+3. Advance velocities using AB2 (predictor step)
+4. Solve implicit free surface equation
+5. Correct velocities for the updated barotropic pressure gradient
+6. Advance tracers using AB2
+"""
 function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
@@ -76,13 +112,29 @@ end
 ##### Step grid
 #####
 
-# A Fallback to be extended for specific ztypes and grid types
-ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
+"""
+    ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ)
+
+Update grid scaling factors during an AB2 time step.
+
+Fallback method that does nothing. Extended for `ZStarCoordinate` to update
+the vertical grid spacing based on the new free surface height.
+"""
+ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ) = nothing
 
 #####
 ##### Step velocities
 #####
 
+"""
+    ab2_step_velocities!(velocities, model, Δt, χ)
+
+Advance horizontal velocities `u` and `v` using the AB2 scheme.
+
+Velocities are updated as: `u += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`.
+
+If an implicit solver is configured, implicit vertical diffusion is applied after the explicit step.
+"""
 function ab2_step_velocities!(velocities, model, Δt, χ)
 
     for (i, name) in enumerate((:u, :v))
@@ -117,6 +169,17 @@ hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) f
 
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
+"""
+    ab2_step_tracers!(tracers, model, Δt, χ)
+
+Advance tracer fields using the AB2 scheme.
+
+For mutable vertical coordinates (z-star), the evolved quantity is `σ * c` where `σ` is
+the grid stretching factor. The update accounts for the change in `σ` between time steps.
+
+If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are skipped
+as they are handled separately. Implicit vertical diffusion is applied if configured.
+"""
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
