@@ -88,7 +88,7 @@ compute!(c_flux_field)
 ├── operand: KernelFunctionOperation at (Center, Center, ⋅)
 ├── status: time=0.0
 └── data: 22×22×1 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, 1:1) with eltype Float64 with indices -2:19×-2:19×1:1
-    └── max=0.980785, min=-0.980785, mean=1.0842e-19
+    └── max=0.980785, min=-0.980785, mean=0.0
 ```
 """
 function BoundaryConditionOperation(field::Field, side::Symbol, model::AbstractModel)
