@@ -97,9 +97,9 @@ for arch in archs
             # solutions on a GPU, but it does on a CPU. For the moment we remove the
             # offending tests, but we need to investigate this...
             if child_arch isa GPU
-                z_faces in [(-1, 0)]
+                z_faces = [(-1, 0)]
             else
-                z_faces in [(-1, 0), MutableVerticalDiscretization((-1, 0))]
+                z_faces = [(-1, 0), MutableVerticalDiscretization((-1, 0))]
             end
 
             for z_face in z_faces
