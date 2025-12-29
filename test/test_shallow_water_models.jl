@@ -5,8 +5,11 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
     grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=topo)
-    model = ShallowWaterModel(grid; gravitational_acceleration=1, coriolis=coriolis,
-                              momentum_advection=advection, timestepper=:RungeKutta3)
+    model = ShallowWaterModel(grid;
+                              gravitational_acceleration = 1,
+                              coriolis = coriolis,
+                              momentum_advection = advection,
+                              timestepper = :RungeKutta3)
     set!(model, h=1)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
@@ -17,7 +20,9 @@ end
 
 function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
     grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=topo)
-    model = ShallowWaterModel(grid; gravitational_acceleration=1, coriolis=coriolis)
+    model = ShallowWaterModel(grid;
+                              gravitational_acceleration = 1,
+                              coriolis = coriolis)
     set!(model, h=1)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
@@ -30,7 +35,9 @@ end
 
 function shallow_water_model_tracers_and_forcings_work(arch)
     grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
-    model = ShallowWaterModel(grid; gravitational_acceleration=1, tracers=(:c, :d))
+    model = ShallowWaterModel(grid;
+                              gravitational_acceleration = 1,
+                              tracers = (:c, :d))
     set!(model, h=1)
 
     @test model.tracers.c isa Field
@@ -58,10 +65,13 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     tracer_advection = nothing
     mass_advection = nothing
 
-    model = ShallowWaterModel(grid; closure,
-                                gravitational_acceleration=1.0,
-                                momentum_advection, tracer_advection, mass_advection,
-                                formulation)
+    model = ShallowWaterModel(grid;
+                              closure,
+                              gravitational_acceleration = 1.0,
+                              momentum_advection,
+                              tracer_advection,
+                              mass_advection,
+                              formulation)
 
     field = model.velocities[fieldname]
 

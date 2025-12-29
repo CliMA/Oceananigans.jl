@@ -104,8 +104,11 @@ function cylinder_model(open_boundaries;
     pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=10;
                                                     reltol, abstol, preconditioner)
 
-    model = NonhydrostaticModel(grid; pressure_solver, closure,
-                                 advection, boundary_conditions)
+    model = NonhydrostaticModel(grid;
+                                pressure_solver,
+                                closure,
+                                advection,
+                                boundary_conditions)
 
     @show model
 

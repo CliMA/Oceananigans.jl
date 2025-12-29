@@ -194,8 +194,12 @@ function run_catke_tke_substepping_tests(arch, closure)
     # with the explicit CATKE time-stepping necessary for this test
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
-    model = HydrostaticFreeSurfaceModel(grid; momentum_advection = nothing, tracer_advection = nothing,
-                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b))
+    model = HydrostaticFreeSurfaceModel(grid;
+                                         momentum_advection = nothing,
+                                         tracer_advection = nothing,
+                                         closure,
+                                         buoyancy = BuoyancyTracer(),
+                                         tracers = (:b))
 
     # set random velocities
     Random.seed!(1234)
@@ -229,16 +233,31 @@ function run_time_step_with_catke_tests(arch, closure, timestepper)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
 
-    @test HydrostaticFreeSurfaceModel(grid; closure, buoyancy, tracers=:b) isa HydrostaticFreeSurfaceModel
-    @test HydrostaticFreeSurfaceModel(grid; closure, buoyancy, tracers=(:b, :E)) isa HydrostaticFreeSurfaceModel
+    @test HydrostaticFreeSurfaceModel(grid;
+                                       closure,
+                                       buoyancy,
+                                       tracers = :b) isa HydrostaticFreeSurfaceModel
+    @test HydrostaticFreeSurfaceModel(grid;
+                                       closure,
+                                       buoyancy,
+                                       tracers = (:b, :E)) isa HydrostaticFreeSurfaceModel
 
     # CATKE isn't supported with NonhydrostaticModel (we don't diffuse vertical velocity)
-    @test_throws ErrorException NonhydrostaticModel(grid; closure, buoyancy, tracers=(:b, :c, :e))
+    @test_throws ErrorException NonhydrostaticModel(grid;
+                                                    closure,
+                                                    buoyancy,
+                                                    tracers = (:b, :c, :e))
 
     # Supplying closure tracers explicitly should error
-    @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; closure, buoyancy, tracers = (:b, :c, :e))
+    @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid;
+                                                            closure,
+                                                            buoyancy,
+                                                            tracers = (:b, :c, :e))
 
-    model = HydrostaticFreeSurfaceModel(grid; closure, buoyancy, tracers = (:b, :c))
+    model = HydrostaticFreeSurfaceModel(grid;
+                                         closure,
+                                         buoyancy,
+                                         tracers = (:b, :c))
 
     # Default boundary condition is Flux, Nothing... with CATKE this has to change.
     @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
@@ -258,7 +277,10 @@ end
 function compute_closure_specific_diffusive_cfl(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
 
-    model = NonhydrostaticModel(grid; closure, buoyancy=BuoyancyTracer(), tracers=:b)
+    model = NonhydrostaticModel(grid;
+                                closure,
+                                buoyancy = BuoyancyTracer(),
+                                tracers = :b)
     args = (model.closure, model.closure_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
@@ -269,7 +291,10 @@ function compute_closure_specific_diffusive_cfl(arch, closure)
         @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
     end
 
-    tracerless_model = NonhydrostaticModel(grid; closure, buoyancy=nothing, tracers=nothing)
+    tracerless_model = NonhydrostaticModel(grid;
+                                           closure,
+                                           buoyancy = nothing,
+                                           tracers = nothing)
     args = (model.closure, model.closure_fields, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
@@ -291,7 +316,10 @@ function test_function_scalar_diffusivity()
     closure = ScalarDiffusivity(; ν, κ)
 
     grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid; closure, tracers=:b, buoyancy=BuoyancyTracer())
+    model = NonhydrostaticModel(grid;
+                                closure,
+                                tracers = :b,
+                                buoyancy = BuoyancyTracer())
     max_diffusivity = maximum(2000 * exp.(znodes(model.grid, Center()) / depth_scale))
     Δ = min_Δxyz(model.grid, formulation(model.closure))
 
@@ -315,7 +343,10 @@ function test_discrete_function_scalar_diffusivity()
                                   parameters = (;depth_scale_ν = 100, depth_scale_κ = 100))
 
     grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid; closure, tracers=:b, buoyancy=BuoyancyTracer())
+    model = NonhydrostaticModel(grid;
+                                closure,
+                                tracers = :b,
+                                buoyancy = BuoyancyTracer())
     max_diffusivity = maximum(2000 * exp.(znodes(model.grid, Center()) / 100))
     Δ = min_Δxyz(model.grid, formulation(model.closure))
     τκ = Δ^2 / max_diffusivity
@@ -333,7 +364,9 @@ end
             for arch in archs
                 @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
                 grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
-                model = NonhydrostaticModel(grid; closure, tracers=:c)
+                model = NonhydrostaticModel(grid;
+                                            closure,
+                                            tracers = :c)
                 c = model.tracers.c
                 u = model.velocities.u
 

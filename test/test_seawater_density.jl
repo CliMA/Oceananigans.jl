@@ -31,7 +31,9 @@ function error_non_Boussinesq(arch, FT)
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(FT)
-    model = NonhydrostaticModel(grid; buoyancy, tracers)
+    model = NonhydrostaticModel(grid;
+                                 buoyancy,
+                                 tracers)
     seawater_density(model) # throws error
 
     return nothing
@@ -48,7 +50,9 @@ function eos_works(arch, FT, eos::BoussinesqEquationOfState;
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(FT; equation_of_state = eos, constant_temperature, constant_salinity)
-    model = NonhydrostaticModel(grid; buoyancy, tracers)
+    model = NonhydrostaticModel(grid;
+                                 buoyancy,
+                                 tracers)
 
     return seawater_density(model) isa AbstractOperation
 end
@@ -67,7 +71,9 @@ function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(FT; equation_of_state = eos, constant_temperature, constant_salinity)
-    model = NonhydrostaticModel(grid; buoyancy, tracers)
+    model = NonhydrostaticModel(grid;
+                                 buoyancy,
+                                 tracers)
 
     if !isnothing(constant_temperature)
         set!(model, S = ST_testvals.S)
@@ -95,7 +101,9 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(FT; equation_of_state = eos, constant_temperature, constant_salinity)
-    model = NonhydrostaticModel(grid; buoyancy, tracers)
+    model = NonhydrostaticModel(grid;
+                                 buoyancy,
+                                 tracers)
 
     if !isnothing(constant_temperature)
         set!(model; S = ST_testvals.S)

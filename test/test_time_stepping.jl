@@ -62,7 +62,10 @@ function time_stepping_works_with_closure(arch, FT, Closure; Model=Nonhydrostati
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     closure = Closure === IsopycnalSkewSymmetricDiffusivity ? Closure(FT, κ_skew=1, κ_symmetric=1) : Closure(FT)
-    model = Model(grid; closure, tracers=(:T, :S), buoyancy)
+    model = Model(grid;
+                  closure,
+                  tracers=(:T, :S),
+                  buoyancy)
     time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -79,7 +82,9 @@ end
 function time_stepping_works_with_stokes_drift(arch, stokes_drift)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid; stokes_drift, advection=nothing)
+    model = NonhydrostaticModel(grid;
+                                 stokes_drift,
+                                 advection=nothing)
     time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -96,7 +101,9 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
 
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
-    model = NonhydrostaticModel(grid; buoyancy=b, tracers=(:T, :S))
+    model = NonhydrostaticModel(grid;
+                                 buoyancy=b,
+                                 tracers=(:T, :S))
     time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -360,7 +367,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
                     @test eltype(grid) == FT
 
-                    model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, buoyancy = BuoyancyTracer())
+                    model = HydrostaticFreeSurfaceModel(grid;
+                                                        clock,
+                                                        closure,
+                                                        tracers,
+                                                        buoyancy = BuoyancyTracer())
                     time_step!(model, 1)
                     @test model.clock.time == DateTime("2020-01-01T00:00:01")
                 end

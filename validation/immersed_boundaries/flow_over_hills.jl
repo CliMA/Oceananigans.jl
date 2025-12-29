@@ -59,11 +59,13 @@ function hilly_simulation(; Nx = 64,
         boundary_conditions = NamedTuple()
     end
 
-    model = NonhydrostaticModel(grid; closure, boundary_conditions,
-                                advection = WENO(),
-                                timestepper = :RungeKutta3,
-                                tracers = :b,
-                                buoyancy = BuoyancyTracer())
+    model = NonhydrostaticModel(grid;
+                                 closure,
+                                 boundary_conditions,
+                                 advection = WENO(),
+                                 timestepper = :RungeKutta3,
+                                 tracers = :b,
+                                 buoyancy = BuoyancyTracer())
 
     # Steady flow + perturbations
     δh = 0.1

@@ -54,10 +54,11 @@ grid = RectilinearGrid(size = (256, 64),
                        z = (-512, 0),
                        topology = (Periodic, Flat, Bounded))
 
-model = NonhydrostaticModel(grid; stokes_drift,
-                            tracers = :b,
-                            buoyancy = BuoyancyTracer(),
-                            timestepper = :RungeKutta3)
+model = NonhydrostaticModel(grid;
+                             stokes_drift,
+                             tracers = :b,
+                             buoyancy = BuoyancyTracer(),
+                             timestepper = :RungeKutta3)
 
 # Set Lagrangian-mean flow equal to uˢ,
 uᵢ(x, z) = uˢ(x, z, 0)

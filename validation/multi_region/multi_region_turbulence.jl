@@ -69,10 +69,12 @@ v_1 = reconstruct_global_field(v)
 
 #### Single region model ----------------------------------------------------------
 
-model_2 = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface,
-                                    tracers = (),
-                                    buoyancy = nothing,
-                                    closure = ScalarDiffusivity(ν=1e-4))
+model_2 = HydrostaticFreeSurfaceModel(grid;
+                                       momentum_advection,
+                                       free_surface,
+                                       tracers = (),
+                                       buoyancy = nothing,
+                                       closure = ScalarDiffusivity(ν=1e-4))
 
 set!(model_2, u=u_init, v=v_init)
 

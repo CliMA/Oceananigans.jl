@@ -49,10 +49,12 @@ end
 
 for closure in closures_to_run
 
-    model = HydrostaticFreeSurfaceModel(grid; closure, coriolis,
-                                        tracers = (:b,),
-                                        buoyancy = BuoyancyTracer(),
-                                        boundary_conditions = (; b=b_bcs, u=u_bcs))
+    model = HydrostaticFreeSurfaceModel(grid;
+                                         closure,
+                                         coriolis,
+                                         tracers = (:b,),
+                                         buoyancy = BuoyancyTracer(),
+                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
 
     bᵢ(z) = N² * z
     set!(model, b=bᵢ, e=1e-6)

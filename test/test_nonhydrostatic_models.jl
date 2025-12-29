@@ -102,10 +102,14 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
             for grid in grids
-                model = NonhydrostaticModel(grid; tracers=:c, buoyancy=nothing)
+                model = NonhydrostaticModel(grid;
+                                            tracers = :c,
+                                            buoyancy = nothing)
                 @test model isa NonhydrostaticModel
 
-                model = NonhydrostaticModel(grid; tracers=nothing, buoyancy=nothing)
+                model = NonhydrostaticModel(grid;
+                                            tracers = nothing,
+                                            buoyancy = nothing)
                 @test model isa NonhydrostaticModel
             end
         end
@@ -122,7 +126,9 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
             model = NonhydrostaticModel(grid; buoyancy=nothing)
             @test isnothing(model.pressures.pHY′)
 
-            model = NonhydrostaticModel(grid; buoyancy=BuoyancyTracer(), tracers=:b)
+            model = NonhydrostaticModel(grid;
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = :b)
             @test isnothing(model.pressures.pHY′)
         end
     end
@@ -139,7 +145,9 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                                                 topology = (Periodic, Bounded, Bounded))
             
             for grid in (rectilinear_grid, latlon_grid)
-                model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                model = NonhydrostaticModel(grid;
+                                            buoyancy = SeawaterBuoyancy(),
+                                            tracers = (:T, :S))
 
                 u, v, w = model.velocities
                 T, S = model.tracers

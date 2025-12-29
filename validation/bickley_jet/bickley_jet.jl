@@ -25,8 +25,12 @@ function run_bickley_jet(;
                          experiment_name = string(nameof(typeof(momentum_advection))))
 
     grid = bickley_grid(; arch, Nh, halo = (7, 7, 7))
-    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, tracer_advection,
-                                        free_surface, tracers = :c, buoyancy=nothing)
+    model = HydrostaticFreeSurfaceModel(grid;
+                                         momentum_advection,
+                                         tracer_advection,
+                                         free_surface,
+                                         tracers = :c,
+                                         buoyancy = nothing)
     set_bickley_jet!(model)
 
     Δt = 0.2 * 2π / Nh

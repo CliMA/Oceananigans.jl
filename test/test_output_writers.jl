@@ -236,7 +236,9 @@ end
 
         # Some tests can reuse this same grid and model.
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+        model = NonhydrostaticModel(grid;
+                                    buoyancy = SeawaterBuoyancy(),
+                                    tracers = (:T, :S))
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
@@ -253,7 +255,9 @@ end
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+        model = NonhydrostaticModel(grid;
+                                    buoyancy = SeawaterBuoyancy(),
+                                    tracers = (:T, :S))
 
         @testset "Dependency adding [$(typeof(arch))]" begin
             @info "    Testing dependency adding [$(typeof(arch))]..."

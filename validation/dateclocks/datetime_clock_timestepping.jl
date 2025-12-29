@@ -12,7 +12,10 @@ set!(c_forcing[3], 1)
 set!(c_forcing[4], -1)
 
 clock = Clock(time=start_time)
-model = HydrostaticFreeSurfaceModel(grid; clock, tracers=:c, forcing=(; c=c_forcing))
+model = HydrostaticFreeSurfaceModel(grid;
+                                     clock,
+                                     tracers = :c,
+                                     forcing = (; c=c_forcing))
 simulation = Simulation(model, Δt=60, stop_time=stop_time)
 
 ow = JLD2Writer(model, model.tracers,

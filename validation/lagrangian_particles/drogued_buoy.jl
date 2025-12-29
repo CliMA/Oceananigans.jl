@@ -35,7 +35,13 @@ coriolis = FPlane(latitude = 45)
 closure = ScalarDiffusivity(κ = 1e-4, ν = 1e-4)
 advection = UpwindBiased()
 
-model = NonhydrostaticModel(grid; particles, boundary_conditions = (; u = u_bcs), coriolis, closure, advection, tracers = (; c))
+model = NonhydrostaticModel(grid;
+                            particles,
+                            boundary_conditions = (; u = u_bcs),
+                            coriolis,
+                            closure,
+                            advection,
+                            tracers = (; c))
 
 # Random noise damped at top and bottom
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
