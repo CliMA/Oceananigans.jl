@@ -14,7 +14,7 @@ For the following examples, we will use the following simple simulation and prog
 ```@example schedules
 using Oceananigans
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid;)
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model, Δt=0.1, stop_time=2.5, verbose=false)
 dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim),
                           " and wall time = ", prettytime(sim.run_wall_time))

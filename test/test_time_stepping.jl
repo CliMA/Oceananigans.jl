@@ -12,7 +12,7 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
     grid = RectilinearGrid(arch; size, extent, topology)
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
     time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
 end

@@ -282,7 +282,7 @@ end
 function test_triply_periodic_bc_injection_with_411_ranks()
     arch = Distributed(partition=Partition(4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -298,7 +298,7 @@ end
 function test_triply_periodic_bc_injection_with_141_ranks()
     arch = Distributed(partition=Partition(1, 4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -314,7 +314,7 @@ end
 function test_triply_periodic_bc_injection_with_221_ranks()
     arch = Distributed(partition=Partition(2, 2))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -334,7 +334,7 @@ end
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(4))
     grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fill!(field, arch.local_rank)
@@ -356,7 +356,7 @@ end
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(1, 4))
     grid  = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     for field in (fields(model)..., model.pressures.pNHS)
         fill!(field, arch.local_rank)
@@ -378,7 +378,7 @@ end
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(2, 2))
     grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3), halo)
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fill!(field, arch.local_rank)
@@ -521,7 +521,7 @@ end
             @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
             arch = Distributed(child_arch; partition)
             grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-            model = NonhydrostaticModel(grid;)
+            model = NonhydrostaticModel(grid)
 
             time_step!(model, 1)
             @test model isa NonhydrostaticModel

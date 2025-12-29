@@ -144,7 +144,7 @@ function advective_timescale_cfl_on_flat_2d_grid(arch, FT)
     topo = (Periodic, Flat, Bounded)
     grid = RectilinearGrid(arch, FT, topology=topo, size=(3, 3), x=(0, 3Δx), z=(0, 3Δx))
 
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
     set!(model, v=1)
 
     Δt = FT(1.7)

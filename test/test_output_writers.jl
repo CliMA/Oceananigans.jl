@@ -230,7 +230,7 @@ end
         @info "Testing that writers create file and append to it properly"
         for output_writer in (NetCDFWriter, JLD2Writer)
             grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
-            model = NonhydrostaticModel(grid;)
+            model = NonhydrostaticModel(grid)
             test_creating_and_appending(model, output_writer)
         end
 

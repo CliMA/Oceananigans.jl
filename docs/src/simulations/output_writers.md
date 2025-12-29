@@ -134,7 +134,7 @@ using Oceananigans.Fields: interpolate!
 using NCDatasets
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
-model = NonhydrostaticModel(grid;)
+model = NonhydrostaticModel(grid)
 
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)

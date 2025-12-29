@@ -30,7 +30,7 @@ end
 """ Set up a simple simulation to test picking up from a checkpoint. """
 function initialization_test_simulation(arch, stop_time, Δt=1, δt=2)
     grid = RectilinearGrid(arch, size=(), topology=(Flat, Flat, Flat))
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
     simulation = Simulation(model; Δt, stop_time)
 
     progress_message(sim) = @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim))

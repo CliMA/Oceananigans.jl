@@ -236,7 +236,7 @@ its elements to do that. Consider the example below:
 using Oceananigans, CUDA
 
 grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
-model = NonhydrostaticModel(grid;)
+model = NonhydrostaticModel(grid)
 typeof(model.velocities.u.data)
 ```
 

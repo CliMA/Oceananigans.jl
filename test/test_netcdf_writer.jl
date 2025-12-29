@@ -3035,7 +3035,7 @@ end
 function test_netcdf_writer_different_grid(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 8), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     coarse_grid = RectilinearGrid(arch, size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
     coarse_u = Field{Face, Center, Center}(coarse_grid)
@@ -3148,7 +3148,7 @@ end
 
 function test_netcdf_dimension_type(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     Nt = 3
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)

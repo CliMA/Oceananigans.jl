@@ -196,7 +196,7 @@ end
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
 
     u, v, w = model.velocities
     parent(u) .= 1 + rand()

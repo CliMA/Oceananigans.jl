@@ -30,7 +30,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                 arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
-                model = NonhydrostaticModel(grid;)
+                model = NonhydrostaticModel(grid)
 
                 @test model isa NonhydrostaticModel
             end

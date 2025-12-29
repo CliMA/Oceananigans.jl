@@ -163,7 +163,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
-            model = HydrostaticFreeSurfaceModel(grid;)
+            model = HydrostaticFreeSurfaceModel(grid)
 
             simulation = Simulation(model; Δt=1.0, stop_iteration=5)
 

@@ -49,7 +49,7 @@ For our first example, we build  the default `NonhydrostaticModel` (which is qui
 ```@example
 using Oceananigans
 grid = RectilinearGrid(size=(8, 8, 8), extent=(8, 8, 8))
-nh = NonhydrostaticModel(grid;)
+nh = NonhydrostaticModel(grid)
 ```
 
 The default `NonhydrostaticModel` has no tracers, no buoyancy force, no Coriolis force, and a second-order advection scheme.
@@ -131,7 +131,7 @@ The HydrostaticFreeSurfaceModel has a similar interface as the NonhydrostaticMod
 ```@example
 using Oceananigans
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(grid;) # default free surface, no tracers
+model = HydrostaticFreeSurfaceModel(grid) # default free surface, no tracers
 ```
 
 The full array of keyword arguments used to configure a HydrostaticFreeSurfaceModel are detailed

@@ -30,7 +30,7 @@ A minimal example illustrates how `Simulation` works:
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid;)
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model; Δt=7, stop_iteration=6)
 run!(simulation)
 
@@ -43,7 +43,7 @@ A more complicated setup might invoke multiple callbacks:
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid;)
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model; Δt=7, stop_time=14)
 
 print_progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))

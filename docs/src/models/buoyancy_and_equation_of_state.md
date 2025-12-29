@@ -40,7 +40,7 @@ The option `buoyancy = nothing` is the default for [`NonhydrostaticModel`](@ref)
 `buoyancy` keyword argument from the `NonhydrostaticModel` constructor yields the same:
 
 ```jldoctest buoyancy
-julia> model = NonhydrostaticModel(grid;)
+julia> model = NonhydrostaticModel(grid)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
@@ -54,7 +54,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 The same is true for `HydrostaticFreeSurfaceModel`,
 
 ```jldoctest buoyancy
-julia> model = HydrostaticFreeSurfaceModel(grid;)
+julia> model = HydrostaticFreeSurfaceModel(grid)
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
