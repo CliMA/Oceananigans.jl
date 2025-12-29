@@ -84,14 +84,7 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        args...;
                        kwargs...)
 
-function fill_halo_regions!(c::OffsetArray,
-                            boundary_conditions,
-                            indices,
-                            loc,
-                            grid::DistributedGrid,
-                            buffers::CommunicationBuffers,
-                            args...;
-                            kwargs...)
+function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...)
 
     arch = architecture(grid)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
@@ -103,7 +96,7 @@ function fill_halo_regions!(c::OffsetArray,
         fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
 
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
@@ -169,6 +162,10 @@ end
 
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
+
+# fill_halo_regions! passes buffers to fill_halo_event, which we want to prune out in case of a non-disributed fill halo kernel
+fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, Tuple(args)) 
+fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid::DistributedGrid, buffers, args...; kwargs...) = nothing
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
