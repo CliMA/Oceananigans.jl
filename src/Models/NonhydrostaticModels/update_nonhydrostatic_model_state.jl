@@ -2,7 +2,8 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_condition!
+using Oceananigans.BoundaryConditions: update_boundary_conditions!
+using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -28,11 +29,10 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     update_model_field_time_series!(model, model.clock)
 
     # Update the boundary conditions
-    update_boundary_condition!(fields(model), model)
+    update_boundary_conditions!(fields(model), model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model);
-                       fill_boundary_normal_velocities = false, async = true)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.grid, model.clock, fields(model); fill_open_bcs=false, async=true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
@@ -42,7 +42,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     # Calculate diffusivities and hydrostatic pressure
     @apply_regionally compute_auxiliaries!(model)
 
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
@@ -56,15 +56,23 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     return nothing
 end
 
-function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                          κ_parameters = tuple(:xyz))
+function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = p_kernel_parameters(model.grid),
+                                                          κ_parameters = :xyz)
 
+    grid = model.grid
     closure = model.closure
-    diffusivity = model.diffusivity_fields
+    diffusivity = model.closure_fields
+    tracers = model.tracers
+    buoyancy = model.buoyancy
 
-    for (ppar, κpar) in zip(p_parameters, κ_parameters)
-        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
-        update_hydrostatic_pressure!(model; parameters = ppar)
-    end
+    # Maybe compute buoyancy gradients
+    compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
+
+    # Compute diffusivities
+    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
+
+    # Update hydrostatic pressure
+    update_hydrostatic_pressure!(model; parameters = p_parameters)
+
     return nothing
 end

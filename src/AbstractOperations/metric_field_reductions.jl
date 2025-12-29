@@ -1,8 +1,7 @@
-using Statistics: mean!, sum!
-
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
-using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing, AbstractAccumulating
+using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
+using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
 #####
 ##### Metric inference
@@ -23,8 +22,28 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 ##### Metric reductions
 #####
 
-struct Averaging <: AbstractReducing end
+struct Averaging{V} <: AbstractReducing
+    volume :: V
+end
+
 const Average = Scan{<:Averaging}
+const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
+
+function average!(avg::AveragedField, operand)
+    sum!(avg, operand)
+    averaging = avg.operand.type
+
+    V = if averaging.volume isa Field
+        interior(averaging.volume)
+    else
+        averaging.volume
+    end
+
+    interior(avg) ./= V
+
+    return avg
+end
+
 Base.summary(r::Average) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 
 """
@@ -35,31 +54,40 @@ Return `Reduction` representing a spatial average of `field` over `dims`.
 Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 
 Over dimensions of variable spacing, `field` is multiplied by the
-appropriate grid length, area or volume, and divided by the total
-spatial extent of the interval.
+appropriate "averaging metric" (length, area or volume for 1D, 2D, or 3D averages),
+and divided by the sum of the metric over the averaging region.
 
 See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
 for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dx = reduction_grid_metric(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(field))
 
     if all(d in regular_dimensions(field.grid) for d in dims)
-        # Dimensions being reduced are regular; just use mean!
+        # Dimensions being reduced are regular, so we don't need to involve the grid metrics
         operand = condition_operand(field, condition, mask)
-        return Scan(Averaging(), mean!, operand, dims)
+        N = conditional_length(operand, dims)
+        averaging = Averaging(N)
+        return Scan(averaging, average!, operand, dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
-        metric = GridMetricOperation(location(field), dx, field.grid)
-        L = sum(metric; condition, mask, dims)
+        dx = reduction_grid_metric(dims)
+        metric = grid_metric_operation(location(field), dx, field.grid)
+        volume = sum(metric; condition, mask, dims)
 
         # Construct summand of the Average
-        L⁻¹_field_dx = field * dx / L
+        # V⁻¹_field_dx = field * dx / volume
+        # operand = condition_operand(V⁻¹_field_dx, condition, mask)
+        # return Scan(Averaging(), sum!, operand, dims)
 
-        operand = condition_operand(L⁻¹_field_dx, condition, mask)
+        field_dx = field * dx
+        operand = condition_operand(field_dx, condition, mask)
 
-        return Scan(Averaging(), sum!, operand, dims)
+        metric = grid_metric_operation(location(field), dx, field.grid)
+        volume = sum(metric; condition, mask, dims)
+        averaging = Averaging(volume)
+        return Scan(averaging, average!, operand, dims)
     end
 end
 
@@ -94,7 +122,7 @@ julia> set!(f, (x, y, z) -> x * y * z)
 8×8×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.823975, min=0.000244141, mean=0.125
 
@@ -113,6 +141,7 @@ julia> ∫f[1, 1, 1]
 """
 function Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(field))
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
     return Scan(Integrating(), sum!, operand, dims)
@@ -150,7 +179,7 @@ julia> set!(c, z -> z)
 1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 1×1×14 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:11) with eltype Float64 with indices 1:1×1:1×-2:11
     └── max=0.9375, min=0.0625, mean=0.5
 

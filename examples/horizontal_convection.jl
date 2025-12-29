@@ -150,7 +150,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; s, b, ζ),
                                                 schedule = TimeInterval(0.5),
                                                 filename = saved_output_filename,
                                                 with_halos = true,
-                                                      overwrite_existing = true)
+                                                overwrite_existing = true)
 nothing #hide
 
 # Ready to press the big red button:
@@ -306,12 +306,9 @@ nothing #hide
 
 for n = 1:length(t)
     ke = Field(Integral(1/2 * s_timeseries[n]^2 / (Lx * H)))
-    compute!(ke)
     kinetic_energy[n] = ke[1, 1, 1]
 
     χ = Field(Integral(χ_timeseries[n] / (Lx * H)))
-    compute!(χ)
-
     Nu[n] = χ[1, 1, 1] / χ_diff
 end
 

@@ -1,9 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Operators: hack_cosd
-using Oceananigans.ImmersedBoundaries: get_active_column_map,
-                                       get_active_cells_map,
-                                       immersed_cell
+using Oceananigans.Grids: get_active_column_map, get_active_cells_map
+using Oceananigans.ImmersedBoundaries: immersed_cell
 
 function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())

@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
+using Oceananigans.TimeSteppers: update_state!, compute_pressure_correction!, make_pressure_correction!
 
 import Oceananigans.Fields: set!
 
@@ -36,6 +36,8 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
             ϕ = getproperty(model.velocities, fldname)
         elseif fldname ∈ propertynames(model.tracers)
             ϕ = getproperty(model.tracers, fldname)
+        elseif !isnothing(model.free_surface) && fldname ∈ propertynames(model.free_surface)
+            ϕ = getproperty(model.free_surface, fldname)
         else
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
@@ -51,8 +53,8 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
 
     if enforce_incompressibility
         FT = eltype(model.grid)
-        calculate_pressure_correction!(model, one(FT))
-        pressure_correct_velocities!(model, one(FT))
+        compute_pressure_correction!(model, one(FT))
+        make_pressure_correction!(model, one(FT))
         update_state!(model; compute_tendencies = false)
     end
 

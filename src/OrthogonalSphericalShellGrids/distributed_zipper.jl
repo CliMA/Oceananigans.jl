@@ -1,18 +1,17 @@
-using Oceananigans.BoundaryConditions: fill_open_boundary_regions!,
-                                       permute_boundary_conditions,
-                                       fill_halo_event!,
+using Oceananigans.BoundaryConditions: fill_halo_event!, get_boundary_kernels,
                                        DistributedCommunication
 
 using Oceananigans.DistributedComputations: cooperative_waitall!,
                                             recv_from_buffers!,
                                             fill_corners!,
-                                            loc_id,
-                                            DCBCT
+                                            loc_id
 
 using Oceananigans.Fields: location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
+
+using OffsetArrays: OffsetArray
 
 @inline instantiate(T::DataType) = T()
 @inline instantiate(T) = T
@@ -59,25 +58,19 @@ end
     return nothing
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...;
-                            only_local_halos=false, fill_boundary_normal_velocities=true, kwargs...)
-
-    if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
-    end
-
-    north_bc = bcs.north
-
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...; kwargs...)
+  
     arch = architecture(grid)
-    fill_halos!, bcs = permute_boundary_conditions(bcs)
-    number_of_tasks = length(fill_halos!)
+    kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
+
+    number_of_tasks = length(kernels!)
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+        @inbounds fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
 
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
@@ -86,8 +79,11 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         arch.mpi_tag[] += 1
     end
 
-    switch_north_halos!(c, north_bc, grid, loc)
-
+    if arch.mpi_tag[] == 0 # The communication has been reset, switch the north halos!
+        north_bc = bcs.north
+        switch_north_halos!(c, north_bc, grid, loc)
+    end
+  
     return nothing
 end
 

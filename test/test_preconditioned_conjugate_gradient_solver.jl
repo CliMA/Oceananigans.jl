@@ -48,7 +48,7 @@ function run_poisson_equation_test(grid)
     extrema_tolerance = 1e-12
     std_tolerance = 1e-13
 
-    CUDA.@allowscalar begin
+    @allowscalar begin
         @test minimum(abs, interior(∇²ϕ_solution) .- interior(∇²ϕ)) < extrema_tolerance
         @test maximum(abs, interior(∇²ϕ_solution) .- interior(∇²ϕ)) < extrema_tolerance
         @test          std(interior(∇²ϕ_solution) .- interior(∇²ϕ)) < std_tolerance

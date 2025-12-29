@@ -64,7 +64,7 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
                     run_thermal_bubble_regression_test(arch, grid_type)
                 end
 
-                amd_closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
+                amd_closure = (AnisotropicMinimumDissipation(C=1/12), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
                 smag_closure = (SmagorinskyLilly(C=0.23, Cb=1, Pr=1), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
 
                 for closure in (amd_closure, smag_closure)

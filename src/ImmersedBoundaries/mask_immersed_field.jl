@@ -1,7 +1,6 @@
 using KernelAbstractions: @kernel, @index
-using Statistics
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: location, XReducedField, YReducedField, ZReducedField, Field, ReducedField
+using Oceananigans.Fields: location, Field, ReducedField
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 instantiate(T::Type) = T()

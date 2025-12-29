@@ -1,5 +1,5 @@
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
+using Oceananigans.OutputWriters: WindowedTimeAverage
+using Oceananigans.TimeSteppers: update_state!, unit_time
 
 using Oceananigans: AbstractModel, run_diagnostic!
 
@@ -126,14 +126,14 @@ function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
 
+    initial_time_step = !(sim.initialized)
+    initial_time_step && initialize!(sim)
+
     Δt = if sim.align_time_step
         aligned_time_step(sim, sim.Δt)
     else
         sim.Δt
     end
-
-    initial_time_step = !(sim.initialized)
-    initial_time_step && initialize!(sim)
 
     if initial_time_step && sim.verbose
         @info "Executing initial time step..."
@@ -155,7 +155,6 @@ function time_step!(sim::Simulation)
     end
 
     for callback in values(sim.callbacks)
-        initialize!(callback, sim)
         callback.callsite isa TimeStepCallsite && callback.schedule(sim.model) && callback(sim)
     end
 
@@ -220,6 +219,10 @@ function initialize!(sim::Simulation)
 
     for activity in scheduled_activities
         initialize!(activity.schedule, sim.model)
+    end
+
+    for callback in values(sim.callbacks)
+        initialize!(callback, sim)
     end
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration

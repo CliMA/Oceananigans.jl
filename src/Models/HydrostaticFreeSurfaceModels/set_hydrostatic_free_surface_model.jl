@@ -1,9 +1,8 @@
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
+using Oceananigans.Utils: @apply_regionally
 
 import Oceananigans.Fields: set!
-
-using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 """
     set!(model::HydrostaticFreeSurfaceModel; kwargs...)
@@ -41,7 +40,7 @@ model.velocities.u
 16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
@@ -108,6 +107,8 @@ function set_from_extrinsic_velocities!(velocities, grid, u, v)
     u isa ZeroField || set!(uᶜᶜᶜ, u)
     v isa ZeroField || set!(vᶜᶜᶜ, v)
     launch!(arch, grid, :xyz, _rotate_velocities!, uᶜᶜᶜ, vᶜᶜᶜ, grid)
+    fill_halo_regions!(uᶜᶜᶜ)
+    fill_halo_regions!(vᶜᶜᶜ)
     launch!(arch, grid, :xyz, _interpolate_velocities!,
             velocities.u, velocities.v, grid, uᶜᶜᶜ, vᶜᶜᶜ)
     return nothing

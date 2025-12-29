@@ -92,7 +92,7 @@ function advective_timescale_cfl_on_stretched_grid(arch, FT)
     Δy = model.grid.Δyᵃᶜᵃ
 
     # At k = 1, w = 0 so the CFL constraint happens at the second face (k = 2).
-    Δz_min = CUDA.@allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
+    Δz_min = @allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -116,10 +116,10 @@ function advective_timescale_cfl_on_lat_lon_grid(arch, FT)
     Nx, Ny, Nz = size(grid)
 
     # Will be the smallest at higher latitudes.
-    Δx_min = CUDA.@allowscalar Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
+    Δx_min = @allowscalar Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
 
     # Will be the same at every grid point.
-    Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
+    Δy_min = @allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
 
     Δz = model.grid.z.Δᵃᵃᶠ
 

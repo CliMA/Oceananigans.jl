@@ -3,15 +3,13 @@
 #####
 
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
+using Oceananigans.Fields: FunctionField, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
+using  Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
-
-using Adapt
 
 struct PrescribedVelocityFields{U, V, W, P}
     u :: U
@@ -63,11 +61,8 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     v = wrap_prescribed_field(Center, Face, Center, velocities.v, grid; clock, parameters)
     w = wrap_prescribed_field(Center, Center, Face, velocities.w, grid; clock, parameters)
 
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
+    fill_halo_regions!((u, v))
     fill_halo_regions!(w)
-    prescribed_velocities = (; u, v, w)
-    @apply_regionally replace_horizontal_vector_halos!(prescribed_velocities, grid)
 
     return PrescribedVelocityFields(u, v, w, parameters)
 end
@@ -78,8 +73,8 @@ hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, trac
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
-@inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
-@inline fill_halo_regions!(::FunctionField, args...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
@@ -111,7 +106,7 @@ materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFie
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
-apply_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
+compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
@@ -131,7 +126,6 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end

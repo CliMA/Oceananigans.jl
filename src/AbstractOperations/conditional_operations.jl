@@ -1,9 +1,7 @@
-using Oceananigans.Fields: OneField, ReducedAbstractField, filltype, reduced_location, initialize_reduced_field!
-using Oceananigans.Grids: architecture
+using Oceananigans.Fields: OneField
 using Base: @propagate_inbounds
 
-import Base: minimum, maximum, sum, all, any, prod
-import Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
@@ -159,6 +157,7 @@ end
 @inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 
 @inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
 @inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
@@ -170,6 +169,7 @@ end
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
+
 
 @inline materialize_condition!(c::ConditionalOperation) = set!(c.operand, c)
 
@@ -197,7 +197,14 @@ end
 end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
+@inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
+@inline conditional_length(c::ConditionalOperation, ::NTuple{3}) = conditional_length(c)
 @inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+
+# Disambiguations
+@inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::NTuple{1}) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::NTuple{2}) = sum(conditional_one(c, 0); dims)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)
@@ -209,7 +216,7 @@ Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
-on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     ConditionalOperation{LX, LY, LZ}(on_architecture(to, c.operand),
                                      on_architecture(to, c.func),
                                      on_architecture(to, c.grid),

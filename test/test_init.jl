@@ -1,5 +1,4 @@
-using Reactant
-using Enzyme
+using CUDA
 using Metal
 using AMDGPU
 using oneAPI

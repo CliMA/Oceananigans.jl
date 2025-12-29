@@ -3,7 +3,6 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
 
-using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 
 function test_three_dimensional_differences(T=Float64)
     grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
@@ -246,14 +245,14 @@ end
 
         arch = CPU()
         grid = RectilinearGrid(CPU(), size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-        bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+        bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
 
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
         Tx, Ty, Tz = Nx+2Hx, Ny+2Hy, Nz+2Hz
 
         A3 = OffsetArray(zeros(Tx, Ty, Tz), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
         @. @views A3[1:Nx, 1:Ny, 1:Nz] = rand()
-        fill_halo_regions!(A3, bcs, (:, :, :), (Center, Center, Center), grid)
+        fill_halo_regions!(A3, bcs, (:, :, :), (Center(), Center(), Center()), grid)
 
         # A yz-slice with Nx==1.
         A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)

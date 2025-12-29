@@ -1,3 +1,7 @@
+using Oceananigans.Fields: Field
+using Oceananigans.Utils: time_difference_seconds
+using Oceananigans.Units: minute
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -58,9 +62,9 @@ Turbulent Kinetic Energy (TKE).
 !!! note "CATKE vertical diffusivity"
     `CATKEVerticalDiffusivity` is a new turbulence closure diffusivity. The default
     values for its free parameters are obtained from calibration against large eddy
-    simulations. For more details please refer to [Wagner25catke](@cite).
+    simulations. For more details please refer to [Wagner et al. (2025)](@cite Wagner25catke).
 
-    Use with caution and report any issues with the physics at https://github.com/CliMA/Oceananigans.jl/issues.
+    Use with caution and report any issues with the physics at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).
 
 Arguments
 =========
@@ -77,19 +81,33 @@ Keyword arguments
 
 - `turbulent_kinetic_energy_equation`: The TKE equation; default: `CATKEEquation()`.
 
-- `maximum_tracer_diffusivity`: Maximum value for tracer diffusivity. CATKE-predicted tracer diffusivities that are larger
-                                than `maximum_tracer_diffusivity` are clipped. Default: `Inf`.
+- `maximum_tracer_diffusivity`: Maximum value for tracer diffusivity. CATKE-predicted tracer
+                                diffusivities that are larger than `maximum_tracer_diffusivity`
+                                are clipped. Default: `Inf`.
 
-- `maximum_tke_diffusivity`: Maximum value for TKE diffusivity. CATKE-predicted diffusivities for TKE that are larger
-                             than `maximum_tke_diffusivity` are clipped. Default: `Inf`.
+- `maximum_tke_diffusivity`: Maximum value for TKE diffusivity. CATKE-predicted diffusivities
+                             for TKE that are larger than `maximum_tke_diffusivity` are clipped.
+                             Default: `Inf`.
 
-- `maximum_viscosity`: Maximum value for momentum diffusivity. CATKE-predicted momentum diffusivities that are larger
-                       than `maximum_viscosity` are clipped. Default: `Inf`.
+- `maximum_viscosity`: Maximum value for momentum diffusivity. CATKE-predicted momentum diffusivities
+                       that are larger than `maximum_viscosity` are clipped. Default: `Inf`.
 
-- `minimum_tke`: Minimum value for the turbulent kinetic energy.
-                 Can be used to model the presence "background" TKE
-                 levels due to, for example, mixing by breaking internal waves.
-                 Default: 1e-9.
+- `minimum_tke`: Minimum value for the turbulent kinetic energy. `minimum_tke` produces
+                 a background tracer diffusivity
+                 
+    ```math
+    κ_{bg} ≈ Cʰⁱc \frac{eᵐⁱⁿ}{N}
+    ```
+
+    and background viscosity
+
+    ```math
+    ν_{bg} ≈ Cʰⁱu \frac{eᵐⁱⁿ}{N}
+    ```
+
+    where ``N`` is the buoyancy frequency and by default, ``Cʰⁱc = 0.098`` and ``Cʰⁱu = 0.242``
+    are parameters of `CATKEMixingLength`. This feature may be used to model background mixing by internal waves
+    [Wagner et al. (2025)](@cite Wagner25catke). Default: 1e-9.
 
 - `minimum_convective_buoyancy_flux` Minimum value for the convective buoyancy flux. Default: 1e-11.
 
@@ -99,9 +117,10 @@ Keyword arguments
 
 References
 ==========
+
 Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill,
-    C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). "Formulation and calibration of CATKE,
-    a one-equation parameterization for microscale ocean mixing." J. Adv. Model. Earth Sy., 17, e2024MS004522.
+    C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). Formulation and calibration of CATKE,
+    a one-equation parameterization for microscale ocean mixing. J. Adv. Model. Earth Sy., 17, e2024MS004522.
 """
 function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                   FT = Oceananigans.defaults.FloatType;
@@ -129,13 +148,16 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                         tke_time_step)
 end
 
-function with_tracers(tracer_names, closure::FlavorOfCATKE)
+function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
     :e ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
                             "for `CATKEVerticalDiffusivity`."))
 
     return closure
 end
+
+# Required tracer names for CATKE
+closure_required_tracers(::FlavorOfCATKE) = tuple(:e)
 
 # For tuples of closures, we need to know _which_ closure is CATKE.
 # Here we take a "simple" approach that sorts the tuple so CATKE is first.
@@ -166,32 +188,32 @@ struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
     _tupled_implicit_linear_coefficients :: LC
 end
 
-Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
-    CATKEDiffusivityFields(adapt(to, catke_diffusivity_fields.κu),
-                           adapt(to, catke_diffusivity_fields.κc),
-                           adapt(to, catke_diffusivity_fields.κe),
-                           adapt(to, catke_diffusivity_fields.Le),
-                           adapt(to, catke_diffusivity_fields.Jᵇ),
-                           catke_diffusivity_fields.previous_compute_time[],
-                           adapt(to, catke_diffusivity_fields.previous_velocities),
-                           adapt(to, catke_diffusivity_fields._tupled_tracer_diffusivities),
-                           adapt(to, catke_diffusivity_fields._tupled_implicit_linear_coefficients))
+Adapt.adapt_structure(to, catke_closure_fields::CATKEDiffusivityFields) =
+    CATKEDiffusivityFields(adapt(to, catke_closure_fields.κu),
+                           adapt(to, catke_closure_fields.κc),
+                           adapt(to, catke_closure_fields.κe),
+                           adapt(to, catke_closure_fields.Le),
+                           adapt(to, catke_closure_fields.Jᵇ),
+                           catke_closure_fields.previous_compute_time[],
+                           adapt(to, catke_closure_fields.previous_velocities),
+                           adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
+                           adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, args...; kw...)
-    grid = catke_diffusivity_fields.κu.grid
+function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEDiffusivityFields, args...; kw...)
+    grid = catke_closure_fields.κu.grid
 
-    κ = (catke_diffusivity_fields.κu,
-         catke_diffusivity_fields.κc,
-         catke_diffusivity_fields.κe)
+    κ = (catke_closure_fields.κu,
+         catke_closure_fields.κc,
+         catke_closure_fields.κe)
 
     return fill_halo_regions!(κ, grid, args...; kw...)
 end
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
-    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
-                               κe = FieldBoundaryConditions(grid, (Center, Center, Face)))
+    default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
+                               κe = FieldBoundaryConditions(grid, (Center(), Center(), Face())))
 
     bcs = merge(default_diffusivity_bcs, bcs)
 
@@ -221,7 +243,7 @@ end
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
 function update_previous_compute_time!(diffusivities, model)
-    Δt = model.clock.time - diffusivities.previous_compute_time[]
+    Δt = time_difference_seconds(model.clock.time, diffusivities.previous_compute_time[])
     diffusivities.previous_compute_time[] = model.clock.time
     return Δt
 end
@@ -230,17 +252,17 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     clock = model.clock
-    top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
+    top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
     Δt = update_previous_compute_time!(diffusivities, model)
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
-        time_step_catke_equation!(model)
+        time_step_catke_equation!(model, model.timestepper)
     end
 
     # Update "previous velocities"
@@ -331,7 +353,7 @@ end
     κe_max = closure.maximum_tke_diffusivity
     κe★ = min(κe, κe_max)
     FT = eltype(grid)
-    return FT(κe)
+    return FT(κe★)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu

@@ -14,7 +14,10 @@ using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
-using CUDA: CuArray
+using Oceananigans.Grids: XYZRegularRG
+using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
+
+import Oceananigans.Solvers: fft_poisson_solver
 
 include("distributed_macros.jl")
 include("distributed_architectures.jl")
@@ -32,5 +35,28 @@ include("distributed_transpose.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
+
+fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
+
+fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::XYZRegularRG) =
+    DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+
+fft_poisson_solver(local_grid::DistributedRectilinearGrid, global_grid::GridWithFourierTridiagonalSolver) =
+    DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
+
+import Oceananigans.Solvers: compute_preconditioner_rhs!, precondition!
+
+# But we need to define the precondition! methods here
+function precondition!(p, preconditioner::DistributedFFTBasedPoissonSolver, r, args...)
+    compute_preconditioner_rhs!(preconditioner, r)
+    solve!(p, preconditioner)
+    return p
+end
+
+function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSolver, r, args...)
+    compute_preconditioner_rhs!(preconditioner, r)
+    solve!(p, preconditioner)
+    return p
+end
 
 end # module

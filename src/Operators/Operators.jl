@@ -43,6 +43,7 @@ export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
 export active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
+export active_weighted_ℑxyᶜᶜᶜ, active_weighted_ℑxzᶜᶜᶜ, active_weighted_ℑyzᶜᶜᶜ
 
 # Topology-aware operators
 export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
@@ -114,5 +115,20 @@ include("vector_rotation_operators.jl")
 @inline xarea(args...)    = Ax(args...)
 @inline yarea(args...)    = Ay(args...)
 @inline zarea(args...)    = Az(args...)
+
+# To be used as GridMetrics
+struct XNode end
+struct YNode end
+struct ZNode end
+struct ΛNode end
+struct ΦNode end
+struct RNode end
+
+const x = XNode()
+const y = YNode()
+const z = ZNode()
+const λ = ΛNode()
+const φ = ΦNode()
+const r = RNode()
 
 end # module

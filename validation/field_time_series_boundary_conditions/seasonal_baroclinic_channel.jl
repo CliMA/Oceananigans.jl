@@ -76,7 +76,7 @@ u_bcs = FieldBoundaryConditions(top = u_top_bc)
 #####
 
 momentum_advection = VectorInvariant(vorticity_scheme = WENO(),
-                                      vertical_scheme = WENO())
+                                      vertical_advection_scheme = WENO())
 
 tracer_advection = WENO()
 

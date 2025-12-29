@@ -107,7 +107,7 @@ function volume_average_of_times(model)
     T, S = model.tracers
 
     @compute ST = Field(Average(S * T, dims=(1, 2, 3)))
-    result = CUDA.@allowscalar ST[1, 1, 1]
+    result = @allowscalar ST[1, 1, 1]
 
     return result ≈ 0.5
 end
@@ -230,7 +230,7 @@ function computations_with_buoyancy_field(arch, buoyancy)
     model = NonhydrostaticModel(grid=grid,
                                 tracers=tracers, buoyancy=buoyancy)
 
-    b = BuoyancyField(model)
+    b = buoyancy_field(model)
     u, v, w = model.velocities
 
     compute!(b)
@@ -513,8 +513,8 @@ for arch in archs
                           (SeawaterBuoyancy(equation_of_state=eos()) for eos in EquationsOfState)...)
 
             for buoyancy in buoyancies
-                @testset "Computations with BuoyancyFields [$A, $G, $(typeof(buoyancy).name.wrapper)]" begin
-                    @info "      Testing computations with BuoyancyField " *
+                @testset "Computations with buoyancy_fields [$A, $G, $(typeof(buoyancy).name.wrapper)]" begin
+                    @info "      Testing computations with buoyancy_field " *
                           "[$A, $G, $(typeof(buoyancy).name.wrapper)]..."
 
                     @test computations_with_buoyancy_field(arch, buoyancy)
@@ -592,8 +592,8 @@ for arch in archs
                 @test compute_tuples_and_namedtuples(model)
             end
 
-            @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin
-                @info "      Testing conditional computation of Field and BuoyancyField " *
+            @testset "Conditional computation of Field and buoyancy_field [$A, $G]" begin
+                @info "      Testing conditional computation of Field and buoyancy_field " *
                       "[$A, $G]..."
 
                 set!(model, u=2, v=0, w=0, T=3, S=0)
@@ -603,7 +603,7 @@ for arch in archs
 
                 α = model.buoyancy.formulation.equation_of_state.thermal_expansion
                 g = model.buoyancy.formulation.gravitational_acceleration
-                b = BuoyancyField(model)
+                b = buoyancy_field(model)
 
                 compute_at!(uT, 1.0)
                 compute_at!(b, 1.0)

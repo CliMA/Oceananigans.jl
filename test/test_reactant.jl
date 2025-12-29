@@ -3,6 +3,7 @@ include("reactant_test_utils.jl")
 using Oceananigans
 using Reactant
 using KernelAbstractions: @kernel, @index
+using CUDA
 
 @kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
     i, j, k = @index(Global, NTuple)
@@ -68,7 +69,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     times = 0:1.0:4
     t = 2.1
     times = Reactant.to_rarray(times, track_numbers=Number)
-    @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
+    @test times isa Reactant.TracedStepRangeLen
 
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
     @test ñ ≈ 0.1
@@ -251,3 +252,16 @@ end
                                     immersed_boundary_grid=true)
 end
 
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices
+
+@testset "Reactant FieldTimeSeries Tests" begin
+    @info "Testing the use of a `FieldTimeSeries` on a `ReactantState` arch..."
+
+    arch = ReactantState()
+    Nx, Ny, Nz = (10, 10, 10) # number of cells
+    grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    fts  = FieldTimeSeries{Center, Center, Center}(grid, sort(rand(10)))
+
+    # Test I can index into a Reactant FieldTimeSeries
+    @test fts[5] isa Field
+end

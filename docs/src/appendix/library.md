@@ -71,6 +71,10 @@ Private = false
 Modules = [Oceananigans.Fields]
 Private = false
 ```
+```@docs
+XESMF.Regridder
+OceananigansXESMFExt.regrid!
+```
 
 ## Forcings
 
@@ -150,6 +154,13 @@ Modules = [Oceananigans.Models.LagrangianParticleTracking]
 Private = false
 ```
 
+### VarianceDissipationComputations
+
+```@autodocs
+Modules = [Oceananigans.Models.VarianceDissipationComputations]
+Private = false
+```
+
 ## MultiRegion
 
 ```@autodocs
@@ -176,6 +187,9 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.OutputWriters]
 Private = false
+```
+```@docs
+NetCDFWriter
 ```
 
 ## Simulations

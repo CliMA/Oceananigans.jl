@@ -1,60 +1,86 @@
 env:
-  JULIA_VERSION: "1.10.9"
-  JULIA_MINOR_VERSION: "1.10"
-  TARTARUS_HOME: "/storage5/buildkite-agent"
-  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  JULIA_VERSION: "1.12.2"
+  JULIA_VERSION_ENZYME: "1.10.10"
+  BUILDKITE_HOME: "/var/lib/buildkite-agent"
+  JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia-oceananigans"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
-  JULIA_NUM_PRECOMPILE_TASKS: 24
-  JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
-  CUDA_VISIBLE_DEVICES: "3" # Tartarus device for GPU testing
-  TMPDIR: "$TARTARUS_HOME/tmp"
+  OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
 
 agents:
   queue: "Oceananigans"
-with: 
+with:
   coverage: false
-  
+
 steps:
-  - label: "🏕️ initialize tartarus environment"
+  - label: "🏕️ initialize general environment"
     key: "init"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
-      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
-    command: |
-      # Download julia binaries
-      wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
-      tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
-      queue: "Oceananigans"
+      queue: "Oceananigans-nautilus"
+    env:
+      TEST_GROUP: "init"
+    command: |
+      juliaup add $JULIA_VERSION
+
+      mkdir -p "$OCEANANIGANS_DIR"
+      rsync -a . "$OCEANANIGANS_DIR/"
+      cd "$OCEANANIGANS_DIR"
+
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      # After we have instantiated the general environment, move manifest to the
+      # version-specific filename, not to clash with the manifest for Enzyme.
+      mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION}" | cut -d. -f1-2).toml
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-          
-  - wait
+
+  - label: "🏕️ initialize enzyme environment"
+    key: "init_enzyme"
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    env:
+      TEST_GROUP: "init"
+    command: |
+      juliaup add $JULIA_VERSION_ENZYME
+      cd "$OCEANANIGANS_DIR"
+
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      # After we have instantiated the Enzyme environment, move manifest to the
+      # version-specific filename, not to clash with the general manifest.
+      # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "🦉 documentation"
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    env:
+      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
+    command: |
+      cd "$OCEANANIGANS_DIR"
+      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
+        'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
+    depends_on: "init"
     agents:
-      queue: "Oceananigans"
+      queue: "Oceananigans-nautilus"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
         export CUDA_VISIBLE_DEVICES="-1"
         export TEST_ARCHITECTURE="CPU"
       else
-        export CUDA_VISIBLE_DEVICES="3"
+        export CUDA_VISIBLE_DEVICES="0"
         export TEST_ARCHITECTURE="GPU"
       fi
-
-      # Force IRFT runtime for Reactant (this can be moved to Project.toml on 1.11)
-      touch LocalPreferences.toml
-      echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
-      cat LocalPreferences.toml
 
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
@@ -62,8 +88,8 @@ steps:
       echo $TEST_GROUP
 
       # Run tests
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
-        'using Pkg; Pkg.test()'
+      cd "$OCEANANIGANS_DIR"
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
 
     matrix:
       setup:
@@ -71,11 +97,10 @@ steps:
           - "CPU"
           - "GPU"
         group:
+          - "🦖 poisson_solvers_2"
           - "🐇 unit"
           - "👻 abstract_operations"
           - "🕊 poisson_solvers_1"
-          - "🦖 poisson_solvers_2"
-          - "🌷 matrix_poisson_solvers"
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
           - "🦀 time_stepping_1"
@@ -91,28 +116,55 @@ steps:
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
           - "🦧 scripts"
-          - "👺 enzyme"
-          - "👹 reactant_1"
-          - "🎭 reactant_2"
+          - "🍱 xesmf"
+
     retry:
       automatic:
         - exit_status: 1
           limit: 1
 
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "tests_enzyme_reactant"
+    depends_on: "init_enzyme"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: |
+      # Add matrix-specific environment variables
+      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+        export CUDA_VISIBLE_DEVICES="-1"
+        export TEST_ARCHITECTURE="CPU"
+      else
+        export CUDA_VISIBLE_DEVICES="0"
+        export TEST_ARCHITECTURE="GPU"
+      fi
+
+      # Strip emoji for environment variable
+      group="{{ matrix.group }}"
+      export TEST_GROUP="\${group#* }"
+      echo $TEST_GROUP
+
+      # Run tests
+      cd "$OCEANANIGANS_DIR"
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          - "🎭 reactant_2"
+          - "👺 enzyme"
+          - "👹 reactant_1"
+
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
   #####
-  ##### Documentation
+  ##### Blocking wait on tests and documentation
   #####
 
-  - label: "🦉 documentation"
-    env:
-      JULIA_DEBUG: "Documenter"
-      CUDA_VISIBLE_DEVICES: "1" # GPU for docs
-    command: |
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e \
-        'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl
-    agents:
-      queue: "Oceananigans"
   - wait: ~
     continue_on_failure: true
 
@@ -121,6 +173,8 @@ steps:
   #####
 
   - label: "🧹 clean up environment"
-    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
-      queue: "Oceananigans"
+      queue: "Oceananigans-nautilus"
+    commands:
+      - "test -d $OCEANANIGANS_DIR && du -hs $OCEANANIGANS_DIR || true"
+      - "test -d $OCEANANIGANS_DIR && rm -rf $OCEANANIGANS_DIR || true"
