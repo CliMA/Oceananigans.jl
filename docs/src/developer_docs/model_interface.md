@@ -10,6 +10,22 @@ The interface lives primarily inside `src/Simulations/` and is intentionally
 minimal so that new models (or pedagogical toy models) can be written without
 depending on the full ocean model infrastructure.
 
+## The `AbstractModel` type
+
+`AbstractModel{TS, A}` is parameterized by two type parameters:
+
+- `TS`: The time-stepper type. This enables dispatch on models with specific
+  time-stepping schemes. For example, `AbstractModel{<:QuasiAdamsBashforth2TimeStepper}`
+  matches any model using the quasi-Adams-Bashforth second-order scheme.
+  Models without a conventional time-stepper (e.g., the `LorenzModel` example below)
+  can use `Nothing` for this parameter.
+
+- `A`: The architecture type (e.g., `CPU`, `GPU`). This allows dispatch based
+  on the computational backend.
+
+Models that don't fit the conventional time-stepper pattern can use
+`AbstractModel{Nothing, Nothing}` as their supertype.
+
 ## Lifecycle overview
 
 When `run!(sim::Simulation)` is called the following high-level sequence occurs:
@@ -66,7 +82,14 @@ implement (or inherit sane fallbacks for) the items listed below.
 ### Optional integrations
 
 While not required for Simulation itself, the following methods enable the rest
-of the Oceananigans ecosystem to “see” the model:
+of the Oceananigans ecosystem to "see" the model:
+
+- `timestepper(model)`: return the model's time-stepper object (or `nothing` if
+  the model does not use a time-stepper). Simulation uses this to reset the
+  time-stepper state when `reset!(sim)` is called. The default fallback returns
+  `nothing`, so models without a time-stepper need not implement this method.
+  Models with a time-stepper should implement this as
+  `timestepper(model::MyModel) = model.timestepper`.
 
 - `fields(model)` and `prognostic_fields(model)`: return `NamedTuple`s of
   fields so diagnostics, output writers, and NaN checkers know what to touch.

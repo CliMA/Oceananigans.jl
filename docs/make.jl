@@ -123,7 +123,7 @@ model_pages = [
 
 simulation_pages = [
     "Overview" => "simulations/simulations_overview.md",
-    # "Callbacks" => "simulations/callbacks.md",
+    "Callbacks" => "simulations/callbacks.md",
     "Schedules" => "simulations/schedules.md",
     "Output writers" => "simulations/output_writers.md",
     "Checkpointing" => "simulations/checkpointing.md",
