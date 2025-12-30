@@ -38,13 +38,16 @@ intersect_index_range(range::UnitRange, ::Colon) = range
 intersect_index_range(::Colon, range::UnitRange) = range
 intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, range2)
 
-function output_indices(output::Union{AbstractField, Reduction}, indices, with_halos)
-    indices = validate_indices(indices, location(output), output.grid)
+output_indices(output::AbstractField, indices, with_halos) = output_indices(output, output.grid, indices, with_halos)
+output_indices(output::Reduction, indices, with_halos) = output_indices(output, output.operand.grid, indices, with_halos)
+
+function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
+    indices = validate_indices(indices, location(output), grid)
 
     if !with_halos # Maybe chop those indices
         loc = map(instantiate, location(output))
-        topo = map(instantiate, topology(output.grid))
-        @apply_regionally indices = map(restrict_to_interior, indices, loc, topo, size(output.grid))
+        topo = map(instantiate, topology(grid))
+        @apply_regionally indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
     @apply_regionally intersected = intersect_indices(output, indices)
