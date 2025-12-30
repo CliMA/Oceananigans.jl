@@ -1,4 +1,4 @@
-# Surface gravity waves and the Craik-Leibovich approximation
+# [Surface gravity waves and the Craik-Leibovich approximation](@id surface_gravity_waves)
 
 Users can model the effects of surface waves by specifying spatial and temporal gradients of the
 Stokes drift velocity field. When using [`StokesDrift`](@ref), the Stokes drift may correspond to a
