@@ -15,8 +15,8 @@
 # ocean modeling.
 #
 # This example also demonstrates:
-# - Using [`BulkDrag`](@ref) for quadratic bottom drag boundary conditions
-# - Applying drag to both domain boundaries and immersed boundaries (for the tripolar grid)
+# - Using [`BulkBottomDrag`](@ref) for quadratic bottom drag boundary conditions
+# - Applying drag only to the bottom facet of immersed boundaries
 #
 # ## Install dependencies
 #
@@ -103,32 +103,19 @@ rotated_lat_lon_grid = RotatedLatitudeLongitudeGrid(arch; size, halo, latitude, 
 # ## Model setup
 #
 # We create a function that builds a `HydrostaticFreeSurfaceModel` for any of our grids.
-# The model uses:
+# Each model is configured with:
+#
 # - WENO advection for both momentum and tracers
 # - Spherical Coriolis force appropriate for hydrostatic dynamics
 # - Realistic seawater buoyancy using the TEOS-10 equation of state
 # - Split-explicit free surface for fast external gravity wave dynamics
+# - Quadratic bottom drag using [`BulkDrag`](@ref), which computes
+#   a stress proportional to `Cᴰ |u| u` where `Cᴰ` is the drag coefficient.
+# - An initial condition that involves
+#   * A temperature front centered around ±45° latitude
+#   * Vertical salinity stratification
+#   * Random noise in both to seed instability
 
-# The model is initialized with a temperature front in the meridional direction:
-# - Warm water in the tropics, cold water at high latitudes
-# - The front is centered around ±45° latitude
-# - Random noise seeds the baroclinic instability
-
-## Initial conditions
-Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
-Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
-
-# ## Bottom drag boundary conditions
-#
-# We apply quadratic bottom drag using [`BulkDrag`](@ref), which computes
-# a stress proportional to `Cᴰ |u| u` where `Cᴰ` is the drag coefficient.
-# For grids with immersed boundaries (like the tripolar grid with Gaussian mountains),
-# we apply drag to both the domain bottom and the immersed boundary surfaces.
-
-Cᴰ = 0.003  # quadratic drag coefficient
-drag = BulkDrag(coefficient=Cᴰ)
-
-## Helper to build and initialize a model on any grid.
 function build_model(grid)
     momentum_advection = WENOVectorInvariant(order=5)
     tracer_advection = WENO(order=5)
@@ -136,43 +123,54 @@ function build_model(grid)
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     free_surface = SplitExplicitFreeSurface(grid; substeps=80)
+
     ## Apply bottom drag to both domain boundaries and immersed boundaries.
-    u_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
-    v_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
+    ## For immersed boundaries, use ImmersedBoundaryCondition to apply drag
+    ## only to the bottom facet.
+    drag = BulkBottomDrag(coefficient=2e-3)
+    u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+    v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
     boundary_conditions = (; u=u_bcs, v=v_bcs)
+
     model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy,
                                         tracers = (:T, :S),
                                         momentum_advection, tracer_advection,
                                         boundary_conditions)
+
+    ## Initial conditions
+    Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+    Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
     set!(model, T=Tᵢ, S=Sᵢ)
+
     return model
 end
 
 # ## Simulation runner
 #
-# We define a function that sets up and runs a simulation on a given grid.
-# We run for 30 days to observe the initial development of the instability
+# We define a function that sets up and runs a simulation on a given grid,
+# along with a progress callback that prints the velocity and temperature range
+# as the simulation runs. We run for 60 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
+## Progress callback
+function progress(sim)
+    T = sim.model.tracers.T
+    u, v, w = sim.model.velocities
+
+    msg = @sprintf("%s grid, iter % 4d: % 10s, max|u|: (%.2e, %.2e, %.2e)",
+                   name, iteration(sim), prettytime(sim),
+                   maximum(abs, u), maximum(abs, v), maximum(abs, w))
+
+    msg *= @sprintf(", T ∈ (%.2f, %.2f)", minimum(T), maximum(T))
+
+    @info msg
+    return nothing
+end
+
+## Simulation runner
 function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=24hours)
     model = build_model(grid)
     simulation = Simulation(model; Δt=8minutes, stop_time)
-
-    ## Add progress callback
-    function progress(sim)
-        T = sim.model.tracers.T
-        u, v, w = sim.model.velocities
-
-        msg = @sprintf("%s grid, iter % 5d: % 10s, max|u|: (%.2e, %.2e, %.2e)",
-                       name, iteration(sim), prettytime(sim),
-                       maximum(abs, u), maximum(abs, v), maximum(abs, w))
-
-        msg *= @sprintf(", T ∈ (%.2f, %.2f)", minimum(T), maximum(T))
-
-        @info msg
-        return nothing
-    end
-
     add_callback!(simulation, progress, IterationInterval(1000))
 
     ## Set up output: save vorticity and temperature at the surface
@@ -186,11 +184,7 @@ function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=2
     simulation.output_writers[:surface] = JLD2Writer(model, fields; indices, filename,
                                                      schedule = TimeInterval(save_interval),
                                                      overwrite_existing = true)
-    @info "Running $name simulation..."
     run!(simulation)
-
-    @info "$name simulation completed in $(prettytime(simulation.run_wall_time))."
-
     return filename
 end
 

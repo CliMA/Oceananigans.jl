@@ -1,9 +1,9 @@
 """
     BulkDragBoundaryConditions
 
-Module for implementing quadratic drag boundary conditions for velocity fields.
+Module for implementing quadratic bottom drag boundary conditions for velocity fields.
 
-Provides `BulkDragFunction` for computing surface momentum fluxes using bulk aerodynamic
+Provides `BulkDragFunction` for computing bottom momentum fluxes using bulk aerodynamic
 formulas. The drag function computes a quadratic drag:
 
 ```math
@@ -20,7 +20,7 @@ module BulkDragBoundaryConditions
 export BulkDragFunction,
        XDirectionBulkDragFunction,
        YDirectionBulkDragFunction,
-       BulkDrag,
+       BulkBottomDrag,
        BulkDragBoundaryCondition
 
 using Oceananigans.Architectures: Architectures, on_architecture
@@ -66,7 +66,7 @@ end
                        coefficient = 1e-3,
                        background_velocities = (0, 0))
 
-Create a bulk drag function for computing surface velocity fluxes using bulk aerodynamic
+Create a bulk drag function for computing bottom velocity fluxes using bulk aerodynamic
 formulas. The drag function computes a quadratic drag:
 
 ```math
@@ -75,6 +75,12 @@ formulas. The drag function computes a quadratic drag:
 
 where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)²)` is the total
 horizontal speed including background velocities, and `(U∞, V∞)` are the background velocities.
+
+!!! note "Bottom drag"
+    This formulation is specifically for bottom drag because it assumes the vertical velocity
+    `w = 0` at the boundary (no-penetration condition) and only considers the horizontal
+    velocity components `(u, v)` when computing the drag magnitude. Generalizing to full 3D
+    drag on arbitrary boundaries can be implemented in the future if needed.
 
 # Keyword Arguments
 
@@ -196,11 +202,11 @@ regularize_boundary_condition(df::BulkDragFunction, grid, loc, dim, Side, field_
 #####
 
 """
-    BulkDrag(; direction = nothing,
-               coefficient = 1e-3,
-               background_velocities = (0, 0))
+    BulkBottomDrag(; direction = nothing,
+                     coefficient = 1e-3,
+                     background_velocities = (0, 0))
 
-Create a `FluxBoundaryCondition` for surface velocity drag.
+Create a `FluxBoundaryCondition` for bottom velocity drag.
 
 The drag function computes a quadratic drag:
 
@@ -210,6 +216,13 @@ The drag function computes a quadratic drag:
 
 where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)²)` is the total
 horizontal speed including background velocities, and `(U∞, V∞)` are the background velocities.
+
+!!! note "Why 'bottom' drag?"
+    This is specifically called `BulkBottomDrag` because it assumes vertical velocity `w = 0`
+    at the boundary (the no-penetration condition at the bottom) and only uses horizontal
+    velocities `(u, v)` to compute the drag magnitude. This is appropriate for bottom boundaries
+    (ocean floor, immersed topography) but not for lateral or top boundaries where `w ≠ 0`.
+    A future generalization to full 3D drag (including `w`) could be implemented if needed.
 
 See [`BulkDragFunction`](@ref) for details.
 
@@ -223,29 +236,33 @@ See [`BulkDragFunction`](@ref) for details.
 
 # Examples
 
-Create bulk drag boundary conditions for `u` and `v` at the domain bottom.
+Create bulk bottom drag boundary conditions for `u` and `v` at the domain bottom.
 The direction is automatically inferred from the field location:
 
 ```jldoctest
 using Oceananigans
 
-drag = BulkDrag(coefficient=1e-3)
-
+drag = BulkBottomDrag(coefficient=1e-3)
 u_bcs = FieldBoundaryConditions(bottom=drag)
 v_bcs = FieldBoundaryConditions(bottom=drag)
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
-
-# Verify the direction was inferred correctly
-model.velocities.u.boundary_conditions.bottom.condition.direction
+model.velocities.u.boundary_conditions
 
 # output
-XDirection()
+Oceananigans.FieldBoundaryConditions, with boundary conditions
+├── west: PeriodicBoundaryCondition
+├── east: PeriodicBoundaryCondition
+├── south: PeriodicBoundaryCondition
+├── north: PeriodicBoundaryCondition
+├── bottom: FluxBoundaryCondition: BulkDragFunction(direction=XDirection(), coefficient=0.001)
+├── top: FluxBoundaryCondition: Nothing
+└── immersed: Nothing
 ```
 
-With immersed boundary conditions (the same `BulkDrag` can be used for both
-domain boundaries and immersed boundaries):
+With immersed boundary conditions, apply drag only to the bottom facet
+by using `ImmersedBoundaryCondition`:
 
 ```jldoctest
 using Oceananigans
@@ -253,28 +270,27 @@ using Oceananigans
 underlying_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -0.5))
 
-drag = BulkDrag(coefficient=1e-3)
-
-# Apply to both domain bottom and immersed boundaries
-u_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
-v_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
+# Apply to domain bottom and only the bottom facet of immersed boundaries
+drag = BulkBottomDrag(coefficient=1e-3)
+u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 
 model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
 
-# Verify the immersed BC bottom facet has the correct direction
+# Verify the immersed BC has drag only on the bottom facet
 model.velocities.u.boundary_conditions.immersed
 
 # output
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
-├── south: FluxBoundaryCondition: BulkDragFunction(direction=XDirection(), coefficient=0.001)
-├── north: FluxBoundaryCondition: BulkDragFunction(direction=XDirection(), coefficient=0.001)
+├── south: Nothing
+├── north: Nothing
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(direction=XDirection(), coefficient=0.001)
-└── top: FluxBoundaryCondition: BulkDragFunction(direction=XDirection(), coefficient=0.001)
+└── top: Nothing
 ```
 """
-function BulkDrag(; kwargs...)
+function BulkBottomDrag(; kwargs...)
     df = BulkDragFunction(; kwargs...)
     return BoundaryCondition(Flux(), df)
 end

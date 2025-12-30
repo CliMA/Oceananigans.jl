@@ -83,7 +83,7 @@ export
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
-    BulkDrag,
+    BulkBottomDrag,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
