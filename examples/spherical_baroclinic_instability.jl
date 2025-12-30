@@ -207,10 +207,10 @@ Nt = length(times)
 # on all three grids, visualized on 3D spheres. Each column shows a different
 # grid type, with temperature on top and vorticity on the bottom.
 
-fig = Figure(size = (1000, 700))
+fig = Figure(size = (700, 500))
 n = Nt
 title_str = @lift "Baroclinic instability at t = " * prettytime(times[$n])
-Label(fig[1, 1:4], title_str, fontsize = 28)
+Label(fig[1, 1:4], title_str, fontsize = 16)
 
 labels = Dict("lat_lon" => "Latitude-Longitude",
               "tripolar" => "Tripolar",
@@ -221,7 +221,7 @@ axes_ζ = Dict()
 kw = (elevation=deg2rad(50), azimuth=deg2rad(190), aspect=:equal)
 
 for (col, name) in enumerate(names)
-    Label(fig[2, col], labels[name], fontsize = 20, tellwidth=false)
+    Label(fig[2, col], labels[name], fontsize = 16, tellwidth=false)
     axes_T[name] = Axis3(fig[3, col]; kw...)
     axes_ζ[name] = Axis3(fig[4, col]; kw...)
 end
@@ -253,7 +253,9 @@ rowgap!(fig.layout, 3, Relative(-0.3))
 Colorbar(fig[3, 4], plots_T["lat_lon"]; label = "Temperature [°C]", height=Relative(0.5))
 Colorbar(fig[4, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]", height=Relative(0.5))
 
-fig
+save("spherical_baroclinic_instability.png", fig, px_per_unit=2)
+
+# ![](spherical_baroclinic_instability.png)
 
 # ## References
 #
