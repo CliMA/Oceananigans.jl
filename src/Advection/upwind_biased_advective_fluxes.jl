@@ -48,7 +48,7 @@ end
 
     ũ  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
     vᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), v)
- 
+
     return ũ * vᴿ
 end
 
@@ -95,8 +95,8 @@ end
 #####
 ##### Tracer advection operators
 #####
-    
-@inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, U, c) 
+
+@inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, U, c)
 
     @inbounds ũ = U[i, j, k]
     cᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), c)

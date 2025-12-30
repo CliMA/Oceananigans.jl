@@ -1,9 +1,9 @@
-using CUDA: @allowscalar
+using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Grids: Flat, Bounded, ColumnEnsembleSize
-using Oceananigans.Fields: ZeroField
+using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
@@ -25,12 +25,19 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 #####
 
 PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
-materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+
+free_surface_names(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
+free_surface_names(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
+free_surface_names(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = tuple()
+free_surface_names(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = tuple()
+free_surface_names(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = tuple()
+free_surface_names(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = tuple()
 
 function hydrostatic_velocity_fields(::Nothing, grid::SingleColumnGrid, clock, bcs=NamedTuple())
     u = XFaceField(grid, boundary_conditions=bcs.u)
@@ -66,17 +73,17 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
-    compute_diffusivities!(model.diffusivity_fields, model.closure, model)
+    compute_diffusivities!(model.closure_fields, model.closure, model)
 
-    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
+    fill_halo_regions!(model.closure_fields, model.clock, fields(model))
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
-    
-    compute_tendencies && 
+
+    compute_tendencies &&
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
@@ -98,7 +105,7 @@ end
     @inbounds closure = closure_array[i, j]
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
-    
+
 @inline function time_discretization(closure_array::AbstractArray)
     first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization
     return time_discretization(first_closure)

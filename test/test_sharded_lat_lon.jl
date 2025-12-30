@@ -9,7 +9,7 @@ using Test
 include("distributed_tests_utils.jl")
 
 run_xslab_distributed_grid = """
-    using MPI 
+    using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
     Reactant.Distributed.initialize(; single_gpu_per_process=false)
@@ -18,7 +18,7 @@ run_xslab_distributed_grid = """
 """
 
 run_yslab_distributed_grid = """
-    using MPI 
+    using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
     Reactant.Distributed.initialize(; single_gpu_per_process=false)
@@ -27,20 +27,22 @@ run_yslab_distributed_grid = """
 """
 
 run_pencil_distributed_grid = """
-    using MPI 
+    using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
     Reactant.Distributed.initialize(; single_gpu_per_process=false)
+    @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(3, 2))
+    @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(1, 2))
     arch = Distributed(ReactantState(), partition = Partition(2, 2))
     run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
 """
 
 @testset "Test distributed LatitudeLongitudeGrid simulations..." begin
-    # Run the serial computation    
+    # Run the serial computation
     Random.seed!(1234)
     bottom_height = - rand(40, 40, 1) .* 500 .- 500
 
-    grid  = LatitudeLongitudeGrid(size=(40, 40, 10), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
+    grid  = LatitudeLongitudeGrid(size=(40, 40, 10), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))
     grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(grid)
 
@@ -66,12 +68,12 @@ run_pencil_distributed_grid = """
     cp = jldopen("distributed_xslab_llg.jld2")["c"]
 
     # rm("distributed_xslab_llg.jld2")
-    
+
     @test all(us .≈ up)
     @test all(vs .≈ vp)
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
-    
+
     # Run the distributed grid simulation with a slab configuration
     write("distributed_yslab_llg_tests.jl", run_yslab_distributed_grid)
     run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_yslab_llg_tests.jl`)

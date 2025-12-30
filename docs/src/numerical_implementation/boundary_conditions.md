@@ -19,10 +19,10 @@ boundary conditions in Oceananigans.
 
 ## Gradient boundary conditions
 
-Users impose gradient boundary conditions by prescribing the gradient ``\gamma`` of a field 
-``c`` across an *external boundary* ``\partial \Omega_b``. The prescribed gradient ``\gamma`` 
-may be a constant, discrete array of values, or an arbitrary function. The gradient boundary 
-condition is enforced setting the value of halo points located outside the domain interior 
+Users impose gradient boundary conditions by prescribing the gradient ``\gamma`` of a field
+``c`` across an *external boundary* ``\partial \Omega_b``. The prescribed gradient ``\gamma``
+may be a constant, discrete array of values, or an arbitrary function. The gradient boundary
+condition is enforced setting the value of halo points located outside the domain interior
 such that
 ```math
     \begin{equation}
@@ -74,51 +74,51 @@ Value boundary conditions are represented by the [`Value`](@ref) type.
 ## Flux boundary conditions
 
 Users impose flux boundary conditions by prescribing the flux ``q_c \, |_b`` of ``c`` across
-the external boundary ``\partial \Omega_b``. The flux ``q_c \, |_b`` may be a constant, array 
-of discrete values, or arbitrary function. To explain how flux boundary conditions are imposed 
-in `Oceananigans.jl`, we note that the average of the tracer conservation equation over a finite 
+the external boundary ``\partial \Omega_b``. The flux ``q_c \, |_b`` may be a constant, array
+of discrete values, or arbitrary function. To explain how flux boundary conditions are imposed
+in `Oceananigans.jl`, we note that the average of the tracer conservation equation over a finite
 volume yields
 ```math
     \begin{equation}
     \label{eq:dc/dt}
-    \partial_t c_{i, j, k} = - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} (\boldsymbol{v} c + \boldsymbol{q}_c) 
+    \partial_t c_{i, j, k} = - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} (\boldsymbol{v} c + \boldsymbol{q}_c)
                                                      \boldsymbol{\cdot} \hat{\boldsymbol{n}}  \, \mathrm{d} S
                              + \frac{1}{V_{i, j, k}} \int_{V_{i, j, k}} F_c \, \mathrm{d} V \, ,
     \end{equation}
 ```
-where the surface integral over ``\partial \Omega_{i, j, k}`` averages the flux of ``c`` across 
-the six faces of the finite volume. The right-hand-side of \eqref{eq:dc/dt} above is denoted as 
+where the surface integral over ``\partial \Omega_{i, j, k}`` averages the flux of ``c`` across
+the six faces of the finite volume. The right-hand-side of \eqref{eq:dc/dt} above is denoted as
 ``G_c |_{i, j, k}``.
 
 
 An external boundary of a finite volume is associated with a no-penetration condition such that
-``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{v} \, |_{\partial \Omega_b} = 0``, where 
-``\hat{\boldsymbol{n}}`` is the vector normal to ``\partial \Omega_b``. Furthermore, the closures 
+``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{v} \, |_{\partial \Omega_b} = 0``, where
+``\hat{\boldsymbol{n}}`` is the vector normal to ``\partial \Omega_b``. Furthermore, the closures
 currently available in `Oceananigans.jl` have the property that ``\boldsymbol{q}_c \propto \boldsymbol{\nabla} c``.
-Thus setting ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c \, |_{\partial \Omega_b} = 0`` 
+Thus setting ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c \, |_{\partial \Omega_b} = 0``
 on the external boundary implies that the total flux of ``c`` across the external boundary is
 ```math
     \begin{equation}
     \hat{\boldsymbol{n}} \boldsymbol{\cdot} \left ( \boldsymbol{v} c + \boldsymbol{q}_c \right ) |_{\partial \Omega_b} = 0 \, .
     \end{equation}
 ```
-`Oceananigans.jl` exploits this fact to define algorithm that prescribe fluxes across external 
+`Oceananigans.jl` exploits this fact to define algorithm that prescribe fluxes across external
 boundaries ``\partial \Omega_b``:
 
-1. Impose a constant gradient ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c 
-   \, |_{\partial \Omega_b} = 0`` across external boundaries via using halo points (similar 
+1. Impose a constant gradient ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c
+   \, |_{\partial \Omega_b} = 0`` across external boundaries via using halo points (similar
    to \eqref{eq:gradient-bc}), which ensures that the evaluation of ``G_c`` in boundary-adjacent
    cells does not include fluxes across the external boundary, and;
-2. Add the prescribed flux to the boundary-adjacent volumes prior to calculating ``G_c``: 
-   ``G_c \, |_b = G_c \, |_b - \frac{A_b}{V_b} q_c \, |_b \, \text{sign}(\hat{\boldsymbol{n}})``, 
-   where ``G_c \, |_b`` denotes values of ``G_c`` in boundary-adjacent volumes, ``q_c \, |_b`` 
-   is the flux prescribed along the boundary, ``V_b`` is the volume of the boundary-adjacent 
+2. Add the prescribed flux to the boundary-adjacent volumes prior to calculating ``G_c``:
+   ``G_c \, |_b = G_c \, |_b - \frac{A_b}{V_b} q_c \, |_b \, \text{sign}(\hat{\boldsymbol{n}})``,
+   where ``G_c \, |_b`` denotes values of ``G_c`` in boundary-adjacent volumes, ``q_c \, |_b``
+   is the flux prescribed along the boundary, ``V_b`` is the volume of the boundary-adjacent
    cell, and ``A_b`` is the area of the external boundary of the boundary-adjacent cell.
 
-   The factor ``\text{sign}(\hat{\boldsymbol{n}})`` is ``-``1 and ``+``1 on "left" and "right" 
-   boundaries, and accounts for the fact that a positive flux on a left boundary where 
-   ``\text{sign}(\hat{\boldsymbol{n}}) = -1`` implies an "inward" flux of ``c`` that increases 
-   interior values of ``c``, whereas a positive flux on a right boundary where 
+   The factor ``\text{sign}(\hat{\boldsymbol{n}})`` is ``-``1 and ``+``1 on "left" and "right"
+   boundaries, and accounts for the fact that a positive flux on a left boundary where
+   ``\text{sign}(\hat{\boldsymbol{n}}) = -1`` implies an "inward" flux of ``c`` that increases
+   interior values of ``c``, whereas a positive flux on a right boundary where
    ``\text{sign}(\hat{\boldsymbol{n}}) = 1`` implies an "outward" flux that decreases interior
    values of ``c``.
 
@@ -127,38 +127,38 @@ Flux boundary conditions are represented by the [`Flux`](@ref) type.
 ## Open boundary conditions
 
 Open boundary conditions directly specify the value of the halo points. Typically this is used
-to impose no penetration boundary conditions, i.e. setting wall normal velocity components on 
-to zero on the boundary. 
+to impose no penetration boundary conditions, i.e. setting wall normal velocity components on
+to zero on the boundary.
 
-The nuance here is that open boundaries behave differently for fields on face points in the 
+The nuance here is that open boundaries behave differently for fields on face points in the
 boundary direction due to the [staggered grid](@ref finite_volume). For example, the u-component
-of velocity lies on `(Face, Center, Center)` points so for open `west` or `east` boundaries the 
-point specified by the boundary condition is the point lying on the boundary, where as for a 
+of velocity lies on `(Face, Center, Center)` points so for open `west` or `east` boundaries the
+point specified by the boundary condition is the point lying on the boundary, where as for a
 tracer on `(Center, Center, Center)` points the open boundary condition specifies a point outside
 of the domain (hence the difference with `Value` boundary conditions).
 
-The other important detail is that open (including no-penetration) boundary conditions are the 
-only conditions used on wall normal velocities when the domain is not periodic. This means that 
-their value affects the pressure calculation for nonhydrostatic models as it is involved in 
-calculating the divergence in the boundary adjacent center point (as described in the 
+The other important detail is that open (including no-penetration) boundary conditions are the
+only conditions used on wall normal velocities when the domain is not periodic. This means that
+their value affects the pressure calculation for nonhydrostatic models as it is involved in
+calculating the divergence in the boundary adjacent center point (as described in the
 [fractional step method](@ref time_stepping) documentation). Usually boundary points are filled
 for the predictor velocity (i.e. before the pressure is calculated), and on the corrected field
 (i.e. after the pressure correction is applied), but for open boundaries this would result in
-the boundary adjacent center point becoming divergent so open boundaries are only filled for the 
+the boundary adjacent center point becoming divergent so open boundaries are only filled for the
 predictor velocity and stay the same after the pressure correction (so the boundary point is filled
 with the final corrected velocity at the predictor step).
 
-The restriction arrises as the boundary condition is specifying the wall normal velocity, 
+The restriction arises as the boundary condition is specifying the wall normal velocity,
 ``\hat{\boldsymbol{n}}\cdot\boldsymbol{u}``, which leads to the pressure boundary condition
 ```math
     \begin{equation}
     \label{eq:pressure_boundary_condition}
-    \Delta t \, \hat{\boldsymbol{n}}\cdot\boldsymbol{\nabla}p^{n+1}\big |_{\partial\Omega} = \left[\Delta t \, \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^\star - \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^{n+1}\right],
+    \Delta t \, \hat{\boldsymbol{n}} \cdot \boldsymbol{\nabla} p^{n+1} \big |_{\partial\Omega} = \left[\Delta t \, \hat{\boldsymbol{n}} \cdot \boldsymbol{u}^\star - \hat{\boldsymbol{n}} \cdot \boldsymbol{u}^{n+1} \right],
     \end{equation}
 ```
-implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson 
+implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson
 equation (``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\boldsymbol{u}^\star}{\Delta t}``)
-using the method described by [Schumann88](@citet) we have to move inhomogeneus boundary conditions
+using the method described by [Schumann88](@citet) we have to move inhomogeneous boundary conditions
 on the pressure to the right hand side. In order to do this we define a new field ``\phi`` where
 ```math
     \begin{equation}
@@ -174,19 +174,19 @@ This moves the boundary condition to the right hand side as ``\phi`` becomes
     \end{equation}
 ```
 Given the boundary condition on pressure given above, we can define a new modified predictor velocity
-which is equal to the predictor velocity within the domain but shares boundary conditions with the 
+which is equal to the predictor velocity within the domain but shares boundary conditions with the
 corrected field,
 ```math
     \begin{equation}
     \label{eq:quasi_predictor_velocity}
-    \tilde{\boldsymbol{u}}^\star:=\boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
+    \tilde{\boldsymbol{u}}^\star \equiv \boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
     \end{equation}
 ```
-The modified pressure poisson equation becomes ``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\tilde{\boldsymbol{u}}^\star}{\Delta t}``
-which can easily be solved. 
+The modified pressure Poisson equation becomes ``\nabla^2 p^{n+1} = \frac{\boldsymbol{\nabla} \cdot \tilde{\boldsymbol{u}}^\star}{\Delta t}``
+which can easily be solved.
 
 Perhaps a more intuitive way to consider this is to recall that the corrector step projects ``\boldsymbol{u}^\star``
-to the space of divergenece free velocity by applying
+to the space of divergence free velocity by applying
 ```math
     \begin{equation}
     \label{eq:pressure_correction_step}
@@ -200,8 +200,8 @@ equal the corrected velocity on the boundary.
 For simple open boundary conditions such as no penetration or a straight forward prescription of
 a known velocity at ``t^{n+1}`` this is simple to implement as we just set the boundary condition
 on the predictor velocity and don't change it after the correction. But some open boundary methods
-calculate the boundary value based on the interior solution. As a simple example, if we wanted to 
-set the wall normal veloicty gradient to zero at the west boundary then we would set the boundary 
+calculate the boundary value based on the interior solution. As a simple example, if we wanted to
+set the wall normal velocity gradient to zero at the west boundary then we would set the boundary
 point to
 ```math
     \begin{equation}
@@ -213,12 +213,58 @@ but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` err
 ```math
     \begin{align}
     u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{jk4}) / 2 + \mathcal{O}(\Delta x^2),\\
-    &= u^\star_{1jk} - \Delta t \left(\boldsymbol{\nabla}p^{n+1}_{3jk} + (\boldsymbol{\nabla}p^{n+1}_{2jk} - \boldsymbol{\nabla}p^{n+1}_{4jk}) / 2\right) + \mathcal{O}(\Delta x^2),\\
+    &= u^\star_{1jk} - \Delta t \left[ \boldsymbol{\nabla} p^{n+1}_{3jk} + (\boldsymbol{\nabla} p^{n+1}_{2jk} - \boldsymbol{\nabla} p^{n+1}_{4jk}) / 2 \right] + \mathcal{O}(\Delta x^2),\\
     &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
     \end{align}
 ```
-This is prefered to a divergent interior solution as open boundary conditions (except no penetration)
-are typlically already unphysical and only used in an attempt to allow information to enter or exit
+This is preferred to a divergent interior solution as open boundary conditions (except no penetration)
+are typically already unphysical and only used in an attempt to allow information to enter or exit
 the domain.
 
 Open boundary conditions are represented by the [`Open`](@ref) type.
+
+## Open boundary condition "schemes"
+
+Except for trivial cases (i.e. no-penetration) the velocity on the boundary point has to be
+approximated as it is outside the computed domain. There is insufficient information to step the
+full equation of motion as gradients across the boundary can not be computed and simply prescribing
+a boundary normal velocity is unphysical and reflects energy leaving the domain [Orlanksi1976](@citep).
+
+### Perturbation advection
+
+A common method for allowing information to exit is to perform a one-sided advection operation.
+For example, in the [Orlanksi1976](@citet) boundary condition fields are advected out of the domain by a
+locally determined phase speed. We can show that this is the first-order approximation of the full equations
+of motion in the predictor velocity step. Consider a right boundary normal to the `u` velocity
+component (the east boundary):
+```math
+    \partial_t u + u \partial_x u + v \partial_y u + w \partial_z u = (\boldsymbol{\nabla} \cdot \boldsymbol{\tau})_x + F,
+```
+let ``\boldsymbol{u} = \boldsymbol{U} + \boldsymbol{u}'`` with ``\boldsymbol{U} = U(x, y, z, t) \hat{\boldsymbol{x}}``
+where ``U`` is an externally determined "background" wall-normal flow in the proximity of the boundary,
+and assume that the stress tensor gradient is small,
+```math
+    \partial_t u = -(U + u') \partial_x(U + u') - v \partial_y (U + u') - w \partial_z (U + u') + F,
+```
+then, taking only first-order terms:
+```math
+    \partial_t u = - U \partial_x u' - v \partial_y U - w \partial_z U + F.
+```
+Now consider the dominant forcing to be relaxation to the background state (we will explain why later) so
+that ``F = (U - u) / \tau``, and recall that when we compute the boundary normal point the interior domain is
+already stepped, we can take an upwind backward Euler step:
+```math
+    \frac{u^{n+1} - u^n}{\Delta t} = -\max(0, U)\frac{u^{n+1}_i - u^{n+1}_{i-1}}{\Delta x} - \min(0, U) \frac{u^{n+1}_{i+1} - u^{n+1}_{i}}{\Delta x} - v^{n+1}\partial_y U - w^{n+1} \partial_z U + \frac{U - u^{n+1}}{\tau},
+```
+where ``i`` is the boundary point and ``v`` and ``w`` are interpolated to the boundary point. Of course if ``U<0``
+(i.e. it is directed into the domain), then we need ``u_{i+1}`` which is outside of the domain, so this scheme
+cannot be used. We therefore disregard this term, taking ``\bar{U} = \max(0, U)\Delta t / \Delta x`` and
+``\bar{\tau} = \Delta t / \tau``, and rearranging we recover:
+```math
+    u^{n+1} = \frac{u^{n} + \bar{U} u^{n+1}_{i-1} + U\bar{\tau} - v^{n+1} \Delta t \partial_y U - w^{n+1} \Delta t \partial_z U}{1 + \bar{\tau} + \bar{U}}.
+```
+For numerical stability, we also need to apply a CFL-like constraint and set ``\bar{U} = \min(1, \max(0, U) \Delta t / \Delta x)``.
+
+Previously we considered the dominant forcing to be relaxation to ``U`` so that we can take the backward Euler
+step. And because it is useful to prescribe relaxation on the boundary both to damp numerical oscillations,
+and to prevent inconsistency when ``U`` is directed into the domain.

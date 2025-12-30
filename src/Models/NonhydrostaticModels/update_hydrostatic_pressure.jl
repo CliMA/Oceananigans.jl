@@ -12,10 +12,12 @@ the `buoyancy_perturbationᶜᶜᶜ` downwards:
 @kernel function _update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     i, j = @index(Global, NTuple)
 
-    @inbounds pHY′[i, j, grid.Nz] = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
+    pᵏ = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
+    @inbounds pHY′[i, j, grid.Nz] = pᵏ
 
     for k in grid.Nz-1 : -1 : 1
-        @inbounds pHY′[i, j, k] = pHY′[i, j, k+1] - z_dot_g_bᶜᶜᶠ(i, j, k+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
+        pᵏ -= z_dot_g_bᶜᶜᶠ(i, j, k+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
+        @inbounds pHY′[i, j, k] = pᵏ
     end
 end
 
@@ -38,13 +40,13 @@ update_hydrostatic_pressure!(::Nothing, arch, grid, args...; kw...) = nothing
 update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothing
 
 # extend p kernel to compute also the boundaries
-@inline function p_kernel_parameters(grid) 
+@inline function p_kernel_parameters(grid)
     Nx, Ny, _ = size(grid)
     TX, TY, _ = topology(grid)
 
     ii = ifelse(TX == Flat, 1:Nx, 0:Nx+1)
     jj = ifelse(TY == Flat, 1:Ny, 0:Ny+1)
-        
+
     return KernelParameters(ii, jj)
 end
 

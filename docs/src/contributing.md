@@ -22,7 +22,7 @@ The most useful bug reports:
 
 * Paste the _entire_ error received when running the code snippet, even if it's unbelievably long.
 
-* Use triple backticks (e.g., ````` ```some_code; and_some_more_code;``` `````) to enclose code snippets, and other [markdown formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax) to make your issue easy and quick to read.
+* Use triple backticks (e.g., ````` ```some_code; and_some_more_code;``` `````) to enclose code snippets, and other [markdown formatting syntax](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax) to make your issue easy and quick to read.
 
 * Report the Oceananigans version, Julia version, machine (especially if using a GPU) and any other possibly useful details of the computational environment in which the bug was created.
 
@@ -30,11 +30,11 @@ Discussions are recommended for asking questions about (for example) the user in
 
 ## But I want to _code_!
 
-* New users help write Oceananigans code and documentation by [forking the Oceananigans repository](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks), [using git](https://guides.github.com/introduction/git-handbook/) to edit code and docs, and then creating a [pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Pull requests are reviewed by Oceananigans collaborators.
+* New users help write Oceananigans code and documentation by [forking the Oceananigans repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks), [using git](https://docs.github.com/get-started/using-git/about-git) to edit code and docs, and then creating a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Pull requests are reviewed by Oceananigans collaborators.
 
 * A pull request can be merged once it is reviewed and approved by collaborators. If the pull request author has write access, they have the responsibility of merging their pull request. Otherwise, Oceananigans.jl collaborators will execute the merge with permission from the pull request author.
 
-* Note: for small or minor changes (such as fixing a typo in documentation), the [GitHub editor](https://docs.github.com/en/github/managing-files-in-a-repository/managing-files-on-github/editing-files-in-your-repository) is super useful for forking and opening a pull request with a single click.
+* Note: for small or minor changes (such as fixing a typo in documentation), the [GitHub editor](https://docs.github.com/en/repositories/working-with-files/managing-files/editing-files) is super useful for forking and opening a pull request with a single click.
 
 * Write your code with love and care. In particular, conform to existing Oceananigans style and formatting conventions. For example, we love verbose and explicit variable names, use `TitleCase` for types, `snake_case` for objects, and always,put,spaces.after.commas,or.periods. For formatting decisions we loosely follow the [YASGuide](https://github.com/jrevels/YASGuide). It's worth few extra minutes of our time to leave future generations with well-written, readable code.
 
@@ -60,8 +60,8 @@ Discussions are recommended for asking questions about (for example) the user in
 
 * Implement a new feature if you need it to use Oceananigans.
 
-If you're interested in working on something, let us know by commenting on existing issues or 
-by opening a new issue. This is to make sure no one else is working on the same issue and so 
+If you're interested in working on something, let us know by commenting on existing issues or
+by opening a new issue. This is to make sure no one else is working on the same issue and so
 we can help and guide you in case there is anything you need to know beforehand.
 
 ## Ground Rules
@@ -126,11 +126,18 @@ Oceananigans or by requesting something you think is missing.
 
 * You can test to make sure Oceananigans works by typing in `] test`. (This is equivalent to
   `using Pkg; Pkg.test()`.) Doing so will run all the tests (and this can take a while).
-  Alternatively, you can run only one test script file by providing its name as an environment
+  Alternatively, we can run only one test script file by providing its name as an environment
   variable. For example, to run the tests only from the `test_coriolis.jl` file we call:
 
-  ```
+  ```bash
   $ TEST_FILE=test_coriolis.jl julia --project -e"using Pkg; Pkg.test()"
+  ```
+
+  We can also run all the tests within a certain test group, as they are defined in [`test/runtest.jl`](https://github.com/CliMA/Oceananigans.jl/blob/main/test/runtests.jl).
+  For example, to run all unit tests we call:
+
+  ```bash
+  $ TEST_GROUP=unit julia --project -e"using Pkg; Pkg.test()"
   ```
 
 
@@ -141,8 +148,8 @@ We ask that new contributors read that guide before submitting a pull request.
 
 Changes and contributions should be made via GitHub pull requests against the ``main`` branch.
 
-When you're done making changes, commit the changes you made. Chris Beams has written a 
-[guide](https://chris.beams.io/posts/git-commit/) on how to write good commit messages.
+When you're done making changes, commit the changes you made. Chris Beams has written a
+[guide](https://chris.beams.io/git-commit) on how to write good commit messages.
 
 When you think your changes are ready to be merged into the main repository, push to your fork
 and [submit a pull request](https://github.com/CLiMA/Oceananigans.jl/compare/).
@@ -158,7 +165,7 @@ properly. Didn't write new functions? That's fine, but be sure that the document
 the code you touched is still in great shape. It is not uncommon to find some strange wording
 or clarification that you can take care of while you are here.
 
-You can preview how the Documentation will look like after merging by building the documentation 
+You can preview how the Documentation will look like after merging by building the documentation
 locally. From the main directory of your local repository call
 
 ```
@@ -171,7 +178,7 @@ to instantiate the documentation environment and then
 JULIA_DEBUG=Documenter julia --project=docs/ docs/make.jl
 ```
 
-If the documentation built is successful, you can open `docs/build/index.html` in your favorite browser.Providing the environment variable 
+If the documentation built is successful, you can open `docs/build/index.html` in your favorite browser.Providing the environment variable
 `JULIA_DEBUG=Documenter` will provide with more information in the documentation build process and
 thus help figuring out a potential bug.
 

@@ -56,8 +56,8 @@ pnorm = 1
 uh(x, y, z) = U * h(x, y, z)
 
 schemes = (
-    Centered(order=4), 
-    UpwindBiased(order=5), 
+    Centered(order=4),
+    UpwindBiased(order=5),
     WENO(order=3),
     WENO(order=5),
     WENO(order=7),
@@ -71,8 +71,8 @@ ROC   = Dict()
 for N in Ns, (adv, scheme) in enumerate(schemes)
 
     grid = RectilinearGrid(Float64;
-                           size = N, 
-                           x = (-1, 1), 
+                           size = N,
+                           x = (-1, 1),
                            halo = (halos(scheme)),
                            topology = (Periodic, Flat, Flat))
 
@@ -93,7 +93,7 @@ for N in Ns, (adv, scheme) in enumerate(schemes)
 
     c₁  = c.(grid.xᶜᵃᵃ[:], 0, 0, Δt*100, U, W);
 
-    error[(N, adv)] = norm(abs.(model.tracers.c[1:N, 1, 1] .- c₁[1:N]), pnorm)/N^(1/pnorm)   
+    error[(N, adv)] = norm(abs.(model.tracers.c[1:N, 1, 1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
 
 end
 
@@ -105,8 +105,8 @@ for (adv, scheme) in enumerate(schemes)
                           log10.([error[(N, adv)] for N in Ns][2:end]), 1)
 
     ROC[adv] = best_fit[1]
-    
-    @printf("Method = % 24s, Rate of Convergence = %.2f, Expected = %d \n", 
+
+    @printf("Method = % 24s, Rate of Convergence = %.2f, Expected = %d \n",
     scheme, -ROC[adv], rate_of_convergence(scheme))
 end
 

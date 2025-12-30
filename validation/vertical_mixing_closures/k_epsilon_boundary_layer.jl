@@ -35,7 +35,7 @@ closure = TKEDissipationVerticalDiffusivity()
 #closure = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                    tracers = (:b, :e, :ϵ),
+                                    tracers = (:b,),
                                     buoyancy = BuoyancyTracer(),
                                     boundary_conditions=(u=u_bcs, b=b_bcs))
 
@@ -51,11 +51,11 @@ b = model.tracers.b
 
 tracers = model.tracers
 buoyancy = model.buoyancy
-velocities = model.velocities 
+velocities = model.velocities
 
-κc = model.diffusivity_fields.κc
-κe = model.diffusivity_fields.κe
-κϵ = model.diffusivity_fields.κϵ
+κc = model.closure_fields.κc
+κe = model.closure_fields.κe
+κϵ = model.closure_fields.κϵ
 
 progress(sim) = @info @sprintf("Iter: % 4d, time: % 24s, max(e): %6.2e, extrema(ϵ): (%6.2e, %6.2e)",
                                iteration(sim), prettytime(sim), maximum(e), minimum(ϵ), maximum(ϵ))
@@ -120,4 +120,3 @@ lines!(axs, 𝕊ᶜn, zf, label="𝕊ᶜ")
 axislegend(axs, position=:rb)
 
 fig
-

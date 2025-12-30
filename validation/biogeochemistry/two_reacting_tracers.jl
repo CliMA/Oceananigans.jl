@@ -1,14 +1,14 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: fill_halo_regions!, ImpenetrableBoundaryCondition
 using Printf
-using GLMakie
+using CairoMakie
 
 grid = RectilinearGrid(size=128, z=(-10, 10), topology=(Flat, Flat, Bounded))
-sinking = AdvectiveForcing(WENO(), w=-1)
-rising = AdvectiveForcing(WENO(), w=+1)
+sinking = AdvectiveForcing(w=-1)
+rising = AdvectiveForcing(w=+1)
 
-b_to_a(x, y, z, t, a, b) = + a * b
-a_to_b(x, y, z, t, a, b) = - a * b 
+b_to_a(z, t, a, b) = + a * b
+a_to_b(z, t, a, b) = - a * b
 
 a_reaction = Forcing(a_to_b, field_dependencies=(:a, :b))
 b_reaction = Forcing(b_to_a, field_dependencies=(:a, :b))
@@ -20,15 +20,15 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     closure = ScalarDiffusivity(κ=1e-2),
                                     forcing = (a=(a_reaction, sinking), b=(b_reaction, rising)))
 
-aᵢ(x, y, z) = exp(-(z - 4)^2)
-bᵢ(x, y, z) = exp(-(z + 4)^2)
+aᵢ(z) = exp(-(z - 4)^2)
+bᵢ(z) = exp(-(z + 4)^2)
 set!(model, a=aᵢ, b=bᵢ)
 
 simulation = Simulation(model; Δt=1e-2, stop_iteration=0)
 progress(sim) = @info @sprintf("Iter: %d, time: %.2e", iteration(sim), time(sim))
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-z = znodes(Center, grid)
+z = znodes(grid, Center())
 a = interior(model.tracers.a, 1, 1, :)
 b = interior(model.tracers.b, 1, 1, :)
 
@@ -52,7 +52,7 @@ function update_plot!(sim)
     ax.title[] = @sprintf("Tracer reactions at t=%.2e", time(sim))
 end
 
-record(fig, "tracer_reactions.mp4", 1:100, framerate=24) do nn
+record(fig, "tracer_reactions.mp4", 1:100, framerate=24) do _
     simulation.stop_iteration += 10
     run!(simulation)
     update_plot!(simulation)

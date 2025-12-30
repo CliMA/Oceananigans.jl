@@ -22,7 +22,7 @@ Nx = 100
 Ny = 200
 Nz = 35
 
-# stretched grid 
+# stretched grid
 k_center = collect(1:Nz)
 Δz_center = @. 10 * 1.104^(Nz - k_center)
 
@@ -139,7 +139,7 @@ vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 closure = (horizontal_closure, vertical_closure)
-                                       
+
 model = NonhydrostaticModel(architecture,
                             grid = grid,
                             advection = UpwindBiased(order=5),
@@ -240,7 +240,7 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 

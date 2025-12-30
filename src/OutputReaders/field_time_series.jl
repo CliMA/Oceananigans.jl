@@ -5,7 +5,7 @@ using Statistics
 using JLD2
 using Adapt
 using Glob
-using CUDA: @allowscalar
+using GPUArraysCore
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -14,11 +14,11 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range, AbstractGrid
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
-using Oceananigans.Fields: interior_view_indices, index_binary_search,
-                           indices_summary, boundary_conditions
+using Oceananigans.Fields: interior_view_indices,
+                           indices_summary, boundary_conditions, instantiate
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
@@ -209,8 +209,23 @@ function time_indices(backend::PartlyInMemory, time_indexing, Nt)
 end
 
 time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
-
 Base.length(backend::PartlyInMemory) = backend.length
+
+function try_convert_to_range(times::AbstractArray)
+    if length(times) > 1
+        first_time = first(times)
+        last_time = last(times)
+        len = length(times)
+        try
+            candidate = range(first_time, last_time; length=len)
+            if all(candidate .== times)
+                return candidate
+            end
+        catch
+        end
+    end
+    return times
+end
 
 #####
 ##### FieldTimeSeries
@@ -247,12 +262,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            # Try to convert to a range, cuz
-            time_range = range(first(times), last(times), length=length(times))
-            if all(time_range .≈ times) # good enough for most
-                times = time_range
-            end
-
+            times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end
 
@@ -278,7 +288,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
                                 on_architecture(to, fts.grid),
                                 on_architecture(to, fts.backend),
-                                on_architecture(to, fts.bcs),
+                                on_architecture(to, fts.boundary_conditions),
                                 on_architecture(to, fts.indices),
                                 on_architecture(to, fts.times),
                                 on_architecture(to, fts.path),
@@ -347,8 +357,6 @@ end
 ##### Constructors
 #####
 
-instantiate(T::Type) = T()
-
 new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
@@ -367,19 +375,17 @@ time_indices_length(::TotallyInMemory, times) = length(times)
 time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
-function FieldTimeSeries(loc, grid, times=();
+function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
                          indices = (:, :, :),
                          backend = InMemory(),
                          path = nothing,
                          name = nothing,
                          time_indexing = Clamp(),
                          boundary_conditions = FieldBoundaryConditions(grid, loc),
-                         reader_kw = NamedTuple())
-
-    LX, LY, LZ = loc
+                         reader_kw = NamedTuple()) where {LX, LY, LZ}
 
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
         isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
@@ -436,8 +442,16 @@ Keyword arguments
 - `name`: name of field for `backend = OnDisk()`
 """
 function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) where {LX, LY, LZ}
-    loc = (LX, LY, LZ)
+    loc = (LX(), LY(), LZ())
     return FieldTimeSeries(loc, grid, times; kwargs...)
+end
+
+# Function to naturally sort strings containing numbers, code credit:
+# https://discourse.julialang.org/t/sorting-strings-containing-numbers-so-that-a2-a10/5372/28
+function naturalsort(x::Vector{String})
+    f = text -> all(isnumeric, text) ? Char(parse(Int, text)) : text
+    sorter = key -> join(f(m.match) for m in eachmatch(r"[0-9]+|[^0-9]+", key))
+    return sort(x, by=sorter)
 end
 
 struct UnspecifiedBoundaryConditions end
@@ -493,6 +507,7 @@ function FieldTimeSeries(path::String, name::String;
         # Look for part1, etc
         lookfor = string(start, "_part*.jld2")
         part_paths = glob(lookfor)
+        part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
         path = first(part_paths) # part1 is first?
     else
@@ -616,7 +631,7 @@ function FieldTimeSeries(path::String, name::String;
             throw(err)
         end
     end
-        
+
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)
@@ -624,7 +639,7 @@ function FieldTimeSeries(path::String, name::String;
 
     isnothing(location) && (location = file["timeseries/$name/serialized/location"])
     LX, LY, LZ = location
-    loc = map(instantiate, location)
+    loc = (LX(), LY(), LZ())
 
     if isnothing(Nparts)
         isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))
@@ -654,7 +669,7 @@ function FieldTimeSeries(path::String, name::String;
     end
 
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
@@ -706,9 +721,9 @@ function Field(location, path::String, name::String, iter;
     close(file)
 
     # Change grid to specified architecture?
-    grid     = on_architecture(architecture, grid)
+    grid = on_architecture(architecture, grid)
     raw_data = on_architecture(architecture, raw_data)
-    data     = offset_data(raw_data, grid, location, indices)
+    @apply_regionally data = offset_data(raw_data, grid, location, indices)
 
     return Field(location, grid; boundary_conditions, indices, data)
 end
@@ -729,24 +744,27 @@ Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
 function interior(fts::FieldTimeSeries)
-    loc = map(instantiate, location(fts))
-    topo = map(instantiate, topology(fts.grid))
-    sz = size(fts.grid)
-    halo_sz = halo_size(fts.grid)
+    Topo = topology(fts.grid)
+    ℓx, ℓy, ℓz = instantiated_location(fts)
+    𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
 
-    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
-    indices = fts.indices
-    i_view = map(interior_view_indices, indices, i_interior)
+    Nx, Ny, Nz = size(fts.grid)
+    Hx, Hy, Hz = halo_size(fts.grid)
+    ix, iy, iz = fts.indices
 
-    return view(parent(fts), i_view..., :)
+    i = interior_parent_indices(ℓx, 𝓉x, Nx, Hx)
+    j = interior_parent_indices(ℓy, 𝓉y, Ny, Hy)
+    k = interior_parent_indices(ℓz, 𝓉z, Nz, Hz)
+
+    iv = @inbounds interior_view_indices(ix, i)
+    jv = @inbounds interior_view_indices(iy, j)
+    kv = @inbounds interior_view_indices(iz, k)
+
+    return view(parent(fts), iv, jv, kv, :)
 end
 
 # FieldTimeSeries boundary conditions
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC}
-
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
+@inline getbc(condition::Union{FTS, GPUFTS}, i::Int, j::Int, grid::AbstractGrid, clock, args...) = condition[i, j, Time(clock.time)]
 
 #####
 ##### Fill halo regions

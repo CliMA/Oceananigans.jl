@@ -38,9 +38,9 @@ model_salinity(b::ConstantSalinitySB, model)       = b.constant_salinity
 Return a `KernelFunctionOperation` that computes the in-situ density of seawater
 with (gridded) `temperature`, `salinity`, and at `geopotential_height`. To compute the
 in-situ density, the 55-term polynomial approximation to the equation of state from
-[Roquet et al. (2015)](https://www.sciencedirect.com/science/article/pii/S1463500315000566?ref=pdf_download&fr=RR-2&rr=813416acba58557b) is used.
-By default, the `seawater_density` extracts the geopotential height from the `model` to compute
-the in-situ density. To compute a potential density at some user-chosen reference geopotential height,
+[Roquet et al. (2015)](@cite Roquet15TEOS) is used. By default, the `seawater_density`
+extracts the geopotential height from the `model` to compute the in-situ density.
+To compute a potential density at some user-chosen reference geopotential height,
 set `geopotential_height` to a constant for the density computation,
 
 ```julia
@@ -49,7 +49,7 @@ geopotential_height = 0 # sea-surface height
 ```
 
 **Note:** `seawater_density` must be passed a `BoussinesqEquationOfState` to compute the
-density. See the [relevant documentation](https://clima.github.io/OceananigansDocumentation/dev/model_setup/buoyancy_and_equation_of_state/#Idealized-nonlinear-equations-of-state)
+density. See the [relevant documentation section](@ref idealized_nonlinear_eos)
 for how to set `SeawaterBuoyancy` using a `BoussinesqEquationOfState`.
 
 Example
@@ -97,23 +97,13 @@ julia> density_operation = seawater_density(model)
 KernelFunctionOperation at (Center, Center, Center)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── kernel_function: ρ (generic function with 3 methods)
-└── arguments: ("BoussinesqEquationOfState{Float64}", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "KernelFunctionOperation at (Center, Center, Center)")
+└── arguments: ("SeawaterPolynomials.BoussinesqEquationOfState", "Field", "Field", "KernelFunctionOperation")
 
 julia> density_field = Field(density_operation)
 1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-├── operand: KernelFunctionOperation at (Center, Center, Center)
-├── status: time=0.0
-└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> compute!(density_field)
-1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
 └── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103

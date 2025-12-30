@@ -18,7 +18,7 @@ using ConvergenceTests: compute_error
 du(x, y, t, μ) = 3/4 - 1/(4 + 4*exp(-4*x+4*y-t)/μ/32)
 dv(x, y, t, μ) = 3/4 + 1/(4 + 4*exp(-4*x+4*y-t)/μ/32)
 
-function run_test(; Nx, Δt, stop_iteration, order, U = 0, 
+function run_test(; Nx, Δt, stop_iteration, order, U = 0,
                   architecture = CPU(), topo = (Bounded, Bounded, Flat))
     #####
     ##### Test advection of an isoentropic vortex with a VectorInvariantFormulation and a VorticityStencil
@@ -33,12 +33,12 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
     bcs_u_e =  OpenBoundaryCondition((y, z, t, μ) -> du(1, y, t, μ), parameters = μ)
     bcs_u_s = ValueBoundaryCondition((x, z, t, μ) -> du(x, 0, t, μ), parameters = μ)
     bcs_u_n = ValueBoundaryCondition((x, z, t, μ) -> du(x, 1, t, μ), parameters = μ)
-    
+
     bcs_v_w = ValueBoundaryCondition((y, z, t, μ) -> dv(0, y, t, μ), parameters = μ)
     bcs_v_e = ValueBoundaryCondition((y, z, t, μ) -> dv(1, y, t, μ), parameters = μ)
     bcs_v_s =  OpenBoundaryCondition((x, z, t, μ) -> dv(x, 0, t, μ), parameters = μ)
     bcs_v_n =  OpenBoundaryCondition((x, z, t, μ) -> dv(x, 1, t, μ), parameters = μ)
-    
+
     u_bcs = FieldBoundaryConditions(west=bcs_u_w, east=bcs_u_e, south=bcs_u_s, north=bcs_u_n)
     v_bcs = FieldBoundaryConditions(west=bcs_v_w, east=bcs_v_e, south=bcs_v_s, north=bcs_v_n)
 
@@ -159,8 +159,8 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
             hcf = (simulation = hcf_simulation,
                    analytical = h_analytical,
                            L₁ = hcf_errors.L₁,
-                           L∞ = hcf_errors.L∞),                               
-                           
+                           L∞ = hcf_errors.L∞),
+
                 grid = grid
             )
 end
@@ -185,7 +185,7 @@ function unpack_errors(results)
     ucf_L₁ = map(r -> r.ucf.L₁, results)
     vcf_L₁ = map(r -> r.vcf.L₁, results)
     hcf_L₁ = map(r -> r.hcf.L₁, results)
-    
+
     uvi_L∞ = map(r -> r.uvi.L∞, results)
     vvi_L∞ = map(r -> r.vvi.L∞, results)
     hvi_L∞ = map(r -> r.hvi.L∞, results)
@@ -206,15 +206,15 @@ function unpack_errors(results)
         uvv_L₁,
         vvv_L₁,
         hvv_L₁,
-        
+
         ucf_L₁,
         vcf_L₁,
         hcf_L₁,
-        
+
         uvi_L∞,
         vvi_L∞,
         hvi_L∞,
-        
+
         uvv_L∞,
         vvv_L∞,
         hvv_L∞,

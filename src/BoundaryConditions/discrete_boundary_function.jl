@@ -12,7 +12,7 @@ where `i, j` are the indices along the boundary,
 where `grid` is `model.grid`, `clock.time` is the current simulation time and
 `clock.iteration` is the current model iteration, and
 `model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.diffusivity_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
+and the fields in `model.closure_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
 of `OffsetArray`s depending on the turbulence closure) of field data.
 
 When `parameters` is not `nothing`, the boundary condition `func` is called with
@@ -32,21 +32,19 @@ struct DiscreteBoundaryFunction{P, F}
 end
 
 const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
-const UnparameterizedDBFBC = BoundaryCondition{<:Any, <:UnparameterizedDBF}
-const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
 
-@inline getbc(bc::UnparameterizedDBFBC, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    bc.condition.func(i, j, grid, clock, model_fields)
+@inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
+    condition.func(i, j, grid, clock, model_fields)
 
-@inline getbc(bc::DBFBC, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    bc.condition.func(i, j, grid, clock, model_fields, bc.condition.parameters)
+@inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =
+    condition.func(i, j, grid, clock, model_fields, condition.parameters)
 
 # 3D function for immersed boundary conditions
-@inline getbc(bc::UnparameterizedDBFBC, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    bc.condition.func(i, j, k, grid, clock, model_fields)
+@inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
+    condition.func(i, j, k, grid, clock, model_fields)
 
-@inline getbc(bc::DBFBC, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
-    bc.condition.func(i, j, k, grid, clock, model_fields, bc.condition.parameters)
+@inline getbc(condition::DiscreteBoundaryFunction, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
+    condition.func(i, j, k, grid, clock, model_fields, condition.parameters)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)

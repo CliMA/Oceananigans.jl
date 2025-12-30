@@ -1,20 +1,15 @@
-using Oceananigans.BuoyancyFormulations
-using Oceananigans.Coriolis
-using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
-using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, closure_turbulent_velocity
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
 using KernelAbstractions: @private
 
-import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
-
 """
-Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west 
+Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
 direction, ``u``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
 The tendency for ``u`` is called ``G_u`` and defined via
@@ -41,7 +36,7 @@ implicitly during time-stepping.
                                                               ztype,
                                                               clock,
                                                               forcing)
- 
+
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
@@ -55,7 +50,7 @@ implicitly during time-stepping.
 end
 
 """
-Return the tendency for the horizontal velocity in the ``y``-direction, or the east-west 
+Return the tendency for the horizontal velocity in the ``y``-direction, or the east-west
 direction, ``v``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
 The tendency for ``v`` is called ``G_v`` and defined via
@@ -82,10 +77,10 @@ implicitly during time-stepping.
                                                               ztype,
                                                               clock,
                                                               forcing)
-    
+
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇v(i, j, k, grid, advection, velocities) 
+    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
@@ -96,7 +91,7 @@ implicitly during time-stepping.
 end
 
 """
-Return the tendency for a tracer field with index `tracer_index` 
+Return the tendency for a tracer field with index `tracer_index`
 at grid point `i, j, k`.
 
 The tendency is called ``G_c`` and defined via
@@ -105,7 +100,7 @@ The tendency is called ``G_c`` and defined via
 ∂_t c = G_c
 ```
 
-where `c = C[tracer_index]`. 
+where `c = C[tracer_index]`.
 """
 @inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
                                                           val_tracer_index::Val{tracer_index},
@@ -124,10 +119,12 @@ where `c = C[tracer_index]`.
                                                           forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
-    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers),
+                         auxiliary_fields,
+                         biogeochemical_auxiliary_fields(biogeochemistry))
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
-    closure_velocities = closure_turbulent_velocity(closure, diffusivities, val_tracer_name)
+    closure_velocities = closure_auxiliary_velocity(closure, diffusivities, val_tracer_name)
 
     total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)

@@ -1,16 +1,15 @@
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: FieldBoundaryConditions
-using Oceananigans.Utils: launch!, IterationInterval
+using Oceananigans.Utils: Utils, launch!, IterationInterval
 
-using Adapt
+using Adapt: Adapt, adapt
 
 using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
     ThreeDimensionalFormulation,
     ExplicitTimeDiscretization,
+    closure_coefficient,
     convert_diffusivity
-
-import Oceananigans.Utils: with_tracers
 
 import ..TurbulenceClosures:
     viscosity,
@@ -19,7 +18,7 @@ import ..TurbulenceClosures:
     κᶜᶠᶜ,
     κᶜᶜᶠ,
     compute_diffusivities!,
-    build_diffusivity_fields,
+    build_closure_fields,
     tracer_diffusivities
 
 #####
@@ -41,6 +40,9 @@ end
 
 @inline viscosity(::Smagorinsky, K) = K.νₑ
 @inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
+
+Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
+    Smagorinsky{TD}(adapt(to, smag.coefficient), adapt(to, smag.Pr))
 
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
@@ -80,12 +82,12 @@ end
 
 Smagorinsky(FT::DataType; kwargs...) = Smagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
-function with_tracers(tracers, closure::Smagorinsky{TD}) where TD
+function Utils.with_tracers(tracers, closure::Smagorinsky{TD}) where TD
     Pr = tracer_diffusivities(tracers, closure.Pr)
     return Smagorinsky{TD}(closure.coefficient, Pr)
 end
 
-@kernel function _compute_smagorinsky_viscosity!(diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
+@kernel function _compute_smagorinsky_viscosity!(closure_fields, grid, closure, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
 
     # Strain tensor dot product
@@ -94,38 +96,39 @@ end
     # Filter width
     Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
     Δᶠ = cbrt(Δ³)
-    cˢ² = square_smagorinsky_coefficient(i, j, k, grid, closure, diffusivity_fields, Σ², buoyancy, tracers)
+    cˢ² = square_smagorinsky_coefficient(i, j, k, grid, closure, closure_fields, Σ², buoyancy, tracers)
 
-    νₑ = diffusivity_fields.νₑ
+    νₑ = closure_fields.νₑ
 
     @inbounds νₑ[i, j, k] = cˢ² * Δᶠ^2 * sqrt(2Σ²)
 end
 
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, args...) = c.coefficient^2
+@inline square_smagorinsky_coefficient(i, j, k, grid, c, args...) = closure_coefficient(i, j, k, grid, c)^2
 
-compute_coefficient_fields!(diffusivity_fields, closure, model; parameters) = nothing
+compute_coefficient_fields!(closure_fields, closure, model; parameters) = nothing
 
-function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model; parameters = :xyz)
+function compute_diffusivities!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     velocities = model.velocities
-    tracers = model.tracers
 
-    compute_coefficient_fields!(diffusivity_fields, closure, model; parameters)
+    compute_coefficient_fields!(closure_fields, closure, model; parameters)
 
     launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
-            diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
+            closure_fields, grid, closure, buoyancy, velocities, tracers)
 
     return nothing
 end
 
 allocate_coefficient_fields(closure, grid) = NamedTuple()
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
     coefficient_fields = allocate_coefficient_fields(closure, grid)
 
-    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center(), Center(), Center())))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
     viscosity_nt = (; νₑ)
@@ -144,4 +147,3 @@ function Base.show(io::IO, closure::Smagorinsky)
               "├── coefficient = ", coefficient_summary, "\n",
               "└── Pr = ", closure.Pr)
 end
-

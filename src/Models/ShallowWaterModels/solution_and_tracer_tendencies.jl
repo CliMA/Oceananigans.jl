@@ -1,8 +1,8 @@
 using Oceananigans.Advection
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
+using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
 @inline half_g_h²(i, j, k, grid, h, g)  = @inbounds 1/2 * g * h[i, j, k]^2
 @inline h_plus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] + hB[i, j, k]
@@ -16,8 +16,8 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ�
 @inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, hB)
 @inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, hB)
 
-@inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid) 
-@inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid) 
+@inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid)
+@inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid)
 
 """
 Compute the tendency for the x-directional transport, uh
@@ -109,8 +109,8 @@ end
 
     @inbounds c = tracers[tracer_index]
 
-    return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
-             + c_div_U(i, j, k, grid, solution, c, formulation)         
-             + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
+    return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation)
+             + c_div_U(i, j, k, grid, solution, c, formulation)
+             + forcing(i, j, k, grid, clock, merge(solution, tracers))
             )
 end

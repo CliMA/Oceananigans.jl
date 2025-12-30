@@ -1,5 +1,4 @@
 using Base: @propagate_inbounds
-using CUDA
 using Adapt
 using OffsetArrays
 using Statistics
@@ -8,11 +7,9 @@ using Oceananigans.Architectures
 using Oceananigans.Utils
 using Oceananigans.Grids: interior_parent_indices
 
-import Base: minimum, maximum, extrema
 import Oceananigans.Architectures: architecture, child_architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices, interior_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, rnodes, node, xnode, ynode, znode, rnode
-import Oceananigans.Utils: datatuple
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
 const GridOrNothing = Union{AbstractGrid, Nothing}
@@ -88,8 +85,6 @@ end
     return (ax, ay, az, at)
 end
 
-
-
 """
     total_size(field::AbstractField)
 
@@ -104,7 +99,7 @@ interior(f::AbstractField) = f
 ##### Coordinates of fields
 #####
 
-@propagate_inbounds node(i, j, k, ψ::AbstractField) = node(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds  node(i, j, k, ψ::AbstractField) =  node(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
@@ -126,3 +121,21 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
 
+const XReducedAF = AbstractField{Nothing}
+const YReducedAF = AbstractField{<:Any, Nothing}
+const ZReducedAF = AbstractField{<:Any, <:Any, Nothing}
+
+const YZReducedAF = AbstractField{<:Any, Nothing, Nothing}
+const XZReducedAF = AbstractField{Nothing, <:Any, Nothing}
+const XYReducedAF = AbstractField{Nothing, Nothing, <:Any}
+
+const XYZReducedAF = AbstractField{Nothing, Nothing, Nothing}
+
+reduced_dimensions(field::AbstractField) = ()
+reduced_dimensions(field::XReducedAF)    = tuple(1)
+reduced_dimensions(field::YReducedAF)    = tuple(2)
+reduced_dimensions(field::ZReducedAF)    = tuple(3)
+reduced_dimensions(field::YZReducedAF)   = (2, 3)
+reduced_dimensions(field::XZReducedAF)   = (1, 3)
+reduced_dimensions(field::XYReducedAF)   = (1, 2)
+reduced_dimensions(field::XYZReducedAF)  = (1, 2, 3)

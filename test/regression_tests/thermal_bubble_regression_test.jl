@@ -34,7 +34,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
-    datadep_path = "regression_test_data/thermal_bubble_regression.nc"
+    datadep_path = "regression_truth_data/thermal_bubble_regression.nc"
     regression_data_filepath = @datadep_str datadep_path
 
     ####
@@ -89,12 +89,12 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                         S = partition(reference_fields.S, cpu_arch, size(reference_fields.S)))
 
     summarize_regression_test(test_fields, reference_fields)
-    
+
     @test all(test_fields.u .≈ reference_fields.u)
     @test all(test_fields.v .≈ reference_fields.v)
     @test all(test_fields.w .≈ reference_fields.w)
     @test all(test_fields.T .≈ reference_fields.T)
     @test all(test_fields.S .≈ reference_fields.S)
-    
+
     return nothing
 end

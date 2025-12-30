@@ -19,12 +19,11 @@ grid = RectilinearGrid(size=(64, 32, 32), extent=(256, 128, 64))
 #
 # We utilize the same monochromatic wave parameters as Wagner et al. (2021),
 
-using Oceananigans.BuoyancyFormulations: g_Earth
-
- amplitude = 0.8 # m
+g = Oceananigans.defaults.gravitational_acceleration
+amplitude = 0.8 # m
 wavelength = 60  # m
 wavenumber = 2π / wavelength # m⁻¹
- frequency = sqrt(g_Earth * wavenumber) # s⁻¹
+frequency = sqrt(g * wavenumber) # s⁻¹
 
 ## The vertical scale over which the Stokes drift of a monochromatic surface wave
 ## decays away from the surface is `1/2wavenumber`, or
@@ -42,16 +41,16 @@ stokes_jet_edge_width = 40
 # constructor for `RectilinearGrid` above.
 #
 # The Stokes drift profile at the core of the jet is
-# 
+#
 # ```
 # vˢ(x, y, z, t) = Uˢ * exp(z / vertical_scale) * exp( - (x - stokes_jet_center)^2 / (2 * stokes_jet_width^2) ) * 0.5 * ( 1 + 0.1 * cos(2 * pi * (y - grid.Ly/2) / grid.Ly ) )
 # ```
 
 # Create a Stokes drift field that is a cosine function within a subregion of the domain.
-# This function peaks at `y = stokes_jet_center` with a  value of `2*Uˢ`, reaches zero at a distance of 
-# `stokes_jet_width` either side of the peak, and is zero beyond those regions. 
+# This function peaks at `y = stokes_jet_center` with a  value of `2*Uˢ`, reaches zero at a distance of
+# `stokes_jet_width` either side of the peak, and is zero beyond those regions.
 # The zeroing of regions outside the jet is achieved through application of a Heaviside function
-# 
+#
 # ```
 # vˢ(x, y, z, t) = Uˢ * exp(z / vertical_scale) * 0.5 * (1 + cos(π * (y - stokes_jet_center) / stokes_jet_width)) * 0.5 * (sign(y - stokes_jet_center + stokes_jet_width)  -  sign(y - stokes_jet_center - stokes_jet_width) )
 # ```
@@ -257,7 +256,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 output_interval = 5minutes
 
-fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
+fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.closure_fields.νₑ))
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                 schedule = TimeInterval(output_interval),
@@ -313,7 +312,7 @@ nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
-# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 
@@ -413,18 +412,18 @@ wˢ_yvariation = Array{Float32}(undef, size(yu, 1))
 vˢ_map = Array{Float32}(undef, size(xu, 1), size(yu, 1))
 wˢ_map = Array{Float32}(undef, size(xu, 1), size(yu, 1))
 
-while ii <= size(xu,1) 
-    vˢ_xvariation[ii] = vˢ(xu[ii], 3*grid.Ly/8, -2, 0)  
-    ∂z_vˢ_xvariation[ii] = ∂z_vˢ(xu[ii], 3*grid.Ly/8, -2, 0) 
+while ii <= size(xu,1)
+    vˢ_xvariation[ii] = vˢ(xu[ii], 3*grid.Ly/8, -2, 0)
+    ∂z_vˢ_xvariation[ii] = ∂z_vˢ(xu[ii], 3*grid.Ly/8, -2, 0)
     ∂y_vˢ_xvariation[ii] = ∂y_vˢ(xu[ii], 3*grid.Ly/8, -2, 0)
     ∂x_vˢ_xvariation[ii] = ∂x_vˢ(xu[ii], 3*grid.Ly/8, -2, 0)
-    wˢ_xvariation[ii] = wˢ(xu[ii], 3*grid.Ly/8, -2, 0)  
-    ∂z_wˢ_xvariation[ii] = ∂z_wˢ(xu[ii], 3*grid.Ly/8, -2, 0) 
+    wˢ_xvariation[ii] = wˢ(xu[ii], 3*grid.Ly/8, -2, 0)
+    ∂z_wˢ_xvariation[ii] = ∂z_wˢ(xu[ii], 3*grid.Ly/8, -2, 0)
     ∂y_wˢ_xvariation[ii] = ∂y_wˢ(xu[ii], 3*grid.Ly/8, -2, 0)
-    ∂x_wˢ_xvariation[ii] = ∂x_wˢ(xu[ii], 3*grid.Ly/8, -2, 0) 
+    ∂x_wˢ_xvariation[ii] = ∂x_wˢ(xu[ii], 3*grid.Ly/8, -2, 0)
 
     global jj = 1
-    while jj <= size(yu,1) 
+    while jj <= size(yu,1)
         vˢ_yvariation[jj] = vˢ(stokes_jet_center + 0.5 * (stokes_jet_central_width + stokes_jet_edge_width), yu[jj], -2, 0)
         wˢ_yvariation[jj] = wˢ(stokes_jet_center + 0.5 * (stokes_jet_central_width + stokes_jet_edge_width), yu[jj], -2, 0)
         vˢ_map[ii,jj] = vˢ(xu[ii], yu[jj], -2, 0)
@@ -433,7 +432,7 @@ while ii <= size(xu,1)
     end
 
     global ii += 1
-end 
+end
 
 lines!(ax_y_stokesu, vˢ_xvariation, xu; label = L"v^s")
 lines!(ax_y_stokesu, ∂z_vˢ_xvariation, xu; label = L"\partial_z v^s")

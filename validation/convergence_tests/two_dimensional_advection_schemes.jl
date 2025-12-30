@@ -43,7 +43,7 @@ advection_schemes = (WENO(order=3), WENO(order=5), WENO(order=7), WENO(order=9),
 
 U = 1
 κ = 1e-8
-Nx = [16, 32, 64, 96, 128, 192, 256] 
+Nx = [16, 32, 64, 96, 128, 192, 256]
 
 results = Dict()
 for scheme in advection_schemes
@@ -83,7 +83,7 @@ for scheme in advection_schemes
         atol  = tolerance(scheme)
         Ntest = test_resolution(scheme)
         itest = searchsortedfirst(Nx, Ntest)
-        
+
         (cxy_L₁, cyz_L₁, cxz_L₁, uyz_L₁, vxz_L₁, wxy_L₁, cxy_L∞, cyz_L∞, cxz_L∞, uyz_L∞, vxz_L∞, wxy_L∞) = unpack_errors(results[typeof(scheme)])
 
         common_kwargs = (linestyle="None", color=colors[1], mfc="None", alpha=0.8)
@@ -93,11 +93,11 @@ for scheme in advection_schemes
         loglog(Nx, cxz_L₁; marker="_", label="\$L_1\$-norm, \$c(z)\$ $name", common_kwargs...)
 
         loglog(Nx, uyz_L₁; marker="1", label="\$L_1\$-norm, \$u(y)\$ $name", common_kwargs...)
-        
+
         loglog(Nx, vxz_L₁; marker="s", label="\$L_1\$-norm, \$v(x)\$ $name", common_kwargs...)
-        
+
         loglog(Nx, wxy_L₁; marker="X", label="\$L_1\$-norm, \$w(x)\$ $name", common_kwargs...)
-        
+
         common_kwargs = (linestyle="None", color=colors[2], mfc="None", alpha=0.8)
 
         loglog(Nx, cxy_L∞; marker="*", label="\$L_\\infty\$-norm, \$c(x)\$ $name", common_kwargs...)
@@ -105,9 +105,9 @@ for scheme in advection_schemes
         loglog(Nx, cxz_L∞; marker="_", label="\$L_\\infty\$-norm, \$c(z)\$ $name", common_kwargs...)
 
         loglog(Nx, uyz_L∞; marker="1", label="\$L_\\infty\$-norm, \$u(y)\$ $name", common_kwargs...)
-        
+
         loglog(Nx, vxz_L∞; marker="s", label="\$L_\\infty\$-norm, \$v(x)\$ $name", common_kwargs...)
-        
+
         loglog(Nx, wxy_L∞; marker="X", label="\$L_\\infty\$-norm, \$w(x)\$ $name", common_kwargs...)
 
         label = raw"\sim N_x^{-" * "$roc1D" * raw"}" |> latexstring
