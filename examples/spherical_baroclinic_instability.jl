@@ -33,7 +33,7 @@
 #
 # - [`TripolarGrid`](@ref): Avoids the North Pole singularity by introducing two computational poles
 #   over land (typically over North America and Eurasia). This grid was first introduced by
-#   Murray (1996) and is widely used in global ocean models.
+#   [Murray1996](@citet) and is widely used in global ocean models.
 #
 # - [`RotatedLatitudeLongitudeGrid`](@ref): Rotates the grid's north pole to an arbitrary location,
 #   allowing finer resolution in a region of interest while avoiding the geographic poles.
