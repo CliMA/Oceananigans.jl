@@ -1,5 +1,5 @@
 """
-    BulkDrag
+    BulkDragBoundaryConditions
 
 Module for implementing quadratic drag boundary conditions for velocity fields.
 
@@ -15,7 +15,7 @@ where `Cᴰ` is the drag coefficient and `|U| = √(u² + v²)` is the horizonta
 This is the velocity flux analog of Breeze.jl's `BulkDragFunction`, which computes
 momentum flux `Jᵘ = -Cᴰ |U| ρu`.
 """
-module BulkDragModule
+module BulkDragBoundaryConditions
 
 export BulkDragFunction,
        XDirectionBulkDragFunction,

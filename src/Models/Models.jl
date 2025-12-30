@@ -116,8 +116,8 @@ using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInv
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
 # BulkDrag for quadratic drag boundary conditions
-include("BulkDrag.jl")
-using .BulkDragModule: BulkDrag, BulkDragFunction, BulkDragBoundaryCondition
+include("BulkDragBoundaryConditions.jl")
+using .BulkDragBoundaryConditions: BulkDrag, BulkDragFunction, BulkDragBoundaryCondition
 
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
