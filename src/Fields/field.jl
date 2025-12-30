@@ -1,5 +1,5 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper, construct_boundary_conditions_kernels
-using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
+using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, construct_boundary_conditions_kernels
+using Oceananigans.Grids: parent_index_range, default_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 using Oceananigans.Architectures: convert_to_device
 
@@ -12,8 +12,7 @@ using GPUArraysCore: @allowscalar
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
-import Statistics: mean, mean!
-import LinearAlgebra: dot, norm
+import Statistics: mean
 import Base: ==
 
 #####
@@ -335,10 +334,10 @@ function Base.view(f::Field, i, j, k)
 
     # Check that the indices actually work here
     @apply_regionally valid_view_indices = map(index_range_contains, f.indices, view_indices)
-    
+
     all(getregion(valid_view_indices, 1)) ||
         throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
-    
+
     @apply_regionally begin
         view_indices = map(convert_colon_indices, view_indices, f.indices)
 
@@ -508,6 +507,10 @@ end
 FieldStatus() = FieldStatus(0.0)
 Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
 
+set_status!(status, time) = nothing
+set_status!(status::FieldStatus, time::Nothing) = nothing
+set_status!(status::FieldStatus, time) = status.time = time
+
 """
     FixedTime(time)
 
@@ -536,7 +539,6 @@ function compute_at!(field::Field, time)
     # Otherwise, compute only on initialization or if field.status.time is not current,
     elseif time == zero(time) || time != field.status.time
         compute!(field, time)
-        field.status.time = time
     end
 
     return field
@@ -829,18 +831,11 @@ end
 
 Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
-function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
-    conditional_a = condition_operand(a, nothing, one(eltype(a)))
-    conditional_b = condition_operand(b, nothing, one(eltype(b)))
-    # TODO: Make this non-allocating?
-    return all(isapprox.(conditional_a, conditional_b; kw...))
-end
-
 #####
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, positional_args...; kwargs...) 
+function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     arch = architecture(field.grid)
     args = (field.data,
@@ -849,8 +844,8 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
             instantiated_location(field),
             field.grid,
             positional_args...)
-    
-    # Manually convert args... to be 
+
+    # Manually convert args... to be
     # passed to the fill_halo_regions! function.
     GC.@preserve args begin
         converted_args = convert_to_device(arch, args)
@@ -859,3 +854,9 @@ function fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     return nothing
 end
+
+#####
+##### nodes
+#####
+
+nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)

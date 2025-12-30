@@ -1,15 +1,17 @@
 using MPI
 using OffsetArrays
-using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
-using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
-using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
-using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: R_Earth, metrics_precomputed
 
 using Oceananigans.Fields
+using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements,
+                          validate_rectilinear_grid_args, validate_lat_lon_grid_args,
+                          generate_coordinate, with_precomputed_metrics,
+                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                          metrics_precomputed, constructor_arguments
+using Oceananigans.Utils: getnamewrapper
 
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
+
+import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
+                           with_halo, with_number_type, size_summary
 
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
@@ -129,8 +131,8 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                longitude,
                                z,
                                topology = nothing,
-                               radius = R_Earth,
-                               halo = (1, 1, 1))
+                               radius = Oceananigans.defaults.planet_radius,
+                               halo = nothing)
 
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -320,12 +322,14 @@ end
 function scatter_local_grids(global_grid::RectilinearGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
+    global_sz = pop_flat_elements(global_sz, topo)
     return RectilinearGrid(arch, eltype(global_grid); size=global_sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
 function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
+    global_sz = pop_flat_elements(global_sz, topo)
     return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x,
                                  latitude=y, z=z, halo=halo, topology=topo, radius=global_grid.radius)
 end
@@ -371,4 +375,33 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     else
         return Bounded
     end
+end
+
+function with_number_type(FT, local_grid::DistributedRectilinearGrid)
+    global_grid = reconstruct_global_grid(local_grid)
+    args_local, _ = constructor_arguments(local_grid)
+    _, kwargs_global = constructor_arguments(global_grid)
+    arch = args_local[:architecture]
+    kwargs = kwargs_global
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+#####
+##### Show
+#####
+
+function size_summary(grid::DistributedGrid)
+    local_summary = size_summary(size(grid))
+    arch = architecture(grid)
+
+    Rx, Ry, Rz = arch.ranks
+    Nr = prod(arch.ranks)
+
+    distributed_info = if Nr == 1
+        "(distributed on 1 rank)"
+    else
+        "(distributed across $Rx×$Ry×$Rz ranks)"
+    end
+
+    return string(local_summary, " ", distributed_info)
 end

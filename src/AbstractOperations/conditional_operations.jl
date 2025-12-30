@@ -1,9 +1,7 @@
-using Oceananigans.Fields: OneField, ReducedAbstractField, filltype, reduced_location, initialize_reduced_field!
-using Oceananigans.Grids: architecture
+using Oceananigans.Fields: OneField
 using Base: @propagate_inbounds
 
-import Base: minimum, maximum, sum, all, any, prod
-import Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
@@ -218,7 +216,7 @@ Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
-on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     ConditionalOperation{LX, LY, LZ}(on_architecture(to, c.operand),
                                      on_architecture(to, c.func),
                                      on_architecture(to, c.grid),

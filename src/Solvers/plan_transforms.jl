@@ -11,26 +11,26 @@
 ##### efficient transforms. `A` will be mutated.
 #####
 
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, regular_dimensions, stretched_dimensions
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, regular_dimensions
 
-function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
+function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
     length(dims) == 0 && return nothing
-    return FFTW.plan_fft!(A, dims, flags=planner_flag)
+    return FFTW.plan_fft!(A, dims, flags=planner_flag; num_threads)
+end
+    
+function plan_forward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
+    length(dims) == 0 && return nothing
+    return FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag; num_threads)
 end
 
-function plan_forward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT)
+function plan_backward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
     length(dims) == 0 && return nothing
-    return FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag)
+    return FFTW.plan_ifft!(A, dims, flags=planner_flag; num_threads)
 end
 
-function plan_backward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
+function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
     length(dims) == 0 && return nothing
-    return FFTW.plan_ifft!(A, dims, flags=planner_flag)
-end
-
-function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT)
-    length(dims) == 0 && return nothing
-    return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
+    return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag; num_threads)
 end
 
 plan_forward_transform(A::AbstractArray, ::Flat, args...) = nothing
@@ -154,7 +154,7 @@ function plan_transforms(grid, storage, planner_flag, untransformed_dim)
         dim ∈ regular_dimensions(grid) ||
             error("Transform directions must be regularly spaced.")
     end
-        
+
     !(topo[untransformed_dim] === Bounded) && error("Transforms can be planned only when the untransformed direction's topology is `Bounded`.")
     periodic_dims = Tuple(dim for dim in findall(t -> t == Periodic, topo) if dim ≠ untransformed_dim)
     bounded_dims  = Tuple(dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ untransformed_dim)

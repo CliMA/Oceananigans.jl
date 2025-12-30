@@ -4,6 +4,10 @@ using KernelAbstractions: @kernel, @index
 ##### "Scans" of AbstractField.
 #####
 
+filter_nothing_dims(::Colon, loc) = filter_nothing_dims((1, 2, 3), loc)
+filter_nothing_dims(dims, loc) = filter(d -> !isnothing(loc[d]), dims)
+filter_nothing_dims(dim::Int, loc) = filter_nothing_dims(tuple(dim), loc)
+
 """
     Scan{T, R, O, D}
 
@@ -30,8 +34,9 @@ Base.summary(::Accumulating) = "Accumulating"
 const Reduction = Scan{<:AbstractReducing}
 const Accumulation = Scan{<:AbstractAccumulating}
 
-scan_indices(::AbstractReducing, indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
-scan_indices(::AbstractAccumulating, indices; dims) = indices
+scan_indices(::AbstractReducing, indices, dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
+scan_indices(::AbstractAccumulating, indices, dims) = indices
+scan_indices(::AbstractReducing, ::Tuple{Colon, Colon, Colon}, dims) = (:, :, :)
 
 Base.summary(s::Scan) = string(summary(s.type), " ",
                                s.scan!,
@@ -47,7 +52,8 @@ function Field(scan::Scan;
     operand = scan.operand
     grid = operand.grid
     LX, LY, LZ = loc = instantiated_location(scan)
-    indices = scan_indices(scan.type, indices; dims=scan.dims)
+    dims = filter_nothing_dims(scan.dims, loc)
+    indices = scan_indices(scan.type, indices, dims)
 
     if isnothing(data)
         data = new_data(grid, loc, indices)
@@ -77,6 +83,8 @@ function compute!(field::ScannedComputedField, time=nothing)
     elseif s.type isa AbstractAccumulating
         s.scan!(field, s.operand; dims=s.dims)
     end
+
+    set_status!(field.status, time)
 
     return field
 end
@@ -299,4 +307,3 @@ end
         @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, k])
     end
 end
-

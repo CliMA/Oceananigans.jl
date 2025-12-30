@@ -23,7 +23,7 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
-    
+
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     number_of_tasks = length(kernels!)
 
@@ -35,7 +35,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     return nothing
 end
 
-const NoBCs = Union{Nothing, Tuple{Vararg{Nothing}}}
+const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 
 @inline fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...) = kernel!(c, bcs..., loc, grid, Tuple(args))
 @inline fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid, args...; kwargs...) = nothing
@@ -50,6 +50,17 @@ const NoBCs = Union{Nothing, Tuple{Vararg{Nothing}}}
 @inline _fill_north_halo!(i, k, grid, c, ::Nothing, args...)  = nothing
 @inline _fill_bottom_halo!(i, j, grid, c, ::Nothing, args...) = nothing
 @inline _fill_top_halo!(i, j, grid, c, ::Nothing, args...)    = nothing
+
+#####
+##### Missing BCS
+#####
+
+@inline _fill_west_halo!(j, k, grid, c, ::Missing, args...)   = nothing
+@inline _fill_east_halo!(j, k, grid, c, ::Missing, args...)   = nothing
+@inline _fill_south_halo!(i, k, grid, c, ::Missing, args...)  = nothing
+@inline _fill_north_halo!(i, k, grid, c, ::Missing, args...)  = nothing
+@inline _fill_bottom_halo!(i, j, grid, c, ::Missing, args...) = nothing
+@inline _fill_top_halo!(i, j, grid, c, ::Missing, args...)    = nothing
 
 #####
 ##### Double-sided fill_halo! kernels

@@ -459,6 +459,24 @@ end
             @test child_architecture(architecture(cpurg))  == CPU()
             @test child_architecture(architecture(cpullg)) == CPU()
             @test child_architecture(architecture(cpuosg)) == CPU()
+
+            @info "Testing `minimum_*spacing` for distributed grids..."
+
+            grg  = reconstruct_global_grid(rg)
+            gllg = reconstruct_global_grid(llg)
+            gosg = reconstruct_global_grid(osg)
+
+            @test minimum_xspacing(rg) == minimum_xspacing(grg)
+            @test minimum_yspacing(rg) == minimum_yspacing(grg)
+            @test minimum_zspacing(rg) == minimum_zspacing(grg)
+
+            @test minimum_xspacing(llg) == minimum_xspacing(llg)
+            @test minimum_yspacing(llg) == minimum_yspacing(llg)
+            @test minimum_zspacing(llg) == minimum_zspacing(llg)
+
+            @test minimum_xspacing(osg) == minimum_xspacing(osg)
+            @test minimum_yspacing(osg) == minimum_yspacing(osg)
+            @test minimum_zspacing(osg) == minimum_zspacing(osg)
         end
     end
 

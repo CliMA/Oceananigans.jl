@@ -1,19 +1,17 @@
+using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
 using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
-using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
-import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
-import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-import Oceananigans.Grids: xnodes, ynodes
-import Oceananigans.Fields: set!, compute!, compute_at!, interior, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices, communication_buffers
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
 import Oceananigans.Diagnostics: hasnan
-
-import Base: fill!, axes
+import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
+                            validate_indices
+import Oceananigans.Grids: xnodes, ynodes
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrids} where {LX, LY, LZ, O}
@@ -66,7 +64,7 @@ Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """
 function reconstruct_global_field(mrf::MultiRegionField)
 
-    # TODO: Is this correct? Shall we reconstruct a global field on the architecture of the grid?
+    # TODO: Reconstruct global field on the architecture of the grid. Use on_architecture to switch from GPU to CPU.
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
     global_field = Field(instantiated_location(mrf), global_grid; indices)
@@ -113,10 +111,10 @@ end
 
 ## Functions applied regionally
 set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
-fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
+Base.fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
 set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
-fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
+Base.fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
 
 set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
 set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
@@ -176,7 +174,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                            immersed = reg_bcs.immersed)
 end
 
-function inject_regional_bcs(grid, connectivity, loc, indices;   
+function inject_regional_bcs(grid, connectivity, loc, indices;
                              west = default_auxiliary_bc(grid, Val(:west), loc),
                              east = default_auxiliary_bc(grid, Val(:east), loc),
                              south = default_auxiliary_bc(grid, Val(:south), loc),
@@ -192,9 +190,6 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
-
-FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
-    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function Base.show(io::IO, field::MultiRegionField)
     bcs = getregion(field, 1).boundary_conditions

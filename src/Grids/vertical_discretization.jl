@@ -63,12 +63,15 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 """
     MutableVerticalDiscretization(r_faces)
 
-Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`, a function of an index `k`,
-or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coordinate that might evolve in time
-following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates,
-or sigma coordinates.
+Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
+a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
+defines a vertical coordinate that can evolve in time following certain rules.
+Examples of `MutableVerticalDiscretization`s are the free-surface following coordinates
+(also known as "zee-star") or the terrain following coordinates (also known as "sigma"
+coordinates).
 """
-MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:9)...)
+MutableVerticalDiscretization(r_faces) =
+    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -194,14 +197,45 @@ end
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline rnodes(grid::AUG, ℓz::F; with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓz::C; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
+@inline rnodes(grid::AUG, ℓz::F; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓz::C; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = rnodes(grid, ℓz; with_halos, indices)
 
-rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
-znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+
+ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
+@inline rnodes(grid::ZFlatAUG, ℓz::F; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
+@inline rnodes(grid::ZFlatAUG, ℓz::C; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
 
 # TODO: extend in the Operators module
+"""
+    znodes(grid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest znodes
+julia> using Oceananigans
+
+julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
+                                            topology=(Periodic, Periodic, Bounded));
+
+julia> z = znodes(horz_periodic_grid, Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
+5-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), :) with eltype Float64 with indices 0:4:
+ -1.1666666666666667
+ -0.8333333333333334
+ -0.5
+ -0.16666666666666666
+  0.16666666666666666
+```
+"""
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 @inline znodes(grid::AUG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
 

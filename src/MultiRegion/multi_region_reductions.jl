@@ -1,7 +1,5 @@
-using Statistics
-import Statistics.mean
-import Statistics.norm
-import Statistics.dot
+using Statistics: Statistics
+using LinearAlgebra: LinearAlgebra
 
 reductions = (:(Base.sum), :(Base.maximum), :(Base.minimum), :(Base.prod), :(Base.any), :(Base.all), :(Statistics.mean))
 
@@ -46,5 +44,5 @@ collect_grid(f::NTuple{N, <:Field}) where N = Tuple(f[i].grid for i in 1:N)
 const MRD = Union{MultiRegionField, MultiRegionObject}
 
 # make it more efficient?
-Statistics.dot(f::MRD,  g::MRD)  = sum([r for r in construct_regionally(dot, f, g).regional_objects])
-Statistics.norm(f::MRD) = sqrt(dot(f, f))
+LinearAlgebra.dot(f::MRD,  g::MRD)  = sum([r for r in construct_regionally(dot, f, g).regional_objects])
+LinearAlgebra.norm(f::MRD) = sqrt(dot(f, f))

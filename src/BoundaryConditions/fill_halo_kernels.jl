@@ -6,7 +6,7 @@ using Oceananigans.Utils: configure_kernel
                                           grid::AbstractGrid,
                                           loc, indices)
 
-Construct preconfigured boundary condition kernels for a given `data` array, `grid`, 
+Construct preconfigured boundary condition kernels for a given `data` array, `grid`,
 and the provided `bcs` (a FieldBoundaryConditions` object).
 Return a new `FieldBoundaryConditions` object with the preconfigured kernels and
 ordered boundary conditions.
@@ -31,14 +31,9 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 @inline select_bc(bcs::Tuple) = @inbounds bcs[1]
 @inline select_bc(bcs::Tuple{<:Nothing, <:BoundaryCondition}) = @inbounds bcs[2]
 @inline select_bc(bcs::Tuple{<:BoundaryCondition, <:Nothing}) = @inbounds bcs[1]
-@inline select_bc(bcs::BoundaryCondition) = bc
+@inline select_bc(bcs::BoundaryCondition) = bcs
 
-@inline function fill_halo_kernels(bcs::FieldBoundaryConditions,
-                                   data::OffsetArray,
-                                   grid::AbstractGrid,
-                                   loc, indices)
-
-    arch = architecture(grid)
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::AbstractGrid, loc, indices)
     sides, ordered_bcs = permute_boundary_conditions(bcs)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
@@ -48,7 +43,7 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
     for task in 1:length(sides)
         side = sides[task]
         bc   = select_bc(ordered_bcs[task])
-        
+
         size    = fill_halo_size(data, side, indices, bc, loc, grid)
         offset  = fill_halo_offset(size, side, indices)
         kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
@@ -84,26 +79,26 @@ fill_halo_kernel!(value, bc::NoBC, args...) = nothing
 ##### Two-sided fill halo kernels
 #####
 
-fill_halo_kernel!(::WestAndEast, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) = 
+fill_halo_kernel!(::WestAndEast, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_west_and_east_halo!; reduced_dimensions)[1]
 
 fill_halo_kernel!(::SouthAndNorth, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_south_and_north_halo!; reduced_dimensions)[1]
 
-fill_halo_kernel!(::BottomAndTop, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) = 
+fill_halo_kernel!(::BottomAndTop, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_bottom_and_top_halo!; reduced_dimensions)[1]
 
 #####
 ##### One-sided fill halo kernels
 #####
 
-fill_halo_kernel!(::West, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) = 
+fill_halo_kernel!(::West, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_only_west_halo!; reduced_dimensions)[1]
 
-fill_halo_kernel!(::East, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) = 
+fill_halo_kernel!(::East, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_only_east_halo!; reduced_dimensions)[1]
 
-fill_halo_kernel!(::South, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) = 
+fill_halo_kernel!(::South, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_only_south_halo!; reduced_dimensions)[1]
 
 fill_halo_kernel!(::North, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
@@ -119,17 +114,17 @@ fill_halo_kernel!(::Top, bc::BoundaryCondition, grid, size, offset, data, reduce
 ##### Periodic fill halo kernels (Always two-sided)
 #####
 
-function fill_halo_kernel!(::WestAndEast, bc::PBC, grid, size, offset, data, reduced_dimensions) 
+function fill_halo_kernel!(::WestAndEast, bc::PBC, grid, size, offset, data, reduced_dimensions)
     yz_size, offset = periodic_size_and_offset(data, 2, 3, size, offset)
     return configure_kernel(architecture(grid), grid, kernel_parameters(yz_size, offset), _fill_periodic_west_and_east_halo!)[1]
 end
 
-function fill_halo_kernel!(::SouthAndNorth, bc::PBC, grid, size, offset, data, reduced_dimensions) 
+function fill_halo_kernel!(::SouthAndNorth, bc::PBC, grid, size, offset, data, reduced_dimensions)
     xz_size, offset = periodic_size_and_offset(data, 1, 3, size, offset)
     return configure_kernel(architecture(grid), grid, kernel_parameters(xz_size, offset), _fill_periodic_south_and_north_halo!)[1]
 end
 
-function fill_halo_kernel!(::BottomAndTop, bc::PBC, grid, size, offset, data, reduced_dimensions) 
+function fill_halo_kernel!(::BottomAndTop, bc::PBC, grid, size, offset, data, reduced_dimensions)
     xy_size, offset = periodic_size_and_offset(data, 1, 2, size, offset)
     return configure_kernel(architecture(grid), grid, kernel_parameters(xy_size, offset), _fill_periodic_bottom_and_top_halo!)[1]
 end
@@ -149,7 +144,7 @@ for Side in (:WestAndEast, :SouthAndNorth, :BottomAndTop, :West, :East, :South, 
 end
 
 #####
-##### MultiRegion Boundary Conditions 
+##### MultiRegion Boundary Conditions
 #####
 
 # A struct to hold the side of the fill_halo kernel

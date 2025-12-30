@@ -1,7 +1,6 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Utils: prettysummary
-using Statistics: norm, dot
+using LinearAlgebra: norm, dot
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 
@@ -40,19 +39,19 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 
 """
     ConjugateGradientSolver(linear_operation;
-                                          template_field,
-                                          maxiter = size(template_field.grid),
-                                          reltol = sqrt(eps(template_field.grid)),
-                                          abstol = 0,
-                                          preconditioner = nothing,
-                                          enforce_gauge_condition! = no_gauge_enforcement!)
+                            template_field,
+                            maxiter = size(template_field.grid),
+                            reltol = sqrt(eps(template_field.grid)),
+                            abstol = 0,
+                            preconditioner = nothing,
+                            enforce_gauge_condition! = no_gauge_enforcement!)
 
-Returns a `ConjugateGradientSolver` that solves the linear equation
-``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
+Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
+using a iterative conjugate gradient method with optional preconditioning.
 
 The solver is used by calling
 
-```
+```julia
 solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
 ```
 
@@ -80,9 +79,9 @@ Arguments
 * `enforce_gauge_condition!`: Function with signature `enforce_gauge_condition!(x, r)` that
                               enforces a gauge condition on the solution `x` and residual `r`.
                               This is useful for problems where the solution is not unique, such as
-                              the Poisson equation with purely Neumann boundary conditions. 
-                              The function is called at the end of each iteration of a conjugate 
-                              gradient iteration to ensure that the solution remains consistent 
+                              the Poisson equation with purely Neumann boundary conditions.
+                              The function is called at the end of each iteration of a conjugate
+                              gradient iteration to ensure that the solution remains consistent
                               with the gauge condition.
                               The default is `no_gauge_enforcement!`, which does not enforce a gauge condition.
 
@@ -93,7 +92,7 @@ function ConjugateGradientSolver(linear_operation;
                                  maxiter = prod(size(template_field)),
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
-                                 preconditioner = nothing, 
+                                 preconditioner = nothing,
                                  enforce_gauge_condition! = no_gauge_enforcement!)
 
     arch = architecture(template_field)
@@ -102,7 +101,7 @@ function ConjugateGradientSolver(linear_operation;
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
-            residual = similar(template_field) # rᵢ
+    residual = similar(template_field) # rᵢ
 
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)

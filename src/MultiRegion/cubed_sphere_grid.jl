@@ -1,11 +1,10 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: R_Earth,
-                          halo_size,
+using Oceananigans.Grids: halo_size,
                           size_summary,
-                          total_length,
                           topology
 
 using CubedSphere
+using CubedSphere.SphericalGeometry
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
 
@@ -19,7 +18,7 @@ const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY,
 const ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} =
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 
-const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} = 
+const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 
 """
@@ -30,9 +29,9 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
                              z_halo = horizontal_direction_halo,
                              horizontal_topology = FullyConnected,
                              z_topology = Bounded,
-                             radius = R_Earth,
+                             radius = Oceananigans.defaults.planet_radius,
                              non_uniform_conformal_mapping = false,
-                             spacing_type = "geometric",
+                             spacing = GeometricSpacing(),
                              provided_conformal_mapping = nothing,
                              partition = CubedSpherePartition(; R = 1))
 
@@ -146,8 +145,8 @@ julia> using Oceananigans
 julia> using Oceananigans.MultiRegion: ConformalCubedSphereGrid
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
-ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU():
-├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU:
+├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo
 ├── partition: CubedSpherePartition with (1 region in each panel)
 └── connectivity: CubedSphereConnectivity
 ```
@@ -193,9 +192,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                   z_halo = horizontal_direction_halo,
                                   horizontal_topology = FullyConnected,
                                   z_topology = Bounded,
-                                  radius = R_Earth,
+                                  radius = Oceananigans.defaults.planet_radius,
                                   non_uniform_conformal_mapping = false,
-                                  spacing_type = "geometric",
+                                  spacing = GeometricSpacing(),
                                   provided_conformal_mapping = nothing,
                                   partition = CubedSpherePartition(; R = 1))
 
@@ -243,7 +242,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                         halo = region_halo,
                                         rotation = region_rotation,
                                         non_uniform_conformal_mapping,
-                                        spacing_type,
+                                        spacing,
                                         provided_conformal_mapping)
 
     # Propagate the vertical coordinate type in the `MultiRegionGrid`.
@@ -371,7 +370,7 @@ end
                              z,
                              panel_halo = (4, 4, 4),
                              panel_topology = (FullyConnected, FullyConnected, Bounded),
-                             radius = R_Earth)
+                             radius = Oceananigans.defaults.planet_radius)
 
 Load a `ConformalCubedSphereGrid` from `filepath`.
 """
@@ -382,7 +381,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
                                   z,
                                   panel_halo = (4, 4, 4),
                                   panel_topology = (FullyConnected, FullyConnected, Bounded),
-                                  radius = R_Earth)
+                                  radius = Oceananigans.defaults.planet_radius)
 
     # only 6-panel partition, i.e. R = 1, are allowed when loading a ConformalCubedSphereGrid from file
     partition = CubedSpherePartition(R = 1)
@@ -455,8 +454,8 @@ function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshap
 end
 
 function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT}) where FT
-    TX, TY, TZ = Oceananigans.Grids.topology_strs(grid)
-    return string(size_summary(size(grid)),
+    TX, TY, TZ = topology(grid)
+    return string(size_summary(grid),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end

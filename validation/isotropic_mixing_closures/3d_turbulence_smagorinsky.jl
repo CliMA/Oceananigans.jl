@@ -41,7 +41,7 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     S² = KernelFunctionOperation{Center, Center, Center}(Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ, model.grid, u, v, w)
 
     if closure.coefficient isa DirectionallyAveragedCoefficient
-        c²ₛ = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
+        c²ₛ = model.closure_fields.LM_avg / model.closure_fields.MM_avg
         outputs = (; S², c²ₛ)
     else
         outputs = (; S²)
