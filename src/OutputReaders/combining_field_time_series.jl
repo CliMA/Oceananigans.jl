@@ -6,8 +6,7 @@ using GPUArraysCore: @allowscalar
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
-                          with_precomputed_metrics, metrics_precomputed,
-                          Periodic, Bounded, FullyConnected
+                          with_precomputed_metrics, metrics_precomputed
 
 using Oceananigans.Fields: interior, Field, instantiated_location, FixedTime
 using Oceananigans.BoundaryConditions: fill_halo_regions!
