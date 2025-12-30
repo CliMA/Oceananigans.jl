@@ -15,20 +15,20 @@ include("dependencies_for_runtests.jl")
         Nx, Ny, Nz = size(a)
 
         a .= 1
-        @test CUDA.@allowscalar all(a .== 1)
+        @test @allowscalar all(a .== 1)
 
         b .= 2
 
         c .= a .+ b
-        @test CUDA.@allowscalar all(c .== 3)
+        @test @allowscalar all(c .== 3)
 
         c .= a .+ b .+ 1
-        @test CUDA.@allowscalar all(c .== 4)
+        @test @allowscalar all(c .== 4)
 
         # Halo regions
         fill_halo_regions!(c) # Does not happen by default in broadcasting now
 
-        CUDA.@allowscalar begin
+        @allowscalar begin
             @test c[1, 1, 0] == 4
             @test c[1, 1, Nz+1] == 4
         end
@@ -41,13 +41,13 @@ include("dependencies_for_runtests.jl")
 
         a2 = CenterField(three_point_grid)
 
-        b2_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=OpenBoundaryCondition(0), bottom=OpenBoundaryCondition(0))
+        b2_bcs = FieldBoundaryConditions(three_point_grid, (Center(), Center(), Face()), top=OpenBoundaryCondition(0), bottom=OpenBoundaryCondition(0))
         b2 = ZFaceField(three_point_grid, boundary_conditions=b2_bcs)
 
         b2 .= 1
         fill_halo_regions!(b2) # sets b2[1, 1, 1] = b[1, 1, 4] = 0
 
-        CUDA.@allowscalar begin
+        @allowscalar begin
             @test b2[1, 1, 1] == 0
             @test b2[1, 1, 2] == 1
             @test b2[1, 1, 3] == 1
@@ -56,7 +56,7 @@ include("dependencies_for_runtests.jl")
 
         a2 .= b2
 
-        CUDA.@allowscalar begin
+        @allowscalar begin
             @test a2[1, 1, 1] == 0.5
             @test a2[1, 1, 2] == 1.0
             @test a2[1, 1, 3] == 0.5
@@ -64,7 +64,7 @@ include("dependencies_for_runtests.jl")
 
         a2 .= b2 .+ 1
 
-        CUDA.@allowscalar begin
+        @allowscalar begin
             @test a2[1, 1, 1] == 1.5
             @test a2[1, 1, 2] == 2.0
             @test a2[1, 1, 3] == 1.5
@@ -74,7 +74,7 @@ include("dependencies_for_runtests.jl")
         ##### Broadcasting with ReducedField
         #####
 
-        for loc in [
+        for Loc in [
                     (Nothing, Center, Center),
                     (Center, Nothing, Center),
                     (Center, Center, Nothing),
@@ -84,20 +84,20 @@ include("dependencies_for_runtests.jl")
                     (Nothing, Nothing, Nothing),
                    ]
 
-            @info "    Testing broadcasting to location $loc..."
+            @info "    Testing broadcasting to location $Loc..."
 
-            r, p, q = [Field(loc, grid) for i = 1:3]
+            r, p, q = [Field{Loc...}(grid) for i = 1:3]
 
             r .= 2
-            @test CUDA.@allowscalar all(r .== 2)
+            @test @allowscalar all(r .== 2)
 
             p .= 3
 
             q .= r .* p
-            @test CUDA.@allowscalar all(q .== 6)
+            @test @allowscalar all(q .== 6)
 
             q .= r .* p .+ 1
-            @test CUDA.@allowscalar all(q .== 7)
+            @test @allowscalar all(q .== 7)
         end
 
 

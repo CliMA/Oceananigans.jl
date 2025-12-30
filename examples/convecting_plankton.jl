@@ -2,12 +2,10 @@
 #
 # In this example, we simulate the mixing of phytoplankton by convection
 # that decreases in time and eventually shuts off, thereby precipitating a
-# phytoplankton bloom. A similar scenario was simulated by
-# [Taylor and Ferrari (2011)](https://aslopubs.onlinelibrary.wiley.com/doi/abs/10.4319/lo.2011.56.6.2293),
+# phytoplankton bloom. A similar scenario was simulated by [Taylor2011shutdown](@citet),
 # providing evidence that the
 # ["critical turbulence hypothesis"](https://en.wikipedia.org/wiki/Critical_depth#Critical_Turbulence_Hypothesis)
-# explains the explosive bloom of oceanic phytoplankton
-# observed in spring.
+# explains the explosive bloom of oceanic phytoplankton observed in spring.
 #
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
@@ -66,7 +64,7 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 # buoyancy flux for the visually-oriented,
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24, linewidth=2))
+set_theme!(Theme(fontsize = 20, linewidth=3))
 
 times = range(0, 12hours, length=100)
 

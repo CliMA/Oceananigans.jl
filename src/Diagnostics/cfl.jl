@@ -1,5 +1,4 @@
 using Oceananigans.Advection: cell_advection_timescale
-using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 
 """
     struct CFL{D, S}
@@ -18,7 +17,7 @@ Return an object for computing the Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and `timescale`.
 
 See also [`AdvectiveCFL`](@ref Oceananigans.Diagnostics.AdvectiveCFL)
-and [`DiffusiveCFL`](Oceananigans.Diagnostics.DiffusiveCFL).
+and [`DiffusiveCFL`](@ref Oceananigans.Diagnostics.DiffusiveCFL).
 """
 CFL(Δt) = CFL(Δt, cell_advection_timescale)
 

@@ -6,11 +6,12 @@ using MPI
 #####
 
 # Utilities to make the macro work importing only Oceananigans.DistributedComputations and not MPI
-mpi_initialized()     = MPI.Initialized()
-mpi_rank(comm)        = MPI.Comm_rank(comm)
-mpi_size(comm)        = MPI.Comm_size(comm)
-global_barrier(comm)  = MPI.Barrier(comm) 
-global_communicator() = MPI.COMM_WORLD
+mpi_initialized()        = MPI.Initialized()
+mpi_rank(comm::MPI.Comm) = MPI.Comm_rank(comm)
+mpi_size(comm::MPI.Comm) = MPI.Comm_size(comm)
+barrier(comm::MPI.Comm)  = MPI.Barrier(comm)
+global_communicator()    = MPI.COMM_WORLD
+global_barrier()         = barrier(global_communicator())
 
 """
     @root communicator exp...
@@ -21,12 +22,12 @@ If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
 macro root(communicator, exp)
     command = quote
-        if Oceananigans.DistributedComputations.mpi_initialized()
-            rank = Oceananigans.DistributedComputations.mpi_rank($communicator)
+        if $(mpi_initialized)()
+            rank = $(mpi_rank)($communicator)
             if rank == 0
                 $exp
             end
-            Oceananigans.DistributedComputations.global_barrier($communicator)
+            $(barrier)($communicator)
         else
             $exp
         end
@@ -36,7 +37,7 @@ end
 
 macro root(exp)
     command = quote
-        @root Oceananigans.DistributedComputations.global_communicator() $exp
+        @root $(global_communicator)() $exp
     end
     return esc(command)
 end
@@ -51,15 +52,15 @@ If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
 macro onrank(communicator, on_rank, exp)
     command = quote
-        mpi_initialized = Oceananigans.DistributedComputations.mpi_initialized()
+        mpi_initialized = $(mpi_initialized)()
         if !mpi_initialized
             $exp
         else
-            rank = Oceananigans.DistributedComputations.mpi_rank($communicator)
+            rank = $(mpi_rank)($communicator)
             if rank == $on_rank
                 $exp
             end
-            Oceananigans.DistributedComputations.global_barrier($communicator)
+            $(barrier)($communicator)
         end
     end
 
@@ -68,12 +69,12 @@ end
 
 macro onrank(rank, exp)
     command = quote
-        @onrank Oceananigans.DistributedComputations.global_communicator() $rank $exp
+        @onrank $(global_communicator)() $rank $exp
     end
     return esc(command)
 end
 
-""" 
+"""
     @distribute communicator for i in iterable
         ...
     end
@@ -90,25 +91,25 @@ macro distribute(communicator, exp)
     variable = exp.args[1].args[1]
     forbody  = exp.args[2]
 
-    # Safety net if the iterable variable has the same name as the 
+    # Safety net if the iterable variable has the same name as the
     # reserved variable names (nprocs, counter, rank)
     nprocs  = ifelse(variable == :nprocs,  :othernprocs,  :nprocs)
     counter = ifelse(variable == :counter, :othercounter, :counter)
     rank    = ifelse(variable == :rank,    :otherrank,    :rank)
 
     new_loop = quote
-        mpi_initialized = Oceananigans.DistributedComputations.mpi_initialized()
+        mpi_initialized = $(mpi_initialized)()
         if !mpi_initialized
             $exp
         else
-            $rank   = Oceananigans.DistributedComputations.mpi_rank($communicator)
-            $nprocs = Oceananigans.DistributedComputations.mpi_size($communicator)
+            $rank   = $(mpi_rank)($communicator)
+            $nprocs = $(mpi_size)($communicator)
             for ($counter, $variable) in enumerate($iterable)
                 if ($counter - 1) % $nprocs == $rank
                     $forbody
                 end
             end
-            Oceananigans.DistributedComputations.global_barrier($communicator)
+            $(barrier)($communicator)
         end
     end
 
@@ -117,7 +118,7 @@ end
 
 macro distribute(exp)
     command = quote
-        @distribute Oceananigans.DistributedComputations.global_communicator() $exp
+        @distribute $(global_communicator)() $exp
     end
     return esc(command)
 end
@@ -125,24 +126,23 @@ end
 """
     @handshake communicator exp...
 
-perform `exp` on all ranks in `communicator`, but only one rank at a time, where
+Perform `exp` on all ranks in `communicator`, but only one rank at a time, that is
 ranks `r2 > r1` wait for rank `r1` to finish before executing `exp`.
 If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
 macro handshake(communicator, exp)
     command = quote
-        mpi_initialized = Oceananigans.DistributedComputations.mpi_initialized()
-        if !mpi_initialized
-            $exp
-        else
-            rank   = Oceananigans.DistributedComputations.mpi_rank($communicator)
-            nprocs = Oceananigans.DistributedComputations.mpi_size($communicator)
-            for r in 0 : nprocs -1
+        if $(mpi_initialized)()
+            rank   = $(mpi_rank)($communicator)
+            nprocs = $(mpi_size)($communicator)
+            for r in 0 : nprocs-1
                 if rank == r
                     $exp
                 end
-                Oceananigans.DistributedComputations.global_barrier($communicator)
+                $(barrier)($communicator)
             end
+        else
+            $exp
         end
     end
     return esc(command)
@@ -150,7 +150,7 @@ end
 
 macro handshake(exp)
     command = quote
-        @handshake Oceananigans.DistributedComputations.global_communicator() $exp
+        @handshake $(global_communicator)() $exp
     end
     return esc(command)
 end

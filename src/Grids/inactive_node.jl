@@ -4,8 +4,8 @@ const f = Face()
 
 using ReactantCore
 
-function build_condition(Topo, side, dim, array::Bool) 
-    if Topo == :Bounded 
+function build_condition(Topo, side, dim, array::Bool)
+    if Topo == :Bounded
         if array
             return :((ReactantCore.materialize_traced_array($side) .< 1) .| (ReactantCore.materialize_traced_array($side) .> grid.$dim))
         else
@@ -56,7 +56,7 @@ for PrimaryTopo in Topos
     xcondition = build_condition(PrimaryTopo, :i, :Nx, false)
     ycondition = build_condition(PrimaryTopo, :j, :Ny, false)
     zcondition = build_condition(PrimaryTopo, :k, :Nz, false)
-    
+
     xcondition_ar = build_condition(PrimaryTopo, :i, :Nx, true)
     ycondition_ar = build_condition(PrimaryTopo, :j, :Ny, true)
     zcondition_ar = build_condition(PrimaryTopo, :k, :Nz, true)
@@ -79,7 +79,7 @@ for PrimaryTopo in Topos
         xycondition = :( $xcondition | $(build_condition(SecondaryTopo, :j, :Ny, false)))
         xzcondition = :( $xcondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
         yzcondition = :( $ycondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
-        
+
         xycondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :j, :Ny, true)))
         xzcondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))
         yzcondition_ar = :( $ycondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))
@@ -137,6 +137,13 @@ region of the grid.
 @inline inactive_node(i, j, k, grid, ::Face, ::Face, ::Face) = inactive_node(i, j, k, grid, c, f, f) & inactive_node(i-1, j, k, grid, c, f, f)
 
 """
+    active_node(args...)
+
+The opposite of inactive_node(args...).
+"""
+@inline active_node(args...) = !inactive_node(args...)
+
+"""
     peripheral_node(i, j, k, grid, LX, LY, LZ)
 
 Return `true` when the location `(LX, LY, LZ)`, is _either_ inactive or
@@ -161,3 +168,9 @@ Return `true` when the location `(LX, LY, LZ)` lies on a boundary.
 """
 @inline boundary_node(i, j, k, grid, LX, LY, LZ) = peripheral_node(i, j, k, grid, LX, LY, LZ) & !inactive_node(i, j, k, grid, LX, LY, LZ)
 
+"""
+    bottommost_active_node(i, j, k, grid, LX, LY, LZ)
+
+Return `true` when the location `(LX, LY, LZ)` is the active cell just above the bottom.
+"""
+@inline bottommost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) & inactive_node(i, j, k - 1, grid, LX, LY, LZ)

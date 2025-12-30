@@ -21,7 +21,6 @@ using MPI
 
 MPI.Initialized() || MPI.Init()
 
-using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
@@ -36,20 +35,11 @@ end
 function rotation_with_shear_test(grid, closure=nothing)
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = 1)
-    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+    coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1)
+    tracers = (:c, :b)
 
-    tracers = if closure isa CATKEVerticalDiffusivity
-        (:c, :b, :e)
-    else
-        (:c, :b)
-    end
-
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis, tracers, free_surface,
                                         momentum_advection = WENOVectorInvariant(order=3),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        closure,
-                                        tracers,
                                         tracer_advection = WENO(order=3),
                                         buoyancy = BuoyancyTracer())
 
@@ -153,6 +143,10 @@ for arch in archs
             arch    = synchronized(arch)
             closure = CATKEVerticalDiffusivity()
 
+            if arch.local_rank == 0
+                @info "  Testing CATKE with $(ranks(arch)) ranks"
+            end
+
             # "s" for "serial" computation, "p" for parallel
             ms = rotation_with_shear_test(global_underlying_grid, closure)
             mp = rotation_with_shear_test(underlying_grid, closure)
@@ -188,4 +182,3 @@ for arch in archs
         end
     end
 end
-

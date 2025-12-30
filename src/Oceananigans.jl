@@ -11,14 +11,17 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    RightConnected, LeftConnected, FullyConnected,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    TripolarGrid, RotatedLatitudeLongitudeGrid,
+    ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Pointwise spacing, area, and volume operators
     xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
-    
+
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
@@ -34,6 +37,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    PerturbationAdvection,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
@@ -42,15 +46,14 @@ export
     interior, set!, compute!, regrid!,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
 
     # Coriolis forces
-    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
 
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, TEOS10,
-    BuoyancyField,
+    LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
@@ -63,41 +66,39 @@ export
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
-    Smagorinsky,
-    LillyCoefficient,
-    DynamicCoefficient,
+    DynamicSmagorinsky,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
-    LagrangianParticles,
+    LagrangianParticles, DroguedParticleDynamics,
 
     # Models
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
-    PressureField, fields,
+    PressureField, fields, ZCoordinate, ZStarCoordinate,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, PrescribedVelocityFields,
+    SphericalCoriolis, PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
     Simulation, run!, Callback, add_callback!, iteration,
-    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
     NetCDFWriter, JLD2Writer, Checkpointer,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
@@ -106,42 +107,28 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
-    # Utils
-    prettytime
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
-using CUDA
-using DocStringExtensions
-using FFTW
+    # Utils
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 function __init__()
-    if VERSION >= v"1.11.0"
-        @warn """You are using Julia v1.11 or later!"
-                 Oceananigans is currently tested on Julia v1.10."
-                 If you find issues with Julia v1.11 or later,"
+    if VERSION >= v"1.13.0"
+        @warn """You are using Julia v1.13 or later!"
+                 Oceananigans is currently tested on Julia v1.12."
+                 If you find issues with Julia v1.13 or later,"
                  please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
 
     end
 
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
-    end
-
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
-    end
+    Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 
 # List of fully-supported floating point types where applicable.
-# Currently used only in the Advection module to specialize 
+# Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
 const fully_supported_float_types = (Float32, Float64)
 
@@ -151,9 +138,27 @@ const fully_supported_float_types = (Float32, Float64)
 
 mutable struct Defaults
     FloatType :: DataType
+    gravitational_acceleration :: Float64
+    planet_radius :: Float64
+    planet_rotation_rate :: Float64
 end
 
-Defaults(; FloatType=Float64) = Defaults(FloatType)
+function Defaults(;
+    # Floating-point precision type (usually Float64 or Float32).
+    FloatType = Float64,
+    # [m s⁻²] conventional standard value for Earth's gravity; see https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
+    gravitational_acceleration = 9.80665,
+    # [m] Earth's radius; see https://en.wikipedia.org/wiki/Earth%27s_radius
+    planet_radius = 6.371e6,
+    # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+    planet_rotation_rate = 7.292115e-5)
+
+    return Defaults(FloatType,
+                    gravitational_acceleration,
+                    planet_radius,
+                    planet_rotation_rate)
+end
+
 const defaults = Defaults()
 
 #####
@@ -209,8 +214,8 @@ function boundary_conditions end
 # Basics
 include("Architectures.jl")
 include("Units.jl")
-include("Grids/Grids.jl")
 include("Utils/Utils.jl")
+include("Grids/Grids.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
@@ -221,8 +226,17 @@ include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("DistributedComputations/DistributedComputations.jl")
-include("OutputReaders/OutputReaders.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+
+# Simulations and output handling
+include("Diagnostics/Diagnostics.jl")
+include("OutputReaders/OutputReaders.jl")
+include("OutputWriters/OutputWriters.jl")
+include("Simulations/Simulations.jl")
+
+# TODO:
+# include("Diagnostics/Diagnostics.jl") # or just delete
+# include("OutputWriters/OutputWriters.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
@@ -241,11 +255,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("Models/Models.jl")
-
-# Output and Physics, time-stepping, and models
-include("Diagnostics/Diagnostics.jl")
-include("OutputWriters/OutputWriters.jl")
-include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
@@ -279,5 +288,6 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
+using .Operators
 
 end # module

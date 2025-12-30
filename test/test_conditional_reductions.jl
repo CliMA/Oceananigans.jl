@@ -59,7 +59,7 @@ include("dependencies_for_runtests.jl")
 
         redimm = Field{Nothing, Center, Center}(ibg)
         for (reduc, reduc!) in zip((mean, maximum, minimum, sum, prod), (mean!, maximum!, minimum!, sum!, prod!))
-            @test CUDA.@allowscalar reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
+            @test @allowscalar reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
         end
     end
 end

@@ -5,9 +5,10 @@ end
 
 """
     BetaPlane([FT=Float64;] f₀=nothing, β=nothing,
-              rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+              rotation_rate=Oceananigans.defaults.planet_rotation_rate,
+              latitude=nothing, radius=Oceananigans.defaults.planet_radius)
 
-Return a ``β``-plane Coriolis parameter, ``f = f₀ + β y`` with floating-point type `FT`. 
+Return a ``β``-plane Coriolis parameter, ``f = f₀ + β y`` with floating-point type `FT`.
 
 The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`, `latitude`
 (in degrees), and `radius` that specify the rotation rate and radius of a planet, and
@@ -19,8 +20,12 @@ and `radius` according to the relations `f₀ = 2 * rotation_rate * sind(latitud
 
 By default, the `rotation_rate` and planet `radius` are assumed to be Earth's.
 """
-function BetaPlane(FT=Oceananigans.defaults.FloatType; f₀=nothing, β=nothing,
-                   rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+function BetaPlane(FT=Oceananigans.defaults.FloatType;
+                   f₀ = nothing,
+                   β = nothing,
+                   rotation_rate = Oceananigans.defaults.planet_rotation_rate,
+                   latitude = nothing,
+                   radius = Oceananigans.defaults.planet_radius)
 
     use_f_and_β = !isnothing(f₀) && !isnothing(β)
     use_planet_parameters = !isnothing(latitude)
@@ -56,7 +61,7 @@ end
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) = zero(grid)
 
-function Base.summary(βplane::BetaPlane{FT}) where FT 
+function Base.summary(βplane::BetaPlane{FT}) where FT
     fstr = prettysummary(βplane.f₀)
     βstr = prettysummary(βplane.β)
     return "BetaPlane{$FT}(f₀=$fstr, β=$βstr)"

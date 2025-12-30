@@ -2,12 +2,11 @@ include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
 
 function get_range_of_indices(operation, index, Nx, Ny)
-
     if operation == :endpoint && index == :first
         range_x = 1
         range_y = 1
@@ -65,40 +64,28 @@ function get_halo_data(field, ::South, k_index=1; operation=nothing, index=:all)
 end
 
 function get_boundary_indices(Nx, Ny, Hx, Hy, ::West; operation=nothing, index=:all)
-
     _, range_y = get_range_of_indices(operation, index, Nx, Ny)
 
     return 1:Hx, range_y
 end
 
 function get_boundary_indices(Nx, Ny, Hx, Hy, ::South; operation=nothing, index=:all)
-
     range_x, _ = get_range_of_indices(operation, index, Nx, Ny)
 
     return range_x, 1:Hy
 end
 
 function get_boundary_indices(Nx, Ny, Hx, Hy, ::East; operation=nothing, index=:all)
-
     _, range_y = get_range_of_indices(operation, index, Nx, Ny)
 
     return Nx-Hx+1:Nx, range_y
 end
 
 function get_boundary_indices(Nx, Ny, Hx, Hy, ::North; operation=nothing, index=:all)
-
     range_x, _ = get_range_of_indices(operation, index, Nx, Ny)
 
     return range_x, Ny-Hy+1:Ny
 end
-
-
-# Solid body rotation
-R = 1        # sphere's radius
-U = 1        # velocity scale
-φʳ = 0       # Latitude pierced by the axis of rotation
-α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
-ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
 # Solid body rotation
 R = 1        # sphere's radius
@@ -129,24 +116,18 @@ create_ψ_test_data(grid, region) = create_test_data(grid, region; trailing_zero
 create_u_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=2)
 create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=3)
 
-@testset "Testing conformal cubed sphere partitions..." begin
-    for n = 1:4
-        @test length(CubedSpherePartition(; R=n)) == 6n^2
-    end
-end
-
 """
-    same_longitude_at_poles!(grid1, grid2)
+    same_longitude_at_poles!(grid_1, grid_2)
 
-Change the longitude values in `grid1` that correspond to points situated _exactly_ at
-the poles so that they match the corresponding longitude values of `grid2`.
+Change the longitude values in `grid_1` that correspond to points situated _exactly_
+at the poles so that they match the corresponding longitude values of `grid_2`.
 """
-function same_longitude_at_poles!(grid1::ConformalCubedSphereGrid, grid2::ConformalCubedSphereGrid)
-    number_of_regions(grid1) == number_of_regions(grid2) || error("grid1 and grid2 must have same number of regions")
+function same_longitude_at_poles!(grid_1::ConformalCubedSphereGrid, grid_2::ConformalCubedSphereGrid)
+    number_of_regions(grid_1) == number_of_regions(grid_2) || error("grid_1 and grid_2 must have same number of regions")
 
-    for region in 1:number_of_regions(grid1)
-        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]
-        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]
+    for region in 1:number_of_regions(grid_1)
+        grid_1[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== +90]= grid_2[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== +90]
+        grid_1[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== -90]= grid_2[region].λᶠᶠᵃ[grid_2[region].φᶠᶠᵃ .== -90]
     end
 
     return nothing
@@ -155,9 +136,9 @@ end
 """
     zero_out_corner_halos!(array::OffsetArray, N, H)
 
-Zero out the values at the corner halo regions of the two-dimensional `array :: OffsetArray`.
-It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and the halo
-region is `H` in both dimensions.
+Zero out the values at the corner halo regions of the two-dimensional `array`.
+It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and
+the halo region is `H` in both dimensions.
 """
 function zero_out_corner_halos!(array::OffsetArray, N, H)
     size(array) == (N+2H, N+2H)
@@ -179,6 +160,12 @@ function compare_grid_vars(var1, var2, N, H)
     return isapprox(var1, var2)
 end
 
+@testset "Testing conformal cubed sphere partitions..." begin
+    for n = 1:4
+        @test length(CubedSpherePartition(; R=n)) == 6n^2
+    end
+end
+
 @testset "Testing conformal cubed sphere grid from file" begin
     Nz = 1
     z = (-1, 0)
@@ -186,14 +173,14 @@ end
     cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid_with_4_halos.jld2"
 
     for panel in 1:6
-        grid = conformal_cubed_sphere_panel(cs32_filepath; panel, Nz, z)
+        grid = ConformalCubedSpherePanelGrid(cs32_filepath; panel, Nz, z)
         @test grid isa OrthogonalSphericalShellGrid
     end
 
     for arch in archs
         @info "  Testing conformal cubed sphere grid from file [$(typeof(arch))]..."
 
-        # read cs32 grid from file
+        # Read cs32 grid from file.
         grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
 
         radius = first(grid_cs32).radius
@@ -205,23 +192,22 @@ end
         Hx !== Hy && error("Hx must be same as Hy")
         H = Hy
 
-        # construct a ConformalCubedSphereGrid similar to cs32
+        # Construct a ConformalCubedSphereGrid similar to cs32.
         grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius,
                                         horizontal_direction_halo = Hx, z_halo = Hz)
 
         for panel in 1:6
-
-            CUDA.@allowscalar begin
+            @allowscalar begin
                 # Test only on cca and ffa; fca and cfa are all zeros on grid_cs32!
                 # Only test interior points since halo regions are not filled for grid_cs32!
 
                 @test compare_grid_vars(getregion(grid, panel).φᶜᶜᵃ, getregion(grid_cs32, panel).φᶜᶜᵃ, N, H)
                 @test compare_grid_vars(getregion(grid, panel).λᶜᶜᵃ, getregion(grid_cs32, panel).λᶜᶜᵃ, N, H)
 
-                # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
+                # Before we test, make sure we don't consider +180 and -180 longitudes as being "different".
                 getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).λᶠᶠᵃ .≈ -180] .= 180
 
-                # and if poles are included, they have the same longitude.
+                # If poles are included, they have the same longitude.
                 same_longitude_at_poles!(grid, grid_cs32)
 
                 @test compare_grid_vars(getregion(grid, panel).φᶠᶠᵃ, getregion(grid_cs32, panel).φᶠᶠᵃ, N, H)
@@ -234,63 +220,75 @@ end
     end
 end
 
-
 panel_sizes = ((8, 8, 1), (9, 9, 2))
 
 @testset "Testing area metrics" begin
-    for FT in float_types
-        for arch in archs
-            for panel_size in panel_sizes
-                Nx, Ny, Nz = panel_size
+    for FT in float_types, arch in archs, panel_size in panel_sizes, non_uniform_conformal_mapping in (false, true)
+        Nx, Ny, Nz = panel_size
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
 
-                grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1)
+        @info "  Testing conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
 
-                areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
+        grid = ConformalCubedSphereGrid(arch, FT;
+                                        panel_size, z = (0, 1), radius = 1, non_uniform_conformal_mapping)
 
-                for region in 1:number_of_regions(grid)
-                    CUDA.@allowscalar begin
-                        areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
-                        areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
-                        areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
-                        areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:Nx, 1:Ny])
-                    end
-                end
+        areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
 
-                @test areaᶜᶜᵃ ≈ areaᶠᶜᵃ ≈ areaᶜᶠᵃ ≈ areaᶠᶠᵃ ≈ 4π * grid.radius^2
+        for region in 1:number_of_regions(grid)
+            @allowscalar begin
+                areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
+                areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
+                areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
+                areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:Nx, 1:Ny])
+            end
+        end
+
+        @test areaᶜᶜᵃ ≈ areaᶠᶜᵃ ≈ areaᶜᶠᵃ ≈ areaᶠᶠᵃ ≈ 4π * grid.radius^2
+    end
+end
+
+@testset "Immersed conformal cubed sphere construction" begin
+    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
+        Nx, Ny, Nz = 9, 9, 9
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+
+        @info "  Testing immersed conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
+
+        underlying_grid = ConformalCubedSphereGrid(arch, FT;
+                                                   panel_size = (Nx, Ny, Nz), z = (-1, 0), radius = 1,
+                                                   non_uniform_conformal_mapping)
+        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+
+        # Test that the grid is constructed correctly.
+        for panel in 1:6
+            grid = getregion(immersed_grid, panel)
+
+            if panel == 3 || panel == 6 # North and South panels should be completely immersed.
+                @test isempty(grid.interior_active_cells)
+            else # Other panels should have some active cells.
+                @test !isempty(grid.interior_active_cells)
             end
         end
     end
 end
 
-#=
-# TODO
-@testset "Testing conformal cubed sphere metric/coordinate halo filling" begin
-    for FT in float_types
-        for arch in archs
-            Nx, Ny, Nz = 3, 3, 1
-
-            grid         = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1)
-
-            @info "  Testing conformal cubed sphere face-coordinate halos [$FT, $(typeof(arch))]..."
-
-            # ...
-
-            @info "  Testing conformal cubed sphere face-metric halos [$FT, $(typeof(arch))]..."
-
-            # ...
-        end
-    end
-end
-=#
-
 @testset "Testing conformal cubed sphere fill halos for tracers" begin
-    for FT in float_types
-        for arch in archs
-            @info "  Testing fill halos for tracers [$FT, $(typeof(arch))]..."
+    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+        @info "  Testing fill halos for tracers [$FT, $(typeof(arch)), $cm]..."
 
-            Nx, Ny, Nz = 9, 9, 1
+        Nx, Ny, Nz = 9, 9, 1
 
-            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
+        underlying_grid = ConformalCubedSphereGrid(arch, FT;
+                                                   panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                   horizontal_direction_halo = 3, non_uniform_conformal_mapping)
+        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+
+        grids = (underlying_grid, immersed_grid)
+
+        for grid in grids
             c = CenterField(grid)
 
             region = Iterate(1:6)
@@ -306,38 +304,32 @@ end
             north_indices = 1:Nx, Ny-Hy+1:Ny
 
             # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            CUDA.@allowscalar begin
-                switch_device!(grid, 1)
+            @allowscalar begin
                 @test get_halo_data(getregion(c, 1), West())  == reverse(create_c_test_data(grid, 5)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(c, 1), East())  ==         create_c_test_data(grid, 2)[west_indices...]
                 @test get_halo_data(getregion(c, 1), South()) ==         create_c_test_data(grid, 6)[north_indices...]
                 @test get_halo_data(getregion(c, 1), North()) == reverse(create_c_test_data(grid, 3)[west_indices...], dims=2)'
 
-                switch_device!(grid, 2)
                 @test get_halo_data(getregion(c, 2), West())  ==         create_c_test_data(grid, 1)[east_indices...]
                 @test get_halo_data(getregion(c, 2), East())  == reverse(create_c_test_data(grid, 4)[south_indices...], dims=1)'
                 @test get_halo_data(getregion(c, 2), South()) == reverse(create_c_test_data(grid, 6)[east_indices...], dims=2)'
                 @test get_halo_data(getregion(c, 2), North()) ==         create_c_test_data(grid, 3)[south_indices...]
 
-                switch_device!(grid, 3)
                 @test get_halo_data(getregion(c, 3), West())  == reverse(create_c_test_data(grid, 1)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(c, 3), East())  ==         create_c_test_data(grid, 4)[west_indices...]
                 @test get_halo_data(getregion(c, 3), South()) ==         create_c_test_data(grid, 2)[north_indices...]
                 @test get_halo_data(getregion(c, 3), North()) == reverse(create_c_test_data(grid, 5)[west_indices...], dims=2)'
 
-                switch_device!(grid, 4)
                 @test get_halo_data(getregion(c, 4), West())  ==         create_c_test_data(grid, 3)[east_indices...]
                 @test get_halo_data(getregion(c, 4), East())  == reverse(create_c_test_data(grid, 6)[south_indices...], dims=1)'
                 @test get_halo_data(getregion(c, 4), South()) == reverse(create_c_test_data(grid, 2)[east_indices...], dims=2)'
                 @test get_halo_data(getregion(c, 4), North()) ==         create_c_test_data(grid, 5)[south_indices...]
 
-                switch_device!(grid, 5)
                 @test get_halo_data(getregion(c, 5), West())  == reverse(create_c_test_data(grid, 3)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(c, 5), East())  ==         create_c_test_data(grid, 6)[west_indices...]
                 @test get_halo_data(getregion(c, 5), South()) ==         create_c_test_data(grid, 4)[north_indices...]
                 @test get_halo_data(getregion(c, 5), North()) == reverse(create_c_test_data(grid, 1)[west_indices...], dims=2)'
 
-                switch_device!(grid, 6)
                 @test get_halo_data(getregion(c, 6), West())  ==         create_c_test_data(grid, 5)[east_indices...]
                 @test get_halo_data(getregion(c, 6), East())  == reverse(create_c_test_data(grid, 2)[south_indices...], dims=1)'
                 @test get_halo_data(getregion(c, 6), South()) == reverse(create_c_test_data(grid, 4)[east_indices...], dims=2)'
@@ -348,15 +340,21 @@ end
 end
 
 @testset "Testing conformal cubed sphere fill halos for horizontal velocities" begin
-    for FT in float_types
-        for arch in archs
+    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+        @info "  Testing fill halos for horizontal velocities [$FT, $(typeof(arch)), $cm]..."
 
-            @info "  Testing fill halos for horizontal velocities [$FT, $(typeof(arch))]..."
+        Nx, Ny, Nz = 9, 9, 1
 
-            Nx, Ny, Nz = 3, 3, 1
+        underlying_grid = ConformalCubedSphereGrid(arch, FT;
+                                                   panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                   horizontal_direction_halo = 3, non_uniform_conformal_mapping)
+        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
+        grids = (underlying_grid, immersed_grid)
 
+        for grid in grids
             u = XFaceField(grid)
             v = YFaceField(grid)
 
@@ -394,10 +392,7 @@ end
             west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
 
             # Confirm that the zonal velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            CUDA.@allowscalar begin
-
-                switch_device!(grid, 1)
-
+            @allowscalar begin
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(u, 1), West())  == reverse(create_v_test_data(grid, 5)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(u, 1), East())  ==         create_u_test_data(grid, 2)[west_indices...]
@@ -411,9 +406,6 @@ end
                 @test get_halo_data(getregion(u, 1), North();
                                     operation=:endpoint,
                                     index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_first...])
-
-
-                switch_device!(grid, 2)
 
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(u, 2), West())  ==         create_u_test_data(grid, 1)[east_indices...]
@@ -429,8 +421,6 @@ end
                                     operation=:endpoint,
                                     index=:first) == - create_v_test_data(grid, 1)[east_indices_first...]
 
-                switch_device!(grid, 3)
-
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(u, 3), West())  == reverse(create_v_test_data(grid, 1)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(u, 3), East())  ==         create_u_test_data(grid, 4)[west_indices...]
@@ -444,8 +434,6 @@ end
                 @test get_halo_data(getregion(u, 3), North();
                                     operation=:endpoint,
                                     index=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_first...])
-
-                switch_device!(grid, 4)
 
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(u, 4), West())  ==         create_u_test_data(grid, 3)[east_indices...]
@@ -461,8 +449,6 @@ end
                                     operation=:endpoint,
                                     index=:first) == - create_v_test_data(grid, 3)[east_indices_first...]
 
-                switch_device!(grid, 5)
-
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(u, 5), West())  == reverse(create_v_test_data(grid, 3)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(u, 5), East())  ==         create_u_test_data(grid, 6)[west_indices...]
@@ -476,8 +462,6 @@ end
                 @test get_halo_data(getregion(u, 5), North();
                                     operation=:endpoint,
                                     index=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_first...])
-
-                switch_device!(grid, 6)
 
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(u, 6), West())  ==         create_u_test_data(grid, 5)[east_indices...]
@@ -494,11 +478,9 @@ end
                                     index=:first) == - create_v_test_data(grid, 5)[east_indices_first...]
             end # CUDA.@allowscalar
 
-            # Confirm that the meridional velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            CUDA.@allowscalar begin
-
-                switch_device!(grid, 1)
-
+            # Confirm that the meridional velocity halos were filled according to connectivity described at
+            # ConformalCubedSphereGrid docstring.
+            @allowscalar begin
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 1), East())  ==         create_v_test_data(grid, 2)[west_indices...]
                 @test get_halo_data(getregion(v, 1), South()) ==         create_v_test_data(grid, 6)[north_indices...]
@@ -512,8 +494,6 @@ end
                 @test get_halo_data(getregion(v, 1), West();
                                     operation=:endpoint,
                                     index=:first) == - create_u_test_data(grid, 6)[north_indices_first...]
-
-                switch_device!(grid, 2)
 
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 2), West())  ==         create_v_test_data(grid, 1)[east_indices...]
@@ -529,8 +509,6 @@ end
                                     operation=:endpoint,
                                     index=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_first...])
 
-                switch_device!(grid, 3)
-
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 3), East())  ==         create_v_test_data(grid, 4)[west_indices...]
                 @test get_halo_data(getregion(v, 3), South()) ==         create_v_test_data(grid, 2)[north_indices...]
@@ -544,8 +522,6 @@ end
                 @test get_halo_data(getregion(v, 3), West();
                                     operation=:endpoint,
                                     index=:first) == - create_u_test_data(grid, 2)[north_indices_first...]
-
-                switch_device!(grid, 4)
 
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 4), West())  ==         create_v_test_data(grid, 3)[east_indices...]
@@ -561,8 +537,6 @@ end
                                     operation=:endpoint,
                                     index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_first...])
 
-                switch_device!(grid, 5)
-
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 5), East())  ==         create_v_test_data(grid, 6)[west_indices...]
                 @test get_halo_data(getregion(v, 5), South()) ==         create_v_test_data(grid, 4)[north_indices...]
@@ -576,8 +550,6 @@ end
                 @test get_halo_data(getregion(v, 5), West();
                                     operation=:endpoint,
                                     index=:first) == - create_u_test_data(grid, 4)[north_indices_first...]
-
-                switch_device!(grid, 6)
 
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 6), West())  ==         create_v_test_data(grid, 5)[east_indices...]
@@ -598,13 +570,21 @@ end
 end
 
 @testset "Testing conformal cubed sphere fill halos for Face-Face-Any field" begin
-    for FT in float_types
-        for arch in archs
-            @info "  Testing fill halos for streamfunction [$FT, $(typeof(arch))]..."
+    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+        @info "  Testing fill halos for streamfunction [$FT, $(typeof(arch)), $cm]..."
 
-            Nx, Ny, Nz = 9, 9, 1
+        Nx, Ny, Nz = 9, 9, 1
 
-            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
+        underlying_grid = ConformalCubedSphereGrid(arch, FT;
+                                                   panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                   horizontal_direction_halo = 3, non_uniform_conformal_mapping)
+        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+
+        grids = (underlying_grid, immersed_grid)
+
+        for grid in grids
             ψ = Field{Face, Face, Center}(grid)
 
             region = Iterate(1:6)
@@ -639,10 +619,8 @@ end
             west_indices_subset_skip_last_index   = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=:subset, index=:last)
 
             # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            CUDA.@allowscalar begin
-
+            @allowscalar begin
                 # Panel 1
-                switch_device!(grid, 1)
 
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(ψ, 1), East())  == create_ψ_test_data(grid, 2)[west_indices...]
@@ -663,7 +641,9 @@ end
                                     operation=:endpoint,
                                     index=:first) == create_ψ_test_data(grid, 6)[north_indices_first...]
 
-                switch_device!(grid, 2)
+                # Panel 2
+
+                # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(ψ, 2), West())  == create_ψ_test_data(grid, 1)[east_indices...]
                 @test get_halo_data(getregion(ψ, 2), North()) == create_ψ_test_data(grid, 3)[south_indices...]
 
@@ -682,7 +662,9 @@ end
                                     operation=:endpoint,
                                     index=:first) == create_ψ_test_data(grid, 1)[east_indices_first...]
 
-                switch_device!(grid, 3)
+                # Panel 3
+
+                # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(ψ, 3), East())  == create_ψ_test_data(grid, 4)[west_indices...]
                 @test get_halo_data(getregion(ψ, 3), South()) == create_ψ_test_data(grid, 2)[north_indices...]
 
@@ -701,7 +683,9 @@ end
                                     index=:first) == reverse(create_ψ_test_data(grid, 5)[west_indices_subset_skip_first_index...], dims=2)'
                 # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
-                switch_device!(grid, 4)
+                # Panel 4
+
+                # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(ψ, 4), West())  == create_ψ_test_data(grid, 3)[east_indices...]
                 @test get_halo_data(getregion(ψ, 4), North()) == create_ψ_test_data(grid, 5)[south_indices...]
 
@@ -720,7 +704,9 @@ end
                                     operation=:endpoint,
                                     index=:first) == create_ψ_test_data(grid, 3)[east_indices_first...]
 
-                switch_device!(grid, 5)
+                # Panel 5
+
+                # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(ψ, 5), East())  == create_ψ_test_data(grid, 6)[west_indices...]
                 @test get_halo_data(getregion(ψ, 5), South()) == create_ψ_test_data(grid, 4)[north_indices...]
 
@@ -739,7 +725,9 @@ end
                                     index=:first) == reverse(create_ψ_test_data(grid, 1)[west_indices_subset_skip_first_index...], dims=2)'
                 # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
-                switch_device!(grid, 6)
+                # Panel 6
+
+                # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(ψ, 6), West())  == create_ψ_test_data(grid, 5)[east_indices...]
                 @test get_halo_data(getregion(ψ, 6), North()) == create_ψ_test_data(grid, 1)[south_indices...]
 
@@ -758,8 +746,105 @@ end
                 @test get_halo_data(getregion(ψ, 6), South();
                                     operation=:endpoint,
                                     index=:first) == create_ψ_test_data(grid, 5)[east_indices_first...]
-
             end # CUDA.@allowscalar
+        end
+    end
+end
+
+@testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
+    for non_uniform_conformal_mapping in (false, true)
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+        cm_suffix = non_uniform_conformal_mapping ? "NUCM" : "UCM"
+        for FT in float_types, arch in archs
+            Nx, Ny, Nz = 18, 18, 9
+
+            underlying_grid = ConformalCubedSphereGrid(arch, FT;
+                                                       panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       horizontal_direction_halo = 6, non_uniform_conformal_mapping)
+            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom);
+                                                 active_cells_map = true)
+
+            grids = (underlying_grid, immersed_grid)
+
+            for grid in grids
+                if grid == underlying_grid
+                    @info "  Testing simulation on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
+                    grid_suffix = "UG"
+                else
+                    @info "  Testing simulation on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
+                    grid_suffix = "IG"
+                end
+
+                model = HydrostaticFreeSurfaceModel(; grid,
+                                                    momentum_advection = WENOVectorInvariant(FT; order=5),
+                                                    tracer_advection = WENO(FT; order=5),
+                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=12),
+                                                    coriolis = HydrostaticSphericalCoriolis(FT),
+                                                    tracers = :b,
+                                                    buoyancy = BuoyancyTracer())
+
+                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
+
+                save_fields_interval = 2minute
+                checkpointer_interval = 4minutes
+
+                filename_checkpointer =
+                    "cubed_sphere_checkpointer_$(FT)_$(typeof(arch))_" * cm_suffix * "_" * grid_suffix
+                filename_output_writer = "cubed_sphere_output_$(FT)_$(typeof(arch))_" * cm_suffix * "_" * grid_suffix
+
+                # If previous run produced these files, remove them now to ensure a clean test.
+                for f in readdir(".")
+                    if f == filename_output_writer * ".jld2" || occursin(r"^" * filename_checkpointer * r"_.*\.jld2$", f)
+                        rm(f; force=true)
+                    end
+                end
+
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
+                outputs = fields(model)
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
+
+                run!(simulation)
+
+                @test iteration(simulation) == 10
+                @test time(simulation) == 10minutes
+
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+
+                if grid == underlying_grid
+                    @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
+                else
+                    @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
+                end
+
+                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+
+                simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                                        schedule = TimeInterval(checkpointer_interval),
+                                                                        prefix = filename_checkpointer,
+                                                                        overwrite_existing = true)
+
+                simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                                schedule = TimeInterval(save_fields_interval),
+                                                                filename = filename_output_writer,
+                                                                verbose = false,
+                                                                overwrite_existing = true)
+
+                run!(simulation, pickup = true)
+
+                @test iteration(simulation) == 20
+                @test time(simulation) == 20minutes
+
+                u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+            end
         end
     end
 end

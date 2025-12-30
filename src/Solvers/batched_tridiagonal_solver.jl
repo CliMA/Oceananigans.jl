@@ -18,6 +18,16 @@ struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
     tridiagonal_direction :: D
 end
 
+function Base.summary(solver::BatchedTridiagonalSolver)
+    dirstr = prettysummary(solver.tridiagonal_direction)
+    return "BatchedTridiagonalSolver in $dirstr"
+end
+
+function Base.show(io::IO, solver::BatchedTridiagonalSolver)
+    print(io, summary(solver), '\n')
+    print(io, "└── grid: ", prettysummary(solver.grid))
+end
+
 # Some aliases...
 const XTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:XDirection} where {A, B, C, T, G, P}
 const YTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:YDirection} where {A, B, C, T, G, P}
@@ -30,7 +40,7 @@ architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
                              lower_diagonal,
                              diagonal,
                              upper_diagonal,
-                             scratch = on_architecture(architecture(grid), zeros(eltype(grid), size(grid)...)),
+                             scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
                              tridiagonal_direction = ZDirection()
                              parameters = nothing)
 
@@ -53,7 +63,7 @@ or in matrix form
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
 
-Note the convention used here for indexing the upper and lower diagonals; this can be different from 
+Note the convention used here for indexing the upper and lower diagonals; this can be different from
 other implementations where, e.g., `aⁱʲ²` may appear at the second row, instead of `aⁱʲ¹` as above.
 
 `ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`.

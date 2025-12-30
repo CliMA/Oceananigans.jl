@@ -166,10 +166,10 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     test_file_name = "jld2_time_averaging_test.jld2"
     file = jldopen(test_file_name)
 
-    # Data is saved without halos
-    wu = file["timeseries/wu/4"][1, 1, 3]
-    uv = file["timeseries/uv/4"][1, 1, 3]
-    wT = file["timeseries/wT/4"][1, 1, 3]
+    # Data is saved without halos, and with singleton dimensions dropped
+    wu = file["timeseries/wu/4"][3]
+    uv = file["timeseries/uv/4"][3]
+    wT = file["timeseries/wT/4"][3]
 
     close(file)
 
@@ -384,9 +384,9 @@ for arch in archs
 
 
 
-        u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
-        v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]
-        w₀ = CUDA.@allowscalar model.velocities.w[3, 3, 3]
+        u₀ = @allowscalar model.velocities.u[3, 3, 3]
+        v₀ = @allowscalar model.velocities.v[3, 3, 3]
+        w₀ = @allowscalar model.velocities.w[3, 3, 3]
 
         run!(simulation)
 

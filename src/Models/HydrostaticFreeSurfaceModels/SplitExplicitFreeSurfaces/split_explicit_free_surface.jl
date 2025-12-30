@@ -1,6 +1,11 @@
-using Oceananigans.BuoyancyFormulations: g_Earth
-using Oceananigans.Grids: with_halo
-import Oceananigans.Grids: on_architecture
+using Oceananigans: Oceananigans
+using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
+    halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
+using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
+using Oceananigans.Utils: prettytime
+using Adapt: Adapt
+
+import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
@@ -14,7 +19,7 @@ end
 
 """
     SplitExplicitFreeSurface(grid = nothing;
-                             gravitational_acceleration = g_Earth,
+                             gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
                              substeps = nothing,
                              cfl = nothing,
                              fixed_Δt = nothing,
@@ -34,13 +39,44 @@ of the velocity field ``u`` and ``v``, ``H`` is the column depth, ``G^U`` is the
 tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration.
 
 The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``.
-The barotropic velocities are filtered throughout the substepping and, finally,
-the barotropic mode of the velocities at the new time step is corrected with the filtered velocities.
+The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities 
+at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities, 
+`Ũ` and `Ṽ`, are used as transport barotropic velocities for tracer advection.
+
+Fields
+======
+
+When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFreeSurface` contains the following fields:
+
+- `η`: Free surface displacement field (`ZFaceField` at the top of the grid).
+
+- `barotropic_velocities`: A `NamedTuple` with `U` (zonal) and `V` (meridional) barotropic velocity fields,
+  representing the vertically-integrated horizontal velocities. These are `Field{Face, Center, Nothing}` and
+  `Field{Center, Face, Nothing}`, respectively.
+
+- `filtered_state`: A `NamedTuple` containing filtered/averaged quantities computed during barotropic substepping:
+  * `η̅`: Filtered free surface displacement field.
+  * `U̅`, `V̅`: Filtered barotropic velocities.
+  * `Ũ`, `Ṽ`: complementary filtered transport barotropic velocities, used as transport barotropic velocities for tracer advection.
+
+- `gravitational_acceleration`: Gravitational acceleration constant (of type `FloatType`).
+
+- `kernel_parameters`: Kernel parameters for subcycling kernel launching. For `FixedTimeStepSize` substepping, this is
+  the symbol `:xy`. For `FixedSubstepNumber` substepping with connected topologies, this is a `KernelParameters`
+  struct that defines the kernel execution ranges.
+
+- `substepping`: Either `FixedSubstepNumber` or `FixedTimeStepSize`, controlling the barotropic substepping
+  strategy. `FixedSubstepNumber` uses a fixed number of substeps with fractional step sizes, while
+  `FixedTimeStepSize` uses a fixed barotropic time step size based on a CFL condition.
+
+- `timestepper`: Time stepping scheme for barotropic advancement. Either `ForwardBackwardScheme()` (which
+  contains no auxiliary fields) or `AdamsBashforth3Scheme` (which contains auxiliary fields `ηᵐ`, `ηᵐ⁻¹`, `ηᵐ⁻²`,
+  `Uᵐ⁻¹`, `Uᵐ⁻²`, `Vᵐ⁻¹`, `Vᵐ⁻²` for storing previous time step values, along with extrapolation coefficients).
 
 Keyword Arguments
 =================
 
-- `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
+- `gravitational_acceleration`: the gravitational acceleration (default: `Oceananigans.defaults.gravitational_acceleration`)
 
 - `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
               timestep. Note that some averaging functions do not require substepping until `2Δt`.
@@ -69,8 +105,8 @@ Keyword Arguments
                       the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. By default, the averaging kernel described by [Shchepetkin2005](@citet)
-                      is used.
+                      `averaging_kernel > 0`. By default, the averaging kernel described by
+                      [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
   * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
@@ -79,10 +115,10 @@ Keyword Arguments
 References
 ==========
 
-Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
+Shchepetkin, A. F., and McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
 function SplitExplicitFreeSurface(grid = nothing;
-                                  gravitational_acceleration = g_Earth,
+                                  gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
@@ -119,8 +155,8 @@ end
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     FT = eltype(gravitational_acceleration)
-    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
-    return FixedSubstepNumber(fractional_step_size, averaging_weights)
+    fractional_step_size, averaging_weights, transport_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+    return FixedSubstepNumber(fractional_step_size, averaging_weights, transport_weights)
 end
 
 # The substeps are calculated dynamically when a cfl without a fixed_Δt is provided
@@ -138,25 +174,41 @@ function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_k
 end
 
 # Disambiguation for a default `SplitExplicitFreeSurface` constructor
-split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) = 
+split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) =
     split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, nothing, grid, averaging_kernel, gravitational_acceleration)
 
 # TODO: When open boundary conditions are online
 # We need to calculate the barotropic boundary conditions
 # from the baroclinic boundary conditions by integrating the BC upwards
-@inline  west_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
-@inline  east_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
-@inline south_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
-@inline north_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
+@inline  west_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
+@inline  east_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
+@inline south_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
+@inline north_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
 
-@inline barotropic_bc(baroclinic_velocity) = FieldBoundaryConditions(
-    west   = west_barotropic_bc(baroclinic_velocity),
-    east   = east_barotropic_bc(baroclinic_velocity),
-    south  = south_barotropic_bc(baroclinic_velocity),
-    north  = north_barotropic_bc(baroclinic_velocity),
+@inline barotropic_velocity_boundary_conditions(baroclinic_velocity) = FieldBoundaryConditions(
+    west   = west_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    east   = east_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    south  = south_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    north  = north_barotropic_velocity_boundary_condition(baroclinic_velocity),
     top    = nothing,
     bottom = nothing
 )
+
+function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names, bcs)
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+
+    @apply_regionally U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
+    @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
+
+    free_surface_grid = free_surface.η.grid
+    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
+
+    tracers = TracerFields(tracer_names, grid, bcs)
+
+    return merge((u=u, v=v, U=U, V=V), tracers)
+end
 
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}
 
@@ -177,25 +229,26 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
 
-    u_baroclinic = velocities.u
-    v_baroclinic = velocities.v
+    baroclinic_u_bcs = velocities.u
+    baroclinic_v_bcs = velocities.v
 
-    u_bc = barotropic_bc(u_baroclinic)
-    v_bc = barotropic_bc(v_baroclinic)
+    u_bcs = barotropic_velocity_boundary_conditions(baroclinic_u_bcs)
+    v_bcs = barotropic_velocity_boundary_conditions(baroclinic_v_bcs)
 
-    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
+    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
+    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
+    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
 
-    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
-
-    filtered_state = (η = η̅, U = U̅, V = V̅)
+    filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
     kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bc, v_bc)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bcs, v_bcs)
 
     return SplitExplicitFreeSurface(η,
                                     barotropic_velocities,
@@ -209,7 +262,6 @@ end
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
-
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
@@ -228,12 +280,13 @@ a fixed number of substeps with time step size of `fractional_step_size * Δt_ba
 struct FixedSubstepNumber{B, F}
     fractional_step_size :: B
     averaging_weights    :: F
+    transport_weights    :: F
 end
 
 function FixedTimeStepSize(grid;
                            cfl = 0.7,
                            averaging_kernel = averaging_shape_function,
-                           gravitational_acceleration = g_Earth)
+                           gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration)
 
     FT = eltype(grid)
 
@@ -249,18 +302,26 @@ function FixedTimeStepSize(grid;
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
-
+    M  = substeps ÷ 2
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    idx = searchsortedlast(averaging_weights, 0, rev=true)
-    substeps = idx
+    M★ = substeps
 
-    averaging_weights = averaging_weights[1:idx]
+    # Find the latest allowable weight
+    for i in substeps:-1:1
+        if averaging_weights[i] > 0
+            M★ = i
+            break
+        end
+    end
+
+    averaging_weights = averaging_weights[1:M★]
     averaging_weights ./= sum(averaging_weights)
+    transport_weights = [sum(averaging_weights[i:M★]) for i in 1:M★] ./ M
 
-    return Δτ, map(FT, tuple(averaging_weights...))
+    return FT(Δτ), map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
@@ -281,10 +342,9 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
 
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
-    step_halo = Nsubsteps + 1
 
-    Hx = TX() isa ConnectedTopology ? max(step_halo, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? max(step_halo, old_halos[2]) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
@@ -321,13 +381,13 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
                              Adapt.adapt(to, free_surface.substepping),
                              Adapt.adapt(to, free_surface.timestepper))
 
-for Type in (:SplitExplicitFreeSurface,
-             :AdamsBashforth3Scheme,
-             :FixedTimeStepSize,
-             :FixedSubstepNumber)
+for Type in (SplitExplicitFreeSurface,
+             AdamsBashforth3Scheme,
+             FixedTimeStepSize,
+             FixedSubstepNumber)
 
     @eval begin
-        function on_architecture(to, fs::$Type)
+        function Grids.on_architecture(to, fs::$Type)
             args = Tuple(on_architecture(to, prop) for prop in propertynames(fs))
             return $Type(args...)
         end

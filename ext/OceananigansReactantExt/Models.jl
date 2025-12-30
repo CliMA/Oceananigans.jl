@@ -18,8 +18,6 @@ const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:Distributed{<:ReactantState}},
 }
 
-initialization_update_state!(::ReactantModel; kw...) = nothing
-
 initialize_immersed_boundary_grid!(grid) = nothing
 
 using Oceananigans.ImmersedBoundaries:
@@ -38,7 +36,7 @@ function initialize_immersed_boundary_grid!(ibg::ReactantImmersedBoundaryGrid)
         Oceananigans.ImmersedBoundaries.compute_numerical_bottom_height!(bottom_field, grid, ib)
         Oceananigans.BoundaryConditions.fill_halo_regions!(bottom_field)
     end
-    
+
     return nothing
 end
 

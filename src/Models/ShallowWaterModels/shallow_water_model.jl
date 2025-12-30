@@ -1,21 +1,20 @@
-using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
+using Oceananigans: AbstractModel
 
-using Oceananigans.Architectures: AbstractArchitecture, CPU
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
 using Oceananigans.DistributedComputations
-using Oceananigans.Advection: Centered, VectorInvariant
+using Oceananigans.Advection: VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Face, Center
+using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: validate_model_halo, NaNChecker, validate_tracer_advection
+using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, build_diffusivity_fields
+using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: default_nan_checker, timestepper
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
@@ -49,7 +48,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, 
                     bathymetry :: B         # Bathymetry/Topography for the model
                       solution :: Q         # Container for transports `uh`, `vh`, and height `h`
                        tracers :: C         # Container for tracer fields
-            diffusivity_fields :: K         # Container for turbulent diffusivities
+                closure_fields :: K         # Container for closure auxiliary fields
                    timestepper :: TS        # Object containing timestepper fields and parameters
                    formulation :: FR        # Either conservative or vector-invariant
 end
@@ -70,7 +69,7 @@ struct VectorInvariantFormulation end
                             closure = nothing,
                          bathymetry = nothing,
                             tracers = (),
-                 diffusivity_fields = nothing,
+                     closure_fields = nothing,
     boundary_conditions::NamedTuple = NamedTuple(),
                 timestepper::Symbol = :RungeKutta3,
                         formulation = ConservativeFormulation())
@@ -96,7 +95,7 @@ Keyword arguments
   - `bathymetry`: The bottom bathymetry.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
-  - `diffusivity_fields`: Stores diffusivity fields when the closures require a diffusivity to be
+  - `closure_fields`: Stores diffusivity fields when the closures require a diffusivity to be
                           calculated at each timestep.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
@@ -121,7 +120,7 @@ function ShallowWaterModel(;
                              closure = nothing,
                           bathymetry = nothing,
                              tracers = (),
-                  diffusivity_fields = nothing,
+                      closure_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3,
                          formulation = ConservativeFormulation())
@@ -163,7 +162,7 @@ function ShallowWaterModel(;
     end
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
-    
+
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)
         set!(bathymetry_field, bathymetry)
@@ -177,7 +176,7 @@ function ShallowWaterModel(;
 
     solution           = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
-    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
+    closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
@@ -186,7 +185,7 @@ function ShallowWaterModel(;
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
-    forcing = model_forcing(model_fields; forcing...)
+    forcing = model_forcing(forcing, model_fields)
     closure = with_tracers(tracernames(tracers), closure)
 
     model = ShallowWaterModel(grid,
@@ -201,7 +200,7 @@ function ShallowWaterModel(;
                               bathymetry_field,
                               solution,
                               tracers,
-                              diffusivity_fields,
+                              closure_fields,
                               timestepper,
                               formulation)
 
@@ -212,7 +211,7 @@ end
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
-    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
+    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"*
                         "Use `momentum_advection = VectorInvariant()`."))
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 

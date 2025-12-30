@@ -2,7 +2,10 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
+# TEST_GROUP=unit julia --project -e 'using Pkg; Pkg.test()'
 group = get(ENV, "TEST_GROUP", "all") |> Symbol
+
+# TEST_FILE=test_coriolis.jl julia --project -e 'using Pkg; Pkg.test()'
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -33,7 +36,9 @@ CUDA.allowscalar() do
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
+            include("test_quality_assurance.jl")
             include("test_grids.jl")
+            include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
@@ -78,12 +83,6 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :matrix_poisson_solvers || group == :all
-        @testset "Matrix Poisson Solvers" begin
-            include("test_matrix_poisson_solver.jl")
-        end
-    end
-
     if group == :general_solvers || group == :all
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
@@ -97,9 +96,10 @@ CUDA.allowscalar() do
         @testset "Simulation tests" begin
             include("test_simulations.jl")
             include("test_diagnostics.jl")
+            include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
+            include("test_set_field_time_series.jl")
         end
     end
 
@@ -122,6 +122,7 @@ CUDA.allowscalar() do
     if group == :time_stepping_2 || group == :all
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
+            include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
         end
@@ -132,6 +133,7 @@ CUDA.allowscalar() do
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
+            include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
         end
     end
@@ -139,6 +141,8 @@ CUDA.allowscalar() do
     if group == :turbulence_closures || group == :all
         @testset "Turbulence closures tests" begin
             include("test_turbulence_closures.jl")
+            include("test_triad_isopycnal_diffusivity.jl")
+            include("test_gm_infinite_slope.jl")
         end
     end
 
@@ -155,7 +159,7 @@ CUDA.allowscalar() do
             include("test_implicit_free_surface_solver.jl")
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
+            include("test_immersed_implicit_free_surface.jl")
         end
     end
 
@@ -164,7 +168,6 @@ CUDA.allowscalar() do
         @testset "Multi Region tests" begin
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
-            include("test_multi_region_implicit_solver.jl")
             include("test_multi_region_cubed_sphere.jl")
         end
     end
@@ -173,6 +176,7 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
+        include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
     end
 
@@ -182,7 +186,14 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
-        include("test_distributed_macros.jl")
+    end
+
+    if group == :distributed_hydrostatic_regression || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
+        include("test_hydrostatic_regression.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -190,9 +201,14 @@ CUDA.allowscalar() do
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = test_architectures()
-        include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
     end
+
+    # if group == :distributed_output || group == :all
+    #     @testset "Distributed output writing and reading tests" begin
+    #         include("test_distributed_output.jl")
+    #     end
+    # end
 
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
@@ -249,6 +265,20 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for XESMF extension
+    if group == :xesmf || group == :all
+        @testset "XESMF extension tests" begin
+            include("test_xesmf.jl")
+        end
+    end
+
+    # Tests for ConservativeRegridding extension
+    if group == :conservative_regridding || group == :all
+        @testset "ConservativeRegridding extension tests" begin
+            include("test_conservative_regridding.jl")
+        end
+    end
+
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
             # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
@@ -278,10 +308,16 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Makie extension
+    if group == :makie || group == :all
+        @testset "Makie extension tests" begin
+            include("test_makie_ext.jl")
+        end
+    end
+
     if group == :convergence
         include("test_convergence.jl")
     end
 end
 
 end #CUDA.allowscalar()
-

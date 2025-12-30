@@ -7,17 +7,31 @@ end
 
 Adapt.adapt_structure(to, pv::PolarValue) = PolarValue(Adapt.adapt(to, pv.data), nothing)
 
-const PolarBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
+const PolarValueBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
+const PolarOpenBoundaryCondition{V}  = BoundaryCondition{<:Open,  <:PolarValue}
 
-function PolarBoundaryCondition(grid, side, zloc)
+function PolarValueBoundaryCondition(grid, side, LZ)
     FT   = eltype(grid)
-    loc  = (Nothing, Nothing, zloc)
+    loc  = (Nothing, Nothing, LZ)
     data = new_data(FT, grid, loc)
     return ValueBoundaryCondition(PolarValue(data, side))
 end
 
+function PolarOpenBoundaryCondition(grid, side, LZ)
+    FT   = eltype(grid)
+    loc  = (Nothing, Nothing, LZ)
+    data = new_data(FT, grid, loc)
+    return OpenBoundaryCondition(PolarValue(data, side))
+end
+
+const PolarBoundaryCondition = Union{PolarValueBoundaryCondition, PolarOpenBoundaryCondition}
+
+maybe_polar_boundary_condition(grid, side, ::Nothing, ℓz::LZ) where LZ = nothing
+maybe_polar_boundary_condition(grid, side, ::Center,  ℓz::LZ) where LZ = PolarValueBoundaryCondition(grid, side, LZ)
+maybe_polar_boundary_condition(grid, side, ::Face,    ℓz::LZ) where LZ = PolarOpenBoundaryCondition(grid, side, LZ)
+
 # Just a column
-@inline getbc(pv::BC{<:Value, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[1, 1, k]
+@inline getbc(pv::PolarValue, i, k, args...) = @inbounds pv.data[1, 1, k]
 
 @kernel function _average_pole_value!(data, c, j, grid, loc)
     i′, j′, k = @index(Global, NTuple)
@@ -31,44 +45,38 @@ end
     @inbounds data[i′, j′, k] = ifelse(n == 0,  0,  c̄ / n)
 end
 
-function update_pole_value!(bc::PolarValue, c, grid, loc) 
+function update_pole_value!(bc::PolarValue, c, grid, loc)
     j = bc.side == :north ? grid.Ny : 1
     Nz = size(c, 3)
     Oz = c.offsets[3]
     params = KernelParameters(1:1, 1:1, 1+Oz:Nz+Oz)
-    launch!(architecture(grid), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
+    launch!(architecture(bc.data), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
     return nothing
 end
 
-function fill_south_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) 
+const SouthPolarBC = Tuple{<:PolarBoundaryCondition, <:BoundaryCondition}
+const NorthPolarBC = Tuple{<:BoundaryCondition, <:PolarBoundaryCondition}
+const SouthAndNorthPolarBC = Tuple{<:PolarBoundaryCondition, <:PolarBoundaryCondition}
+
+# fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
+function fill_halo_event!(c, kernel!, bc::PolarBoundaryCondition, loc, grid, args...; kwargs...)
     update_pole_value!(bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+    return kernel!(c, bc, loc, grid, Tuple(args))
 end
 
-function fill_north_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) 
-    update_pole_value!(bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+function fill_halo_event!(c, kernel!, bcs::SouthPolarBC, loc, grid, args...; kwargs...)
+    update_pole_value!(bcs[1].condition, c, grid, loc)
+    return kernel!(c, bcs..., loc, grid, Tuple(args))
 end
 
-function fill_south_and_north_halo!(c, south_bc::PolarBoundaryCondition, north_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
-    update_pole_value!(south_bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
+function fill_halo_event!(c, kernel!, bcs::NorthPolarBC, loc, grid, args...; kwargs...)
+    update_pole_value!(bcs[2].condition, c, grid, loc)
+    return kernel!(c, bcs..., loc, grid, Tuple(args))
 end
 
-function fill_south_and_north_halo!(c, south_bc, north_bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
-    update_pole_value!(north_bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
+function fill_halo_event!(c, kernel!, bcs::SouthAndNorthPolarBC, loc, grid, args...; kwargs...)
+    update_pole_value!(bcs[1].condition, c, grid, loc)
+    update_pole_value!(bcs[2].condition, c, grid, loc)
+    return kernel!(c, bcs..., loc, grid, Tuple(args))
 end
-
-function fill_south_and_north_halo!(c, south_bc::PolarBoundaryCondition, north_bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
-    update_pole_value!(south_bc.condition, c, grid, loc)
-    update_pole_value!(north_bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
-end
-
 

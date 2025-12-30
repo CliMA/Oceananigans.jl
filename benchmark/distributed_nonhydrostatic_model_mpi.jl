@@ -10,8 +10,8 @@ using Oceananigans.DistributedComputations
 
 Logging.global_logger(OceananigansLogger())
 
-MPI.Init()      
-      
+MPI.Init()
+
       comm = MPI.COMM_WORLD
 local_rank = MPI.Comm_rank(comm)
          R = MPI.Comm_size(comm)

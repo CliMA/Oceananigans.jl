@@ -48,7 +48,7 @@ for closure in (k_epsilon, catke) #, k_epsilon_const_stability)
     global model
 
     model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                        tracers = (:b, :e, :ϵ),
+                                        tracers = (:b,),
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions=(u=u_bcs, b=b_bcs))
 
@@ -65,7 +65,7 @@ for closure in (k_epsilon, catke) #, k_epsilon_const_stability)
 
     progress(sim) = @info @sprintf("Iter: % 4d, time: % 24s, max(e): %6.2e, max(ϵ): %6.2e",
                                    iteration(sim), prettytime(sim), maximum(e), maximum(ϵ))
-    
+
     add_callback!(simulation, progress, IterationInterval(100))
 
     run!(simulation)
@@ -111,4 +111,3 @@ lines!(axϵ, ϵn[3], z, color=colors[3])
 Legend(fig[0, 1:4], axe, nbanks=3, framevisible=false, tellheight=true)
 
 fig
-

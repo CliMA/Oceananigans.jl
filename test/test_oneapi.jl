@@ -6,7 +6,7 @@ using oneAPI
     FT = Float32 # our tests need to use Float32 right now
     oneapi = oneAPI.oneAPIBackend()
     Oceananigans.defaults.FloatType = FT
-    
+
     arch = GPU(oneapi)
     grid = RectilinearGrid(arch, size=(4, 8, 16), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 16))
 

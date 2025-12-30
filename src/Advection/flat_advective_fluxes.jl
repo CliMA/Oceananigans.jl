@@ -30,7 +30,7 @@ end
 
 FlatGrids = [:XFG, :YFG, :ZFG, :XFG, :YFG, :ZFG]
 
-# Flat interpolations...  
+# Flat interpolations...
 for (dir, GridType) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ), FlatGrids)
     alt_symm_interp   = Symbol(:_symmetric_interpolate_, dir)
     alt_biased_interp = Symbol(:_biased_interpolate_, dir)

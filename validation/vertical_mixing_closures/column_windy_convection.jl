@@ -38,7 +38,7 @@ function progress(sim)
                    iteration(sim), prettytime(sim), maximum(model.tracers.b))
 
     msg *= @sprintf(", max(κ): %6.2e, max(e): %6.2e, max(ϵ): %6.2e",
-                    maximum(model.diffusivity_fields.κc),
+                    maximum(model.closure_fields.κc),
                     maximum(model.tracers.e),
                     maximum(model.tracers.ϵ))
 
@@ -50,10 +50,10 @@ end
 for closure in closures_to_run
 
     model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                        tracers = (:b, :e, :ϵ),
+                                        tracers = (:b,),
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
-                                        
+
     bᵢ(z) = N² * z
     set!(model, b=bᵢ, e=1e-6)
 
@@ -61,8 +61,8 @@ for closure in closures_to_run
 
     closurename = string(nameof(typeof(closure)))
 
-    diffusivities = (κu = model.diffusivity_fields.κu,
-                     κc = model.diffusivity_fields.κc)
+    diffusivities = (κu = model.closure_fields.κu,
+                     κc = model.closure_fields.κc)
 
     outputs = merge(model.velocities, model.tracers, diffusivities)
 
@@ -73,7 +73,7 @@ for closure in closures_to_run
 
     simulation.output_writers[:fields] = output_writer
 
-    
+
     add_callback!(simulation, progress, IterationInterval(10))
 
     @info "Running a simulation of "
@@ -144,7 +144,7 @@ for (i, closure) in enumerate(closures_to_run)
     en  = @lift interior(e_ts[i][$n], 1, 1, :)
     κcn = @lift interior(κc_ts[i][$n], 1, 1, :)
     κun = @lift interior(κu_ts[i][$n], 1, 1, :)
-    
+
     closurename = string(nameof(typeof(closure)))
 
     lines!(axb, bn,  zc, label=closurename, color=colors[i])
@@ -165,4 +165,3 @@ display(fig)
 # record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
 #     n[] = nn
 # end
-

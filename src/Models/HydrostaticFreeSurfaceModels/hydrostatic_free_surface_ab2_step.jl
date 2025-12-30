@@ -1,7 +1,7 @@
-using Oceananigans.Fields: location
+using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
+using Oceananigans.Grids: get_active_cells_map
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -15,20 +15,19 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
     compute_free_surface_tendency!(grid, model, model.free_surface)
 
     FT = eltype(grid)
-    χ = convert(FT, model.timestepper.χ)
+    χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
-    @apply_regionally local_ab2_step!(model, Δt, χ)
+    @apply_regionally begin
+        scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
+        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+        ab2_step_velocities!(model.velocities, model, Δt, χ)
+        ab2_step_tracers!(model.tracers, model, Δt, χ)
+    end
 
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    return nothing
-end
-
-function local_ab2_step!(model, Δt, χ)
-    ab2_step_velocities!(model.velocities, model, Δt, χ)
-    ab2_step_tracers!(model.tracers, model, Δt, χ)
     return nothing
 end
 
@@ -49,9 +48,10 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
-                       model.diffusivity_fields,
+                       model.closure_fields,
                        nothing,
-                       model.clock, 
+                       model.clock,
+                       fields(model),
                        Δt)
     end
 
@@ -77,7 +77,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        
+
         if catke_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
         elseif td_in_closures && tracer_name == :ϵ
@@ -97,9 +97,10 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
                            closure,
-                           model.diffusivity_fields,
+                           model.closure_fields,
                            Val(tracer_index),
                            model.clock,
+                           fields(model),
                            Δt)
         end
     end
@@ -108,11 +109,10 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 end
 
 #####
-##### Tracer update in mutable vertical coordinates 
+##### Tracer update in mutable vertical coordinates
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
-# with the `unscale_tracers!` function
 @kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
@@ -124,14 +124,7 @@ end
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
-        
-        # We store temporarily σθ in θ. 
-        # The unscaled θ will be retrieved with `unscale_tracers!`
-        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + Δt * ∂t_σθ
+        ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
+        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
     end
 end
-
-# Fallback! We need to unscale the tracers only in case of 
-# a grid with a mutable vertical coordinate, i.e. where `σ != 1`
-unscale_tracers!(tracers, grid; kwargs...) = nothing

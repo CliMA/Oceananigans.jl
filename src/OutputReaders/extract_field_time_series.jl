@@ -9,7 +9,7 @@ using Oceananigans.Grids: AbstractGrid
 extract_field_time_series(t1, tn...) = extract_field_time_series(tuple(t1, tn...))
 
 # Utility used to extract field time series from a type through recursion
-function extract_field_time_series(t) 
+function extract_field_time_series(t)
     prop = propertynames(t)
     if isempty(prop)
         return nothing
@@ -25,7 +25,7 @@ end
 extract_field_time_series(f::FieldTimeSeries) = f
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
-CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField)
+CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns)
 
 for T in CannotPossiblyContainFTS
     @eval extract_field_time_series(::$T) = nothing
@@ -34,6 +34,10 @@ end
 # Special recursion rules for `Tuple` and `Field` types
 extract_field_time_series(t::AbstractOperation) = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
 extract_field_time_series(t::Union{Tuple, NamedTuple}) = map(extract_field_time_series, t)
+
+const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
+const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
+const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 
 # Special extract for Fields with FTSBC
 const WFTSBCS = FieldBoundaryConditions{<:FTSBC}

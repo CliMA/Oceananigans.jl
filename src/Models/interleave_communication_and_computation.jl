@@ -32,12 +32,12 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     Tx, Ty, _ = topology(grid)
     Nx, Ny, Nz = size(grid)
 
-    # Kernel parameters to compute the tendencies in all the interior if the direction is local (`R == 1`) and only in 
-    # the part of the domain that does not depend on the halo cells if the direction is partitioned. 
+    # Kernel parameters to compute the tendencies in all the interior if the direction is local (`R == 1`) and only in
+    # the part of the domain that does not depend on the halo cells if the direction is partitioned.
     local_x = Rx == 1
     local_y = Ry == 1
     one_sided_x = Tx == RightConnected || Tx == LeftConnected
-    one_sided_y = Ty == RightConnected || Ty == LeftConnected 
+    one_sided_y = Ty == RightConnected || Ty == LeftConnected
 
     # Sizes
     Sx = if local_x
@@ -62,7 +62,7 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
 
     sizes = (Sx, Sy, Nz)
     offsets = (Ox, Oy, 0)
-     
+
     return KernelParameters(sizes, offsets)
 end
 

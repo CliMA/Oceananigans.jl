@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Coriolis: Ω_Earth
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+using Oceananigans.Coriolis: NonhydrostaticFormulation
 
 test_fplane(::Nothing) = FPlane(f=π)
 test_fplane(FT)        = FPlane(FT, f=π)
@@ -13,6 +13,10 @@ test_hsc(::Nothing)    = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
 test_hsc(FT)           = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving(FT))
 test_hsc2(::Nothing)   = HydrostaticSphericalCoriolis(rotation_rate=π)
 test_hsc2(FT)          = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
+test_sc(::Nothing)     = SphericalCoriolis(scheme=EnergyConserving())
+test_sc(FT)            = SphericalCoriolis(FT, scheme=EnergyConserving(FT))
+test_sc2(::Nothing)    = SphericalCoriolis(rotation_rate=π)
+test_sc2(FT)           = SphericalCoriolis(FT, rotation_rate=π)
 test_ntbp(::Nothing)   = NonTraditionalBetaPlane(rotation_rate=π, latitude=17, radius=ℯ)
 test_ntbp(FT)          = NonTraditionalBetaPlane(FT, rotation_rate=π, latitude=17, radius=ℯ)
 
@@ -70,6 +74,7 @@ end
 
 function instantiate_hydrostatic_spherical_coriolis1(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
+    Ω_Earth = Oceananigans.defaults.planet_rotation_rate
     @test coriolis.rotation_rate == FT(Ω_Earth) # default
     @test coriolis.scheme isa EnergyConserving
 
@@ -84,11 +89,31 @@ function instantiate_hydrostatic_spherical_coriolis2(FT)
     @test coriolis.scheme isa EnstrophyConserving # default
 end
 
+function instantiate_spherical_coriolis1(FT)
+    coriolis = SphericalCoriolis(FT, scheme=EnergyConserving())
+    Ω_Earth = Oceananigans.defaults.planet_rotation_rate
+    @test coriolis.rotation_rate == FT(Ω_Earth) # default
+    @test coriolis.scheme isa EnergyConserving
+    @test coriolis.formulation isa NonhydrostaticFormulation # default
+
+    coriolis = SphericalCoriolis(FT, scheme=EnstrophyConserving())
+    @test coriolis.rotation_rate == FT(Ω_Earth) # default
+    @test coriolis.scheme isa EnstrophyConserving
+    @test coriolis.formulation isa NonhydrostaticFormulation # default
+end
+
+function instantiate_spherical_coriolis2(FT)
+    coriolis = SphericalCoriolis(FT, rotation_rate=π)
+    @test coriolis.rotation_rate == FT(π)
+    @test coriolis.scheme isa EnstrophyConserving # default
+    @test coriolis.formulation isa NonhydrostaticFormulation # default
+end
+
 @testset "Coriolis" begin
     @info "Testing Coriolis..."
     # Save for later use
     FT₀ = Oceananigans.defaults.FloatType
-
+    
     for FT in float_types
         @test instantiate_fplane_1(FT)
         @test instantiate_fplane_2(FT)
@@ -99,6 +124,8 @@ end
         instantiate_betaplane_2(FT)
         instantiate_hydrostatic_spherical_coriolis1(FT)
         instantiate_hydrostatic_spherical_coriolis2(FT)
+        instantiate_spherical_coriolis1(FT)
+        instantiate_spherical_coriolis2(FT)
 
         # Test that FPlane throws an ArgumentError
         @test_throws ArgumentError FPlane(FT)
@@ -149,11 +176,17 @@ end
         show(✈); println()
         @test ✈ isa NonTraditionalBetaPlane{FT}
 
+        ✈ = SphericalCoriolis(FT, rotation_rate = 1e-4)
+        show(✈); println()
+        @test ✈ isa SphericalCoriolis
+
         for make_test_coriolis in (test_fplane,
                                     test_bplane,
                                     test_ccc,
                                     test_hsc,
                                     test_hsc2,
+                                    test_sc,
+                                    test_sc2,
                                     test_ntbp)
 
             Oceananigans.defaults.FloatType = FT

@@ -12,7 +12,27 @@ using Oceananigans.Operators: Δx, Δy, Δz
 @inline  left_gradient(bc::VBC, c¹, Δ, i, j, args...) = ( c¹ - getbc(bc, i, j, args...) ) / (Δ/2)
 @inline right_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( getbc(bc, i, j, args...) - cᴺ ) / (Δ/2)
 
-@inline function _fill_west_halo!(j, k, grid, c, bc::Union{VBC, GBC}, loc, args...)
+@inline function left_gradient(bc::MBC, c¹, Δ, i, j, args...)
+    coefficient = bc.condition.coefficient
+    inhomogeneity = bc.condition.inhomogeneity
+    a = getbc(coefficient, i, j, args...)
+    b = getbc(inhomogeneity, i, j, args...)
+    g₁ = c¹ / Δ * (1 - (1 + a * Δ / 2) / (1 - a * Δ / 2))
+    g₂ = b / (1 - a * Δ / 2)
+    return g₁ + g₂
+end
+
+@inline function right_gradient(bc::MBC, cᴺ, Δ, i, j, args...)
+    coefficient = bc.condition.coefficient
+    inhomogeneity = bc.condition.inhomogeneity
+    a = getbc(coefficient, i, j, args...)
+    b = getbc(inhomogeneity, i, j, args...)
+    g₁ = cᴺ / Δ * ((1 - a * Δ / 2) / (1 + a * Δ / 2) - 1)
+    g₂ = b / (1 + a * Δ / 2)
+    return g₁ + g₂
+end
+
+@inline function _fill_west_halo!(j, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
            #  ↑ x ↑  interior
            #  -----  interior face
@@ -26,7 +46,7 @@ using Oceananigans.Operators: Δx, Δy, Δz
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, -Δ) # extrapolate westward in -x direction.
 end
 
-@inline function _fill_east_halo!(j, k, grid, c, bc::Union{VBC, GBC}, loc, args...)
+@inline function _fill_east_halo!(j, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
                      #  ↑ x ↑
     iᴴ = grid.Nx + 1 #    *   halo cell
@@ -36,12 +56,12 @@ end
                      #    ↓   interior
 
     LX, LY, LZ = loc
-    Δ = Δx(iᴮ, j, k, grid, flip(LX), LY, LZ) # Δ between last interior and first east halo point, defined at cell face. 
+    Δ = Δx(iᴮ, j, k, grid, flip(LX), LY, LZ) # Δ between last interior and first east halo point, defined at cell face.
     @inbounds ∇c = right_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, args...)
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, Δ) # extrapolate eastward in +x direction.
 end
 
-@inline function _fill_south_halo!(i, k, grid, c, bc::Union{VBC, GBC}, loc, args...)
+@inline function _fill_south_halo!(i, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
            #  ↑ y ↑  interior
            #  -----  interior face
@@ -55,7 +75,7 @@ end
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, -Δ) # extrapolate southward in -y direction.
 end
 
-@inline function _fill_north_halo!(i, k, grid, c, bc::Union{VBC, GBC}, loc, args...)
+@inline function _fill_north_halo!(i, k, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
                      #  ↑ y ↑
     jᴴ = grid.Ny + 1 #    *   halo cell
@@ -70,25 +90,25 @@ end
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, Δ) # extrapolate northward in +y direction.
 end
 
-@inline function _fill_bottom_halo!(i, j, grid, c, bc::Union{VBC, GBC}, loc, args...)
+@inline function _fill_bottom_halo!(i, j, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
            #  ↑ z ↑  interior
            #  -----  interior face
     kᴵ = 1 #    *    interior cell
     kᴮ = 1 #  =====  bottom boundary
     kᴴ = 0 #    *    halo cell
-    
+
     LX, LY, LZ = loc
     Δ = Δz(i, j, kᴮ, grid, LX, LY, flip(LZ)) # Δ between first interior and first bottom halo point, defined at cell face.
     @inbounds ∇c = left_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, args...)
     @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, -Δ) # extrapolate downward in -z direction.
 end
 
-@inline function _fill_top_halo!(i, j, grid, c, bc::Union{VBC, GBC}, loc, args...)
+@inline function _fill_top_halo!(i, j, grid, c, bc::Union{VBC, GBC, MBC}, loc, args...)
 
                      #  ↑ z ↑
     kᴴ = grid.Nz + 1 #    *    halo cell
-    kᴮ = grid.Nz + 1 #  =====  top boundary 
+    kᴮ = grid.Nz + 1 #  =====  top boundary
     kᴵ = grid.Nz     #    *    interior cell
                      #  -----  interior face
 
