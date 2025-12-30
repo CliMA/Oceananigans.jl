@@ -135,23 +135,23 @@ end
 end
 
 # Domain boundary getbc (2 indices: i, j) - uses k=1 for bottom boundary
-@inline function BoundaryConditions.getbc(df::XDBDF, i::Integer, j::Integer, grid::AbstractGrid, clock, fields)
+@inline function BoundaryConditions.getbc(df::XDBDF, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, args...)
     U∞, V∞ = df.background_velocities
     return _x_bulk_drag(i, j, 1, grid, fields, df.coefficient, U∞, V∞)
 end
 
-@inline function BoundaryConditions.getbc(df::YDBDF, i::Integer, j::Integer, grid::AbstractGrid, clock, fields)
+@inline function BoundaryConditions.getbc(df::YDBDF, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, args...)
     U∞, V∞ = df.background_velocities
     return _y_bulk_drag(i, j, 1, grid, fields, df.coefficient, U∞, V∞)
 end
 
 # Immersed boundary getbc (3 indices: i, j, k) - uses actual k index
-@inline function BoundaryConditions.getbc(df::XDBDF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields)
+@inline function BoundaryConditions.getbc(df::XDBDF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields, args...)
     U∞, V∞ = df.background_velocities
     return _x_bulk_drag(i, j, k, grid, fields, df.coefficient, U∞, V∞)
 end
 
-@inline function BoundaryConditions.getbc(df::YDBDF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields)
+@inline function BoundaryConditions.getbc(df::YDBDF, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields, args...)
     U∞, V∞ = df.background_velocities
     return _y_bulk_drag(i, j, k, grid, fields, df.coefficient, U∞, V∞)
 end

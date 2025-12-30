@@ -3,11 +3,8 @@ using Oceananigans
 using Oceananigans.Units
 using Printf
 
-using Oceananigans.Grids: XDirection, YDirection
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
     CATKEVerticalDiffusivity, MixingLength
-
-using Oceananigans.Models: BulkDrag
 
 # Parameters
 Δz = 4          # Vertical resolution
@@ -32,8 +29,8 @@ coriolis = FPlane(f=f₀)
 # where d₀ is the distance to the wall (half grid spacing)
 Cᴰ = (ϰ / log(Δz/2ℓ₀))^2
 
-u_bottom_bc = BulkDrag(direction=XDirection(), coefficient=Cᴰ)
-v_bottom_bc = BulkDrag(direction=YDirection(), coefficient=Cᴰ)
+u_bottom_bc = BulkDrag(coefficient=Cᴰ)
+v_bottom_bc = BulkDrag(coefficient=Cᴰ)
 
 u_bcs = FieldBoundaryConditions(bottom = u_bottom_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_bottom_bc)
