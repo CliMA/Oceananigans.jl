@@ -63,12 +63,12 @@ function Base.show(io::IO, mf::MultipleForcings)
 
     Nf = length(mf.forcings)
     if Nf > 1
-        body = [string("├ ", prettysummary(f), "\n") for f in mf.forcings[1:end-1]]
+        body = [string("├── ", prettysummary(f), "\n") for f in mf.forcings[1:end-1]]
     else
         body = []
     end
 
-    push!(body, string("└ ", prettysummary(mf.forcings[end])))
+    push!(body, string("└── ", prettysummary(mf.forcings[end])))
 
     print(io, start, "\n", body...)
 

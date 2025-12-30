@@ -84,4 +84,26 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         @test x_coords == expected_x
         @test y_coords == expected_y
     end
+
+    @testset "1D line with field first and coordinate array second" begin
+        # Test lines!(ax, field, coordinate_array) syntax
+        grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded))
+        z = znodes(grid, Center()) ./ 1e3
+        T = CenterField(grid)
+        set!(T, sequential_data(size(T)))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, T, z)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = vec(Array(interior(T)))
+        expected_y = collect(z)
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
 end

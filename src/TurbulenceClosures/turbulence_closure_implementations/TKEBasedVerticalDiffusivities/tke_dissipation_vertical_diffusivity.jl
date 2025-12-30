@@ -146,13 +146,16 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
                                                  tke_dissipation_time_step)
 end
 
-function with_tracers(tracer_names, closure::FlavorOfTD)
+function Utils.with_tracers(tracer_names, closure::FlavorOfTD)
     :e ∈ tracer_names && :ϵ ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e and :ϵ to represent turbulent kinetic energy " *
                             "for `TKEDissipationVerticalDiffusivity`."))
 
     return closure
 end
+
+# Required tracer names for TKEDissipation
+closure_required_tracers(::FlavorOfTD) = (:e, :ϵ)
 
 #####
 ##### Stratified displacement length scale limiter
@@ -190,7 +193,7 @@ Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusiv
                                     adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
                                     adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
+function BoundaryConditions.fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_closure_fields.κu,
                                  tke_dissipation_closure_fields.κc,
                                  tke_dissipation_closure_fields.κe,

@@ -9,7 +9,7 @@ Distributed.addprocs(2)
 
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
 
     using NCDatasets
     using XESMF
@@ -45,11 +45,31 @@ Distributed.addprocs(2)
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
+        "lock_exchange.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
 end
+
+# We'll append the following postamble to the literate examples, to include
+# information about the computing environment used to run them.
+example_postamble = """
+
+# ---
+
+# ### Julia version and environment information
+#
+# This example was executed with the following version of Julia:
+
+using InteractiveUtils: versioninfo
+versioninfo()
+
+# These were the top-level packages installed in the environment:
+
+import Pkg
+Pkg.status()
+"""
 
 @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
@@ -59,6 +79,7 @@ Distributed.pmap(1:length(example_scripts)) do n
     withenv("JULIA_DEBUG" => "Literate") do
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
+                          preprocess = content -> content * example_postamble,
                           flavor = Literate.DocumenterFlavor(), execute = true)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
@@ -81,6 +102,7 @@ example_pages = [
     "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
     "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
     "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
+    "Lock exchange"                    => "literated/lock_exchange.md",
     "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
     "Horizontal convection"            => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
@@ -106,7 +128,7 @@ simulation_pages = [
 ]
 
 physics_pages = [
-    "Coordinate system and notation" => "physics/notation.md",
+    "Coordinate systems" => "physics/coordinate_systems.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
@@ -205,14 +227,20 @@ makedocs(; sitename = "Oceananigans.jl",
          format, pages, modules,
          plugins = [bib],
          warnonly = [:cross_references],
-         draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
-         checkdocs = :exports) # set to :none to speed things up
+         linkcheck = true,
+         linkcheck_ignore = [
+            r"jstor\.org",
+            r"^https://github\.com/.*?/blob/",
+         ],
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         checkdocs = :exports, # set to :none to speed things up
+         )
 
 """
     recursive_find(directory, pattern)

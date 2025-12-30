@@ -17,6 +17,8 @@ docs/site
 docs/src/literated
 docs/src/developer_docs/AGENTS.md
 docs/Manifest.toml
+docs/src/developer_docs/AGENTS.md
+docs/.CondaPkg/
 
 # Model output
 *.dat

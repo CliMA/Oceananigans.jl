@@ -222,7 +222,9 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; dimension_ty
         dim_name == "" && continue # Don't create anything if dim_name is an empty string
         push!(effective_dim_names, dim_name)
 
-        dim_array = dimension_type.(dim_array) # Transform dim_array to the correct float type
+        # Transform dim_array to the correct float type and ensure it's on the CPU
+        dim_array = collect(dimension_type.(dim_array))
+
         if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
             defVar(dataset, dim_name, dim_array, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
@@ -1003,7 +1005,7 @@ Optional keyword arguments
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 
 - `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
-                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
+                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://juliageo.org/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
 
 - `part`: The starting part number used when file splitting. Default: `1`.
