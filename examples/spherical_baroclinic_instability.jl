@@ -14,6 +14,10 @@
 # different spherical grid types to illustrate the flexibility of Oceananigans for global
 # ocean modeling.
 #
+# This example also demonstrates:
+# - Using [`BulkDrag`](@ref) for quadratic bottom drag boundary conditions
+# - Applying drag to both domain boundaries and immersed boundaries (for the tripolar grid)
+#
 # ## Install dependencies
 #
 # First let's make sure we have all required packages installed.
@@ -72,20 +76,20 @@ lat_lon_grid = LatitudeLongitudeGrid(arch; size, halo, latitude, longitude, z)
 
 underlying_tripolar_grid = TripolarGrid(arch; size, halo, z)
 
-# We also use an `ImmersedBoundaryGrid` to place cylindrical islands over the singularities
+# We also use an `ImmersedBoundaryGrid` to place Gaussian mountains over the singularities
 # to ensure the simulation remains stable.
 # The tripolar grid places singularities at longitude `first_pole_longitude` and
 # `first_pole_longitude + 180°`, both at latitude `north_poles_latitude`.
 # By default, the first pole is at 70°E longitude and 55°N latitude.
 
-dφ, dλ = 4, 8     # island extent in latitude and longitude
-λ₀, φ₀ = 70, 55   # first pole location
-h = 100           # island height above the bottom
+σφ, σλ = 4, 8       # mountain extent in latitude and longitude (degrees)
+λ₀, φ₀ = 70, 55     # first pole location
+h = 3000            # mountain height above the bottom (m)
 
-cylinder(λ, φ) = ((λ - λ₀)^2 / 2dλ^2 + (φ - φ₀)^2 / 2dφ^2) < 1
-cylindrical_isles(λ, φ) = -H + (H + h) * (cylinder(λ, φ) + cylinder(λ - 180, φ))
+gaussian(λ, φ) = exp(-((λ - λ₀)^2 / 2σλ^2 + (φ - φ₀)^2 / 2σφ^2))
+gaussian_mountains(λ, φ) = -H + h * (gaussian(λ, φ) + gaussian(λ - 180, φ))
 
-tripolar_grid = ImmersedBoundaryGrid(underlying_tripolar_grid, GridFittedBottom(cylindrical_isles))
+tripolar_grid = ImmersedBoundaryGrid(underlying_tripolar_grid, GridFittedBottom(gaussian_mountains))
 
 # ### Rotated latitude-longitude grid
 #
@@ -110,9 +114,19 @@ rotated_lat_lon_grid = RotatedLatitudeLongitudeGrid(arch; size, halo, latitude, 
 # - The front is centered around ±45° latitude
 # - Random noise seeds the baroclinic instability
 
-## Initialc conditions
+## Initial conditions
 Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
 Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
+
+# ## Bottom drag boundary conditions
+#
+# We apply quadratic bottom drag using [`BulkDrag`](@ref), which computes
+# a stress proportional to `Cᴰ |u| u` where `Cᴰ` is the drag coefficient.
+# For grids with immersed boundaries (like the tripolar grid with Gaussian mountains),
+# we apply drag to both the domain bottom and the immersed boundary surfaces.
+
+Cᴰ = 0.003  # quadratic drag coefficient
+drag = BulkDrag(coefficient=Cᴰ)
 
 ## Helper to build and initialize a model on any grid.
 function build_model(grid)
@@ -122,8 +136,17 @@ function build_model(grid)
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     free_surface = SplitExplicitFreeSurface(grid; substeps=80)
-    model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy, tracers = (:T, :S),
-                                        momentum_advection, tracer_advection)
+
+    # Apply bottom drag to both domain boundaries and immersed boundaries.
+    # For grids without immersed boundaries, the `immersed` keyword is ignored.
+    u_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
+    v_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
+    boundary_conditions = (; u=u_bcs, v=v_bcs)
+
+    model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy,
+                                        tracers = (:T, :S),
+                                        momentum_advection, tracer_advection,
+                                        boundary_conditions)
     set!(model, T=Tᵢ, S=Sᵢ)
     return model
 end

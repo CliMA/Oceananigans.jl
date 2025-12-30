@@ -224,7 +224,7 @@ Colorbar(fig[5, 2], hm_N², label = "s⁻²")
 
 Nt = length(times)
 record(fig, "hydrostatic_lock_exchange.mp4", 1:Nt; framerate = 8) do nn
-    @info "Animating frame $i out of $Nt"
+    @info "Animating frame $nn out of $Nt"
     n[] = nn
 end
 
