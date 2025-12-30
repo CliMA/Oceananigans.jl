@@ -98,7 +98,7 @@ end
 ##### Test error handling
 #####
 
-function test_averaged_specified_times_errors()
+function test_averaged_specified_times_overlapping_windows()
     # Test that mismatched lengths throw an error
     times = [1.0, 2.0, 3.0]
     window = [0.5, 0.3]  # Wrong length
@@ -439,6 +439,171 @@ function test_averaging_datetime_varying_period_windows(model)
 end
 
 #####
+##### Test runtime validation of averaging windows
+#####
+
+function test_averaged_specified_times_runtime_validation()
+    @info "  Testing runtime validation for AveragedSpecifiedTimes..."
+
+    # Test 1: Valid case - window doesn't extend before start
+    @testset "Valid window (doesn't extend before start)" begin
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        model = NonhydrostaticModel(; grid)
+
+        # First specified time at 5.0, window is 2.0 (goes back to 3.0)
+        # Simulation starts at 0.0, so this should be fine
+        schedule = AveragedSpecifiedTimes([5.0, 10.0], window=2.0)
+        simulation = Simulation(model, Δt=0.1, stop_time=10.0)
+        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
+                                                       filename="test_valid_runtime.jld2",
+                                                       schedule=schedule,
+                                                       overwrite_existing=true)
+
+        # Should not throw an error
+        @test_nowarn run!(simulation)
+
+        rm("test_valid_runtime.jld2", force=true)
+    end
+
+    # Test 2: Invalid case - window extends before simulation start
+    @testset "Invalid window (extends before start)" begin
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        model = NonhydrostaticModel(; grid)
+
+        # First specified time at 2.0, window is 5.0 (goes back to -3.0)
+        # Simulation starts at 0.0, so this should fail at runtime
+        schedule = AveragedSpecifiedTimes([2.0, 10.0], window=5.0)
+        simulation = Simulation(model, Δt=0.1, stop_time=10.0)
+        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
+                                                       filename="test_invalid_runtime.jld2",
+                                                       schedule=schedule,
+                                                       overwrite_existing=true)
+
+        # Should throw ArgumentError at runtime during initialize!
+        @test_throws ArgumentError run!(simulation)
+
+        rm("test_invalid_runtime.jld2", force=true)
+    end
+
+    # Test 3: Invalid case with vector windows
+    @testset "Invalid vector windows (first window extends before start)" begin
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        model = NonhydrostaticModel(; grid)
+
+        # First window: time=2.0, window=5.0 -> starts at -3.0 (invalid)
+        # Second window: time=10.0, window=2.0 -> starts at 8.0 (valid)
+        schedule = AveragedSpecifiedTimes([2.0, 10.0], window=[5.0, 2.0])
+        simulation = Simulation(model, Δt=0.1, stop_time=10.0)
+        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
+                                                       filename="test_invalid_vector_runtime.jld2",
+                                                       schedule=schedule,
+                                                       overwrite_existing=true)
+
+        # Should throw ArgumentError at runtime during initialize!
+        @test_throws ArgumentError run!(simulation)
+
+        rm("test_invalid_vector_runtime.jld2", force=true)
+    end
+
+    # Test 4: Valid case with non-zero start time
+    @testset "Valid window with non-zero start time" begin
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        model = NonhydrostaticModel(; grid)
+
+        # Start simulation at t=5.0
+        model.clock.time = 5.0
+
+        # First specified time at 10.0, window is 3.0 (goes back to 7.0)
+        # This is after start time (5.0), so should be valid
+        schedule = AveragedSpecifiedTimes([10.0, 15.0], window=3.0)
+        simulation = Simulation(model, Δt=0.1, stop_time=15.0)
+        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
+                                                       filename="test_valid_nonzero_runtime.jld2",
+                                                       schedule=schedule,
+                                                       overwrite_existing=true)
+
+        # Should not throw an error
+        @test_nowarn run!(simulation)
+
+        rm("test_valid_nonzero_runtime.jld2", force=true)
+    end
+
+    # Test 5: Invalid case with non-zero start time
+    @testset "Invalid window with non-zero start time" begin
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        model = NonhydrostaticModel(; grid)
+
+        # Start simulation at t=5.0
+        model.clock.time = 5.0
+
+        # First specified time at 7.0, window is 5.0 (goes back to 2.0)
+        # This is before start time (5.0), so should fail
+        schedule = AveragedSpecifiedTimes([7.0, 15.0], window=5.0)
+        simulation = Simulation(model, Δt=0.1, stop_time=15.0)
+        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
+                                                       filename="test_invalid_nonzero_runtime.jld2",
+                                                       schedule=schedule,
+                                                       overwrite_existing=true)
+
+        # Should throw ArgumentError
+        @test_throws ArgumentError run!(simulation)
+
+        rm("test_invalid_nonzero_runtime.jld2", force=true)
+    end
+
+    # Test 6: DateTime - Invalid case (runtime validation with non-zero start)
+    @testset "Invalid DateTime window (runtime validation)" begin
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+
+        # Start simulation at Jan 10, 2000
+        start_time = DateTime(2000, 1, 10)
+        clock = Clock(time=start_time)
+        model = HydrostaticFreeSurfaceModel(; grid, clock)
+
+        # First specified time at Jan 15, window is 10 days (goes back to Jan 5)
+        # Simulation starts at Jan 10, 2000, so window extends before start
+        times = [DateTime(2000, 1, 15), DateTime(2000, 1, 25)]
+        schedule = AveragedSpecifiedTimes(times, window=Day(10))
+        simulation = Simulation(model, Δt=Day(1), stop_time=DateTime(2000, 1, 25))
+        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
+                                                       filename="test_invalid_datetime_runtime.jld2",
+                                                       schedule=schedule,
+                                                       overwrite_existing=true)
+
+        # Should throw ArgumentError at runtime during initialize!
+        @test_throws ArgumentError run!(simulation)
+
+        rm("test_invalid_datetime_runtime.jld2", force=true)
+    end
+
+    # Test 7: DateTime - Valid case
+    @testset "Valid DateTime window" begin
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+
+        start_time = DateTime(2000, 1, 1)
+        clock = Clock(time=start_time)
+        model = HydrostaticFreeSurfaceModel(; grid, clock)
+
+        # First specified time at Jan 10, window is 5 days (goes back to Jan 5)
+        # Simulation starts at Jan 1, 2000, so this should be valid
+        times = [DateTime(2000, 1, 10), DateTime(2000, 1, 20)]
+        schedule = AveragedSpecifiedTimes(times, window=Day(5))
+        simulation = Simulation(model, Δt=Day(1), stop_time=DateTime(2000, 1, 20))
+        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
+                                                       filename="test_valid_datetime_runtime.jld2",
+                                                       schedule=schedule,
+                                                       overwrite_existing=true)
+
+        # Should not throw an error
+        @test_nowarn run!(simulation)
+
+        rm("test_valid_datetime_runtime.jld2", force=true)
+    end
+
+    return nothing
+end
+
+#####
 ##### Run AveragedSpecifiedTimes tests
 #####
 
@@ -447,23 +612,25 @@ end
 
     # Error handling tests
     @testset "AveragedSpecifiedTimes error handling" begin
-        @info "  Testing AveragedSpecifiedTimes error handling..."
-        test_averaged_specified_times_errors()
+        test_averaged_specified_times_overlapping_windows()
+    end
+
+    # Runtime validation tests
+    @testset "Runtime validation of averaging windows" begin
+        test_averaged_specified_times_runtime_validation()
     end
 
     topo = (Periodic, Periodic, Bounded)
-    
+
     for arch in archs
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "Time averaging simulation with AveragedSpecifiedTimes [$(typeof(arch))]" begin
-            @info "  Testing time averaging simulation with AveragedSpecifiedTimes [$(typeof(arch))]..."
             test_averaged_specified_times_simulation(model)
         end
-        
+
         @testset "Averaging validation tests [$(typeof(arch))]" begin
-            @info "  Testing quantitative correctness of averaging..."
             test_averaging_scalar_window(model)
             test_averaging_varying_windows(model)
             test_averaging_datetime_windows(model)
