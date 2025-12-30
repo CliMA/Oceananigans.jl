@@ -269,7 +269,11 @@ function directional_accumulate!(op, B, A, dim, direction)
         finish = 1
     end
 
-    launch!(arch, grid, config, kernel, op, B, A, start, finish, direction)
+    # Determine if we're "expanding" (output has more points than input)
+    # This affects which A index to use for reverse accumulation
+    expanding = size(B, dim) > size(A, dim)
+
+    launch!(arch, grid, config, kernel, op, B, A, start, finish, direction, expanding)
 
     return B
 end
@@ -285,41 +289,54 @@ neutral_element(::typeof(Base.min), T) = convert(T, +Inf)
 neutral_element(::typeof(Base.max), T) = convert(T, -Inf)
 neutral_element(::typeof(Base.add_sum), T) = convert(T, 0)
 
-@kernel function accumulate_x(op, B, A, start, finish, dir)
+# For computing the correct A index when locations are flipped (Center ↔ Face):
+# - Forward (all cases): use A[previous] (k-1)
+# - Reverse expanding (Center→Face, more output points): use A[current] (k)
+# - Reverse contracting (Face→Center, fewer output points): use A[previous] (k+1)
+@inline accumulate_A_index(::Forward, current, previous, expanding) = previous
+@inline accumulate_A_index(::Reverse, current, previous, expanding) = expanding ? current : previous
+
+@kernel function accumulate_x(op, B, A, start, finish, dir, expanding)
     j, k = @index(Global, NTuple)
 
-    # Initialize
+    # Initialize with neutral element
     FT = eltype(B)
     @inbounds B[start, j, k] = neutral_element(op, FT)
 
+    # Accumulate with correct A index based on direction and size relationship
     for i in accumulation_range(dir, start, finish)
         pr = decrement(dir, i)
-        @inbounds B[i, j, k] = op(B[pr, j, k], A[i, j, k])
+        Ai = accumulate_A_index(dir, i, pr, expanding)
+        @inbounds B[i, j, k] = op(B[pr, j, k], A[Ai, j, k])
     end
 end
 
-@kernel function accumulate_y(op, B, A, start, finish, dir)
+@kernel function accumulate_y(op, B, A, start, finish, dir, expanding)
     i, k = @index(Global, NTuple)
 
-    # Initialize
+    # Initialize with neutral element
     FT = eltype(B)
     @inbounds B[i, start, k] = neutral_element(op, FT)
 
+    # Accumulate with correct A index based on direction and size relationship
     for j in accumulation_range(dir, start, finish)
         pr = decrement(dir, j)
-        @inbounds B[i, j, k] = op(B[i, pr, k], A[i, j, k])
+        Aj = accumulate_A_index(dir, j, pr, expanding)
+        @inbounds B[i, j, k] = op(B[i, pr, k], A[i, Aj, k])
     end
 end
 
-@kernel function accumulate_z(op, B, A, start, finish, dir)
+@kernel function accumulate_z(op, B, A, start, finish, dir, expanding)
     i, j = @index(Global, NTuple)
 
-    # Initialize
+    # Initialize with neutral element
     FT = eltype(B)
     @inbounds B[i, j, start] = neutral_element(op, FT)
-                
+
+    # Accumulate with correct A index based on direction and size relationship
     for k in accumulation_range(dir, start, finish)
         pr = decrement(dir, k)
-        @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, k])
+        Ak = accumulate_A_index(dir, k, pr, expanding)
+        @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, Ak])
     end
 end
