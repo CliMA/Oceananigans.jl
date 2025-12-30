@@ -123,8 +123,8 @@ cᴰ = (ϰ / log(z₁ / z₀))^2 # Drag coefficient
 
 drag_bc = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞))
 
-u_bcs = FieldBoundaryConditions(bottom=drag_bc_u)
-v_bcs = FieldBoundaryConditions(bottom=drag_bc_v)
+u_bcs = FieldBoundaryConditions(bottom=drag_bc)
+v_bcs = FieldBoundaryConditions(bottom=drag_bc)
 
 # Note that, similar to the buoyancy boundary conditions, we had to
 # include the background flow in the drag calculation.
