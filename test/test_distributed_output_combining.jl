@@ -1,98 +1,320 @@
 include("dependencies_for_runtests.jl")
 
 using JLD2
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
+using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 
-# Distributed output combining tests
+#####
+##### Distributed output combining tests
+#####
 #
 # These tests verify that distributed output (with _rank0, _rank1, etc. suffixes)
 # can be automatically combined into a global FieldTimeSeries that matches
 # output from an equivalent non-distributed simulation.
+#
 
 #####
-##### Test scripts to be run with MPI
+##### Helper functions
 #####
 
-# Script that runs a distributed simulation and saves output
-distributed_simulation_script = """
+function run_mpi_script(script, filename, nranks=4)
+    write(filename, script)
+    run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) --project -O0 $filename`)
+    rm(filename)
+end
+
+function cleanup_rank_files(prefix, nranks=4)
+    for r in 0:(nranks-1)
+        rm("$(prefix)_rank$r.jld2", force=true)
+    end
+end
+
+# Custom comparison that handles NaN values (NaN == NaN for our purposes)
+function arrays_equal_with_nans(a, b; rtol=√eps())
+    size(a) != size(b) && return false
+    for (x, y) in zip(a, b)
+        if isnan(x) && isnan(y)
+            continue
+        elseif isnan(x) || isnan(y)
+            return false
+        elseif !isapprox(x, y; rtol)
+            return false
+        end
+    end
+    return true
+end
+
+function test_combined_output_matches_serial(distributed_prefix, serial_file, varnames)
+    for varname in varnames
+        c_distributed = FieldTimeSeries("$distributed_prefix.jld2", varname)
+        c_serial = FieldTimeSeries(serial_file, varname)
+
+        @test size(c_distributed.grid) == size(c_serial.grid)
+        @test size(c_distributed) == size(c_serial)
+        @test c_distributed.times ≈ c_serial.times
+
+        for n in 1:length(c_distributed.times)
+            @test arrays_equal_with_nans(interior(c_distributed[n]), interior(c_serial[n]))
+        end
+    end
+end
+
+#####
+##### RectilinearGrid test configuration
+#####
+
+const rectilinear_2x2_config = (
+    size = (8, 8, 4),
+    extent = (1.0, 1.0, 0.5),
+    partition = (2, 2),
+    Δt = 1.0,
+    stop_iteration = 10,
+    output_interval = 5,
+)
+
+const rectilinear_slab_config = (
+    size = (8, 16, 4),
+    extent = (1.0, 2.0, 0.5),
+    partition = (1, 4),
+    Δt = 1.0,
+    stop_iteration = 4,
+    output_interval = 2,
+)
+
+function rectilinear_mpi_script(config, filename)
+    Nx, Ny, Nz = config.size
+    Lx, Ly, Lz = config.extent
+    px, py = config.partition
+    Δt = config.Δt
+    stop_iteration = config.stop_iteration
+    output_interval = config.output_interval
+
+    return """
     using MPI
     MPI.Init()
-    
+
     using Oceananigans
     using Oceananigans.DistributedComputations: Distributed, Partition
-    
-    # Create distributed architecture with 2x2 decomposition
-    arch = Distributed(CPU(), partition=Partition(2, 2))
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    
-    # Global grid parameters
-    Nx, Ny, Nz = 8, 8, 4
-    Lx, Ly, Lz = 1.0, 1.0, 0.5
-    
-    # Create distributed grid
-    distributed_grid = RectilinearGrid(arch;
-                                        topology = (Periodic, Periodic, Bounded),
-                                        size = (Nx, Ny, Nz),
-                                        extent = (Lx, Ly, Lz))
-    
-    # Create distributed model
-    distributed_model = NonhydrostaticModel(; grid=distributed_grid, tracers=:c)
-    
-    # Set initial conditions
+
+    arch = Distributed(CPU(), partition=Partition($px, $py))
+
+    grid = RectilinearGrid(arch;
+                           topology = (Periodic, Periodic, Bounded),
+                           size = ($Nx, $Ny, $Nz),
+                           extent = ($Lx, $Ly, $Lz))
+
+    model = NonhydrostaticModel(; grid, tracers=:c)
+
+    Lx, Ly, Lz = $Lx, $Ly, $Lz
     cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
     uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
-    set!(distributed_model, c=cᵢ, u=uᵢ)
-    
-    simulation = Simulation(distributed_model; Δt=1.0, stop_iteration=10)
-    
-    outputs = merge(distributed_model.velocities, distributed_model.tracers)
-    
-    simulation.output_writers[:jld2] = JLD2Writer(distributed_model, outputs;
-                                                   filename = "distributed_output_test",
-                                                   schedule = IterationInterval(5),
-                                                   overwrite_existing = true,
-                                                   with_halos = true)
-    
+    set!(model, c=cᵢ, u=uᵢ)
+
+    simulation = Simulation(model; Δt=$Δt, stop_iteration=$stop_iteration)
+
+    simulation.output_writers[:jld2] = JLD2Writer(model,
+                                                  merge(model.velocities, model.tracers);
+                                                  filename = "$filename",
+                                                  schedule = IterationInterval($output_interval),
+                                                  overwrite_existing = true,
+                                                  with_halos = true)
     run!(simulation)
-    
+
     MPI.Barrier(MPI.COMM_WORLD)
     MPI.Finalize()
-"""
+    """
+end
 
-# Script that runs slab decomposition (1x4)
-slab_simulation_script = """
+function run_serial_rectilinear(config, filename)
+    Nx, Ny, Nz = config.size
+    Lx, Ly, Lz = config.extent
+
+    grid = RectilinearGrid(CPU();
+                           topology = (Periodic, Periodic, Bounded),
+                           size = (Nx, Ny, Nz),
+                           extent = (Lx, Ly, Lz))
+
+    model = NonhydrostaticModel(; grid, tracers=:c)
+
+    cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
+    uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
+    set!(model, c=cᵢ, u=uᵢ)
+
+    simulation = Simulation(model; Δt=config.Δt, stop_iteration=config.stop_iteration)
+
+    simulation.output_writers[:jld2] = JLD2Writer(model,
+                                                  merge(model.velocities, model.tracers);
+                                                  filename = filename,
+                                                  schedule = IterationInterval(config.output_interval),
+                                                  overwrite_existing = true,
+                                                  with_halos = true)
+    run!(simulation)
+end
+
+#####
+##### LatitudeLongitudeGrid test configuration
+#####
+
+const lat_lon_config = (
+    size = (16, 16, 4),
+    longitude = (-30, 30),
+    latitude = (-60, 60),
+    z = (-100, 0),
+    halo = (4, 4, 4),
+    partition = (1, 4),
+    Δt = 100.0,
+    stop_iteration = 4,
+    output_interval = 2,
+)
+
+function lat_lon_mpi_script(config, filename)
+    Nλ, Nφ, Nz = config.size
+    lon1, lon2 = config.longitude
+    lat1, lat2 = config.latitude
+    z1, z2 = config.z
+    Hλ, Hφ, Hz = config.halo
+    px, py = config.partition
+
+    return """
     using MPI
     MPI.Init()
-    
+
     using Oceananigans
     using Oceananigans.DistributedComputations: Distributed, Partition
-    
-    arch = Distributed(CPU(), partition=Partition(1, 4))
-    
-    Nx, Ny, Nz = 8, 16, 4
-    Lx, Ly, Lz = 1.0, 2.0, 0.5
-    
-    distributed_grid = RectilinearGrid(arch;
-                                        topology = (Periodic, Periodic, Bounded),
-                                        size = (Nx, Ny, Nz),
-                                        extent = (Lx, Ly, Lz))
-    
-    distributed_model = NonhydrostaticModel(; grid=distributed_grid, tracers=:c)
-    cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly)
-    set!(distributed_model, c=cᵢ)
-    
-    simulation = Simulation(distributed_model; Δt=1.0, stop_iteration=4)
-    
-    simulation.output_writers[:jld2] = JLD2Writer(distributed_model, distributed_model.tracers;
-                                                   filename = "slab_output_test",
-                                                   schedule = IterationInterval(2),
-                                                   overwrite_existing = true,
-                                                   with_halos = true)
-    
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface
+
+    arch = Distributed(CPU(), partition=Partition($px, $py))
+
+    grid = LatitudeLongitudeGrid(arch;
+                                 size = ($Nλ, $Nφ, $Nz),
+                                 longitude = ($lon1, $lon2),
+                                 latitude = ($lat1, $lat2),
+                                 z = ($z1, $z2),
+                                 halo = ($Hλ, $Hφ, $Hz))
+
+    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+
+    cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
+    set!(model, c=cᵢ)
+
+    simulation = Simulation(model; Δt=$(config.Δt), stop_iteration=$(config.stop_iteration))
+
+    simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
+                                                  filename = "$filename",
+                                                  schedule = IterationInterval($(config.output_interval)),
+                                                  overwrite_existing = true,
+                                                  with_halos = true)
     run!(simulation)
-    
+
     MPI.Barrier(MPI.COMM_WORLD)
     MPI.Finalize()
-"""
+    """
+end
+
+function run_serial_lat_lon(config, filename)
+    grid = LatitudeLongitudeGrid(CPU();
+                                 size = config.size,
+                                 longitude = config.longitude,
+                                 latitude = config.latitude,
+                                 z = config.z,
+                                 halo = config.halo)
+
+    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+
+    cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
+    set!(model, c=cᵢ)
+
+    simulation = Simulation(model; Δt=config.Δt, stop_iteration=config.stop_iteration)
+
+    simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
+                                                  filename = filename,
+                                                  schedule = IterationInterval(config.output_interval),
+                                                  overwrite_existing = true,
+                                                  with_halos = true)
+    run!(simulation)
+end
+
+#####
+##### TripolarGrid test configuration
+#####
+
+const tripolar_config = (
+    size = (16, 16, 4),
+    z = (-100, 0),
+    halo = (4, 4, 4),
+    north_poles_latitude = 55,
+    first_pole_longitude = 70,
+    partition = (1, 4),
+    Δt = 100.0,
+    stop_iteration = 4,
+    output_interval = 2,
+)
+
+function tripolar_mpi_script(config, filename)
+    Nλ, Nφ, Nz = config.size
+    z1, z2 = config.z
+    Hλ, Hφ, Hz = config.halo
+    px, py = config.partition
+
+    return """
+    using MPI
+    MPI.Init()
+
+    using Oceananigans
+    using Oceananigans.DistributedComputations: Distributed, Partition
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface
+    using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
+
+    arch = Distributed(CPU(), partition=Partition($px, $py))
+
+    grid = TripolarGrid(arch;
+                        size = ($Nλ, $Nφ, $Nz),
+                        z = ($z1, $z2),
+                        halo = ($Hλ, $Hφ, $Hz),
+                        north_poles_latitude = $(config.north_poles_latitude),
+                        first_pole_longitude = $(config.first_pole_longitude))
+
+    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+
+    cᵢ(λ, φ, z) = cosd(φ) * (z + 100) / 100
+    set!(model, c=cᵢ)
+
+    simulation = Simulation(model; Δt=$(config.Δt), stop_iteration=$(config.stop_iteration))
+
+    simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
+                                                  filename = "$filename",
+                                                  schedule = IterationInterval($(config.output_interval)),
+                                                  overwrite_existing = true,
+                                                  with_halos = true)
+    run!(simulation)
+
+    MPI.Barrier(MPI.COMM_WORLD)
+    MPI.Finalize()
+    """
+end
+
+function run_serial_tripolar(config, filename)
+    grid = TripolarGrid(CPU();
+                        size = config.size,
+                        z = config.z,
+                        halo = config.halo,
+                        north_poles_latitude = config.north_poles_latitude,
+                        first_pole_longitude = config.first_pole_longitude)
+
+    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+
+    cᵢ(λ, φ, z) = cosd(φ) * (z + 100) / 100
+    set!(model, c=cᵢ)
+
+    simulation = Simulation(model; Δt=config.Δt, stop_iteration=config.stop_iteration)
+
+    simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
+                                                  filename = filename,
+                                                  schedule = IterationInterval(config.output_interval),
+                                                  overwrite_existing = true,
+                                                  with_halos = true)
+    run!(simulation)
+end
 
 #####
 ##### Tests
@@ -100,192 +322,129 @@ slab_simulation_script = """
 
 @testset "Distributed output combining - RectilinearGrid (2x2)" begin
     @info "Testing RectilinearGrid distributed output combining (2x2 partition)..."
-    
-    # Run distributed simulation
-    write("run_distributed_output.jl", distributed_simulation_script)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 run_distributed_output.jl`)
-    rm("run_distributed_output.jl")
-    
-    # Run equivalent serial simulation
-    Nx, Ny, Nz = 8, 8, 4
-    Lx, Ly, Lz = 1.0, 1.0, 0.5
-    
-    serial_grid = RectilinearGrid(CPU();
-                                   topology = (Periodic, Periodic, Bounded),
-                                   size = (Nx, Ny, Nz),
-                                   extent = (Lx, Ly, Lz))
-    
-    serial_model = NonhydrostaticModel(; grid=serial_grid, tracers=:c)
-    cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
-    uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
-    set!(serial_model, c=cᵢ, u=uᵢ)
-    
-    simulation = Simulation(serial_model; Δt=1.0, stop_iteration=10)
-    
-    simulation.output_writers[:jld2] = JLD2Writer(serial_model, 
-                                                   merge(serial_model.velocities, serial_model.tracers);
-                                                   filename = "serial_output_test.jld2",
-                                                   schedule = IterationInterval(5),
-                                                   overwrite_existing = true,
-                                                   with_halos = true)
-    run!(simulation)
-    
-    # Load combined distributed output (should automatically detect rank files)
-    c_distributed = FieldTimeSeries("distributed_output_test.jld2", "c")
-    u_distributed = FieldTimeSeries("distributed_output_test.jld2", "u")
-    
-    # Load serial output
-    c_serial = FieldTimeSeries("serial_output_test.jld2", "c")
-    u_serial = FieldTimeSeries("serial_output_test.jld2", "u")
-    
-    # Check grid sizes match
-    @test size(c_distributed.grid) == size(c_serial.grid)
-    @test size(u_distributed.grid) == size(u_serial.grid)
-    
-    # Check time series sizes match
-    @test size(c_distributed) == size(c_serial)
-    @test size(u_distributed) == size(u_serial)
-    
-    # Check times match
-    @test c_distributed.times ≈ c_serial.times
-    
-    # Check data matches for each time step
-    Nt = length(c_distributed.times)
-    for n in 1:Nt
-        @test interior(c_distributed[n]) ≈ interior(c_serial[n])
-        @test interior(u_distributed[n]) ≈ interior(u_serial[n])
-    end
-    
-    @info "  RectilinearGrid (2x2) test passed! ✓"
-    
-    # Clean up
-    rm("serial_output_test.jld2", force=true)
-    for r in 0:3
-        rm("distributed_output_test_rank$r.jld2", force=true)
-    end
+
+    config = rectilinear_2x2_config
+    dist_prefix = "rectilinear_2x2_distributed"
+    serial_file = "rectilinear_2x2_serial.jld2"
+
+    script = rectilinear_mpi_script(config, dist_prefix)
+    run_mpi_script(script, "run_rectilinear_2x2.jl")
+
+    run_serial_rectilinear(config, serial_file)
+
+    test_combined_output_matches_serial(dist_prefix, serial_file, ["c", "u"])
+
+    @info "  RectilinearGrid (2x2) test passed!"
+
+    rm(serial_file, force=true)
+    cleanup_rank_files(dist_prefix)
 end
 
-@testset "Distributed output combining - Slab decomposition (1x4)" begin
-    @info "Testing slab decomposition (1x4) output combining..."
-    
-    # Run distributed simulation
-    write("run_slab_output.jl", slab_simulation_script)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 run_slab_output.jl`)
-    rm("run_slab_output.jl")
-    
-    # Run equivalent serial simulation
-    Nx, Ny, Nz = 8, 16, 4
-    Lx, Ly, Lz = 1.0, 2.0, 0.5
-    
-    serial_grid = RectilinearGrid(CPU();
-                                   topology = (Periodic, Periodic, Bounded),
-                                   size = (Nx, Ny, Nz),
-                                   extent = (Lx, Ly, Lz))
-    
-    serial_model = NonhydrostaticModel(; grid=serial_grid, tracers=:c)
-    cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly)
-    set!(serial_model, c=cᵢ)
-    
-    simulation = Simulation(serial_model; Δt=1.0, stop_iteration=4)
-    
-    simulation.output_writers[:jld2] = JLD2Writer(serial_model, serial_model.tracers;
-                                                   filename = "slab_serial_test.jld2",
-                                                   schedule = IterationInterval(2),
-                                                   overwrite_existing = true,
-                                                   with_halos = true)
-    run!(simulation)
-    
-    # Load and compare
-    c_distributed = FieldTimeSeries("slab_output_test.jld2", "c")
-    c_serial = FieldTimeSeries("slab_serial_test.jld2", "c")
-    
-    @test size(c_distributed) == size(c_serial)
-    @test c_distributed.times ≈ c_serial.times
-    
-    for n in 1:length(c_distributed.times)
-        @test interior(c_distributed[n]) ≈ interior(c_serial[n])
-    end
-    
-    @info "  Slab decomposition (1x4) test passed! ✓"
-    
-    # Clean up
-    rm("slab_serial_test.jld2", force=true)
-    for r in 0:3
-        rm("slab_output_test_rank$r.jld2", force=true)
-    end
+@testset "Distributed output combining - RectilinearGrid slab (1x4)" begin
+    @info "Testing RectilinearGrid slab decomposition (1x4) output combining..."
+
+    config = rectilinear_slab_config
+    dist_prefix = "rectilinear_slab_distributed"
+    serial_file = "rectilinear_slab_serial.jld2"
+
+    script = rectilinear_mpi_script(config, dist_prefix)
+    run_mpi_script(script, "run_rectilinear_slab.jl")
+
+    run_serial_rectilinear(config, serial_file)
+
+    test_combined_output_matches_serial(dist_prefix, serial_file, ["c"])
+
+    @info "  RectilinearGrid slab (1x4) test passed!"
+
+    rm(serial_file, force=true)
+    cleanup_rank_files(dist_prefix)
 end
 
 @testset "Distributed output combining - combine=false option" begin
     @info "Testing combine=false option..."
-    
-    # The rank files should still exist from the previous test, 
-    # but let's create fresh ones
-    write("run_distributed_output.jl", distributed_simulation_script)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 run_distributed_output.jl`)
-    rm("run_distributed_output.jl")
-    
+
+    config = rectilinear_2x2_config
+    dist_prefix = "combine_false_test"
+
+    script = rectilinear_mpi_script(config, dist_prefix)
+    run_mpi_script(script, "run_combine_false.jl")
+
     # Load individual rank file with combine=false
-    c_rank0 = FieldTimeSeries("distributed_output_test_rank0.jld2", "c"; combine=false)
-    
+    c_rank0 = FieldTimeSeries("$(dist_prefix)_rank0.jld2", "c"; combine=false)
+
     # The local field should have a smaller grid size (partitioned)
-    @test size(c_rank0.grid)[1] < 8  # Should be 4 for 2x2 partition
-    @test size(c_rank0.grid)[2] < 8
-    
-    @info "  combine=false test passed! ✓"
-    
-    # Don't clean up yet - use for OnDisk test
+    Nx, Ny, Nz = config.size
+    @test size(c_rank0.grid)[1] < Nx
+    @test size(c_rank0.grid)[2] < Ny
+
+    @info "  combine=false test passed!"
+
+    # Keep files for OnDisk test
 end
 
 @testset "Distributed output combining - OnDisk backend" begin
     @info "Testing OnDisk backend with combined output..."
-    
-    # Rank files should exist from the previous test
+
+    config = rectilinear_2x2_config
+    dist_prefix = "combine_false_test"  # Reuse from previous test
+    serial_file = "ondisk_serial.jld2"
+
     # Load combined distributed output with OnDisk backend
-    c_ondisk = FieldTimeSeries("distributed_output_test.jld2", "c"; backend=OnDisk())
-    
-    # Check grid size is global (8x8x4)
-    @test size(c_ondisk.grid) == (8, 8, 4)
-    
-    # Check we can index and get correct data
-    @test length(c_ondisk.times) == 3  # iterations 0, 5, 10
-    
-    # Load serial output for comparison
-    Nx, Ny, Nz = 8, 8, 4
-    Lx, Ly, Lz = 1.0, 1.0, 0.5
-    
-    serial_grid = RectilinearGrid(CPU();
-                                   topology = (Periodic, Periodic, Bounded),
-                                   size = (Nx, Ny, Nz),
-                                   extent = (Lx, Ly, Lz))
-    
-    serial_model = NonhydrostaticModel(; grid=serial_grid, tracers=:c)
-    cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
-    uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
-    set!(serial_model, c=cᵢ, u=uᵢ)
-    
-    simulation = Simulation(serial_model; Δt=1.0, stop_iteration=10)
-    
-    simulation.output_writers[:jld2] = JLD2Writer(serial_model, 
-                                                   merge(serial_model.velocities, serial_model.tracers);
-                                                   filename = "ondisk_serial_test.jld2",
-                                                   schedule = IterationInterval(5),
-                                                   overwrite_existing = true,
-                                                   with_halos = true)
-    run!(simulation)
-    
-    # Load serial with OnDisk for fair comparison
-    c_serial_ondisk = FieldTimeSeries("ondisk_serial_test.jld2", "c"; backend=OnDisk())
-    
-    # Compare each time step
+    c_ondisk = FieldTimeSeries("$dist_prefix.jld2", "c"; backend=OnDisk())
+
+    Nx, Ny, Nz = config.size
+    @test size(c_ondisk.grid) == (Nx, Ny, Nz)
+
+    run_serial_rectilinear(config, serial_file)
+
+    c_serial = FieldTimeSeries(serial_file, "c"; backend=OnDisk())
+
     for n in 1:length(c_ondisk.times)
-        @test interior(c_ondisk[n]) ≈ interior(c_serial_ondisk[n])
+        @test interior(c_ondisk[n]) ≈ interior(c_serial[n])
     end
-    
-    @info "  OnDisk backend test passed! ✓"
-    
-    # Clean up
-    rm("ondisk_serial_test.jld2", force=true)
-    for r in 0:3
-        rm("distributed_output_test_rank$r.jld2", force=true)
-    end
+
+    @info "  OnDisk backend test passed!"
+
+    rm(serial_file, force=true)
+    cleanup_rank_files(dist_prefix)
+end
+
+@testset "Distributed output combining - LatitudeLongitudeGrid (1x4)" begin
+    @info "Testing LatitudeLongitudeGrid distributed output combining (1x4 partition)..."
+
+    config = lat_lon_config
+    dist_prefix = "lat_lon_distributed"
+    serial_file = "lat_lon_serial.jld2"
+
+    script = lat_lon_mpi_script(config, dist_prefix)
+    run_mpi_script(script, "run_lat_lon.jl")
+
+    run_serial_lat_lon(config, serial_file)
+
+    test_combined_output_matches_serial(dist_prefix, serial_file, ["c"])
+
+    @info "  LatitudeLongitudeGrid (1x4) test passed!"
+
+    rm(serial_file, force=true)
+    cleanup_rank_files(dist_prefix)
+end
+
+@testset "Distributed output combining - TripolarGrid (1x4)" begin
+    @info "Testing TripolarGrid distributed output combining (1x4 partition)..."
+
+    config = tripolar_config
+    dist_prefix = "tripolar_distributed"
+    serial_file = "tripolar_serial.jld2"
+
+    script = tripolar_mpi_script(config, dist_prefix)
+    run_mpi_script(script, "run_tripolar.jl")
+
+    run_serial_tripolar(config, serial_file)
+
+    test_combined_output_matches_serial(dist_prefix, serial_file, ["c"])
+
+    @info "  TripolarGrid (1x4) test passed!"
+
+    rm(serial_file, force=true)
+    cleanup_rank_files(dist_prefix)
 end

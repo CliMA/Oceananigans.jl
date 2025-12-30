@@ -3,7 +3,7 @@ using Glob
 using Statistics: mean
 using GPUArraysCore: @allowscalar
 
-using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
+using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
                           with_precomputed_metrics, metrics_precomputed
@@ -11,6 +11,7 @@ using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
 using Oceananigans.Fields: interior, Field, instantiated_location, FixedTime
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.DistributedComputations: reconstruct_global_topology
+using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, Tripolar
 
 #####
 ##### DistributedPaths - wrapper for path that includes rank file info
@@ -237,6 +238,26 @@ function build_global_grid_from_files(grid0::LatitudeLongitudeGrid, arch, FT, to
                                              (nothing for _ in 1:10)..., grid0.radius)
 
     return metrics_precomputed(grid0) ? with_precomputed_metrics(grid) : grid
+end
+
+function build_global_grid_from_files(grid0::OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tripolar},
+                                      arch, FT, topo, N, H, xG, yG, zG)
+    Nx, Ny, Nz = N
+    Hx, Hy, Hz = H
+
+    # Extract TripolarGrid-specific parameters from the reference grid
+    conformal_mapping = grid0.conformal_mapping
+    north_poles_latitude = conformal_mapping.north_poles_latitude
+    first_pole_longitude = conformal_mapping.first_pole_longitude
+    southernmost_latitude = conformal_mapping.southernmost_latitude
+
+    return TripolarGrid(arch, FT;
+                        size = (Nx, Ny, Nz),
+                        halo = (Hx, Hy, Hz),
+                        z = zG,
+                        north_poles_latitude,
+                        first_pole_longitude,
+                        southernmost_latitude)
 end
 
 function build_global_grid_from_files(grid0, arch, FT, topo, N, H, xG, yG, zG)
