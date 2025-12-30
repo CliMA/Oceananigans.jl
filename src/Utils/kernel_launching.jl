@@ -413,7 +413,7 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          region = :interior)
+                          region = nothing)
 
     location = Oceananigans.location(first_kernel_arg)
 
