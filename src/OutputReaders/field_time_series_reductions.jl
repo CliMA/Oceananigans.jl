@@ -1,5 +1,6 @@
 using Statistics
 
+using Oceananigans: instantiated_location
 using Oceananigans.Fields: reduced_location, filltype
 
 import Oceananigans.Fields: conditional_length
@@ -17,8 +18,14 @@ import Oceananigans.Fields: conditional_length
 #####
 ##### Basic support for reductions
 #####
-##### TODO: support for reductions across _time_ (ie when 4 ∈ dims)
-#####
+
+# Element-wise accumulation operations for time dimension reduction
+@inline accumulate_time!(::typeof(sum!), r, a) = r .+= a
+@inline accumulate_time!(::typeof(prod!), r, a) = r .*= a
+@inline accumulate_time!(::typeof(maximum!), r, a) = r .= max.(r, a)
+@inline accumulate_time!(::typeof(minimum!), r, a) = r .= min.(r, a)
+@inline accumulate_time!(::typeof(all!), r, a) = r .&= a
+@inline accumulate_time!(::typeof(any!), r, a) = r .|= a
 
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     reduction! = Symbol(reduction, '!')
@@ -30,22 +37,58 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             if dims isa Colon
                 return Base.$(reduction)($(reduction)(f, fts[n]; kw...) for n in 1:length(fts.times))
             else
-                if dims != Tuple
+                if !(dims isa Tuple)
                     dims = Tuple(dims)
                 end
-                loc = LX, LY, LZ = reduced_location(location(fts); dims)
-                times = fts.times
-                rts = FieldTimeSeries((LX, LY, LZ), fts.grid, times; indices=fts.indices, kw...)
-                return Base.$(reduction!)(f, rts, fts; kw...)
+
+                if 4 ∈ dims
+                    # Reduce over time dimension
+                    spatial_dims = filter(d -> d != 4, dims)
+                    loc = isempty(spatial_dims) ? instantiated_location(fts) : reduced_location(instantiated_location(fts); dims=spatial_dims)
+                    new_times = [mean(fts.times)]
+                    rts = FieldTimeSeries(loc, fts.grid, new_times; indices=fts.indices, kw...)
+                    return Base.$(reduction!)(f, rts, fts; dims, kw...)
+                else
+                    loc = reduced_location(instantiated_location(fts); dims)
+                    times = fts.times
+                    rts = FieldTimeSeries(loc, fts.grid, times; indices=fts.indices, kw...)
+                    return Base.$(reduction!)(f, rts, fts; dims, kw...)
+                end
             end
         end
 
         Base.$(reduction)(fts::FTS; kw...) = Base.$(reduction)(identity, fts; kw...)
 
         function Base.$(reduction!)(f::Function, rts::FTS, fts::FTS; dims=:, kw...)
-            dims isa Tuple && 4 ∈ dims && error("Reduction across the time dimension (dim=4) is not yet supported!")
-            for n = 1:length(rts)
-                Base.$(reduction!)(f, rts[n], fts[n]; kw...)
+            if !(dims isa Tuple)
+                dims = Tuple(dims)
+            end
+
+            if 4 ∈ dims
+                # Reduce over time dimension
+                spatial_dims = filter(d -> d != 4, dims)
+                # Initialize with the first time step
+                if isempty(spatial_dims)
+                    set!(rts[1], fts[1])
+                else
+                    # Use the allocating reduction for the first step
+                    temp = Base.$(reduction)(f, fts[1]; dims=spatial_dims, kw...)
+                    set!(rts[1], temp)
+                end
+                # Accumulate over remaining time steps using element-wise operations
+                for n = 2:length(fts)
+                    if isempty(spatial_dims)
+                        accumulate_time!(Base.$(reduction!), interior(rts[1]), interior(fts[n]))
+                    else
+                        temp = Base.$(reduction)(f, fts[n]; dims=spatial_dims, kw...)
+                        accumulate_time!(Base.$(reduction!), interior(rts[1]), interior(temp))
+                    end
+                end
+            else
+                # For spatial-only reductions, the result field already has the correct location
+                for n = 1:length(rts)
+                    Base.$(reduction!)(f, rts[n], fts[n]; kw...)
+                end
             end
             return rts
         end
