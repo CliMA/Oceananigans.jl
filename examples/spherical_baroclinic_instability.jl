@@ -152,25 +152,26 @@ end
 # as the simulation runs. We run for 60 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
-## Progress callback
-function progress(sim)
-    T = sim.model.tracers.T
-    u, v, w = sim.model.velocities
-
-    msg = @sprintf("%s grid, iter % 4d: % 10s, max|u|: (%.2e, %.2e, %.2e)",
-                   name, iteration(sim), prettytime(sim),
-                   maximum(abs, u), maximum(abs, v), maximum(abs, w))
-
-    msg *= @sprintf(", T ∈ (%.2f, %.2f)", minimum(T), maximum(T))
-
-    @info msg
-    return nothing
-end
-
 ## Simulation runner
 function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=24hours)
     model = build_model(grid)
     simulation = Simulation(model; Δt=8minutes, stop_time)
+
+    ## Progress callback
+    function progress(sim)
+        T = sim.model.tracers.T
+        u, v, w = sim.model.velocities
+
+        msg = @sprintf("%s grid, iter % 4d: % 10s, max|u|: (%.2e, %.2e, %.2e)",
+                       name, iteration(sim), prettytime(sim),
+                       maximum(abs, u), maximum(abs, v), maximum(abs, w))
+
+        msg *= @sprintf(", T ∈ (%.2f, %.2f)", minimum(T), maximum(T))
+
+        @info msg
+        return nothing
+    end
+
     add_callback!(simulation, progress, IterationInterval(1000))
 
     ## Set up output: save vorticity and temperature at the surface
