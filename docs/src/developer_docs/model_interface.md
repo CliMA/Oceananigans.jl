@@ -153,19 +153,17 @@ using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
 import Oceananigans.TimeSteppers: update_state!, time_step!
 
-mutable struct LorenzModel{FT} <: AbstractModel{Nothing, Nothing}
+mutable struct LorenzModel{FT, P, S} <: AbstractModel{Nothing, Nothing}
     clock :: Clock{FT}
-    σ :: FT
-    ρ :: FT
-    β :: FT
-    x :: FT
-    y :: FT
-    z :: FT
+    parameters :: P
+    state :: S
 end
 
-function LorenzModel(FT = Float64; σ = 10, ρ = 28, β = 8/3, x = 0, y = 0, z = 0)
+function LorenzModel(FT = Float64; σ = 10, ρ = 28, β = 8/3)
     clock = Clock{FT}(time = zero(FT))
-    return LorenzModel(clock, FT(σ), FT(ρ), FT(β), FT(x), FT(y), FT(z))
+    parameters = (; σ=FT(σ), ρ=FT(ρ), β=FT(β))
+    state = (; x=zero(FT), y=zero(FT), z=zero(FT))
+    return LorenzModel(clock, parameters, state)
 end
 
 Base.eltype(::LorenzModel{FT}) where FT = FT
@@ -175,16 +173,18 @@ update_state!(model::LorenzModel, cb=nothing; compute_tendencies=true) = nothing
 function time_step!(model::LorenzModel, Δt; callbacks = ())
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = false)
 
-    (; x, y, z, σ, ρ, β) = model
+    (; σ, ρ, β) = model.parameters
+    (; x, y, z) = model.state
 
     dx = σ * (y - x)
     dy = x * (ρ - z) - y
     dz = x * y - β * z
 
-    model.x = x + Δt * dx
-    model.y = y + Δt * dy
-    model.z = z + Δt * dz
+    state = (x = x + Δt * dx,
+             y = y + Δt * dy
+             z = z + Δt * dz)
 
+    model.state = state
     tick!(model.clock, Δt)
     update_state!(model, callbacks)
 
@@ -199,11 +199,10 @@ We set up a [`Callback`](@ref callbacks) to record the trajectory at each time s
 ```@example model_interface
 lorenz = LorenzModel(; x=1)
 simulation = Simulation(lorenz; Δt=0.01, stop_time=100, verbose=false)
-
 trajectory = NTuple{3, Float64}[]
 
 function record_trajectory!(sim)
-    push!(trajectory, (sim.model.x, sim.model.y, sim.model.z))
+    push!(trajectory, values(sim.model.state))
 end
 
 add_callback!(simulation, record_trajectory!)
@@ -218,10 +217,8 @@ using CairoMakie
 
 fig = Figure(size=(600, 500))
 
-ax = Axis3(fig[1, 1];
-           xlabel="x", ylabel="y", zlabel="z",
-           title="Lorenz attractor",
-           azimuth=1.2π)
+ax = Axis3(fig[1, 1]; xlabel="x", ylabel="y", zlabel="z",
+           title="Lorenz attractor", azimuth=1.2π)
 
 xs = [p[1] for p in trajectory]
 ys = [p[2] for p in trajectory]
@@ -313,11 +310,8 @@ function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = [])
 
     # RK3 coefficients (Williamson's low-storage scheme)
     FT = eltype(model)
-    γ¹ = convert(FT, 8 // 15)
-    γ² = convert(FT, 5 // 12)
-    γ³ = convert(FT, 3 // 4)
-    ζ² = convert(FT, -17 // 60)
-    ζ³ = convert(FT, -5 // 12)
+    γ¹, γ², γ³ = FT(8/15), FT(5/12), FT(3/4)
+    ζ², ζ³ = -FT(17/60), -FT(5/12)
 
     u = parent(model.solution)
     Gⁿ = parent(model.tendencies.Gⁿ)
