@@ -137,10 +137,10 @@ Several models across the CliMA ecosystem implement this interface:
 ## Example: a zero-dimensional `LorenzModel`
 
 The example below shows a deliberately tiny model that integrates the Lorenz
-system on a 0D grid. The implementation demonstrates how little is required:
-store a `grid` and `clock`, provide `time_step!` and `update_state!`
-implementations, and rely on fallbacks for the rest. Here we use an explicit
-forward-Euler step so all of the logic lives directly inside `time_step!`.
+system. The implementation demonstrates how little is required: store a `clock`,
+provide `time_step!` and `update_state!` implementations, and rely on fallbacks
+for the rest. Note that this model has no grid and no fields—just simple scalar
+state variables `x`, `y`, and `z`.
 
 ### Implementing the interface
 
@@ -150,62 +150,39 @@ using Oceananigans.Models: AbstractModel
 using Oceananigans.Simulations: Simulation, run!
 using Oceananigans.TimeSteppers: Clock, tick!
 import Oceananigans.TimeSteppers: update_state!, time_step!
-import Oceananigans.Fields: set!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
-mutable struct LorenzModel{G, C, P, S} <: AbstractModel{Nothing, Nothing}
-    grid :: G
-    clock :: C
-    parameters :: P
-    state :: S
+mutable struct LorenzModel{FT} <: AbstractModel{Nothing, Nothing}
+    clock :: Clock{FT}
+    σ :: FT
+    ρ :: FT
+    β :: FT
+    x :: FT
+    y :: FT
+    z :: FT
 end
 
-function LorenzModel(FT=Oceananigans.defaults.FloatType;
-                     σ = 10, ρ = 28, β = 8/3)
-
-    grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
+function LorenzModel(FT = Float64; σ = 10, ρ = 28, β = 8/3, x = 0, y = 0, z = 0)
     clock = Clock{FT}(time = zero(FT))
-    parameters = (σ = FT(σ), ρ = FT(ρ), β = FT(β))
-    state = (x = CenterField(grid), y = CenterField(grid), z = CenterField(grid))
-
-    return LorenzModel(grid, clock, parameters, state)
+    return LorenzModel(clock, FT(σ), FT(ρ), FT(β), FT(x), FT(y), FT(z))
 end
 
+Base.eltype(::LorenzModel{FT}) where FT = FT
 Base.summary(::LorenzModel) = "LorenzModel"
-
-function set!(model::LorenzModel; kw...)
-    for (name, val) in kw
-        set!(model.state[name], val)
-    end
-    return nothing
-end
-
-function update_state!(model::LorenzModel, callbacks = []; compute_tendencies=true)
-    for callback in callbacks
-        callback.callsite isa UpdateStateCallsite && callback(model)
-    end
-    return nothing
-end
+update_state!(model::LorenzModel, cb=nothing; compute_tendencies=true) = nothing
 
 function time_step!(model::LorenzModel, Δt; callbacks = ())
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = false)
 
-    for callback in callbacks
-        callback.callsite isa TendencyCallsite && callback(model)
-    end
-
-    x, y, z = first(model.state.x), first(model.state.y), first(model.state.z)
-    σ, ρ, β = model.parameters.σ, model.parameters.ρ, model.parameters.β
+    (; x, y, z, σ, ρ, β) = model
 
     dx = σ * (y - x)
     dy = x * (ρ - z) - y
     dz = x * y - β * z
 
-    @inbounds begin
-        model.state.x[1, 1, 1] = x + Δt * dx
-        model.state.y[1, 1, 1] = y + Δt * dy
-        model.state.z[1, 1, 1] = z + Δt * dz
-    end
+    model.x = x + Δt * dx
+    model.y = y + Δt * dy
+    model.z = z + Δt * dz
 
     tick!(model.clock, Δt)
     update_state!(model, callbacks)
@@ -216,20 +193,16 @@ end
 
 ### Using the model inside Simulation
 
-We set up a `Callback` to record the trajectory at each time step:
+We set up a [`Callback`](@ref callbacks) to record the trajectory at each time step:
 
 ```@example model_interface
-lorenz = LorenzModel()
-set!(lorenz, x=1)
+lorenz = LorenzModel(; x=1)
 simulation = Simulation(lorenz; Δt=0.01, stop_time=100, verbose=false)
 
 trajectory = NTuple{3, Float64}[]
 
 function record_trajectory!(sim)
-    x = first(sim.model.state.x)
-    y = first(sim.model.state.y)
-    z = first(sim.model.state.z)
-    push!(trajectory, (x, y, z))
+    push!(trajectory, (sim.model.x, sim.model.y, sim.model.z))
 end
 
 add_callback!(simulation, record_trajectory!)
@@ -260,8 +233,173 @@ fig
 
 This minimal implementation inherits all other behavior from the generic
 `AbstractModel` fallbacks: Simulation can query `time(sim.model)`, diagnostics
-can read `sim.model.clock`, and callbacks scheduled on `ModelCallsite`s execute
-because `time_step!` forwards the tuple that Simulation hands to it. Larger
-models can follow the same recipe while swapping in sophisticated grids,
-closures, and time steppers.
+can read `sim.model.clock`, and [`Callback`](@ref callbacks)s scheduled on 
+`ModelCallsite`s execute because `time_step!` forwards the tuple that Simulation 
+hands to it. Note that this model has no grid, no fields, and no time-stepper object—just
+the essentials. Larger models can follow the same recipe while adding grids,
+fields, closures, and time steppers as needed.
+
+## Example: a one-dimensional `KuramotoSivashinskyModel`
+
+The [Kuramoto-Sivashinsky equation](https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation)
+is a fourth-order PDE known for exhibiting chaotic behavior:
+
+```math
+\partial_t u + \partial_x^2 u + \partial_x^4 u + \frac{1}{2} \partial_x (u^2) = 0
+```
+
+This example demonstrates a model that uses Oceananigans grids and fields,
+showing how to leverage `AbstractOperations` for computing spatial derivatives.
+
+### Implementing the model
+
+```@example model_interface
+using Oceananigans.Operators: ∂x
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+
+mutable struct KuramotoSivashinskyModel{G, C, U, T} <: AbstractModel{Nothing, Nothing}
+    grid :: G
+    clock :: C
+    solution :: U
+    tendencies :: T  # Gⁿ and G⁻ for RK3 time-stepping
+end
+
+function KuramotoSivashinskyModel(grid)
+    # Validate that the grid is 1D in x
+    size(grid, 2) == 1 && size(grid, 3) == 1 ||
+        throw(ArgumentError("KuramotoSivashinskyModel requires a 1D grid in x"))
+
+    clock = Clock{eltype(grid)}(time = zero(eltype(grid)))
+    solution = CenterField(grid)
+    tendencies = (Gⁿ = CenterField(grid), G⁻ = CenterField(grid))
+
+    return KuramotoSivashinskyModel(grid, clock, solution, tendencies)
+end
+
+Base.summary(::KuramotoSivashinskyModel) = "KuramotoSivashinskyModel"
+
+# Override architecture and eltype to use the grid
+import Oceananigans.Architectures: architecture
+architecture(model::KuramotoSivashinskyModel) = model.grid.architecture
+Base.eltype(model::KuramotoSivashinskyModel) = eltype(model.grid)
+
+"""Compute the right-hand side of the KS equation: -∂²u - ∂⁴u - ½∂ₓ(u²)"""
+function compute_tendencies!(model::KuramotoSivashinskyModel)
+    u = model.solution
+    Gⁿ = model.tendencies.Gⁿ
+
+    ∂²u = ∂x(∂x(u))
+    ∂⁴u = ∂x(∂x(∂²u))
+    ∂u² = @at (Center, Center, Center) ∂x(u^2) / 2
+    Gⁿ .= -∂²u .- ∂⁴u .- ∂u²
+
+    return nothing
+end
+
+function update_state!(model::KuramotoSivashinskyModel, callbacks = []; compute_tendencies=true)
+    fill_halo_regions!(model.solution)
+    [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
+    compute_tendencies && compute_tendencies!(model)
+    return nothing
+end
+
+function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = []
+    # First stage: initialize
+    model.clock.iteration == 0 && update_state!(model, callbacks)
+    [callback(model) for callback in callbacks if callback.callsite isa TendencyCallsite]
+
+    # RK3 coefficients (Williamson's low-storage scheme)
+    FT = eltype(model)
+    γ¹ = convert(FT, 8 // 15)
+    γ² = convert(FT, 5 // 12)
+    γ³ = convert(FT, 3 // 4)
+    ζ² = convert(FT, -17 // 60)
+    ζ³ = convert(FT, -5 // 12)
+
+    u = parent(model.solution)
+    Gⁿ = parent(model.tendencies.Gⁿ)
+    G⁻ = parent(model.tendencies.G⁻)
+
+    # Stage 1: u = u + Δt * γ¹ * Gⁿ
+    u .+= Δt * γ¹ .* Gⁿ
+    G⁻ .= Gⁿ
+    update_state!(model, callbacks)
+
+    # Stage 2: u = u + Δt * (γ² * Gⁿ + ζ² * G⁻)
+    u .+= Δt * γ² .* Gⁿ .+ Δt * ζ² .* G⁻
+    G⁻ .= Gⁿ
+    update_state!(model, callbacks)
+
+    # Stage 3: u = u + Δt * (γ³ * Gⁿ + ζ³ * G⁻)
+    u .+= Δt * γ³ .* Gⁿ .+ Δt * ζ³ .* G⁻
+
+    tick!(model.clock, Δt)
+    update_state!(model, callbacks)
+
+    return nothing
+end
+```
+
+### Running a simulation with output
+
+We initialize the model with a perturbed state and use a `JLD2OutputWriter` to
+save the solution at regular intervals:
+
+```@example model_interface
+using Oceananigans.OutputWriters: JLD2OutputWriter
+using Oceananigans.OutputReaders: FieldTimeSeries
+
+# Create a 1D periodic grid
+grid = RectilinearGrid(size=128, x=(0, 32π), topology=(Periodic, Flat, Flat), halo=4)
+ks_model = KuramotoSivashinskyModel(grid)
+
+# Initialize with a combination of sinusoidal modes
+set!(ks_model.solution, x -> cos(x/16) * (1 + sin(x/16)))
+
+simulation = Simulation(ks_model; Δt=0.1, stop_time=500, verbose=false)
+
+simulation.output_writers[:solution] = JLD2OutputWriter(ks_model, (; u=ks_model.solution),
+                                                        filename = "ks_solution.jld2",
+                                                        schedule = TimeInterval(1),
+                                                        overwrite_existing = true)
+
+run!(simulation)
+nothing # hide
+```
+
+### Animating the chaotic dynamics
+
+The Kuramoto-Sivashinsky equation produces complex spatiotemporal patterns:
+
+```@example model_interface
+u_ts = FieldTimeSeries("ks_solution.jld2", "u")
+times = u_ts.times
+
+fig = Figure(size=(800, 400))
+ax = Axis(fig[1, 1]; xlabel="x", ylabel="u", title="Kuramoto-Sivashinsky equation")
+ylims!(ax, -4, 4)
+
+# Create initial line
+line = lines!(ax, u_ts[1]; linewidth=2, color=:royalblue)
+
+record(fig, "ks_animation.mp4", eachindex(times); framerate=30) do n
+    un = interior(u_ts[n], :, 1, 1)
+    line[2] = u_n
+    ax.title = "Kuramoto-Sivashinsky equation, t = $(round(times[n], digits=1))"
+end
+nothing # hide
+```
+
+![Kuramoto-Sivashinsky animation](ks_animation.mp4)
+
+This PDE-based model demonstrates how to use Oceananigans grids, fields, and
+operators within a custom `AbstractModel`. The key additions compared to the
+`LorenzModel` are:
+
+- A `grid` property with overridden `architecture` and `eltype` methods
+- A `tendencies` property containing `Gⁿ` and `G⁻` fields for multi-stage time-stepping
+- A separate `compute_tendencies!` function called from `update_state!`
+- Third-order Runge-Kutta (RK3) time-stepping using Williamson's low-storage scheme
+- Using `fill_halo_regions!` in `update_state!` to maintain periodic boundary conditions
+- Leveraging `AbstractOperations` (`∂x`) for computing spatial derivatives via broadcasting
 
