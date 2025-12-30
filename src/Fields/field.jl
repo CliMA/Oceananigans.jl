@@ -9,7 +9,7 @@ using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
 
-import Oceananigans: boundary_conditions
+import Oceananigans: boundary_conditions, prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: mean
@@ -860,3 +860,16 @@ end
 #####
 
 nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(field::Field)
+    return (; data = prognostic_state(field.data))
+end
+
+function restore_prognostic_state!(field::Field, state)
+    restore_prognostic_state!(field.data, state.data)
+    return field
+end

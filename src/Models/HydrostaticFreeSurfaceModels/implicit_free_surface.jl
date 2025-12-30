@@ -4,6 +4,8 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 using Adapt: Adapt
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
@@ -149,4 +151,29 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
+end
+
+function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
+
+    foreach(mask_immersed_field!, velocities)
+
+    # Compute barotropic volume flux. Blocking.
+    compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
+
+    return nothing
+end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::ImplicitFreeSurface)
+    return (
+        η = prognostic_state(fs.η),
+    )
+end
+
+function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
+    restore_prognostic_state!(fs.η, state.η)
+    return fs
 end
