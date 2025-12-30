@@ -29,16 +29,15 @@ import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
-# TODO: decide if we like this.
-#
-# We assume that model has some properties, eg:
+# We assume that model has some properties:
 #   - model.clock::Clock
-#   - model.architecture.
+#
+# Models with grids should override `architecture` and `eltype`.
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
-Base.eltype(model::AbstractModel) = eltype(model.grid)
-architecture(model::AbstractModel) = model.grid.architecture
+Base.eltype(model::AbstractModel) = Float64
+architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
@@ -116,6 +115,10 @@ using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
+
+# OceananigansModels have grids, so we can use grid-based implementations
+Base.eltype(model::OceananigansModels) = eltype(model.grid)
+architecture(model::OceananigansModels) = model.grid.architecture
 
 set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 

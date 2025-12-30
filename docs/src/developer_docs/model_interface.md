@@ -49,29 +49,34 @@ implement (or inherit sane fallbacks for) the items listed below.
 
 ### Required properties
 
-- `model.grid`: Simulation uses the grid to determine `architecture(model)` 
-  and `eltype(model)` via the fallbacks `architecture(model) = model.grid.architecture`
-  and `eltype(model) = eltype(model.grid)`.
-
 - `model.clock :: Clock`: the source of truth for `time(model)` and
   `iteration(model)`. Simulation uses it for stop criteria and logging, and
   resets it via `reset_clock!(model)` when `reset!(sim)` is called.
+
+### Required methods
+
+- `eltype(model)`: return the floating-point type used by the model.
+  Simulation uses this for time step conversion.
+  The default fallback returns `Float64`. Models with a `grid` property typically
+  override this as `eltype(model::MyModel) = eltype(model.grid)`.
 
 ### Lifecycle hooks
 
 - `update_state!(model, callbacks=[]; compute_tendencies=true)`: invoked by
   Simulation right after `initialize!` and inside most time steppers. This is
   where models fill halos, update boundary conditions, recompute auxiliary
-  fields, and run callbacks with an `UpdateStateCallsite`. Implementations
-  typically finish by calling `compute_tendencies!(model, callbacks)` so that
-  any `TendencyCallsite` callbacks can modify tendencies before integration.
+  fields, and run [`Callback`](@ref callbacks)s with an `UpdateStateCallsite`. 
+  PDE-based models typically finish by calling `compute_tendencies!(model, callbacks)` 
+  so that any `TendencyCallsite` callbacks can modify tendencies before integration.
+  Note that `compute_tendencies!` is not part of the required interface—it is simply
+  a useful pattern for models that integrate differential equations.
 
 - `time_step!(model, Δt; callbacks=[])`: advances the model clock and its
   prognostic variables by one step. Simulation hands in the tuple of
-  `ModelCallsite` callbacks so the model can execute `TendencyCallsite` (before
-  tendencies are applied) and `UpdateStateCallsite` callbacks (after auxiliary
-  updates). The method must call `tick!(model.clock, Δt)` (or equivalent) so
-  that `time(model)` and `iteration(model)` remain consistent.
+  `ModelCallsite` [`Callback`](@ref callbacks)s so the model can execute 
+  `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite` 
+  callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)` 
+  (or equivalent) so that `time(model)` and `iteration(model)` remain consistent.
 
 - `set!(model, kw...)`: not strictly required, but strongly recommended as an
   interface for users to modify the model's prognostic state.
@@ -81,8 +86,15 @@ implement (or inherit sane fallbacks for) the items listed below.
 
 ### Optional integrations
 
-While not required for Simulation itself, the following methods enable the rest
-of the Oceananigans ecosystem to "see" the model:
+While not required for Simulation itself, the following methods enable additional
+functionality:
+
+- `architecture(model)`: return the computational architecture (e.g., `CPU()`, `GPU()`,
+  or a `Distributed` architecture). Simulation uses this to ensure that the time step
+  is identical across all processes when running with a `Distributed` architecture.
+  The default fallback returns `nothing`, which skips distributed synchronization.
+  Models with a `grid` property typically override this as
+  `architecture(model::MyModel) = model.grid.architecture`.
 
 - `timestepper(model)`: return the model's time-stepper object (or `nothing` if
   the model does not use a time-stepper). Simulation uses this to reset the
@@ -92,7 +104,12 @@ of the Oceananigans ecosystem to "see" the model:
   `timestepper(model::MyModel) = model.timestepper`.
 
 - `fields(model)` and `prognostic_fields(model)`: return `NamedTuple`s of
-  fields so diagnostics, output writers, and NaN checkers know what to touch.
+  fields. These are not used by Simulation itself, but are conventions used
+  elsewhere in the ecosystem. `prognostic_fields(model)` should return the
+  fields that are time-stepped (used by NaN checkers and some diagnostics).
+  `fields(model)` should return a `NamedTuple` that includes both prognostic
+  fields and other fields that users might want to access or output, such as
+  pressure or diagnostic fields computed during `update_state!`.
 
 - `default_nan_checker(model)`: customize the `NaNChecker` that Simulation adds
   by default.
