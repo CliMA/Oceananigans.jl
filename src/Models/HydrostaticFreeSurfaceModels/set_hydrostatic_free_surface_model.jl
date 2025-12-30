@@ -58,6 +58,10 @@ model.velocities.u
             ϕ = getproperty(model.tracers, fldname)
         elseif fldname ∈ propertynames(model.free_surface)
             ϕ = getproperty(model.free_surface, fldname)
+        elseif fldname === :η
+            # The free surface displacement is accessed via `model.free_surface.displacement`
+            # but the public interface uses `η` as the canonical name.
+            ϕ = model.free_surface.displacement
         else
             throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
         end
