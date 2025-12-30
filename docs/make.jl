@@ -36,6 +36,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
     example_scripts = [
+        "spherical_baroclinic_instability.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
         "shallow_water_Bickley_jet.jl",
@@ -45,6 +46,7 @@ Distributed.addprocs(2)
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
+        "lock_exchange.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
@@ -101,9 +103,11 @@ example_pages = [
     "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
     "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
     "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
+    "Lock exchange"                    => "literated/lock_exchange.md",
     "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
     "Horizontal convection"            => "literated/horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
+    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md",
+    "Spherical baroclinic instability" => "literated/spherical_baroclinic_instability.md"
 ]
 
 model_pages = [
@@ -126,7 +130,7 @@ simulation_pages = [
 ]
 
 physics_pages = [
-    "Coordinate system and notation" => "physics/notation.md",
+    "Coordinate systems" => "physics/coordinate_systems.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
@@ -214,14 +218,20 @@ makedocs(; sitename = "Oceananigans.jl",
          format, pages, modules,
          plugins = [bib],
          warnonly = [:cross_references],
-         draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
-         checkdocs = :exports) # set to :none to speed things up
+         linkcheck = true,
+         linkcheck_ignore = [
+            r"jstor\.org",
+            r"^https://github\.com/.*?/blob/",
+         ],
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         checkdocs = :exports, # set to :none to speed things up
+         )
 
 """
     recursive_find(directory, pattern)
