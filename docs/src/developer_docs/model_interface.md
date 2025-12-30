@@ -14,39 +14,34 @@ depending on the full ocean model infrastructure.
 
 When `run!(sim::Simulation)` is called the following high-level sequence occurs:
 
-1. `initialize!(sim.model)` prepares the model state (allocations, halo fills,
+1. `initialize!(sim.model)` prepares the model state,
    etc.) and `update_state!(sim.model)` computes any auxiliary tendencies.
-2. For every time step, Simulation computes an aligned `Δt`, gathers callbacks
+
+2. Time-stepping begins. For every time step, Simulation computes an aligned `Δt`, gathers callbacks
    that should run inside the model (`ModelCallsite`s), and calls
-   `time_step!(sim.model, Δt; callbacks=model_callbacks)`.
-3. After the model finishes its step, Simulation executes diagnostics, output
+   `time_step!(sim.model, Δt; callbacks=model_callbacks)`. Most models will also call `update_state!`
+   at the end of `time_step!`. This ensures that the diagnostic state is current with the prognostic state
+   so that output and callbacks can execute correctly on a fully consistent model state.
+
+3. After `time_step!(model, Δt)`, `Simulation` executes diagnostics, output
    writers, and callbacks scheduled on the `TimeStepCallsite`.
 
-Because `Simulation` assumes this protocol, any custom `AbstractModel` must
+Because `Simulation` assumes this protocol, any custom `AbstractModel` should
 implement (or inherit sane fallbacks for) the items listed below.
 
-## Functions invoked by `Simulation`
+## Structure and extensions of an `AbstractModel`
 
-### Metadata and bookkeeping
+### Required properties
+
+- `model.grid`: Simulation uses the grid to determine `architecture(model)` 
+  and `eltype(model)` via the fallbacks `architecture(model) = model.grid.architecture`
+  and `eltype(model) = eltype(model.grid)`.
 
 - `model.clock :: Clock`: the source of truth for `time(model)` and
   `iteration(model)`. Simulation uses it for stop criteria and logging, and
   resets it via `reset_clock!(model)` when `reset!(sim)` is called.
 
-- `model.grid`: must support `architecture(model) = model.grid.architecture`
-  and `eltype(model) = eltype(model.grid)`. These functions drive how Δt is
-  validated (`validate_Δt`) and how numbers are converted inside Simulation.
-
-- `timestepper(model)`: Simulation resets the timestepper before the first time
-  step by calling `reset!(timestepper(model))`. Lightweight models can store
-  `timestepper = nothing` and rely on the `reset!(::Nothing) = nothing`
-  fallback, but the accessor still has to exist.
-
 ### Lifecycle hooks
-
-- `initialize!(model::AbstractModel)`: called exactly once per `run!` before the
-  first time step. Use it to allocate buffers, fill halos, or pre-compute
-  coefficients. The default implementation is a no-op.
 
 - `update_state!(model, callbacks=[]; compute_tendencies=true)`: invoked by
   Simulation right after `initialize!` and inside most time steppers. This is
@@ -55,16 +50,18 @@ implement (or inherit sane fallbacks for) the items listed below.
   typically finish by calling `compute_tendencies!(model, callbacks)` so that
   any `TendencyCallsite` callbacks can modify tendencies before integration.
 
-- `time_step!(model, Δt; callbacks=())`: advances the model clock and its
+- `time_step!(model, Δt; callbacks=[])`: advances the model clock and its
   prognostic variables by one step. Simulation hands in the tuple of
   `ModelCallsite` callbacks so the model can execute `TendencyCallsite` (before
   tendencies are applied) and `UpdateStateCallsite` callbacks (after auxiliary
   updates). The method must call `tick!(model.clock, Δt)` (or equivalent) so
   that `time(model)` and `iteration(model)` remain consistent.
 
-- `set!(model, checkpoint_path_or_data)`: only required if the model supports
-  being restarted via `run!(sim; pickup=...)`. Simulation forwards the `pickup`
-  argument directly to `set!(sim.model, ...)`.
+- `set!(model, kw...)`: not strictly required, but strongly recommended as an
+  interface for users to modify the model's prognostic state.
+
+- `initialize!(model::AbstractModel)`: called exactly once per `run!` before the
+  first time step.
 
 ### Optional integrations
 
@@ -76,6 +73,26 @@ of the Oceananigans ecosystem to “see” the model:
 
 - `default_nan_checker(model)`: customize the `NaNChecker` that Simulation adds
   by default.
+
+## Models that implement this interface
+
+Several models across the CliMA ecosystem implement this interface:
+
+**Oceananigans.jl**
+- `NonhydrostaticModel`: solves the incompressible Navier-Stokes equations
+- `HydrostaticFreeSurfaceModel`: solves the hydrostatic Boussinesq equations with a free surface
+- `ShallowWaterModel`: solves the shallow water equations
+
+**ClimaOcean.jl**
+- `OceanSeaIceModel`: couples ocean, sea ice, and atmosphere components for Earth system modeling.
+                      The components themselves may be `Simulation` that contain `AbstractModel`,
+                      generating a nested structure.
+
+**ClimaSeaIce.jl**
+- `SeaIceModel`: simulates sea ice thermodynamics and dynamics
+
+**Breeze.jl**
+- `AtmosphereModel`: simulates atmospheric dynamics
 
 ## Example: a zero-dimensional `LorenzModel`
 
@@ -93,35 +110,37 @@ using Oceananigans.Models: AbstractModel
 using Oceananigans.Simulations: Simulation, run!
 using Oceananigans.TimeSteppers: Clock, tick!
 import Oceananigans.TimeSteppers: update_state!, time_step!
+import Oceananigans.Fields: set!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
-mutable struct LorenzModel{FT, G, CLK} <: AbstractModel{Nothing, Nothing}
+mutable struct LorenzModel{G, C, P, S} <: AbstractModel{Nothing, Nothing}
     grid :: G
-    clock :: CLK
-    timestepper :: Nothing
-    σ :: FT
-    ρ :: FT
-    β :: FT
-    x :: FT
-    y :: FT
-    z :: FT
+    clock :: C
+    parameters :: P
+    state :: S
 end
 
-function LorenzModel(; σ = 10.0, ρ = 28.0, β = 8/3,
-                     u0 = (1.0, 0.0, 0.0), FT = Float64)
+function LorenzModel(FT=Oceananigans.defaults.FloatType;
+                     σ = 10, ρ = 28, β = 8/3)
 
-    grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+    grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
     clock = Clock{FT}(time = zero(FT))
+    parameters = (σ = FT(σ), ρ = FT(ρ), β = FT(β))
+    state = (x = CenterField(grid), y = CenterField(grid), z = CenterField(grid))
 
-    return LorenzModel{FT, typeof(grid), typeof(clock)}(
-        grid, clock, nothing, FT(σ), FT(ρ), FT(β),
-        FT(u0[1]), FT(u0[2]), FT(u0[3])
-    )
+    return LorenzModel(grid, clock, parameters, state)
 end
 
 Base.summary(::LorenzModel) = "LorenzModel"
 
-function update_state!(model::LorenzModel, callbacks = (); compute_tendencies = false)
+function set!(model::LorenzModel; kw...)
+    for (name, val) in kw
+        set!(model.state[name], val)
+    end
+    return nothing
+end
+
+function update_state!(model::LorenzModel, callbacks = []; compute_tendencies=true)
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
@@ -135,32 +154,68 @@ function time_step!(model::LorenzModel, Δt; callbacks = ())
         callback.callsite isa TendencyCallsite && callback(model)
     end
 
-    x, y, z = model.x, model.y, model.z
-    σ, ρ, β = model.σ, model.ρ, model.β
+    x, y, z = first(model.state.x), first(model.state.y), first(model.state.z)
+    σ, ρ, β = model.parameters.σ, model.parameters.ρ, model.parameters.β
 
     dx = σ * (y - x)
     dy = x * (ρ - z) - y
     dz = x * y - β * z
 
-    model.x = x + Δt * dx
-    model.y = y + Δt * dy
-    model.z = z + Δt * dz
+    @inbounds begin
+        model.state.x[1, 1, 1] = x + Δt * dx
+        model.state.y[1, 1, 1] = y + Δt * dy
+        model.state.z[1, 1, 1] = z + Δt * dz
+    end
 
     tick!(model.clock, Δt)
+    update_state!(model, callbacks)
 
-    update_state!(model, callbacks; compute_tendencies = false)
     return nothing
 end
 ```
 
 ### Using the model inside Simulation
 
+We set up a `Callback` to record the trajectory at each time step:
+
 ```@example model_interface
 lorenz = LorenzModel()
-sim = Simulation(lorenz; Δt = 0.01, stop_time = 0.5, verbose = false)
-run!(sim)
+set!(lorenz, x=1)
+simulation = Simulation(lorenz; Δt=0.01, stop_time=100, verbose=false)
 
-(sim.model.x, sim.model.y, sim.model.z)
+trajectory = NTuple{3, Float64}[]
+
+function record_trajectory!(sim)
+    x = first(sim.model.state.x)
+    y = first(sim.model.state.y)
+    z = first(sim.model.state.z)
+    push!(trajectory, (x, y, z))
+end
+
+add_callback!(simulation, record_trajectory!)
+run!(simulation)
+nothing # hide
+```
+
+Finally, we visualize the famous Lorenz attractor with a 3D line plot:
+
+```@example model_interface
+using CairoMakie
+
+fig = Figure(size=(600, 500))
+
+ax = Axis3(fig[1, 1];
+           xlabel="x", ylabel="y", zlabel="z",
+           title="Lorenz attractor",
+           azimuth=1.2π)
+
+xs = [p[1] for p in trajectory]
+ys = [p[2] for p in trajectory]
+zs = [p[3] for p in trajectory]
+
+lines!(ax, xs, ys, zs; linewidth=0.5, color=zs, colormap=:magma)
+
+fig
 ```
 
 This minimal implementation inherits all other behavior from the generic
