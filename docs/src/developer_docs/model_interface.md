@@ -23,7 +23,7 @@ When `run!(sim::Simulation)` is called the following high-level sequence occurs:
    at the end of `time_step!`. This ensures that the auxiliary state (including halo regions, closure auxiliary fields, etc) is current with the prognostic state
    so that output and callbacks can execute correctly on a fully consistent model state.
 
-3. After `time_step!(model, Δt)`, `Simulation` executes diagnostics, output
+3. After `time_step!(model, Δt)`, `Simulation` executes its diagnostics, output
    writers, and callbacks scheduled on the `TimeStepCallsite`.
 
 Because `Simulation` assumes this protocol, any custom `AbstractModel` should
