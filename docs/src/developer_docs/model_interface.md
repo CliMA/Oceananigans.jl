@@ -20,7 +20,7 @@ When `run!(sim::Simulation)` is called the following high-level sequence occurs:
 2. Time-stepping begins. For every time step, Simulation computes an aligned `Δt`, gathers callbacks
    that should run inside the model (`ModelCallsite`s), and calls
    `time_step!(sim.model, Δt; callbacks=model_callbacks)`. Most models will also call `update_state!`
-   at the end of `time_step!`. This ensures that the diagnostic state is current with the prognostic state
+   at the end of `time_step!`. This ensures that the auxiliary state (including halo regions, closure auxiliary fields, etc) is current with the prognostic state
    so that output and callbacks can execute correctly on a fully consistent model state.
 
 3. After `time_step!(model, Δt)`, `Simulation` executes diagnostics, output
