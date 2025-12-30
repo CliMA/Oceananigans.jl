@@ -1,4 +1,4 @@
-# # Two dimensional turbulence example
+# # [Two dimensional turbulence example](@id two_dimensional_turbulence)
 #
 # In this example, we initialize a random velocity field and observe its turbulent decay
 # in a two-dimensional domain. This example demonstrates:

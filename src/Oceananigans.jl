@@ -11,7 +11,9 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    RightConnected, LeftConnected, FullyConnected,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    TripolarGrid, RotatedLatitudeLongitudeGrid,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
