@@ -3,7 +3,6 @@
 #####
 
 using Oceananigans.Architectures: Architectures
-using Oceananigans.Grids: active_cells_map, active_column_map
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
@@ -254,19 +253,19 @@ halo-dependent cells map (for distributed computing).
 @inline function resolve_active_cells_map(grid, workspec::Symbol, region::Symbol)
     if region === :interior
         if workspec === :xy
-            return active_column_map(grid)  # 2D columns
+            return Oceananigans.Grids.active_column_map(grid)  # 2D columns
         else
-            return active_cells_map(grid, Val(:interior))  # 3D cells
+            return Oceananigans.Grids.active_cells_map(grid, Val(:interior))  # 3D cells
         end
     else
         # :west, :east, :south, :north for distributed buffer computation
-        return active_cells_map(grid, Val(region))
+        return Oceananigans.Grids.active_cells_map(grid, Val(region))
     end
 end
 
 # Fallback for non-symbol workspecs (e.g., KernelParameters, tuples)
 @inline resolve_active_cells_map(grid, workspec, region::Symbol) =
-    active_cells_map(grid, Val(region))
+    Oceananigans.Grids.active_cells_map(grid, Val(region))
 
 """
     configure_kernel(arch, grid, workspec, kernel!;
@@ -292,6 +291,17 @@ Keyword Arguments
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
 """
+@inline function configure_kernel(arch, grid, workspec, kernel!;
+                                  exclude_periphery = false,
+                                  reduced_dimensions = (),
+                                  location = nothing)
+
+    # Fallback with no active_cells_map
+    return configure_kernel(arch, grid, workspec, kernel!, nothing, exclude_periphery;
+                            reduced_dimensions,
+                            location)
+end
+
 @inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map;
                                   exclude_periphery = false,
                                   reduced_dimensions = (),
