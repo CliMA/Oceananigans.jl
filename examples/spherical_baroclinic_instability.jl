@@ -238,8 +238,8 @@ plots_T = Dict()
 plots_ζ = Dict()
 
 for name in keys(results)
-    # Tn = @lift T_ts[name][$n]
-    # ζn = @lift ζ_ts[name][$n]
+    ## Tn = @lift T_ts[name][$n]
+    ## ζn = @lift ζ_ts[name][$n]
     Tn = T_ts[name][n]
     ζn = ζ_ts[name][n]
     plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
