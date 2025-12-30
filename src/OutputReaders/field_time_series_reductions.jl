@@ -72,11 +72,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                         broadcasted_accumulate!(Base.$(reduction!), interior(rts[1]), interior(fts[n]))
                     end
                 else
-                    # Use the allocating reduction for the first step
+                    # Use the allocating reduction for the first step, then reuse temp
                     temp = Base.$(reduction)(f, fts[1]; dims=spatial_dims, kw...)
                     set!(rts[1], temp)
                     for n = 2:length(fts)
-                        broadcasted_accumulate!(Base.$(reduction!), interior(rts[1]), interior(fts[n]))
+                        Base.$(reduction!)(f, temp, fts[n]; kw...)
+                        broadcasted_accumulate!(Base.$(reduction!), interior(rts[1]), interior(temp))
                     end
                 end
             else

@@ -462,6 +462,28 @@ function test_field_time_series_reductions_with_dims()
     @test size(fts4_mean) == (4, 5, 6, 1)
     @test interior(fts4_mean[1]) ≈ expected_sum ./ length(times)
 
+    # Test combined dims=(1, 4) (reduce over x and time)
+    fts14 = sum(fts; dims=(1, 4))
+    @test fts14 isa FieldTimeSeries
+    @test location(fts14) == (Nothing, Center, Center)
+    @test size(fts14) == (1, 5, 6, 1)
+    @test length(fts14.times) == 1
+
+    # Test combined dims=(1, 2, 4) (reduce over x, y, and time)
+    fts124 = sum(fts; dims=(1, 2, 4))
+    @test fts124 isa FieldTimeSeries
+    @test location(fts124) == (Nothing, Nothing, Center)
+    @test size(fts124) == (1, 1, 6, 1)
+
+    # Test dims=: (reduce over all dimensions, returns a scalar)
+    total_sum = sum(fts; dims=:)
+    expected_total = sum(sum(fts[n]) for n in 1:length(times))
+    @test total_sum ≈ expected_total
+
+    total_mean = mean(fts; dims=:)
+    expected_mean = expected_total / (4 * 5 * 6 * 3)
+    @test total_mean ≈ expected_mean
+
     return nothing
 end
 
