@@ -228,6 +228,11 @@ serve(dir="docs/build")
 - Don't "over import". Use names that are exported by `using Oceananigans`. If there are
   names that are not exported, but are needed in common/basic examples, consider
   exporting those names from `Oceananigans.jl`.
+- **Literate.jl comment conventions**: Examples in `examples/` are processed by Literate.jl.
+  - Single `#` comments become markdown blocks in the generated documentation
+  - Double `##` comments remain as code comments within code blocks
+  - Use `##` for inline code comments that should stay with the code (e.g., `## Helper function`)
+  - Use single `#` only for narrative text that should render as markdown
 
 ## Important Files to Know
 

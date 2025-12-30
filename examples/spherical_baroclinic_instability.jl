@@ -136,13 +136,10 @@ function build_model(grid)
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     free_surface = SplitExplicitFreeSurface(grid; substeps=80)
-
-    # Apply bottom drag to both domain boundaries and immersed boundaries.
-    # For grids without immersed boundaries, the `immersed` keyword is ignored.
+    ## Apply bottom drag to both domain boundaries and immersed boundaries.
     u_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
     v_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
     boundary_conditions = (; u=u_bcs, v=v_bcs)
-
     model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy,
                                         tracers = (:T, :S),
                                         momentum_advection, tracer_advection,
