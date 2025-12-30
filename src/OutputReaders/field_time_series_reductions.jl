@@ -1,7 +1,7 @@
 using Statistics
 
 using Oceananigans: instantiated_location
-using Oceananigans.Fields: reduced_location, filltype
+using Oceananigans.Fields: reduced_location
 
 import Oceananigans.Fields: conditional_length
 
