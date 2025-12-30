@@ -149,8 +149,9 @@ using Oceananigans
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Simulations: Simulation, run!
 using Oceananigans.TimeSteppers: Clock, tick!
-import Oceananigans.TimeSteppers: update_state!, time_step!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
+
+import Oceananigans.TimeSteppers: update_state!, time_step!
 
 mutable struct LorenzModel{FT} <: AbstractModel{Nothing, Nothing}
     clock :: Clock{FT}
@@ -254,7 +255,6 @@ showing how to leverage `AbstractOperations` for computing spatial derivatives.
 ### Implementing the model
 
 ```@example model_interface
-using Oceananigans.Operators: ∂x
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 mutable struct KuramotoSivashinskyModel{G, C, U, T} <: AbstractModel{Nothing, Nothing}
@@ -276,7 +276,10 @@ function KuramotoSivashinskyModel(grid)
     return KuramotoSivashinskyModel(grid, clock, solution, tendencies)
 end
 
-Base.summary(::KuramotoSivashinskyModel) = "KuramotoSivashinskyModel"
+function Base.summary(model::KuramotoSivashinskyModel)
+    grid_str = summary(model.grid)
+    return "KuramotoSivashinskyModel on $grid_str"
+  end
 
 # Override architecture and eltype to use the grid
 import Oceananigans.Architectures: architecture
@@ -303,7 +306,7 @@ function update_state!(model::KuramotoSivashinskyModel, callbacks = []; compute_
     return nothing
 end
 
-function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = []
+function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = [])
     # First stage: initialize
     model.clock.iteration == 0 && update_state!(model, callbacks)
     [callback(model) for callback in callbacks if callback.callsite isa TendencyCallsite]
@@ -323,17 +326,18 @@ function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = []
     # Stage 1: u = u + Δt * γ¹ * Gⁿ
     u .+= Δt * γ¹ .* Gⁿ
     G⁻ .= Gⁿ
+    tick!(model.clock, Δt * γ¹; stage=true)
     update_state!(model, callbacks)
 
     # Stage 2: u = u + Δt * (γ² * Gⁿ + ζ² * G⁻)
     u .+= Δt * γ² .* Gⁿ .+ Δt * ζ² .* G⁻
     G⁻ .= Gⁿ
+    tick!(model.clock, Δt * (γ² + ζ²); stage=true)
     update_state!(model, callbacks)
 
     # Stage 3: u = u + Δt * (γ³ * Gⁿ + ζ³ * G⁻)
     u .+= Δt * γ³ .* Gⁿ .+ Δt * ζ³ .* G⁻
-
-    tick!(model.clock, Δt)
+    tick!(model.clock, Δt * (γ³ + ζ³))  # final tick increments iteration, resets stage
     update_state!(model, callbacks)
 
     return nothing
@@ -346,8 +350,6 @@ We initialize the model with a perturbed state and use a `JLD2OutputWriter` to
 save the solution at regular intervals:
 
 ```@example model_interface
-using Oceananigans.OutputWriters: JLD2OutputWriter
-using Oceananigans.OutputReaders: FieldTimeSeries
 
 # Create a 1D periodic grid
 grid = RectilinearGrid(size=128, x=(0, 32π), topology=(Periodic, Flat, Flat), halo=4)
@@ -369,23 +371,28 @@ nothing # hide
 
 ### Animating the chaotic dynamics
 
-The Kuramoto-Sivashinsky equation produces complex spatiotemporal patterns:
+The Kuramoto-Sivashinsky equation produces complex spatiotemporal patterns.
+We use `Observable` to efficiently update the plot data during animation:
 
 ```@example model_interface
 u_ts = FieldTimeSeries("ks_solution.jld2", "u")
 times = u_ts.times
 
 fig = Figure(size=(800, 400))
-ax = Axis(fig[1, 1]; xlabel="x", ylabel="u", title="Kuramoto-Sivashinsky equation")
+ax = Axis(fig[1, 1]; xlabel="x", ylabel="u")
 ylims!(ax, -4, 4)
 
-# Create initial line
-line = lines!(ax, u_ts[1]; linewidth=2, color=:royalblue)
+# Create Observables for reactive updates
+n = Observable(1)
+u_n = @lift u_ts[$n]
+title = @lift "Kuramoto-Sivashinsky equation, t = $(round(times[$n], digits=1))"
+ax.title = title
 
-record(fig, "ks_animation.mp4", eachindex(times); framerate=30) do n
-    un = interior(u_ts[n], :, 1, 1)
-    line[2] = u_n
-    ax.title = "Kuramoto-Sivashinsky equation, t = $(round(times[n], digits=1))"
+# lines! works directly with Field
+lines!(ax, u_n; linewidth=2, color=:royalblue)
+
+record(fig, "ks_animation.mp4", eachindex(times); framerate=30) do i
+    n[] = i
 end
 nothing # hide
 ```
