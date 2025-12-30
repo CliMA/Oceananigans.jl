@@ -466,6 +466,7 @@ struct UnspecifiedBoundaryConditions end
                     time_indexing = Linear(),
                     iterations = nothing,
                     times = nothing,
+                    combine = true,
                     reader_kw = Dict{Symbol, Any}())
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
@@ -486,6 +487,10 @@ Keyword arguments
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 
+- `combine`: If `true` (default), automatically detect and combine distributed output files
+             (e.g., `output_rank0.jld2`, `output_rank1.jld2`, ...) into a single global
+             `FieldTimeSeries`. Set to `false` to disable this behavior.
+
 - `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
                (currently only JLD2) to be used when opening files.
 """
@@ -498,17 +503,45 @@ function FieldTimeSeries(path::String, name::String;
                          time_indexing = Linear(),
                          iterations = nothing,
                          times = nothing,
+                         combine = true,
                          reader_kw = NamedTuple())
 
     path = auto_extension(path, ".jld2")
 
     if !isfile(path)
+        # First, check for distributed rank files (e.g., output_rank0.jld2, output_rank1.jld2, ...)
+        if combine
+            rank_paths = find_rank_files(path)
+            if !isnothing(rank_paths)
+                return combined_field_time_series(path, name;
+                                                   backend,
+                                                   architecture,
+                                                   grid,
+                                                   location,
+                                                   boundary_conditions,
+                                                   time_indexing,
+                                                   iterations,
+                                                   times,
+                                                   reader_kw)
+            end
+        end
+        
+        # Handle file splitting due to max_filesize limitations by looking for filenames
+        # that end in part1, etc
         start = path[1:end-5]
-        # Look for part1, etc
         lookfor = string(start, "_part*.jld2")
         part_paths = glob(lookfor)
         part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
+        
+        if Nparts == 0
+            if combine
+                error("File not found: $path. Also tried looking for rank files (*_rank*.jld2) and part files (*_part*.jld2).")
+            else
+                error("File not found: $path. Also tried looking for part files (*_part*.jld2). Set combine=true to also look for distributed rank files.")
+            end
+        end
+        
         path = first(part_paths) # part1 is first?
     else
         Nparts = nothing
