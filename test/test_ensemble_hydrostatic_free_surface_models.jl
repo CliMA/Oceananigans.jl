@@ -47,7 +47,8 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     sic_fts = FieldTimeSeries{Nothing, Nothing, Center}(sic_model.grid, times; time_indexing = Cyclical())
     per_fts = FieldTimeSeries{Center,  Center,  Center}(per_model.grid, times; time_indexing = Cyclical())
 
-    for t in 1:10
+    Nt = length(times)
+    for t in 1:Nt
         set!(sic_fts[t], exp(-(t - 5)^2 / 5^2))
         set!(per_fts[t], exp(-(t - 5)^2 / 5^2))
     end
