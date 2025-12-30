@@ -7,9 +7,7 @@
 # Baroclinic instability is a fundamental mechanism for generating mesoscale eddies in the
 # ocean and synoptic-scale weather systems in the atmosphere. The instability arises when
 # horizontal density gradients (fronts) are tilted by the combined effects of Earth's rotation
-# and stratification, converting available potential energy into kinetic energy. This process
-# is described in detail by Vallis (2017) and the classic paper by Eady (1949) provides
-# foundational theory.
+# and stratification, converting available potential energy into kinetic energy.
 #
 # In this example, we initialize a meridional temperature front that is baroclinically unstable,
 # and watch eddies grow and equilibrate the front. We demonstrate this phenomenon on three
@@ -30,14 +28,14 @@
 # We set up three different spherical grids at 1.5-degree resolution. Each grid type has
 # different advantages:
 #
-# - `LatitudeLongitudeGrid`: Straightforward, but suffers from converging meridians at
+# - [`LatitudeLongitudeGrid`](@ref): Straightforward, but suffers from converging meridians at
 #   the poles, and thus cannot cover a sphere without filtering.
 #
-# - `TripolarGrid`: Avoids the North Pole singularity by introducing two computational poles
+# - [`TripolarGrid`](@ref): Avoids the North Pole singularity by introducing two computational poles
 #   over land (typically over North America and Eurasia). This grid was first introduced by
 #   Murray (1996) and is widely used in global ocean models.
 #
-# - `RotatedLatitudeLongitudeGrid`: Rotates the grid's north pole to an arbitrary location,
+# - [`RotatedLatitudeLongitudeGrid`](@ref): Rotates the grid's north pole to an arbitrary location,
 #   allowing finer resolution in a region of interest while avoiding the geographic poles.
 
 using Oceananigans
@@ -47,14 +45,14 @@ using CUDA
 using Printf
 using CairoMakie
 
-# Set up resolution and grid parameters. We use 1.5-degree resolution for
+# We start by setting up grid parameters. We use 1.5-degree resolution to produce
 # reasonable runtimes while still resolving the instability.
 
 arch = GPU()
 resolution = 3 // 2        # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
-Nz = 4                     # number of vertical levels
+Nz = 10                    # number of vertical levels
 size = (Nx, Ny, Nz)
 halo = (7, 7, 7)           # halo size for higher-order advection schemes
 H = 5000                   # domain depth [m]
@@ -70,15 +68,15 @@ lat_lon_grid = LatitudeLongitudeGrid(arch; size, halo, latitude, longitude, z)
 
 # ### Tripolar grid
 #
-# For the tripolar grid, we set up singularities ("north poles") at 55°N latitude.
-# We also use an `ImmersedBoundaryGrid` to place cylindrical islands over the singularities
-# to ensure the simulation remains stable.
+# The tripolar grid has singularities ("north poles") at 55°N latitude by default.
 
 underlying_tripolar_grid = TripolarGrid(arch; size, halo, z)
 
-# Create cylindrical islands over the North Pole singularities to mask them out.
+# We also use an `ImmersedBoundaryGrid` to place cylindrical islands over the singularities
+# to ensure the simulation remains stable.
 # The tripolar grid places singularities at longitude `first_pole_longitude` and
 # `first_pole_longitude + 180°`, both at latitude `north_poles_latitude`.
+# By default, the first pole is at 70°E longitude and 55°N latitude.
 
 dφ, dλ = 4, 8     # island extent in latitude and longitude
 λ₀, φ₀ = 70, 55   # first pole location
@@ -92,7 +90,8 @@ tripolar_grid = ImmersedBoundaryGrid(underlying_tripolar_grid, GridFittedBottom(
 # ### Rotated latitude-longitude grid
 #
 # The rotated latitude-longitude grid rotates the north pole to an arbitrary location.
-# Here we place the grid's north pole at (70°E, 55°N).
+# Here we place the grid's north pole at (70°E, 55°N) to coincide with the default
+# singularities of [`TripolarGrid`](@ref).
 
 rotated_lat_lon_grid = RotatedLatitudeLongitudeGrid(arch; size, halo, latitude, longitude, z,
                                                     north_pole = (70, 55))
@@ -249,24 +248,17 @@ colgap!(fig.layout, 2, Relative(-0.2))
 rowgap!(fig.layout, 2, Relative(-0.1))
 rowgap!(fig.layout, 3, Relative(-0.3))
 
-# Add colorbars
-Colorbar(fig[3, 4], plots_T["lat_lon"]; label = "Temperature [°C]", height=Relative(0.5))
-Colorbar(fig[4, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]", height=Relative(0.5))
+Colorbar(fig[3, 4], plots_T["lat_lon"], label="Temperature [°C]", height=Relative(0.5))
 
-save("spherical_baroclinic_instability.png", fig, px_per_unit=2)
+ticks = ([-1e-5, 0, 1e-5], ["-10⁻⁵", "0", "10⁻⁵"])
+Colorbar(fig[4, 4], plots_ζ["lat_lon"]; ticks, label="Vorticity [s⁻¹]", height=Relative(0.5))
+
+save("spherical_baroclinic_instability.png", fig, px_per_unit=2) #hide
 
 # ![](spherical_baroclinic_instability.png)
 
 # ## References
 #
-# - Eady, E. T. (1949). Long waves and cyclone waves. *Tellus*, 1(3), 33-52.
-#   doi:[10.1111/j.2153-3490.1949.tb01265.x](https://doi.org/10.1111/j.2153-3490.1949.tb01265.x)
-#
 # - Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
 #   *Journal of Computational Physics*, 126(2), 251-273.
 #   doi:[10.1006/jcph.1996.0136](https://doi.org/10.1006/jcph.1996.0136)
-#
-# - Vallis, G. K. (2017). *Atmospheric and Oceanic Fluid Dynamics: Fundamentals and
-#   Large-Scale Circulation* (2nd ed.). Cambridge University Press.
-#   doi:[10.1017/9781107588417](https://doi.org/10.1017/9781107588417)
-
