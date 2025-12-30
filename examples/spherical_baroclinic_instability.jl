@@ -54,10 +54,10 @@ arch = GPU()
 resolution = 3 // 2        # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
-Nz = 10                    # number of vertical levels
+Nz = 4                     # number of vertical levels
 size = (Nx, Ny, Nz)
 halo = (7, 7, 7)           # halo size for higher-order advection schemes
-H = 3000                   # domain depth [m]
+H = 5000                   # domain depth [m]
 latitude = (-85, 85)       # latitude range (avoiding poles for lat-lon grid)
 longitude = (0, 360)       # longitude range
 z = (-H, 0)                # vertical extent
@@ -122,7 +122,7 @@ function build_model(grid)
     coriolis = HydrostaticSphericalCoriolis()
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
-    free_surface = SplitExplicitFreeSurface(grid; substeps=60)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=80)
     model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy, tracers = (:T, :S),
                                         momentum_advection, tracer_advection)
     set!(model, T=Tᵢ, S=Sᵢ)
@@ -137,7 +137,7 @@ end
 
 function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=24hours)
     model = build_model(grid)
-    simulation = Simulation(model; Δt=10minutes, stop_time)
+    simulation = Simulation(model; Δt=8minutes, stop_time)
 
     ## Add progress callback
     function progress(sim)
@@ -179,6 +179,8 @@ end
 #
 # Now we run simulations on all three grids.
 
+names = ("lat_lon", "tripolar", "rotated_lat_lon") # To fix ordering of plots
+
 results = Dict(
     "lat_lon" => run_baroclinic_instability(lat_lon_grid, "lat_lon"),
     "tripolar" => run_baroclinic_instability(tripolar_grid, "tripolar"),
@@ -193,12 +195,6 @@ results = Dict(
 T_ts = Dict()
 ζ_ts = Dict()
 
-results = Dict(
-    "lat_lon" => "spherical_baroclinic_instability_lat_lon.jld2",
-    "tripolar" => "spherical_baroclinic_instability_tripolar.jld2",
-    "rotated_lat_lon" => "spherical_baroclinic_instability_rotated_lat_lon.jld2"
-)
-
 for (name, filename) in results
     T_ts[name] = FieldTimeSeries(filename, "T")
     ζ_ts[name] = FieldTimeSeries(filename, "ζ")
@@ -207,14 +203,14 @@ end
 times = T_ts["lat_lon"].times
 Nt = length(times)
 
-# Next we create a movie showing the evolution of the baroclinic instability
+# Next we make a plot showing baroclinic instability 
 # on all three grids, visualized on 3D spheres. Each column shows a different
 # grid type, with temperature on top and vorticity on the bottom.
 
-fig = Figure(size = (1200, 1000))
-n = Nt #Observable(1)
+fig = Figure(size = (1000, 700))
+n = Nt
 title_str = @lift "Baroclinic instability at t = " * prettytime(times[$n])
-Label(fig[1, 1:3], title_str, fontsize = 28)
+Label(fig[1, 1:4], title_str, fontsize = 28)
 
 labels = Dict("lat_lon" => "Latitude-Longitude",
               "tripolar" => "Tripolar",
@@ -224,22 +220,20 @@ axes_T = Dict()
 axes_ζ = Dict()
 kw = (elevation=deg2rad(50), azimuth=deg2rad(190), aspect=:equal)
 
-for (col, name) in enumerate(keys(results))
+for (col, name) in enumerate(names)
     Label(fig[2, col], labels[name], fontsize = 20, tellwidth=false)
     axes_T[name] = Axis3(fig[3, col]; kw...)
     axes_ζ[name] = Axis3(fig[4, col]; kw...)
 end
 
 # We use `surface!`, which has a special extension for Oceananigans fields,
-# to plot temperature and vorticity on a three-dimensional representation of
-# the sphere,
+# to plot temperature and vorticity at the final time step
+# on a three-dimensional representation of the sphere,
 
 plots_T = Dict()
 plots_ζ = Dict()
 
 for name in keys(results)
-    ## Tn = @lift T_ts[name][$n]
-    ## ζn = @lift ζ_ts[name][$n]
     Tn = T_ts[name][n]
     ζn = ζ_ts[name][n]
     plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
@@ -252,24 +246,14 @@ end
 
 colgap!(fig.layout, 1, Relative(-0.2))
 colgap!(fig.layout, 2, Relative(-0.2))
-rowgap!(fig.layout, 2, Relative(-0.2))
+rowgap!(fig.layout, 2, Relative(-0.1))
+rowgap!(fig.layout, 3, Relative(-0.3))
 
 # Add colorbars
-Colorbar(fig[3, 4], plots_T["lat_lon"]; label = "Temperature [°C]", height=Relative(0.6))
-Colorbar(fig[4, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]", height=Relative(0.6))
-
-# And then we are ready to record a movie!
-
-save("spherical_baroclinic_instability.png", fig)
+Colorbar(fig[3, 4], plots_T["lat_lon"]; label = "Temperature [°C]", height=Relative(0.5))
+Colorbar(fig[4, 4], plots_ζ["lat_lon"]; label = "Vorticity [s⁻¹]", height=Relative(0.5))
 
 fig
-
-# CairoMakie.record(fig, "spherical_baroclinic_instability.mp4", 1:Nt; framerate = 12) do nn
-#     n[] = nn
-# end
-# nothing #hide
-
-## ![](spherical_baroclinic_instability.mp4)
 
 # ## References
 #
