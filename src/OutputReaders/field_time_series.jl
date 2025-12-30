@@ -526,7 +526,8 @@ function FieldTimeSeries(path::String, name::String;
             end
         end
         
-        # Look for part1, etc (file splitting)
+        # Handle file splitting due to max_filesize limitations by looking for filenames
+        # that end in part1, etc
         start = path[1:end-5]
         lookfor = string(start, "_part*.jld2")
         part_paths = glob(lookfor)
