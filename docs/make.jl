@@ -114,6 +114,7 @@ model_pages = [
     "Overview" => "models/models_overview.md",
     "Coriolis forces" => "models/coriolis.md",
     "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
+    "Stokes drift" => "models/stokes_drift.md",
     "Turbulence closures" => "models/turbulence_closures.md",
     "Boundary conditions" => "models/boundary_conditions.md",
     "Forcings" => "models/forcing_functions.md",
