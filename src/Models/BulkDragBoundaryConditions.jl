@@ -109,8 +109,7 @@ Create a bulk drag function for computing velocity fluxes on any boundary.
 
 With `QuadraticFormulation()` (default), the drag is:
 ```math
-τᵘ = - Cᴰ |U + U∞| (u + U∞)
-```
+τᵘ = - Cᴰ |U + U∞| (u + U∞),
 
 With `LinearFormulation()` (Rayleigh friction), the drag is:
 ```math
