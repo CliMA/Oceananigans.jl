@@ -2,6 +2,8 @@ module OceananigansNCDatasetsExt
 
 using NCDatasets
 
+using Oceananigans.Fields
+
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
@@ -11,18 +13,21 @@ using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
-using Oceananigans.Fields
 using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location, indices
+using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+
 using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
                           parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
                           constructor_arguments, architecture
+
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
                                        CenterImmersedCondition, InterfaceImmersedCondition
-using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
                           versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
@@ -38,6 +43,7 @@ using Oceananigans.OutputWriters:
     convert_output,
     fetch_and_convert_output,
     show_array_type
+
 using NCDatasets: AbstractDataset
 
 import NCDatasets: defVar
@@ -61,7 +67,7 @@ const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g
 #####
 
 """
-    squeeze_data(fd::AbstractField; array_type=Array{eltype(fd)})
+    squeeze_data(field::AbstractField; array_type=Array{eltype(field)})
 
 Returns the data of the field with the any dimensions where location is Nothing squeezed. For example:
 ```Julia
@@ -93,8 +99,8 @@ infil> squeeze_data(c) |> size
 
 Note that this will only remove (squeeze) singleton dimensions.
 """
-function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)})
-    reduced_dims = effective_reduced_dimensions(fd)
+function squeeze_data(field::AbstractField, field_data; array_type=Array{eltype(field)})
+    reduced_dims = effective_reduced_dimensions(field)
     field_data_cpu = array_type(field_data) # Need to convert to the array type of the field
 
     indices = Any[:, :, :]
@@ -108,15 +114,15 @@ end
 
 squeeze_data(func, func_data; kwargs...) = func_data
 squeeze_data(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_data(wta.operand, data; kwargs...)
-squeeze_data(fd::AbstractField; kwargs...) = squeeze_data(fd, parent(fd); kwargs...)
+squeeze_data(field::AbstractField; kwargs...) = squeeze_data(field, parent(field); kwargs...)
 
-squeeze_data(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data(fd.operand; kwargs...)
+squeeze_data(field::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data(field.operand; kwargs...)
 
 defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
-                array_type=Array{eltype(fd)},
+function defVar(ds::AbstractDataset, field_name, field::AbstractField;
+                array_type=Array{eltype(field)},
                 time_dependent=false,
                 with_halos=false,
                 dimension_name_generator = trilocation_dim_name,
@@ -125,13 +131,13 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
                 kwargs...)
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
-    effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
+    effective_dim_names = create_field_dimensions!(ds, field, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
 
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
-        constructed_fd = construct_output(fd, fd.grid, (:, :, :), with_halos)
-        squeezed_field_data = squeeze_data(constructed_fd; array_type)
+        constructed_field = construct_output(field, (:, :, :), with_halos)
+        squeezed_field_data = squeeze_data(constructed_field; array_type)
         squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
 
         defVar(ds, field_name, squeezed_reshaped_field_data, effective_dim_names; kwargs...)
@@ -147,23 +153,23 @@ defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Arr
 #####
 
 """
-    create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)})
+    create_field_dimensions!(ds, field::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(field)})
 
-Creates all dimensions for the given field `fd` in the NetCDF dataset `ds`. If the dimensions
+Creates all dimensions for the given `field` in the NetCDF dataset `ds`. If the dimensions
 already exist, they are validated to match the expected dimensions.
 
 Arguments:
 - `ds`: NetCDF dataset
-- `fd`: AbstractField being written
+- `field`: AbstractField being written
 - `dim_names`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
-function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64)
+function create_field_dimensions!(ds, field::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(field)}, dimension_type=Float64)
     # Assess and create the dimensions for the field
 
-    dimension_attributes = default_dimension_attributes(fd.grid, dimension_name_generator)
-    spatial_dim_names = field_dimensions(fd, dimension_name_generator)
-    spatial_dim_data = nodes(fd; with_halos)
+    dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
+    spatial_dim_names = field_dimensions(field, dimension_name_generator)
+    spatial_dim_data = nodes(field; with_halos)
 
     # Create dictionary of spatial dimensions and their data. Using OrderedDict to ensure the order of the dimensions is preserved.
     spatial_dim_names_dict = OrderedDict(spatial_dim_name => spatial_dim_array for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
@@ -526,8 +532,8 @@ end
 ##### Mapping outputs/fields to dimensions
 #####
 
-function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_generator)
-    LX, LY, LZ = location(fd)
+function field_dimensions(field::AbstractField, grid::RectilinearGrid, dim_name_generator)
+    LX, LY, LZ = location(field)
     TX, TY, TZ = topology(grid)
 
     x_dim_name = LX == Nothing ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
@@ -537,8 +543,8 @@ function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_gen
     return tuple(x_dim_name, y_dim_name, z_dim_name)
 end
 
-function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
-    LΛ, LΦ, LZ = location(fd)
+function field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
+    LΛ, LΦ, LZ = location(field)
     TΛ, TΦ, TZ = topology(grid)
 
     λ_dim_name = LΛ == Nothing ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
@@ -548,11 +554,11 @@ function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_na
     return tuple(λ_dim_name, φ_dim_name, z_dim_name)
 end
 
-field_dimensions(fd::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator) =
-    field_dimensions(fd, grid.underlying_grid, dim_name_generator)
+field_dimensions(field::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator) =
+    field_dimensions(field, grid.underlying_grid, dim_name_generator)
 
-field_dimensions(fd::AbstractField, dim_name_generator) =
-    field_dimensions(fd, fd.grid, dim_name_generator)
+field_dimensions(field::AbstractField, dim_name_generator) =
+    field_dimensions(field, field.grid, dim_name_generator)
 
 #####
 ##### Dimension attributes
@@ -1005,7 +1011,7 @@ Optional keyword arguments
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 
 - `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
-                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
+                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://juliageo.org/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
 
 - `part`: The starting part number used when file splitting. Default: `1`.
@@ -1170,7 +1176,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
         end
     end
 
-    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(string(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
@@ -1296,7 +1302,7 @@ function initialize_nc_file(model,
 
         if !isempty(time_independent_vars)
             for (output_name, output) in sort(collect(pairs(time_independent_vars)), by=first)
-                output = construct_output(output, grid, indices, with_halos)
+                output = construct_output(output, indices, with_halos)
                 attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
                 materialized = materialize_output(output, model)
 

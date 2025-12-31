@@ -239,7 +239,7 @@ ContinuousForcing{Nothing} at (Center, Center, Face)
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
-which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z)`
+which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z, t)`
 distribution for the quantity in question. By default, `mask` uncovered the whole domain
 and `target` restores the field in question to 0
 
@@ -324,7 +324,7 @@ grid = RectilinearGrid(size=(32, 32, 32), x=(-10, 10), y=(-10, 10), z=(-4, 4),
                        topology=(Periodic, Periodic, Bounded))
 
 no_penetration = ImpenetrableBoundaryCondition()
-slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
+slip_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()),
                                    top=no_penetration, bottom=no_penetration)
 
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
