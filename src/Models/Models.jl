@@ -219,7 +219,6 @@ end
 include("seawater_density.jl")
 include("buoyancy_operation.jl")
 include("boundary_adjacent_mean.jl")
-include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
 include("set_model.jl")
 

@@ -6,8 +6,14 @@ using Oceananigans.BoundaryConditions: BoundaryCondition, Open
 
 import Oceananigans.BoundaryConditions: update_boundary_condition!, getbc, regularize_boundary_condition
 
+struct BoundaryAdjacentMean{S, F, A}
+    side :: S   # Val{:east}, etc.
+    mean :: F   # Field{Nothing, Nothing, Nothing} for storing result (nothing before regularization)
+    area :: A   # Pre-computed total boundary area (nothing before regularization)
+end
+
 """
-    AverageBoundaryFlux
+    BoundaryAdjacentMean()
 
 Computes and stores the area-weighted average of a field `f` on a boundary plane.
 
@@ -15,11 +21,7 @@ The average is computed as `∫f dA / ∫dA` where the integral is over the
 boundary-adjacent plane. The total area `∫dA` is pre-computed during
 boundary condition regularization.
 
-# Constructor
-
-    AverageBoundaryFlux(side::Symbol)
-
-Create an `AverageBoundaryFlux` for the specified `side` of the domain.
+Create an `BoundaryAdjacentMean` for the specified `side` of the domain.
 The object is fully initialized during model construction via `regularize_boundary_condition`.
 
 # Arguments
@@ -27,57 +29,50 @@ The object is fully initialized during model construction via `regularize_bounda
 
 # Example
 
-```julia
+```jldoctest
 using Oceananigans
-using Oceananigans.Models: AverageBoundaryFlux
+using Oceananigans.Models: BoundaryAdjacentMean
 
-# Create boundary conditions with AverageBoundaryFlux
-u_bcs = FieldBoundaryConditions(east = OpenBoundaryCondition(AverageBoundaryFlux(:east)))
+# Create boundary conditions with BoundaryAdjacentMean
+u_bcs = FieldBoundaryConditions(east = OpenBoundaryCondition(BoundaryAdjacentMean()))
 
-# The AverageBoundaryFlux is fully initialized during model construction
+# The BoundaryAdjacentMean is fully initialized during model construction
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs,))
+model = NonhydrostaticModel(; grid, boundary_conditions=(; u=u_bcs))
 ```
 """
-struct AverageBoundaryFlux{S, F, A}
-    side :: S   # Val{:east}, etc.
-    flux :: F   # Field{Nothing, Nothing, Nothing} for storing result (nothing before regularization)
-    area :: A   # Pre-computed total boundary area (nothing before regularization)
-end
-
-# User-facing constructor: creates unregularized placeholder
-AverageBoundaryFlux(side::Symbol) = AverageBoundaryFlux(Val(side), nothing, nothing)
+BoundaryAdjacentMean(side::Symbol) = BoundaryAdjacentMean(Val(side), nothing, nothing)
 
 # For Adapt (GPU transfer)
-Adapt.adapt_structure(to, abf::AverageBoundaryFlux) =
-    AverageBoundaryFlux(abf.side, adapt(to, abf.flux), abf.area)
+Adapt.adapt_structure(to, abf::BoundaryAdjacentMean) =
+    BoundaryAdjacentMean(abf.side, adapt(to, abf.mean), abf.area)
 
-Base.show(io::IO, abf::AverageBoundaryFlux) = print(io, summary(abf))
+Base.show(io::IO, abf::BoundaryAdjacentMean) = print(io, summary(abf))
 
-function Base.summary(abf::AverageBoundaryFlux{Val{S}}) where S
-    if isnothing(abf.flux)
-        return "AverageBoundaryFlux(:$S) (unregularized)"
+function Base.summary(abf::BoundaryAdjacentMean{Val{S}}) where S
+    if isnothing(abf.mean)
+        return "BoundaryAdjacentMean(:$S) (unregularized)"
     else
-        return "AverageBoundaryFlux(:$S): $(@allowscalar first(abf.flux))"
+        return "BoundaryAdjacentMean(:$S): $(@allowscalar first(abf.mean))"
     end
 end
 
 # For boundary condition value access
-@inline getbc(abf::AverageBoundaryFlux, args...) = @allowscalar first(abf.flux)
+@inline getbc(abf::BoundaryAdjacentMean, args...) = @allowscalar first(abf.mean)
 
 #####
 ##### Regularization: build full object during model construction
 #####
 
-is_regularized(abf::AverageBoundaryFlux) = !isnothing(abf.flux)
+is_regularized(abf::BoundaryAdjacentMean) = !isnothing(abf.mean)
 
-function regularize_boundary_condition(abf::AverageBoundaryFlux,
+function regularize_boundary_condition(abf::BoundaryAdjacentMean,
                                        grid, loc, dim, Side, field_names)
 
     # If already regularized, return as-is
     is_regularized(abf) && return abf
 
-    flux = Field{Nothing, Nothing, Nothing}(grid)
+    mean = Field{Nothing, Nothing, Nothing}(grid)
 
     # Pre-compute total boundary area
     i, j, k = boundary_view_indices(abf.side, grid)
@@ -88,7 +83,7 @@ function regularize_boundary_condition(abf::AverageBoundaryFlux,
     An_field = Field(An_operation, indices=(i, j, k))
     area = sum(An_field)
 
-    return AverageBoundaryFlux(abf.side, flux, area)
+    return BoundaryAdjacentMean(abf.side, mean, area)
 end
 
 #####
@@ -115,9 +110,9 @@ end
 ##### Compute the boundary average
 #####
 
-const OpenBC_ABF = BoundaryCondition{<:Open, <:AverageBoundaryFlux}
+const OpenBCBAM = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
 
-@inline function update_boundary_condition!(bc::OpenBC_ABF, val_side, u, model)
+@inline function update_boundary_condition!(bc::OpenBCBAM, val_side, u, model)
     abf = bc.condition
     grid = u.grid
 
@@ -129,10 +124,10 @@ const OpenBC_ABF = BoundaryCondition{<:Open, <:AverageBoundaryFlux}
     An = boundary_area_metric(abf.side)
 
     # Compute area-weighted sum: ∫u dA
-    sum!(abf.flux, u_boundary * An)
+    sum!(abf.mean, u_boundary * An)
 
     # Divide by pre-computed area to get average
-    @allowscalar abf.flux[1, 1, 1] /= abf.area
+    @allowscalar abf.mean[1, 1, 1] /= abf.area
 
     return nothing
 end
