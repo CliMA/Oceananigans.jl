@@ -181,7 +181,7 @@ function time_step!(model::LorenzModel, Δt; callbacks = ())
     dz = x * y - β * z
 
     state = (x = x + Δt * dx,
-             y = y + Δt * dy
+             y = y + Δt * dy,
              z = z + Δt * dz)
 
     model.state = state
