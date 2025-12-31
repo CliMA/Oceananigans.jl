@@ -356,4 +356,54 @@ end
         @test all(c.data[1:10, 0,  1:10] .== 2 * mean(c.data[1:10, 1,  1:10]) .- c.data[1:10, 1,  1:10])
         @test all(c.data[1:10, 11, 1:10] .== 2 * mean(c.data[1:10, 10, 1:10]) .- c.data[1:10, 10, 1:10])
     end
+
+    @testset "BoundaryAdjacentMean" begin
+        @info "  Testing BoundaryAdjacentMean..."
+
+        using Oceananigans.Models: BoundaryAdjacentMean
+        using Oceananigans.BoundaryConditions: regularize_boundary_condition, update_boundary_condition!
+
+        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+        # Test unregularized construction
+        bam = BoundaryAdjacentMean(:east)
+        @test bam.side == Val(:east)
+        @test isnothing(bam.flux)
+        @test isnothing(bam.area)
+
+        # Test regularization
+        loc = (Face, Center, Center)
+        bam_reg = regularize_boundary_condition(bam, grid, loc, 1, nothing, nothing)
+        @test bam_reg.side == Val(:east)
+        @test !isnothing(bam_reg.flux)
+        @test bam_reg.area ≈ 1.0  # 1x1 boundary area
+
+        # Test with constant field
+        bc = OpenBoundaryCondition(bam_reg)
+        u = Field{Face, Center, Center}(grid)
+        set!(u, 1.0)
+        update_boundary_condition!(bc, Val(:east), u, nothing)
+        @test first(bam_reg.flux) ≈ 1.0
+
+        # Test with varying field (u = x)
+        set!(u, (x, y, z) -> x)
+        update_boundary_condition!(bc, Val(:east), u, nothing)
+        @test first(bam_reg.flux) ≈ 0.75  # East boundary at x = 0.75 for Face field
+
+        # Test getbc
+        @test getbc(bam_reg) ≈ 0.75
+
+        # Test west boundary
+        bam_west = BoundaryAdjacentMean(:west)
+        bam_west_reg = regularize_boundary_condition(bam_west, grid, loc, 1, nothing, nothing)
+        bc_west = OpenBoundaryCondition(bam_west_reg)
+        update_boundary_condition!(bc_west, Val(:west), u, nothing)
+        @test first(bam_west_reg.flux) ≈ 0.0  # West boundary at x = 0
+
+        # Test all sides can be constructed
+        for side in (:west, :east, :south, :north, :bottom, :top)
+            bam_side = BoundaryAdjacentMean(side)
+            @test bam_side.side == Val(side)
+        end
+    end
 end
