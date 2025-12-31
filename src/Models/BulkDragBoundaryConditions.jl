@@ -20,7 +20,7 @@ module BulkDragBoundaryConditions
 export BulkDragFunction,
        XDirectionBulkDragFunction,
        YDirectionBulkDragFunction,
-       BulkBottomDrag,
+       BulkDrag,
        BulkDragBoundaryCondition
 
 using Oceananigans.Architectures: Architectures, on_architecture
@@ -202,7 +202,7 @@ regularize_boundary_condition(df::BulkDragFunction, grid, loc, dim, Side, field_
 #####
 
 """
-    BulkBottomDrag(; direction = nothing,
+    BulkDrag(; direction = nothing,
                      coefficient = 1e-3,
                      background_velocities = (0, 0))
 
@@ -218,7 +218,7 @@ where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞
 horizontal speed including background velocities, and `(U∞, V∞)` are the background velocities.
 
 !!! note "Why 'bottom' drag?"
-    This is specifically called `BulkBottomDrag` because it assumes vertical velocity `w = 0`
+    This is specifically called `BulkDrag` because it assumes vertical velocity `w = 0`
     at the boundary (the no-penetration condition at the bottom) and only uses horizontal
     velocities `(u, v)` to compute the drag magnitude. This is appropriate for bottom boundaries
     (ocean floor, immersed topography) but not for lateral or top boundaries where `w ≠ 0`.
@@ -242,7 +242,7 @@ The direction is automatically inferred from the field location:
 ```jldoctest
 using Oceananigans
 
-drag = BulkBottomDrag(coefficient=1e-3)
+drag = BulkDrag(coefficient=1e-3)
 u_bcs = FieldBoundaryConditions(bottom=drag)
 v_bcs = FieldBoundaryConditions(bottom=drag)
 
@@ -271,7 +271,7 @@ underlying_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -0.5))
 
 # Apply to domain bottom and only the bottom facet of immersed boundaries
-drag = BulkBottomDrag(coefficient=1e-3)
+drag = BulkDrag(coefficient=1e-3)
 u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 
@@ -290,7 +290,7 @@ ImmersedBoundaryCondition:
 └── top: Nothing
 ```
 """
-function BulkBottomDrag(; kwargs...)
+function BulkDrag(; kwargs...)
     df = BulkDragFunction(; kwargs...)
     return BoundaryCondition(Flux(), df)
 end

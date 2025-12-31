@@ -115,11 +115,11 @@ b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 # quadratic drag proportional to the total velocity (including the background velocity):
 
 V∞ = 0.1 # m s⁻¹
-z₀ = 0.1 # m (roughness length)
+ℓ = 0.1 # m (roughness length)
 ϰ = 0.4  # von Karman constant
 
 z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
-cᴰ = (ϰ / log(z₁ / z₀))^2 # Drag coefficient
+cᴰ = (ϰ / log(z₁ / ℓ))^2 # Drag coefficient
 
 drag_bc = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞))
 

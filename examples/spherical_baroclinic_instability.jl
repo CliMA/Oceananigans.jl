@@ -15,7 +15,7 @@
 # ocean modeling.
 #
 # This example also demonstrates:
-# - Using [`BulkBottomDrag`](@ref) for quadratic bottom drag boundary conditions
+# - Using [`BulkDrag`](@ref) for quadratic bottom drag boundary conditions
 # - Applying drag only to the bottom facet of immersed boundaries
 #
 # ## Install dependencies
@@ -127,7 +127,7 @@ function build_model(grid)
     ## Apply bottom drag to both domain boundaries and immersed boundaries.
     ## For immersed boundaries, use ImmersedBoundaryCondition to apply drag
     ## only to the bottom facet.
-    drag = BulkBottomDrag(coefficient=2e-3)
+    drag = BulkDrag(coefficient=2e-3)
     u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
     v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
     boundary_conditions = (; u=u_bcs, v=v_bcs)
