@@ -9,6 +9,7 @@ using Adapt
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields
+import Oceananigans.Simulations: timestepper
 
 #####
 ##### ShallowWaterModel definition

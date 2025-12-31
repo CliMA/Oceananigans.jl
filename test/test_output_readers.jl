@@ -410,6 +410,83 @@ function test_field_time_series_reductions(filepath3d, Nt)
     return nothing
 end
 
+function test_field_time_series_reductions_with_dims()
+    grid = RectilinearGrid(size=(4, 5, 6), extent=(1, 1, 1))
+    times = [1.0, 2.0, 3.0]
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+
+    # Fill with known data: value = i + j + k + 10*n
+    for n in 1:length(times)
+        set!(fts[n], (x, y, z) -> x + y + z + 10 * n)
+    end
+
+    # Test dims=1 (reduce over x)
+    fts1 = sum(fts; dims=1)
+    @test fts1 isa FieldTimeSeries
+    @test location(fts1) == (Nothing, Center, Center)
+    @test size(fts1) == (1, 5, 6, 3)
+    @test length(fts1.times) == 3
+
+    # Test dims=2 (reduce over y)
+    fts2 = sum(fts; dims=2)
+    @test fts2 isa FieldTimeSeries
+    @test location(fts2) == (Center, Nothing, Center)
+    @test size(fts2) == (4, 1, 6, 3)
+    @test length(fts2.times) == 3
+
+    # Test dims=3 (reduce over z)
+    fts3 = sum(fts; dims=3)
+    @test fts3 isa FieldTimeSeries
+    @test location(fts3) == (Center, Center, Nothing)
+    @test size(fts3) == (4, 5, 1, 3)
+    @test length(fts3.times) == 3
+
+    # Test dims=4 (reduce over time)
+    fts4 = sum(fts; dims=4)
+    @test fts4 isa FieldTimeSeries
+    @test location(fts4) == (Center, Center, Center)
+    @test size(fts4) == (4, 5, 6, 1)
+    @test length(fts4.times) == 1
+    @test fts4.times[1] ≈ mean(times)
+
+    # Test correctness of dims=4 sum
+    expected_sum = zeros(4, 5, 6)
+    for n in 1:length(times)
+        expected_sum .+= interior(fts[n])
+    end
+    @test interior(fts4[1]) ≈ expected_sum
+
+    # Test mean with dims=4
+    fts4_mean = mean(fts; dims=4)
+    @test fts4_mean isa FieldTimeSeries
+    @test size(fts4_mean) == (4, 5, 6, 1)
+    @test interior(fts4_mean[1]) ≈ expected_sum ./ length(times)
+
+    # Test combined dims=(1, 4) (reduce over x and time)
+    fts14 = sum(fts; dims=(1, 4))
+    @test fts14 isa FieldTimeSeries
+    @test location(fts14) == (Nothing, Center, Center)
+    @test size(fts14) == (1, 5, 6, 1)
+    @test length(fts14.times) == 1
+
+    # Test combined dims=(1, 2, 4) (reduce over x, y, and time)
+    fts124 = sum(fts; dims=(1, 2, 4))
+    @test fts124 isa FieldTimeSeries
+    @test location(fts124) == (Nothing, Nothing, Center)
+    @test size(fts124) == (1, 1, 6, 1)
+
+    # Test dims=: (reduce over all dimensions, returns a scalar)
+    total_sum = sum(fts; dims=:)
+    expected_total = sum(sum(fts[n]) for n in 1:length(times))
+    @test total_sum ≈ expected_total
+
+    total_mean = mean(fts; dims=:)
+    expected_mean = expected_total / (4 * 5 * 6 * 3)
+    @test total_mean ≈ expected_mean
+
+    return nothing
+end
+
 function test_chunked_abstraction(filepath, name)
     fts = FieldTimeSeries(filepath, name)
     fts_chunked = FieldTimeSeries(filepath, name; backend=InMemory(2), time_indexing=Cyclical())
@@ -617,6 +694,11 @@ end
             @info "  Testing FieldTimeSeries{InMemory} reductions..."
             test_field_time_series_reductions(filepath3d, Nt)
         end
+    end
+
+    @testset "FieldTimeSeries reductions with dims" begin
+        @info "  Testing FieldTimeSeries reductions with dims..."
+        test_field_time_series_reductions_with_dims()
     end
 
     @testset "Test chunked abstraction" begin
