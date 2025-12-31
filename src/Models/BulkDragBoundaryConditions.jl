@@ -10,6 +10,8 @@ a quadratic drag:
 
 ```math
 τᵘ = - Cᴰ |U| u
+```
+
 The boundary-normal velocity component is zero due to the no-penetration condition.
 """
 module BulkDragBoundaryConditions
@@ -102,37 +104,6 @@ struct BulkDragFunction{D, S, M, F, C, U}
     background_velocities :: U  # (U∞, V∞, W∞)
 end
 
-"""
-    BulkDragFunction([formulation=QuadraticFormulation()]; coefficient, kwargs...)
-
-Create a bulk drag function for computing velocity fluxes on any boundary.
-
-With `QuadraticFormulation()` (default), the drag is:
-```math
-τᵘ = - Cᴰ |U + U∞| (u + U∞),
-
-With `LinearFormulation()` (Rayleigh friction), the drag is:
-```math
-τᵘ = - Cᴰ (u + U∞)
-```
-
-where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)² + (w + W∞)²)` is the 
-total 3D speed including background velocities, and `(U∞, V∞, W∞)` are the background velocities.
-The boundary-normal velocity component is zero due to the no-penetration condition at the boundary.
-
-# Positional Arguments
-
-- `formulation`: The drag formulation, either `QuadraticFormulation()` (default) or `LinearFormulation()`.
-
-# Keyword Arguments
-
-- `coefficient`: The drag coefficient (required).
-- `direction`: The direction of the velocity component (`XDirection()`, `YDirection()`, or
-               `ZDirection()`). If `nothing`, the direction is inferred from the field location 
-               during boundary condition regularization.
-- `background_velocities`: Background velocities as a tuple `(U∞, V∞, W∞)` (default: `(0, 0, 0)`).
-  These are added to the prognostic velocities when computing both the speed and the drag.
-"""
 function BulkDragFunction(formulation=QuadraticFormulation(); coefficient,
                           direction = nothing,
                           background_velocities = (0, 0, 0))
@@ -359,9 +330,20 @@ end
 #####
 
 """
-    BulkDrag([formulation=QuadraticFormulation()]; coefficient, kwargs...)
+    BulkDrag(formulation=QuadraticFormulation(); coefficient, background_velocities=(0, 0, 0))
 
 Create a `FluxBoundaryCondition` for velocity drag on any boundary.
+
+# Positional Arguments
+
+- `formulation`: The drag formulation, either `QuadraticFormulation()` (default) or `LinearFormulation()`.
+
+# Keyword Arguments
+
+- `coefficient`: The drag coefficient (required).
+- `background_velocities`: Background velocities as a tuple `(U∞, V∞, W∞)` (default: `(0, 0, 0)`).
+  These are added to the prognostic velocities when computing both the speed and the drag.
+
 
 With `QuadraticFormulation()` (default), the drag is:
 ```math
