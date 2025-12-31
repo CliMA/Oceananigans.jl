@@ -1,7 +1,7 @@
 """
     BulkDragBoundaryConditions
 
-Module for implementing quadratic drag boundary conditions for velocity fields on
+Module for implementing drag boundary conditions for velocity fields on
 all domain boundaries (west, east, south, north, bottom, top) and immersed boundaries.
 
 Provides `BulkDragFunction` for computing momentum fluxes using bulk aerodynamic
