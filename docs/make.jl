@@ -124,7 +124,7 @@ model_pages = [
 
 simulation_pages = [
     "Overview" => "simulations/simulations_overview.md",
-    # "Callbacks" => "simulations/callbacks.md",
+    "Callbacks" => "simulations/callbacks.md",
     "Schedules" => "simulations/schedules.md",
     "Output writers" => "simulations/output_writers.md",
     "Checkpointing" => "simulations/checkpointing.md",
@@ -169,6 +169,17 @@ appendix_pages = [
     "Function index" => "appendix/function_index.md"
 ]
 
+root = pkgdir(Oceananigans)
+agents_src = joinpath(root, "AGENTS.md")
+agents_dst = joinpath(root, "docs", "src", "developer_docs", "AGENTS.md")
+cp(agents_src, agents_dst; force=true)
+
+developer_pages = [
+    "Contributor's guide" => "developer_docs/contributing.md",
+    "Model interface" => "developer_docs/model_interface.md",
+    "Rules for agent-assisted development" => "developer_docs/AGENTS.md",
+]
+
 pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
@@ -186,7 +197,7 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
+    "For developers" => developer_pages,
     "Gallery" => "gallery.md",
     "References" => "references.md",
     "Appendix" => appendix_pages
