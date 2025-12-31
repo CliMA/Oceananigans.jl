@@ -107,7 +107,8 @@ Keyword arguments
                                     in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
                                     vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
                                     only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
-                                    is not computed.
+                                    is not computed. Note: for grids with periodic vertical topology, the hydrostatic pressure anomaly 
+                                    is set to `nothing` by default.
   - `closure_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
@@ -160,7 +161,13 @@ function NonhydrostaticModel(; grid,
     if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
         # Manage treatment of the hydrostatic pressure anomaly:
 
-        if !isnothing(buoyancy)
+        # Check if the grid is periodic in the vertical direction
+        TZ = topology(grid, 3)
+
+        if TZ === Periodic
+            # If vertical direction is periodic, don't use hydrostatic pressure anomaly
+            hydrostatic_pressure_anomaly = nothing
+        elseif !isnothing(buoyancy)
             # Separate the hydrostatic pressure anomaly
             # from the nonhydrostatic pressure contribution.
             # See https://github.com/CliMA/Oceananigans.jl/issues/3677
@@ -278,6 +285,7 @@ function NonhydrostaticModel(; grid,
 end
 
 architecture(model::NonhydrostaticModel) = model.architecture
+timestepper(model::NonhydrostaticModel) = model.timestepper
 
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz

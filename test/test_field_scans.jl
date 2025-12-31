@@ -3,9 +3,8 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
+using Oceananigans.Fields: CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Grids: halo_size
 
 trilinear(x, y, z) = x + y + z
 interior_array(a, i, j, k) = Array(interior(a, i, j, k))
@@ -87,24 +86,22 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test Field(Average(η)) == Field(Average(η, dims=(1, 2, 3)))
                 @test Field(Integral(η)) == Field(Integral(η, dims=(1, 2, 3)))
 
-                @compute Tcx = Field(CumulativeIntegral(T, dims=1))
-                @compute Tcy = Field(CumulativeIntegral(T, dims=2))
+                # CumulativeIntegral is only supported for Bounded dimensions
+                # x and y are Periodic, so only test z direction
+                @test_throws ArgumentError CumulativeIntegral(T, dims=1)
+                @test_throws ArgumentError CumulativeIntegral(T, dims=2)
+                @test_throws ArgumentError CumulativeIntegral(w, dims=1)
+                @test_throws ArgumentError CumulativeIntegral(w, dims=2)
+                @test_throws ArgumentError CumulativeIntegral(ζ, dims=1)
+                @test_throws ArgumentError CumulativeIntegral(ζ, dims=2)
+
+                # z is Bounded, so cumulative integrals work
                 @compute Tcz = Field(CumulativeIntegral(T, dims=3))
-                @compute wcx = Field(CumulativeIntegral(w, dims=1))
-                @compute wcy = Field(CumulativeIntegral(w, dims=2))
                 @compute wcz = Field(CumulativeIntegral(w, dims=3))
-                @compute ζcx = Field(CumulativeIntegral(ζ, dims=1))
-                @compute ζcy = Field(CumulativeIntegral(ζ, dims=2))
                 @compute ζcz = Field(CumulativeIntegral(ζ, dims=3))
 
-                @compute Trx = Field(CumulativeIntegral(T, dims=1, reverse=true))
-                @compute Try = Field(CumulativeIntegral(T, dims=2, reverse=true))
                 @compute Trz = Field(CumulativeIntegral(T, dims=3, reverse=true))
-                @compute wrx = Field(CumulativeIntegral(w, dims=1, reverse=true))
-                @compute wry = Field(CumulativeIntegral(w, dims=2, reverse=true))
                 @compute wrz = Field(CumulativeIntegral(w, dims=3, reverse=true))
-                @compute ζrx = Field(CumulativeIntegral(ζ, dims=1, reverse=true))
-                @compute ζry = Field(CumulativeIntegral(ζ, dims=2, reverse=true))
                 @compute ζrz = Field(CumulativeIntegral(ζ, dims=3, reverse=true))
 
                 if name ∈ (:regular_grid, :xy_regular_grid)
@@ -125,9 +122,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                     @test f.operand isa Reduction
                 end
 
-                for f in (Tcx, Tcy, Tcz, Trx, Try, Trz,
-                          wcx, wcy, wcz, wrx, wry, wrz,
-                          ζcx, ζcy, ζcz, ζrx, ζry, ζrz)
+                for f in (Tcz, Trz, wcz, wrz, ζcz, ζrz)
                     @test f.operand isa Accumulation
                 end
 
@@ -141,11 +136,11 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                     @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
-                for f in (Tcx, Tcy, Tcz, wcx, wcy, wcz, ζcx, ζcy, ζcz)
+                for f in (Tcz, wcz, ζcz)
                     @test f.operand.scan! === cumsum!
                 end
 
-                for f in (Trx, Try, Trz, wrx, wry, wrz, ζrx, ζry, ζrz)
+                for f in (Trz, wrz, ζrz)
                     @test f.operand.scan! === reverse_cumsum!
                 end
 
@@ -195,25 +190,22 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 end
 
                 # T(x, y, z) = x + y + z
-                # T(0.5, 0.5, z) = [1.5, 2.5]
-                @test interior_array(Tcx, :, 1, 1) ≈ [1.5, 4]
-                @test interior_array(Tcy, 1, :, 1) ≈ [1.5, 4]
-                @test interior_array(Tcz, 1, 1, :) ≈ [1.5, 4]
-
-                @test interior_array(Trx, :, 1, 1) ≈ [4, 2.5]
-                @test interior_array(Try, 1, :, 1) ≈ [4, 2.5]
-                @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5]
+                # T at Center locations in z: T(0.5, 0.5, z_center) with z_center = [0.5, 1.5]
+                # T = [1.5, 2.5], Δz = 1
+                # Tcz is at Face locations in z (3 points for Nz=2 Bounded)
+                # Tcz = [0, T[1]*Δz, T[1]*Δz + T[2]*Δz] = [0, 1.5, 4]
+                @test interior_array(Tcz, 1, 1, :) ≈ [0, 1.5, 4]
+                @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5, 0]
 
                 # w(x, y, z) = x + y + z
-                # w(0.5, 0.5, z) = [1, 2, 3]
-                # w(x, 0.5, 0) = w(0.5, y, 0) = [1, 2]
-                @test interior_array(wcx, :, 1, 1) ≈ [1, 3]
-                @test interior_array(wcy, 1, :, 1) ≈ [1, 3]
-                @test interior_array(wcz, 1, 1, :) ≈ [1, 3, 6]
-
-                @test interior_array(wrx, :, 1, 1) ≈ [3, 2]
-                @test interior_array(wry, 1, :, 1) ≈ [3, 2]
-                @test interior_array(wrz, 1, 1, :) ≈ [6, 5, 3]
+                # w at Face locations in z: w(0.5, 0.5, z_face) with z_face = [0, 1, 2]
+                # w = [1, 2, 3], Δz = 1
+                # wcz is at Center locations in z (2 points for Nz=2 Bounded)
+                # wcz = [0, w[1]*Δz] = [0, 1]
+                @test interior_array(wcz, 1, 1, :) ≈ [0, 1]
+                # wrz (reverse): starts from end, accumulates backwards
+                # wrz = [w[2]*Δz, 0] = [2, 0]
+                @test interior_array(wrz, 1, 1, :) ≈ [2, 0]
 
                 @compute Txyz = @allowscalar Field(Average(T, condition=T.>3))
                 @compute Txy = @allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
@@ -231,24 +223,15 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test interior_array(wxy, 1, 1, :) ≈ [3, 10/3, 4]
                 @test interior_array(wx, 1, :, :) ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
 
-                # A bit more for cumulative integral
-                @compute T2cx = Field(CumulativeIntegral(2 * T, dims=1))
-                @compute T2cy = Field(CumulativeIntegral(2 * T, dims=2))
+                # A bit more for cumulative integral (only z direction since x, y are Periodic)
                 @compute T2cz = Field(CumulativeIntegral(2 * T, dims=3))
-
-                @compute T2rx = Field(CumulativeIntegral(2 * T, dims=1, reverse=true))
-                @compute T2ry = Field(CumulativeIntegral(2 * T, dims=2, reverse=true))
                 @compute T2rz = Field(CumulativeIntegral(2 * T, dims=3, reverse=true))
 
                 # T(x, y, z) = x + y + z
-                # 2 * T(0.5, 0.5, z) = [3, 5]
-                @test interior_array(T2cx, :, 1, 1) ≈ [3, 8]
-                @test interior_array(T2cy, 1, :, 1) ≈ [3, 8]
-                @test interior_array(T2cz, 1, 1, :) ≈ [3, 8]
-
-                @test interior_array(T2rx, :, 1, 1) ≈ [8, 5]
-                @test interior_array(T2ry, 1, :, 1) ≈ [8, 5]
-                @test interior_array(T2rz, 1, 1, :) ≈ [8, 5]
+                # 2 * T(0.5, 0.5, z) at z_center = [0.5, 1.5] gives [3, 5], Δz = 1
+                # T2cz = [0, 3*1, 3*1 + 5*1] = [0, 3, 8]
+                @test interior_array(T2cz, 1, 1, :) ≈ [0, 3, 8]
+                @test interior_array(T2rz, 1, 1, :) ≈ [8, 5, 0]
             end
 
             # Test whether a race condition gets hit for averages over large fields

@@ -34,7 +34,7 @@ Nz = 80
 
 save_fields_interval = 7days
 stop_time = 5years
-stop_time = 70 days
+stop_time = 70days
 Δt₀ = 5minutes
 
 
@@ -179,7 +179,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     #closure = (horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity),
                                     closure = (catke, diffusive_closure..., gent_mcwilliams_diffusivity),
-                                    tracers = (:b, :e, :c),
+                                    tracers = (:b, :c),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb))
 

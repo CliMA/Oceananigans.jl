@@ -19,6 +19,7 @@ using DocStringExtensions: TYPEDFIELDS
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Models: materialize_free_surface
+import Oceananigans.Simulations: timestepper
 using Oceananigans.Architectures: Architectures, architecture
 
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
