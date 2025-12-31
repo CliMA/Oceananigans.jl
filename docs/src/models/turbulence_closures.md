@@ -187,6 +187,23 @@ ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(ba
 ocean turbulence, as described by [Wagner25catke](@citet).
 It uses a prognostic equation for turbulent kinetic energy (the `:e` tracer).
 
+The `minimum_tke` keyword argument (default: `1e-9`) produces background tracer diffusivity
+
+```math
+\kappa_{bg} \approx C^{hi}_c \frac{e^{min}}{N}
+```
+
+and background viscosity
+
+```math
+\nu_{bg} \approx C^{hi}_u \frac{e^{min}}{N}
+```
+
+where ``N`` is the buoyancy frequency.
+By default, ``C^{hi}_c = 0.098`` and ``C^{hi}_u = 0.242`` are parameters of `CATKEMixingLength`.
+This feature may be used to model background mixing due to breaking internal waves
+[Wagner25catke](@citep).
+
 !!! note "HydrostaticFreeSurfaceModel only"
     `CATKEVerticalDiffusivity` is currently only supported by `HydrostaticFreeSurfaceModel`.
 
