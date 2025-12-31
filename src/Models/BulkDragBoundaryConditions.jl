@@ -28,7 +28,7 @@ export BulkDragFunction,
 using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, Flux,
-                                       West, East, South, North, Bottom, Top
+                                       LeftBoundary, RightBoundary
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
 
 using Adapt: Adapt
@@ -95,9 +95,10 @@ end
 ##### BulkDragFunction for velocity fluxes
 #####
 
-struct BulkDragFunction{D, S, F, C, U}
+struct BulkDragFunction{D, S, M, F, C, U}
     direction :: D              # XDirection, YDirection, or ZDirection
-    side :: S                   # West(), East(), South(), North(), Bottom(), Top(), or nothing
+    side :: S                   # LeftBoundary(), RightBoundary(), or nothing
+    dim :: M                    # Boundary dimension (1, 2, or 3) or nothing
     formulation :: F            # LinearFormulation() or QuadraticFormulation()
     coefficient :: C
     background_velocities :: U  # (U∞, V∞, W∞)
@@ -138,7 +139,8 @@ The boundary-normal velocity component is zero due to the no-penetration conditi
 function BulkDragFunction(formulation=QuadraticFormulation(); coefficient,
                           direction = nothing,
                           background_velocities = (0, 0, 0))
-    return BulkDragFunction(direction, nothing, formulation, coefficient, background_velocities)
+    # side and dim are set during regularization
+    return BulkDragFunction(direction, nothing, nothing, formulation, coefficient, background_velocities)
 end
 
 const XDirectionBulkDragFunction{S} = BulkDragFunction{<:XDirection, S} where S
@@ -148,6 +150,7 @@ const ZDirectionBulkDragFunction{S} = BulkDragFunction{<:ZDirection, S} where S
 Adapt.adapt_structure(to, df::BulkDragFunction) =
     BulkDragFunction(Adapt.adapt(to, df.direction),
                      Adapt.adapt(to, df.side),
+                     Adapt.adapt(to, df.dim),
                      Adapt.adapt(to, df.formulation),
                      Adapt.adapt(to, df.coefficient),
                      Adapt.adapt(to, df.background_velocities))
@@ -155,6 +158,7 @@ Adapt.adapt_structure(to, df::BulkDragFunction) =
 Architectures.on_architecture(to, df::BulkDragFunction) =
     BulkDragFunction(on_architecture(to, df.direction),
                      on_architecture(to, df.side),
+                     on_architecture(to, df.dim),
                      on_architecture(to, df.formulation),
                      on_architecture(to, df.coefficient),
                      on_architecture(to, df.background_velocities))
@@ -221,29 +225,28 @@ end
 ##### Helper for boundary index
 #####
 
-@inline boundary_index(::West,   N) = 1
-@inline boundary_index(::East,   N) = N
-@inline boundary_index(::South,  N) = 1
-@inline boundary_index(::North,  N) = N
-@inline boundary_index(::Bottom, N) = 1
-@inline boundary_index(::Top,    N) = N
+@inline boundary_index(::LeftBoundary,  N) = 1
+@inline boundary_index(::RightBoundary, N) = N
 
 #####
 ##### Domain boundary getbc methods (2-index signatures)
 #####
 
+# Type aliases for dimension dispatch
+const XNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{1}} where D  # dim=1: west/east
+const YNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{2}} where D  # dim=2: south/north  
+const ZNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{3}} where D  # dim=3: bottom/top
+
 # z-normal boundaries (bottom/top): getbc(df, i, j, grid, ...)
 # Applies to u-velocity (XDirection) and v-velocity (YDirection)
-const ZNormalSide = Union{Bottom, Top}
-
-@inline function BoundaryConditions.getbc(df::XDBDF{<:ZNormalSide}, i::Integer, j::Integer, 
+@inline function BoundaryConditions.getbc(df::ZNormalBulkDragFunction{<:XDirection}, i::Integer, j::Integer, 
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     k = boundary_index(df.side, grid.Nz)
     return _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
-@inline function BoundaryConditions.getbc(df::YDBDF{<:ZNormalSide}, i::Integer, j::Integer, 
+@inline function BoundaryConditions.getbc(df::ZNormalBulkDragFunction{<:YDirection}, i::Integer, j::Integer, 
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     k = boundary_index(df.side, grid.Nz)
@@ -252,16 +255,14 @@ end
 
 # x-normal boundaries (west/east): getbc(df, j, k, grid, ...)
 # Applies to v-velocity (YDirection) and w-velocity (ZDirection)
-const XNormalSide = Union{West, East}
-
-@inline function BoundaryConditions.getbc(df::YDBDF{<:XNormalSide}, j::Integer, k::Integer,
+@inline function BoundaryConditions.getbc(df::XNormalBulkDragFunction{<:YDirection}, j::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     i = boundary_index(df.side, grid.Nx)
     return _y_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
-@inline function BoundaryConditions.getbc(df::ZDBDF{<:XNormalSide}, j::Integer, k::Integer,
+@inline function BoundaryConditions.getbc(df::XNormalBulkDragFunction{<:ZDirection}, j::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     i = boundary_index(df.side, grid.Nx)
@@ -270,16 +271,14 @@ end
 
 # y-normal boundaries (south/north): getbc(df, i, k, grid, ...)
 # Applies to u-velocity (XDirection) and w-velocity (ZDirection)
-const YNormalSide = Union{South, North}
-
-@inline function BoundaryConditions.getbc(df::XDBDF{<:YNormalSide}, i::Integer, k::Integer,
+@inline function BoundaryConditions.getbc(df::YNormalBulkDragFunction{<:XDirection}, i::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     j = boundary_index(df.side, grid.Ny)
     return _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
-@inline function BoundaryConditions.getbc(df::ZDBDF{<:YNormalSide}, i::Integer, k::Integer,
+@inline function BoundaryConditions.getbc(df::YNormalBulkDragFunction{<:ZDirection}, i::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     j = boundary_index(df.side, grid.Ny)
@@ -324,12 +323,17 @@ const BulkDragBoundaryCondition = BoundaryCondition{<:Flux, <:BulkDragFunction}
 
 Regularize a `BulkDragFunction` by:
 1. Inferring the direction from the field location if not specified
-2. Setting the boundary side from the regularization context
+2. Setting the boundary side and dimension from the regularization context
 
 The direction is inferred as follows:
 - If `loc[1] == Face`, the field is a u-velocity → `XDirection()`
 - If `loc[2] == Face`, the field is a v-velocity → `YDirection()`
 - If `loc[3] == Face`, the field is a w-velocity → `ZDirection()`
+
+The dimension `dim` indicates which axis the boundary is normal to:
+- `dim=1`: x-normal boundary (west/east)
+- `dim=2`: y-normal boundary (south/north)
+- `dim=3`: z-normal boundary (bottom/top)
 """
 function BoundaryConditions.regularize_boundary_condition(df::BulkDragFunction{Nothing}, grid, loc, dim, Side, field_names)
     # Infer direction from field location
@@ -343,13 +347,14 @@ function BoundaryConditions.regularize_boundary_condition(df::BulkDragFunction{N
         error("Cannot infer BulkDragFunction direction for field at location $loc. " *
               "Please specify direction explicitly.")
     end
-    # Side() instantiates the Side type (e.g., Bottom → Bottom())
-    return BulkDragFunction(direction, Side(), df.formulation, df.coefficient, df.background_velocities)
+    # Side() instantiates the Side type (e.g., LeftBoundary → LeftBoundary())
+    # Val{dim} is used for type dispatch in getbc methods
+    return BulkDragFunction(direction, Side(), Val{dim}(), df.formulation, df.coefficient, df.background_velocities)
 end
 
-# Direction already specified, just set the Side
+# Direction already specified, just set the Side and dim
 function BoundaryConditions.regularize_boundary_condition(df::BulkDragFunction, grid, loc, dim, Side, field_names)
-    return BulkDragFunction(df.direction, Side(), df.formulation, df.coefficient, df.background_velocities)
+    return BulkDragFunction(df.direction, Side(), Val{dim}(), df.formulation, df.coefficient, df.background_velocities)
 end
 
 #####
