@@ -23,6 +23,7 @@ import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
+import Oceananigans.OutputWriters: default_included_properties
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: reset!
 
@@ -214,6 +215,8 @@ function required_checkpoint_properties(model::OceananigansModels)
     end
     return properties
 end
+
+default_included_properties(::OceananigansModels) = [:grid]
 
 # Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")

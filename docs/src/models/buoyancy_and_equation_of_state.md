@@ -182,7 +182,7 @@ SeawaterBuoyancy{Float64}:
 └── equation_of_state: LinearEquationOfState(thermal_expansion=0.002, haline_contraction=0.0005)
 ```
 
-### Idealized nonlinear equations of state
+### [Idealized nonlinear equations of state](@id idealized_nonlinear_eos)
 
 Instead of a linear equation of state, six idealized (second-order) nonlinear equations of state
 as described by [Roquet15Idealized](@citet) may be used. These equations of state are provided
