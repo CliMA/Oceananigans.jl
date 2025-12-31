@@ -121,7 +121,7 @@ V∞ = 0.1 # m s⁻¹
 z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
 cᴰ = (ϰ / log(z₁ / ℓ))^2 # Drag coefficient
 
-drag_bc = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞))
+drag_bc = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞, 0))
 
 u_bcs = FieldBoundaryConditions(bottom=drag_bc)
 v_bcs = FieldBoundaryConditions(bottom=drag_bc)
