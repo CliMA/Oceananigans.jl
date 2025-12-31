@@ -33,7 +33,7 @@ clock = Clock(time=0)
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            sefs.η .= 0
+            sefs.displacement .= 0
             GU = Field{Face, Center, Nothing}(grid)
             GV = Field{Center, Face, Nothing}(grid)
 
@@ -42,7 +42,7 @@ clock = Clock(time=0)
                 U, V  = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
 
-                η = sefs.η
+                η = sefs.displacement
                 Δτ = 1.0
 
                 η₀(x, y, z) = sin(x)
