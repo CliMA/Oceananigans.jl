@@ -354,15 +354,12 @@ We initialize the model with a perturbed state and use a `JLD2Writer` to
 save the solution at regular intervals:
 
 ```@example model_interface
-
-# Create a 1D periodic grid
-grid = RectilinearGrid(size=128, x=(0, 32π), topology=(Periodic, Flat, Flat), halo=4)
+grid = RectilinearGrid(size=256, x=(0, 32π), topology=(Periodic, Flat, Flat), halo=4)
 ks_model = KuramotoSivashinskyModel(grid)
 
 # Initialize with a combination of sinusoidal modes
 set!(ks_model.solution, x -> cos(x/16) * (1 + sin(x/16)))
-
-simulation = Simulation(ks_model; Δt=0.1, stop_time=500, verbose=false)
+simulation = Simulation(ks_model; Δt=0.002, stop_time=60)
 
 simulation.output_writers[:solution] = JLD2Writer(ks_model, (; u=ks_model.solution),
                                                   filename = "ks_solution.jld2",
@@ -396,8 +393,8 @@ ylims!(ax, -4, 4)
 # lines! works directly with Field
 lines!(ax, u_n; linewidth=2, color=:royalblue)
 
-record(fig, "ks_animation.mp4", eachindex(times); framerate=30) do i
-    n[] = i
+record(fig, "ks_animation.mp4", eachindex(times); framerate=12) do nn
+    n[] = nn
 end
 nothing # hide
 ```
