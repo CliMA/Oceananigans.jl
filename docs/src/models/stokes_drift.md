@@ -49,7 +49,7 @@ u^S(z) = U^S \exp(2 k z)
 where ``k = 2\pi / \lambda`` is the wavenumber and ``U^S`` is the surface Stokes drift velocity.
 The vertical derivative is ``\partial_z u^S = 2 k U^S \exp(2 k z)``.
 
-```jldoctest stokes
+```jldoctest stokes2D
 using Oceananigans
 
 wavelength = 60  # meters
@@ -72,7 +72,7 @@ UniformStokesDrift{Nothing}:
 Instead of defining global constants, you can pass a `parameters` NamedTuple. When `parameters` is
 provided, the Stokes drift functions are called with the signature `(z, t, parameters)`:
 
-```jldoctest stokes
+```jldoctest stokes2D
 ∂z_uˢ(z, t, p) = 2 * p.k * p.Uˢ * exp(2 * p.k * z)
 stokes_params = (k = 2π / 60, Uˢ = 0.01)
 stokes_drift = UniformStokesDrift(∂z_uˢ = ∂z_uˢ, parameters = stokes_params)
@@ -91,7 +91,7 @@ UniformStokesDrift with parameters (k=0.10472, Uˢ=0.01):
 To include Stokes drift in a [`NonhydrostaticModel`](@ref), pass the `stokes_drift` object as a
 keyword argument:
 
-```jldoctest stokes
+```jldoctest stokes2D
 grid = RectilinearGrid(size = (32, 32, 32), extent = (128, 128, 64))
 ∂z_uˢ(z, t) = 0.01 * exp(z / 10)
 model = NonhydrostaticModel(; grid, stokes_drift = UniformStokesDrift(∂z_uˢ = ∂z_uˢ))
@@ -151,7 +151,7 @@ w^S = -\frac{1}{2k} \partial_\xi A \, \hat{u}^S(z)
 
 The following example sets up such a wave packet:
 
-```jldoctest stokes
+```jldoctest stokes3D
 using Oceananigans.Units
 
 g = 9.81
