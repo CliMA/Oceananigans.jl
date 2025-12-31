@@ -41,19 +41,3 @@ function compare_parent(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))
             name, approx_equal, maximum(abs, v₁), maximum(abs, v₂), max_δ, string(idx.I), string(common_sz))
     return approx_equal
 end
-
-"""
-    compare_single_field(name, f₁, f₂; include_halos=false, rtol=1e-8, atol=sqrt(eps(eltype(f₁))))
-
-Compare two fields, returning `true` if they are approximately equal.
-If `include_halos=true`, compares the full parent arrays (cropped to common overlap).
-Otherwise, compares only the interior.
-"""
-function compare_single_field(name, f₁, f₂; include_halos=false, rtol=1e-8, atol=sqrt(eps(eltype(f₁))))
-    if include_halos
-        return compare_parent(name, f₁, f₂; rtol, atol)
-    else
-        return compare_interior(name, f₁, f₂; rtol, atol)
-    end
-end
-
