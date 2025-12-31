@@ -161,10 +161,10 @@ Modules = [Oceananigans.Models.VarianceDissipationComputations]
 Private = false
 ```
 
-### Bulk drag
+### Bulk drag boundary conditions
 
 ```@autodocs
-Modules = [Oceananigans.Models.BulkDragModule]
+Modules = [Oceananigans.Models.BulkDragBoundaryConditions]
 Private = false
 ```
 
