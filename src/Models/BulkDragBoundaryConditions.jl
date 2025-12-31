@@ -5,13 +5,11 @@ Module for implementing drag boundary conditions for velocity fields on
 all domain boundaries (west, east, south, north, bottom, top) and immersed boundaries.
 
 Provides `BulkDragFunction` for computing momentum fluxes using bulk aerodynamic
-formulas. The drag function computes a quadratic drag on the tangential velocity:
+formulas. The drag function computes a drag on the tangential velocity. For example for
+a quadratic drag:
 
 ```math
 τᵘ = - Cᴰ |U| u
-```
-
-where `Cᴰ` is the drag coefficient and `|U| = √(u² + v² + w²)` is the 3D speed.
 The boundary-normal velocity component is zero due to the no-penetration condition.
 """
 module BulkDragBoundaryConditions
