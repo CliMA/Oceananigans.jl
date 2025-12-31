@@ -267,6 +267,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Reactant correctness (comparing vanilla vs ReactantState)
+    if group == :reactant_correctness || group == :all
+        @testset "Reactant correctness tests" begin
+            include("test_reactant_correctness.jl")
+        end
+    end
+
     # Tests for XESMF extension
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
