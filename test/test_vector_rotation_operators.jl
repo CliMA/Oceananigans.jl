@@ -43,7 +43,7 @@ function test_vector_rotation(grid)
     d = compute!(Field(x₁ * x₂ + y₁ * y₂))
     c = compute!(Field(x₁ * y₂ - y₁ * x₂))
 
-    @info "  Testing the conversion of a vector between to the Intrinsice reference frame on $(summary(grid))"
+    @info "  Testing the conversion of a vector between to the Intrinsic reference frame on $(summary(grid))"
     xᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁)
     yᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁)
     xᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₂, y₂)
