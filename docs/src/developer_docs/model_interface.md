@@ -152,6 +152,7 @@ using Oceananigans.TimeSteppers: Clock, tick!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
 import Oceananigans.TimeSteppers: update_state!, time_step!
+import Oceananigans.Fields: set!
 
 mutable struct LorenzModel{FT, P, S} <: AbstractModel{Nothing, Nothing}
     clock :: Clock{FT}
@@ -164,6 +165,14 @@ function LorenzModel(FT = Float64; σ = 10, ρ = 28, β = 8/3)
     parameters = (; σ=FT(σ), ρ=FT(ρ), β=FT(β))
     state = (; x=zero(FT), y=zero(FT), z=zero(FT))
     return LorenzModel(clock, parameters, state)
+end
+
+function set!(model::LorenzModel{FT}; kw...) where FT
+    x = :x ∈ keys(kw) ? FT(kw[:x]) : model.state.x
+    y = :y ∈ keys(kw) ? FT(kw[:y]) : model.state.y
+    z = :z ∈ keys(kw) ? FT(kw[:z]) : model.state.z
+    model.state = (; x, y, z)
+    return nothing
 end
 
 Base.eltype(::LorenzModel{FT}) where FT = FT
@@ -197,7 +206,8 @@ end
 We set up a [`Callback`](@ref callbacks) to record the trajectory at each time step:
 
 ```@example model_interface
-lorenz = LorenzModel(; x=1)
+lorenz = LorenzModel()
+set!(lorenz, x=1)
 simulation = Simulation(lorenz; Δt=0.01, stop_time=100, verbose=false)
 trajectory = NTuple{3, Float64}[]
 
@@ -340,7 +350,7 @@ end
 
 ### Running a simulation with output
 
-We initialize the model with a perturbed state and use a `JLD2OutputWriter` to
+We initialize the model with a perturbed state and use a `JLD2Writer` to
 save the solution at regular intervals:
 
 ```@example model_interface
@@ -354,10 +364,11 @@ set!(ks_model.solution, x -> cos(x/16) * (1 + sin(x/16)))
 
 simulation = Simulation(ks_model; Δt=0.1, stop_time=500, verbose=false)
 
-simulation.output_writers[:solution] = JLD2OutputWriter(ks_model, (; u=ks_model.solution),
-                                                        filename = "ks_solution.jld2",
-                                                        schedule = TimeInterval(1),
-                                                        overwrite_existing = true)
+simulation.output_writers[:solution] = JLD2Writer(ks_model, (; u=ks_model.solution),
+                                                  filename = "ks_solution.jld2",
+                                                  schedule = TimeInterval(1),
+                                                  overwrite_existing = true,
+                                                  including = [:grid])
 
 run!(simulation)
 nothing # hide
@@ -373,14 +384,14 @@ u_ts = FieldTimeSeries("ks_solution.jld2", "u")
 times = u_ts.times
 
 fig = Figure(size=(800, 400))
-ax = Axis(fig[1, 1]; xlabel="x", ylabel="u")
-ylims!(ax, -4, 4)
 
 # Create Observables for reactive updates
 n = Observable(1)
 u_n = @lift u_ts[$n]
 title = @lift "Kuramoto-Sivashinsky equation, t = $(round(times[$n], digits=1))"
-ax.title = title
+
+ax = Axis(fig[1, 1]; xlabel="x", ylabel="u", title=title)
+ylims!(ax, -4, 4)
 
 # lines! works directly with Field
 lines!(ax, u_n; linewidth=2, color=:royalblue)
