@@ -13,23 +13,26 @@ end
 ```@example callbacks
 using Oceananigans
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(; grid)
 simulation = Simulation(model, Δt=1, stop_iteration=10)
+
 show_time(sim) = @info "Time is $(prettytime(sim.model.clock.time))"
-simulation.callbacks[:total_A] = Callback(show_time, IterationInterval(2))
+simulation.callbacks[:pretty_basic] = Callback(show_time, IterationInterval(2))
+
 simulation
 ```
 
 Now when simulation runs the simulation the callback is called.
 
-```@example checkpointing
+```@example callbacks
 run!(simulation)
 ```
 
 We can also use the convenience [`add_callback!`](@ref):
 
-```@example checkpointing
-add_callback!(simulation, show_time, name=:total_A_via_convenience, IterationInterval(2))
+```@example callbacks
+add_callback!(simulation, show_time, IterationInterval(2))
 
 simulation
 ```
@@ -58,13 +61,16 @@ model = NonhydrostaticModel(; grid)
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 function modify_tendency!(model, params)
-    model.timestepper.Gⁿ[params.c] .+= params.δ
+    Gⁿc = model.timestepper.Gⁿ[params.c]
+    parent(Gⁿc) .+= params.δ
     return nothing
 end
 
-simulation.callbacks[:modify_u] = Callback(modify_tendency!, IterationInterval(1),
-                                           callsite = TendencyCallsite(),
-                                           parameters = (c = :u, δ = 1))
+add_callback!(simulation,
+              modify_tendency!, 
+              callsite = TendencyCallsite(),
+              parameters = (c = :u, δ = 1))
+                                           
 
 run!(simulation)
 ```
