@@ -152,6 +152,7 @@ w^S = -\frac{1}{2k} \partial_\xi A \, \hat{u}^S(z)
 The following example sets up such a wave packet:
 
 ```jldoctest stokes3D
+using Oceananigans
 using Oceananigans.Units
 
 g = 9.81
