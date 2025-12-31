@@ -24,25 +24,21 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.OutputWriters: default_included_properties
-import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
-# TODO: decide if we like this.
-#
-# We assume that model has some properties, eg:
+# We assume that model has some properties:
 #   - model.clock::Clock
-#   - model.architecture.
-#   - model.timestepper with timestepper.G⁻ and timestepper.Gⁿ :spiral_eyes:
+#
+# Models with grids should override `architecture` and `eltype`.
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
-Base.eltype(model::AbstractModel) = eltype(model.grid)
-architecture(model::AbstractModel) = model.grid.architecture
+Base.eltype(model::AbstractModel) = Float64
+architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
-timestepper(model::AbstractModel) = model.timestepper
 initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
@@ -118,6 +114,10 @@ using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
+
+# OceananigansModels have grids, so we can use grid-based implementations
+Base.eltype(model::OceananigansModels) = eltype(model.grid)
+architecture(model::OceananigansModels) = model.grid.architecture
 
 set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
@@ -207,7 +207,7 @@ checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceMod
 
 function required_checkpoint_properties(model::OceananigansModels)
     properties = [:grid, :clock]
-    if !isnothing(timestepper(model))
+    if !isnothing(model.timestepper)
        push!(properties, :timestepper)
     end
     if !isnothing(model.particles)
