@@ -1,4 +1,10 @@
 using Printf
+using KernelAbstractions: @kernel, @index
+
+using Oceananigans.Advection: U_dot_∇u
+using Oceananigans.Coriolis: x_f_cross_U
+using Oceananigans.Utils: launch!
+using Oceananigans.Grids: architecture
 
 """
     compare_interior(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))))
@@ -40,4 +46,43 @@ function compare_parent(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))
     @printf("(%6s)   parent: ψ₁ ≈ ψ₂: %-5s, max|ψ₁|=%.6e, max|ψ₂|=%.6e, max|δ|=%.6e at %s (overlap %s)\n",
             name, approx_equal, maximum(abs, v₁), maximum(abs, v₂), max_δ, string(idx.I), string(common_sz))
     return approx_equal
+end
+
+#####
+##### Simplified u-momentum tendency (advection + Coriolis only)
+#####
+
+"""
+    simple_u_velocity_tendency(i, j, k, grid, advection, coriolis, velocities)
+
+Compute a simplified u-velocity tendency with only advection and Coriolis terms:
+
+    Gu = - U⋅∇u - f × U
+
+This uses `U_dot_∇u` which is the general advection operator that works for
+all advection schemes (flux form, vector invariant, etc.) on all grid types.
+"""
+@inline function simple_u_velocity_tendency(i, j, k, grid, advection, coriolis, velocities)
+    return (- U_dot_∇u(i, j, k, grid, advection, velocities)
+            - x_f_cross_U(i, j, k, grid, coriolis, velocities))
+end
+
+"""
+Kernel to compute the simplified u-velocity tendency.
+"""
+@kernel function _compute_simple_Gu!(Gu, grid, advection, coriolis, velocities)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gu[i, j, k] = simple_u_velocity_tendency(i, j, k, grid, advection, coriolis, velocities)
+end
+
+"""
+    compute_simple_Gu!(Gu, advection, coriolis, velocities)
+
+Compute the simplified u-velocity tendency (advection + Coriolis) and store in `Gu`.
+"""
+function compute_simple_Gu!(Gu, advection, coriolis, velocities)
+    grid = Gu.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _compute_simple_Gu!, Gu, grid, advection, coriolis, velocities)
+    return nothing
 end

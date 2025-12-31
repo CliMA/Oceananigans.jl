@@ -130,4 +130,98 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
             end
         end
     end
+
+    @testset "compute_simple_Gu! matches vanilla" begin
+        @info "  Testing simple u-tendency (advection + Coriolis) equivalence..."
+
+        # Advection schemes to test
+        # Note: WENOVectorInvariant requires larger halos due to vorticity stencil, skipped for now
+        advection_schemes = [
+            (Centered(), "Centered"),
+            (WENO(), "WENO"),
+        ]
+
+        # Grid + Coriolis configurations
+        # Each entry: (GridType, grid_kwargs, coriolis, name)
+        # Note: TripolarGrid requires special handling at north pole (Zipper BC) and produces NaN
+        # with random data, so we skip it for this test. Halo filling tests for TripolarGrid still pass.
+        Gu_grid_configs = [
+            # RectilinearGrid with FPlane
+            (
+                RectilinearGrid,
+                (; size=(4, 4, 4), halo=(3, 3, 3), extent=(1.0, 1.0, 1.0), topology=(Periodic, Periodic, Bounded)),
+                FPlane(f=1e-4),
+                "RectilinearGrid+FPlane"
+            ),
+            # LatitudeLongitudeGrid with HydrostaticSphericalCoriolis
+            (
+                LatitudeLongitudeGrid,
+                (; size=(4, 4, 4), halo=(3, 3, 3), longitude=(0, 10), latitude=(0, 10), z=(0, 1)),
+                HydrostaticSphericalCoriolis(),
+                "LatLonGrid+HydrostaticSphericalCoriolis"
+            ),
+        ]
+
+        for (GridType, grid_kw, coriolis, grid_name) in Gu_grid_configs
+            @testset "$grid_name" begin
+                @info "    Testing $grid_name..."
+
+                vanilla_grid = GridType(vanilla_arch; grid_kw...)
+                reactant_grid = GridType(reactant_arch; grid_kw...)
+
+                # Create velocity fields for both architectures
+                vanilla_u = XFaceField(vanilla_grid)
+                vanilla_v = YFaceField(vanilla_grid)
+                vanilla_w = ZFaceField(vanilla_grid)
+                vanilla_velocities = (; u=vanilla_u, v=vanilla_v, w=vanilla_w)
+
+                reactant_u = XFaceField(reactant_grid)
+                reactant_v = YFaceField(reactant_grid)
+                reactant_w = ZFaceField(reactant_grid)
+                reactant_velocities = (; u=reactant_u, v=reactant_v, w=reactant_w)
+
+                # Create Gu fields to store the tendency
+                vanilla_Gu = XFaceField(vanilla_grid)
+                reactant_Gu = XFaceField(reactant_grid)
+
+                # Initialize velocity fields with random data
+                Random.seed!(54321)
+                u_data = randn(Float64, size(vanilla_u)...)
+                v_data = randn(Float64, size(vanilla_v)...)
+                w_data = randn(Float64, size(vanilla_w)...)
+
+                set!(vanilla_u, u_data)
+                set!(vanilla_v, v_data)
+                set!(vanilla_w, w_data)
+
+                set!(reactant_u, u_data)
+                set!(reactant_v, v_data)
+                set!(reactant_w, w_data)
+
+                # Fill halos for velocities
+                fill_halo_regions!(vanilla_u)
+                fill_halo_regions!(vanilla_v)
+                fill_halo_regions!(vanilla_w)
+
+                @jit fill_halo_regions!(reactant_u)
+                @jit fill_halo_regions!(reactant_v)
+                @jit fill_halo_regions!(reactant_w)
+
+                for (advection, adv_name) in advection_schemes
+                    @testset "$adv_name" begin
+                        # Reset Gu fields
+                        fill!(vanilla_Gu, 0)
+                        fill!(reactant_Gu, 0)
+
+                        # Compute simplified Gu on both
+                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                        @jit compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+
+                        # Compare the tendency fields
+                        @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
+                    end
+                end
+            end
+        end
+    end
 end
