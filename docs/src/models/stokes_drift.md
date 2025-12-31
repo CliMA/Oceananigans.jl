@@ -118,7 +118,7 @@ as might arise from a wave packet with a horizontally-varying envelope:
 !!! warning "Divergence-free requirement"
     For three-dimensional Stokes drift, the provided Stokes drift field must be divergence-free
     (solenoidal): ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u}^S = 0``. This is required for consistency with
-    the Craik-Leibovich formulation as discussed by [Vanneste and Young (2022)](@cite VannesteYoung2022).
+    the Craik-Leibovich formulation as discussed by [VannesteYoung2022](@citet).
     In practice, this means that if the horizontal components of Stokes drift vary in space,
     there must be a corresponding vertical Stokes drift component ``w^S`` such that the
     total field is divergence-free.
