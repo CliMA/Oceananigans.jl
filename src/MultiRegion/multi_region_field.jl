@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
-using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
+using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location, set_to_function!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
@@ -116,8 +116,6 @@ Base.fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
 Base.fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
 
-set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
-set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
 compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
 
 # Disambiguation (same as computed_field.jl:64)
@@ -214,3 +212,23 @@ ynodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) =
 # Convenience
 @propagate_inbounds Base.getindex(mrf::MultiRegionField, r::Int) = getregion(mrf, r)
 @propagate_inbounds Base.lastindex(mrf::MultiRegionField) = lastindex(mrf.grid)
+
+import Base: ==
+
+function ==(a::MultiRegionField, b::MultiRegionField)
+    if regions(a) == regions(b)
+        return all(a[r] == b[r] for r in regions(a))
+    else
+        return false
+    end
+end
+
+import Base: isapprox    
+
+function isapprox(a::MultiRegionField, b::MultiRegionField; kw...)
+    if regions(a) == regions(b)
+        return all(isapprox(a[r], b[r]; kw...) for r in regions(a))
+    else
+        return false
+    end
+end
