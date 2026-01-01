@@ -4,6 +4,9 @@ include("reactant_correctness_utils.jl")
 using Random
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 
+# Helper to generate all combinations
+all_combos(xs...) = vec(collect(Iterators.product(xs...)))
+
 @testset "Reactant correctness" begin
     @info "Testing Reactant correctness..."
 
@@ -11,215 +14,189 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
     vanilla_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
     reactant_arch = ReactantState()
 
-    # Locations to test: all combinations of Center and Face
-    locations = vec(collect(Iterators.product(
-        (Center, Face),
-        (Center, Face),
-        (Center, Face)
-    )))
+    # JIT modes to test: raise=false (default) and raise=true (needed for autodiff)
+    jit_raise_modes = (false, true)
 
-    # Grid configurations: each entry is (GridType, grid_kwargs, topologies_to_test, name)
-    # We test different topologies for RectilinearGrid, but fixed topologies for spherical grids
-    grid_configs = [
-        # RectilinearGrid: test all topology combinations
-        (
-            RectilinearGrid,
-            (; size=(3, 4, 2), halo=(1, 1, 1), extent=(1.0, 1.0, 1.0)),
-            vec(collect(Iterators.product(
-                (Periodic, Bounded),
-                (Periodic, Bounded),
-                (Periodic, Bounded)
-            ))),
-            "RectilinearGrid"
-        ),
-        # LatitudeLongitudeGrid: Periodic in longitude, Bounded in latitude and z
-        (
-            LatitudeLongitudeGrid,
-            (; size=(4, 4, 2), halo=(1, 1, 1), longitude=(0, 10), latitude=(0, 10), z=(0, 1)),
-            [(Periodic, Bounded, Bounded)],
-            "LatitudeLongitudeGrid"
-        ),
-        # TripolarGrid: fixed topology (Periodic, RightConnected, Bounded)
-        # Note: Nx must be even for TripolarGrid
-        (
-            TripolarGrid,
-            (; size=(4, 4, 2), halo=(1, 1, 1), z=(0, 1), southernmost_latitude=-80),
-            nothing,  # TripolarGrid has fixed topology, no need to specify
-            "TripolarGrid"
-        ),
-    ]
+    # Field locations to test
+    all_locations = all_combos((Center, Face), (Center, Face), (Center, Face))
 
-    @testset "fill_halo_regions! matches vanilla" begin
-        @info "  Testing fill_halo_regions! equivalence across grid types, topologies, and locations..."
+    # Topologies to test for RectilinearGrid
+    all_topologies = all_combos((Periodic, Bounded), (Periodic, Bounded), (Periodic, Bounded))
 
-        for (GridType, grid_kw, topologies, grid_name) in grid_configs
-            @testset "$grid_name" begin
-                @info "    Testing $grid_name..."
+    #####
+    ##### Halo filling tests
+    #####
 
-                # For grids with fixed topology (like TripolarGrid), just build the grid directly
-                if isnothing(topologies)
-                    # Build grids without specifying topology (use grid's default)
-                    vanilla_grid = GridType(vanilla_arch; grid_kw...)
-                    reactant_grid = GridType(reactant_arch; grid_kw...)
+    @testset "fill_halo_regions! correctness" begin
+        @info "  Testing fill_halo_regions!..."
 
-                    for loc in locations
-                        LX, LY, LZ = loc
-                        loc_name = "$(LX)×$(LY)×$(LZ)"
+        # Test RectilinearGrid with all topologies
+        @testset "RectilinearGrid" begin
+            @info "    RectilinearGrid..."
+            for topo in all_topologies
+                vanilla_grid = RectilinearGrid(vanilla_arch; size=(3, 4, 2), halo=(1, 1, 1),
+                                               extent=(1, 1, 1), topology=topo)
+                reactant_grid = RectilinearGrid(reactant_arch; size=(3, 4, 2), halo=(1, 1, 1),
+                                                extent=(1, 1, 1), topology=topo)
 
-                        @testset "$loc_name" begin
-                            # Build fields at the specified location
-                            vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
-                            reactant_field = Field{LX, LY, LZ}(reactant_grid)
+                for loc in all_locations, raise in jit_raise_modes
+                    LX, LY, LZ = loc
+                    @testset "topo=$topo, loc=$loc, raise=$raise" begin
+                        vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
+                        reactant_field = Field{LX, LY, LZ}(reactant_grid)
 
-                            # Seed randomness deterministically
-                            Random.seed!(12345)
-                            init_data = randn(Float64, size(vanilla_field)...)
+                        Random.seed!(12345)
+                        data = randn(size(vanilla_field)...)
+                        set!(vanilla_field, data)
+                        set!(reactant_field, data)
 
-                            # Set fields with the same initial data
-                            set!(vanilla_field, init_data)
-                            set!(reactant_field, init_data)
+                        fill_halo_regions!(vanilla_field)
+                        @jit raise=raise fill_halo_regions!(reactant_field)
 
-                            # Fill halos on both
-                            fill_halo_regions!(vanilla_field)
-                            @jit fill_halo_regions!(reactant_field)
-
-                            # Test: parent arrays (including halos) should match
-                            @test compare_parent("halo", vanilla_field, reactant_field)
-                        end
+                        @test compare_parent("halo", vanilla_field, reactant_field)
                     end
-                else
-                    # For grids with configurable topology, loop over topologies
-                    for topo in topologies
-                        TX, TY, TZ = topo
-                        topo_name = "$(TX)×$(TY)×$(TZ)"
+                end
+            end
+        end
 
-                        @testset "$topo_name" begin
-                            # Build grids with specified topology
-                            full_grid_kw = (; grid_kw..., topology=(TX, TY, TZ))
-                            vanilla_grid = GridType(vanilla_arch; full_grid_kw...)
-                            reactant_grid = GridType(reactant_arch; full_grid_kw...)
+        # Test LatitudeLongitudeGrid
+        @testset "LatitudeLongitudeGrid" begin
+            @info "    LatitudeLongitudeGrid..."
+            vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; size=(4, 4, 2), halo=(1, 1, 1),
+                                                 longitude=(0, 10), latitude=(0, 10), z=(0, 1))
+            reactant_grid = LatitudeLongitudeGrid(reactant_arch; size=(4, 4, 2), halo=(1, 1, 1),
+                                                  longitude=(0, 10), latitude=(0, 10), z=(0, 1))
 
-                            for loc in locations
-                                LX, LY, LZ = loc
-                                loc_name = "$(LX)×$(LY)×$(LZ)"
+            for loc in all_locations, raise in jit_raise_modes
+                LX, LY, LZ = loc
+                @testset "loc=$loc, raise=$raise" begin
+                    vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
+                    reactant_field = Field{LX, LY, LZ}(reactant_grid)
 
-                                @testset "$loc_name" begin
-                                    # Build fields at the specified location
-                                    vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
-                                    reactant_field = Field{LX, LY, LZ}(reactant_grid)
+                    Random.seed!(12345)
+                    data = randn(size(vanilla_field)...)
+                    set!(vanilla_field, data)
+                    set!(reactant_field, data)
 
-                                    # Seed randomness deterministically
-                                    Random.seed!(12345)
-                                    init_data = randn(Float64, size(vanilla_field)...)
+                    fill_halo_regions!(vanilla_field)
+                    @jit raise=raise fill_halo_regions!(reactant_field)
 
-                                    # Set fields with the same initial data
-                                    set!(vanilla_field, init_data)
-                                    set!(reactant_field, init_data)
+                    @test compare_parent("halo", vanilla_field, reactant_field)
+                end
+            end
+        end
 
-                                    # Fill halos on both
-                                    fill_halo_regions!(vanilla_field)
-                                    @jit fill_halo_regions!(reactant_field)
+        # Test TripolarGrid
+        @testset "TripolarGrid" begin
+            @info "    TripolarGrid..."
+            vanilla_grid = TripolarGrid(vanilla_arch; size=(4, 4, 2), halo=(1, 1, 1),
+                                        z=(0, 1), southernmost_latitude=-80)
+            reactant_grid = TripolarGrid(reactant_arch; size=(4, 4, 2), halo=(1, 1, 1),
+                                         z=(0, 1), southernmost_latitude=-80)
 
-                                    # Test: parent arrays (including halos) should match
-                                    @test compare_parent("halo", vanilla_field, reactant_field)
-                                end
-                            end
-                        end
-                    end
+            for loc in all_locations, raise in jit_raise_modes
+                LX, LY, LZ = loc
+                @testset "loc=$loc, raise=$raise" begin
+                    vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
+                    reactant_field = Field{LX, LY, LZ}(reactant_grid)
+
+                    Random.seed!(12345)
+                    data = randn(size(vanilla_field)...)
+                    set!(vanilla_field, data)
+                    set!(reactant_field, data)
+
+                    fill_halo_regions!(vanilla_field)
+                    @jit raise=raise fill_halo_regions!(reactant_field)
+
+                    @test compare_parent("halo", vanilla_field, reactant_field)
                 end
             end
         end
     end
 
-    @testset "compute_simple_Gu! matches vanilla" begin
-        @info "  Testing simple u-tendency (advection + Coriolis) equivalence..."
+    #####
+    ##### Tendency computation tests
+    #####
 
-        # Advection schemes to test
-        # Note: WENOVectorInvariant requires larger halos due to vorticity stencil, skipped for now
-        advection_schemes = [
-            (Centered(), "Centered"),
-            (WENO(), "WENO"),
-        ]
+    @testset "compute_simple_Gu! correctness" begin
+        @info "  Testing compute_simple_Gu!..."
 
-        # Grid + Coriolis configurations
-        # Each entry: (GridType, grid_kwargs, coriolis, name)
-        # Note: TripolarGrid requires special handling at north pole (Zipper BC) and produces NaN
-        # with random data, so we skip it for this test. Halo filling tests for TripolarGrid still pass.
-        Gu_grid_configs = [
-            # RectilinearGrid with FPlane
-            (
-                RectilinearGrid,
-                (; size=(4, 4, 4), halo=(3, 3, 3), extent=(1.0, 1.0, 1.0), topology=(Periodic, Periodic, Bounded)),
-                FPlane(f=1e-4),
-                "RectilinearGrid+FPlane"
-            ),
-            # LatitudeLongitudeGrid with HydrostaticSphericalCoriolis
-            (
-                LatitudeLongitudeGrid,
-                (; size=(4, 4, 4), halo=(3, 3, 3), longitude=(0, 10), latitude=(0, 10), z=(0, 1)),
-                HydrostaticSphericalCoriolis(),
-                "LatLonGrid+HydrostaticSphericalCoriolis"
-            ),
-        ]
+        advection_schemes = (Centered(), WENO())
 
-        for (GridType, grid_kw, coriolis, grid_name) in Gu_grid_configs
-            @testset "$grid_name" begin
-                @info "    Testing $grid_name..."
+        # RectilinearGrid + FPlane
+        @testset "RectilinearGrid + FPlane" begin
+            @info "    RectilinearGrid + FPlane..."
+            coriolis = FPlane(f=1e-4)
 
-                vanilla_grid = GridType(vanilla_arch; grid_kw...)
-                reactant_grid = GridType(reactant_arch; grid_kw...)
+            vanilla_grid = RectilinearGrid(vanilla_arch; size=(4, 4, 4), halo=(3, 3, 3),
+                                           extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+            reactant_grid = RectilinearGrid(reactant_arch; size=(4, 4, 4), halo=(3, 3, 3),
+                                            extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
 
-                # Create velocity fields for both architectures
-                vanilla_u = XFaceField(vanilla_grid)
-                vanilla_v = YFaceField(vanilla_grid)
-                vanilla_w = ZFaceField(vanilla_grid)
-                vanilla_velocities = (; u=vanilla_u, v=vanilla_v, w=vanilla_w)
+            # Set up velocity fields
+            vanilla_velocities = (u=XFaceField(vanilla_grid), v=YFaceField(vanilla_grid), w=ZFaceField(vanilla_grid))
+            reactant_velocities = (u=XFaceField(reactant_grid), v=YFaceField(reactant_grid), w=ZFaceField(reactant_grid))
 
-                reactant_u = XFaceField(reactant_grid)
-                reactant_v = YFaceField(reactant_grid)
-                reactant_w = ZFaceField(reactant_grid)
-                reactant_velocities = (; u=reactant_u, v=reactant_v, w=reactant_w)
+            Random.seed!(54321)
+            for (vf, rf) in zip(vanilla_velocities, reactant_velocities)
+                data = randn(size(vf)...)
+                set!(vf, data)
+                set!(rf, data)
+                fill_halo_regions!(vf)
+                @jit raise=true fill_halo_regions!(rf)
+            end
 
-                # Create Gu fields to store the tendency
-                vanilla_Gu = XFaceField(vanilla_grid)
-                reactant_Gu = XFaceField(reactant_grid)
+            vanilla_Gu = XFaceField(vanilla_grid)
+            reactant_Gu = XFaceField(reactant_grid)
 
-                # Initialize velocity fields with random data
-                Random.seed!(54321)
-                u_data = randn(Float64, size(vanilla_u)...)
-                v_data = randn(Float64, size(vanilla_v)...)
-                w_data = randn(Float64, size(vanilla_w)...)
+            for advection in advection_schemes, raise in jit_raise_modes
+                @testset "advection=$(nameof(typeof(advection))), raise=$raise" begin
+                    fill!(vanilla_Gu, 0)
+                    fill!(reactant_Gu, 0)
 
-                set!(vanilla_u, u_data)
-                set!(vanilla_v, v_data)
-                set!(vanilla_w, w_data)
+                    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
 
-                set!(reactant_u, u_data)
-                set!(reactant_v, v_data)
-                set!(reactant_w, w_data)
+                    @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
+                end
+            end
+        end
 
-                # Fill halos for velocities
-                fill_halo_regions!(vanilla_u)
-                fill_halo_regions!(vanilla_v)
-                fill_halo_regions!(vanilla_w)
+        # LatitudeLongitudeGrid + HydrostaticSphericalCoriolis
+        @testset "LatitudeLongitudeGrid + HydrostaticSphericalCoriolis" begin
+            @info "    LatitudeLongitudeGrid + HydrostaticSphericalCoriolis..."
+            coriolis = HydrostaticSphericalCoriolis()
 
-                @jit fill_halo_regions!(reactant_u)
-                @jit fill_halo_regions!(reactant_v)
-                @jit fill_halo_regions!(reactant_w)
+            vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; size=(4, 4, 4), halo=(3, 3, 3),
+                                                 longitude=(0, 10), latitude=(0, 10), z=(0, 1))
+            reactant_grid = LatitudeLongitudeGrid(reactant_arch; size=(4, 4, 4), halo=(3, 3, 3),
+                                                  longitude=(0, 10), latitude=(0, 10), z=(0, 1))
 
-                for (advection, adv_name) in advection_schemes
-                    @testset "$adv_name" begin
-                        # Reset Gu fields
-                        fill!(vanilla_Gu, 0)
-                        fill!(reactant_Gu, 0)
+            # Set up velocity fields
+            vanilla_velocities = (u=XFaceField(vanilla_grid), v=YFaceField(vanilla_grid), w=ZFaceField(vanilla_grid))
+            reactant_velocities = (u=XFaceField(reactant_grid), v=YFaceField(reactant_grid), w=ZFaceField(reactant_grid))
 
-                        # Compute simplified Gu on both
-                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                        @jit compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+            Random.seed!(54321)
+            for (vf, rf) in zip(vanilla_velocities, reactant_velocities)
+                data = randn(size(vf)...)
+                set!(vf, data)
+                set!(rf, data)
+                fill_halo_regions!(vf)
+                @jit raise=true fill_halo_regions!(rf)
+            end
 
-                        # Compare the tendency fields
-                        @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
-                    end
+            vanilla_Gu = XFaceField(vanilla_grid)
+            reactant_Gu = XFaceField(reactant_grid)
+
+            for advection in advection_schemes, raise in jit_raise_modes
+                @testset "advection=$(nameof(typeof(advection))), raise=$raise" begin
+                    fill!(vanilla_Gu, 0)
+                    fill!(reactant_Gu, 0)
+
+                    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+
+                    @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
                 end
             end
         end
