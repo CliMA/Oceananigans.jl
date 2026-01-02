@@ -242,6 +242,8 @@ function specified_times_str(st)
     return string(str, "]")
 end
 
+Base.copy(st::SpecifiedTimes) = SpecifiedTimes(copy(st.times), st.previous_actuation)
+
 #####
 ##### ConsecutiveIterations
 #####
@@ -331,6 +333,7 @@ function Base.summary(schedule::IterationInterval)
 end
 Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
+Base.show(io::IO, schedule::SpecifiedTimes) = print(io, summary(schedule))
 Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")

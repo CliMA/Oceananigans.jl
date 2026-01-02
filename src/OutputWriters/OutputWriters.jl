@@ -29,6 +29,7 @@ initialize!(::AbstractOutputWriter, model) = nothing
 
 include("output_writer_utils.jl")
 include("fetch_output.jl")
+include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
