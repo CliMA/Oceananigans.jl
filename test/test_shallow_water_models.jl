@@ -104,8 +104,8 @@ end
 
     @testset "Model constructor errors" begin
         grid = RectilinearGrid(size=(1, 1), extent=(1, 1), topology=(Periodic,Periodic,Flat))
-        @test_throws MethodError ShallowWaterModel(grid; gravitational_acceleration=1)
-        @test_throws MethodError ShallowWaterModel(grid; gravitational_acceleration=1)
+        @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
+        @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
     end
 
     topo = (Flat, Flat, Flat)
