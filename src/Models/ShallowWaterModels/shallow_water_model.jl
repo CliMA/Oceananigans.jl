@@ -220,6 +220,7 @@ validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing},
 
 formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
+timestepper(model::ShallowWaterModel)  = model.timestepper
 
 # The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
 shallow_water_velocities(::VectorInvariantFormulation, solution) = (u = solution.u, v = solution.v, w = nothing)

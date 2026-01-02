@@ -10,68 +10,74 @@ DocTestSetup = quote
 end
 ```
 
-```@example checkpointing
+```@example callbacks
 using Oceananigans
 
-model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 show_time(sim) = @info "Time is $(prettytime(sim.model.clock.time))"
-
-simulation.callbacks[:total_A] = Callback(show_time, IterationInterval(2))
+simulation.callbacks[:pretty_basic] = Callback(show_time, IterationInterval(2))
 
 simulation
 ```
 
 Now when simulation runs the simulation the callback is called.
 
-```@example checkpointing
+```@example callbacks
 run!(simulation)
 ```
 
 We can also use the convenience [`add_callback!`](@ref):
 
-```@example checkpointing
-add_callback!(simulation, show_time, name=:total_A_via_convenience, IterationInterval(2))
+```@example callbacks
+add_callback!(simulation, show_time, IterationInterval(2))
 
 simulation
 ```
 
 The keyword argument `callsite` determines the moment at which the callback is executed.
 By default, `callsite = TimeStepCallsite()`, indicating execution _after_ the completion of
-a timestep. The other options are `callsite = TendencyCallsite()` that executes the callback
-after the tendencies are computed but _before_ taking a timestep and `callsite = UpdateStateCallsite()`
-that executes the callback within `update_state!`, after auxiliary variables have been computed
+a timestep. This is the only callsite that is owned by `Simulation`.
+
+Other callsite options are `callsite = TendencyCallsite()` and `callsite = UpdateStateCallsite()`.
+When these callsites are used, the callback is a function of the `model` in question rather than `Simulation`.
+These callsites must be implemented by models: for `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`,
+`TendencyCallsite` callbacks are executed after computing tendencies but _before_ taking a timestep.
+`UpdateStateCallsite` callbacks are executed within `update_state!`, after auxiliary variables have been computed
 (for multi-stage time-steppers, `update_state!` may be called multiple times per timestep).
 
 As an example of a callback with `callsite = TendencyCallsite()` , we show below how we can
 manually add to the tendency field of one of the velocity components. Here we've chosen
 the `:u` field using parameters:
 
-```@example checkpointing
+```@example callbacks
 using Oceananigans
 using Oceananigans: TendencyCallsite
 
-model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 function modify_tendency!(model, params)
-    model.timestepper.Gⁿ[params.c] .+= params.δ
+    Gⁿc = model.timestepper.Gⁿ[params.c]
+    parent(Gⁿc) .+= params.δ
     return nothing
 end
 
-simulation.callbacks[:modify_u] = Callback(modify_tendency!, IterationInterval(1),
-                                           callsite = TendencyCallsite(),
-                                           parameters = (c = :u, δ = 1))
+add_callback!(simulation,
+              modify_tendency!,
+              callsite = TendencyCallsite(),
+              parameters = (c = :u, δ = 1))
+
 
 run!(simulation)
 ```
 
 Above there is no forcing at all, but due to the callback the ``u``-velocity is increased.
 
-```@example checkpointing
+```@example callbacks
 @info model.velocities.u
 ```
 

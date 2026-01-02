@@ -289,6 +289,7 @@ function NonhydrostaticModel(grid;
 end
 
 architecture(model::NonhydrostaticModel) = model.architecture
+timestepper(model::NonhydrostaticModel) = model.timestepper
 
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz
