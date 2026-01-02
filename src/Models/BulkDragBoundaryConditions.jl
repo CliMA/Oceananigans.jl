@@ -202,19 +202,19 @@ end
 
 # Type aliases for dimension dispatch
 const XNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{1}} where D  # dim=1: west/east
-const YNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{2}} where D  # dim=2: south/north  
+const YNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{2}} where D  # dim=2: south/north
 const ZNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{3}} where D  # dim=3: bottom/top
 
 # z-normal boundaries (bottom/top): getbc(df, i, j, grid, ...)
 # Applies to u-velocity (XDirection) and v-velocity (YDirection)
-@inline function BoundaryConditions.getbc(df::ZNormalBulkDragFunction{<:XDirection}, i::Integer, j::Integer, 
+@inline function BoundaryConditions.getbc(df::ZNormalBulkDragFunction{<:XDirection}, i::Integer, j::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     k = boundary_index(df.side, grid.Nz)
     return _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
-@inline function BoundaryConditions.getbc(df::ZNormalBulkDragFunction{<:YDirection}, i::Integer, j::Integer, 
+@inline function BoundaryConditions.getbc(df::ZNormalBulkDragFunction{<:YDirection}, i::Integer, j::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     k = boundary_index(df.side, grid.Nz)
@@ -258,19 +258,19 @@ end
 #####
 
 # Immersed boundaries always use (i, j, k) explicitly
-@inline function BoundaryConditions.getbc(df::XDBDF, i::Integer, j::Integer, k::Integer, 
+@inline function BoundaryConditions.getbc(df::XDBDF, i::Integer, j::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     return _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
-@inline function BoundaryConditions.getbc(df::YDBDF, i::Integer, j::Integer, k::Integer, 
+@inline function BoundaryConditions.getbc(df::YDBDF, i::Integer, j::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     return _y_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
-@inline function BoundaryConditions.getbc(df::ZDBDF, i::Integer, j::Integer, k::Integer, 
+@inline function BoundaryConditions.getbc(df::ZDBDF, i::Integer, j::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     return _z_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
@@ -347,19 +347,19 @@ Create a `FluxBoundaryCondition` for velocity drag on any boundary.
 
 With `QuadraticFormulation()` (default), the drag is:
 ```math
-τᵘ = - Cᴰ |U + U∞| (u + U∞)
+τᵘ = - Cᴰ |U + U_∞| (u + U_∞)
 ```
 
 With `LinearFormulation()` (Rayleigh friction), the drag is:
 ```math
-τᵘ = - Cᴰ (u + U∞)
+τᵘ = - Cᴰ (u + U_∞)
 ```
 
-where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)² + (w + W∞)²)` is the 
+where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)² + (w + W∞)²)` is the
 total 3D speed including background velocities, and `(U∞, V∞, W∞)` are the background velocities.
 The boundary-normal velocity component is zero due to the no-penetration condition.
 
-This boundary condition can be applied to any of the six domain boundaries (west, east, 
+This boundary condition can be applied to any of the six domain boundaries (west, east,
 south, north, bottom, top) as well as immersed boundaries. The boundary side is automatically
 determined during regularization.
 
@@ -372,8 +372,8 @@ See [`BulkDragFunction`](@ref) for details.
 # Keyword Arguments
 
 - `coefficient`: The drag coefficient (required).
-- `direction`: The direction of the velocity component (`XDirection()`, `YDirection()`, or 
-               `ZDirection()`). If `nothing`, the direction is automatically inferred from 
+- `direction`: The direction of the velocity component (`XDirection()`, `YDirection()`, or
+               `ZDirection()`). If `nothing`, the direction is automatically inferred from
                the field location during boundary condition regularization.
 - `background_velocities`: Background velocities as a tuple `(U∞, V∞, W∞)` (default: `(0, 0, 0)`).
 
@@ -481,7 +481,7 @@ ImmersedBoundaryCondition:
 └── top: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ```
 """
-BulkDrag(formulation=QuadraticFormulation(); kwargs...) = 
+BulkDrag(formulation=QuadraticFormulation(); kwargs...) =
     BoundaryCondition(Flux(), BulkDragFunction(formulation; kwargs...))
 
 end # module
