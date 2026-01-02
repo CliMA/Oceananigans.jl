@@ -91,7 +91,20 @@ during the averaging window. For example, `stride=1` computes output every itera
 whereas `stride=2` computes output every other iteration. Time-averages with
 longer `stride`s are faster to compute, but less accurate.
 
-Example
+The `times` can be specified as:
+- Numbers (interpreted as seconds)
+- `DateTime` objects
+- `Period` objects (e.g., `Day`, `Hour`)
+
+The `window` can be:
+- A single value (scalar) applying to all specified times
+- A vector of values with length matching `times`, allowing different averaging windows for each output time
+
+Examples
+========
+
+Basic usage with constant window
+---------------------------------
 
 ```jldoctest averaged_specified_times
 using Oceananigans.OutputWriters: AveragedSpecifiedTimes
@@ -99,7 +112,7 @@ using Oceananigans.OutputWriters: AveragedSpecifiedTimes
 schedule = AveragedSpecifiedTimes([4.0, 8.0, 12.0], window=2.0)
 
 # output
-AveragedSpecifiedTimes(window=2.0, stride=1, specified_times=SpecifiedTimes([4 seconds, 8 seconds, 12 seconds]))
+AveragedSpecifiedTimes(window=2.0, stride=1, times=SpecifiedTimes([4 seconds, 8 seconds, 12 seconds]))
 ```
 
 An `AveragedSpecifiedTimes` schedule directs an output writer
@@ -116,6 +129,71 @@ simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename="averaged_velocity_data.jld2",
                                                     schedule=AveragedSpecifiedTimes([4days, 8days, 12days], window=2days, stride=2))
+```
+
+Varying windows
+---------------
+
+Different averaging windows can be specified for each output time:
+
+```jldoctest averaged_specified_times_varying
+using Oceananigans.OutputWriters: AveragedSpecifiedTimes
+using Oceananigans.Units
+
+# Different windows for each output time
+schedule = AveragedSpecifiedTimes([4days, 8days, 12days], window=[1day, 2days, 3days])
+
+# output
+AveragedSpecifiedTimes(window=[1 day, 2 days, 3 days], stride=1, times=SpecifiedTimes([4 days, 8 days, 12 days]))
+```
+
+Using DateTime
+--------------
+
+For simulations with calendar-based timing:
+
+```jldoctest averaged_specified_times_datetime
+using Oceananigans.OutputWriters: AveragedSpecifiedTimes
+using Dates
+
+# Specify times as DateTime objects
+times = [DateTime(2024, 1, 5), DateTime(2024, 1, 10), DateTime(2024, 1, 15)]
+schedule = AveragedSpecifiedTimes(times, window=Day(2))
+
+# output
+AveragedSpecifiedTimes(window=2 days, stride=1, times=SpecifiedTimes([2024-01-05T00:00:00, 2024-01-10T00:00:00, 2024-01-15T00:00:00]))
+```
+
+Using Periods
+-------------
+
+Period types can be used for more readable time specifications:
+
+```jldoctest averaged_specified_times_periods
+using Oceananigans.OutputWriters: AveragedSpecifiedTimes
+using Dates
+
+# Specify times and windows using Period types
+schedule = AveragedSpecifiedTimes([Day(4), Day(8), Day(12)], window=Day(2))
+
+# output
+AveragedSpecifiedTimes(window=2 days, stride=1, times=SpecifiedTimes([4 days, 8 days, 12 days]))
+```
+
+Varying Period windows
+----------------------
+
+Different Period windows can also be specified:
+
+```jldoctest averaged_specified_times_varying_periods
+using Oceananigans.OutputWriters: AveragedSpecifiedTimes
+using Dates
+
+# Different Period windows for each output time
+schedule = AveragedSpecifiedTimes([Day(4), Day(8), Day(12)], window=[Hour(12), Day(1), Day(2)])
+
+# output
+AveragedSpecifiedTimes(window=[12 hours, 1 day, 2 days], stride=1, times=SpecifiedTimes([4 days, 8 days, 12 days]))
 ```
 """
 function AveragedSpecifiedTimes(times, window; kw...)
