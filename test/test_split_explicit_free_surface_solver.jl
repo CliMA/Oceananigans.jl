@@ -63,7 +63,7 @@ clock = Clock(time=0)
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-                η = sefs.η
+                η = sefs.displacement
 
                 T  = 2π
                 Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
