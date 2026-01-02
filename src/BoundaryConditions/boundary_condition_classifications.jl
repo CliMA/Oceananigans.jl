@@ -98,3 +98,11 @@ A classification specifying a Zipper boundary condition where one boundary is fo
 Used only for a tripolar grid.
 """
 struct Zipper <: AbstractBoundaryConditionClassification end
+
+"""
+    struct FPivotZipper <: AbstractBoundaryConditionClassification
+
+A classification specifying a Zipper boundary condition where one boundary is folded onto itself.
+Used for custom tripolar grid with a F-point pivot fold in the north boundary.
+"""
+struct FPivotZipper <: AbstractBoundaryConditionClassification end

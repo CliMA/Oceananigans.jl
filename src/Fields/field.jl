@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, construct_boundary_conditions_kernels
+using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, FPivotZipper, construct_boundary_conditions_kernels
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 using Oceananigans.Architectures: convert_to_device
@@ -91,6 +91,12 @@ validate_boundary_condition_location(bc::Zipper, loc::Center, side) =
     side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
 
 validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
+validate_boundary_condition_location(bc::FPivotZipper, loc::Center, side) =
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
+validate_boundary_condition_location(bc::FPivotZipper, loc::Face, side) =
     side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
 
 
