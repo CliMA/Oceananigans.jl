@@ -347,15 +347,15 @@ Create a `FluxBoundaryCondition` for velocity drag on any boundary.
 
 With `QuadraticFormulation()` (default), the drag is:
 ```math
-τᵘ = - Cᴰ |U + U_∞| (u + U_∞)
+τᵘ = - C^D |U + U_∞| (u + U_∞)
 ```
 
 With `LinearFormulation()` (Rayleigh friction), the drag is:
 ```math
-τᵘ = - Cᴰ (u + U_∞)
+τᵘ = - C^D (u + U_∞)
 ```
 
-where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)² + (w + W∞)²)` is the
+where `C^D` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)² + (w + W∞)²)` is the
 total 3D speed including background velocities, and `(U∞, V∞, W∞)` are the background velocities.
 The boundary-normal velocity component is zero due to the no-penetration condition.
 
