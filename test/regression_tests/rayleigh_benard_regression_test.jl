@@ -49,13 +49,13 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                    bottom = BoundaryCondition(Value(), Δb))
 
     model = NonhydrostaticModel(grid;
-                                  timestepper = :QuasiAdamsBashforth2,
-                                  closure = ScalarDiffusivity(ν=ν, κ=κ),
-                                  tracers = (:b, :c),
-                                  buoyancy = BuoyancyForce(BuoyancyTracer()),
-                                  boundary_conditions = (; b=bbcs),
-                                  hydrostatic_pressure_anomaly = CenterField(grid),
-                                  forcing = (; c=cforcing))
+                                timestepper = :QuasiAdamsBashforth2,
+                                closure = ScalarDiffusivity(ν=ν, κ=κ),
+                                tracers = (:b, :c),
+                                buoyancy = BuoyancyForce(BuoyancyTracer()),
+                                boundary_conditions = (; b=bbcs),
+                                hydrostatic_pressure_anomaly = CenterField(grid),
+                                forcing = (; c=cforcing))
 
     # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
     Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν

@@ -33,20 +33,20 @@ function set_divergent_velocity!(model)
 
     return nothing
 end
-                     
+
 random_vector = - 0.5 .* rand(Nx, Ny) .- 0.5
 bottom_height(arch) = GridFittedBottom(Oceananigans.on_architecture(arch, random_vector))
 rgrid(arch) = RectilinearGrid(arch, size=(Nx, Ny, 1), extent=(1, 1, 1), halo = (3, 3, 3))
 lgrid(arch) = LatitudeLongitudeGrid(arch, size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), halo = (3, 3, 3))
 
 grids = Dict(
-   (CPU, :RectilinearGrid)       => rgrid(CPU()), 
+   (CPU, :RectilinearGrid)       => rgrid(CPU()),
    (CPU, :LatitudeLongitudeGrid) => lgrid(CPU()),
-   (CPU, :ImmersedRecGrid)       => ImmersedBoundaryGrid(rgrid(CPU()), bottom_height(GPU())), 
+   (CPU, :ImmersedRecGrid)       => ImmersedBoundaryGrid(rgrid(CPU()), bottom_height(GPU())),
    (CPU, :ImmersedLatGrid)       => ImmersedBoundaryGrid(lgrid(CPU()), bottom_height(GPU())),
    (GPU, :RectilinearGrid)       => rgrid(GPU()),
    (GPU, :LatitudeLongitudeGrid) => lgrid(GPU()),
-   (GPU, :ImmersedRecGrid)       => ImmersedBoundaryGrid(rgrid(GPU()), bottom_height(GPU())), 
+   (GPU, :ImmersedRecGrid)       => ImmersedBoundaryGrid(rgrid(GPU()), bottom_height(GPU())),
    (GPU, :ImmersedLatGrid)       => ImmersedBoundaryGrid(lgrid(CPU()), bottom_height(GPU()))
 )
 
@@ -66,8 +66,8 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
     grid = grids[(Arch, grid_type)]
 
     model = HydrostaticFreeSurfaceModel(grid;
-                                          momentum_advection = VectorInvariant(),
-                                          free_surface = free_surfaces[free_surface_type])
+                                        momentum_advection = VectorInvariant(),
+                                        free_surface = free_surfaces[free_surface_type])
 
     set_divergent_velocity!(model)
     Δt = Oceananigans.Advection.cell_advection_timescale(grid, model.velocities) / 2

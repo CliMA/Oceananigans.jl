@@ -110,11 +110,11 @@ u_forcing = Forcing(tidal_forcing, parameters=(; A₂, ω₂))
 # We built a `HydrostaticFreeSurfaceModel`:
 
 model = HydrostaticFreeSurfaceModel(grid; coriolis,
-                                      buoyancy = BuoyancyTracer(),
-                                      tracers = :b,
-                                      momentum_advection = WENO(),
-                                      tracer_advection = WENO(),
-                                      forcing = (; u = u_forcing))
+                                    buoyancy = BuoyancyTracer(),
+                                    tracers = :b,
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
+                                    forcing = (; u = u_forcing))
 
 # We initialize the model with the tidal flow and a linear stratification.
 

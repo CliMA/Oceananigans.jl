@@ -157,8 +157,8 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_c
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-0.5))
     model = NonhydrostaticModel(grid;
-                                  pressure_solver = ConjugateGradientPoissonSolver(grid),
-                                  boundary_conditions = (; u = FieldBoundaryConditions(top=FluxBoundaryCondition(1.0))))
+                                pressure_solver = ConjugateGradientPoissonSolver(grid),
+                                boundary_conditions = (; u = FieldBoundaryConditions(top=FluxBoundaryCondition(1.0))))
     @test model.pressure_solver isa ConjugateGradientPoissonSolver
 
     time_step!(model, 1)
