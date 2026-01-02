@@ -112,7 +112,7 @@ using Oceananigans.OutputWriters: AveragedSpecifiedTimes
 schedule = AveragedSpecifiedTimes([4.0, 8.0, 12.0], window=2.0)
 
 # output
-AveragedSpecifiedTimes(window=2.0, stride=1, times=SpecifiedTimes([4 seconds, 8 seconds, 12 seconds]))
+AveragedSpecifiedTimes(window=2 seconds, stride=1, specified_times=SpecifiedTimes([4 seconds, 8 seconds, 12 seconds]))
 ```
 
 An `AveragedSpecifiedTimes` schedule directs an output writer
@@ -144,7 +144,7 @@ using Oceananigans.Units
 schedule = AveragedSpecifiedTimes([4days, 8days, 12days], window=[1day, 2days, 3days])
 
 # output
-AveragedSpecifiedTimes(window=[1 day, 2 days, 3 days], stride=1, times=SpecifiedTimes([4 days, 8 days, 12 days]))
+AveragedSpecifiedTimes(window=[1 day, 2 days, 3 days], stride=1, specified_times=SpecifiedTimes([4 days, 8 days, 12 days]))
 ```
 
 Using DateTime
@@ -161,7 +161,7 @@ times = [DateTime(2024, 1, 5), DateTime(2024, 1, 10), DateTime(2024, 1, 15)]
 schedule = AveragedSpecifiedTimes(times, window=Day(2))
 
 # output
-AveragedSpecifiedTimes(window=2 days, stride=1, times=SpecifiedTimes([2024-01-05T00:00:00, 2024-01-10T00:00:00, 2024-01-15T00:00:00]))
+AveragedSpecifiedTimes(window=2 days, stride=1, specified_times=SpecifiedTimes([2024-01-05T00:00:00, 2024-01-10T00:00:00, 2024-01-15T00:00:00]))
 ```
 
 Using Periods
@@ -177,7 +177,7 @@ using Dates
 schedule = AveragedSpecifiedTimes([Day(4), Day(8), Day(12)], window=Day(2))
 
 # output
-AveragedSpecifiedTimes(window=2 days, stride=1, times=SpecifiedTimes([4 days, 8 days, 12 days]))
+AveragedSpecifiedTimes(window=2 days, stride=1, specified_times=SpecifiedTimes([4 days, 8 days, 12 days]))
 ```
 
 Varying Period windows
@@ -193,7 +193,7 @@ using Dates
 schedule = AveragedSpecifiedTimes([Day(4), Day(8), Day(12)], window=[Hour(12), Day(1), Day(2)])
 
 # output
-AveragedSpecifiedTimes(window=[12 hours, 1 day, 2 days], stride=1, times=SpecifiedTimes([4 days, 8 days, 12 days]))
+AveragedSpecifiedTimes(window=[12 hours, 24 hours, 48 hours], stride=1, specified_times=SpecifiedTimes([4 days, 8 days, 12 days]))
 ```
 """
 function AveragedSpecifiedTimes(times, window; kw...)
@@ -273,11 +273,22 @@ Base.copy(sch::AveragedSpecifiedTimes) = AveragedSpecifiedTimes(copy(sch.specifi
 
 next_actuation_time(sch::AveragedSpecifiedTimes) = Oceananigans.Utils.next_actuation_time(sch.specified_times)
 
+# Helper function to format window for display
+function format_window(window)
+    if window isa Vector
+        # Format each element and join with ", " inside brackets
+        elements = [prettytime(w) for w in window]
+        return "[" * join(elements, ", ") * "]"
+    else
+        return prettytime(window)
+    end
+end
+
 Base.show(io::IO, schedule::AveragedSpecifiedTimes) = print(io, summary(schedule))
 
 Base.summary(schedule::AveragedSpecifiedTimes) = string("AveragedSpecifiedTimes(",
-                                                        "window=", prettytime(schedule.window), ", ",
+                                                        "window=", format_window(schedule.window), ", ",
                                                         "stride=", schedule.stride, ", ",
-                                                        "times=", schedule.specified_times,  ")")
+                                                        "specified_times=", schedule.specified_times,  ")")
 
 show_averaging_schedule(schedule::AveragedSpecifiedTimes) = string(" averaged on ", summary(schedule))
