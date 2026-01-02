@@ -76,7 +76,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             drag_bc = BulkDrag(QuadraticFormulation(), coefficient=Cᴰ)
 
             u_bcs = FieldBoundaryConditions(bottom=drag_bc)
-            model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs,))
+            model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs,))
 
             # Check direction was inferred correctly
             @test model.velocities.u.boundary_conditions.bottom.condition.direction isa XDirection
@@ -111,7 +111,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             drag_bc = BulkDrag(LinearFormulation(), coefficient=Cᴰ)
 
             u_bcs = FieldBoundaryConditions(bottom=drag_bc)
-            model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs,))
+            model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs,))
 
             @test model.velocities.u.boundary_conditions.bottom.condition.formulation isa LinearFormulation
 
@@ -177,7 +177,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             drag_bc = BulkDrag(coefficient=Cᴰ, background_velocities=(U∞, V∞, W∞))
 
             u_bcs = FieldBoundaryConditions(bottom=drag_bc)
-            model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs,))
+            model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs,))
 
             # Check background velocities are stored correctly
             @test model.velocities.u.boundary_conditions.bottom.condition.background_velocities == (U∞, V∞, W∞)
@@ -212,7 +212,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             u_bcs = FieldBoundaryConditions(bottom=drag_bc)
             v_bcs = FieldBoundaryConditions(bottom=drag_bc)
 
-            model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
+            model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(u=u_bcs, v=v_bcs))
 
             set!(model, u=0.1, v=0.1)
 
@@ -300,7 +300,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
 
             # v-velocity can have drag on west/east (x-normal) boundaries
             v_bcs = FieldBoundaryConditions(west=drag_bc, east=drag_bc)
-            model = NonhydrostaticModel(; grid, boundary_conditions=(v=v_bcs,))
+            model = NonhydrostaticModel(grid; boundary_conditions=(v=v_bcs,))
 
             @test model.velocities.v.boundary_conditions.west.condition.direction isa YDirection
             @test model.velocities.v.boundary_conditions.east.condition.direction isa YDirection
