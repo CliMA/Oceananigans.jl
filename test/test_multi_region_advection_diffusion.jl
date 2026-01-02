@@ -28,10 +28,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
                                         velocities = prescribed_velocities(),
                                         free_surface = ExplicitFreeSurface(),
                                         momentum_advection = nothing,
-                                        tracer_advection = WENO(),
-                                        coriolis = nothing,
-                                        buoyancy = nothing,
-                                        closure  = nothing)
+                                        tracer_advection = WENO())
 
     set!(model, c=cᵢ, e=eᵢ)
 
@@ -54,14 +51,9 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    model = HydrostaticFreeSurfaceModel(mrg;
-                                        momentum_advection = VectorInvariant(),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        tracers = :c,
-                                        tracer_advection = WENO(),
-                                        buoyancy = nothing,
-                                        closure = nothing)
+    model = HydrostaticFreeSurfaceModel(mrg; momentum_advection = VectorInvariant(),
+                                        free_surface, coriolis, tracers = :c,
+                                        tracer_advection = WENO())
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius

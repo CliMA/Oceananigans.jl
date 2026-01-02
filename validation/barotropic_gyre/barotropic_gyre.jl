@@ -64,15 +64,12 @@ v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 variable_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh)
 constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh₀)
 
-model = HydrostaticFreeSurfaceModel(grid;
-                                    free_surface,
-                                    coriolis,
+model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis,
                                     momentum_advection = VectorInvariant(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     closure = constant_horizontal_diffusivity,
-                                    #closure = variable_horizontal_diffusivity,
-                                    tracers = nothing,
-                                    buoyancy = nothing)
+                                    # closure = variable_horizontal_diffusivity
+                                    )
 
 g = model.free_surface.gravitational_acceleration
 

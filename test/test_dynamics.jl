@@ -437,11 +437,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
-                        model = NonhydrostaticModel(grid; timestepper,
-                                                      closure,
-                                                      tracers = :c,
-                                                      coriolis = nothing,
-                                                      buoyancy = nothing)
+                        model = NonhydrostaticModel(grid; timestepper, closure, tracers = :c)
 
                         td = typeof(time_discretization).name.wrapper
 
@@ -473,11 +469,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
                 for formulation in (ThreeDimensionalFormulation(), HorizontalFormulation(), VerticalFormulation())
-                    model = NonhydrostaticModel(grid; timestepper,
-                                                  closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
-                                                  coriolis = nothing,
-                                                  tracers = :c,
-                                                  buoyancy = nothing)
+                    model = NonhydrostaticModel(grid; timestepper, tracers = :c,
+                                                      closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1))
 
                     for fieldname in fieldnames
                         @info "    [$timestepper] Testing $fieldname budget in a $topology domain " *
@@ -594,7 +587,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :RungeKutta3, grid, closure, coord)
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :QuasiAdamsBashforth2, grid, closure, coord)
 
-                    if fieldname != :w && topology(grid)[3] == Bounded                        
+                    if fieldname != :w && topology(grid)[3] == Bounded
                         @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta3, grid, closure, coord; free_surface=nothing)
                         @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :QuasiAdamsBashforth2, grid, closure, coord; free_surface = nothing)
                     end
@@ -657,10 +650,10 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                       y_periodic_regularly_spaced_vertically_stretched_grid,
                       y_flat_regularly_spaced_vertically_stretched_grid)
 
-        free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g), 
+        free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g),
                                                                      SplitExplicitFreeSurface(grid, ; gravitational_acceleration=g, cfl=0.5))
 
-        free_surface_types(::Val{:SplitRungeKutta3}, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), ) 
+        free_surface_types(::Val{:SplitRungeKutta3}, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), )
 
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for grid in test_grids

@@ -291,10 +291,7 @@ function compute_closure_specific_diffusive_cfl(arch, closure)
         @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
     end
 
-    tracerless_model = NonhydrostaticModel(grid;
-                                           closure,
-                                           buoyancy = nothing,
-                                           tracers = nothing)
+    tracerless_model = NonhydrostaticModel(grid; closure)
     args = (model.closure, model.closure_fields, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number

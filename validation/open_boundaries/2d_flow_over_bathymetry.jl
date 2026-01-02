@@ -9,7 +9,7 @@ using GLMakie: Figure, heatmap!, Colorbar, Axis, recordframe!, VideoStream, save
 using Printf
 using CUDA
 
-function create_mass_conservation_simulation(; 
+function create_mass_conservation_simulation(;
     use_open_boundary_condition = true,
     stratification = nothing,
     immersed_bottom = nothing,

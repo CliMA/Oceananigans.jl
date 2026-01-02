@@ -18,11 +18,9 @@ grid = LatitudeLongitudeGrid(size = (Nx, 1, 1),
                              longitude = (-180, 180),
                              z = (-1, 0))
 
-model = HydrostaticFreeSurfaceModel(grid;
-                                    tracers = :c,
+model = HydrostaticFreeSurfaceModel(grid; tracers = :c,
                                     velocities = PrescribedVelocityFields(), # quiescent
-                                    closure = HorizontalScalarDiffusivity(κ=1),
-                                    buoyancy = nothing)
+                                    closure = HorizontalScalarDiffusivity(κ=1))
 
 # Tracer patch for visualization
 Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)

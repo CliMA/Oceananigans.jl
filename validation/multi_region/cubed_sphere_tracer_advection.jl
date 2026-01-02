@@ -71,8 +71,7 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     velocities = PrescribedVelocityFields(; u, v),
                                     momentum_advection = nothing,
                                     tracer_advection = WENO(order=9),
-                                    tracers = :θ,
-                                    buoyancy = nothing)
+                                    tracers = :θ)
 
 # Initial condition for tracer
 

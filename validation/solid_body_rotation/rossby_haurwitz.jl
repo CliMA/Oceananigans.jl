@@ -55,16 +55,10 @@ function run_rossby_haurwitz(; architecture = CPU(),
 
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=900)
 
-    model = HydrostaticFreeSurfaceModel(grid;
-                                        free_surface,
-                                        tracers = (),
-                                        momentum_advection = advection_scheme,
-                                        buoyancy = nothing,
-                                        coriolis = coriolis,
-                                        closure = nothing)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis, momentum_advection = advection_scheme)
 
     R = model.grid.radius   # [m]
-    ω = 0.0 # 7.848e-6            # [s⁻¹]
+    ω = 0.0 # 7.848e-6      # [s⁻¹]
     K = 7.848e-6            # [s⁻¹]
     n = 4                   # dimensionless
     g = model.free_surface.gravitational_acceleration          # [m/s²]

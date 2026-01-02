@@ -24,9 +24,7 @@ grid = LatitudeLongitudeGrid(size = (1, Ny, 1),
 model = HydrostaticFreeSurfaceModel(grid;
                                     momentum_advection = VectorInvariant(),
                                     tracers = :c,
-                                    coriolis = nothing,
-                                    closure = HorizontalScalarDiffusivity(κ=1, ν=1),
-                                    buoyancy = nothing)
+                                    closure = HorizontalScalarDiffusivity(κ=1, ν=1))
 
 # Tracer patch for visualization
 Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
