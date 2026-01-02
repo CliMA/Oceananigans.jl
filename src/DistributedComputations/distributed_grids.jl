@@ -357,6 +357,8 @@ in `T` direction (`R`) and the local rank index `r`.
 
 If all ranks have `FullyConnected` topologies, the global topology is `Periodic`;
 otherwise it is `Bounded`.
+
+This version uses MPI communication to gather topology information from all ranks.
 """
 function reconstruct_global_topology(T, R, r, r1, r2, arch)
     if R == 1
@@ -375,6 +377,22 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     else
         return Bounded
     end
+end
+
+"""
+    reconstruct_global_topology(local_topologies, R)
+
+Reconstruct global topology from a collection of local topologies without MPI.
+
+If `R == 1`, returns the single topology. Otherwise, if all local topologies
+are `FullyConnected`, returns `Periodic`; otherwise returns `Bounded`.
+
+This is an offline version that works with pre-collected topology information
+(e.g., from JLD2 files), in contrast to the MPI-based version above.
+"""
+function reconstruct_global_topology(local_topologies::AbstractVector, R::Int)
+    R == 1 && return first(local_topologies)
+    return all(==(FullyConnected), local_topologies) ? Periodic : Bounded
 end
 
 function with_number_type(FT, local_grid::DistributedRectilinearGrid)
