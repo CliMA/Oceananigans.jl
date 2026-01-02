@@ -92,58 +92,6 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 
-mutable struct AveragedSpecifiedTimes <: AbstractSchedule
-    specified_times :: SpecifiedTimes
-    window :: Float64
-    stride :: Int
-    collecting :: Bool
-end
-
-"""
-    AveragedSpecifiedTimes(times; window, stride=1)
-    AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1)
-
-Returns a `schedule` that specifies time-averaging of output at specified times.
-The time `window` specifies the extent of the time-average that precedes each
-specified output time.
-
-`output` is computed and accumulated into the average every `stride` iterations
-during the averaging window. For example, `stride=1` computes output every iteration,
-whereas `stride=2` computes output every other iteration. Time-averages with
-longer `stride`s are faster to compute, but less accurate.
-
-Example
-
-```jldoctest averaged_specified_times
-using Oceananigans.OutputWriters: AveragedSpecifiedTimes
-
-schedule = AveragedSpecifiedTimes([4.0, 8.0, 12.0], window=2.0)
-
-# output
-AveragedSpecifiedTimes(window=2.0, stride=1, specified_times=SpecifiedTimes([4 seconds, 8 seconds, 12 seconds]))
-```
-
-An `AveragedSpecifiedTimes` schedule directs an output writer
-to time-average its outputs before writing them to disk:
-
-```@example averaged_specified_times
-using Oceananigans
-using Oceananigans.Units
-
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-
-simulation = Simulation(model, Δt=10minutes, stop_time=30days)
-
-simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
-                                                    filename="averaged_velocity_data.jld2",
-                                                    schedule=AveragedSpecifiedTimes([4days, 8days, 12days], window=2days, stride=2))
-```
-"""
-AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
-    AveragedSpecifiedTimes(specified_times, window, stride, false)
-
-AveragedSpecifiedTimes(times; kw...) = AveragedSpecifiedTimes(SpecifiedTimes(times); kw...)
-
 """
     validate_schedule_runtime(schedule::AveragedTimeInterval, clock)
 
@@ -347,13 +295,6 @@ Base.summary(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
                                                       "window=", prettytime(schedule.window), ", ",
                                                       "stride=", schedule.stride, ", ",
                                                       "interval=", prettytime(schedule.interval),  ")")
-
-Base.show(io::IO, schedule::AveragedSpecifiedTimes) = print(io, summary(schedule))
-
-Base.summary(schedule::AveragedSpecifiedTimes) = string("AveragedSpecifiedTimes(",
-                                                        "window=", schedule.window, ", ",
-                                                        "stride=", schedule.stride, ", ",
-                                                        "specified_times=", summary(schedule.specified_times), ")")
 
 show_averaging_schedule(schedule) = ""
 show_averaging_schedule(schedule::AveragedTimeInterval) = string(" averaged on ", summary(schedule))
