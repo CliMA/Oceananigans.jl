@@ -97,10 +97,8 @@ function test_conjugate_gradient_with_nonhydrostatic_model(grid, preconditioner)
     seed!(198)  # For reproducible results
 
     # Create model with CG pressure solver using specified preconditioner
-    model = NonhydrostaticModel(
-        grid = grid,
-        pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=50)
-    )
+    pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=50)
+    model = NonhydrostaticModel(grid; pressure_solver)
 
     @test model.pressure_solver isa ConjugateGradientPoissonSolver
 
