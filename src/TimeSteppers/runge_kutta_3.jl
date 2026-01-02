@@ -91,19 +91,19 @@ The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+function time_step!(model, timestepper::RungeKutta3TimeStepper, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
 
-    γ¹ = model.timestepper.γ¹
-    γ² = model.timestepper.γ²
-    γ³ = model.timestepper.γ³
+    γ¹ = timestepper.γ¹
+    γ² = timestepper.γ²
+    γ³ = timestepper.γ³
 
     ζ¹ = nothing
-    ζ² = model.timestepper.ζ²
-    ζ³ = model.timestepper.ζ³
+    ζ² = timestepper.ζ²
+    ζ³ = timestepper.ζ³
 
     first_stage_Δt  = stage_Δt(Δt, γ¹, ζ¹)      # =  γ¹ * Δt
     second_stage_Δt = stage_Δt(Δt, γ², ζ²)      # = (γ² + ζ²) * Δt
@@ -117,7 +117,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ¹, nothing)
+    rk3_substep!(model, timestepper, Δt, γ¹, nothing)
 
     tick!(model.clock, first_stage_Δt; stage=true)
 
@@ -133,7 +133,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ², ζ²)
+    rk3_substep!(model, timestepper, Δt, γ², ζ²)
 
     tick!(model.clock, second_stage_Δt; stage=true)
 
@@ -149,7 +149,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep!(model, Δt, γ³, ζ³)
+    rk3_substep!(model, timestepper, Δt, γ³, ζ³)
 
     # This adjustment of the final time-step reduces the accumulation of
     # round-off error when Δt is added to model.clock.time. Note that we still use
@@ -170,6 +170,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     return nothing
 end
 
+time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[]) = time_step!(model, model.timestepper, Δt; callbacks=callbacks)
+
 #####
 ##### Time stepping in each substep
 #####
@@ -177,21 +179,21 @@ end
 stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
 stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 
-function rk3_substep!(model, Δt, γⁿ, ζⁿ)
+function rk3_substep!(model, timestepper, Δt, γⁿ, ζⁿ)
 
     grid = model.grid
     arch = architecture(grid)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
+        kernel_args = (field, Δt, γⁿ, ζⁿ, timestepper.Gⁿ[i], timestepper.G⁻[i])
         launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
 
         implicit_step!(field,
-                       model.timestepper.implicit_solver,
+                       timestepper.implicit_solver,
                        model.closure,
                        model.closure_fields,
                        tracer_index,
