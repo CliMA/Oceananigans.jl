@@ -44,9 +44,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     Δt = 900
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(grid;
-                                        momentum_advection = nothing,
-                                        free_surface)
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection = nothing, free_surface)
 
     set_simple_divergent_velocity!(model)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
@@ -146,7 +144,7 @@ end
 
         Δt₁ = 900
         Δt₂ = 920.0
-        
+
         for m in (pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
@@ -156,7 +154,7 @@ end
 
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
-     
+
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))
 

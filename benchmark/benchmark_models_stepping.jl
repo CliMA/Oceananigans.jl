@@ -23,10 +23,7 @@ end
 
 function benchmark_hydrostatic_model(Arch, FT, N)
     grid = RectilinearGrid(Arch(), FT, size=(N, N, 10), extent=(1, 1, 1))
-    model = HydrostaticFreeSurfaceModel(grid;
-                                        tracers = (),
-                                        buoyancy = nothing,
-                                        free_surface=ImplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=ImplicitFreeSurface())
 
     time_step!(model, 0.001) # warmup
 

@@ -54,21 +54,17 @@ function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
 end
 
 function time_step_hydrostatic_model_with_catke_works(arch, FT)
-    grid = LatitudeLongitudeGrid(
-        arch,
-        FT,
-        topology = (Bounded, Bounded, Bounded),
-        size = (8, 8, 8),
-        longitude = (0, 1),
-        latitude = (0, 1),
-        z = (-100, 0)
-    )
+    grid = LatitudeLongitudeGrid(arch, FT,
+                                 topology = (Bounded, Bounded, Bounded),
+                                 size = (8, 8, 8),
+                                 longitude = (0, 1),
+                                 latitude = (0, 1),
+                                 z = (-100, 0))
 
     model = HydrostaticFreeSurfaceModel(grid;
-        buoyancy = BuoyancyTracer(),
-        tracers = (:b,),
-        closure = CATKEVerticalDiffusivity(FT)
-    )
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = (:b,),
+                                        closure = CATKEVerticalDiffusivity(eltype(grid)))
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 

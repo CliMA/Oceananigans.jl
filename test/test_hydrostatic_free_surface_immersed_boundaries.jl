@@ -28,7 +28,7 @@ using Oceananigans.TurbulenceClosures
                 model = HydrostaticFreeSurfaceModel(grid;
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer(),
-                                                    closure = closure)
+                                                    closures)
 
                 u = model.velocities.u
                 b = model.tracers.b
@@ -97,12 +97,9 @@ using Oceananigans.TurbulenceClosures
 
             model = HydrostaticFreeSurfaceModel(grid;
                                                 momentum_advection = VectorInvariant(),
-                                                free_surface = free_surface,
-                                                coriolis = coriolis,
+                                                free_surface, coriolis,
                                                 boundary_conditions = (u=u_bcs, v=v_bcs),
-                                                closure = constant_horizontal_diffusivity,
-                                                tracers = nothing,
-                                                buoyancy = nothing)
+                                                closure = constant_horizontal_diffusivity)
 
             simulation = Simulation(model, Δt=3600, stop_iteration=1)
 
@@ -129,12 +126,8 @@ using Oceananigans.TurbulenceClosures
             bathymetry = on_architecture(arch, bathymetry)
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
-
-            model = HydrostaticFreeSurfaceModel(grid;
-                                                free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient),
-                                                buoyancy = nothing,
-                                                tracers = nothing,
-                                                closure = nothing)
+            free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
             x_ref = [3.0  3.0  3.0  3.0  3.0
                      3.0  2.0  2.0  2.0  2.0

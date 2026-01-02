@@ -146,10 +146,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
-        model = NonhydrostaticModel(grid;
-                                      boundary_conditions,
-                                      timestepper = :QuasiAdamsBashforth2,
-                                      forcing)
+        model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2, forcing)
 
         u = normal_velocity(Val(orientation), model)
 
@@ -237,10 +234,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                w=w_boundary_conditions,
                                T=T_boundary_conditions)
 
-        model = NonhydrostaticModel(grid;
-                                    boundary_conditions = boundary_conditions,
-                                    buoyancy = SeawaterBuoyancy(),
-                                    tracers = (:T, :S))
+        model = NonhydrostaticModel(grid; boundary_conditions, buoyancy = SeawaterBuoyancy(), tracers = (:T, :S))
 
         @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
         @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, Nothing)

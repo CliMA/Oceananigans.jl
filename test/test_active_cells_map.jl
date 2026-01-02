@@ -18,12 +18,9 @@ function solid_body_rotation_test(grid)
 
     model = HydrostaticFreeSurfaceModel(grid;
                                         momentum_advection = VectorInvariant(),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
+                                        free_surface, coriolis,
                                         tracers = :c,
-                                        tracer_advection = WENO(),
-                                        buoyancy = nothing,
-                                        closure = nothing)
+                                        tracer_advection = WENO())
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius

@@ -58,21 +58,21 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-    ShallowWaterModel(grid; 
-                        gravitational_acceleration,
-                              clock = Clock{eltype(grid)}(time = 0),
-                 momentum_advection = UpwindBiased(order=5),
-                   tracer_advection = WENO(),
-                     mass_advection = WENO(),
-                           coriolis = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-                         bathymetry = nothing,
-                            tracers = (),
-                     closure_fields = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                timestepper::Symbol = :RungeKutta3,
-                        formulation = ConservativeFormulation())
+    ShallowWaterModel(grid;
+                      gravitational_acceleration,
+                      clock = Clock(grid),
+                      momentum_advection = UpwindBiased(order=5),
+                      tracer_advection = WENO(),
+                      mass_advection = WENO(),
+                      coriolis = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                      closure = nothing,
+                      bathymetry = nothing,
+                      tracers = (),
+                      closure_fields = nothing,
+                      boundary_conditions::NamedTuple = NamedTuple(),
+                      timestepper::Symbol = :RungeKutta3,
+                      formulation = ConservativeFormulation())
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
@@ -114,19 +114,19 @@ Keyword arguments
 """
 function ShallowWaterModel(grid;
                            gravitational_acceleration,
-                               clock = Clock(grid),
-                  momentum_advection = UpwindBiased(order=5),
-                    tracer_advection = WENO(),
-                      mass_advection = WENO(),
-                            coriolis = nothing,
-                 forcing::NamedTuple = NamedTuple(),
-                             closure = nothing,
-                          bathymetry = nothing,
-                             tracers = (),
-                      closure_fields = nothing,
-     boundary_conditions::NamedTuple = NamedTuple(),
-                 timestepper::Symbol = :RungeKutta3,
-                         formulation = ConservativeFormulation())
+                           clock = Clock(grid),
+                           momentum_advection = UpwindBiased(order=5),
+                           tracer_advection = WENO(),
+                           mass_advection = WENO(),
+                           coriolis = nothing,
+                           forcing::NamedTuple = NamedTuple(),
+                           closure = nothing,
+                           bathymetry = nothing,
+                           tracers = (),
+                           closure_fields = nothing,
+                           boundary_conditions::NamedTuple = NamedTuple(),
+                           timestepper::Symbol = :RungeKutta3,
+                           formulation = ConservativeFormulation())
 
     @warn "The ShallowWaterModel is currently unvalidated, subject to change, and should not be used for scientific research without adequate validation."
 
