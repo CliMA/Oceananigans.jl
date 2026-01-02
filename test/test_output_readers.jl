@@ -7,9 +7,7 @@ using Random
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
-    model = NonhydrostaticModel(grid;
-                                tracers = (:T, :S),
-                                advection = nothing)
+    model = NonhydrostaticModel(grid; tracers = (:T, :S), advection = nothing)
     set!(model, T=30, S=35)
     simulation = Simulation(model; Δt, stop_iteration=100)
 
@@ -34,8 +32,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=3e-7)
     S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
-    model = NonhydrostaticModel(grid;
-                                tracers = (:T, :S),
+    model = NonhydrostaticModel(grid; tracers = (:T, :S),
                                 buoyancy = SeawaterBuoyancy(),
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
