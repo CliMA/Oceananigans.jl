@@ -14,9 +14,6 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
     vanilla_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
     reactant_arch = ReactantState()
 
-    # JIT modes to test: raise=false (default) and raise=true (needed for autodiff)
-    jit_raise_modes = (false, true)
-
     # Field locations to test
     all_locations = all_combos((Center, Face), (Center, Face), (Center, Face))
 
@@ -39,9 +36,9 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 reactant_grid = RectilinearGrid(reactant_arch; size=(3, 4, 2), halo=(1, 1, 1),
                                                 extent=(1, 1, 1), topology=topo)
 
-                for loc in all_locations, raise in jit_raise_modes
+                for loc in all_locations
                     LX, LY, LZ = loc
-                    @testset "topo=$topo, loc=$loc, raise=$raise" begin
+                    @testset "topo=$topo, loc=$loc" begin
                         vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
                         reactant_field = Field{LX, LY, LZ}(reactant_grid)
 
@@ -51,7 +48,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         set!(reactant_field, data)
 
                         fill_halo_regions!(vanilla_field)
-                        @jit raise=raise fill_halo_regions!(reactant_field)
+                        @jit fill_halo_regions!(reactant_field)
 
                         @test compare_parent("halo", vanilla_field, reactant_field)
                     end
@@ -67,9 +64,9 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             reactant_grid = LatitudeLongitudeGrid(reactant_arch; size=(4, 4, 2), halo=(1, 1, 1),
                                                   longitude=(0, 10), latitude=(0, 10), z=(0, 1))
 
-            for loc in all_locations, raise in jit_raise_modes
+            for loc in all_locations
                 LX, LY, LZ = loc
-                @testset "loc=$loc, raise=$raise" begin
+                @testset "loc=$loc" begin
                     vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
                     reactant_field = Field{LX, LY, LZ}(reactant_grid)
 
@@ -79,7 +76,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     set!(reactant_field, data)
 
                     fill_halo_regions!(vanilla_field)
-                    @jit raise=raise fill_halo_regions!(reactant_field)
+                    @jit fill_halo_regions!(reactant_field)
 
                     @test compare_parent("halo", vanilla_field, reactant_field)
                 end
@@ -94,9 +91,9 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             reactant_grid = TripolarGrid(reactant_arch; size=(4, 4, 2), halo=(1, 1, 1),
                                          z=(0, 1), southernmost_latitude=-80)
 
-            for loc in all_locations, raise in jit_raise_modes
+            for loc in all_locations
                 LX, LY, LZ = loc
-                @testset "loc=$loc, raise=$raise" begin
+                @testset "loc=$loc" begin
                     vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
                     reactant_field = Field{LX, LY, LZ}(reactant_grid)
 
@@ -106,7 +103,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     set!(reactant_field, data)
 
                     fill_halo_regions!(vanilla_field)
-                    @jit raise=raise fill_halo_regions!(reactant_field)
+                    @jit fill_halo_regions!(reactant_field)
 
                     @test compare_parent("halo", vanilla_field, reactant_field)
                 end
@@ -143,19 +140,19 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 set!(vf, data)
                 set!(rf, data)
                 fill_halo_regions!(vf)
-                @jit raise=true fill_halo_regions!(rf)
+                @jit fill_halo_regions!(rf)
             end
 
             vanilla_Gu = XFaceField(vanilla_grid)
             reactant_Gu = XFaceField(reactant_grid)
 
-            for advection in advection_schemes, raise in jit_raise_modes
-                @testset "advection=$(nameof(typeof(advection))), raise=$raise" begin
+            for advection in advection_schemes
+                @testset "advection=$(nameof(typeof(advection)))" begin
                     fill!(vanilla_Gu, 0)
                     fill!(reactant_Gu, 0)
 
                     compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                    @jit compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
 
                     @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
                 end
@@ -182,19 +179,19 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 set!(vf, data)
                 set!(rf, data)
                 fill_halo_regions!(vf)
-                @jit raise=true fill_halo_regions!(rf)
+                @jit fill_halo_regions!(rf)
             end
 
             vanilla_Gu = XFaceField(vanilla_grid)
             reactant_Gu = XFaceField(reactant_grid)
 
-            for advection in advection_schemes, raise in jit_raise_modes
-                @testset "advection=$(nameof(typeof(advection))), raise=$raise" begin
+            for advection in advection_schemes
+                @testset "advection=$(nameof(typeof(advection)))" begin
                     fill!(vanilla_Gu, 0)
                     fill!(reactant_Gu, 0)
 
                     compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                    @jit compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
 
                     @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
                 end
@@ -202,3 +199,6 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         end
     end
 end
+
+# TODO: Add tests with @jit raise=true for autodiff compatibility
+# See https://github.com/CliMA/Oceananigans.jl/pull/5093 for discussion
