@@ -70,7 +70,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
         for arch in archs
             # Use a unit grid for simple math: Az = Δx*Δy = 1, V = Δx*Δy*Δz = 1
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-            
+
             Cᴰ = 0.1
             U₀ = 0.5
             drag_bc = BulkDrag(QuadraticFormulation(), coefficient=Cᴰ)
@@ -93,7 +93,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             # After one step: Δu ≈ -Cᴰ U₀² * Δt
             expected_Δu = -Cᴰ * U₀^2 * Δt
             actual_Δu = Array(interior(model.velocities.u))[1, 1, 1] - U₀
-            
+
             @test actual_Δu ≈ expected_Δu rtol=1e-4
         end
     end
@@ -105,7 +105,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
     @testset "Linear drag tendency on bottom boundary" begin
         for arch in archs
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-            
+
             Cᴰ = 0.1
             U₀ = 0.5
             drag_bc = BulkDrag(LinearFormulation(), coefficient=Cᴰ)
@@ -116,7 +116,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             @test model.velocities.u.boundary_conditions.bottom.condition.formulation isa LinearFormulation
 
             set!(model, u=U₀)
-            
+
             Δt = 1e-6
             time_step!(model, Δt)
 
@@ -124,7 +124,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             # After one step: Δu ≈ -Cᴰ U₀ * Δt
             expected_Δu = -Cᴰ * U₀ * Δt
             actual_Δu = Array(interior(model.velocities.u))[1, 1, 1] - U₀
-            
+
             @test actual_Δu ≈ expected_Δu rtol=1e-4
         end
     end
@@ -136,14 +136,14 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
     @testset "Automatic direction inference with NonhydrostaticModel" begin
         for arch in archs
             grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-            
+
             Cᴰ = 0.003
             drag_bc = BulkDrag(coefficient=Cᴰ)
 
             u_bcs = FieldBoundaryConditions(bottom=drag_bc)
             v_bcs = FieldBoundaryConditions(bottom=drag_bc)
 
-            model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
+            model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs, v=v_bcs))
 
             # Check that direction was inferred correctly
             @test model.velocities.u.boundary_conditions.bottom.condition.direction isa XDirection
@@ -168,7 +168,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
         for arch in archs
             # Unit grid for simple tendency verification
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-            
+
             Cᴰ = 0.1
             U∞ = 0.0
             V∞ = 0.2  # Background along-y velocity
@@ -185,7 +185,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             # Set u=U₀ and verify the combined effect with background velocity
             U₀ = 0.3
             set!(model, u=U₀)
-            
+
             Δt = 1e-6
             time_step!(model, Δt)
 
@@ -193,7 +193,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             speed = sqrt(U₀^2 + V∞^2)
             expected_Δu = -Cᴰ * speed * U₀ * Δt
             actual_Δu = Array(interior(model.velocities.u))[1, 1, 1] - U₀
-            
+
             @test actual_Δu ≈ expected_Δu rtol=1e-4
         end
     end
@@ -205,7 +205,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
     @testset "BulkDrag with HydrostaticFreeSurfaceModel" begin
         for arch in archs
             grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-            
+
             Cᴰ = 0.003
             drag_bc = BulkDrag(coefficient=Cᴰ)
 
@@ -231,17 +231,17 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
     @testset "BulkDrag with ImmersedBoundaryGrid" begin
         for arch in archs
             underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-            
+
             bottom(x, y) = -0.5
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
-            
+
             Cᴰ = 0.003
             drag_bc = BulkDrag(coefficient=Cᴰ)
 
             u_bcs = FieldBoundaryConditions(bottom=drag_bc, immersed=ImmersedBoundaryCondition(bottom=drag_bc))
             v_bcs = FieldBoundaryConditions(bottom=drag_bc, immersed=ImmersedBoundaryCondition(bottom=drag_bc))
 
-            model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
+            model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs, v=v_bcs))
 
             set!(model, u=0.1, v=0.1)
 
@@ -260,20 +260,20 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
     @testset "BulkDrag with ImmersedBoundaryCondition" begin
         for arch in archs
             underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
-            
+
             bottom(x, y) = -0.5
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
-            
+
             Cᴰ = 0.003
             drag_bc = BulkDrag(coefficient=Cᴰ)
-            
+
             u_ibc = ImmersedBoundaryCondition(bottom=drag_bc)
             v_ibc = ImmersedBoundaryCondition(bottom=drag_bc)
 
             u_bcs = FieldBoundaryConditions(immersed=u_ibc)
             v_bcs = FieldBoundaryConditions(immersed=v_ibc)
 
-            model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
+            model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs, v=v_bcs))
 
             set!(model, u=0.1, v=0.1)
 
@@ -294,7 +294,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             # Test that BulkDrag works on lateral (x-normal) boundaries
             grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
                                    topology=(Bounded, Bounded, Bounded))
-            
+
             Cᴰ = 0.1
             drag_bc = BulkDrag(coefficient=Cᴰ)
 
@@ -306,7 +306,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
             @test model.velocities.v.boundary_conditions.east.condition.direction isa YDirection
 
             set!(model, v=0.1)
-            
+
             # Verify model runs forward
             time_step!(model, 1e-3)
             time_step!(model, 1e-3)
@@ -324,11 +324,11 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
         ϰ = 0.4  # von Karman constant
         ℓ = 1e-4 # roughness length
         d₀ = 0.05 # distance to wall
-        
+
         expected_Cᴰ = (ϰ / log(d₀ / ℓ))^2
-        
+
         u_drag = BulkDrag(direction=XDirection(), coefficient=expected_Cᴰ)
-        
+
         @test u_drag.condition.coefficient ≈ expected_Cᴰ
     end
 end
