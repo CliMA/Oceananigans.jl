@@ -8,17 +8,13 @@ struct TestDiagnostic <: AbstractDiagnostic end
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
-    NonhydrostaticModel(
-          grid = RectilinearGrid(arch, FT, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,),
-       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
-)
+    NonhydrostaticModel(RectilinearGrid(arch, FT, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,);
+                        closure = ScalarDiffusivity(FT, ν=ν, κ=ν))
 
 
 TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
-    NonhydrostaticModel(
-          grid = RectilinearGrid(arch, FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
-       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
-)
+    NonhydrostaticModel(RectilinearGrid(arch, FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx));
+                        closure = ScalarDiffusivity(FT, ν=ν, κ=ν))
 
 function diffusive_cfl_diagnostic_is_correct(arch, FT)
     Δt = FT(1.3e-6)

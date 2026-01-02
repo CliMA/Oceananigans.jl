@@ -182,7 +182,7 @@ function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, im
     zero_forcing(x, y, z, t) = 0
     one_forcing(x, y, z, t) = 1
 
-    model = model_type(; grid,
+    model = model_type(grid;
                        timestepper = :QuasiAdamsBashforth2,
                        tracers = (:a, :b, :c),
                        forcing = (a = constant_slip,

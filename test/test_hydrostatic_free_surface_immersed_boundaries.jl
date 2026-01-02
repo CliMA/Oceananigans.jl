@@ -28,7 +28,7 @@ using Oceananigans.TurbulenceClosures
                 model = HydrostaticFreeSurfaceModel(grid;
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer(),
-                                                    closures)
+                                                    closure = closures)
 
                 u = model.velocities.u
                 b = model.tracers.b
