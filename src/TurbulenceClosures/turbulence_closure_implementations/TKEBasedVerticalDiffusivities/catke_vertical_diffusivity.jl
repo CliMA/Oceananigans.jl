@@ -95,18 +95,14 @@ Keyword arguments
 
 - `minimum_tke`: Minimum value for the turbulent kinetic energy. `minimum_tke` produces
                  a background tracer diffusivity
-
   ```math
   κ_{bg} ≈ C^{hi}c \\frac{e^{\\min}}{N}
   ```
-
   and background viscosity
-
   ```math
   ν_{bg} ≈ C^{hi}u \\frac{e^{\\min}}{N}
   ```
-
-  where ``N`` is the buoyancy frequency and by default, ``Cʰⁱc = 0.098`` and ``Cʰⁱu = 0.242``
+  where ``N`` is the buoyancy frequency and by default, ``C^{hi}c = 0.098`` and ``C^{hi}u = 0.242``
   are parameters of `CATKEMixingLength`. This feature may be used to model background mixing by
   internal waves [Wagner et al. (2025)](@cite Wagner25catke). Default: 1e-9.
 
