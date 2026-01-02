@@ -36,6 +36,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
     example_scripts = [
+        "spherical_baroclinic_instability.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
         "shallow_water_Bickley_jet.jl",
@@ -45,7 +46,7 @@ Distributed.addprocs(2)
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
-        "lock_exchange.jl",
+        "hydrostatic_lock_exchange.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
@@ -93,25 +94,27 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "literated/internal_wave.md",
-    "Internal tide by a seamount"      => "literated/internal_tide.md",
-    "Convecting plankton"              => "literated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "literated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
-    "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
-    "Lock exchange"                    => "literated/lock_exchange.md",
-    "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"            => "literated/horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
+    "One-dimensional diffusion"             => "literated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"            => "literated/two_dimensional_turbulence.md",
+    "Internal wave"                         => "literated/internal_wave.md",
+    "Internal tide by a seamount"           => "literated/internal_tide.md",
+    "Convecting plankton"                   => "literated/convecting_plankton.md",
+    "Ocean wind mixing and convection"      => "literated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                   => "literated/langmuir_turbulence.md",
+    "Baroclinic adjustment"                 => "literated/baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"          => "literated/kelvin_helmholtz_instability.md",
+    "Hydrostatic lock exchange with CATKE"  => "literated/hydrostatic_lock_exchange.md",
+    "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"                 => "literated/horizontal_convection.md",
+    "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
+    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md"
 ]
 
 model_pages = [
     "Overview" => "models/models_overview.md",
     "Coriolis forces" => "models/coriolis.md",
     "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
+    "Stokes drift" => "models/stokes_drift.md",
     "Turbulence closures" => "models/turbulence_closures.md",
     "Boundary conditions" => "models/boundary_conditions.md",
     "Forcings" => "models/forcing_functions.md",
@@ -121,7 +124,7 @@ model_pages = [
 
 simulation_pages = [
     "Overview" => "simulations/simulations_overview.md",
-    # "Callbacks" => "simulations/callbacks.md",
+    "Callbacks" => "simulations/callbacks.md",
     "Schedules" => "simulations/schedules.md",
     "Output writers" => "simulations/output_writers.md",
     "Checkpointing" => "simulations/checkpointing.md",
@@ -166,6 +169,17 @@ appendix_pages = [
     "Function index" => "appendix/function_index.md"
 ]
 
+root = pkgdir(Oceananigans)
+agents_src = joinpath(root, "AGENTS.md")
+agents_dst = joinpath(root, "docs", "src", "developer_docs", "AGENTS.md")
+cp(agents_src, agents_dst; force=true)
+
+developer_pages = [
+    "Contributor's guide" => "developer_docs/contributing.md",
+    "Model interface" => "developer_docs/model_interface.md",
+    "Rules for agent-assisted development" => "developer_docs/AGENTS.md",
+]
+
 pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
@@ -183,7 +197,7 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
+    "For developers" => developer_pages,
     "Gallery" => "gallery.md",
     "References" => "references.md",
     "Appendix" => appendix_pages

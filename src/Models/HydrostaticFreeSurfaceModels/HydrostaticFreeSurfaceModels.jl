@@ -11,6 +11,7 @@ using Adapt: Adapt
 
 using Oceananigans.Utils: launch!
 using Oceananigans.Utils: launch!, @apply_regionally
+using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
@@ -24,6 +25,7 @@ import Oceananigans.Models: materialize_free_surface
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Simulations: timestepper
 
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 

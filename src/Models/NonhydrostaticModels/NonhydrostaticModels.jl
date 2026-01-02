@@ -21,6 +21,7 @@ using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)

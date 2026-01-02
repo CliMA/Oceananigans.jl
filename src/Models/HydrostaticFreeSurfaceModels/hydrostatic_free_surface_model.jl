@@ -351,5 +351,6 @@ end
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
 buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
