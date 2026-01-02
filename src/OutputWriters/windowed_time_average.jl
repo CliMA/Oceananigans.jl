@@ -92,34 +92,7 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 
-"""
-    validate_schedule_runtime(schedule::AveragedTimeInterval, clock)
-
-Validate that the first averaging window does not extend before the simulation start time.
-This validation can only be performed at runtime when the model clock is available.
-"""
-function validate_schedule_runtime(schedule::AveragedTimeInterval, clock)
-    # Only validate if we haven't started collecting or completed any actuations yet
-    (schedule.actuations > 0 || schedule.collecting) && return nothing
-    # If first_actuation_time hasn't been set yet, set it to the first interval time
-    if schedule.first_actuation_time == 0.0
-        schedule.first_actuation_time = clock.time
-    end
-
-    # Check if the first window extends before the simulation start time
-    first_actuation = schedule.first_actuation_time + schedule.interval
-    window_start = first_actuation - schedule.window
-
-    if window_start < clock.time
-        throw(ArgumentError("The first averaging window starts at $(prettytime(window_start)), " *
-                            "which is before the simulation start time $(prettytime(clock.time)). " *
-                            "Consider adjusting the interval or reducing the window size."))
-    end
-
-    return nothing
-end
-
-initialize!(sch::AveragedTimeInterval, model) = validate_schedule_runtime(sch, model.clock)
+initialize!(sch::AveragedTimeInterval, model) = nothing
 outside_window(sch::AveragedTimeInterval, clock) = clock.time <= next_actuation_time(sch) - sch.window
 end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch)
 
