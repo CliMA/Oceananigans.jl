@@ -239,7 +239,6 @@ function advance_time_average!(wta::SpecifiedWindowedTimeAverage, model)
             wta.window_start_time = next_actuation_time(wta.schedule) - get_next_window(wta.schedule)
             wta.previous_collection_time = wta.window_start_time
             wta.window_start_iteration = model.clock.iteration - 1
-            # @info "t $(prettytime(model.clock.time)), next actuation time: $(prettytime(next_actuation_time(wta.schedule))), window $(prettytime(wta.schedule.window))"
         end
 
         if end_of_window(wta.schedule, model.clock)
