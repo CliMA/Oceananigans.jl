@@ -35,25 +35,26 @@ function run_simulation(Nx, Ny, arch; topology = (Periodic, Periodic, Bounded))
     mask(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
     set!(model.tracers.c, mask)
 
-    simulation = Simulation(model, Δt = 0.02, stop_iteration = 100)
+    set!(c, mask)
 
-    wizard = TimeStepWizard(cfl = 0.2, max_change = 1.1)
-
+    u, v, _ = model.velocities
+    # ζ = VerticalVorticityField(model)
+    η = model.free_surface.displacement
+    outputs = merge(model.velocities, model.tracers, (; η))
+    simulation = Simulation(model, Δt=0.02, stop_time=100)
+    conjure_time_step_wizard!(simulation, cfl = 0.2)
     progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"
-
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
-    simulation.callbacks[:wizard]   = Callback(wizard, IterationInterval(10))
+    add_callback!(simulation, progress, IterationInterval(10))
 
     run!(simulation)
-
     @info "Simulation completed on rank $local_rank"
-
     MPI.Barrier(arch.communicator)
+
+    return nothing
 end
 
 Nx = 32
 Ny = 32
 
 arch = Distributed(CPU(), partition = Partition(2, 2))
-
 run_simulation(Nx, Ny, arch)

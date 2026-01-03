@@ -104,7 +104,7 @@ simulation = Simulation(model,
 
 simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(24*50))
 
-output_fields = merge(model.velocities, (η=model.free_surface.η,))
+output_fields = merge(model.velocities, (η=model.free_surface.displacement,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 

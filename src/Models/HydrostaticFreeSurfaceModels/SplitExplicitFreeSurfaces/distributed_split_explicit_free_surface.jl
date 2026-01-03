@@ -26,7 +26,7 @@ function wait_free_surface_communication!(free_surface::DistributedSplitExplicit
 end
 
 function synchronize_communication!(free_surface::SplitExplicitFreeSurface)
-    η    = free_surface.η
+    η    = free_surface.displacement
     U, V = free_surface.barotropic_velocities
     Ũ, Ṽ = free_surface.filtered_state.Ũ, free_surface.filtered_state.Ṽ
 

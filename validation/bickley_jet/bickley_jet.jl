@@ -36,7 +36,7 @@ function run_bickley_jet(;
     progress(sim) = @printf("Iter: %d, time: %.1f, Δt: %.1e, max|u|: %.3f, max|η|: %.3f\n",
                             iteration(sim), time(sim), sim.Δt,
                             maximum(abs, model.velocities.u),
-                            maximum(abs, model.free_surface.η))
+                            maximum(abs, model.free_surface.displacement))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
@@ -45,7 +45,7 @@ function run_bickley_jet(;
 
     # Output: primitive fields + computations
     u, v, w = model.velocities
-    outputs = merge(model.velocities, model.tracers, (ζ=∂x(v) - ∂y(u), η=model.free_surface.η))
+    outputs = merge(model.velocities, model.tracers, (ζ=∂x(v) - ∂y(u), η=model.free_surface.displacement))
 
     @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name * "_$(boundary_buffer(momentum_advection))"
 

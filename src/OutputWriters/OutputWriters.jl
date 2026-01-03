@@ -3,7 +3,7 @@ module OutputWriters
 export
     JLD2Writer, NetCDFWriter, written_names,
     Checkpointer, WindowedTimeAverage, FileSizeLimit,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
 
 using Oceananigans.Architectures
 using Oceananigans.Grids

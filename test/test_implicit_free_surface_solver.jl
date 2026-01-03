@@ -17,7 +17,7 @@ function set_simple_divergent_velocity!(model)
     grid = model.grid
 
     u, v, w = model.velocities
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     u .= 0
     v .= 0
@@ -51,7 +51,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     set_simple_divergent_velocity!(model)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    η = model.free_surface.η
+    η = model.free_surface.displacement
     @info "PCG implicit free surface solver test, norm(η_pcg): $(norm(η)), maximum(abs, η_pcg): $(maximum(abs, η))"
 
     # Extract right hand side "truth"
@@ -64,7 +64,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
     # Compute left hand side "solution"
     g = Oceananigans.defaults.gravitational_acceleration
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_x_area, grid)
     ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_y_area, grid)
@@ -154,8 +154,8 @@ end
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₂)
         end
 
-        pcg_η = pcg_model.free_surface.η
-        fft_η = fft_model.free_surface.η
+        pcg_η = pcg_model.free_surface.displacement
+        fft_η = fft_model.free_surface.displacement
      
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))
