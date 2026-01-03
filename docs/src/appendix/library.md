@@ -161,6 +161,13 @@ Modules = [Oceananigans.Models.VarianceDissipationComputations]
 Private = false
 ```
 
+### Bulk drag boundary conditions
+
+```@autodocs
+Modules = [Oceananigans.Models.BulkDragBoundaryConditions]
+Private = false
+```
+
 ## MultiRegion
 
 ```@autodocs
