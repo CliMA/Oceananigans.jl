@@ -56,15 +56,20 @@ Example
 julia> using Oceananigans
 
 julia> cavd = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1)
-ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.0 convective_κz=1 background_νz=0.0 convective_νz=0.0)
+ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.0 convective_κz=1.0 background_νz=0.0 convective_νz=0.0)
 ```
 """
 function ConvectiveAdjustmentVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
-                                                 convective_κz = zero(FT),
-                                                 convective_νz = zero(FT),
-                                                 background_κz = zero(FT),
-                                                 background_νz = zero(FT))
+                                                 convective_κz = 0,
+                                                 convective_νz = 0,
+                                                 background_κz = 0,
+                                                 background_νz = 0)
 
+    convective_κz = convert(FT, convective_κz)
+    convective_νz = convert(FT, convective_νz)
+    background_κz = convert(FT, background_κz)
+    background_νz = convert(FT, background_νz)
+    
     return ConvectiveAdjustmentVerticalDiffusivity{typeof(time_discretization)}(convective_κz, convective_νz,
                                                                                 background_κz, background_νz)
 end
