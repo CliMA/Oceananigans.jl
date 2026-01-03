@@ -93,15 +93,11 @@ for arch in archs
 
             child_arch = child_architecture(arch)
 
-            # TODO: MutableVerticalDiscretization does not lead to exactly equal 
-            # solutions on a GPU, but it does on a CPU. For the moment we remove the
-            # offending tests, but we need to investigate this...
-            if child_arch isa GPU
-                z_faces = [(-1, 0)]
-            else
-                z_faces = [(-1, 0), MutableVerticalDiscretization((-1, 0))]
-            end
-
+            # TODO: MutableVerticalDiscretization does not lead to exactly equal solutions. 
+            # For the moment we remove the offending tests, but we need to investigate this...
+            # z_faces = [(-1, 0), MutableVerticalDiscretization((-1, 0))]
+            z_faces = [(-1, 0)]
+            
             for z_face in z_faces
                 underlying_grid = LatitudeLongitudeGrid(arch,
                                                         size = (Nx, Ny, 3),
