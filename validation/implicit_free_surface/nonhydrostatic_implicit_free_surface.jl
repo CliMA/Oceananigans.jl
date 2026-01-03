@@ -20,7 +20,7 @@ ax = Axis(fig[1, 1])
 heatmap!(ax, interior(model.pressures.pNHS, :, 1, :))
 fig
 
-# set!(model.free_surface.η, ηᵢ)
+# set!(model.free_surface.displacement, ηᵢ)
 
 #=
 Δx = 20 / grid.Nx
@@ -31,7 +31,7 @@ simulation = Simulation(model; Δt, stop_iteration=10) #stop_time=5/c)
 ηt = []
 function progress(sim) 
     @info @sprintf("Time: %s, iteration: %d", prettytime(sim), iteration(sim))
-    push!(ηt, deepcopy(interior(model.free_surface.η, :, 1, 1)))
+    push!(ηt, deepcopy(interior(model.free_surface.displacement, :, 1, 1)))
     return nothing
 end
 
@@ -46,7 +46,7 @@ ax = Axis(fig[1, 1], xlabel="x", ylabel="η")
 slider = Slider(fig[2, 1], range=1:length(ηt), startvalue=1)
 n = slider.value
 ηn = @lift ηt[$n]
-lines!(ax, interior(model.free_surface.η, :, 1, 1))
+lines!(ax, interior(model.free_surface.displacement, :, 1, 1))
 fig
 =#
 

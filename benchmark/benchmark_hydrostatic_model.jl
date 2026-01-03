@@ -19,7 +19,7 @@ function set_divergent_velocity!(model)
     grid = model.grid
 
     u, v, w = model.velocities
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     u .= 0
     v .= 0
