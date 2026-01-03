@@ -110,7 +110,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 """
-    HydrostaticFreeSurfaceModel(grid; 
+    HydrostaticFreeSurfaceModel(grid;
                                 clock = Clock{Float64}(time = 0),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
@@ -169,7 +169,7 @@ Keyword arguments
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
 """
-function HydrostaticFreeSurfaceModel(grid; 
+function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
                                      momentum_advection = VectorInvariant(),
                                      tracer_advection = Centered(),
