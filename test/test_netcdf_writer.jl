@@ -2540,7 +2540,7 @@ function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, 
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
     outputs = (;
-        η = model.free_surface.η,
+        η = model.free_surface.displacement,
     )
 
     Arch = typeof(arch)
@@ -2612,7 +2612,7 @@ function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false,
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
     free_surface_outputs = (;
-        η = model.free_surface.η,
+        η = model.free_surface.displacement,
     )
 
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)
@@ -2700,7 +2700,7 @@ function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=fals
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    outputs = (; η = model.free_surface.η)
+    outputs = (; η = model.free_surface.displacement)
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
@@ -2767,7 +2767,7 @@ function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=fal
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    free_surface_outputs = (; η = model.free_surface.η)
+    free_surface_outputs = (; η = model.free_surface.displacement)
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)
 
     Arch = typeof(arch)

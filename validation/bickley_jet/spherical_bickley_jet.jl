@@ -105,7 +105,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
                             iteration(sim), prettytime(sim), prettytime(sim.Δt),
-                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
+                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.displacement))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
@@ -119,7 +119,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
     ζ = Field(ζ_op)
-    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
+    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.displacement))
 
     name = typeof(model.advection.momentum).name.wrapper
     if model.advection.momentum isa WENOVectorInvariantVel
