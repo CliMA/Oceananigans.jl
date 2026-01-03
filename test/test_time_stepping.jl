@@ -18,9 +18,8 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
 end
 
 function euler_time_stepping_doesnt_propagate_NaNs(arch)
-    model = HydrostaticFreeSurfaceModel(RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
-                                        buoyancy = BuoyancyTracer(),
-                                        tracers = :b)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+    model = HydrostaticFreeSurfaceModel(grid, buoyancy = BuoyancyTracer(), tracers = :b)
 
     @allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
     time_step!(model, 1, euler=true)
