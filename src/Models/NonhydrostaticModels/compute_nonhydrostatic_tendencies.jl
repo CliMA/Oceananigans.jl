@@ -32,7 +32,6 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
-    compute_flux_bc_tendencies!(model)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)

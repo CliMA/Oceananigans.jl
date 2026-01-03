@@ -26,6 +26,9 @@ This predictor-corrector scheme:
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
 
+    # Compute flux bc tendencies 
+    compute_flux_bc_tendencies!(model)
+
     # Velocity steps
     for (i, field) in enumerate(model.velocities)
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
