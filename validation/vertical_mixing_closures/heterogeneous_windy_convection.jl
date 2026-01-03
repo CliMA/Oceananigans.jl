@@ -62,7 +62,8 @@ closure = (vertical_mixing, hyperviscosity)
 filename = "heterogeneous_cooling_with_hyperviscosity.jld2"
 #filename = "heterogeneous_cooling.jld2"
 
-model = HydrostaticFreeSurfaceModel(; grid, closure,
+model = HydrostaticFreeSurfaceModel(grid;
+                                    closure,
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     coriolis = FPlane(f=1e-4),

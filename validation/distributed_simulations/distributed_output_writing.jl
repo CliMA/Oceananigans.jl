@@ -17,7 +17,7 @@ rank = MPI.Comm_rank(arch.communicator)
 
 grid = RectilinearGrid(arch; topology, size = (16 ÷ Nranks, 16), halo = (3, 3), extent = (2π, 2π))
 
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 
 uᵢ = rand(size(grid)...)
 vᵢ = rand(size(grid)...)

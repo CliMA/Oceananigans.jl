@@ -37,7 +37,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = t
 
 coriolis = FPlane(f=1e-4)
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                     timestepper = :SplitRungeKutta3,
                                     free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 

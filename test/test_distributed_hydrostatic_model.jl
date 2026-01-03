@@ -38,7 +38,7 @@ function rotation_with_shear_test(grid, closure=nothing)
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1)
     tracers = (:c, :b)
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis, tracers, free_surface,
+    model = HydrostaticFreeSurfaceModel(grid; closure, coriolis, tracers, free_surface,
                                         momentum_advection = WENOVectorInvariant(order=3),
                                         tracer_advection = WENO(order=3),
                                         buoyancy = BuoyancyTracer())

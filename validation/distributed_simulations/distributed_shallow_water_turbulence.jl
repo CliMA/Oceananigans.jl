@@ -26,7 +26,7 @@ grid = RectilinearGrid(arch,
                        extent = (4π, 4π),
                        halo = (3, 3))
 
-model = ShallowWaterModel(grid = grid,
+model = ShallowWaterModel(grid;
                           timestepper = :RungeKutta3,
                           momentum_advection = UpwindBiased(order = 5),
                           gravitational_acceleration = 1)

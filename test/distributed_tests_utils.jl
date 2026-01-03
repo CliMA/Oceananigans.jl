@@ -131,13 +131,12 @@ end
 # Just a random simulation on a tripolar grid
 function run_distributed_simulation(grid)
 
-    model = HydrostaticFreeSurfaceModel(; grid = grid,
-                                          free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
-                                          tracers = :c,
-                                          buoyancy = nothing,
-                                          tracer_advection = WENO(),
-                                          momentum_advection = WENOVectorInvariant(order=3),
-                                          coriolis = HydrostaticSphericalCoriolis())
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                        tracers = :c,
+                                        tracer_advection = WENO(),
+                                        momentum_advection = WENOVectorInvariant(order=3),
+                                        coriolis = HydrostaticSphericalCoriolis())
 
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator

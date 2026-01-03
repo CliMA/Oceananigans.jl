@@ -14,8 +14,11 @@ a function with arguments `(x, y, z)`, or any data type for which a
 
 Example
 =======
-```julia
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+
+```@example
+using Oceananigans
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid, tracers=:T)
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -28,6 +31,8 @@ T₀ = rand(size(model.grid)...)
 T₀[T₀ .< 0.5] .= 0
 
 set!(model, u=u₀, v=v₀, T=T₀)
+
+model.tracers.T
 ```
 """
 function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)

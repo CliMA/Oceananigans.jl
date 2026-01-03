@@ -25,7 +25,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 

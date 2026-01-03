@@ -138,7 +138,7 @@ fig
 
 # # The model
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             background_fields = (u=U, b=B),
                             closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),

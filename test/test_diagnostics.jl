@@ -8,17 +8,13 @@ struct TestDiagnostic <: AbstractDiagnostic end
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
-    NonhydrostaticModel(
-          grid = RectilinearGrid(arch, FT, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,),
-       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
-)
+    NonhydrostaticModel(RectilinearGrid(arch, FT, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,);
+                        closure = ScalarDiffusivity(FT, ν=ν, κ=ν))
 
 
 TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
-    NonhydrostaticModel(
-          grid = RectilinearGrid(arch, FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
-       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
-)
+    NonhydrostaticModel(RectilinearGrid(arch, FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx));
+                        closure = ScalarDiffusivity(FT, ν=ν, κ=ν))
 
 function diffusive_cfl_diagnostic_is_correct(arch, FT)
     Δt = FT(1.3e-6)
@@ -84,7 +80,7 @@ end
 
 function advective_timescale_cfl_on_stretched_grid(arch, FT)
     grid = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z=[k^2 for k in 0:8])
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(grid)
 
     Δt = FT(15.5)
 
@@ -109,7 +105,7 @@ end
 
 function advective_timescale_cfl_on_lat_lon_grid(arch, FT)
     grid = LatitudeLongitudeGrid(arch, size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
-    model = HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=VectorInvariant())
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection=VectorInvariant())
 
     Δt = FT(1000)
 
@@ -144,7 +140,7 @@ function advective_timescale_cfl_on_flat_2d_grid(arch, FT)
     topo = (Periodic, Flat, Bounded)
     grid = RectilinearGrid(arch, FT, topology=topo, size=(3, 3), x=(0, 3Δx), z=(0, 3Δx))
 
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     set!(model, v=1)
 
     Δt = FT(1.7)

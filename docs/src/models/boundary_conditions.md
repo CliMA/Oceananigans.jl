@@ -39,7 +39,7 @@ directions decay to `0` at the boundary, leading to a viscous loss of momentum.
 ```jldoctest bcsintro
 julia> no_slip_field_bcs = FieldBoundaryConditions(no_slip_bc);
 
-julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=no_slip_field_bcs, v=no_slip_field_bcs, w=no_slip_field_bcs))
+julia> model = NonhydrostaticModel(grid; boundary_conditions=(u=no_slip_field_bcs, v=no_slip_field_bcs, w=no_slip_field_bcs))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
@@ -76,7 +76,9 @@ the surface, we write
 ```jldoctest bcsintro
 julia> free_slip_surface_bcs = FieldBoundaryConditions(no_slip_bc, top=FluxBoundaryCondition(nothing));
 
-julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=free_slip_surface_bcs, v=free_slip_surface_bcs, w=no_slip_field_bcs));
+julia> boundary_conditions = (u=free_slip_surface_bcs, v=free_slip_surface_bcs, w=no_slip_field_bcs);
+
+julia> model = NonhydrostaticModel(grid; boundary_conditions);
 
 julia> model.velocities.u.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
@@ -420,7 +422,9 @@ julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
 julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01));
 
-julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
+julia> boundary_conditions = (u=u_bcs, c=c_bcs);
+
+julia> model = NonhydrostaticModel(grid; boundary_conditions, tracers=:c)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
@@ -474,7 +478,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 # Create a no-slip boundary condition for velocity fields.
 # Note that the no-slip boundary condition is _only_ applied on immersed boundaries.
 velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0))
-model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs))
+model = NonhydrostaticModel(grid; boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs))
 
 # Inspect the boundary condition on the vertical velocity:
 model.velocities.w.boundary_conditions.immersed
@@ -513,7 +517,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 # Create a no-slip boundary condition for velocity fields.
 # Note that the no-slip boundary condition is _only_ applied on immersed boundaries.
 velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0))
-model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs))
+model = NonhydrostaticModel(grid; boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs))
 
 # output
 ┌ Warning: The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid

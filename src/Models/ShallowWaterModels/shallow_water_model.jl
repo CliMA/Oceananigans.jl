@@ -58,30 +58,34 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-    ShallowWaterModel(; grid,
-                        gravitational_acceleration,
-                              clock = Clock{eltype(grid)}(time = 0),
-                 momentum_advection = UpwindBiased(order=5),
-                   tracer_advection = WENO(),
-                     mass_advection = WENO(),
-                           coriolis = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-                         bathymetry = nothing,
-                            tracers = (),
-                     closure_fields = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                timestepper::Symbol = :RungeKutta3,
-                        formulation = ConservativeFormulation())
+    ShallowWaterModel(grid;
+                      gravitational_acceleration,
+                      clock = Clock(grid),
+                      momentum_advection = UpwindBiased(order=5),
+                      tracer_advection = WENO(),
+                      mass_advection = WENO(),
+                      coriolis = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                      closure = nothing,
+                      bathymetry = nothing,
+                      tracers = (),
+                      closure_fields = nothing,
+                      boundary_conditions::NamedTuple = NamedTuple(),
+                      timestepper::Symbol = :RungeKutta3,
+                      formulation = ConservativeFormulation())
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
-Keyword arguments
-=================
+Arguments
+=========
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
             of the grid.
+
+Keyword arguments
+=================
+
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
@@ -108,22 +112,21 @@ Keyword arguments
     The `ConservativeFormulation()` requires `RectilinearGrid`.
     Use `VectorInvariantFormulation()` with `LatitudeLongitudeGrid`.
 """
-function ShallowWaterModel(;
-                           grid,
+function ShallowWaterModel(grid;
                            gravitational_acceleration,
-                               clock = Clock(grid),
-                  momentum_advection = UpwindBiased(order=5),
-                    tracer_advection = WENO(),
-                      mass_advection = WENO(),
-                            coriolis = nothing,
-                 forcing::NamedTuple = NamedTuple(),
-                             closure = nothing,
-                          bathymetry = nothing,
-                             tracers = (),
-                      closure_fields = nothing,
-     boundary_conditions::NamedTuple = NamedTuple(),
-                 timestepper::Symbol = :RungeKutta3,
-                         formulation = ConservativeFormulation())
+                           clock = Clock(grid),
+                           momentum_advection = UpwindBiased(order=5),
+                           tracer_advection = WENO(),
+                           mass_advection = WENO(),
+                           coriolis = nothing,
+                           forcing::NamedTuple = NamedTuple(),
+                           closure = nothing,
+                           bathymetry = nothing,
+                           tracers = (),
+                           closure_fields = nothing,
+                           boundary_conditions::NamedTuple = NamedTuple(),
+                           timestepper::Symbol = :RungeKutta3,
+                           formulation = ConservativeFormulation())
 
     @warn "The ShallowWaterModel is currently unvalidated, subject to change, and should not be used for scientific research without adequate validation."
 

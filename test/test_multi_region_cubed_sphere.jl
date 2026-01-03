@@ -776,7 +776,7 @@ end
                     grid_suffix = "IG"
                 end
 
-                model = HydrostaticFreeSurfaceModel(; grid,
+                model = HydrostaticFreeSurfaceModel(grid;
                                                     momentum_advection = WENOVectorInvariant(FT; order=5),
                                                     tracer_advection = WENO(FT; order=5),
                                                     free_surface = SplitExplicitFreeSurface(grid; substeps=12),

@@ -12,7 +12,7 @@ using CUDA
     @test eltype(grid) == Float64
     @test architecture(grid) isa GPU
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         coriolis = FPlane(latitude=45),
                                         buoyancy = BuoyancyTracer(),
                                         tracers = :b,

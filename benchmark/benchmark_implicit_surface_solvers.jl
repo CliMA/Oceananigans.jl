@@ -89,7 +89,7 @@ for N in 10:10:250
             free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver, reltol=sqrt(eps(eltype(grid))), abstol=0)
         end
 
-        model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+        model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                             coriolis,
                                             buoyancy = BuoyancyTracer(),
                                             closure = (horizontal_closure, ),

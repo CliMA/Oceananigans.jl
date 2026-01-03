@@ -188,17 +188,14 @@ biharmonic_horizontal_diffusivity = HorizontalScalarBiharmonicDiffusivity(ν=κ�
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
-model = NonhydrostaticModel(
-                   grid = grid,
-              advection = WENO(),
-            timestepper = :RungeKutta3,
-               coriolis = coriolis,
-                tracers = :b,
-               buoyancy = BuoyancyTracer(),
-      background_fields = (b=B_field, u=U_field),
-                closure = (Laplacian_vertical_diffusivity, biharmonic_horizontal_diffusivity),
-    boundary_conditions = (u=u_bcs, v=v_bcs)
-)
+model = NonhydrostaticModel(grid; advection = WENO(),
+                                  timestepper = :RungeKutta3,
+                                  coriolis,
+                                  tracers = :b,
+                                  buoyancy = BuoyancyTracer(),
+                                  background_fields = (b=B_field, u=U_field),
+                                  closure = (Laplacian_vertical_diffusivity, biharmonic_horizontal_diffusivity),
+                                  boundary_conditions = (u=u_bcs, v=v_bcs))
 
 # ## Initial conditions
 #

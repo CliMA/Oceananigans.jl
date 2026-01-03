@@ -34,7 +34,7 @@ g̃ = (0, -sind(θ), -cosd(θ))
 
 buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=g̃)
 
-model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
+model = NonhydrostaticModel(grid; buoyancy, tracers=:b)
 
 # output
 

@@ -30,14 +30,10 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 function setup_simulation(N, advection_scheme)
     L = 2000
     topology = (Periodic, Flat, Bounded)
-    grid = RectilinearGrid(topology=topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
+    grid = RectilinearGrid(; topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
 
-    model = NonhydrostaticModel(
-               grid = grid,
-        timestepper = :RungeKutta3,
-          advection = advection_scheme,
-            closure = ScalarDiffusivity(ν=0, κ=0)
-    )
+    model = NonhydrostaticModel(grid; timestepper = :RungeKutta3, advection = advection_scheme,
+                                      closure = ScalarDiffusivity(ν=0, κ=0))
 
     x₀, z₀ = L/2, -L/2
     T₀(x, y, z) = 20 + 0.01 * exp(-100 * ((x - x₀)^2 + (z - z₀)^2) / (L^2 + L^2))

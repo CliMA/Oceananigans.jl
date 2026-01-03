@@ -38,7 +38,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
     # Model instantiation
-    model = NonhydrostaticModel(; grid, closure,
+    model = NonhydrostaticModel(grid; closure,
                                 timestepper = :QuasiAdamsBashforth2,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(; equation_of_state),

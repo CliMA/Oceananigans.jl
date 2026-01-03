@@ -35,7 +35,7 @@ Example
 ```jldoctest
 julia> using Oceananigans
 
-julia> model = NonhydrostaticModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(8, 8, 8)));
+julia> model = NonhydrostaticModel(RectilinearGrid(size=(16, 16, 16), extent=(8, 8, 8)));
 
 julia> Δt = 1.0;
 
@@ -65,7 +65,7 @@ Example
 ```jldoctest
 julia> using Oceananigans
 
-julia> model = NonhydrostaticModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)),
+julia> model = NonhydrostaticModel(RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)),
                                    closure = ScalarDiffusivity(; ν = 1e-2));
 
 julia> Δt = 0.1;

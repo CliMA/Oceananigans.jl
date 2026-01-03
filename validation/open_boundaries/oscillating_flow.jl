@@ -47,7 +47,7 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
 
     cylinder_forcing = Relaxation(; rate = 1 / (2 * Δt), mask = cylinder)
 
-    global model = NonhydrostaticModel(; grid,
+    global model = NonhydrostaticModel(grid;
                                        advection = UpwindBiased(order=5),
                                        forcing = (u = cylinder_forcing, v = cylinder_forcing, w = cylinder_forcing),
                                        boundary_conditions)

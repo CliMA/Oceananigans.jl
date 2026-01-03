@@ -15,7 +15,7 @@ typical applications: we only do it here for illustration purposes.
 ```@repl checkpointing
 using Oceananigans
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1)))
+model = NonhydrostaticModel(RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=1, stop_iteration=8)
 

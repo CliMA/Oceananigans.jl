@@ -243,7 +243,7 @@ for arch in archs
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
                                     equation_of_state = LinearEquationOfState(thermal_expansion=1, haline_contraction=1))
 
-        model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
+        model = NonhydrostaticModel(grid; buoyancy, tracers = (:T, :S))
 
         @testset "Construction of abstract operations [$A]" begin
             @info "    Testing construction of abstract operations [$A]..."

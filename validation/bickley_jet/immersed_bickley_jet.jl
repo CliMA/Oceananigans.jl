@@ -46,14 +46,9 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
     timescale = (5days / (6minutes) * Δt)
     @show prettytime(timescale)
 
-    model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
-                                        tracer_advection = WENO(),
-                                        grid = grid,
-                                        tracers = :c,
-                                        closure = nothing,
-                                        free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0),
-                                        coriolis = nothing,
-                                        buoyancy = nothing)
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c,
+                                        momentum_advection = momentum_advection, tracer_advection = WENO(),
+                                        free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0))
 
     # ** Initial conditions **
     #

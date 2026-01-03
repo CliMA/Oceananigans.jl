@@ -5,7 +5,7 @@ using  Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continui
 arch = CPU()
 grid = RectilinearGrid(arch, size = (32, 32, 32), extent = (1, 1, 1))
 closure = AnisotropicMinimumDissipation(VerticallyImplicitTimeDiscretization(), C=1/3)
-model = NonhydrostaticModel(; grid, closure)
+model = NonhydrostaticModel(grid; closure)
 
 ϵ(x, y, z) = randn()
 set!(model, u=ϵ, v=ϵ)

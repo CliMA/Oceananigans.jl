@@ -23,8 +23,8 @@ g2 = RotatedLatitudeLongitudeGrid(; size, latitude, longitude, z, topology, nort
 
 momentum_advection = VectorInvariant()
 closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
-m1 = HydrostaticFreeSurfaceModel(grid=g1; closure, momentum_advection)
-m2 = HydrostaticFreeSurfaceModel(grid=g2; closure, momentum_advection)
+m1 = HydrostaticFreeSurfaceModel(g1; closure, momentum_advection)
+m2 = HydrostaticFreeSurfaceModel(g2; closure, momentum_advection)
 
 Random.seed!(123)
 ϵᵢ(λ, φ, z) = 1e-6 * randn()
