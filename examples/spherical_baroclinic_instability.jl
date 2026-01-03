@@ -14,6 +14,10 @@
 # different spherical grid types to illustrate the flexibility of Oceananigans for global
 # ocean modeling.
 #
+# This example also demonstrates:
+# - Using [`BulkDrag`](@ref) for quadratic bottom drag boundary conditions
+# - Applying drag only to the bottom facet of immersed boundaries
+#
 # ## Install dependencies
 #
 # First let's make sure we have all required packages installed.
@@ -33,7 +37,7 @@
 #
 # - [`TripolarGrid`](@ref): Avoids the North Pole singularity by introducing two computational poles
 #   over land (typically over North America and Eurasia). This grid was first introduced by
-#   Murray (1996) and is widely used in global ocean models.
+#   [Murray1996](@citet) and is widely used in global ocean models.
 #
 # - [`RotatedLatitudeLongitudeGrid`](@ref): Rotates the grid's north pole to an arbitrary location,
 #   allowing finer resolution in a region of interest while avoiding the geographic poles.
@@ -72,20 +76,20 @@ lat_lon_grid = LatitudeLongitudeGrid(arch; size, halo, latitude, longitude, z)
 
 underlying_tripolar_grid = TripolarGrid(arch; size, halo, z)
 
-# We also use an `ImmersedBoundaryGrid` to place cylindrical islands over the singularities
+# We also use an `ImmersedBoundaryGrid` to place Gaussian mountains over the singularities
 # to ensure the simulation remains stable.
 # The tripolar grid places singularities at longitude `first_pole_longitude` and
 # `first_pole_longitude + 180°`, both at latitude `north_poles_latitude`.
 # By default, the first pole is at 70°E longitude and 55°N latitude.
 
-dφ, dλ = 4, 8     # island extent in latitude and longitude
-λ₀, φ₀ = 70, 55   # first pole location
-h = 100           # island height above the bottom
+σφ, σλ = 4, 8       # mountain extent in latitude and longitude (degrees)
+λ₀, φ₀ = 70, 55     # first pole location
+h = H + 1000        # mountain height above the bottom (m)
 
-cylinder(λ, φ) = ((λ - λ₀)^2 / 2dλ^2 + (φ - φ₀)^2 / 2dφ^2) < 1
-cylindrical_isles(λ, φ) = -H + (H + h) * (cylinder(λ, φ) + cylinder(λ - 180, φ))
+gaussian(λ, φ) = exp(-((λ - λ₀)^2 / 2σλ^2 + (φ - φ₀)^2 / 2σφ^2))
+gaussian_mountains(λ, φ) = -H + h * (gaussian(λ, φ) + gaussian(λ - 180, φ))
 
-tripolar_grid = ImmersedBoundaryGrid(underlying_tripolar_grid, GridFittedBottom(cylindrical_isles))
+tripolar_grid = ImmersedBoundaryGrid(underlying_tripolar_grid, GridFittedBottom(gaussian_mountains))
 
 # ### Rotated latitude-longitude grid
 #
@@ -99,22 +103,19 @@ rotated_lat_lon_grid = RotatedLatitudeLongitudeGrid(arch; size, halo, latitude, 
 # ## Model setup
 #
 # We create a function that builds a `HydrostaticFreeSurfaceModel` for any of our grids.
-# The model uses:
+# Each model is configured with:
+#
 # - WENO advection for both momentum and tracers
 # - Spherical Coriolis force appropriate for hydrostatic dynamics
 # - Realistic seawater buoyancy using the TEOS-10 equation of state
 # - Split-explicit free surface for fast external gravity wave dynamics
+# - Quadratic bottom drag using [`BulkDrag`](@ref), which computes
+#   a stress proportional to `Cᴰ |u| u` where `Cᴰ` is the drag coefficient.
+# - An initial condition that involves
+#   * A temperature front centered around ±45° latitude
+#   * Vertical salinity stratification
+#   * Random noise in both to seed instability
 
-# The model is initialized with a temperature front in the meridional direction:
-# - Warm water in the tropics, cold water at high latitudes
-# - The front is centered around ±45° latitude
-# - Random noise seeds the baroclinic instability
-
-## Initialc conditions
-Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
-Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
-
-## Helper to build and initialize a model on any grid.
 function build_model(grid)
     momentum_advection = WENOVectorInvariant(order=5)
     tracer_advection = WENO(order=5)
@@ -122,28 +123,46 @@ function build_model(grid)
     equation_of_state = TEOS10EquationOfState()
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     free_surface = SplitExplicitFreeSurface(grid; substeps=80)
-    model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy, tracers = (:T, :S),
-                                        momentum_advection, tracer_advection)
+
+    ## Apply bottom drag to both domain boundaries and immersed boundaries.
+    ## For immersed boundaries, use ImmersedBoundaryCondition to apply drag
+    ## only to the bottom facet.
+    drag = BulkDrag(coefficient=2e-3)
+    u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+    v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+    boundary_conditions = (; u=u_bcs, v=v_bcs)
+
+    model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy,
+                                        tracers = (:T, :S),
+                                        momentum_advection, tracer_advection,
+                                        boundary_conditions)
+
+    ## Initial conditions
+    Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+    Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
     set!(model, T=Tᵢ, S=Sᵢ)
+
     return model
 end
 
 # ## Simulation runner
 #
-# We define a function that sets up and runs a simulation on a given grid.
-# We run for 30 days to observe the initial development of the instability
+# We define a function that sets up and runs a simulation on a given grid,
+# along with a progress callback that prints the velocity and temperature range
+# as the simulation runs. We run for 60 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
+## Simulation runner
 function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=24hours)
     model = build_model(grid)
     simulation = Simulation(model; Δt=8minutes, stop_time)
 
-    ## Add progress callback
+    ## Progress callback
     function progress(sim)
         T = sim.model.tracers.T
         u, v, w = sim.model.velocities
 
-        msg = @sprintf("%s grid, iter % 5d: % 10s, max|u|: (%.2e, %.2e, %.2e)",
+        msg = @sprintf("%s grid, iter % 4d: % 10s, max|u|: (%.2e, %.2e, %.2e)",
                        name, iteration(sim), prettytime(sim),
                        maximum(abs, u), maximum(abs, v), maximum(abs, w))
 
@@ -166,11 +185,7 @@ function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=2
     simulation.output_writers[:surface] = JLD2Writer(model, fields; indices, filename,
                                                      schedule = TimeInterval(save_interval),
                                                      overwrite_existing = true)
-    @info "Running $name simulation..."
     run!(simulation)
-
-    @info "$name simulation completed in $(prettytime(simulation.run_wall_time))."
-
     return filename
 end
 

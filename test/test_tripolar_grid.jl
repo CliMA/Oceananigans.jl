@@ -83,7 +83,7 @@ end
         model = HydrostaticFreeSurfaceModel(; grid, free_surface)
 
         # Tests the grid has been extended
-        η = model.free_surface.η
+        η = model.free_surface.displacement
         P = model.free_surface.kernel_parameters
 
         range = contiguousrange(P)

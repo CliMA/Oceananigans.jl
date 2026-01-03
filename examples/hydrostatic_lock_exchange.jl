@@ -1,10 +1,11 @@
-# # [Lock Exchange Example](@id lock_exchange_example)
+# # [Hydrostatic lock exchange with CATKEVerticalDiffusivity](@id hydrostatic_lock_exchange_example)
 #
-# This is a simple example of a lock exchange problem on a slope. This example demonstrates:
+# This example simulates a lock exchange problem on a slope. It demonstrates:
 #
 #  * How to set up a 2D grid with a sloping bottom with an immersed boundary
 #  * Initializing a hydrostatic free surface model
 #  * Including variable density initial conditions
+#  * Applying bottom drag boundary conditions on immersed boundaries using [`BulkDrag`](@ref)
 #  * Saving outputs of the simulation
 #  * Creating an animation with CairoMakie
 #
@@ -34,21 +35,14 @@
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Grids
-using Oceananigans.Diagnostics
-using Oceananigans.OutputWriters
-using Oceananigans.Operators
-
 using Printf
 using CairoMakie
-
 
 # ## Set up 2D Rectilinear Grid
 
 # Set resolution of the simulation grid
-Nx, Nz = 128, 64
-
-# Set grid size
+Nx = 128
+Nz = 64
 L = 8kilometers   # horizontal length
 H = 50meters      # depth
 
@@ -56,7 +50,7 @@ H = 50meters      # depth
 # We wrap `z` into a MutableVerticalDiscretization. This allows the HydrostaticFreeSurface
 # model (which we construct further down) to use a time-evolving `ZStarCoordinate`
 # free-surface–following vertical coordinate.
-x = (0, L)
+x = (-L/8, 7L/8)
 z  = MutableVerticalDiscretization((-50, 0))
 
 # Initialize the grid:
@@ -76,6 +70,23 @@ bottom(x) = h_left + slope * x
 grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 
+# ## Set up a bottom drag boundary condition on the immersed boundary
+#
+# To apply drag to the flow, we use `BulkDrag`, which implements
+# quadratic drag proportional to `Cᴰ |U| u`, where `Cᴰ` is the drag coefficient and
+# `|U| = sqrt(u² + v²)` is the horizontal speed. We use a drag coefficient `Cᴰ = 0.002`,
+# a reasonable value for seafloor drag.
+
+Cᴰ = 0.002
+drag = BulkDrag(coefficient=Cᴰ)
+
+# `BulkDrag` can be applied both to domain boundaries (like the bottom of a `Bounded` grid)
+# and to immersed boundaries. Here we apply it to the immersed sloping bottom boundary:
+
+u_bcs = FieldBoundaryConditions(bottom=drag, immersed=drag)
+
+# Note: in a 2D simulation with `Flat` in the y-direction, we don't need v boundary conditions.
+
 # ## Initialize the model
 #
 #  * Want to use a hydrostatic model since horizontal motion may be more significant than vertical motion
@@ -89,14 +100,14 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     closure = CATKEVerticalDiffusivity(),
                                     momentum_advection = WENO(order=5),
                                     tracer_advection = WENO(order=7),
-                                    free_surface = SplitExplicitFreeSurface(grid; substeps=10))
+                                    boundary_conditions = (; u=u_bcs),
+                                    free_surface = SplitExplicitFreeSurface(grid; substeps=20))
 
 # ## Set variable density initial conditions
 
 # Set initial conditions for lock exchange with different buoyancies.
 bᵢ(x, z) = x > L/2 ? 0.01 : 0.06
 set!(model, b=bᵢ)
-
 
 # ## Construct a Simulation
 #
@@ -105,21 +116,20 @@ set!(model, b=bᵢ)
 
 # Set the timesteps
 Δt = 1second
-stop_time = 5hours
+stop_time = 6hours
 simulation = Simulation(model; Δt, stop_time)
 
 # The [`TimeStepWizard`](@ref) is incorporated in the simulation via the
 # [`conjure_time_step_wizard!`](@ref) helper function and it ensures stable
 # time-stepping with a Courant-Freidrichs-Lewy (CFL) number of 0.35.
-conjure_time_step_wizard!(simulation, cfl=0.35)
-
+conjure_time_step_wizard!(simulation, cfl=0.3)
 
 # ## Track Simulation Progress
 
-# Wall clock represents the real world time as opposed to simulation time
+## Wall clock represents the real world time as opposed to simulation time
 wall_clock = Ref(time_ns())
 
-# Define callback function to show how the simulation is progressing alongside with some flow statistics.
+## Define callback function to show how the simulation is progressing alongside with some flow statistics.
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
     msg = @sprintf("Iter: %6d, time: %s, Δt: %s, wall: %s, max|w| = %6.3e m s⁻¹",
@@ -128,16 +138,15 @@ function progress(sim)
                    prettytime(sim.Δt),
                    prettytime(elapsed),
                    maximum(abs, sim.model.velocities.w))
-    wall_clock[] = time_ns()
     @info msg
+    wall_clock[] = time_ns()
     return nothing
 end
 
-add_callback!(simulation, progress, name = :progress, TimeInterval(30minutes))
-
+add_callback!(simulation, progress, IterationInterval(1000))
 
 # ## Add output writer
-
+#
 # Here, we construct a JLD2Writer to save some output every `save_interval`.
 
 b = model.tracers.b
@@ -145,7 +154,7 @@ e = model.tracers.e
 u, v, w = model.velocities
 N² = ∂z(b)
 
-filename = "lock_exchange.jld2"
+filename = "hydrostatic_lock_exchange.jld2"
 save_interval = 2minutes
 simulation.output_writers[:fields] = JLD2Writer(model, (; b, e, u, N²);
                                                 filename = filename,
@@ -190,14 +199,12 @@ nothing #hide
 
 # Use snapshots to create Makie visualization for ``b``,  ``e``, ``u``, and ``N^2``.
 
+nan_color = :grey
 axis_kwargs = (xlabel = "x [m]", ylabel = "z [m]",
                limits = ((0, L), (-H, 0)), titlesize = 18)
 
 fig = Figure(size = (800, 900))
-
 fig[1, :] = Label(fig, title, fontsize = 24, tellwidth = false)
-
-nan_color = :grey
 
 ax_b = Axis(fig[2, 1]; title = "b (buoyancy)", axis_kwargs...)
 hm_b = heatmap!(ax_b, bn; nan_color, colorrange = (0, bmax), colormap = :thermal)
@@ -215,16 +222,10 @@ ax_N² = Axis(fig[5, 1]; title = "N² (stratification)", axis_kwargs...)
 hm_N² = heatmap!(ax_N², N²n; nan_color, colorrange = (-N²max/4, N²max), colormap = :haline)
 Colorbar(fig[5, 2], hm_N², label = "s⁻²")
 
-fig
-
-
-# ## Create Animation
-
-frames = 1:length(times)
-
-record(fig, "lock_exchange.mp4", frames; framerate = 8) do i
-    @info "Animating frame $i out of $(frames[end])"
-    n[] = i
+Nt = length(times)
+record(fig, "hydrostatic_lock_exchange.mp4", 1:Nt; framerate = 8) do nn
+    @info "Animating frame $nn out of $Nt"
+    n[] = nn
 end
 
 # The visualization shows the time evolution of buoyancy ``b``, turbulent kinetic energy ``e``,
@@ -234,4 +235,4 @@ end
 # This shows the characteristic transition from horizontal to vertical density separation
 # for the lock exchange problem.
 
-# ![](lock_exchange.mp4)
+# ![](hydrostatic_lock_exchange.mp4)

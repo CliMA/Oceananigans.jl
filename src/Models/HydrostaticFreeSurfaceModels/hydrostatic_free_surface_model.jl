@@ -325,5 +325,6 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
 buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
