@@ -48,7 +48,8 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
-
+    
+    compute_tendencies!(model, callbacks)	
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     return nothing

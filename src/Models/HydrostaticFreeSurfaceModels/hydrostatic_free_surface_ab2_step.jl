@@ -25,7 +25,7 @@ AB2 time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
 (`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
 
 The order of operations for explicit free surfaces is:
-1. Compute momentum tendencies
+1. Compute momentum flux boundary conditions (3D tendencies are computed in `update_state!`)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
 4. Compute tracer tendencies
@@ -39,9 +39,9 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Computing Baroclinic and Barotropic tendencies
-    @apply_regionally compute_momentum_tendencies!(model, callbacks)
-    
+    # Computing momentum flux boundary conditions
+    @apply_regionally compute_momentum_flux_bcs!(model)
+
     # Advance the free surface
     compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
@@ -87,8 +87,8 @@ function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        # Computing Baroclinic and Barotropic tendencies
-        compute_momentum_tendencies!(model, callbacks)
+        # Computing tracer tendencies and adding fluxes to momentum
+        compute_momentum_flux_bcs!(model)
         compute_tracer_tendencies!(model)
     
         # Finally Substep! Advance grid, tracers, and momentum

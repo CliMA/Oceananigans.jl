@@ -28,8 +28,6 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     Δτ   = stage_Δt(Δt, γⁿ, ζⁿ) 	
     grid = model.grid	
 
-    compute_tendencies!(model, callbacks)	
-
     # Velocity steps	
     for (i, field) in enumerate(model.velocities)	
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])	

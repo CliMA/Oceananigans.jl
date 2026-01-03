@@ -77,6 +77,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
+    @apply_regionally compute_momentum_tendencies!(model, callbacks)
+
     return nothing
 end
 

@@ -30,9 +30,10 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
         synchronize_communication!(tracer)
     end
     
-    # Synchronize velocities
+    # Synchronize velocities and free surface
     synchronize_communication!(model.velocities.u)
     synchronize_communication!(model.velocities.v)
+    synchronize_communication!(model.free_surface)
 
     surface_params = buffer_surface_kernel_parameters(grid, arch)
     volume_params  = buffer_volume_kernel_parameters(grid, arch)
@@ -43,6 +44,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     update_vertical_velocities!(model.velocities, grid, model; parameters = surface_params)
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = surface_params)
     compute_diffusivities!(model.closure_fields, model.closure, model; parameters = κ_params)
+
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     # parameters for communicating North / South / East / West side

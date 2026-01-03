@@ -32,7 +32,6 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
     complete_communication_and_compute_momentum_buffer!(model, grid, arch)
-    compute_momentum_flux_bcs!(model)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
