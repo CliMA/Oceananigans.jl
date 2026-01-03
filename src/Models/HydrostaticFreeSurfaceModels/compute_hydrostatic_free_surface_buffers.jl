@@ -33,7 +33,6 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     # Synchronize velocities and free surface
     synchronize_communication!(model.velocities.u)
     synchronize_communication!(model.velocities.v)
-    synchronize_communication!(model.free_surface)
 
     surface_params = buffer_surface_kernel_parameters(grid, arch)
     volume_params  = buffer_volume_kernel_parameters(grid, arch)

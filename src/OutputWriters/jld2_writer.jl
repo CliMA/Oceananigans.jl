@@ -3,7 +3,6 @@ using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
 using Oceananigans.Fields: boundary_conditions, indices
-using Oceananigans.DistributedComputations: synchronize_communication!
 
 default_included_properties(model) = []
 
