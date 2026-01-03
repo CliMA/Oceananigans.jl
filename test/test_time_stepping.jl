@@ -362,11 +362,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
                     @test eltype(grid) == FT
 
-                    model = HydrostaticFreeSurfaceModel(grid;
-                                                        clock,
-                                                        closure,
-                                                        tracers,
-                                                        buoyancy = BuoyancyTracer())
+                    model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, buoyancy = BuoyancyTracer())
                     time_step!(model, 1)
                     @test model.clock.time == DateTime("2020-01-01T00:00:01")
                 end
