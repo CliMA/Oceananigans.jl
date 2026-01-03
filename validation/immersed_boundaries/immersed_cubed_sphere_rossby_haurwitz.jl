@@ -30,8 +30,8 @@ function (p::Progress)(sim)
                    sim.model.clock.iteration,
                    maximum(abs, sim.model.velocities.u),
                    maximum(abs, sim.model.velocities.v),
-                   minimum(sim.model.free_surface.η),
-                   maximum(sim.model.free_surface.η),
+                   minimum(sim.model.free_surface.displacement),
+                   maximum(sim.model.free_surface.displacement),
                    sim.parameters.cfl(sim.model),
                    prettytime(wall_time))
 
@@ -213,7 +213,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=
         fields_to_check = (
             u = model.velocities.u,
             v = model.velocities.v,
-            η = model.free_surface.η,
+            η = model.free_surface.displacement,
            Gu = model.timestepper.Gⁿ.u,
            Gv = model.timestepper.Gⁿ.v,
            Gη = model.timestepper.Gⁿ.η
@@ -223,7 +223,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=
             StateChecker(model, fields=fields_to_check, schedule=IterationInterval(1))
     end
 
-    output_fields = merge(model.velocities, (η=model.free_surface.η,))
+    output_fields = merge(model.velocities, (η=model.free_surface.displacement,))
 
     simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
                                                     schedule = TimeInterval(1hour),

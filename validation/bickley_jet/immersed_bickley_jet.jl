@@ -63,7 +63,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
                             iteration(sim), prettytime(sim), prettytime(sim.Δt),
-                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
+                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.displacement))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
     wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
@@ -75,7 +75,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
 
     ζ = Field(∂x(v) - ∂y(u))
 
-    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
+    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.displacement))
 
     name = typeof(model.advection.momentum).name.wrapper
     if model.advection.momentum isa WENOVectorInvariantVel

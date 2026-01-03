@@ -40,7 +40,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
 
     u, v, _ = model.velocities
     # ζ = VerticalVorticityField(model)
-    η = model.free_surface.η
+    η = model.free_surface.displacement
     outputs = merge(model.velocities, model.tracers)
 
     progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"

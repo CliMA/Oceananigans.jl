@@ -71,7 +71,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
         time_step!(model, Δt)
     end
 
-    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
+    return merge(model.velocities, model.tracers, (; η = model.free_surface.displacement))
 end
 
 function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field_name = :c)

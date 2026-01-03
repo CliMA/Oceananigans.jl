@@ -34,7 +34,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 
 
 u, v, w = model.velocities
-η = model.free_surface.η
+η = model.free_surface.displacement
 
 save_fields_interval = 18minutes
 

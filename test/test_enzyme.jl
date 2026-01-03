@@ -293,7 +293,7 @@ function viscous_hydrostatic_turbulence(ν, model, u_init, v_init, Δt, u_truth,
     reset!(model.clock)
     set_viscosity!(model, ν)
     set!(model, u=u_init, v=v_init)
-    fill!(model.free_surface.η, 0)
+    fill!(model.free_surface.displacement, 0)
 
     # Step it forward
     for n = 1:10

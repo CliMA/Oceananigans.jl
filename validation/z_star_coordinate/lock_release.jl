@@ -68,7 +68,7 @@ function progress(sim)
     msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
     @info msg0 * msg1 * msg2 * msg3 * msg4
 
-    push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
+    push!(et1, deepcopy(interior(model.free_surface.displacement, :, 1, 1)))
     push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))
 
     return nothing

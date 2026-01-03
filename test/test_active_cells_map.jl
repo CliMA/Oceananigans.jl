@@ -41,7 +41,7 @@ function solid_body_rotation_test(grid)
     simulation = Simulation(model; Δt, stop_iteration = 10)
     run!(simulation)
 
-    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
+    return merge(model.velocities, model.tracers, (; η = model.free_surface.displacement))
 end
 
 Nx = 16

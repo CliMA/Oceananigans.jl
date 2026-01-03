@@ -252,7 +252,7 @@ model = HydrostaticFreeSurfaceModel(mrg;
 #####
 
 u, v, w = model.velocities
-η = model.free_surface.η
+η = model.free_surface.displacement
 T = model.tracers.T
 S = model.tracers.S
 
@@ -283,7 +283,7 @@ function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
     u = sim.model.velocities.u
-    η = sim.model.free_surface.η
+    η = sim.model.free_surface.displacement
 
     @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
@@ -300,7 +300,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
-η = model.free_surface.η
+η = model.free_surface.displacement
 
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
