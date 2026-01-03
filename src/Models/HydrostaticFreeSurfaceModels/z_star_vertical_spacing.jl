@@ -11,122 +11,66 @@ using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 #####
 
 # The easy case
-barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
+barotropic_transport(free_surface::SplitExplicitFreeSurface) = 
+    (U = free_surface.filtered_state.Ũ, 
+     V = free_surface.filtered_state.Ṽ)
+
+# The easy case
+barotropic_velocities(free_surface::SplitExplicitFreeSurface) = 
+    free_surface.barotropic_velocities
 
 # The "harder" case, barotropic velocities are computed on the fly
 barotropic_velocities(free_surface) = nothing, nothing
+barotropic_transport(free_surface)  = nothing, nothing
 
-# Fallback
-ab2_step_grid!(grid, model, ztype, Δt, χ) = nothing
+"""
+    ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt, χ)
 
-function zstar_params(grid::AbstractGrid)
+Update z-star grid scaling factors during an AB2 time step.
 
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    Tx, Ty, _ = topology(grid)
-
-    xrange = params_range(Hx, Nx, Tx)
-    yrange = params_range(Hy, Ny, Ty)
-
-    return KernelParameters(xrange, yrange)
+Copies the free surface height `η` from the model to the grid's internal storage,
+then recomputes the grid stretching factors `σ` at all staggered locations.
+The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
+"""
+function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) 
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    return nothing
 end
 
-params_range(H, N, ::Type{Flat}) = 1:1
-params_range(H, N, T) = -H+2:N+H-1
+"""
+    rk_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt)
 
-function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
+Update z-star grid scaling factors during a split Runge-Kutta substep.
 
-    # Scalings and free surface
-    σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
-    σᶜᶜⁿ = grid.z.σᶜᶜⁿ
-    σᶠᶜⁿ = grid.z.σᶠᶜⁿ
-    σᶜᶠⁿ = grid.z.σᶜᶠⁿ
-    σᶠᶠⁿ = grid.z.σᶠᶠⁿ
-    ηⁿ   = grid.z.ηⁿ
-    Gⁿ   = ztype.storage
-
-    U, V = barotropic_velocities(model.free_surface)
-    u, v, _ = model.velocities
-
-    params = zstar_params(grid)
-
-    launch!(architecture(grid), grid, params, _ab2_update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
-
+Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
+(when `model.clock.stage == length(model.timestepper.β)`).
+"""
+function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    if model.clock.stage == length(model.timestepper.β)
+       parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    end
     return nothing
 end
 
 # Update η in the grid
-# Note!!! This η is different than the free surface coming from the barotropic step!!
-# This η is the one used to compute the vertical spacing.
-# TODO: The two different free surfaces need to be reconciled.
-@kernel function _ab2_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
-    i, j = @index(Global, NTuple)
-    kᴺ = size(grid, 3)
-
-    C₁ = 3 * one(χ) / 2 + χ
-    C₂ =     one(χ) / 2 + χ
-
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
-    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
-
-    @inbounds ηⁿ[i, j, 1] -= Δt * (C₁ * δh_U - C₂ * Gⁿ[i, j, 1])
-    @inbounds Gⁿ[i, j, 1] = δh_U
-
-    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+@kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
+    i, j = @index(Global, NTuple) 
+    @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
+    update_grid_scaling!(grid.z, i, j, grid)
 end
 
-rk3_substep_grid!(grid, model, vertical_coordinate, Δt) = nothing
-
-function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
-
-    # Scalings and free surface
-    σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
-    σᶜᶜⁿ = grid.z.σᶜᶜⁿ
-    σᶠᶜⁿ = grid.z.σᶠᶜⁿ
-    σᶜᶠⁿ = grid.z.σᶜᶠⁿ
-    σᶠᶠⁿ = grid.z.σᶠᶠⁿ
-    ηⁿ   = grid.z.ηⁿ
-    ηⁿ⁻¹ = ztype.storage
-
-    U, V = barotropic_velocities(model.free_surface)
-    u, v, _ = model.velocities
-    params = zstar_params(grid)
-
-    launch!(architecture(grid), grid, params, _rk3_update_grid_scaling!,
-            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, U, V, u, v)
-
-    return nothing
-end
-
-# Update η in the grid
-# Note!!! This η is different than the free surface coming from the barotropic step!!
-# This η is the one used to compute the vertical spacing.
-# TODO: The two different free surfaces need to be reconciled.
-@kernel function _rk3_update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, ηⁿ⁻¹, grid, Δt, U, V, u, v)
-    i, j = @index(Global, NTuple)
-    kᴺ = size(grid, 3)
-
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
-    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
-
-    @inbounds ηⁿ[i, j, 1] = ηⁿ⁻¹[i, j, 1] - Δt * δh_U
-
-    update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
-end
-
-@inline function update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, i, j, grid, ηⁿ)
+@inline function update_grid_scaling!(z_coordinate, i, j, grid)
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, 1, grid, ηⁿ)
-    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, 1, grid, ηⁿ)
-    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, 1, grid, ηⁿ)
-    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, 1, grid, ηⁿ)
+    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
+    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
 
     σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
     σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
@@ -134,32 +78,45 @@ end
     σᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), Hᶠᶠ / hᶠᶠ)
 
     @inbounds begin
-        # Update previous scaling
-        σᶜᶜ⁻[i, j, 1] = σᶜᶜⁿ[i, j, 1]
-
         # update current scaling
-        σᶜᶜⁿ[i, j, 1] = σᶜᶜ
-        σᶠᶜⁿ[i, j, 1] = σᶠᶜ
-        σᶜᶠⁿ[i, j, 1] = σᶜᶠ
-        σᶠᶠⁿ[i, j, 1] = σᶠᶠ
+        z_coordinate.σᶜᶜⁿ[i, j, 1] = σᶜᶜ
+        z_coordinate.σᶠᶜⁿ[i, j, 1] = σᶠᶜ
+        z_coordinate.σᶜᶠⁿ[i, j, 1] = σᶜᶠ
+        z_coordinate.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
     end
 end
 
-update_grid_vertical_velocity!(model, grid, ztype) = nothing
+"""
+    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters)
 
-function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZStarCoordinate)
+Compute the time derivative of the z-star grid stretching factor `∂t_σ`.
+
+For z-star coordinates, `∂t_σ = -∇·U / H` where `U` is the barotropic transport
+and `H` is the static column depth. This represents the rate of change of the
+vertical grid spacing due to free surface motion.
+
+The barotropic transport is obtained from `barotropic_velocities` for prognostic
+velocities or `barotropic_transport` for transport velocities (which may differ
+when using split-explicit free surface).
+"""
+function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
-    U, V = barotropic_velocities(model.free_surface)
-    u, v, _ = model.velocities
-    ∂t_σ  = grid.z.∂t_σ
-
-    params = zstar_params(grid)
+    # Here we distringuish between the model (prognostic) velocities and the transport velocities
+    # used to advect tracers...
+    if velocities === model.velocities
+        U, V = barotropic_velocities(model.free_surface)
+    else
+        U, V = barotropic_transport(model.free_surface)
+    end
+    
+    u, v, _ = velocities
+    ∂t_σ    = grid.z.∂t_σ
 
     # Update the time derivative of the vertical spacing,
-    # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, params, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    # No need to fill the halo as the scaling is updated _IN_ the halos through the parameters
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
 
     return nothing
 end
@@ -174,7 +131,7 @@ end
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
-    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid) 
 
     @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
 end
@@ -186,6 +143,15 @@ end
 # fallback
 scale_by_stretching_factor!(Gⁿ, tracers, grid) = nothing
 
+"""
+    scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+
+Multiply tracer tendencies by the grid stretching factor `σ` for z-star coordinates.
+
+For z-star coordinates, the evolved quantity is `σ * c` rather than `c` alone.
+This function scales tendencies after they are computed so that the time-stepping
+advances `σ * c` correctly.
+"""
 function scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
 
     # Multiply the Gⁿ tendencies by the grid scaling
@@ -221,3 +187,24 @@ end
 
 @inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
+
+#####
+##### Initialize vertical coordinate
+#####
+
+"""
+    initialize_vertical_coordinate!(vertical_coordinate, model, grid)
+
+Initialize the vertical coordinate system at the start of a simulation.
+
+For `ZCoordinate` (static grids), this is a no-op.
+For `ZStarCoordinate`, initializes the grid stretching factors `σ` from the
+initial free surface height and sets `∂t_σ = 0`.
+"""
+initialize_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
+
+function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    return nothing
+end
