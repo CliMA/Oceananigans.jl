@@ -204,7 +204,8 @@ for more customization patterns, including parameterized callbacks and state cal
 using Oceananigans
 using Oceananigans: TendencyCallsite
 
-model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 function modify_tendency!(model, params)

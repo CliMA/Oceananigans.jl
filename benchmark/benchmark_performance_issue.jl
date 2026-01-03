@@ -83,11 +83,9 @@ Nz = 50
 random_vector = - 5000 .* rand(Nx, Ny)
 
 bottom_height(arch) = GridFittedBottom(Oceananigans.on_architecture(arch, random_vector))
-lgrid(arch) = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
-                                     longitude=(0, 360),
-                                      latitude=(-75, 75),
-                                             z=collect(range(-5000, 0, length=51)),
-                                          halo=(7, 7, 7))
+lgrid(arch) = LatitudeLongitudeGrid(arch; size = (Nx, Ny, Nz), halo = (7, 7, 7),
+                                          longitude = (0, 360), latitude =(-75, 75),
+                                          z =collect(range(-5000, 0, length=51)))
 
 grids = Dict(
    (CPU, :LatitudeLongitudeGrid) => lgrid(CPU()),

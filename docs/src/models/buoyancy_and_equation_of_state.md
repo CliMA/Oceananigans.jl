@@ -25,7 +25,7 @@ end
 ```jldoctest buoyancy
 julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
 
-julia> model = NonhydrostaticModel(grid; buoyancy=nothing)
+julia> model = NonhydrostaticModel(grid)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper

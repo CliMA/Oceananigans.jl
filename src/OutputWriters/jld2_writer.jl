@@ -112,7 +112,8 @@ Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)
+model = NonhydrostaticModel(grid), tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -161,7 +162,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))                        
+    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
     schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
