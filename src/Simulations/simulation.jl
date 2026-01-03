@@ -185,7 +185,7 @@ Return `sim.model.clock.time` as a prettily formatted string."
 
 For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
 """
-prettytime(sim::Simulation, longform=true) = prettytime(time(sim); longform)
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
 """
     run_wall_time(sim::Simulation)
