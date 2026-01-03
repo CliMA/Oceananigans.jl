@@ -19,6 +19,7 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 const ZBC = BoundaryCondition{<:Zipper}
+const FZBC = BoundaryCondition{<:FZipper}
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")

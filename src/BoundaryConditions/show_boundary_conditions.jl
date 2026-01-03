@@ -16,6 +16,7 @@ bc_str(::MCBC)                   = "MultiRegionCommunication"
 bc_str(::DCBC)                   = "DistributedCommunication"
 bc_str(::Nothing)                = "Nothing"
 bc_str(zbc::ZBC)                 = "Zipper($(zbc.condition))"
+bc_str(fzbc::FZBC)               = "FZipper($(fzbc.condition))"
 
 #####
 ##### BoundaryCondition
@@ -30,6 +31,7 @@ Base.summary(bc::GBC)                     = string("GradientBoundaryCondition: "
 Base.summary(::PBC)                       = string("PeriodicBoundaryCondition")
 Base.summary(bc::DCBC)                    = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::ZBC)                     = string("ZipperBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::FZBC)                    = string("FZipperBoundaryCondition: ", prettysummary(bc.condition))
 
 function Base.summary(bc::MBC)
     string("MixedBoundaryCondition: ",
