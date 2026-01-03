@@ -9,11 +9,9 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 using SeawaterPolynomials: BoussinesqEquationOfState
 
-using Oceananigans: fields
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
-using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
