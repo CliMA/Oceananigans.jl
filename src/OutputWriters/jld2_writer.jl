@@ -269,11 +269,6 @@ function write_output!(writer::JLD2Writer, model)
         initialize!(writer, model)
     end
 
-    # Synchronize model state if needed
-    for field in fields(model)
-        synchronize_communication!(field)
-    end
-
     verbose = writer.verbose
     current_iteration = model.clock.iteration
 
