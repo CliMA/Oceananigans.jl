@@ -29,6 +29,6 @@ function constant_with_arch(cpu_ibg::CPUImmersedBoundaryGrid, arch)
     TX, TY, TZ = Oceananigans.Grids.topology(cpu_ibg)
     return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid,
                                             cpu_ibg.immersed_boundary,
-                                            cpu_ibg.interior_active_cells,
+                                            cpu_ibg.active_cells,
                                             cpu_ibg.active_z_columns)
 end

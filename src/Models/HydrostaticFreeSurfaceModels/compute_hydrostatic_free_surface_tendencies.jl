@@ -5,7 +5,7 @@ import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: KernelParameters
-using Oceananigans.Grids: halo_size, get_active_cells_map
+using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
@@ -22,12 +22,11 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     arch = architecture(grid)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain. The active cells map restricts the computation to the active cells in the
-    # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
-    active_cells_map = get_active_cells_map(model.grid, Val(:interior))
+    # interior of the domain. The region=:interior restricts the computation to the active cells in the
+    # interior if the grid is immersed and has an active cells map.
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
+    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
     complete_communication_and_compute_buffer!(model, grid, arch)
 
     for callback in callbacks
@@ -51,12 +50,12 @@ compute_free_surface_tendency!(grid, model, free_surface) = nothing
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; region=:interior)
 
     arch = model.architecture
     grid = model.grid
 
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; region)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
@@ -85,14 +84,14 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                 c_tendency,
                 grid,
                 args;
-                active_cells_map)
+                region)
     end
 
     return nothing
 end
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; region=:interior)
 
     grid = model.grid
     arch = architecture(grid)
@@ -122,11 +121,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; active_cells_map)
+            u_kernel_args; region)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args; active_cells_map)
+            v_kernel_args; region)
 
     return nothing
 end

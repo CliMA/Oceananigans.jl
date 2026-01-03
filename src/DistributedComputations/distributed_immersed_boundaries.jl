@@ -113,7 +113,7 @@ end
 # a west one spanning 1:Hx, 1:Ny, 1:Nz and an east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz.
 # For this reason we need three different maps, one containing the `halo_independent` active region, a `west` map and an `east` map.
 # For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
-# Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
+# Therefore, the `active_cells` field in this case is a `NamedTuple` containing 5 elements.
 # Note that boundary-adjacent maps corresponding to non-partitioned directions are set to `nothing`
 function build_active_cells_map(grid::DistributedGrid, ib)
 
@@ -140,15 +140,15 @@ function build_active_cells_map(grid::DistributedGrid, ib)
     include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west_halo_dependent_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(west_boundary...))
-    east_halo_dependent_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(east_boundary...))
-    south_halo_dependent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(south_boundary...))
-    north_halo_dependent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(north_boundary...))
+    west_active_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(west_boundary...))
+    east_active_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(east_boundary...))
+    south_active_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(south_boundary...))
+    north_active_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(north_boundary...))
 
-    west_halo_dependent_cells  = ifelse(include_west,  west_halo_dependent_cells,  nothing)
-    east_halo_dependent_cells  = ifelse(include_east,  east_halo_dependent_cells,  nothing)
-    south_halo_dependent_cells = ifelse(include_south, south_halo_dependent_cells, nothing)
-    north_halo_dependent_cells = ifelse(include_north, north_halo_dependent_cells, nothing)
+    west  = ifelse(include_west,  west_active_cells,  nothing)
+    east  = ifelse(include_east,  east_active_cells,  nothing)
+    south = ifelse(include_south, south_active_cells, nothing)
+    north = ifelse(include_north, north_active_cells, nothing)
 
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
@@ -156,11 +156,7 @@ function build_active_cells_map(grid::DistributedGrid, ib)
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
 
-    halo_independent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    interior = serially_build_active_cells_map(grid, ib; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
-    return (; halo_independent_cells,
-              west_halo_dependent_cells,
-              east_halo_dependent_cells,
-              south_halo_dependent_cells,
-              north_halo_dependent_cells)
+    return (; interior, west, east, south, north)
 end

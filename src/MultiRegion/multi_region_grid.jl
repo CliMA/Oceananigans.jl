@@ -178,12 +178,12 @@ reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}) = GridFitte
 
 @inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r),
                                                                                                                               _getregion(mrg.immersed_boundary, r),
-                                                                                                                              _getregion(mrg.interior_active_cells, r),
+                                                                                                                              _getregion(mrg.active_cells, r),
                                                                                                                               _getregion(mrg.active_z_columns, r))
 
 @inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(getregion(mrg.underlying_grid, r),
                                                                                                                               getregion(mrg.immersed_boundary, r),
-                                                                                                                              getregion(mrg.interior_active_cells, r),
+                                                                                                                              getregion(mrg.active_cells, r),
                                                                                                                               getregion(mrg.active_z_columns, r))
 
 """

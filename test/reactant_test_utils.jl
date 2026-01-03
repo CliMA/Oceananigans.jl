@@ -42,9 +42,9 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     if immersed_boundary_grid
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
         r_grid = ImmersedBoundaryGrid(r_grid, GridFittedBottom(bottom_height))
-        @test isnothing(r_grid.interior_active_cells)
+        @test isnothing(r_grid.active_cells)
         @test isnothing(r_grid.active_z_columns)
-        @test isnothing(grid.interior_active_cells)
+        @test isnothing(grid.active_cells)
         @test isnothing(grid.active_z_columns)
     end
 
