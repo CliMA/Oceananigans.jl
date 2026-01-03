@@ -33,7 +33,7 @@ then recomputes the grid stretching factors `σ` at all staggered locations.
 The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 """
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) 
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
 end
@@ -47,7 +47,7 @@ Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
 (when `model.clock.stage == length(model.timestepper.β)`).
 """
 function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     if model.clock.stage == length(model.timestepper.β)
        parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     end
@@ -204,7 +204,7 @@ initial free surface height and sets `∂t_σ = 0`.
 initialize_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
 function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.η, grid)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
 end

@@ -64,17 +64,17 @@ end
 
 # Only the free surface needs to be synchronized
 synchronize_communication!(free_surface::ExplicitFreeSurface) = 
-    synchronize_communication!(free_surface.η)
+    synchronize_communication!(free_surface.displacement)
 
 function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) 
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)
-    fill_halo_regions!(free_surface.η; async=true)
+    fill_halo_regions!(free_surface.displacement; async=true)
     return nothing
 end
 
 function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
     @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
-    fill_halo_regions!(free_surface.η; async=true)
+    fill_halo_regions!(free_surface.displacement; async=true)
     return nothing
 end
 
