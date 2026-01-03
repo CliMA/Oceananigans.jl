@@ -64,7 +64,8 @@ Turbulent Kinetic Energy (TKE).
     values for its free parameters are obtained from calibration against large eddy
     simulations. For more details please refer to [Wagner et al. (2025)](@cite Wagner25catke).
 
-    Use with caution and report any issues with the physics at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).
+    Use with caution and report any issues with the physics at
+    [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).
 
 Arguments
 =========
@@ -94,20 +95,16 @@ Keyword arguments
 
 - `minimum_tke`: Minimum value for the turbulent kinetic energy. `minimum_tke` produces
                  a background tracer diffusivity
-                 
-    ```math
-    κ_{bg} ≈ Cʰⁱc \frac{eᵐⁱⁿ}{N}
-    ```
-
-    and background viscosity
-
-    ```math
-    ν_{bg} ≈ Cʰⁱu \frac{eᵐⁱⁿ}{N}
-    ```
-
-    where ``N`` is the buoyancy frequency and by default, ``Cʰⁱc = 0.098`` and ``Cʰⁱu = 0.242``
-    are parameters of `CATKEMixingLength`. This feature may be used to model background mixing by internal waves
-    [Wagner et al. (2025)](@cite Wagner25catke). Default: 1e-9.
+  ```math
+  κ_{bg} ≈ C^{hi}_c \\frac{e^{\\min}}{N}
+  ```
+  and background viscosity
+  ```math
+  ν_{bg} ≈ C^{hi}_u \\frac{e^{\\min}}{N}
+  ```
+  where ``N`` is the buoyancy frequency and by default, ``C^{hi}_c = 0.098`` and ``C^{hi}_u = 0.242``
+  are parameters of `CATKEMixingLength`. This feature may be used to model background mixing by
+  internal waves [Wagner et al. (2025)](@cite Wagner25catke). Default: 1e-9.
 
 - `minimum_convective_buoyancy_flux` Minimum value for the convective buoyancy flux. Default: 1e-11.
 

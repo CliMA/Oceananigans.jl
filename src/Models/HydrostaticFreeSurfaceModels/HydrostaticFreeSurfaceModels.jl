@@ -146,9 +146,9 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 @inline free_surface_names(free_surface, velocities, grid) = tuple(:η)
 @inline free_surface_names(free_surface::SplitExplicitFreeSurface, velocities, grid) = (:η, :U, :V)
 
-@inline free_surface_fields(free_surface) = (; η=free_surface.η)
+@inline free_surface_fields(free_surface) = (; η=free_surface.displacement)
 @inline free_surface_fields(::Nothing) = NamedTuple()
-@inline free_surface_fields(free_surface::SplitExplicitFreeSurface) = (η = free_surface.η,
+@inline free_surface_fields(free_surface::SplitExplicitFreeSurface) = (η = free_surface.displacement,
                                                                        U = free_surface.barotropic_velocities.U,
                                                                        V = free_surface.barotropic_velocities.V)
 
@@ -161,7 +161,7 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
           tracers,
           free_surface_fields(free_surface))
 
-displacement(free_surface) = free_surface.η
+displacement(free_surface) = free_surface.displacement
 displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl

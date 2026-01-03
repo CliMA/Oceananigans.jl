@@ -46,7 +46,7 @@ function run_tracer_conservation_test(grid, scheme)
     set!(model, c = 1)
     fill_halo_regions!(c)
 
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     indices = model.grid isa ImmersedBoundaryGrid ? (5:7, 3:6, 1) : (2:5, 3:6, 1)
 

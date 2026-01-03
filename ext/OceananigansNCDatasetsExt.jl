@@ -1406,7 +1406,7 @@ function define_output_variable!(model, dataset, output::AbstractField, output_n
                                  dimensions, filepath, dimension_type=Float64)
 
     # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
-    if output_name == "η" && output == view(model.free_surface.η, output.indices...)
+    if output_name == "η" && output == view(model.free_surface.displacement, output.indices...)
         local default_dimension_name_generator = dimension_name_generator
         dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
     end

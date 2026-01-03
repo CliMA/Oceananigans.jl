@@ -84,7 +84,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                             Δt = Δt,
                             stop_iteration = stop_iteration)
 
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     free_surface_str = string(typeof(model.free_surface).name.wrapper)
     x_topology_str = global_topology(grid, 1)

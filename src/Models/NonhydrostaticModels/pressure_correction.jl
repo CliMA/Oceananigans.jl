@@ -31,7 +31,7 @@ function set_top_pressure_boundary_condition!(p_Δt, free_surface, w̃, Δt)
     top_bc.condition.coefficient[] = 1 / (g * Δt^2)
 
     # Set the "combination" of the MixedBoundaryCondition
-    η = free_surface.η
+    η = free_surface.displacement
     bc_rhs = top_bc.condition.inhomogeneity
     grid = p_Δt.grid
     arch = grid.architecture
