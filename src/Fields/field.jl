@@ -719,7 +719,7 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
 const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
-@inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
+@inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
