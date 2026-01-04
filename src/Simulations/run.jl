@@ -191,12 +191,12 @@ we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """
-    initialize!(sim::Simulation, pickup=false)
+    initialize!(sim::Simulation)
 
 Initialize a simulation:
 
 - Update the auxiliary state of the simulation (filling halo regions, computing auxiliary fields)
-- Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
+- Evaluate all diagnostics, callbacks, and output writers if `sim.model.clock.iteration == 0`
 - Add diagnostics that "depend" on output writers
 """
 function initialize!(sim::Simulation)
