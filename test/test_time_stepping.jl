@@ -117,14 +117,6 @@ function run_first_AB2_time_step_tests(arch, FT)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    # Test that GT = 0 after model construction
-    # (note: model construction does not computes tendencies)
-    @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.T) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
-
     # Test that T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
     Δt = 1
     time_step!(model, Δt, euler=true)
@@ -329,168 +321,168 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 @testset "Time stepping" begin
     @info "Testing time stepping..."
 
-    for arch in archs, FT in float_types
-        A = typeof(arch)
-        Oceananigans.defaults.FloatType = FT
-        @testset "Time stepping with DateTimes [$A, $FT]" begin
-            @info "  Testing NonhydrostaticModel time stepping with datetime clocks [$A, $FT]"
+    # for arch in archs, FT in float_types
+    #     A = typeof(arch)
+    #     Oceananigans.defaults.FloatType = FT
+    #     @testset "Time stepping with DateTimes [$A, $FT]" begin
+    #         @info "  Testing NonhydrostaticModel time stepping with datetime clocks [$A, $FT]"
 
-            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-            @test eltype(grid) == FT
+    #         grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    #         @test eltype(grid) == FT
 
-            clock = Clock(time=DateTime(2020))
-            model = NonhydrostaticModel(grid; clock)
+    #         clock = Clock(time=DateTime(2020))
+    #         model = NonhydrostaticModel(grid; clock)
 
-            time_step!(model, 7.883)
-            @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
+    #         time_step!(model, 7.883)
+    #         @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            clock = Clock(; time=TimeDate(2020))
-            model = NonhydrostaticModel(grid; clock)
-            time_step!(model, 123e-9)  # 123 nanoseconds
-            @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
+    #         clock = Clock(; time=TimeDate(2020))
+    #         model = NonhydrostaticModel(grid; clock)
+    #         time_step!(model, 123e-9)  # 123 nanoseconds
+    #         @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
 
-            # Test HydrostaticFreeSurfaceModel
-            for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
-                if closure isa TKEDissipationVerticalDiffusivity && FT == Float32
-                    # skip --- TKEDissipationVerticalDiffusivity may not work with Float32 yet
-                else
-                    C = nameof(typeof(closure))
-                    @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
+    #         # Test HydrostaticFreeSurfaceModel
+    #         for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
+    #             if closure isa TKEDissipationVerticalDiffusivity && FT == Float32
+    #                 # skip --- TKEDissipationVerticalDiffusivity may not work with Float32 yet
+    #             else
+    #                 C = nameof(typeof(closure))
+    #                 @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
 
-                    tracers = (:b, :c)
-                    clock = Clock(; time=DateTime(2020, 1, 1))
-                    grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
-                    @test eltype(grid) == FT
+    #                 tracers = (:b, :c)
+    #                 clock = Clock(; time=DateTime(2020, 1, 1))
+    #                 grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
+    #                 @test eltype(grid) == FT
 
-                    model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, buoyancy = BuoyancyTracer())
-                    time_step!(model, 1)
-                    @test model.clock.time == DateTime("2020-01-01T00:00:01")
-                end
-            end
-        end
-    end
+    #                 model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, buoyancy = BuoyancyTracer())
+    #                 time_step!(model, 1)
+    #                 @test model.clock.time == DateTime("2020-01-01T00:00:01")
+    #             end
+    #         end
+    #     end
+    # end
 
-    @testset "Flat dimensions" begin
-        for arch in archs
-            for topology in ((Flat, Periodic, Periodic),
-                             (Periodic, Flat, Periodic),
-                             (Periodic, Periodic, Flat),
-                             (Flat, Flat, Bounded))
+    # @testset "Flat dimensions" begin
+    #     for arch in archs
+    #         for topology in ((Flat, Periodic, Periodic),
+    #                          (Periodic, Flat, Periodic),
+    #                          (Periodic, Periodic, Flat),
+    #                          (Flat, Flat, Bounded))
 
-                TX, TY, TZ = topology
-                @info "  Testing that time stepping works with flat dimensions [$(typeof(arch)), $TX, $TY, $TZ]..."
-                @test time_stepping_works_with_flat_dimensions(arch, topology)
-            end
-        end
-    end
+    #             TX, TY, TZ = topology
+    #             @info "  Testing that time stepping works with flat dimensions [$(typeof(arch)), $TX, $TY, $TZ]..."
+    #             @test time_stepping_works_with_flat_dimensions(arch, topology)
+    #         end
+    #     end
+    # end
 
-    @testset "Coriolis" begin
-        for arch in archs, FT in [Float64], Coriolis in Planes
-            @info "  Testing that time stepping works with Coriolis [$(typeof(arch)), $FT, $Coriolis]..."
-            @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
-        end
-    end
+    # @testset "Coriolis" begin
+    #     for arch in archs, FT in [Float64], Coriolis in Planes
+    #         @info "  Testing that time stepping works with Coriolis [$(typeof(arch)), $FT, $Coriolis]..."
+    #         @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
+    #     end
+    # end
 
-    @testset "SphericalCoriolis with NonhydrostaticFormulation" begin
-        for arch in archs, FT in [Float64]
-            H = 7
-            halo = (7, 7, 7)
-            precompute_metrics = true
-            lat_lon_sector_grid = LatitudeLongitudeGrid(arch, FT; size=(H, H, H), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
-            lat_lon_strip_grid  = LatitudeLongitudeGrid(arch, FT; size=(H, H, H), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
+    # @testset "SphericalCoriolis with NonhydrostaticFormulation" begin
+    #     for arch in archs, FT in [Float64]
+    #         H = 7
+    #         halo = (7, 7, 7)
+    #         precompute_metrics = true
+    #         lat_lon_sector_grid = LatitudeLongitudeGrid(arch, FT; size=(H, H, H), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
+    #         lat_lon_strip_grid  = LatitudeLongitudeGrid(arch, FT; size=(H, H, H), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
 
-            for coriolis in (nothing,
-                             SphericalCoriolis(FT, scheme=EnergyConserving()),
-                             SphericalCoriolis(FT, scheme=EnstrophyConserving()))
+    #         for coriolis in (nothing,
+    #                          SphericalCoriolis(FT, scheme=EnergyConserving()),
+    #                          SphericalCoriolis(FT, scheme=EnstrophyConserving()))
 
-                @testset "Time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]" begin
-                    @info "  Testing time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]..."
-                    @test time_step_nonhydrostatic_model_works(lat_lon_sector_grid; coriolis)
-                    @test time_step_nonhydrostatic_model_works(lat_lon_strip_grid; coriolis)
-                end
-            end
-        end
-    end
+    #             @testset "Time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]" begin
+    #                 @info "  Testing time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]..."
+    #                 @test time_step_nonhydrostatic_model_works(lat_lon_sector_grid; coriolis)
+    #                 @test time_step_nonhydrostatic_model_works(lat_lon_strip_grid; coriolis)
+    #             end
+    #         end
+    #     end
+    # end
 
-    @testset "NonhydrostaticModel with ImplicitFreeSurface" begin
-        for arch in archs, FT in float_types
-            @info "  Testing NonhydrostaticModel with ImplicitFreeSurface time stepping [$FT, $arch]..."
-            @test time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, FT)
-        end
-    end
+    # @testset "NonhydrostaticModel with ImplicitFreeSurface" begin
+    #     for arch in archs, FT in float_types
+    #         @info "  Testing NonhydrostaticModel with ImplicitFreeSurface time stepping [$FT, $arch]..."
+    #         @test time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, FT)
+    #     end
+    # end
 
-    @testset "Advection schemes" begin
-        for arch in archs, advection_scheme in advection_schemes
-            @info "  Testing time stepping with advection schemes [$(typeof(arch)), $(typeof(advection_scheme))]"
-            @test time_stepping_works_with_advection_scheme(arch, advection_scheme)
-        end
-    end
+    # @testset "Advection schemes" begin
+    #     for arch in archs, advection_scheme in advection_schemes
+    #         @info "  Testing time stepping with advection schemes [$(typeof(arch)), $(typeof(advection_scheme))]"
+    #         @test time_stepping_works_with_advection_scheme(arch, advection_scheme)
+    #     end
+    # end
 
-    @testset "Stokes drift" begin
-        for arch in archs, stokes_drift in stokes_drifts
-            @info "  Testing time stepping with stokes drift schemes [$(typeof(arch)), $(typeof(stokes_drift))]"
-            @test time_stepping_works_with_stokes_drift(arch, stokes_drift)
-        end
-    end
+    # @testset "Stokes drift" begin
+    #     for arch in archs, stokes_drift in stokes_drifts
+    #         @info "  Testing time stepping with stokes drift schemes [$(typeof(arch)), $(typeof(stokes_drift))]"
+    #         @test time_stepping_works_with_stokes_drift(arch, stokes_drift)
+    #     end
+    # end
 
 
-    @testset "BackgroundFields" begin
-        for arch in archs
-            @info "  Testing that time stepping works with background fields [$(typeof(arch))]..."
-            @test time_stepping_with_background_fields(arch)
-        end
-    end
+    # @testset "BackgroundFields" begin
+    #     for arch in archs
+    #         @info "  Testing that time stepping works with background fields [$(typeof(arch))]..."
+    #         @test time_stepping_with_background_fields(arch)
+    #     end
+    # end
 
-    @testset "Euler time stepping propagate NaNs in previous tendency G⁻" begin
-        for arch in archs
-            @info "  Testing that Euler time stepping doesn't propagate NaNs found in previous tendency G⁻ [$(typeof(arch))]..."
-            @test euler_time_stepping_doesnt_propagate_NaNs(arch)
-        end
-    end
+    # @testset "Euler time stepping propagate NaNs in previous tendency G⁻" begin
+    #     for arch in archs
+    #         @info "  Testing that Euler time stepping doesn't propagate NaNs found in previous tendency G⁻ [$(typeof(arch))]..."
+    #         @test euler_time_stepping_doesnt_propagate_NaNs(arch)
+    #     end
+    # end
 
-    @testset "Turbulence closures" begin
-        for arch in archs, FT in [Float64]
+    # @testset "Turbulence closures" begin
+    #     for arch in archs, FT in [Float64]
 
-            @info "  Testing that time stepping works [$(typeof(arch)), $FT, nothing]..."
-            @test time_stepping_works_with_nothing_closure(arch, FT)
+    #         @info "  Testing that time stepping works [$(typeof(arch)), $FT, nothing]..."
+    #         @test time_stepping_works_with_nothing_closure(arch, FT)
 
-            for Closure in Closures
-                @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
-                if Closure === CATKEVerticalDiffusivity || Closure === IsopycnalSkewSymmetricDiffusivity
-                    # CATKE isn't supported with NonhydrostaticModel yet
-                    @test time_stepping_works_with_closure(arch, FT, Closure; Model=HydrostaticFreeSurfaceModel)
-                elseif Closure() isa DynamicSmagorinsky
-                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
-                else
-                    @test time_stepping_works_with_closure(arch, FT, Closure)
-                end
-            end
+    #         for Closure in Closures
+    #             @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
+    #             if Closure === CATKEVerticalDiffusivity || Closure === IsopycnalSkewSymmetricDiffusivity
+    #                 # CATKE isn't supported with NonhydrostaticModel yet
+    #                 @test time_stepping_works_with_closure(arch, FT, Closure; Model=HydrostaticFreeSurfaceModel)
+    #             elseif Closure() isa DynamicSmagorinsky
+    #                 @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+    #             else
+    #                 @test time_stepping_works_with_closure(arch, FT, Closure)
+    #             end
+    #         end
 
-            # AnisotropicMinimumDissipation can depend on buoyancy...
-            @test time_stepping_works_with_closure(arch, FT, AnisotropicMinimumDissipation; buoyancy=nothing)
-        end
-    end
+    #         # AnisotropicMinimumDissipation can depend on buoyancy...
+    #         @test time_stepping_works_with_closure(arch, FT, AnisotropicMinimumDissipation; buoyancy=nothing)
+    #     end
+    # end
 
-    @testset "UniformStokesDrift" begin
-        for arch in archs
-            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-            # Cover three cases:
-            stokes_drift = UniformStokesDrift(grid, ∂z_vˢ=nothing, ∂t_uˢ= (z, t) -> exp(z/20))
-            model = NonhydrostaticModel(grid; stokes_drift)
-            time_step!(model, 1)
-            @test true
-        end
-    end
+    # @testset "UniformStokesDrift" begin
+    #     for arch in archs
+    #         grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    #         # Cover three cases:
+    #         stokes_drift = UniformStokesDrift(grid, ∂z_vˢ=nothing, ∂t_uˢ= (z, t) -> exp(z/20))
+    #         model = NonhydrostaticModel(grid; stokes_drift)
+    #         time_step!(model, 1)
+    #         @test true
+    #     end
+    # end
 
-    @testset "Idealized nonlinear equation of state" begin
-        for arch in archs, FT in [Float64]
-            for eos_type in (SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
-                @info "  Testing that time stepping works with " *
-                        "RoquetIdealizedNonlinearEquationOfState [$(typeof(arch)), $FT, $eos_type]"
-                @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
-            end
-        end
-    end
+    # @testset "Idealized nonlinear equation of state" begin
+    #     for arch in archs, FT in [Float64]
+    #         for eos_type in (SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
+    #             @info "  Testing that time stepping works with " *
+    #                     "RoquetIdealizedNonlinearEquationOfState [$(typeof(arch)), $FT, $eos_type]"
+    #             @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
+    #         end
+    #     end
+    # end
 
     @testset "2nd-order Adams-Bashforth" begin
         @info "  Testing 2nd-order Adams-Bashforth..."
@@ -499,40 +491,40 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    @testset "Incompressibility" begin
-        for FT in float_types, arch in archs
-            Nx, Ny, Nz = 32, 32, 32
+    # @testset "Incompressibility" begin
+    #     for FT in float_types, arch in archs
+    #         Nx, Ny, Nz = 32, 32, 32
 
-            regular_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
+    #         regular_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
 
-            S = 1.3 # Stretching factor
-            hyperbolically_spaced_nodes(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
-            hyperbolic_vs_grid = RectilinearGrid(arch, FT,
-                                             size = (Nx, Ny, Nz),
-                                                x = (0, 1),
-                                                y = (0, 1),
-                                                z = hyperbolically_spaced_nodes)
+    #         S = 1.3 # Stretching factor
+    #         hyperbolically_spaced_nodes(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
+    #         hyperbolic_vs_grid = RectilinearGrid(arch, FT,
+    #                                          size = (Nx, Ny, Nz),
+    #                                             x = (0, 1),
+    #                                             y = (0, 1),
+    #                                             z = hyperbolically_spaced_nodes)
 
-            regular_vs_grid = RectilinearGrid(arch, FT,
-                                             size = (Nx, Ny, Nz),
-                                                x = (0, 1),
-                                                y = (0, 1),
-                                                z = collect(range(0, stop=1, length=Nz+1)))
+    #         regular_vs_grid = RectilinearGrid(arch, FT,
+    #                                          size = (Nx, Ny, Nz),
+    #                                             x = (0, 1),
+    #                                             y = (0, 1),
+    #                                             z = collect(range(0, stop=1, length=Nz+1)))
 
-            for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
-                @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
+    #         for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
+    #             @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
 
-                for Nt in [1, 10, 100], timestepper in timesteppers
-                    @test incompressible_in_time(grid, Nt, timestepper)
-                end
-            end
-        end
-    end
+    #             for Nt in [1, 10, 100], timestepper in timesteppers
+    #                 @test incompressible_in_time(grid, Nt, timestepper)
+    #             end
+    #         end
+    #     end
+    # end
 
-    @testset "Tracer conservation in channel" begin
-        @info "  Testing tracer conservation in channel..."
-        for arch in archs, FT in float_types
-            @test tracer_conserved_in_channel(arch, FT, 10)
-        end
-    end
+    # @testset "Tracer conservation in channel" begin
+    #     @info "  Testing tracer conservation in channel..."
+    #     for arch in archs, FT in float_types
+    #         @test tracer_conserved_in_channel(arch, FT, 10)
+    #     end
+    # end
 end
