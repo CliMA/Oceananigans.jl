@@ -57,15 +57,15 @@ end
 
     @test eltype(underlying_grid) == Float32
 
-    @inline function depth(x::FT, y::FT)::FT
-        a² = (FT(0.45) * Lx)^2  # semi-major squared axis
-        b² = (FT(0.45) * Ly)^2  # semi-minor squared axis
-        x₀ = FT(0.5) * Lx
-        y₀ = FT(0.5) * Ly
+    @inline function depth(x, y)
+        a² = (0.45*Lx)^2  # semi-major squared axis
+        b² = (0.45*Ly)^2  # semi-minor squared axis
+        x₀ = Lx / 2
+        y₀ = Ly / 2
         Δx = x - x₀
         Δy = y - y₀
         r² = (Δx * Δx) / a² + (Δy * Δy) / b²
-        return r² ≤ FT(1) ? -Lz * (FT(1) - r²) : FT(1)
+        return r² ≤ 1 ? -Lz * (1 - r²) : 1
     end
 
     grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(depth); active_cells_map=false)
