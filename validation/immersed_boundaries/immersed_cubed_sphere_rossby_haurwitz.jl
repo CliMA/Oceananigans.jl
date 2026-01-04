@@ -110,15 +110,9 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=
         momentum_advection = nothing
     end
 
-    model = HydrostaticFreeSurfaceModel(
-                      grid = grid,
-        momentum_advection = momentum_advection,
-              free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
-                  coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
-                   closure = nothing,
-                   tracers = nothing,
-                  buoyancy = nothing
-    )
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection,
+                                              free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
+                                              coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()))
 
     ## Rossby-Haurwitz initial condition from Williamson et al. (§3.6, 1992)
     ## # here: θ ∈ [-π/2, π/2] is latitude, ϕ ∈ [0, 2π) is longitude
