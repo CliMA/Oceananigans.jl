@@ -10,7 +10,6 @@ Oceananigans.defaults.FloatType = Float32
 # * https://github.com/CliMA/Oceananigans.jl/pull/4124#discussion_r1976449272
 # * https://github.com/CliMA/Oceananigans.jl/pull/4152
 
-#=
 @testset "MetalGPU extension" begin
     metal = Metal.MetalBackend()
     arch = GPU(metal)
@@ -40,7 +39,6 @@ Oceananigans.defaults.FloatType = Float32
     @test iteration(simulation) == 3
     @test time(simulation) == 3minutes
 end
-=#
 
 @testset "MetalGPU: ImmersedBoundaryGrid" begin
     arch = GPU(Metal.MetalBackend())
