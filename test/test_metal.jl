@@ -44,7 +44,7 @@ end
 
 @testset "MetalGPU: ImmersedBoundaryGrid" begin
     arch = GPU(Metal.MetalBackend())
-    FT = Oceananigans.defaults.FloatType
+    FT = Float32
 
     Lx, Ly, Lz = FT(5000meters), FT(5000meters), FT(20meters)
     Nx, Ny, Nz = 16, 16, 8
