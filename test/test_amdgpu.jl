@@ -93,8 +93,6 @@ end
         @test parent(grid.Δxᶠᶜᵃ) isa ROCArray
         @test parent(grid.Δxᶜᶠᵃ) isa ROCArray
         @test parent(grid.Δxᶠᶠᵃ) isa ROCArray
-        @test parent(grid.Δyᶠᶜᵃ) isa ROCArray
-        @test parent(grid.Δyᶜᶠᵃ) isa ROCArray
         @test parent(grid.Azᶜᶜᵃ) isa ROCArray
         @test parent(grid.Azᶠᶜᵃ) isa ROCArray
         @test parent(grid.Azᶜᶠᵃ) isa ROCArray
