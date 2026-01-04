@@ -21,7 +21,7 @@ ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
 """
     ab2_step!(model, free_surface, grid, Δt, callbacks)
 
-AB2 time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
+The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
 (`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
 
 The order of operations for explicit free surfaces is:
@@ -56,11 +56,11 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
         # Advance grid and velocities
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
-    
+
         # Correct the barotropic mode
         correct_barotropic_mode!(model, Δt)
 
-        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
         # Finally advance tracers:
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
@@ -71,7 +71,7 @@ end
 """
     ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
 
-AB2 time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
+The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
 For implicit free surfaces, a predictor-corrector approach is used:
 1. Compute momentum and tracer tendencies
@@ -90,7 +90,7 @@ function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
         # Computing tracer tendencies and adding fluxes to momentum
         compute_momentum_flux_bcs!(model)
         compute_tracer_tendencies!(model)
-    
+
         # Finally Substep! Advance grid, tracers, and momentum
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
@@ -98,7 +98,7 @@ function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
 
     # Advance the free surface
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-    
+
     # Correct the barotropic mode
     @apply_regionally correct_barotropic_mode!(model, Δt)
 

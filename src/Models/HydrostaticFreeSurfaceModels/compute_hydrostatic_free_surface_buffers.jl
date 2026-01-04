@@ -12,14 +12,14 @@ complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
 complete_communication_and_compute_momentum_buffer!(model, grid, arch) = nothing
 
 """
-    complete_communication_and_compute_momentum_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
+    complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
 
-Complete halo communication and compute momentum tendencies in buffer regions for distributed grids.
+Complete halo communication and compute momentum tendencies in the buffer regions for distributed grids.
 
-This function is called after interior momentum tendencies are computed. It:
-1. Synchronizes halo communication for tracers and velocities
-2. Computes diagnostic fields (buoyancy gradients, vertical velocity, pressure, diffusivities) in buffer regions
-3. Computes momentum tendencies in cells that depend on halo data
+This method is called after interior momentum tendencies are computed to:
+1. synchronize halo communication for tracers and velocities,
+2. compute diagnostic fields (buoyancy gradients, vertical velocity, pressure, diffusivities) in the buffer regions, and
+3. compute momentum tendencies in cells that depend on halo data.
 """
 function complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
     grid = model.grid
@@ -29,7 +29,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     for tracer in model.tracers
         synchronize_communication!(tracer)
     end
-    
+
     # Synchronize velocities and free surface
     synchronize_communication!(model.velocities.u)
     synchronize_communication!(model.velocities.v)
@@ -78,7 +78,7 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
         active_cells_map = @inbounds maps[name]
 
         # If the map == nothing, we don't need to compute the buffer because
-        # the buffer is not adjacent to a processor boundary. 
+        # the buffer is not adjacent to a processor boundary.
         if !isnothing(active_cells_map)
             # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
             compute_hydrostatic_momentum_tendencies!(model, model.velocities, nothing; active_cells_map)
@@ -89,14 +89,14 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
 end
 
 """
-    complete_communication_and_compute_tracer_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
+    complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
 
 Complete halo communication and compute tracer tendencies in buffer regions for distributed grids.
 
-This function is called after interior tracer tendencies are computed. It:
-1. Synchronizes halo communication for transport velocities and free surface
-2. Updates vertical transport velocities in buffer regions
-3. Computes tracer tendencies in cells that depend on halo data
+This function is called after interior tracer tendencies are computed to:
+1. synchronize halo communication for transport velocities and free surface,
+2. update the vertical transport velocities in buffer regions, and
+3. compute the tracer tendencies in cells that depend on halo data.
 """
 function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
     grid = model.grid
@@ -151,7 +151,7 @@ end
 
 Return kernel parameters for computing 2D (surface) variables in buffer regions.
 
-The buffer regions are strips along processor boundaries where computations depend on halo data. 
+The buffer regions are strips along processor boundaries where computations depend on halo data.
 Returns parameters for west, east, south, and north buffer regions.
 """
 function buffer_surface_kernel_parameters(grid, arch)
