@@ -84,8 +84,7 @@ end
     Qᵘ = -FT(1e-4)
     u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵘ))
 
-    model = HydrostaticFreeSurfaceModel(;
-        grid,
+    model = HydrostaticFreeSurfaceModel(grid;
         coriolis=FPlane(latitude=60),
         tracers=(:T, :S),
         buoyancy=SeawaterBuoyancy(),
@@ -129,7 +128,7 @@ end
     grid = RectilinearGrid(arch; size=(64, 64, 16), x=(0, 5000), y=(0, 5000), z=(-20, 0))
     @test eltype(grid) == Float32
 
-    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection=WENO(), tracer_advection=WENO(),
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection=WENO(), tracer_advection=WENO(),
         free_surface=SplitExplicitFreeSurface(grid; substeps=30))
     sim = Simulation(model, Δt=5, stop_iteration=20)
 
@@ -137,5 +136,5 @@ end
     sim.callbacks[:wizard] = Callback(wizard, IterationInterval(5))
 
     run!(sim)
-    @test time(sim) > 100seconds 
+    @test time(sim) > 100seconds
 end
