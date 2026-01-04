@@ -9,7 +9,7 @@ using Benchmarks
 
 function benchmark_topology(Arch, N, topo)
     grid = RectilinearGrid(Arch(), topology=topo, size=(N, N, N), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(grid)
 
     time_step!(model, 1) # warmup
 

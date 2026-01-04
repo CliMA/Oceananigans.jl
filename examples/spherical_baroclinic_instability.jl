@@ -112,7 +112,7 @@ rotated_lat_lon_grid = RotatedLatitudeLongitudeGrid(arch; size, halo, latitude, 
 # - Quadratic bottom drag using [`BulkDrag`](@ref), which computes
 #   a stress proportional to `Cᴰ |u| u` where `Cᴰ` is the drag coefficient.
 # - An initial condition that involves
-#   * A temperature front centered around ±45° latitude
+#   * A temperature front centered at ±45° latitude
 #   * Vertical salinity stratification
 #   * Random noise in both to seed instability
 
@@ -132,7 +132,7 @@ function build_model(grid)
     v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
     boundary_conditions = (; u=u_bcs, v=v_bcs)
 
-    model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface, buoyancy,
+    model = HydrostaticFreeSurfaceModel(grid; coriolis, free_surface, buoyancy,
                                         tracers = (:T, :S),
                                         momentum_advection, tracer_advection,
                                         boundary_conditions)
@@ -153,7 +153,7 @@ end
 # while keeping computational costs reasonable.
 
 ## Simulation runner
-function run_baroclinic_instability(grid, name; stop_time=60day, save_interval=24hours)
+function run_baroclinic_instability(grid, name; stop_time=60days, save_interval=24hours)
     model = build_model(grid)
     simulation = Simulation(model; Δt=8minutes, stop_time)
 
@@ -217,7 +217,7 @@ end
 times = T_ts["lat_lon"].times
 Nt = length(times)
 
-# Next we make a plot showing baroclinic instability 
+# Next we make a plot showing baroclinic instability
 # on all three grids, visualized on 3D spheres. Each column shows a different
 # grid type, with temperature on top and vorticity on the bottom.
 
