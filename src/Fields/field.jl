@@ -700,7 +700,6 @@ get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
-# TODO(completed): make this Float32 friendly. Masks are converted in appropriated functions
 get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
