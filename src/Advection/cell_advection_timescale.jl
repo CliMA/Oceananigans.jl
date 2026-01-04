@@ -13,7 +13,7 @@ is the minimum over all `i, j, k` in the `grid` of
 function cell_advection_timescale(grid, velocities)
     u, v, w = velocities
     τ = KernelFunctionOperation{Center, Center, Center}(cell_advection_timescaleᶜᶜᶜ, grid, u, v, w)
-    return minimum(τ) #TODO here is a problem on MetalGPU
+    return minimum(τ)
 end
 
 @inline _inverse_timescale(i, j, k, Δ⁻¹, U, topo) = @inbounds abs(U[i, j, k]) * Δ⁻¹
