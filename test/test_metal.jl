@@ -88,11 +88,9 @@ end
                                         closure=ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-3),
                                         boundary_conditions=(u=u_bcs, T=T_bcs))
 
-    @test parent(model.velocities.u) isa MtlArray
-    @test parent(model.velocities.v) isa MtlArray
-    @test parent(model.velocities.w) isa MtlArray
-    @test parent(model.tracers.T) isa MtlArray
-    @test parent(model.tracers.S) isa MtlArray
+    for field in merge(model.velocities, model.tracers)
+        @test parent(field) isa MtlArray
+    end
 
     simulation = Simulation(model, Δt=1, stop_iteration=1)
     run!(simulation)
