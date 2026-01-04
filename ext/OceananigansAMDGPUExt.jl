@@ -1,7 +1,8 @@
 module OceananigansAMDGPUExt
 
 using Oceananigans
-using AMDGPU, AMDGPU.rocSPARSE, AMDGPU.rocFFT
+using AMDGPU, AMDGPU.rocSPARSE
+using AbstractFFTs: plan_fft!, plan_ifft!
 
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using InteractiveUtils
@@ -90,7 +91,7 @@ BC.validate_boundary_condition_architecture(::ROCArray, ::AC.CPU, bc, side) =
 
 function SO.plan_forward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return AMDGPU.rocFFT.plan_fft!(A, dims)
+    return plan_fft!(A, dims)
 end
 
 FD.set!(v::Field, a::ROCArray) = FD.set_to_array!(v, a)
@@ -98,7 +99,7 @@ DC.set!(v::DC.DistributedField, a::ROCArray) = DC.set_to_array!(v, a)
 
 function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return AMDGPU.rocFFT.plan_ifft!(A, dims)
+    return plan_ifft!(A, dims)
 end
 
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
