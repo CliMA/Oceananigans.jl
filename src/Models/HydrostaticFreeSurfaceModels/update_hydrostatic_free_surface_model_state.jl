@@ -3,11 +3,11 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
-using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Utils: KernelParameters
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
+using Oceananigans.TurbulenceClosures: compute_diffusivities!
+using Oceananigans.Utils: KernelParameters
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -36,7 +36,7 @@ This function performs the following steps:
 
 Note: Halo regions for free surface fields are filled separately after the barotropic step.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) =  update_state!(model, model.grid, callbacks)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
@@ -47,12 +47,12 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
         update_model_field_time_series!(model, model.clock)
         update_boundary_conditions!(fields(model), model)
     end
-    
+
     u = model.velocities.u
     v = model.velocities.v
     tracers = model.tracers
 
-    # Fill the halos of the prognostic fields. Note that the halos of the 
+    # Fill the halos of the prognostic fields. Note that the halos of the
     # free-surface variables are filled after the barotropic step.
     fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
     fill_halo_regions!(tracers, model.clock, fields(model); async=true)
@@ -63,7 +63,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
         volume_params = volume_kernel_parameters(grid)
         κ_params = diffusivity_kernel_parameters(grid)
         compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
-        update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)    
+        update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
         compute_diffusivities!(model.closure_fields, model.closure, model, parameters=κ_params)
     end
