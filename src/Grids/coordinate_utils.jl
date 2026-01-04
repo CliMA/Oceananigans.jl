@@ -123,7 +123,7 @@ function ExponentialDiscretization(size::Int, left, right;
     discretization = ExponentialDiscretization(size, left, right, scale, bias)
 
     if mutable
-        discretization = MutableVerticalDiscretization(discretization)
+        discretization = GeneralizedVerticalDiscretization(discretization)
     end
 
     return discretization
@@ -465,7 +465,7 @@ function ReferenceToStretchedDiscretization(; extent = 1000,
                                                         stretching;
                                                         rounding_digits)
     if mutable
-        discretization = MutableVerticalDiscretization(discretization)
+        discretization = GeneralizedVerticalDiscretization(discretization)
     end
 
     return discretization

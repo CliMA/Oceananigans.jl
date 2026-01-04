@@ -1,6 +1,6 @@
-using Oceananigans.Grids: AbstractMutableGrid
+using Oceananigans.Grids: AbstractGeneralizedVerticalGrid, AbstractMutableGrid
 using Oceananigans.Operators
-using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location
+using Oceananigans.Operators: GRG, GLLG, GOSG, superscript_location
 
 import Oceananigans.Grids: column_depthᶜᶜᵃ,
                            column_depthᶜᶠᵃ,
@@ -9,13 +9,18 @@ import Oceananigans.Grids: column_depthᶜᶜᵃ,
 
 import Oceananigans.Operators: σⁿ, σ⁻, ∂t_σ
 
-const MutableImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractMutableGrid}
-const MutableGridOfSomeKind = Union{MutableImmersedGrid, AbstractMutableGrid}
+# Type aliases for grids with generalized vertical coordinates
+const GeneralizedImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractGeneralizedVerticalGrid}
+const GeneralizedGridOfSomeKind = Union{GeneralizedImmersedGrid, AbstractGeneralizedVerticalGrid}
 
-@inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶜᶜᵃ(i, j, grid) +  @inbounds η[i, j, k]
-@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶠᶜᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, k, grid, η)
-@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶜᶠᵃ(i, j, grid) +  ℑyᵃᶠᵃ(i, j, k, grid, η)
-@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶠᶠᵃ(i, j, grid) + ℑxyᶠᶠᵃ(i, j, k, grid, η)
+# Backward compatibility aliases
+const MutableImmersedGrid   = GeneralizedImmersedGrid
+const MutableGridOfSomeKind = GeneralizedGridOfSomeKind
+
+@inline column_depthᶜᶜᵃ(i, j, k, grid::GeneralizedGridOfSomeKind, η) = static_column_depthᶜᶜᵃ(i, j, grid) +  @inbounds η[i, j, k]
+@inline column_depthᶠᶜᵃ(i, j, k, grid::GeneralizedGridOfSomeKind, η) = static_column_depthᶠᶜᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, k, grid, η)
+@inline column_depthᶜᶠᵃ(i, j, k, grid::GeneralizedGridOfSomeKind, η) = static_column_depthᶜᶠᵃ(i, j, grid) +  ℑyᵃᶠᵃ(i, j, k, grid, η)
+@inline column_depthᶠᶠᵃ(i, j, k, grid::GeneralizedGridOfSomeKind, η) = static_column_depthᶠᶠᵃ(i, j, grid) + ℑxyᶠᶠᵃ(i, j, k, grid, η)
 
 # Convenience methods
 @inline column_depthᶜᶜᵃ(i, j, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
@@ -23,10 +28,10 @@ const MutableGridOfSomeKind = Union{MutableImmersedGrid, AbstractMutableGrid}
 @inline column_depthᶠᶜᵃ(i, j, grid) = static_column_depthᶠᶜᵃ(i, j, grid)
 @inline column_depthᶠᶠᵃ(i, j, grid) = static_column_depthᶠᶠᵃ(i, j, grid)
 
-@inline column_depthᶜᶜᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶜᶠᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶜᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶠᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶜᵃ(i, j, grid::GeneralizedGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶠᵃ(i, j, grid::GeneralizedGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶜᵃ(i, j, grid::GeneralizedGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶠᵃ(i, j, grid::GeneralizedGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
 
 # Three dimensional column_depth methods for use in `KernelOperations`
 @inline column_depthᶜᶜᵃ(i, j, k, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
@@ -34,10 +39,10 @@ const MutableGridOfSomeKind = Union{MutableImmersedGrid, AbstractMutableGrid}
 @inline column_depthᶠᶜᵃ(i, j, k, grid) = static_column_depthᶠᶜᵃ(i, j, grid)
 @inline column_depthᶠᶠᵃ(i, j, k, grid) = static_column_depthᶠᶠᵃ(i, j, grid)
 
-@inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶜᵃ(i, j, k, grid::GeneralizedGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶠᵃ(i, j, k, grid::GeneralizedGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶜᵃ(i, j, k, grid::GeneralizedGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶠᵃ(i, j, k, grid::GeneralizedGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
 
 # Fallbacks
 @inline σⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
@@ -46,9 +51,9 @@ const MutableGridOfSomeKind = Union{MutableImmersedGrid, AbstractMutableGrid}
 @inline ∂t_σ(i, j, k, ibg::IBG) = ∂t_σ(i, j, k, ibg.underlying_grid)
 
 # Extend the 3D vertical spacing operators on an Immersed Mutable grid
-const IMRG  = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MRG}
-const IMLLG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MLLG}
-const IMOSG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MOSG}
+const IGRG  = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GRG}
+const IGLLG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GLLG}
+const IGOSG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GOSG}
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
     zspacing = Symbol(:Δz, LX, LY, LZ)
@@ -62,8 +67,36 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
         using Oceananigans.Operators: $rspacing
         import Oceananigans.Operators: $zspacing
 
-        @inline $zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
-        @inline $zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $zspacing(i, j, k, grid::IGRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $zspacing(i, j, k, grid::IGLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $zspacing(i, j, k, grid::IGOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
     end
 end
+
+#####
+##### Chain-rule-correct horizontal derivatives for GeneralizedImmersedGrid
+#####
+##### These forward to the underlying grid which has the actual implementation.
+#####
+
+import Oceananigans.Operators: ∂xᶠᶜᶜ, ∂xᶜᶜᶜ, ∂xᶠᶠᶜ, ∂yᶜᶠᶜ, ∂yᶜᶜᶜ, ∂yᶠᶠᶜ
+
+# x-derivatives
+@inline ∂xᶠᶜᶜ(i, j, k, ibg::GeneralizedImmersedGrid, c) = ∂xᶠᶜᶜ(i, j, k, ibg.underlying_grid, c)
+@inline ∂xᶠᶜᶜ(i, j, k, ibg::GeneralizedImmersedGrid, f::Function, args...) = ∂xᶠᶜᶜ(i, j, k, ibg.underlying_grid, f, args...)
+
+@inline ∂xᶜᶜᶜ(i, j, k, ibg::GeneralizedImmersedGrid, c) = ∂xᶜᶜᶜ(i, j, k, ibg.underlying_grid, c)
+@inline ∂xᶜᶜᶜ(i, j, k, ibg::GeneralizedImmersedGrid, f::Function, args...) = ∂xᶜᶜᶜ(i, j, k, ibg.underlying_grid, f, args...)
+
+@inline ∂xᶠᶠᶜ(i, j, k, ibg::GeneralizedImmersedGrid, c) = ∂xᶠᶠᶜ(i, j, k, ibg.underlying_grid, c)
+@inline ∂xᶠᶠᶜ(i, j, k, ibg::GeneralizedImmersedGrid, f::Function, args...) = ∂xᶠᶠᶜ(i, j, k, ibg.underlying_grid, f, args...)
+
+# y-derivatives
+@inline ∂yᶜᶠᶜ(i, j, k, ibg::GeneralizedImmersedGrid, c) = ∂yᶜᶠᶜ(i, j, k, ibg.underlying_grid, c)
+@inline ∂yᶜᶠᶜ(i, j, k, ibg::GeneralizedImmersedGrid, f::Function, args...) = ∂yᶜᶠᶜ(i, j, k, ibg.underlying_grid, f, args...)
+
+@inline ∂yᶜᶜᶜ(i, j, k, ibg::GeneralizedImmersedGrid, c) = ∂yᶜᶜᶜ(i, j, k, ibg.underlying_grid, c)
+@inline ∂yᶜᶜᶜ(i, j, k, ibg::GeneralizedImmersedGrid, f::Function, args...) = ∂yᶜᶜᶜ(i, j, k, ibg.underlying_grid, f, args...)
+
+@inline ∂yᶠᶠᶜ(i, j, k, ibg::GeneralizedImmersedGrid, c) = ∂yᶠᶠᶜ(i, j, k, ibg.underlying_grid, c)
+@inline ∂yᶠᶠᶜ(i, j, k, ibg::GeneralizedImmersedGrid, f::Function, args...) = ∂yᶠᶠᶜ(i, j, k, ibg.underlying_grid, f, args...)

@@ -1,5 +1,6 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.ImmersedBoundaries: GeneralizedGridOfSomeKind
 
 import Oceananigans.TimeSteppers: split_rk3_substep!, _euler_substep_field!, cache_previous_fields!
 
@@ -133,7 +134,7 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         end
     end
 
-    if grid isa MutableGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
+    if grid isa GeneralizedGridOfSomeKind && model.vertical_coordinate isa ZStarCoordinate
         # We need to cache the surface height somewhere!
         parent(model.vertical_coordinate.storage) .= parent(model.grid.z.ηⁿ)
     end

@@ -7,8 +7,8 @@ deconcretize(z::StaticVerticalDiscretization) =
         deconcretize(z.Δᵃᵃᶜ)
     )
 
-# TODO: handle MutableVerticalDiscretization in grid constructors
-deconcretize(z::MutableVerticalDiscretization) = z
+# TODO: handle ZStarVerticalCoordinate in grid constructors
+deconcretize(z::ZStarVerticalCoordinate) = z
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
                                                        gfb.immersed_condition)
 

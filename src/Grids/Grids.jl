@@ -10,7 +10,8 @@ export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
-export MutableVerticalDiscretization
+export GeneralizedVerticalDiscretization, ZStarVerticalCoordinate
+export MutableVerticalDiscretization  # Backward compatibility alias
 export ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching
 export node, nodes
 export ξnode, ηnode, rnode

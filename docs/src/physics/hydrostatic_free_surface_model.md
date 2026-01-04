@@ -97,45 +97,50 @@ We can use either `ZCoordinate`, that is height coordinate, or the
 `ZStarCoordinate` [generalized vertical coordinate](@ref generalized_vertical_coordinates).
 
 The `ZStarCoordinate` vertical coordinate conserves tracers and volume with the grid following
- the evolution of the free surface in the domain [adcroft2004rescaled](@citep).
+the evolution of the free surface in the domain [adcroft2004rescaled](@citep).
+
+!!! note "Notation"
+    We use ``(\xi, \eta, r)`` for computational coordinates and ``(x, y, z)`` for physical coordinates.
+    The free surface displacement is denoted ``\eta_{\rm fs}`` to distinguish it from the computational
+    ``\eta``-coordinate. See [Generalized vertical coordinates](@ref generalized_vertical_coordinates)
+    for the full notation.
 
 In terms of the notation in the [Generalized vertical coordinates](@ref generalized_vertical_coordinates)
 section, for a `ZCoordinate` we have that
 ```math
-r(x, y, z, t) = z
+r(\xi, \eta, z, t) = z
 ```
 and the specific thickness is ``\sigma = \partial z / \partial r = 1``.
 
-The `ZStarCoordinate` generalized vertical coordinate is often denoted as ``z^*`` (zee-star), i.e.,
+The `ZStarCoordinate` generalized vertical coordinate is often denoted as ``z^*`` (zee-star). The
+mapping from ``r`` to ``z`` is:
 ```math
 \begin{equation}
-    r(x, y, z, t) = z^*(x, y, z, t) = \frac{H(x, y)}{H(x, y) + \eta(x, y, t)}[z - \eta(x, y, t)] \label{zstardef}
+    z(\xi, \eta, r, t) = \eta_{\rm fs}(\xi, \eta, t) + \sigma(\xi, \eta, t) \, r \label{zstardef}
 \end{equation}
 ```
-where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
+where ``\eta_{\rm fs}`` is the free surface displacement, ``z = -H(\xi, \eta)`` is the bottom of the domain,
+and the specific thickness is
+```math
+\sigma = \frac{H + \eta_{\rm fs}}{H} = 1 + \frac{\eta_{\rm fs}}{H}
+```
 
 ![Schematic of the quantities involved in the ZStarCoordinate generalized vertical coordinate](../assets/zstar_schematic.png)
 
-Note that in both depth and ``z^*`` coordinates, the bottom boundary is the same ``z = z^* = - H(x, y)``.
-On the other hand, while in depth coordinates the upper boundary ``z = \eta(x, y, t)`` changes with time,
-but in ``z^*`` coordinates is fixed to ``z^* = 0``.
-
-The `ZStarCoordinate` definition \eqref{zstardef} implies a specific thickness
-
-```math
-\sigma = 1 + \frac{\eta}{H}
-```
+Note that in both depth and ``z^*`` coordinates, the bottom boundary is the same ``z = r = -H(\xi, \eta)``.
+On the other hand, while in depth coordinates the upper boundary ``z = \eta_{\rm fs}(\xi, \eta, t)`` changes with time,
+in ``z^*`` coordinates it is fixed to ``r = 0``.
 
 All the equations transformed in ``r``-coordinates are described in the
 [Generalized vertical coordinates](@ref generalized_vertical_coordinates) section.
 
-For the specific choice of `ZStarCoordinate` coordinate \eqref{zstardef}, the ``\partial \eta/\partial r``
-identically vanishes and thus the horizontal gradient of the free surface remain unchanged under vertical
+For the specific choice of `ZStarCoordinate` coordinate \eqref{zstardef}, ``\partial \eta_{\rm fs}/\partial r``
+identically vanishes, and thus the horizontal gradient of the free surface remains unchanged under vertical
 coordinate transformation, i.e.,
 ```math
 \begin{align}
-    \frac{\partial \eta}{\partial x} \bigg\rvert_z & = \frac{\partial \eta}{\partial x} \bigg\rvert_r \\
-    \frac{\partial \eta}{\partial y} \bigg\rvert_z & = \frac{\partial \eta}{\partial y} \bigg\rvert_r
+    \frac{\partial \eta_{\rm fs}}{\partial \xi} \bigg\rvert_z & = \frac{\partial \eta_{\rm fs}}{\partial \xi} \bigg\rvert_r \\
+    \frac{\partial \eta_{\rm fs}}{\partial \eta} \bigg\rvert_z & = \frac{\partial \eta_{\rm fs}}{\partial \eta} \bigg\rvert_r
 \end{align}
 ```
 
@@ -157,7 +162,7 @@ x₀, h₀ = Lx/3, 6 # m
 mountain = @. h₀ * sech((x - x₀) / σ)^2
 H = @. Lz - slope - mountain
 
-# free surface, η(x)
+# free surface displacement, η_fs (denoted η in code)
 x₀ = -Lx/8
 η₀ = 2.5 # m
 t = Observable(0.0)

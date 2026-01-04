@@ -6,8 +6,9 @@ using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochem
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, 
+                          ZStarVerticalCoordinate, GeneralizedVerticalDiscretization
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GeneralizedGridOfSomeKind
 
 using Oceananigans.Advection:
     AbstractAdvectionScheme,
@@ -34,7 +35,8 @@ using Oceananigans.Grids:
     AbstractHorizontallyCurvilinearGrid,
     architecture,
     halo_size,
-    MutableVerticalDiscretization
+    ZStarVerticalCoordinate,
+    GeneralizedVerticalDiscretization
 
 using Oceananigans.Models:
     AbstractModel,
@@ -73,7 +75,7 @@ const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 function default_vertical_coordinate(grid)
-    if grid.z isa MutableVerticalDiscretization
+    if grid.z isa ZStarVerticalCoordinate
         return ZStarCoordinate(grid)
     else
         return ZCoordinate()
@@ -166,8 +168,8 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
   - `vertical_coordinate`: Algorithm for grid evolution: `ZStarCoordinate()` or `ZCoordinate(grid)`.
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
-                           for grids with `MutableVerticalDiscretization` otherwise returns
-                           `ZCoordinate()`.
+                           for grids with `ZStarVerticalCoordinate` (created from `GeneralizedVerticalDiscretization`)
+                           otherwise returns `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
@@ -192,9 +194,9 @@ function HydrostaticFreeSurfaceModel(grid;
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStarCoordinate)
+    if !(grid isa GeneralizedGridOfSomeKind) && (vertical_coordinate isa ZStarCoordinate)
         msg = string("The grid ", summary(grid), " does not support ZStarCoordinate.", '\n',
-                     "z must be a MutableVerticalDiscretization to allow the use of ZStarCoordinate.")
+                     "z must be a GeneralizedVerticalDiscretization to allow the use of ZStarCoordinate.")
         throw(ArgumentError(msg))
     end
 

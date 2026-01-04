@@ -56,7 +56,7 @@ else
 end
 
 # A function to shard the z-direction (needs to be replicated around
-# TODO: add a method for `MutableVerticalDiscretization`
+# TODO: add a method for `ZStarVerticalCoordinate`
 function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding())
     cᵃᵃᶠ = maybe_shard(z.cᵃᵃᶠ, sharding)
     cᵃᵃᶜ = maybe_shard(z.cᵃᵃᶜ, sharding)

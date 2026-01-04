@@ -8,7 +8,8 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, 
+                          GeneralizedVerticalDiscretization, ZStarVerticalCoordinate
 using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, BoundedTopology
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary

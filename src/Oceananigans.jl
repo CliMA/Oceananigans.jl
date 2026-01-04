@@ -14,7 +14,8 @@ export
     RightConnected, LeftConnected, FullyConnected,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid,
-    MutableVerticalDiscretization,
+    GeneralizedVerticalDiscretization, ZStarVerticalCoordinate,
+    MutableVerticalDiscretization,  # Backward compatibility alias
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,

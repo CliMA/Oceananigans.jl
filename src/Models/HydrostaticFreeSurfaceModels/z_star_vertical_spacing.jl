@@ -3,8 +3,8 @@ using Oceananigans.Fields: znode
 using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
     column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
     static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ
-using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.ImmersedBoundaries: GeneralizedGridOfSomeKind
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxᶠᶜᶜ, δyᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ
 
 #####
 ##### Mutable-specific vertical spacings update
@@ -34,7 +34,7 @@ end
 params_range(H, N, ::Type{Flat}) = 1:1
 params_range(H, N, T) = -H+2:N+H-1
 
-function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
+function ab2_step_grid!(grid::GeneralizedGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
 
     # Scalings and free surface
     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
@@ -79,7 +79,7 @@ end
 
 rk3_substep_grid!(grid, model, vertical_coordinate, Δt) = nothing
 
-function rk3_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
+function rk3_substep_grid!(grid::GeneralizedGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
 
     # Scalings and free surface
     σᶜᶜ⁻ = grid.z.σᶜᶜ⁻
@@ -147,7 +147,7 @@ end
 
 update_grid_vertical_velocity!(model, grid, ztype) = nothing
 
-function update_grid_vertical_velocity!(model, grid::MutableGridOfSomeKind, ::ZStarCoordinate)
+function update_grid_vertical_velocity!(model, grid::GeneralizedGridOfSomeKind, ::ZStarCoordinate)
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
@@ -186,7 +186,7 @@ end
 # fallback
 scale_by_stretching_factor!(Gⁿ, tracers, grid) = nothing
 
-function scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+function scale_by_stretching_factor!(Gⁿ, tracers, grid::GeneralizedGridOfSomeKind)
 
     # Multiply the Gⁿ tendencies by the grid scaling
     for i in propertynames(tracers)
@@ -203,21 +203,24 @@ end
 end
 
 #####
-##### ZStarCoordinate-specific implementation of the additional terms to be included in the momentum equations
+##### Slope of z at constant r (for internal use)
+#####
+##### Note: We use the difference operators δξ, δη to compute the slope of z
+##### at constant r to avoid recursion, since ∂x/∂y now include the chain-rule correction.
 #####
 
-# Fallbacks
+@inline ∂ξ_z_at_r(i, j, k, grid) = δxᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center()) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline ∂η_z_at_r(i, j, k, grid) = δyᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center()) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+
+#####
+##### Legacy grid_slope_contribution functions (DEPRECATED)
+#####
+##### These are no longer used in the momentum tendency kernels because the 
+##### chain-rule correction is now built into the ∂x/∂y operators for grids
+##### with GeneralizedVerticalDiscretization. These fallbacks are retained only for
+##### backwards compatibility with user code that may call them directly.
+#####
+
+# Fallbacks (always return zero since the correction is now in ∂x/∂y)
 @inline grid_slope_contribution_x(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
-
-@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStarCoordinate, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStarCoordinate, model_fields) = zero(grid)
-
-@inline ∂x_z(i, j, k, grid) = ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
-@inline ∂y_z(i, j, k, grid) = ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
-
-@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
-    ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂x_z(i, j, k, grid)
-
-@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
-    ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)

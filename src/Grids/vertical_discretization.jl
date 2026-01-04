@@ -6,6 +6,12 @@
 # Vertical coordinates are independent of the underlying grid type since only grids that are
 # "unstructured" or "curvilinear" in the horizontal directions are supported in Oceananigans.
 # Thus the vertical coordinate is _special_, and it can be implemented once for all grid types.
+#
+# Notation:
+#   - (ξ, η, r) are computational coordinates
+#   - (x, y, z) are physical coordinates
+#   - η_fs (stored as ηⁿ in code) is the free surface displacement
+#   - σ = ∂z/∂r is the specific thickness (stretching factor)
 
 abstract type AbstractVerticalCoordinate end
 
@@ -35,54 +41,112 @@ const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 
 coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
-struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+#####
+##### GeneralizedVerticalDiscretization - user-facing input type
+#####
+
+"""
+    struct GeneralizedVerticalDiscretization{R}
+
+A user-facing type for specifying a generalized (potentially time-varying) vertical coordinate.
+
+This type is used as input when constructing a grid. It specifies the reference vertical
+coordinate interfaces `r_faces`. When the grid is constructed, this is converted to a
+`ZStarVerticalCoordinate` which stores both the reference coordinate and the time-evolving
+state needed for zee-star or other generalized vertical coordinates.
+
+See [Generalized vertical coordinates](@ref generalized_vertical_coordinates) for the theory.
+
+# Example
+
+```julia
+using Oceananigans
+
+# Create a grid with a generalized vertical discretization
+z = GeneralizedVerticalDiscretization((-100, 0))
+grid = RectilinearGrid(size=(10, 10, 10), x=(0, 1), y=(0, 1), z=z)
+```
+"""
+struct GeneralizedVerticalDiscretization{R}
+    r_faces :: R
+end
+
+Base.show(io::IO, gvd::GeneralizedVerticalDiscretization) =
+    print(io, "GeneralizedVerticalDiscretization with reference interfaces: ", gvd.r_faces)
+
+#####
+##### ZStarVerticalCoordinate - grid-stored type with time-evolving state
+#####
+
+"""
+    struct ZStarVerticalCoordinate{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+
+A generalized vertical coordinate stored on the grid, supporting time-varying coordinates
+such as the zee-star (z*) free-surface-following coordinate.
+
+This type stores both the reference vertical coordinate (r) and the time-evolving state
+needed for coordinate transformations.
+
+# Fields
+
+Reference coordinate (static):
+- `cᵃᵃᶠ`: Face-centered reference coordinate values
+- `cᵃᵃᶜ`: Cell-centered reference coordinate values
+- `Δᵃᵃᶠ`: Face-centered reference coordinate spacings
+- `Δᵃᵃᶜ`: Cell-centered reference coordinate spacings
+
+Time-evolving state:
+- `ηⁿ`: Free surface displacement at current time (denoted η_fs in docs)
+- `σᶜᶜⁿ`: Specific thickness σ = ∂z/∂r at (Center, Center) at current time
+- `σᶠᶜⁿ`: Specific thickness at (Face, Center) at current time
+- `σᶜᶠⁿ`: Specific thickness at (Center, Face) at current time
+- `σᶠᶠⁿ`: Specific thickness at (Face, Face) at current time
+- `σᶜᶜ⁻`: Specific thickness at (Center, Center) at previous time
+- `∂t_σ`: Time derivative of specific thickness at (Center, Center)
+
+See [Generalized vertical coordinates](@ref generalized_vertical_coordinates) for the theory.
+"""
+struct ZStarVerticalCoordinate{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+    # Reference coordinate (static)
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: D
     Δᵃᵃᶠ :: E
     Δᵃᵃᶜ :: F
-      ηⁿ :: H
-    σᶜᶜⁿ :: CC
+    # Time-evolving state
+      ηⁿ :: H   # Free surface displacement (η_fs in docs notation)
+    σᶜᶜⁿ :: CC  # Specific thickness σ = ∂z/∂r at various staggerings
     σᶠᶜⁿ :: FC
     σᶜᶠⁿ :: CF
     σᶠᶠⁿ :: FF
-    σᶜᶜ⁻ :: CC
-    ∂t_σ :: CC
+    σᶜᶜ⁻ :: CC  # Previous time level
+    ∂t_σ :: CC  # Time derivative of σ
 end
 
 ####
 #### Some useful aliases
 ####
 
-const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any, <:Any, <:Number}
-const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, RegularMutableVerticalDiscretization}
+const RegularZStarVerticalCoordinate = ZStarVerticalCoordinate{<:Any, <:Any, <:Number}
+const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, RegularZStarVerticalCoordinate}
 
-const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:MutableVerticalDiscretization}
-const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
+const AbstractGeneralizedVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:ZStarVerticalCoordinate}
+const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 
+# Backward compatibility aliases
+const MutableVerticalDiscretization = GeneralizedVerticalDiscretization
+const RegularMutableVerticalDiscretization = RegularZStarVerticalCoordinate
+const AbstractMutableGrid = AbstractGeneralizedVerticalGrid
 
-"""
-    MutableVerticalDiscretization(r_faces)
+coordinate_summary(::Bounded, z::RegularZStarVerticalCoordinate, name) =
+    @sprintf("regularly spaced with generalized Δr=%s", prettysummary(z.Δᵃᵃᶜ))
 
-Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
-a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
-defines a vertical coordinate that can evolve in time following certain rules.
-Examples of `MutableVerticalDiscretization`s are the free-surface following coordinates
-(also known as "zee-star") or the terrain following coordinates (also known as "sigma"
-coordinates).
-"""
-MutableVerticalDiscretization(r_faces) =
-    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
-
-coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
-    @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
-
-coordinate_summary(::Bounded, z::MutableVerticalDiscretization, name) =
-    @sprintf("variably and mutably spaced with min(Δr)=%s, max(Δr)=%s",
+coordinate_summary(::Bounded, z::ZStarVerticalCoordinate, name) =
+    @sprintf("variably spaced generalized coordinate with min(Δr)=%s, max(Δr)=%s",
              prettysummary(minimum(parent(z.Δᵃᵃᶜ))),
              prettysummary(maximum(parent(z.Δᵃᵃᶜ))))
 
-function Base.show(io::IO, z::MutableVerticalDiscretization)
-    print(io, "MutableVerticalDiscretization with reference interfaces r:\n")
+function Base.show(io::IO, z::ZStarVerticalCoordinate)
+    print(io, "ZStarVerticalCoordinate with reference interfaces r:\n")
     Base.show(io, z.cᵃᵃᶠ)
 end
 
@@ -90,33 +154,34 @@ end
 ##### Coordinate generation for grid constructors
 #####
 
-generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) =
-    throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
+generate_coordinate(FT, ::Periodic, N, H, ::GeneralizedVerticalDiscretization, coordinate_name, arch, args...) =
+    throw(ArgumentError("Periodic domains are not supported for GeneralizedVerticalDiscretization"))
 
 # Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
 # The grid might move with time, so the coordinate includes the time-derivative of the scaling `∂t_σ`.
 # The value of the vertical coordinate at `Nz+1` is saved in `ηⁿ`.
-function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDiscretization, coordinate_name, dim::Int, arch)
+function generate_coordinate(FT, topo, size, halo, coordinate::GeneralizedVerticalDiscretization, coordinate_name, dim::Int, arch)
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
     if dim != 3
-        msg = "MutableVerticalDiscretization is supported only in the third dimension (z)"
+        msg = "GeneralizedVerticalDiscretization is supported only in the third dimension (z)"
         throw(ArgumentError(msg))
     end
 
     if coordinate_name != :z
-        msg = "MutableVerticalDiscretization is supported only for the z-coordinate"
+        msg = "GeneralizedVerticalDiscretization is supported only for the z-coordinate"
         throw(ArgumentError(msg))
     end
 
-    r_faces = coordinate.cᵃᵃᶠ
+    r_faces = coordinate.r_faces
 
     LR, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
+    # Allocate time-evolving state arrays
     σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
     σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
     σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
@@ -125,12 +190,12 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
-    # Fill all the scalings with one for now (i.e. z == r)
+    # Initialize: σ = 1 means z == r (identity mapping)
     for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
         fill!(σ, 1)
     end
 
-    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return LR, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end
 
 
@@ -150,31 +215,31 @@ on_architecture(arch, coord::StaticVerticalDiscretization) =
                                  on_architecture(arch, coord.Δᵃᵃᶠ),
                                  on_architecture(arch, coord.Δᵃᵃᶜ))
 
-Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
-    MutableVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
-                                  Adapt.adapt(to, coord.cᵃᵃᶜ),
-                                  Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                                  Adapt.adapt(to, coord.Δᵃᵃᶜ),
-                                  Adapt.adapt(to, coord.ηⁿ),
-                                  Adapt.adapt(to, coord.σᶜᶜⁿ),
-                                  Adapt.adapt(to, coord.σᶠᶜⁿ),
-                                  Adapt.adapt(to, coord.σᶜᶠⁿ),
-                                  Adapt.adapt(to, coord.σᶠᶠⁿ),
-                                  Adapt.adapt(to, coord.σᶜᶜ⁻),
-                                  Adapt.adapt(to, coord.∂t_σ))
+Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
+    ZStarVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                            Adapt.adapt(to, coord.cᵃᵃᶜ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                            Adapt.adapt(to, coord.ηⁿ),
+                            Adapt.adapt(to, coord.σᶜᶜⁿ),
+                            Adapt.adapt(to, coord.σᶠᶜⁿ),
+                            Adapt.adapt(to, coord.σᶜᶠⁿ),
+                            Adapt.adapt(to, coord.σᶠᶠⁿ),
+                            Adapt.adapt(to, coord.σᶜᶜ⁻),
+                            Adapt.adapt(to, coord.∂t_σ))
 
-on_architecture(arch, coord::MutableVerticalDiscretization) =
-    MutableVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
-                                  on_architecture(arch, coord.cᵃᵃᶜ),
-                                  on_architecture(arch, coord.Δᵃᵃᶠ),
-                                  on_architecture(arch, coord.Δᵃᵃᶜ),
-                                  on_architecture(arch, coord.ηⁿ),
-                                  on_architecture(arch, coord.σᶜᶜⁿ),
-                                  on_architecture(arch, coord.σᶠᶜⁿ),
-                                  on_architecture(arch, coord.σᶜᶠⁿ),
-                                  on_architecture(arch, coord.σᶠᶠⁿ),
-                                  on_architecture(arch, coord.σᶜᶜ⁻),
-                                  on_architecture(arch, coord.∂t_σ))
+on_architecture(arch, coord::ZStarVerticalCoordinate) =
+    ZStarVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+                            on_architecture(arch, coord.cᵃᵃᶜ),
+                            on_architecture(arch, coord.Δᵃᵃᶠ),
+                            on_architecture(arch, coord.Δᵃᵃᶜ),
+                            on_architecture(arch, coord.ηⁿ),
+                            on_architecture(arch, coord.σᶜᶜⁿ),
+                            on_architecture(arch, coord.σᶠᶜⁿ),
+                            on_architecture(arch, coord.σᶜᶠⁿ),
+                            on_architecture(arch, coord.σᶠᶠⁿ),
+                            on_architecture(arch, coord.σᶜᶜ⁻),
+                            on_architecture(arch, coord.∂t_σ))
 
 #####
 ##### Nodes and spacings (common to every grid)...
@@ -261,15 +326,13 @@ z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᵃᵃᶠ)
 end
 
 @inline cpu_face_constructor_z(grid) = cpu_face_constructor_r(grid)
-@inline cpu_face_constructor_z(grid::AbstractMutableGrid) = MutableVerticalDiscretization(cpu_face_constructor_r(grid))
+@inline cpu_face_constructor_z(grid::AbstractGeneralizedVerticalGrid) = GeneralizedVerticalDiscretization(cpu_face_constructor_r(grid))
 
 ####
 #### Utilities
 ####
 
-function validate_dimension_specification(T, ξ::MutableVerticalDiscretization, dir, N, FT)
-    cᶠ = validate_dimension_specification(T, ξ.cᵃᵃᶠ, dir, N, FT)
-    cᶜ = validate_dimension_specification(T, ξ.cᵃᵃᶜ, dir, N, FT)
-    args = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
-    return MutableVerticalDiscretization(cᶠ, cᶜ, args[3:end]...)
+function validate_dimension_specification(T, ξ::GeneralizedVerticalDiscretization, dir, N, FT)
+    r_faces_validated = validate_dimension_specification(T, ξ.r_faces, dir, N, FT)
+    return GeneralizedVerticalDiscretization(r_faces_validated)
 end
