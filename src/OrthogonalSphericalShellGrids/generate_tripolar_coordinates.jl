@@ -9,7 +9,7 @@ using CubedSphere.SphericalGeometry: lat_lon_to_cartesian, spherical_area_quadri
 Compute the tripolar coordinates for a given set of input parameters following
 the formulation by [Murray (1996)](@cite Murray1996).
 
-The tripolar grid is built as a set of cofocal ellipsed and perpendicular hyperbolae.
+The tripolar grid is built as a set of cofocal ellipses and perpendicular hyperbolae.
 The `focal_distance` argument is the distance from the center of the ellipses to the foci.
 
 The family of ellipses obeys:

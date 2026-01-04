@@ -4,17 +4,15 @@ using Oceananigans.Utils: KernelParameters, launch!
 """
     FPivotZipperBoundaryCondition(sign = 1)
 
-Create a zipper boundary condition specific to the `TripolarGrid`.
-A Zipper boundary condition is similar to a periodic boundary condition, but,
-instead of retrieving the value from the opposite boundary, it splits the boundary
-in two and retrieves the value from the opposite side of the boundary.
-It is possible to think of it as a periodic boundary over a folded domain.
+Create a F-point pivot zipper boundary condition specific to a `TripolarGrid`.
+The zipper BC "folds" the northern boundary on itself along the `YFace` line.
 
 When copying in halos, folded velocities need to switch sign, while tracers or similar fields do not.
 
 Note: There are two types of zipper boundary conditions:
-F-point zipper (this one) and T-point zipper (original/default).
-The F-point zipper folds on the cells' YFace, while the T-point zipper folds on the cells Center and XFace.
+F-point pivot (this one) and T-point pivot (original/default).
+For the F-point pivot, the folded seam is located on the cells' `YFace`,
+while the T-point pivot, the seam is located on the cells' `Center` and `XFace`.
 
 Example
 =======
@@ -22,26 +20,32 @@ Example
 Consider the northern edge of a tripolar grid where P indicates the i - location of the poles
 
 ```
-                    P                         P
-                    |            |            |            |
- Ny (center)     -> u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄
- Ny (face)       -> |---- v₁ ----|---- v₂ ----|---- v₃ ----|---- v₄ ---- <- Fold
- Ny - 1 (center) -> u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄
- Ny - 1 (face)   -> |---- v₁ ----|---- v₂ ----|---- v₃ ----|---- v₄ ---- <- Fold
+                    P                         P                         P
+                    │            │            │            │            │
+Ny + 2 (face)   ─▶  ├─── -v₆ ────┼─── -v₅ ────┼─── -v₄ ────┼─── -v₃ ────┤
+                    │            │            │            │            │
+Ny + 1 (center) ─▶ -u₁    c₄    -u₄    c₃    -u₃    c₂    -u₂    c₁    -u₁
+                    │            │            │            │            │
+Ny + 1 (face)   ─▶  ├──── v₁ ────┼──── v₂ ────┼─── -v₂ ────┼─── -v₁ ────┤ ◀─ Fold
+                    │            │            │            │            │
+Ny     (center) ─▶  u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄     u₁
+                    │            │            │            │            │
+Ny     (face)   ─▶  ├──── v₃ ────┼──── v₄ ────┼──── v₅ ────┼──── v₆ ────┤
+                    │            │            │            │            │
+                                                           ▲     ▲
                                                            Nx    Nx
                                                          (face) (center)
 ```
-The grid ends at `Ny` because it is periodic in nature, but, given the fold,
+
+Note that for the F-point pivot, the `YFAce` fields have an extra row (size `Ny + 1`)
+just like for `Bounded` topologies.
+
+Given the fold, we have
+
 ```
 v₁ == -v₄
-```
-
-and
-```
 v₂ == -v₃
 ```
-
-And the last row
 """
 
 #####
@@ -54,14 +58,14 @@ And the last row
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
-    for j = 1 : Hy
+    for j in 1:Hy
         @inbounds begin
-            ζ[i, Ny + j, k] = sign * ζ[i′, Ny - j, k]
+            ζ[i, Ny + 1 + j, k] = sign * ζ[i′, Ny + 1 - j, k]
         end
     end
 
-    # We substitute the redundant part of the last row of v to ensure consistency
-    @inbounds ζ[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * ζ[i′, Ny, k], ζ[i, Ny, k])
+    # We substitute the redundant part of the last row of ζ to ensure consistency
+    @inbounds ζ[i, Ny + 1, k] = ifelse(i > Nx ÷ 2, sign * ζ[i′, Ny + 1, k], ζ[i, Ny + 1, k])
 
     return nothing
 end
@@ -72,9 +76,9 @@ end
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
-    for j = 0 : Hy
+    for j in 1:Hy
         @inbounds begin
-            u[i, Ny + j, k] = sign * u[i′, Ny - j - 1, k]
+            u[i, Ny + j, k] = sign * u[i′, Ny + 1 - j, k]
         end
     end
 
@@ -87,14 +91,14 @@ end
     i′ = Nx - i + 1
     Hy = grid.Hy
 
-    for j = 1 : Hy
+    for j in 1:Hy
         @inbounds begin
-            v[i, Ny + j, k] = sign * v[i′, Ny - j, k]
+            v[i, Ny + 1 + j, k] = sign * v[i′, Ny + 1 - j, k]
         end
     end
 
-    # We substitute the redundant part of the last row of v to ensure consistency
-    @inbounds v[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny, k], v[i, Ny, k])
+    # We substitute the redundant part of the last row of v (index Ny + 1)to ensure consistency
+    @inbounds v[i, Ny + 1, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny + 1, k], v[i, Ny + 1, k])
 
     return nothing
 end
@@ -105,7 +109,7 @@ end
     i′ = Nx - i + 1
     Hy = grid.Hy
 
-    for j = 0 : Hy # The Ny line is duplicated so we substitute starting Ny-1
+    for j in 0:Hy # The Ny line is duplicated so we substitute starting Ny-1
         @inbounds begin
             c[i, Ny + j, k] = sign * c[i′, Ny - j - 1, k]
         end
@@ -115,9 +119,9 @@ end
 end
 
 const CCLocation = Tuple{<:Center, <:Center, <:Any}
-const FCLocation = Tuple{<:Face,   <:Center, <:Any}
-const CFLocation = Tuple{<:Center, <:Face,   <:Any}
-const FFLocation = Tuple{<:Face,   <:Face,   <:Any}
+const FCLocation = Tuple{<:Face, <:Center, <:Any}
+const CFLocation = Tuple{<:Center, <:Face, <:Any}
+const FFLocation = Tuple{<:Face, <:Face, <:Any}
 
 # tracers or similar fields
 @inline _fill_north_halo!(i, k, grid, c, bc::FZBC, ::CCLocation, args...) = fold_north_center_center_fpivot!(i, k, grid, bc.condition, c)
@@ -130,4 +134,3 @@ const FFLocation = Tuple{<:Face,   <:Face,   <:Any}
 
 # vorticity or similar fields
 @inline _fill_north_halo!(i, k, grid, ζ, bc::FZBC, ::FFLocation, args...) = fold_north_face_face_fpivot!(i, k, grid, bc.condition, ζ)
-
