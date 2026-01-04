@@ -9,27 +9,24 @@ using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt: Adapt
 
-using Oceananigans.Utils: launch!
-using Oceananigans.Utils: launch!, @apply_regionally
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Fields: ZFaceField
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
-using Oceananigans.Utils: Utils, @apply_regionally
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Utils: Utils, launch!, @apply_regionally
 
 using DocStringExtensions: TYPEDFIELDS
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.Models: materialize_free_surface
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Models: materialize_free_surface
 import Oceananigans.Simulations: timestepper
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
-using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
-
-# The only grid type that can support an FFT implicit free-surface solver 
+# The only grid type that can support an FFT implicit free-surface solver
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
@@ -77,7 +74,7 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
-compute_transport_velocities!(model, free_surface) = nothing    
+compute_transport_velocities!(model, free_surface) = nothing
 
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
