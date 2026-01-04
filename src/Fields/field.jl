@@ -249,7 +249,7 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-offset_windowed_data(data, data_indices, loc, grid, view_indices)
+    offset_windowed_data(data, data_indices, loc, grid, view_indices)
 
 Return an `OffsetArray` of `parent(data)`.
 
@@ -775,7 +775,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
-            
+
             mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
                                       maybe_copy_interior(r),
@@ -796,7 +796,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, maybe_copy_interior(r), conditioned_c, init=false) 
+            Base.$(reduction!)(identity, maybe_copy_interior(r), conditioned_c, init=false)
 
             if dims isa Colon
                 return @allowscalar first(r)
