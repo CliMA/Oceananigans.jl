@@ -19,7 +19,7 @@ Example
 ```jldoctest
 using Oceananigans
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(; grid, tracers=:T)
+model = HydrostaticFreeSurfaceModel(grid; tracers=:T)
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -109,8 +109,8 @@ end
 function set_from_extrinsic_velocities!(velocities, grid, u, v)
     grid = grid
     arch = grid.architecture
-    uᶜᶜᶜ = CenterField(grid) 
-    vᶜᶜᶜ = CenterField(grid) 
+    uᶜᶜᶜ = CenterField(grid)
+    vᶜᶜᶜ = CenterField(grid)
     u isa ZeroField || set!(uᶜᶜᶜ, u)
     v isa ZeroField || set!(vᶜᶜᶜ, v)
     launch!(arch, grid, :xyz, _rotate_velocities!, uᶜᶜᶜ, vᶜᶜᶜ, grid)

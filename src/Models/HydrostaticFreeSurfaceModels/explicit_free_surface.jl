@@ -1,9 +1,9 @@
+using Adapt: Adapt
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Adapt: Adapt
 
-import Oceananigans.DistributedComputations: synchronize_communication! 
+import Oceananigans.DistributedComputations: synchronize_communication!
 
 """
     struct ExplicitFreeSurface{E, T}
@@ -63,10 +63,10 @@ end
 #####
 
 # Only the free surface needs to be synchronized
-synchronize_communication!(free_surface::ExplicitFreeSurface) = 
+synchronize_communication!(free_surface::ExplicitFreeSurface) =
     synchronize_communication!(free_surface.displacement)
 
-function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) 
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt)
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)
     fill_halo_regions!(free_surface.displacement; async=true)
     return nothing
@@ -78,7 +78,7 @@ function step_free_surface!(free_surface::ExplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-explicit_rk3_step_free_surface!(free_surface, model, Δt) = 
+explicit_rk3_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_rk3_step_free_surface!, free_surface.displacement, Δt,
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))

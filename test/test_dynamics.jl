@@ -13,8 +13,8 @@ function relative_error(u_num, u, time)
 end
 
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
-    model = NonhydrostaticModel(; timestepper,
-                                  grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
+    grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; timestepper,
                                   closure = ScalarDiffusivity(time_discretization, ν=1, κ=1),
                                   tracers = :c)
 
@@ -62,7 +62,7 @@ end
 
 function test_diffusion_cosine(fieldname, Model, timestepper, grid, closure, ξ, tracers=:c; kwargs...)
 
-    model = Model(; grid, closure, timestepper, tracers, buoyancy=nothing, kwargs...)
+    model = Model(grid; closure, timestepper, tracers, buoyancy=nothing, kwargs...)
     field = fields(model)[fieldname]
 
     m = 2 # cosine wavenumber
@@ -92,8 +92,8 @@ function test_immersed_diffusion(Nz, z, time_discretization)
     Δz_min = minimum(underlying_grid.z.Δᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
-    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
-    immersed_model = HydrostaticFreeSurfaceModel(; grid, closure, model_kwargs...)
+    full_model     = HydrostaticFreeSurfaceModel(underlying_grid; closure, model_kwargs...)
+    immersed_model = HydrostaticFreeSurfaceModel(grid; closure, model_kwargs...)
 
     initial_temperature(z) = exp(-z^2 / 0.02)
     set!(full_model,     c=initial_temperature)
@@ -135,8 +135,8 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
     Δz_min = minimum(grid.underlying_grid.z.Δᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
-    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
-    immersed_model = HydrostaticFreeSurfaceModel(; grid, closure, model_kwargs...)
+    full_model     = HydrostaticFreeSurfaceModel(underlying_grid; closure, model_kwargs...)
+    immersed_model = HydrostaticFreeSurfaceModel(grid; closure, model_kwargs...)
 
     initial_temperature(x, y, z) = exp(-z^2 / 0.02)
     set!(full_model,     c=initial_temperature)
@@ -195,7 +195,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
 
     grid = RectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = ScalarDiffusivity(ν=κ, κ=κ)
-    model = NonhydrostaticModel(; grid, closure, timestepper, background_fields,
+    model = NonhydrostaticModel(grid; closure, timestepper, background_fields,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     set!(model, u=u₀, v=v₀, T=T₀)
@@ -226,7 +226,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
 
     grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1)
-    model = NonhydrostaticModel(; timestepper, grid, closure)
+    model = NonhydrostaticModel(grid; timestepper, closure)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
@@ -269,7 +269,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     z_bc = GradientBoundaryCondition(N² * g̃[3])
     b_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = NonhydrostaticModel(; grid, buoyancy,
+    model = NonhydrostaticModel(grid; buoyancy,
                                 tracers = :b,
                                 closure = nothing,
                                 boundary_conditions = (; b=b_bcs))
@@ -318,7 +318,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     z_bc = GradientBoundaryCondition(∂T∂z * g̃[3])
     T_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = NonhydrostaticModel(; grid, buoyancy,
+    model = NonhydrostaticModel(grid; buoyancy,
                                 tracers = (:T, :S),
                                 closure = nothing,
                                 boundary_conditions = (; T=T_bcs))
@@ -361,13 +361,13 @@ function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
     zcoriolis = FPlane(f=f₀)
     xcoriolis = ConstantCartesianCoriolis(f=f₀, rotation_axis=(1, 0, 0))
 
-    model_x =  NonhydrostaticModel(; grid, buoyancy=nothing, tracers=nothing, closure=nothing,
+    model_x =  NonhydrostaticModel(grid; buoyancy=nothing, tracers=nothing, closure=nothing,
                                    timestepper = :RungeKutta3, coriolis = xcoriolis)
     set!(model_x, v=ū)
     simulation_x = Simulation(model_x, Δt=Δt, stop_time=stop_time)
     run!(simulation_x)
 
-    model_z =  NonhydrostaticModel(; grid, buoyancy=nothing, tracers=nothing, closure=nothing,
+    model_z =  NonhydrostaticModel(grid; buoyancy=nothing, tracers=nothing, closure=nothing,
                                    timestepper = :RungeKutta3, coriolis = zcoriolis)
     set!(model_z, u=ū)
     simulation_z = Simulation(model_z, Δt=Δt, stop_time=stop_time)
@@ -437,12 +437,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
-                        model = NonhydrostaticModel(; timestepper,
-                                                      grid,
-                                                      closure,
-                                                      tracers = :c,
-                                                      coriolis = nothing,
-                                                      buoyancy = nothing)
+                        model = NonhydrostaticModel(grid; timestepper, closure, tracers = :c)
 
                         td = typeof(time_discretization).name.wrapper
 
@@ -474,12 +469,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
                 for formulation in (ThreeDimensionalFormulation(), HorizontalFormulation(), VerticalFormulation())
-                    model = NonhydrostaticModel(; timestepper,
-                                                  grid,
-                                                  closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
-                                                  coriolis = nothing,
-                                                  tracers = :c,
-                                                  buoyancy = nothing)
+                    model = NonhydrostaticModel(grid; timestepper, tracers = :c,
+                                                      closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1))
 
                     for fieldname in fieldnames
                         @info "    [$timestepper] Testing $fieldname budget in a $topology domain " *
@@ -661,7 +652,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                       y_periodic_regularly_spaced_vertically_stretched_grid,
                       y_flat_regularly_spaced_vertically_stretched_grid)
 
-        free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g), 
+        free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g),
                                                                      SplitExplicitFreeSurface(grid, ; gravitational_acceleration=g, cfl=0.5))
 
         free_surface_types(split_runge_kutta, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), ) 
@@ -676,7 +667,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     gravitational_acceleration = (10σ)^2 / Lx
 
                     for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
-                        model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
+                        model = HydrostaticFreeSurfaceModel(grid; free_surface, kwargs...)
 
                         free_surface_type = typeof(free_surface).name.wrapper
                         @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo, $timestepper, $free_surface_type]..."
@@ -691,7 +682,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 grid_name = typeof(grid).name.wrapper
                 topo = topology(grid)
 
-                model = NonhydrostaticModel(; grid, kwargs...)
+                model = NonhydrostaticModel(grid; kwargs...)
 
                 @info "  Testing internal wave [NonhydrostaticModel, $grid_name, $topo]..."
                 internal_wave_dynamics_test(model, solution, Δt)
@@ -723,7 +714,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
 
-            model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields, kwargs...)
+            model = NonhydrostaticModel(y_periodic_regular_grid; background_fields, kwargs...)
             internal_wave_dynamics_test(model, solution, Δt)
         end
     end

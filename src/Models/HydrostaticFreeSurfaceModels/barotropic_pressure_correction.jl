@@ -30,7 +30,7 @@ correct_barotropic_mode!(model, ::ExplicitFreeSurface, Δt; kwargs...) = nothing
 
 Apply barotropic pressure correction for implicit free surface.
 After solving the implicit free surface equation, velocities are corrected by
-subtracting the barotropic pressure gradient: `u -= g * Δt * ∂η/∂x`, `v -= g * Δt * ∂η/∂y`.
+adding the barotropic pressure gradient: `u -= g * Δt * ∂η/∂x`, `v -= g * Δt * ∂η/∂y`.
 """
 function correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt)
 

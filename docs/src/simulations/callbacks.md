@@ -14,7 +14,7 @@ end
 using Oceananigans
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 show_time(sim) = @info "Time is $(prettytime(sim.model.clock.time))"
@@ -57,7 +57,7 @@ using Oceananigans
 using Oceananigans: TendencyCallsite
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 function modify_tendency!(model, params)
@@ -67,10 +67,10 @@ function modify_tendency!(model, params)
 end
 
 add_callback!(simulation,
-              modify_tendency!, 
+              modify_tendency!,
               callsite = TendencyCallsite(),
               parameters = (c = :u, δ = 1))
-                                           
+
 
 run!(simulation)
 ```

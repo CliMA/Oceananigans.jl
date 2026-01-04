@@ -44,7 +44,7 @@ grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 b⁻   = CenterField(grid)
 Δtb² = CenterField(grid)
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                          momentum_advection = Centered(),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),

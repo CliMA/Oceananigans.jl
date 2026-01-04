@@ -32,11 +32,13 @@ end
 """
     barotropic_split_explicit_corrector!(u, v, free_surface, grid)
 
-Correct baroclinic velocities to be consistent with the barotropic mode from split-explicit substepping.
+Correct baroclinic velocities so that they are consistent with the barotropic flow from
+split-explicit substepping.
 
 The correction ensures that the depth-integrated baroclinic velocity matches the
 filtered barotropic velocity from the split-explicit scheme:
-`u_corrected = u + (U_filtered - U_baroclinic) / H`
+
+    u_corrected = u + (U_filtered - U_baroclinic) / H
 
 where `U_filtered` is the filtered barotropic transport from substepping and
 `U_baroclinic` is the depth-integral of the baroclinic velocity.
@@ -102,7 +104,8 @@ end
 Compute transport velocities used for tracer advection with split-explicit free surface.
 
 Transport velocities differ from prognostic velocities by including the barotropic correction:
-`ũ = u + (Ũ_filtered - U_baroclinic) / H`
+
+    ũ = u + (Ũ_filtered - U_baroclinic) / H
 
 where `Ũ_filtered` is the time-filtered barotropic transport from split-explicit substepping.
 This ensures that tracers are advected with a velocity field consistent with the filtered
@@ -125,9 +128,9 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
         launch!(architecture(grid), grid, :xyz, _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
     end
 
-    # Fill transport velocities 
+    # Fill transport velocities
     fill_halo_regions!((ũ, ṽ); async=true)
-    
+
     # Update grid velocity and vertical transport velocity
     @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
 
