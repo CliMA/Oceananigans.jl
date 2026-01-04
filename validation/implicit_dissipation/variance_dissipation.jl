@@ -63,13 +63,13 @@ function run_simulation(ts, timestepper; χ=nothing, velocities=velocities)
     c⁻    = CenterField(grid)
     Δtc²  = CenterField(grid)     
 
-    model = HydrostaticFreeSurfaceModel(; grid, 
-                                          timestepper, 
-                                          velocities, 
-                                          tracer_advection, 
-                                          closure, 
-                                          tracers=:c,
-                                          auxiliary_fields=(; Δtc², c⁻))
+    model = HydrostaticFreeSurfaceModel(grid; 
+                                        timestepper, 
+                                        velocities, 
+                                        tracer_advection, 
+                                        closure, 
+                                        tracers=:c,
+                                        auxiliary_fields=(; Δtc², c⁻))
                                        
     if timestepper == :QuasiAdamsBashforth2 && χ !== nothing
         model.timestepper.χ = χ

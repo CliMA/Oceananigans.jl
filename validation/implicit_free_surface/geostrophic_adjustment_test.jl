@@ -13,13 +13,12 @@ using JLD2
 
 function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:QuasiAdamsBashforth2)
 
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                          momentum_advection = nothing,
-                                          coriolis=FPlane(f = 1e-4),
-                                          tracers = :c,
-                                          buoyancy = nothing,
-                                          timestepper,
-                                          free_surface)
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        momentum_advection = nothing,
+                                        coriolis=FPlane(f = 1e-4),
+                                        tracers = :c,
+                                        timestepper,
+                                        free_surface)
 
     gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -89,7 +88,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
                 msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1] .- interior(sim.model.free_surface.displacement)))
                 msg  = msg * msg2
         end
-        
+
         @info msg
     end
 
@@ -128,7 +127,7 @@ imrk3, sim7 = geostrophic_adjustment_simulation(implicit_free_surface,      deep
 import Oceananigans.Fields: interior
 interior(a::Array, idx...) = a
 
-function plot_variable(sims, var; 
+function plot_variable(sims, var;
                        filename="test.mp4",
                        labels=nothing,
                        Nt=length(sims[1][var]),
@@ -159,7 +158,7 @@ function plot_variable(sims, var;
     end
 end
 
-function plot_variable2(sims, var1, var2; 
+function plot_variable2(sims, var1, var2;
                         filename="test.mp4",
                         labels=nothing,
                         Nt = length(sims[1][var1]))
