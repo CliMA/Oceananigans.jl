@@ -3,7 +3,7 @@ using Oceananigans.Units
 using Oceananigans.Utils: KernelParameters, launch!
 using Statistics
 
-Oceananigans.defaults.FloatType = Float64
+Oceananigans.defaults.FloatType = BigFloat
 
 arch = CPU()
 z_stretched = MutableVerticalDiscretization(collect(-20:0))
@@ -138,8 +138,8 @@ for step in 1:300
     push!(constmn, minimum(model.tracers.constant))
     
     # Constancy preservation test
-    if test_local_conservation
+    # if test_local_conservation
         @test maximum(model.tracers.constant) ≈ 1
         @test minimum(model.tracers.constant) ≈ 1
-    end
+    # end
 end
